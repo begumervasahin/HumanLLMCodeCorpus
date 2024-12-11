@@ -1,0 +1,42 @@
+import torch
+from transformers import BertModel, BertTokenizer
+from models.bert_multilayer import Layer_Att
+
+# Define paths and initialize tokenizer and model
+bert_path = '/data/bert-pretrained-models/bert-base-uncased'
+tokenizer = BertTokenizer.from_pretrained(os.path.join(bert_path, 'bert-base-uncased-vocab.txt'))
+model = BertModel.from_pretrained(bert_path)
+
+# Define input text
+text = "[CLS] Who was Jim Henson ? [SEP] Jim Henson was a puppeteer [SEP]"
+
+# Tokenize input text
+tokenized_text = tokenizer.tokenize(text)
+indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
+segments_ids = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+
+# Convert tokens to tensors and move them to GPU
+tokens_tensor = torch.tensor([indexed_tokens]).to('cuda:1')
+segments_tensors = torch.tensor([segments_ids]).to('cuda:1')
+
+# Move model to GPU and set to evaluation mode
+model.to('cuda:1')
+model.eval()
+
+# Perform forward pass to get encoded layers and label layer
+with torch.no_grad():
+    encoded_layers, label_layer = model(tokens_tensor, segments_tensors, output_all_encoded_layers=True)
+
+# Print the shape of the label layer
+print("Shape of label layer:", label_layer.shape)
+
+# Initialize and move Layer_Att to GPU, set to evaluation mode
+att = Layer_Att().to('cuda:1')
+att.eval()
+
+# Perform forward pass to get output from Layer_Att
+with torch.no_grad():
+    output2 = att(encoded_layers)
+
+# Print the shape of the output from Layer_Att
+print("Shape of output from Layer_Att:", output2.shape)

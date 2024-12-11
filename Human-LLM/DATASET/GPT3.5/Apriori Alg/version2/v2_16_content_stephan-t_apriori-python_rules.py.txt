@@ -1,0 +1,91 @@
+import pandas as pd
+from itertools import combinations
+from apriori import candidate_gen
+
+def rule_gen(T, F, min_confidence):
+    """
+    Generate association rules based on frequent itemsets and minimum confidence.
+    
+    Parameters:
+    - T: Total number of transactions
+    - F: Frequent itemsets
+    - min_confidence: Minimum confidence threshold for generating association rules
+    """
+    for i in range(2, len(F)):  
+        # Starting from frequent 2-itemsets
+        for j in range(len(F[i])):
+            # Extracting frequent k-itemset and its count
+            f = F[i].loc[j, ['items', 'count']]
+            # Generating 1-item consequents
+            con = tuple(combinations(f[0], 1))
+
+            for c in con:
+                # Calculating antecedents for association rules
+                ant = tuple(sorted(set(f[0]) - set(c)))
+                ant_count = int(F[len(ant)]['count'][F[len(ant)]['items'] == ant])
+                
+                if f[1] / ant_count >= min_confidence:
+                    # Output association rules meeting minimum confidence
+                    print(f"{ant} -> {c} [sup = {f[1]}/{T}, conf = {f[1]}/{ant_count}]")
+                    # Store 1-item consequents meeting minimum confidence
+                    if 'H' not in locals():
+                        H = {1: pd.DataFrame(pd.Series((c,)), columns=['items'])}
+                    else:
+                        H[1] = H[1].append(pd.Series((c,), index=['items']), ignore_index=True)
+                    # Generate all rules from 1-item consequents
+                    rule_gen_all(T, F, f, H, 1, min_confidence)
+
+            if 'H' in locals():
+                del H  # Delete dataframe for the next iteration
+
+def rule_gen_all(T, F, f, H, m, min_confidence):
+    """
+    Generate all association rules from frequent itemsets.
+    
+    Parameters:
+    - T: Total number of transactions
+    - F: Frequent itemsets
+    - f: Frequent itemset
+    - H: DataFrame containing 1-item consequents
+    - m: Current itemset size
+    - min_confidence: Minimum confidence threshold for generating association rules
+    """
+    if (len(f[0]) > m + 1) and (not H[m].empty):
+        H = candidate_gen(H, m)  # Generate consequent supersets
+
+        for h in H[m + 1]['items']:
+            ant = tuple(sorted(set(f[0]) - set(h)))  # Calculate antecedents for association rules
+            ant_count = int(F[len(ant)]['count'][F[len(ant)]['items'] == ant])  # Antecedent support count
+            conf = f[1] / ant_count  # Confidence of rule with (m + 1)-item consequents
+
+            if conf >= min_confidence:
+                # Output association rules meeting minimum confidence
+                print(f"{ant} -> {h} [sup = {f[1]}/{T}, conf = {f[1]}/{ant_count}]")
+            else:
+                # Delete consequents not meeting minimum confidence
+                H[m + 1] = H[m + 1].drop(H[m + 1].index[-1])
+
+        # Generate all rules from (m + 1)-item consequents
+        rule_gen_all(T, F, f, H, m + 1, min_confidence)
+
+if __name__ == "__main__":
+    # Load dataset and set minimum support and confidence
+    dataset_file = input("Enter dataset filename: ")
+    min_support = float(input("Enter minimum support: "))
+    min_confidence = float(input("Enter minimum confidence: "))
+
+    try:
+        data = pd.read_csv(f"data/{dataset_file}")
+    except FileNotFoundError:
+        print("File not found.")
+        exit(1)
+
+    # Process data
+    # Your code to process the data goes here
+
+    # Example:
+    # T = ...
+    # F = ...
+
+    # Generate association rules
+    rule_gen(T, F, min_confidence)

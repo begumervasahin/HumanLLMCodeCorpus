@@ -1,0 +1,89 @@
+from random import randint
+
+class World:
+    def __init__(self, start_state, goal_state, height, width):
+        self.start_state = start_state
+        self.goal_state = goal_state
+        self.height = height
+        self.width = width
+
+    def is_goal_state(self, world_state):
+        '''
+        Checks if a state is a goal state (search algorithm ends)
+        :param world_state: current world state
+        :return: True if it is a goal state, False otherwise
+        '''
+        for key in self.goal_state:
+            if self.goal_state[key] != world_state[key]:
+                return False
+        return True
+
+    def get_moves(self, world_state):
+        '''
+        Checks acceptable moves and returns them
+        :param world_state: current block world state
+        :return: possible and acceptable moves
+        '''
+        agent = world_state['agent']
+        moves = []
+        for i, j in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+            pos = (agent[0] + i, agent[1] + j)
+            if self.check_position(pos):
+                new_world_state = dict.copy(world_state)
+                for k in world_state:
+                    if world_state[k] == pos:
+                        new_world_state[k] = agent
+                        break
+                new_world_state['agent'] = pos
+                moves.append(new_world_state)
+        return moves
+
+    def perform_move(self, world_state):
+        '''
+        Performs a random move (for DFS)
+        :param world_state: current world state
+        :return: new world state
+        '''
+        agent = world_state['agent']
+        while True:
+            i, j = [(1, 0), (0, 1), (-1, 0), (0, -1)][randint(0, 3)]
+            pos = (agent[0] + i, agent[1] + j)
+            if self.check_position(pos):
+                break
+        new_world_state = dict.copy(world_state)
+        for key in world_state:
+            if world_state[key] == pos:
+                new_world_state[key] = agent
+                break
+        new_world_state['agent'] = pos
+        return new_world_state
+
+    def check_position(self, pos):
+        '''
+        Checks if position (after move) is acceptable
+        :param pos: position to be checked
+        :return: True if acceptable, False otherwise
+        '''
+        return (0 <= pos[0] < self.width) and (0 <= pos[1] < self.height)
+
+    def calc_cost_from_goal(self, world_state):
+        '''
+        Calculates total cost from the goal state (with Manhattan Distance) from a given world state
+        :param world_state:
+        :return: the cost
+        '''
+        cost = 0
+        for key in self.goal_state:
+            pos = world_state[key]
+            goal_pos = self.goal_state[key]
+            cost += self.h(pos, goal_pos)
+        return cost
+
+    def h(self, pos, goal_pos):
+        '''
+        Heuristic function (Manhattan Distance)
+        :param pos: world_state pos
+        :param goal_pos: position of the goal
+        :return: Manhattan distance from the goal
+        '''
+        return abs(pos[0] - goal_pos[0]) + abs(pos[1] - goal_pos[1])

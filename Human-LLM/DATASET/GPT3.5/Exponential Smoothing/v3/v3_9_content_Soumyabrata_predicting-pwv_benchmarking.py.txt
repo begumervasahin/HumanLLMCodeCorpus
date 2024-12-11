@@ -1,0 +1,71 @@
+import numpy as np
+import pandas as pd
+import random
+from statsmodels.tsa.api import ExponentialSmoothing
+
+# Function to read MATLAB file
+def read_matfile(matlab_file):
+    # Implementation goes here
+    pass
+
+# Load MATLAB file
+matlab_file = './data/PWV_2010from_WS_2_withGradient.mat'
+(timestamp, pwv) = read_matfile(matlab_file)
+print('MATLAB file imported successfully')
+
+# Convert to DataFrame
+data = np.column_stack((timestamp, pwv))
+df = pd.DataFrame(data=data, columns=['timestamps', 'pwv']).set_index(['timestamps'])     
+end_index = len(df)
+
+# Parameters
+lead_times = np.arange(5, 20, 5)
+num_experiments = 10
+previous_time = 10000
+previous_obs = int(previous_time / 5)
+
+# Write results to file
+output_file = open("./results/comparison.txt", "w")
+output_file.write("lead_time, our_model, naive_model, average_model\n")
+
+# Perform experiments
+for lead_time in lead_times:
+    lead_obs = int(lead_time / 5)
+    rmse_results = []
+    persist_results = []
+    average_results = []
+
+    for _ in range(num_experiments):
+        start_index = random.randint(0, end_index - (previous_obs + lead_obs))
+
+        # Train and test split
+        train_data = df[start_index:start_index + previous_obs]
+        test_data = df[start_index + previous_obs:start_index + previous_obs + lead_obs]  
+
+        # Exponential smoothing
+        y_hat = test_data.copy()
+        model = ExponentialSmoothing(np.asarray(train_data['pwv']), seasonal_periods=288, trend='add', seasonal='add').fit()
+        y_hat['Holt_Winter'] = model.forecast(len(test_data))
+
+        # Naive forecast
+        last_val = train_data['pwv'].iloc[-1]
+        y_hat['naive'] = last_val * np.ones(len(test_data))
+
+        # Average forecast
+        mean_train_val = np.mean(train_data['pwv'])
+        y_hat['average'] = mean_train_val * np.ones(len(test_data))
+
+        # Compute RMSE
+        rmse = np.sqrt(np.mean((y_hat['Holt_Winter'] - y_hat['pwv']) ** 2))
+        rmse_results.append(rmse)
+
+        rmse = np.sqrt(np.mean((y_hat['naive'] - y_hat['pwv']) ** 2))
+        persist_results.append(rmse)
+
+        rmse = np.sqrt(np.mean((y_hat['average'] - y_hat['pwv']) ** 2))
+        average_results.append(rmse)
+
+    # Write results to file
+    output_file.write(f"{lead_time}, {np.mean(rmse_results)}, {np.mean(persist_results)}, {np.mean(average_results)}\n")
+
+output_file.close()

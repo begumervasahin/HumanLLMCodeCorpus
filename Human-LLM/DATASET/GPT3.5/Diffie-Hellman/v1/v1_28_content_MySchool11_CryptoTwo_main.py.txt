@@ -1,0 +1,103 @@
+from primitives import calculate_prime_primitives
+from prime import get_primes
+from random import randint
+from textwrap import wrap
+from time import sleep
+from sys import stdout
+
+class DHExchange:
+    def __init__(self):
+        self.pause_time = 7
+        self.internet_transfer_animation = "---->"
+        self.calculating_equal_shared = "*-*"
+    
+    def print_arrows(self, output_string):
+        s = ""
+        for _ in range(0, 5):
+            s += output_string
+            stdout.write(s)
+            stdout.flush()
+            sleep(1)
+        print("\n")
+    
+    def run(self):
+        print("Diffie-Hellman encryption\n")
+        shared_prime = get_primes(1000)
+        shared_base = calculate_prime_primitives(shared_prime)
+        alice_secret = randint(1, 1000)
+        bob_secret = randint(1, 1000)
+        print("\nwe start with two publicly shared variables:\n")
+        print("Alice and Bob agree upon these two variables to begin with\n")
+        print("1) a publicly shared symmetric key: ", shared_prime,
+              " (symmetric because it is the same for both Alice and Bob)")
+        print("   the symmetric key is always a prime number")
+        print("2) a publicly shared Base: ", shared_base)
+        next_bit = input("\nPress enter to continue...")
+        print("\nAlice and Bob now both choose a private number which is totally secret")
+        print("this number can be any number and does not have to be a prime or other special number")
+        sleep(self.pause_time)
+        alice_send = (shared_base ** alice_secret) % shared_prime
+        print("\nAlice sends over the public channel (Internet): ", alice_send)
+        print("which is calculated using her secret number, the shared base and the shared key\n")
+        sleep(self.pause_time)
+        self.print_arrows(self.internet_transfer_animation)
+        next_bit = input("\npress enter to continue or press 'a' then enter to see the maths in detail...")
+        if next_bit == "a":
+            print("\nthe number Alice sends is the shared base to the power of her secret number")
+            answer = wrap(str(shared_base ** alice_secret), width=100)
+            for i in range(len(answer)):
+                print(answer[i])
+            print("modulo the shared key, " + str(shared_prime) + ", which gives us the number Alice sends to Bob\n")
+            next_bit = input("press enter to continue...")
+        bob_send = (shared_base ** bob_secret) % shared_prime
+        print("\nBob sends over the public channel (Internet): ", bob_send)
+        print("which is calculated using his secret number, the shared base and the shared key\n")
+        sleep(self.pause_time)
+        self.print_arrows(self.internet_transfer_animation)
+        next_bit = input("\npress enter to continue or press 'a' then enter to see the maths in detail...")
+        if next_bit == "a":
+            print("\nthe number Bob sends is the shared base to the power of his secret number")
+            answer = wrap(str(shared_base ** bob_secret), width=100)
+            for i in range(len(answer)):
+                print(answer[i])
+            print("modulo the shared key, " + str(shared_prime) + ", which gives us the number Bob sends to Alice\n")
+            next_bit = input("press enter to continue...")
+        print("\nThis is where the term \"asymmetric\" comes from, as both transmissions are different\n")
+        sleep(self.pause_time - 2)
+        print("next, both Alice and bob privately calculate the shared secret\n")
+        print("so, Alice uses her secret with the number Bob just sent her and the public key to create another number")
+        alice_shared_secret = (bob_send ** alice_secret) % shared_prime
+        print("Alice calculate the shared secret to be ", alice_shared_secret)
+        next_bit = input("\npress enter to continue or press 'a' then enter to see the maths in detail...")
+        if next_bit == "a":
+            print("\nthe number Alice works out as the shared secret is the number Bob sent to the power of her secret")
+            answer = wrap(str(bob_send ** alice_secret), width=100)
+            for i in range(len(answer)):
+                print(answer[i])
+            print("modulo the shared key, " + str(shared_prime) + ", which gives us Alice's copy of the shared secret\n")
+            next_bit = input("press enter to continue...")
+        print("\nBob does the same but with the number Alice sent him")
+        bob_shared_secret = (alice_send ** bob_secret) % shared_prime
+        print("Bob calculates the shared secret to be ", bob_shared_secret)
+        next_bit = input("\npress enter to continue or press 'a' then enter to see the maths in detail...")
+        if next_bit == "a":
+            print("\nthe number Bob works out as the shared secret is the number Alice sent to the power of his secret")
+            answer = wrap(str(alice_send ** bob_secret), width=100)
+            for i in range(len(answer)):
+                print(answer[i])
+            print("modulo the shared key, " + str(shared_prime) + ", which gives us the Bob's copy of the shared secret\n")
+            next_bit = input("press enter to continue...")
+        print("\ncheck that Alice's shared secret == Bob's shared secret\n")
+        self.print_arrows(self.calculating_equal_shared)
+        if alice_shared_secret == bob_shared_secret:
+            print("\nThe shared secrets match, communication is encrypted securely")
+        else:
+            print("\nSomething is wrong there is a secret mismatch, communication is not securely encrypted")
+            exit(1)
+        print("\nnow the shared secret can be used to decrypt the message by both Alice and Bob")
+        exit_string = input("\nPress enter to exit...")
+        exit(0)
+
+if __name__ == "__main__":
+    dh_exchange = DHExchange()
+    dh_exchange.run()

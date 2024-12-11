@@ -1,0 +1,189 @@
+import numpy as np
+import sys
+import copy
+from collections import defaultdict
+
+class solve(object):
+    def __init__(self, state_space, num_cols, start, goal, technique):
+        self.start = start
+        self.num_cols = num_cols
+        self.goal = goal
+        self.state_space = state_space
+        self.path = []
+        self.exact_path = []
+        self.explored = []
+        print("Initialized solver, using technique ", technique)
+        if technique == "bfs":
+            stack = []
+            stack.append(state_space[start])
+            self.BFS(stack)
+            if goal not in self.path:
+                print("WARNING! A valid path does not exist, printing all expanded nodes")
+            else:
+                print("CONGRATULATIONS! A path exists, printing all expanded nodes")
+            print(self.path)
+        if technique == "dfs":
+            stack = []
+            stack.append(state_space[start])
+            self.DFS(stack)
+            if goal not in self.path:
+                print("WARNING! A valid path does not exist, printing all expanded nodes")
+            else:
+                print("CONGRATULATIONS! A path exists, printing all expanded nodes")
+            print(self.path)
+        if technique == "astar":
+            stack = []
+            for i in state_space:
+                i["g"] = 0
+                i["h"] = 0
+            state_space[start]["parent "] = -1
+            stack.append(state_space[start])
+            self.Astar(stack)
+            if goal not in self.path:
+                print("WARNING! A valid path does not exist, printing all expanded nodes")
+                print(self.path)
+            else:
+                print("CONGRATULATIONS! A path exists, printing all expanded nodes")
+                print(self.path_from_visited(self.path))
+
+    def path_from_visited(self, path):
+        p = []
+        pointer = self.goal
+        while pointer != self.start:
+            p.append(pointer)
+            pointer = copy.copy(self.state_space[pointer]["parent "])
+        p.reverse()
+        return p
+
+    def expand_stack(self, stack):
+        head = stack.pop(0)
+        connects = head["connections "]
+        if connects == []:
+            return stack
+        for i in connects:
+            if i not in self.explored:
+                stack.append(self.state_space[i])
+        return stack
+
+    def not_worth_visiting(self, node, closed_nodes, open_nodes):
+        for i in open_nodes:
+            if i["parent "] == self.state_space[node["name "]]["parent "]:
+                if i["g"] + i["h"] < node["g"] + node["h"]:
+                    return True
+        for i in closed_nodes:
+            if i["parent "] == self.state_space[node["name "]]["parent "]:
+                if i["g"] + i["h"] < node["g"] + node["h"]:
+                    return True
+        return False
+
+    def heuristic_cost(self, current, goal):
+        y_dist = np.abs((goal - current) / self.num_cols)
+        x_dist = np.abs((goal - current)) % self.num_cols
+        return y_dist + x_dist
+
+    def expand_value_stack(self, stack):
+        f_vals = []
+        for i in stack:
+            f_vals.append(i["g"] + i["h"])
+        head = stack.pop(np.argmin(f_vals))
+        connects = head["connections "]
+        for i in connects:
+            self.state_space[i]["parent "] = head["name "]
+            try:
+                self.state_space[i]["connections "].remove(head["name "])
+            except:
+                pass
+            self.state_space[i]["g"] = head["g"] + 1
+            self.state_space[i]["h"] = self.heuristic_cost(self.state_space[i]["name "], self.goal)
+        if connects == []:
+            return stack
+        open_list = copy.copy(stack)
+        for i in connects:
+            if not self.not_worth_visiting(self.state_space[i], self.explored, open_list):
+                stack.append(self.state_space[i])
+        self.explored.append(head)
+        return stack
+
+    def explore_stack(self, stack):
+        tail = stack[-1]
+        connects = tail["connections "]
+        if connects == []:
+            stack.pop(-1)
+            return stack
+        for i in connects:
+            if i not in self.explored:
+                stack.append(self.state_space[i])
+                return stack
+        stack.pop(-1)
+        return stack
+
+    def BFS(self, stack):
+        for i in stack:
+            if self.goal == i["name "]:
+                return self.goal
+        if len(self.explored) == len(self.state_space) - 1:
+            print("Explored everything")
+            return
+        else:
+            try:
+                head = stack[0]
+            except:
+                return
+            if head["name "] not in self.explored:
+                self.explored.append(head["name "])
+                self.path.append(head["name "])
+            self.path.append(self.BFS(self.expand_stack(stack)))
+
+    def DFS(self, stack):
+        for i in stack:
+            if self.goal == i["name "]:
+                return self.goal
+        if len(self.explored) == len(self.state_space) - 1:
+            print("Explored everything")
+            return
+        else:
+            try:
+                tail = stack[-1]
+            except:
+                return
+            if tail["name "] not in self.explored:
+                self.explored.append(tail["name "])
+                self.path.append(tail["name "])
+            self.path.append(self.DFS(self.explore_stack(stack)))
+
+    def Astar(self, stack):
+        for i in stack:
+            if self.goal == i["name "]:
+                return self.goal
+        if len(self.explored) == len(self.state_space) - 1:
+            print("Explored everything")
+            return
+        else:
+            try:
+                f_vals = []
+                for i in stack:
+                    f_vals.append(i["g"] + i["h"])
+                head = stack[np.argmin(f_vals)]
+            except:
+                return
+            if head["name "] not in self.explored:
+                self.path.append(head["name "])
+                self.exact_path.append(head["name "])
+            self.path.append(self.Astar(self.expand_value_stack(stack)))
+
+
+# Example usage:
+state_space = [
+    {"name ": 0, "connections ": [1, 2], "g": 0, "h": 0, "parent ": -1},
+    {"name ": 1, "connections ": [3], "g": 0, "h": 0, "parent ": -1},
+    {"name ": 2, "connections ": [4, 5], "g": 0, "h": 0, "parent ": -1},
+    {"name ": 3, "connections ": [], "g": 0, "h": 0, "parent ": -1},
+    {"name ": 4, "connections ": [], "g": 0, "h": 0, "parent ": -1},
+    {"name ": 5, "connections ": [], "g": 0, "h": 0, "parent ": -1}
+]
+num_cols = 3
+start = 0
+goal = 3
+technique = "astar"
+
+solver = solve(state_space, num_cols, start, goal, technique)

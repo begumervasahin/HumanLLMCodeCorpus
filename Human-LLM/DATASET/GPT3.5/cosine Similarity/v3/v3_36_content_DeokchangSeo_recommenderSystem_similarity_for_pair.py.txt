@@ -1,0 +1,73 @@
+from surprise import Dataset, Reader
+import numpy as np
+from math import sqrt
+
+def remove_zero_elements(element1, element2):
+    # Remove zero elements from both lists
+    non_zero_indices = [i for i in range(len(element1)) if element1[i] != 0 and element2[i] != 0]
+    return element1[non_zero_indices], element2[non_zero_indices]
+
+def remove_all_zero_elements(element1, element2):
+    # Remove elements from both lists where either element1 or element2 is zero
+    non_zero_indices_element1 = [i for i in range(len(element1)) if element1[i] != 0]
+    non_zero_indices_element2 = [i for i in range(len(element2)) if element2[i] != 0]
+    non_zero_indices = set(non_zero_indices_element1).intersection(non_zero_indices_element2)
+    return element1[list(non_zero_indices)], element2[list(non_zero_indices)]
+
+def calculate_cosine_similarity(element1, element2):
+    # Calculate cosine similarity between two vectors
+    element1, element2 = remove_zero_elements(element1, element2)
+    assert len(element1) == len(element2) and len(element1) > 0
+    dot_product = np.dot(element1, element2)
+    magnitude_element1 = np.linalg.norm(element1)
+    magnitude_element2 = np.linalg.norm(element2)
+    return dot_product / (magnitude_element1 * magnitude_element2)
+
+def calculate_pearson_similarity(element1, element2):
+    # Calculate Pearson correlation coefficient between two vectors
+    element1, element2 = remove_all_zero_elements(element1, element2)
+    assert len(element1) == len(element2) and len(element1) > 0
+    avg_element1 = np.mean(element1)
+    avg_element2 = np.mean(element2)
+    adiffs = element1 - avg_element1
+    bdiffs = element2 - avg_element2
+    covariance = np.dot(adiffs, bdiffs)
+    std_dev_element1 = np.sqrt(np.dot(adiffs, adiffs))
+    std_dev_element2 = np.sqrt(np.dot(bdiffs, bdiffs))
+    return covariance / (std_dev_element1 * std_dev_element2)
+
+def similarity_for_pair(dataset_path, element1_index, element2_index, users=True, cosine=True):
+    # Calculate similarity between two elements in the dataset
+    reader = Reader(line_format='user item rating', rating_scale=(1, 7), sep='\t')
+    data = Dataset.load_from_file(dataset_path, reader)
+    trainset = data.build_full_trainset()
+    if users:
+        ratings = trainset.ur
+        user_item = "User"
+        matrix = np.zeros((trainset.n_users, trainset.n_items), dtype=float)
+    else:
+        ratings = trainset.ir
+        user_item = "Item"
+        matrix = np.zeros((trainset.n_items, trainset.n_users), dtype=float)
+    for user, user_ratings in ratings.items():
+        for item, rating in user_ratings:
+            if rating != 0:
+                matrix[user, item] += rating
+    print('Original table:\n', matrix, '\n')
+    element1_vector = matrix[element1_index]
+    element2_vector = matrix[element2_index]
+    print('Picked:\n', element1_vector, '\n', element2_vector, '\n')
+    if cosine:
+        similarity_score = calculate_cosine_similarity(element1_vector, element2_vector)
+        similarity_method = "Cosine"
+    else:
+        similarity_score = calculate_pearson_similarity(element1_vector, element2_vector)
+        similarity_method = "Pearson"
+    return '{} similarity between {} {} and {} is: {}'.format(similarity_method, user_item, element1_index, element2_index, similarity_score)
+
+file_path = 'data/table2.1_ratings.txt'
+element1_index = 0
+element2_index = 2
+users = True
+cosine = True
+print(similarity_for_pair(file_path, element1_index, element2_index, users, cosine))

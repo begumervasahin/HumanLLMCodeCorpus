@@ -1,0 +1,98 @@
+import CSVtoLIST_def as cs
+import csv
+import am
+import utils
+import sys
+import time
+
+@profile
+def main():
+    # Print usage information
+    print_usage_info()
+
+    # Start time measurement
+    start_time = time.clock()
+
+    # Initialize variables
+    n_itemlist = []
+    count = 0
+    a = []
+    result = []
+    test_dict = {}
+    Mapper_list = []
+    Transaction_list = []
+    ReverseList = []
+    support_data = {}
+    final = []
+    dict_list = []
+
+    # Extract command line arguments
+    filename = sys.argv[1]
+    minsup = int(sys.argv[2])
+    min_confidence = float(sys.argv[3])
+
+    # Print command line arguments
+    print_args_info(filename, minsup, min_confidence)
+
+    # Read CSV file and process transactions
+    n_itemlist, count = cs.readCSV(filename)
+    print('Total Transactions:', count)
+
+    # Process transactions
+    a = cs.manyToOne(n_itemlist)
+    result = cs.removeDuplicates(a)
+    test_dict = cs.createDictionary(result)
+    Mapper_list = cs.mapper(n_itemlist, test_dict)
+    Transaction_list = cs.binaryTransactionListBuilder(Mapper_list, result)
+
+    # Perform additional processing
+    perform_additional_processing(Transaction_list, minsup)
+
+    # Generate association rules
+    rules = am.rules_generator(list2, minsup, min_confidence, support_data)
+    cleanRules = am.cleanRules(rules)
+    result = am.reversed(cleanRules, final, test_dict)
+    answer = am.formattedRules(result)
+
+    # Print association rules
+    print_association_rules(answer)
+
+    # Print program completion message and elapsed time
+    print_program_completion(start_time)
+
+def print_usage_info():
+    print("Usage: $ python scriptname filename.csv minsup min_confidence")
+    print("Ex: $ python testclass.py groceries_small.csv 3 0.5")
+
+def print_args_info(filename, minsup, min_confidence):
+    print('Script Name:', sys.argv[0])
+    print('Filename:', filename)
+    print('Minsup:', minsup)
+    print('Min Confidence:', min_confidence)
+
+def perform_additional_processing(Transaction_list, minsup):
+    # Perform additional processing
+    list2 = []
+    temp_list1 = []
+    Transaction_list2 = []
+    b = []
+
+    Transaction_list2 = am.countTransactions(Transaction_list)
+    b = am.remDupSortReverseList(Transaction_list2)
+    temp_list1 = am.addCountersTransactions(b)
+    not_to_be_pruned_items, to_be_pruned_items_list, list1, list2, support_data = am.antiMirroring(temp_list1, minsup)
+
+def print_association_rules(answer):
+    print(' ')
+    print(' ')
+    print('Association Rules:')
+    for idx, items in enumerate(answer, start=1):
+        print(f'{idx}. {items}')
+    print(' ')
+    print(' ')
+
+def print_program_completion(start_time):
+    print(f'---- PROGRAM OVER in {time.clock() - start_time} seconds ----')
+
+if __name__ == '__main__':
+    main()

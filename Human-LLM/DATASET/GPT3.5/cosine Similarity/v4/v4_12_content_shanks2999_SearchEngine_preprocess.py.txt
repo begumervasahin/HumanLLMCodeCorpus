@@ -1,0 +1,91 @@
+import pickle
+import string
+import nltk
+from nltk.stem import PorterStemmer
+import settings
+
+def export_page_rank(page_rank):
+    """Export page rank data to a pickle file."""
+    with open('./data/page_rank.p', 'wb') as file:
+        pickle.dump(page_rank, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+def import_page_rank():
+    """Import page rank data from a pickle file."""
+    with open('./data/page_rank.p', 'rb') as file:
+        page_rank = pickle.load(file)
+    return page_rank
+
+def import_crawled_data(threshold):
+    """Import crawled data and tokenize it."""
+    for index in range(1, threshold + 1):
+        try:
+            with open(f'./data/{index}', 'r', encoding="utf-8") as file:
+                data = file.read().splitlines()
+                settings.web_dict[data[0]] = tokenize_data(data[1])
+        except:
+            settings.web_dict[data[0]] = []
+
+def export_web_graph(data):
+    """Export web graph data to a pickle file."""
+    with open('./data/web_graph.p', 'wb') as file:
+        pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+def import_web_graph():
+    """Import web graph data from a pickle file."""
+    with open('./data/web_graph.p', 'rb') as file:
+        data = pickle.load(file)
+    return data
+
+def export_url_list(url_list):
+    """Export URL list to a text file."""
+    with open("./data/all_url", 'w', encoding="utf-8") as file:
+        for link in url_list:
+            file.write(link)
+            file.write("\n")
+
+def export_spider():
+    """Export spider data to individual files."""
+    count = 1
+    for key in settings.web_dict:
+        with open(f"./data/{count}", 'w', encoding="utf-8") as file:
+            file.write(key)
+            file.write("\n")
+            file.write(" ".join(str(x) for x in settings.web_dict[key]))
+        count += 1
+
+def export_spider_sequential(link, tokens, count):
+    """Export spider data to individual files sequentially."""
+    with open(f"./data/{count}", 'w', encoding="utf-8") as file:
+        file.write(link)
+        file.write("\n")
+        file.write(" ".join(str(x) for x in tokens))
+
+def remove_punctuation(data):
+    """Remove punctuation from text."""
+    table = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    return data.translate(table)
+
+def remove_digits(data):
+    """Remove digits from text."""
+    table = str.maketrans('', '', string.digits)
+    return data.translate(table)
+
+def tokenize_data(data):
+    """Tokenize text using NLTK."""
+    return nltk.word_tokenize(data)
+
+def remove_stop_words(tokens):
+    """Remove stop words from tokens."""
+    temp = []
+    for word in tokens:
+        if word not in settings.stop_words and len(word) > 2:
+            temp.append(word)
+    return temp
+
+def perform_stemming(tokens):
+    """Perform stemming on tokens using Porter Stemmer."""
+    ps = PorterStemmer()
+    temp = []
+    for word in tokens:
+        temp.append(ps.stem(word))
+    return temp

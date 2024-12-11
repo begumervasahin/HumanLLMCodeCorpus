@@ -1,0 +1,74 @@
+class Cubo:
+    def __init__(self, nombre, on=None, clear=False, onTable=True):
+        self.nombre = nombre
+        self.on = on
+        self.clear = clear
+        self.onTable = onTable
+
+def set_world(data):
+    inicial = set_estado(data['estadoInicial'])
+    final = set_estado(data['estadoObjetivo'])
+    world = {'inicial': inicial, 'final': final}
+    return world
+
+def set_estado(arr_torres):
+    estado = {'operadores': [], 'estados': [], 'estadosAnteriores': []}
+    for str_torre in arr_torres:
+        torre = list(str_torre)
+        for i in range(len(torre)):
+            nombre = torre[i]
+            on = None
+            clear = False
+            on_table = True
+            if i < len(torre) - 1:
+                on = torre[i + 1]
+                on_table = False
+            if i == 0:
+                clear = True
+            estado['estados'].append(Cubo(nombre, on, clear, on_table))
+    estado['estadosAnteriores'].append(estado_string(estado['estados']))
+    return estado
+
+def mismo_estado(estado1, estado2):
+    torres1 = len(estado1)
+    torres2 = len(estado2)
+    if torres1 != torres2:
+        return False
+    for cubo1 in estado1:
+        estado_encontrado = False
+        for cubo2 in estado2:
+            if cubo1.nombre == cubo2.nombre:
+                if (cubo1.on == cubo2.on and cubo1.onTable == cubo2.onTable and cubo1.clear == cubo2.clear):
+                    estado_encontrado = True
+                    break
+        if not estado_encontrado:
+            return False
+    return True
+
+def estado_string(estado):
+    estado_str = []
+    for cubo_rep in estado:
+        if cubo_rep.clear:
+            estado_str.append(cubo_rep.nombre)
+    for i in range(len(estado_str)):
+        not_last = True
+        cubo_actual = estado_str[i]
+        while not_last:
+            for cubo in estado:
+                if cubo_actual == cubo.nombre:
+                    if cubo.on is None:
+                        not_last = False
+                        break
+                    estado_str[i] += cubo.on
+                    cubo_actual = cubo.on
+                    break
+    return estado_str
+
+# Example usage:
+data = {
+    'estadoInicial': ['ABCD', 'EF'],
+    'estadoObjetivo': ['AB', 'CDEF']
+}
+
+world = set_world(data)
+print(world)

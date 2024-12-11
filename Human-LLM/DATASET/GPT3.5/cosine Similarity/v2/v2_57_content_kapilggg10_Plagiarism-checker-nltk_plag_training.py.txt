@@ -1,0 +1,57 @@
+from nltk.tokenize import word_tokenize
+import os
+import string
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def tokenize_text(text):
+    # Tokenize the text
+    tokens = word_tokenize(text)
+    return tokens
+
+def stem_tokens(tokens):
+    # Stem the tokens using Porter Stemmer
+    stemmer = PorterStemmer()
+    stemmed_tokens = [stemmer.stem(token) for token in tokens]
+    return stemmed_tokens
+
+def preprocess_text(text):
+    # Preprocess the text: lowercase, tokenize, and stem
+    text_lower = text.lower()  # Convert text to lowercase
+    text_no_punct = text_lower.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
+    tokens = tokenize_text(text_no_punct)  # Tokenize the text
+    stemmed_tokens = stem_tokens(tokens)  # Stem the tokens
+    return stemmed_tokens
+
+def train_tfidf_model():
+    # Initialize variables
+    file_list = []
+    token_dictionary = {}
+
+    # Define the path to the directory containing text files
+    path = 'C:\\Users\\Kapil Goyal\\Desktop\\nlp_assignment\\files'
+
+    # Iterate over files in the directory
+    for subdir, dirs, files in os.walk(path):
+        for file in files:
+            file_path = os.path.join(subdir, file)
+            with open(file_path, 'r') as f:
+                # Read the file content
+                file_content = f.read()
+
+                # Preprocess the text and store it in the token dictionary
+                preprocessed_text = preprocess_text(file_content)
+                token_dictionary[file] = ' '.join(preprocessed_text)
+
+                # Append the file name to the file list
+                file_list.append(file)
+
+    # Initialize and fit the TF-IDF vectorizer
+    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+    tfs_matrix = tfidf_vectorizer.fit_transform(token_dictionary.values())
+
+    return tfidf_vectorizer, tfs_matrix, file_list
+
+# Call the train_tfidf_model function
+tfidf_model, tfs_matrix, file_list = train_tfidf_model()

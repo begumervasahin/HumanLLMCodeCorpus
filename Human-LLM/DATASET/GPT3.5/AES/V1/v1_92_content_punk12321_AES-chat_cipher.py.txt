@@ -1,0 +1,80 @@
+pip install pycryptodome
+"""
+Handles the encryption and decryption of messages using AES.
+"""
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+
+class Message:
+    def __init__(self, key, plaintext=None, ciphertext=None):
+        """
+        Initializes a new message object with a key and either plaintext or ciphertext.
+        
+        :param key: Shared key for encryption/decryption.
+        :param plaintext: The plaintext message to be encrypted.
+        :param ciphertext: The ciphertext to be decrypted.
+        """
+        self.key = key
+        self.iv = get_random_bytes(AES.block_size)  # Initialization vector
+        
+        if plaintext:
+            self.plaintext = plaintext
+            self.ciphertext = self.encrypt()
+        elif ciphertext:
+            self.ciphertext = ciphertext
+            self.plaintext = self.decrypt()
+        else:
+            raise InvalidMessage("Either plaintext or ciphertext must be provided.")
+
+    def encrypt(self):
+        """
+        Encrypts the plaintext message.
+        
+        :return: Encrypted message as bytes.
+        """
+        cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
+        # Padding for block size alignment
+        padding_length = AES.block_size - len(self.plaintext) % AES.block_size
+        padded_plaintext = self.plaintext + ' ' * padding_length
+        return cipher.encrypt(padded_plaintext.encode())
+
+    def decrypt(self):
+        """
+        Decrypts the ciphertext message.
+        
+        :return: Decrypted message as a string.
+        """
+        cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
+        decrypted_data = cipher.decrypt(self.ciphertext)
+        # Remove padding
+        return decrypted_data.rstrip(b' ').decode('utf-8')
+
+    def pack(self):
+        """
+        Packages the encrypted message with the initialization vector.
+        
+        :return: A bytes object containing the IV followed by the ciphertext.
+        """
+        return self.iv + self.ciphertext
+
+class InvalidMessage(Exception):
+    """
+    Exception raised for errors in the input.
+    """
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+# Example usage
+if __name__ == '__main__':
+    key = get_random_bytes(16)  # AES key must be either 16, 24, or 32 bytes long
+    plaintext = "Hello, AES Encryption!"
+
+    # Encrypting the message
+    message = Message(key, plaintext=plaintext)
+    encrypted_message = message.pack()
+    print(f"Encrypted: {encrypted_message}")
+
+    # Decrypting the message
+    decrypted_message = Message(key, ciphertext=encrypted_message[AES.block_size:])
+    print(f"Decrypted: {decrypted_message.plaintext}")

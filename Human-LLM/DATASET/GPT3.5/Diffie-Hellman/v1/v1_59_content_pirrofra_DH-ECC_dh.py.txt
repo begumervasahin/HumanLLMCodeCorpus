@@ -1,0 +1,109 @@
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class EllipticCurve:
+    def __init__(self, a, b, p):
+        self.a = a
+        self.b = b
+        self.p = p
+
+    def multiplicative_inverse(self, x):
+        return pow(x, -1, self.p)
+
+    def double_and_add(self, scalar, P):
+        result = Point(0, 0)
+        while scalar != 0:
+            if scalar & 1:
+                result = self.point_add(result, P)
+            P = self.double_point(P)
+            scalar >>= 1
+        return result
+
+    def double_point(self, p):
+        if p.x == 0 and p.y == 0:
+            return Point(0, 0)
+        lmb_numerator = (3 * p.x ** 2 + self.a) % self.p
+        lmb_denominator = (2 * p.y) % self.p
+        lmb = (lmb_numerator * self.multiplicative_inverse(lmb_denominator)) % self.p
+        xr = (lmb ** 2 - 2 * p.x) % self.p
+        yr = (lmb * (p.x - xr) - p.y) % self.p
+        return Point(xr, yr)
+
+    def point_add(self, p, q):
+        if p.x == q.x and p.y == q.y:
+            return self.double_point(p)
+        if p.x == 0 and p.y == 0:
+            return q
+        if q.x == 0 and q.y == 0:
+            return p
+        lmb_numerator = (q.y - p.y) % self.p
+        lmb_denominator = (q.x - p.x) % self.p
+        if lmb_denominator == 0:
+            return Point(0, 0)
+        lmb = (lmb_numerator * self.multiplicative_inverse(lmb_denominator)) % self.p
+        xr = (lmb ** 2 - p.x - q.x) % self.p
+        yr = (lmb * (p.x - xr) - p.y) % self.p
+        return Point(xr, yr)
+
+    def is_on_curve(self, P):
+        return (P.y ** 2) % self.p == ((P.x ** 3 + self.a * P.x + self.b) % self.p)
+
+    def scalar_multiply(self, scalar, P):
+        return self.double_and_add(scalar, P)
+
+class ECC_CDH:
+    def __init__(self, path, wNAF=0, w=4):
+        tree = ET.parse(path)
+        curve = tree.getroot()
+        p = int(curve.find("p").text, 10)
+        a = int(curve.find("a").text, 10)
+        b = int(curve.find("b").text, 10)
+        n = int(curve.find("n").text, 10)
+        G = curve.find("G")
+        x = int(G.find("x").text, 10)
+        y = int(G.find("y").text, 10)
+        if wNAF == 0:
+            self.__ecc = EllipticCurve(a, b, p)
+        else:
+            self.__ecc = WNAF(a, b, p, w)
+        self.__n = n
+        self.__G = Point(x, y)
+
+    def key_pair_generator(self):
+        L = self.__n.bit_length() + 64
+        returned_bits = os.urandom(L)
+        c = int.from_bytes(returned_bits, byteorder=sys.byteorder, signed=False)
+        d = (c % (self.__n - 1)) + 1
+        Q = self.__ecc.scalar_multiply(d, self.__G)
+        if Q.x == 0 and Q.y == 0:
+            raise ValueError("Public Key is zero")
+        elif not self.__ecc.is_on_curve(Q):
+            raise ValueError("Invalid Point")
+        return d, Q
+
+    def shared_key_generator(self, d, Q):
+        P = self.__ecc.scalar_multiply(d, Q)
+        if P.x == 0 and P.y == 0:
+            raise ValueError("P is zero")
+        z = P.x
+        return z
+
+# Example Usage
+if __name__ == "__main__":
+    path_to_curve = "path_to_your_curve.xml"
+    ecc_cdh = ECC_CDH(path_to_curve)
+
+    # Generate key pair
+    private_key, public_key = ecc_cdh.key_pair_generator()
+    print("Private Key:", private_key)
+    print("Public Key (x):", public_key.x)
+
+    # Generate shared key
+    shared_key = ecc_cdh.shared_key_generator(private_key, public_key)
+    print("Shared Key:", shared_key)

@@ -1,0 +1,96 @@
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM, AESCCM
+import os
+import shelve
+
+def aesccm_mode_encryption(bit_length, filename, key=None):
+    """Encrypts a file using AES CCM mode."""
+    with open(filename, "rb") as file:
+        data = file.read()
+
+    if not key:
+        print("****Generating key with key length:", bit_length)
+        key = AESCCM.generate_key(bit_length=bit_length)
+    else:
+        with shelve.open(key) as db:
+            key = db["key"][0]
+
+    cipher = AESCCM(key)
+    nonce = os.urandom(12)
+    print("***Encrypting your data***")
+    ct = cipher.encrypt(nonce, data, None)
+    key_nonce_pair = [key, nonce]
+
+    print("***Saving your data to file:", filename + "_encrypted.db***")
+    new_name = filename + "_encrypted"
+    with shelve.open(new_name) as db:
+        db["data"] = ct
+
+    print("***Saving your key and nonces to file:", filename + "_keys.db")       
+    key_file = filename + "_keys"
+    with shelve.open(key_file) as db:
+        db["key"] = key_nonce_pair
+
+def aesccm_mode_decryption(filename, key):
+    """Decrypts a file encrypted using AES CCM mode."""
+    with shelve.open(filename) as file:
+        encrypted_data = file["data"]
+
+    print("***Reading your keys***")
+    with shelve.open(key) as db:
+        key, nonce = db["key"]
+
+    print("***Decrypting the file***")
+    decrypted_data = AESCCM(key).decrypt(nonce, encrypted_data, None)
+    new_file = filename + "_decrypted"
+    with open(new_file, "wb") as file:
+        file.write(decrypted_data)
+
+    print("***Decrypted data is saved to file:", new_file, "***")
+
+def aesgcm_mode_encryption(bit_length, filename, key=None):
+    """Encrypts a file using AES GCM mode."""
+    with open(filename, "rb") as file:
+        data = file.read()
+
+    if not key:
+        print("****Generating key with key length:", bit_length)
+        key = AESGCM.generate_key(bit_length=bit_length)
+    else:
+        with shelve.open(key) as db:
+            key = db["key"][0]
+
+    cipher = AESGCM(key)
+    nonce = os.urandom(12)
+    print("***Encrypting your data***")
+    ct = cipher.encrypt(nonce, data, None)
+    key_nonce_pair = [key, nonce]
+
+    print("***Saving your data to file:", filename + "_encrypted.db***")
+    new_name = filename + "_encrypted"
+    with shelve.open(new_name) as db:
+        db["data"] = ct
+
+    print("***Saving your key and nonces to file:", filename + "_keys.db")       
+    key_file = filename + "_keys"
+    with shelve.open(key_file) as db:
+        db["key"] = key_nonce_pair
+
+def aesgcm_mode_decryption(filename, key):
+    """Decrypts a file encrypted using AES GCM mode."""
+    with shelve.open(filename) as file:
+        encrypted_data = file["data"]
+
+    print("***Reading your keys***")
+    with shelve.open(key) as db:
+        key, nonce = db["key"]
+
+    print("***Decrypting the file***")
+    decrypted_data = AESGCM(key).decrypt(nonce, encrypted_data, None)
+    new_file = filename + "_decrypted"
+    with open(new_file, "wb") as file:
+        file.write(decrypted_data)
+
+    print("***Decrypted data is saved to file:", new_file, "***")
+
+if __name__ == "__main__":
+    pass

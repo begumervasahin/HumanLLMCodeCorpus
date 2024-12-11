@@ -1,0 +1,70 @@
+# Breadth First Search (BFS): Algorithm to find the degree of separation from one node to other nodes in the graph.
+
+# Importing necessary libraries
+from pyspark import SparkConf, SparkContext
+
+# Initialize Spark
+conf = SparkConf().setMaster("local").setAppName("DegreesOfSeparation")
+sc = SparkContext(conf=conf)
+
+# Define the characters we wish to find the degree of separation between
+START_CHARACTER_ID = 5306  # SpiderMan
+TARGET_CHARACTER_ID = 14   # ADAM 3,031 (who?)
+
+# Accumulator to count hits
+hit_counter = sc.accumulator(0)
+
+# Step 1: Represent each line as a node with connections, distance, and color
+def convert_to_bfs(line):
+    fields = line.split()
+    hero_id = int(fields[0])
+    connections = [int(connection) for connection in fields[1:]]
+    distance = 9999  # Infinity
+    color = "WHITE"
+    if hero_id == START_CHARACTER_ID:
+        color = "GRAY"
+        distance = 0
+    return (hero_id, (connections, distance, color))
+
+# Step 2: Mapper function for BFS
+def bfs_map(node):
+    hero_id, (connections, distance, color) = node
+    results = []
+    if color == "GRAY":
+        for connection in connections:
+            new_distance = distance + 1
+            if connection == TARGET_CHARACTER_ID:
+                hit_counter.add(1)
+            results.append((connection, ([], new_distance, "GRAY")))
+        color = "BLACK"  # Mark processed node as 'BLACK'
+    results.append((hero_id, (connections, distance, color))))  # Emit the input node
+    return results
+
+# Step 3: Reducer function for BFS
+def bfs_reduce(data1, data2):
+    (connections1, distance1, color1) = data1
+    (connections2, distance2, color2) = data2
+    edges = connections1 + connections2
+    distance = min(distance1, distance2)
+    color = "WHITE"
+    if color1 in ["GRAY", "BLACK"] and color2 != "WHITE":
+        color = color2
+    elif color2 in ["GRAY", "BLACK"]:
+        color = color1
+    return (edges, distance, color)
+
+# Load the Marvel social graph data
+graph = sc.textFile("Data/Marvel-Graph.txt")
+
+# Convert each line to a node
+rdd = graph.map(convert_to_bfs)
+
+# Iterate BFS for a maximum of 10 times
+for iteration in range(10):
+    print("Running BFS iteration# " + str(iteration+1))
+    mapper = rdd.flatMap(bfs_map)
+    print("Processing " + str(mapper.count()) + " values")
+    if hit_counter.value > 0:
+        print("Hit the target character! From " + str(hit_counter.value) + " different directions.")
+        break
+    rdd = mapper.reduceByKey(bfs_reduce)

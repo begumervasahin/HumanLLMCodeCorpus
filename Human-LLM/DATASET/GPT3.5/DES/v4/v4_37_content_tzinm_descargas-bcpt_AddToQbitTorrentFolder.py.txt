@@ -1,0 +1,87 @@
+import logging
+import os
+import urllib.request
+import zipfile
+from telegram.ext import Updater, MessageHandler, Filters
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Function to download files
+def download_file(url, path, filename):
+    opener = urllib.request.build_opener()
+    opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+    urllib.request.install_opener(opener)
+    urllib.request.urlretrieve(url, os.path.join(path, filename))
+
+# Function to list files in a directory
+def list_files(path=os.getcwd()):
+    return [arch.name for arch in os.scandir(path) if arch.is_file()]
+
+# Function to calculate total members
+def count_members(member_type):
+    total = 0
+    counter = 1
+    while True:
+        try:
+            if os.environ[member_type + str(counter)]:
+                total += 1
+                counter += 1
+        except:
+            break
+    return total
+
+# Function to handle downloading and processing of files
+def handle_files(update, context):
+    allowed_members = []
+
+    # Load allowed members from environment variables
+    if count_members("usuario") > 0:
+        for i in range(1, count_members("usuario") + 1):
+            allowed_members.append(int(os.environ['usuario' + str(i)]))
+
+    if count_members("grupo") > 0:
+        for i in range(1, count_members("grupo") + 1):
+            allowed_members.append(int(os.environ['grupo' + str(i)]))
+
+    if update.message.chat_id not in allowed_members:
+        update.message.reply_text("No tienes permisos suficientes para utilizar el bot.")
+        return
+
+    ruta = '/home/descargas/'
+    tmp = '/zip/'
+    m = update.message
+
+    if m.document:
+        filename = m.document.file_name
+        archivo = context.bot.getFile(m.document.file_id)
+
+        if filename.endswith('.zip'):
+            download_file(archivo.file_path, tmp, filename)
+            with zipfile.ZipFile(tmp + filename, "r") as zf:
+                for torrents in zf.namelist():
+                    if os.path.dirname(torrents) == '' and torrents.endswith('.torrent'):
+                        zf.extract(torrents, ruta)
+            os.remove(tmp + filename)
+            context.bot.send_message(chat_id=m.chat.id, text=f"Los torrents en el archivo <b>{filename}</b> han sido descomprimidos y agregados al directorio correspondiente.", parse_mode="HTML")
+
+        elif filename.endswith('.torrent'):
+            download_file(archivo.file_path, ruta, filename)
+            context.bot.send_message(chat_id=m.chat.id, text=f"El archivo <b>{filename}</b> ha sido agregado correctamente al directorio correspondiente.", parse_mode="HTML")
+
+# Function to handle errors
+def handle_error(update, context):
+    logger.warning(f'Update "{update}" caused error "{context.error}"')
+
+# Main function to start the bot
+def main():
+    updater = Updater(os.environ['TOKEN'], use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(MessageHandler(Filters.document, handle_files))
+    dp.add_error_handler(handle_error)
+    updater.start_polling(clean=True)
+    updater.idle()
+
+if __name__ == '__main__':
+    main()

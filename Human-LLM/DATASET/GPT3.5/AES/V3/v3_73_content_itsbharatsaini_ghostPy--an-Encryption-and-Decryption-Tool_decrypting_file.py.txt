@@ -1,0 +1,62 @@
+import os
+import base64
+from getpass import getpass
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC    
+from cryptography.fernet import Fernet
+
+def decrypt_file(file_path, key):
+    with open(file_path, 'rb') as file:
+        data = file.read()
+    fernet = Fernet(key)
+    decrypted_data = fernet.decrypt(data)
+    with open(file_path, 'wb') as file:
+        file.write(decrypted_data)
+    print(f"File '{file_path}' has been decrypted.")
+
+def decrypt_folder(folder_path, key):
+    for root, _, files in os.walk(folder_path):
+        for file_name in files:
+            input_file = os.path.join(root, file_name)
+            with open(input_file, 'rb') as file:
+                data = file.read()
+            fernet = Fernet(key)
+            try:
+                decrypted_data = fernet.decrypt(data)
+                with open(input_file, 'wb') as file:
+                    file.write(decrypted_data)
+                print(f"File '{input_file}' has been decrypted.")
+            except Exception as e:
+                print(f"Failed to decrypt file '{input_file}': {e}")
+
+def decryption():
+    print("\nWelcome to gostpy Decryption Tool...!!\n")
+
+    password_provided = getpass("Enter Your Encrypted File Password: ")
+    if not password_provided:
+        print("Please provide a password.")
+        return
+
+    password = password_provided.encode()
+    salt = b'ghostpy'
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password))        
+    
+    files_path = input("Drag and drop your file or folder here: ").strip()
+    print("Files are being decrypted...")
+    if os.path.isfile(files_path):
+        decrypt_file(files_path, key)
+    elif os.path.isdir(files_path):
+        decrypt_folder(files_path, key)
+    else:
+        print("Invalid file or folder path")
+
+if __name__ == "__main__":
+    decryption()

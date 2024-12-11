@@ -1,0 +1,37 @@
+from rsa_class import RSA_Class
+import ctypes
+import sys
+
+def generate_keys():
+    # Generate RSA private key
+    private_key = RSA_Class.generate_pri()
+    
+    # Generate RSA public key
+    public_key = RSA_Class.generate_pub(private_key)
+    
+    # Save the private key to a file
+    RSA_Class.save_pri("./rsapri.pem", private_key)
+    
+    # Save the public key to a file
+    RSA_Class.save_pub("./rsapub.pem", public_key)
+
+def is_admin():
+    # Check if the script is running with administrator privileges
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def main():
+    # If running with admin privileges, generate keys
+    if is_admin():
+        generate_keys()
+    else:
+        # If not running with admin privileges, elevate privileges and rerun the script
+        if sys.version_info[0] == 3:
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        else:
+            ctypes.windll.shell32.ShellExecuteW(None, u"runas", unicode(sys.executable), unicode(__file__), None, 1)
+
+if __name__ == "__main__":
+    main()

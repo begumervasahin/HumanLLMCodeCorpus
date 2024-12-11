@@ -1,0 +1,76 @@
+import os
+import sys
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+
+def generate_key():
+    """Generate a random AES key and save it to a file."""
+    key = os.urandom(32)
+    with open('AESkey.key', 'wb') as key_file:
+        key_file.write(key)
+    print("Key generated")
+
+def encrypt_file(file_name):
+    """Encrypt a file using AES encryption with a generated key."""
+    with open(file_name, 'rb') as msg_file:
+        plaintext = msg_file.read()
+
+    with open('AESkey.key', 'rb') as key_file:
+        key = key_file.read()
+
+    iv = os.urandom(16)
+    with open(file_name + '.enc.iv', 'wb') as iv_file:
+        iv_file.write(iv)
+
+    padder = padding.PKCS7(256).padder()
+    padded_plaintext = padder.update(plaintext) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ct = encryptor.update(padded_plaintext) + encryptor.finalize()
+
+    with open(file_name + '.enc', 'wb') as encrypted_file:
+        encrypted_file.write(ct)
+
+    print("File encrypted")
+
+def decrypt_file(file_name):
+    """Decrypt an encrypted file using AES decryption with the stored key."""
+    with open(file_name, 'rb') as encrypted_file:
+        padded_ciphertext = encrypted_file.read()
+
+    with open('AESkey.key', 'rb') as key_file:
+        key = key_file.read()
+
+    with open(file_name + '.iv', 'rb') as iv_file:
+        iv = iv_file.read()
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    decrypted_msg = decryptor.update(padded_ciphertext) + decryptor.finalize()
+
+    unpadder = padding.PKCS7(256).unpadder()
+    plaintext = unpadder.update(decrypted_msg) + unpadder.finalize()
+
+    decrypted_file_name = file_name + 'DECRYPTED'
+    print("Your decrypted message is saved in: {}".format(decrypted_file_name))  
+    with open(decrypted_file_name, 'wb') as decrypted_file:
+        decrypted_file.write(plaintext)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python3 script_name.py generate|encrypt|decrypt FILENAME.EXTENSION")
+        sys.exit(1)
+
+    command = sys.argv[1]
+    file_name = sys.argv[2]
+
+    if command == 'generate':
+        generate_key()
+    elif command == 'encrypt':
+        encrypt_file(file_name)
+    elif command == 'decrypt':
+        decrypt_file(file_name)
+    else:
+        print('Wrong command')

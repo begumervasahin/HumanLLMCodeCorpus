@@ -1,0 +1,86 @@
+import functions as fn
+import candidateGen
+import fileReader as fr
+
+# Read parameters from the parameter file
+MIS, must_have, cannot_be_together, phi = fr.parameter_read()
+
+# Read transactions from the input_text.txt file
+transactions = fr.transaction_read()
+
+# Step 1: Calculate the value of M
+M = fn.calculate_M(MIS)
+
+# Initialize the count_values dictionary with zeros for each item
+count_values = {key: 0 for key in MIS}
+
+# Update the counts of the values in the count_values dictionary
+for transaction in transactions:
+    for item in transaction:
+        count_values[item] += 1
+
+# Calculate support for each item
+support_count = {item: count / len(transactions) for item, count in count_values.items()}
+
+# Step 2: Initial Pass over M
+L = []
+fn.init_pass(M, L, MIS, support_count)
+
+# Step 3: Create Frequent Set 1
+F = [[] for _ in range(len(L))]
+for l in L:
+    if support_count[l] >= MIS[l]:
+        F[0].append(l)
+
+# Step 4 to 19
+tailcount = {}
+k = 2
+
+while F[k - 2]:
+    if k == 2:
+        C_k = candidateGen.level2_candidate_gen(L, phi, MIS, support_count)
+    else:
+        C_k = candidateGen.MSCandidate_gen(F[k - 2], phi, support_count, k, MIS)
+
+    temp_dict = {c: 0 for c in C_k}
+    tailcount.update({c: 0 for c in C_k})
+
+    # Count the support of all the candidates
+    for transaction in transactions:
+        for c in C_k:
+            if set(c).issubset(transaction):
+                temp_dict[c] += 1
+            if set(c[1:]).issubset(transaction):
+                tailcount[c] += 1
+
+    for c, value in temp_dict.items():
+        if temp_dict[c] / len(transactions) >= MIS[c[0]]:
+            F[k - 1].append(c)
+            support_count[c] = temp_dict[c] / len(transactions)
+
+    k += 1
+
+# Must-have condition
+if must_have:
+    F = fn.check_must_have(F, must_have)
+
+# Cannot-be-together condition
+if cannot_be_together:
+    F = fn.check_cannot_be_together(F, cannot_be_together)
+
+# Generate output
+output = ""
+with open("result_files/result2-2.txt", "w") as f_out:
+    freq_set_num = 1
+    for frequent_sets in F:
+        output += f"Frequent {freq_set_num}-itemsets\n\n"
+        for sets in frequent_sets:
+            output += f"    {Final_f[freq_set_num-1][sets]} : "
+            if freq_set_num == 1:
+                output += "{" + str(sets) + "}\n"
+            elif freq_set_num > 1:
+                output += "{" + ", ".join(map(str, sets)) + "}\n"
+                output += f"Tailcount = {tailcount[sets]}\n"
+        output += f"\n    Total number of frequent {freq_set_num}-itemsets = {len(frequent_sets)}\n\n\n"
+        freq_set_num += 1
+    f_out.write(output)

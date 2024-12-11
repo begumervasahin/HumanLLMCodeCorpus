@@ -1,0 +1,98 @@
+from socket import *
+import threading
+
+class FollowerServer:
+    def __init__(self, self_port, leader_port):
+        self.self_port = self_port
+        self.leader_port = leader_port
+        self.lock_map = []
+        self.clients = []
+        self.follower_id = None
+
+    def connect_with_leader_server(self, host, port):
+        print("Connecting to the leader server...")
+        leader_socket = socket(AF_INET, SOCK_STREAM)
+        leader_socket.connect((host, port))
+        leader_socket.sendall("NewFollower".encode())
+        print("Data sent to the leader server.")
+        data = leader_socket.recv(1024).decode('utf-8')
+        msg = data.split(":")
+        if msg[0] == "FollowerId":
+            self.follower_id = int(msg[1])
+        return leader_socket
+
+    def forward_down(self, leader_socket):
+        """
+        Forward messages from the leader server to clients.
+        """
+        while True:
+            data = leader_socket.recv(1024).decode()
+            if not data:
+                continue
+            msg = data.split(":")
+            if msg[0] == 'UpdateLockmap':
+                self.lock_map.append({'name': msg[1], 'client': msg[2]})
+                print("Lock map updated.")
+            elif msg[0] == 'RemoveLockmap':
+                self.lock_map.remove({'name': msg[1], 'client': msg[2]})
+                print("Lock map entry removed.")
+            elif msg[0] in ['PreemptLock Success', 'PreemptLock Failed', 'ReleaseLock Success', 'ReleaseLock Failed']:
+                client_id = msg[1]
+                for client in self.clients:
+                    if client['client_id'] == int(client_id):
+                        client['socket'].sendall(msg[0].encode())
+
+    def new_client(self, client_socket):
+        client_id = self.follower_id * 1000 + len(self.clients) + 1
+        self.clients.append({'client_id': client_id, 'socket': client_socket})
+        return client_id
+
+    def forward_up(self, leader_socket, client_socket):
+        """
+        Forward messages from clients to the leader server.
+        """
+        while True:
+            data = client_socket.recv(1024).decode()
+            if not data:
+                continue
+            if data == 'NewClient':
+                client_id = self.new_client(client_socket)
+                client_socket.sendall(f"ClientId:{client_id}".encode())
+                continue
+            msg = data.split(":")
+            if msg[0] in ["PreemptLock", "ReleaseLock"]:
+                leader_socket.sendall(data.encode())
+            elif msg[0] == "CheckLock":
+                if self.lock_map:
+                    for lock in self.lock_map:
+                        if lock['name'] == msg[1]:
+                            client_id = lock['client']
+                            break
+                    client_socket.sendall(f"CheckLock:Lock:{int(client_id)}".encode())
+                else:
+                    client_socket.sendall("There are no locks in the server".encode())
+
+    def run(self):
+        host = '127.0.0.1'
+        leader_socket = self.connect_with_leader_server(host, self.leader_port)
+        print("Leader socket and follower ID:", leader_socket, self.follower_id)        
+
+        forward_down_thread = threading.Thread(target=self.forward_down, args=(leader_socket,))
+        forward_down_thread.setDaemon(True)
+        forward_down_thread.start()
+
+        server_socket = socket(AF_INET, SOCK_STREAM)
+        server_socket.bind((host, self.self_port))
+        server_socket.listen(3)
+        print("Server is listening on port", self.self_port)
+
+        while True:
+            client_socket, addr = server_socket.accept()
+            print("Connected with", addr)
+            forward_up_thread = threading.Thread(target=self.forward_up, args=(leader_socket, client_socket))
+            forward_up_thread.setDaemon(True)
+            forward_up_thread.start()
+
+if __name__ == "__main__":
+    follower_server = FollowerServer(self_port=5000, leader_port=6000)
+    follower_server.run()

@@ -1,0 +1,85 @@
+import os
+import cv2
+import torch
+from PIL import Image
+from torchvision import transforms
+from torch.utils.data import Dataset, DataLoader
+
+# Check and print the CUDA device if available
+if torch.cuda.is_available():
+    print(torch.cuda.get_device_name(torch.cuda.current_device()))
+else:
+    print("CUDA device not available.")
+
+class CustomImageDataset(Dataset):
+    """
+    Custom dataset class for loading images and their labels with transformation support.
+    """
+    def __init__(self, data_directories, image_transform=None, label_transform=None):
+        """
+        Initialize dataset with directory paths and optional transformations.
+
+        Parameters:
+        - data_directories (dict): Contains 'data' and 'labels' keys with paths to their directories.
+        - image_transform (callable, optional): Transform to apply on the images.
+        - label_transform (callable, optional): Transform to apply on the labels. Defaults to ToTensor.
+        """
+        self.images_dir = data_directories['data']
+        self.labels_dir = data_directories['labels']
+        self.image_transform = image_transform
+        self.label_transform = label_transform or transforms.ToTensor()
+
+        # Ensuring data and label files match
+        self.image_files = sorted(os.listdir(self.images_dir))
+        self.label_files = sorted(os.listdir(self.labels_dir))
+        assert len(self.image_files) == len(self.label_files), "Mismatch in the number of images and labels."
+
+    def __len__(self):
+        """Return the total number of image-label pairs."""
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        """Retrieve an image-label pair given an index."""
+        if idx >= self.__len__():
+            raise IndexError(f"Index {idx} is out of bounds.")
+
+        # Paths for image and label
+        image_path = os.path.join(self.images_dir, self.image_files[idx])
+        label_path = os.path.join(self.labels_dir, self.label_files[idx])
+
+        # Loading and processing image and label
+        image = Image.open(image_path).convert('RGB')
+        label_image = cv2.imread(label_path)
+        label_image = cv2.cvtColor(label_image, cv2.COLOR_BGR2RGB)
+        label_image = cv2.resize(label_image, (480, 480))
+        label = Image.fromarray(label_image)
+
+        # Applying transformations
+        if self.image_transform:
+            image = self.image_transform(image)
+        if self.label_transform:
+            label = self.label_transform(label)
+
+        return image, label
+
+if __name__ == "__main__":
+    # Paths to your dataset's images and labels
+    data_paths = {
+        'data': '/path/to/your/images',
+        'labels': '/path/to/your/labels'
+    }
+
+    # Define transformations for images and labels
+    image_transforms = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    
+    # Initializing the dataset and DataLoader
+    dataset = CustomImageDataset(data_paths, image_transform=image_transforms)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+
+    # Demonstrating loading a batch
+    for images, labels in dataloader:
+        print(f"Batch images shape: {images.shape}, Batch labels shape: {labels.shape}")
+        break  # Remove or comment out this line to go through the whole dataset

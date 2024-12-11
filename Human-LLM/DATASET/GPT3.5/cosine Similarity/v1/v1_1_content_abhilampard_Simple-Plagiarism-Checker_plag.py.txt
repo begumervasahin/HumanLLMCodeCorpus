@@ -1,0 +1,54 @@
+import re
+import math
+
+def cosine_similarity(input_query, database_text):
+    try:
+        universal_set_of_unique_words = []
+        match_percentage = 0
+        lowercase_query = input_query.lower()
+        query_word_list = re.sub("[^\w]", " ", lowercase_query).split()
+        
+        for word in query_word_list:
+            if word not in universal_set_of_unique_words:
+                universal_set_of_unique_words.append(word)
+                
+        database_word_list = re.sub("[^\w]", " ", database_text.lower()).split()
+        for word in database_word_list:
+            if word not in universal_set_of_unique_words:
+                universal_set_of_unique_words.append(word)
+                
+        query_tf = []
+        database_tf = []
+        
+        for word in universal_set_of_unique_words:
+            query_tf_counter = 0
+            database_tf_counter = 0
+            
+            for word2 in query_word_list:
+                if word == word2:
+                    query_tf_counter += 1
+            query_tf.append(query_tf_counter)
+            
+            for word2 in database_word_list:
+                if word == word2:
+                    database_tf_counter += 1
+            database_tf.append(database_tf_counter)
+        
+        dot_product = sum(query_tf[i] * database_tf[i] for i in range(len(query_tf)))
+        
+        query_vector_magnitude = math.sqrt(sum(query_tf[i] ** 2 for i in range(len(query_tf))))
+        database_vector_magnitude = math.sqrt(sum(database_tf[i] ** 2 for i in range(len(database_tf))))
+        
+        match_percentage = (float)(dot_product / (query_vector_magnitude * database_vector_magnitude)) * 100
+        
+        output = "Input query text matches %0.02f%% with database." % match_percentage
+        return output
+        
+    except Exception as e:
+        return "Please Enter Valid Data"
+
+input_query = "Enter your query here."
+database_text = open("database1.txt", "r").read()
+
+result = cosine_similarity(input_query, database_text)
+print(result)

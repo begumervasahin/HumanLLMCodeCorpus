@@ -1,0 +1,79 @@
+from collections import deque
+
+class State:
+    def __init__(self, red, blue, green):
+        self.red_count = red
+        self.blue_count = blue
+        self.green_count = green
+
+    def has_only_one_color(self):
+        return self.red_count == 0 or self.blue_count == 0 or self.green_count == 0
+
+    def has_red_ones(self):
+        return self.red_count >= 1
+
+    def has_blue_ones(self):
+        return self.blue_count >= 1
+
+    def has_green_ones(self):
+        return self.green_count >= 1
+
+    def red_met_green(self):
+        return State(self.red_count - 1, self.blue_count, self.green_count + 1)
+
+    def blue_met_red(self):
+        return State(self.red_count - 1, self.blue_count + 1, self.green_count)
+
+    def green_met_blue(self):
+        return State(self.red_count, self.blue_count - 1, self.green_count + 1)
+
+    def __str__(self):
+        return f"Red: {self.red_count}, Blue: {self.blue_count}, Green: {self.green_count}"
+
+def dfs(state):
+    prev_states = deque()
+    visited = set()
+    full_path = []
+    step_count = 0
+    
+    while state is not None and not state.has_only_one_color():
+        full_path.append(str(state))
+        
+        # Determine the next state based on available transitions
+        if state.has_red_ones() and state.has_green_ones() and str(state.red_met_green()) not in visited:
+            new_state = state.red_met_green()
+        elif state.has_blue_ones() and state.has_red_ones() and str(state.blue_met_red()) not in visited:
+            new_state = state.blue_met_red()
+        elif state.has_blue_ones() and state.has_green_ones() and str(state.green_met_blue()) not in visited:
+            new_state = state.green_met_blue()
+        else:
+            # Backtrack if no valid transitions are available
+            state = prev_states.pop()
+            print('Backtracking one step')
+            continue
+        
+        # Update state and tracking variables
+        prev_states.append(state)
+        print('{}: {}'.format(step_count, state))
+        step_count += 1
+        state = new_state
+        visited.add(str(new_state))
+    
+    print('Final state after {} steps: {}'.format(step_count, state))
+    
+    return {
+        'final_state': state,
+        'visited': visited,
+        'path': state.get_path(),  # Assuming State has a get_path() method
+        'full_path': full_path
+    }
+
+# Define the initial state of the problem
+initial_state = State(red=13, blue=16, green=17)
+
+# Execute the Depth-First Search algorithm
+dfs_result = dfs(initial_state)
+
+# Print the DFS result
+print("Depth-First Search Result:")
+print(dfs_result)

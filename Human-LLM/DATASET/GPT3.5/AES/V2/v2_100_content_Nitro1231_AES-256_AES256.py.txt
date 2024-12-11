@@ -1,0 +1,55 @@
+import base64
+import random
+import string
+from hashlib import sha256
+from Crypto import Random
+from Crypto.Cipher import AES
+
+BLOCK_SIZE = 32
+
+def pad(s):
+    padding_length = BLOCK_SIZE - len(s.encode('utf-8')) % BLOCK_SIZE
+    return s + (padding_length * chr(padding_length)).encode('utf-8')
+
+def unpad(s):
+    return s[:-ord(s[len(s)-1:])]
+
+class AES256:
+    def __init__(self, key):
+        self.key = self.generate_key(key)
+
+    def encrypt(self, message):
+        padded_message = pad(message)
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        encrypted_message = iv + cipher.encrypt(padded_message)
+        return base64.b64encode(encrypted_message)
+
+    def decrypt(self, encrypted_message):
+        enc = base64.b64decode(encrypted_message)
+        iv = enc[:AES.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted_message = unpad(cipher.decrypt(enc[AES.block_size:]))
+        return decrypted_message.decode('utf-8')
+
+    def generate_key(self, key):
+        string_length = 16 - len(key)
+        random.seed(key)
+        letters = string.ascii_letters
+        return bytes(key + ''.join(random.choice(letters) for i in range(string_length)), 'utf-8')
+
+# Example usage:
+if __name__ == "__main__":
+    # Define a key
+    key = "YourSecretKeyHere"
+
+    # Create an instance of AES256
+    aes = AES256(key)
+
+    # Encrypt a message
+    encrypted_message = aes.encrypt("Hello, world!")
+    print("Encrypted message:", encrypted_message)
+
+    # Decrypt the encrypted message
+    decrypted_message = aes.decrypt(encrypted_message)
+    print("Decrypted message:", decrypted_message)

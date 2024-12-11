@@ -1,0 +1,37 @@
+import misc
+import permutations
+
+def primary_key_to_subkeys(key):
+    # Convert hexadecimal key to binary
+    binary_key = misc.hex_to_bits(key)
+
+    # Group binary key into 7-bit blocks
+    binary_blocks = [binary_key[i:i + 7] for i in range(0, len(binary_key), 8)]
+    binary_key = ''.join(binary_blocks)
+
+    # Split binary key into left and right parts
+    mid_index = len(binary_key) // 2
+    left_part, right_part = binary_key[:mid_index], binary_key[mid_index:]
+
+    # Generate subkeys
+    subkeys = []
+    for i in range(16):
+        # Determine the shift amount based on the round
+        shift_amount = 1 if i in {0, 1, 8, 15} else 2
+
+        # Apply left shift to left and right parts
+        left_part = misc.left_shift(left_part, shift_amount)
+        right_part = misc.left_shift(right_part, shift_amount)
+
+        # Combine left and right parts and apply permutation
+        subkey = permutations.permutation(left_part + right_part, "compression")
+        subkeys.append(subkey)
+
+    return subkeys
+
+if __name__ == "__main__":
+    primary_key = "0123456789ABCDEF"  # Example primary key
+    subkeys = primary_key_to_subkeys(primary_key)
+    print("Generated Subkeys:")
+    for i, subkey in enumerate(subkeys, 1):
+        print(f"Subkey {i}: {subkey}")

@@ -1,0 +1,74 @@
+from Crypto.Util.number import getPrime
+from Crypto.Cipher import AES
+from random import randint
+
+class DH_Client:
+    def __init__(self, name, generator, prime):
+        """
+        Initialize the DH_Client object.
+
+        Parameters:
+        - name (str): The name of the client.
+        - generator (int): The generator value.
+        - prime (int): The prime number.
+        """
+        self.name = name
+        self.generator = generator
+        self.prime = prime
+        self.private_key = randint(1, prime)
+        self.public_key = pow(self.generator, self.private_key, self.prime)
+
+    def establish_shared_secret(self, received_public_key):
+        """
+        Establish the shared secret.
+
+        Parameters:
+        - received_public_key (int): The public key received from the other party.
+
+        Returns:
+        - int: The shared secret.
+        """
+        shared_secret_hex = hex(pow(received_public_key, self.private_key, self.prime))[2:]
+        while len(shared_secret_hex) not in (32, 48, 64):
+            if len(shared_secret_hex) > 32:
+                shared_secret_hex = shared_secret_hex[1:]
+            else:
+                shared_secret_hex = '0' + shared_secret_hex
+        self.shared_secret = bytes.fromhex(shared_secret_hex)
+        return int(self.shared_secret.hex(), 16)
+
+    def aes_ecb_encrypt(self, msg):
+        """
+        Encrypt a message using AES in ECB mode.
+
+        Parameters:
+        - msg (str): The message to encrypt.
+
+        Returns:
+        - int: The encrypted ciphertext.
+        """
+        cipher = AES.new(self.shared_secret)
+        msg_hex = ''.join([hex(ord(c))[2:] for c in msg])
+        while len(msg_hex) % 32 != 0:
+            msg_hex = '0' + msg_hex
+        msg_bytes = bytes.fromhex(msg_hex)
+        ciphertext = cipher.encrypt(msg_bytes)
+        return int(ciphertext.hex(), 16)
+
+# Example usage:
+if __name__ == "__main__":
+    # Generate prime number and generator
+    prime = getPrime(256)
+    generator = randint(2, prime - 1)
+
+    # Create DH clients
+    alice = DH_Client("Alice", generator, prime)
+    bob = DH_Client("Bob", generator, prime)
+
+    # Exchange public keys
+    alice_shared_secret = alice.establish_shared_secret(bob.public_key)
+    bob_shared_secret = bob.establish_shared_secret(alice.public_key)
+
+    # Print shared secrets
+    print("Alice's shared secret:", alice_shared_secret)
+    print("Bob's shared secret:", bob_shared_secret)

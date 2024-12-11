@@ -1,0 +1,61 @@
+import torch
+import torch.nn as nn
+
+class SqueezeLayer(nn.Module):
+    def __init__(self, in_channels, bias_term):
+        super(SqueezeLayer, self).__init__()
+        self.weight = nn.Parameter(torch.ones(in_channels, 1), requires_grad=True)
+        self.bias_term = bias_term
+        if self.bias_term:
+            self.bias = nn.Parameter(torch.zeros(in_channels, 1, 1), requires_grad=True)
+        nn.init.xavier_uniform_(self.weight)
+
+    def forward(self, x):
+        batch_size, channels, _, _ = x.size()
+        squeezed_output = torch.matmul(x.view(batch_size, channels, channels), self.weight).view(batch_size, channels, 1, 1)
+        if self.bias_term:
+            squeezed_output += self.bias
+        return squeezed_output
+
+class AttentionLayer(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=True, nonlinear=True):
+        super(AttentionLayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.softmax = nn.Softmax(dim=1)
+        self.bias_term = bias
+        self.nonlinear = nonlinear
+
+        self.squeeze_layers = nn.ModuleList([
+            nn.Sequential(
+                SqueezeLayer(in_channels, bias_term=self.bias_term),
+                nn.Tanh()
+            ) if self.nonlinear else
+            SqueezeLayer(in_channels, bias_term=self.bias_term)
+            for _ in range(3)  # Using 3 squeeze layers as per the original code
+        ])
+
+    def forward(self, x):
+        batch_size, channels, _, _ = x.size()
+        x0 = self.avg_pool(x).view(batch_size, channels, 1, 1)
+        x1 = self.max_pool(x).view(batch_size, channels, 1, 1)
+        x0_s = self.softmax(x0)
+        x1_s = self.softmax(x1)
+        
+        y0 = torch.matmul(x0_s.view(batch_size, channels, 1), x0.view(batch_size, 1, channels)).view(batch_size, channels, channels, 1)
+        y1 = torch.matmul(x0_s.view(batch_size, channels, 1), x1.view(batch_size, 1, channels)).view(batch_size, channels, channels, 1)
+        
+        att0 = self.squeeze_layers[0](y0)
+        att1 = self.squeeze_layers[1](y1)
+        
+        y2 = torch.matmul(att0.view(batch_size, channels, 1), att1.view(batch_size, 1, channels)).view(batch_size, channels, channels, 1)
+        att2 = self.squeeze_layers[2](y2)
+        
+        z = x * (att2 + 1)
+        return z
+
+# Usage example
+x = torch.randn(1, 3, 4, 4)
+attention_layer = AttentionLayer(in_channels=3, out_channels=3, bias=True, nonlinear=True)
+output = attention_layer(x)
+print(output.shape)

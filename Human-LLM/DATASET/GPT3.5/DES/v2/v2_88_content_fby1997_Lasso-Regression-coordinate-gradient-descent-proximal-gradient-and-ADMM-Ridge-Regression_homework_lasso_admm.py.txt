@@ -1,0 +1,95 @@
+import numpy as np
+import pandas as pd
+import math
+from sklearn.model_selection import train_test_split
+import scipy.sparse as sparse
+from scipy.sparse.linalg import spsolve
+from numpy.linalg import norm, cholesky
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+# Function to calculate the standard error
+def calculate_standard_error(sample):
+    std_deviation = np.std(sample, ddof=0)
+    standard_error = std_deviation / math.sqrt(len(sample))
+    return standard_error
+
+# Function to perform LASSO using ADMM
+def lasso_admm(X, y, alpha=5, rho=1., rel_par=1., QUIET=True, MAX_ITER=100, ABSTOL=1e-3, RELTOL=1e-2):
+    m, n = X.shape
+    Xty = X.T.dot(y)
+    x = np.zeros((n, 1))
+    z = np.zeros((n, 1))
+    u = np.zeros((n, 1))
+    L, U = factor(X, rho)
+    h = {
+        'objval': np.zeros(MAX_ITER),
+        'r_norm': np.zeros(MAX_ITER),
+        's_norm': np.zeros(MAX_ITER),
+        'eps_pri': np.zeros(MAX_ITER),
+        'eps_dual': np.zeros(MAX_ITER)
+    }
+    for k in range(MAX_ITER):
+        tmp_variable = np.array(Xty) + rho * (z - u)[0]
+        if m >= n:
+            x = spsolve(U, spsolve(L, tmp_variable))[..., np.newaxis]
+        else:
+            ULXq = spsolve(U, spsolve(L, X.dot(tmp_variable)))[..., np.newaxis]
+            x = (tmp_variable * 1. / rho) - ((X.T.dot(ULXq)) * 1. / (rho ** 2))
+        zold = np.copy(z)
+        x_hat = rel_par * x + (1. - rel_par) * zold
+        z = shrinkage(x_hat + u, alpha * 1. / rho)
+        u += (x_hat - z)
+        h['objval'][k] = calculate_objective_value(X, y, alpha, x, z)
+        h['r_norm'][k] = norm(x - z)
+        h['s_norm'][k] = norm(-rho * (z - zold))
+        h['eps_pri'][k] = np.sqrt(n) * ABSTOL + RELTOL * np.maximum(norm(x), norm(-z))  
+        h['eps_dual'][k] = np.sqrt(n) * ABSTOL + RELTOL * norm(rho * u)
+        if (h['r_norm'][k] < h['eps_pri'][k]) and (h['s_norm'][k] < h['eps_dual'][k]):  
+            break
+    return z.ravel(), h
+
+# Function to calculate the objective value
+def calculate_objective_value(X, y, alpha, x, z):
+    return .5 * np.square(X.dot(x) - y).sum().sum() + alpha * norm(z, 1)
+
+# Function for the shrinkage operation
+def shrinkage(x, kappa):
+    return np.maximum(0., x - kappa) - np.maximum(0., -x - kappa)
+
+# Function for matrix factorization
+def factor(X, rho):
+    m, n = X.shape
+    if m >= n:
+        L = cholesky(X.T.dot(X) + rho * sparse.eye(n))
+    else:
+        L = cholesky(sparse.eye(m) + 1. / rho * (X.dot(X.T)))
+    L = sparse.csc_matrix(L)
+    U = sparse.csc_matrix(L.T)
+    return L, U
+
+# Read the data
+data = pd.read_table(r'D:\360MoveData\Users\HP\Desktop\prostate.data.txt')
+factors = ['lcavol', 'lweight', 'age', 'lbph', 'svi', 'lcp', 'gleason', 'pgg45']        
+X = data[factors]
+Y = data['lpsa']
+
+# Split the data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=1)
+
+# Perform LASSO using ADMM
+coefficients = lasso_admm(X_train, y_train, alpha=0.0058)
+
+# Predict on the test set
+y_test_predict = X_test.dot(coefficients[0])
+
+# Calculate evaluation metrics
+mse_predict = round(mean_squared_error(y_test, y_test_predict), 4)
+mae_predict = round(mean_absolute_error(y_test, y_test_predict), 4)
+std_error = round(calculate_standard_error(y_test_predict), 4)
+
+# Print the results
+coef = [(factors[i], round(coefficients[0][i], 4)) for i in range(8)]
+print('Estimated coefficients:', coef)
+print('Standard Error:', std_error)
+print('Mean Squared Error:', mse_predict)
+print('Mean Absolute Error:', mae_predict)

@@ -1,0 +1,42 @@
+from openerp import models, api, fields, _
+
+class ExtraschoolEncodageManuelValidationWizard(models.TransientModel):
+    _name = 'extraschool.encodage_manuel_validation_wizard'
+
+    place_id = fields.Many2one('extraschool.place')
+
+    @api.multi
+    def validate(self):
+        """
+        Validate all selected prestation records.
+        """
+        prestations = self._get_selected_prestations()
+        prestations.validate()
+        return True
+
+    @api.multi
+    def set_to_draft(self):
+        """
+        Set all selected prestation records to draft state.
+        """
+        prestations = self._get_selected_prestations()
+        prestations.set_to_draft()
+        return True
+
+    @api.multi
+    def change_place_id(self):
+        """
+        Change place ID for all selected prestation records.
+        """
+        prestations = self._get_selected_prestations()
+        for prestation in prestations:
+            prestation.set_to_draft()
+            prestation.write({'place_id': self.place_id.id})
+            prestation.validate()
+        return True
+
+    def _get_selected_prestations(self):
+        """
+        Retrieve selected prestation records based on active IDs.
+        """
+        return self.env['extraschool.prestation_times_encodage_manuel'].browse(self._context.get('active_ids'))

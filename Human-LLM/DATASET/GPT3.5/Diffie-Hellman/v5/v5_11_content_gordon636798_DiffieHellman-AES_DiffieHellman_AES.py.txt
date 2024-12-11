@@ -1,0 +1,87 @@
+import random
+from gmpy2 import *
+from Crypto.Cipher import AES
+import hashlib
+
+# Define prime 'a' and modulus 'q'
+a = mpz(11)
+q = mpz(1040699159)
+
+# Print prime 'a' and modulus 'q'
+print('Prime a:', a, ', Modulus q:', q)
+
+# Define the plaintext data
+data = 'I love ncyucsie 噗嘻~~(≧Ꙫ≦)'
+print('Plain text:', data, '\n')
+
+
+class User:
+    def __init__(self, name, prime_a, modulus_q):
+        self.name = name
+        self.prime_a = prime_a
+        self.modulus_q = modulus_q
+
+        # Generate private key and compute public key
+        temp = sum(ord(i) for i in name)
+        self.private_key = mpz_random(random_state(temp), modulus_q)
+        self.public_key = powmod(self.prime_a, self.private_key, self.modulus_q)
+
+        # Initialize key dictionary
+        self.keys = {}
+
+        # Print user's private key
+        print(self.name + '\'s private key:', self.private_key)
+
+    def establish_common_key(self, other_user, other_user_public_key):
+        # Calculate common key using Diffie-Hellman key exchange
+        common_key = powmod(other_user_public_key, self.private_key, self.modulus_q)
+        key_bytes = int(common_key).to_bytes((common_key.bit_length() + 7) // 8, byteorder='big')
+        key_digest = hashlib.sha256(key_bytes).digest()
+        self.keys[other_user.name] = key_digest
+
+        # Print common key
+        print('\nCommon key for ' + self.name + ' and ' + other_user.name + ':\n' + key_digest.hex())
+
+    def AES_encrypt(self, recipient_user, plaintext):
+        # Encrypt plaintext using AES encryption
+        plaintext_bytes = plaintext.encode('utf-8')
+        padding = 16 - len(plaintext_bytes) % 16
+        if padding == 0:
+            padding = 16
+        padding_bytes = bytes([padding])
+        padded_plaintext = plaintext_bytes + padding * padding_bytes
+        cipher = AES.new(self.keys[recipient_user.name], AES.MODE_CBC, 16 * b'\x00')
+        ciphertext = cipher.encrypt(padded_plaintext)
+
+        # Print cipher text
+        print('\nCipher text:\n' + ciphertext.hex())
+        return [ciphertext, self.name]
+
+    def AES_decrypt(self, sender_user, ciphertext):
+        # Decrypt ciphertext using AES decryption
+        ciphertext_bytes, sender_name = ciphertext[0], ciphertext[1]
+        cipher = AES.new(self.keys[sender_name], AES.MODE_CBC, 16 * b'\x00')
+        decrypted_plaintext = cipher.decrypt(ciphertext_bytes)
+        padding_length = decrypted_plaintext[-1]
+        plaintext = decrypted_plaintext[:-padding_length]
+        plaintext = plaintext.decode('utf-8')
+
+        # Print decrypted plaintext
+        print('\nDecrypted plaintext from ' + sender_name + ':\n' + plaintext)
+        return plaintext
+
+
+# Create users Alice and Bob
+Alice = User('Alice', a, q)
+Bob = User('Bob', a, q)
+
+# Perform key exchange between Alice and Bob
+Alice.establish_common_key(Bob, Bob.public_key)
+Bob.establish_common_key(Alice, Alice.public_key)
+
+# Encrypt and decrypt a message between Alice and Bob
+cipher_text = Alice.AES_encrypt(Bob, data)
+plain_text = Bob.AES_decrypt(Alice, cipher_text)
+
+# Print decrypted message from Bob
+print('Decrypted message from Bob:', plain_text)

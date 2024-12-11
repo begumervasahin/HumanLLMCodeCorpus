@@ -1,0 +1,162 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+
+
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, value):
+        new_node = Node(value)
+        if self.root is None:
+            self.root = new_node
+        else:
+            current = self.root
+            while True:
+                if value < current.value:
+                    if current.left is None:
+                        current.left = new_node
+                        break
+                    current = current.left
+                elif value > current.value:
+                    if current.right is None:
+                        current.right = new_node
+                        break
+                    current = current.right
+                else:
+                    break
+
+    def lookup(self, value):
+        current = self.root
+        while current:
+            if current.value == value:
+                return current
+            elif value < current.value:
+                current = current.left
+            else:
+                current = current.right
+        return None
+
+    def remove(self, value):
+        parent = None
+        current = self.root
+        while current:
+            if value < current.value:
+                parent = current
+                current = current.left
+            elif value > current.value:
+                parent = current
+                current = current.right
+            else:
+                if current.left is None and current.right is None:
+                    if parent.left == current:
+                        parent.left = None
+                    elif parent.right == current:
+                        parent.right = None
+                    del current
+                    break
+                elif (current.left is not None and current.right is None) or \
+                     (current.left is None and current.right is not None):
+                    if current.left:
+                        next_node = current.left
+                    else:
+                        next_node = current.right
+
+                    if parent.left == current:
+                        parent.left = next_node
+                    else:
+                        parent.right = next_node
+                    del current
+                    break
+                else:
+                    smallest_parent = current
+                    smallest = current.right
+                    while smallest.left:
+                        smallest_parent = smallest
+                        smallest = smallest.left
+                    current.value = smallest.value
+                    smallest_parent.left = smallest.right
+                    del smallest
+                    break
+
+        return None
+
+    def breadth_first_search(self):
+        if self.root is None:
+            return []
+
+        result = []
+        queue = [self.root]
+        while queue:
+            current = queue.pop(0)
+            result.append(current.value)
+            if current.left:
+                queue.append(current.left)
+            if current.right:
+                queue.append(current.right)
+        return result
+
+    def breadth_first_search_recursive(self, queue, arr):
+        if not queue:
+            return arr
+        current = queue.pop(0)
+        arr.append(current.value)
+        if current.left:
+            queue.append(current.left)
+        if current.right:
+            queue.append(current.right)
+        return self.breadth_first_search_recursive(queue, arr)
+
+    def height(self, node):
+        if node is None:
+            return 0
+        else:
+            return 1 + max(self.height(node.left), self.height(node.right))
+
+
+def in_order_traversal(root):
+    if root.left:
+        in_order_traversal(root.left)
+    print(root.value)
+    if root.right:
+        in_order_traversal(root.right)
+
+
+def pre_order_traversal(root):
+    print(root.value)
+    if root.left:
+        pre_order_traversal(root.left)
+    if root.right:
+        pre_order_traversal(root.right)
+
+
+def post_order_traversal(root):
+    if root.left:
+        post_order_traversal(root.left)
+    if root.right:
+        post_order_traversal(root.right)
+    print(root.value)
+
+
+if __name__ == "__main__":
+    tree = BinarySearchTree()
+    elements = [50, 28, 78, 12, 40, 66, 90, 9, 18, 37, 43, 57, 69, 81, 93, 3, 10, 15, 21, 30, 38, 42, 46,
+                54, 60, 67, 72, 80, 84, 92, 96, 13, 29, 55, 56]
+    for element in elements:
+        tree.insert(element)
+
+    tree.remove(15)
+
+    print("Breadth-First Search Result:", tree.breadth_first_search())
+    print('Height of the Tree:', tree.height(tree.root))
+    print(tree.breadth_first_search_recursive([tree.root], []))
+
+    print('In-Order Traversal:')
+    in_order_traversal(tree.root)
+    print('Pre-Order Traversal:')
+    pre_order_traversal(tree.root)
+    print('Post-Order Traversal:')
+    post_order_traversal(tree.root)

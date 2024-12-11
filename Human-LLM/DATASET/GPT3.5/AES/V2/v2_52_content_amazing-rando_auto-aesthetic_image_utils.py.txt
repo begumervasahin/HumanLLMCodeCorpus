@@ -1,0 +1,36 @@
+from PIL import Image
+from random import randint, choice, Random
+
+def insert_cascade(foreground_path, background_image, k=0.01, x=0, y=0):
+    '''
+    Inserts a procedurally generated cascade of a given image onto a background image.
+    '''
+    foreground = Image.open(foreground_path).convert("RGBA")
+    background_size = background_image.size
+    foreground_size = foreground.size
+    acceleration = -1
+    velocity = 0.0
+    displacement_y = 0.0
+
+    for i in range(int(k * 100)):
+        displacement_y = velocity * i + 0.5 * acceleration * (i ** 2)
+        velocity = velocity + acceleration * i
+        position = (int(x + 11 * i), int(y - displacement_y))
+        background_image.paste(foreground, position)
+        
+        if background_size[1] - foreground_size[1] <= position[1] + foreground_size[1]:
+            velocity = -velocity
+            acceleration = acceleration * 0.9
+
+    return background_image
+
+def insert_pic(foreground_path, background_image, k=0, x=0, y=0):   
+    '''
+    Inserts an image at the specified location with a given rotation and scale onto a background image.
+    '''
+    foreground = Image.open(foreground_path).convert("RGBA")
+    position = (x, y)
+    foreground = foreground.rotate(k * 100)
+    background_image.paste(foreground, position, foreground)
+
+    return background_image

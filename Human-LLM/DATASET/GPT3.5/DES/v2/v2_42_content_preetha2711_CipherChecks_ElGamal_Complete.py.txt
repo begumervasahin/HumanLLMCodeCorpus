@@ -1,0 +1,96 @@
+import random
+import math
+import sys
+
+# Set recursion limit to handle large numbers
+sys.setrecursionlimit(100000)
+
+def miller_rabin(number):
+    """
+    Miller-Rabin primality test.
+    """
+    is_prime = False
+    num_1 = number - 1
+    k = 0
+    
+    # Decompose num_1 into m * 2^k
+    while num_1 % 2 == 1:
+        num_1 = num_1 // 2
+        k += 1
+    m = num_1 // (2 ** k)
+    
+    # Choose a random integer a
+    a = random.randint(0, number - 1)
+    
+    # Compute b = a^m mod number
+    b = pow(a, m, number)
+    
+    # Check if number is probably prime
+    if b == 1:
+        is_prime = True
+    else:
+        for i in range(k):
+            if pow(b, 2, number) == -1 % number:
+                is_prime = True
+            else:
+                b = pow(b, 2, number)
+    return is_prime
+
+def generate_prime(length=300):
+    """
+    Generate a prime number using Miller-Rabin primality test.
+    """
+    is_prime = False
+    
+    # Loop until a prime number is found
+    while not is_prime:
+        random_num = random.getrandbits(length)
+        random_num |= (1 << length - 1) | 1  # Set the most significant and least significant bits to 1
+        is_prime = miller_rabin(random_num)
+        prime_number = random_num
+        return prime_number
+
+def get_two_primes():
+    """
+    Generate two prime numbers p and q such that q = 2p + 1.
+    """
+    are_primes = False
+    
+    # Loop until two prime numbers are found
+    while not are_primes:
+        p = generate_prime()
+        q = 2 * p + 1
+        are_primes = miller_rabin(q)
+    return p, q
+
+def lucas_test(integer):
+    """
+    Perform Lucas primality test.
+    """
+    p = integer
+    Q = []
+    
+    # Find the factors of p - 1
+    for i in range(2, p):
+        if (p - 1) % i == 0:
+            Q.append(i)
+    
+    # Find primitive roots of p
+    prim_roots = []
+    for g in range(2, p):
+        is_primitive = True
+        for q in Q:
+            if (g ** int((p - 1) / q)) % p == 1:
+                is_primitive = False
+                break
+        if is_primitive:
+            prim_roots.append(g)
+    return prim_roots
+
+# Generate two prime numbers p and q
+p, q = get_two_primes()
+
+# Print the generated prime numbers
+print("Generated Prime Numbers:")
+print("p =", p)
+print("q =", q)

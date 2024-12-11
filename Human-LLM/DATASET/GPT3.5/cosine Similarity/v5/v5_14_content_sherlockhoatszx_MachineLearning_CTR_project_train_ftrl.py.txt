@@ -1,0 +1,77 @@
+import random
+import math
+
+# Hyperparameters
+alpha = 0.5
+l2 = 10
+l1 = 0.1
+beta = 0.01
+iterations = 3
+
+def load_max_index(file_path):
+    """Load training data and determine the maximum index."""
+    max_index = 0
+    with open(file_path, "r") as file:
+        for line in file:
+            segments = line.strip().split("\t")
+            for segment in segments[1:]:
+                index = int(segment.split(":")[0])
+                max_index = max(max_index, index)
+    return max_index
+
+def initialize_arrays(size):
+    """Initialize arrays for weights, z, and n."""
+    weights = [random.uniform(-0.5, 0.5) for _ in range(size + 1)]
+    z_values = [0] * (size + 1)
+    n_values = [0] * (size + 1)
+    return weights, z_values, n_values
+
+def update_weights(train_file, weights, z_values, n_values, max_index):
+    """Train the model and update weights."""
+    for _ in range(iterations):
+        train_file.seek(0)  # Reset file pointer to start
+        for line in train_file:
+            segments = line.strip().split("\t")
+            label = int(segments[0])
+            s = sum(weights[int(segment.split(":")[0])] for segment in segments[1:])
+            p = 1.0 / (1 + math.exp(-s))
+            q = p - label
+            for segment in segments[1:]:
+                index = int(segment.split(":")[0])
+                sigma = (math.sqrt(n_values[index] + q * q) - math.sqrt(n_values[index])) / alpha
+                z_values[index] += q - sigma * weights[index]
+                n_values[index] += q * q
+                if abs(z_values[index]) < l1:
+                    weights[index] = 0
+                else:
+                    if z_values[index] > 0:
+                        weights[index] = -(z_values[index] - l1) / ((beta + math.sqrt(n_values[index])) / alpha + l2)
+                    else:
+                        weights[index] = -(z_values[index] + l1) / ((beta + math.sqrt(n_values[index])) / alpha + l2)
+
+def predict_and_write_results(data_file, output_file, weights, max_index):
+    """Predict probabilities and write results."""
+    for line in data_file:
+        segments = line.strip().split("\t")
+        s = sum(weights[int(segment.split(":")[0])] for segment in segments[1:] if int(segment.split(":")[0]) <= max_index)
+        p = 1.0 / (1 + math.exp(-s))
+        label = 1 if p > 0.5 else 0
+        output_line = f"{label},{p}\n"
+        output_file.write(output_line)
+
+# Load training data and initialize arrays
+max_index = load_max_index("train_feature")
+weights, z_values, n_values = initialize_arrays(max_index)
+
+# Train the model
+with open("train_feature", "r") as train_file:
+    update_weights(train_file, weights, z_values, n_values, max_index)
+
+# Validate the model
+with open("validate_feature", "r") as validate_file, open("pctr", "w+") as output_file:
+    predict_and_write_results(validate_file, output_file, weights, max_index)
+
+# Test the model
+with open("test_feature", "r") as test_file, open("test_pctr", "w+") as output_file2, open("test_pctr.csv", "w+") as output_file3:
+    predict_and_write_results(test_file, output_file2, weights, max_index)
+    predict_and_write_results(test_file, output_file3, weights, max_index)

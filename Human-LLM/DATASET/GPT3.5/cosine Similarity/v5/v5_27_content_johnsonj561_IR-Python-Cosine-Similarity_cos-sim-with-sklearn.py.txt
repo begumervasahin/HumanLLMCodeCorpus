@@ -1,0 +1,65 @@
+import re
+from os import listdir
+from os.path import join, abspath
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Print header information
+print("Assignment 1: NLTK text preprocessing and cosine similarity")
+print("Information Retrieval: Florida Atlantic University, Fall 2017")
+print("Author: Justin J, jjohn273")
+
+# Set up data directory
+data_dir = 'hw1-dataset'
+DATA_SET_DIR = abspath(data_dir)
+print('\nData directory path:', DATA_SET_DIR)
+
+# Retrieve list of text files from the directory
+print('Retrieving list of text files...')
+files = [f for f in listdir(DATA_SET_DIR) if re.match(r'.*\.txt$', f, re.I)]
+print('Number of files found:', len(files))
+
+# Initialize Porter Stemmer and NLTK stop words
+ps = PorterStemmer()
+nltk_stop_words = set(stopwords.words('english'))
+corpus = []
+
+# Process each text file
+print('Processing text files...')
+for file_name in files:
+    with open(join(DATA_SET_DIR, file_name), 'r') as file:
+        text = file.read()
+        # Tokenize the text
+        words = word_tokenize(text)
+        # Remove stop words and perform stemming
+        words = [ps.stem(w) for w in words if w.lower() not in nltk_stop_words]
+        corpus.append(' '.join(words))
+
+# Initialize TF-IDF Vectorizer
+vectorizer = TfidfVectorizer()
+tfidf_matrix = vectorizer.fit_transform(corpus)
+terms = vectorizer.get_feature_names()
+
+# Print TF-IDF values for each term in each document
+print('\nPrinting TF-IDF values for each term in each document:')
+print('{:<10}'.format('Term') + '\tDoc1\tDoc2\tDoc3\tDoc4')
+for idx, row in enumerate(tfidf_matrix.toarray().transpose()):
+    print('{:<10}'.format(terms[idx]), end='\t')
+    print('\t'.join([str(val) for val in row]))
+
+# Compute cosine similarity matrix
+cos_sim_matrix = cosine_similarity(tfidf_matrix)
+
+# Print cosine similarity matrix
+print('\nPrinting cosine similarity matrix:')
+print('{:<10}'.format(''), end='\t')
+print('\t'.join(['Doc'+str(i+1) for i in range(len(cos_sim_matrix))]))
+for idx, row in enumerate(cos_sim_matrix):
+    print('{:<10}'.format('Doc'+str(idx+1)), end='\t')
+    print('\t'.join([str(val) for val in row]))
+
+# Completion message
+print('\nComplete.')

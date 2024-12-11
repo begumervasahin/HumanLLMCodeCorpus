@@ -1,0 +1,71 @@
+from BellmanFord import BFA
+import msvcrt
+import re
+import timeit
+
+# Initialize variables
+elapsed_time = 0
+start_time = 0
+which_port = {}
+adr_to_name = {}
+router_count = 0
+hit = None
+
+# Get router name from user input
+router_name = input("Welcome to Emulated Bellman-Ford Algorithm\n"
+                    "Which router am I?\n")
+
+# Read which port file to populate dictionaries
+with open("which_port.txt") as which_router:
+    for line in which_router:
+        router_id = int(line[2:6])
+        port_number = int(line[0])
+        which_port[port_number] = router_id
+        adr_to_name[router_id] = port_number
+        router_count += 1
+
+# Read initial cost for the router from adj_mat.txt
+with open("adj_mat.txt") as adj_matrix:
+    my_line = adj_matrix.readlines()[int(router_name) - 1]
+    initial_cost = my_line.rstrip('\n').split(" ")
+    print('Initial Cost is {}\n'.format(initial_cost))
+
+# Create instance of Bellman-Ford Algorithm
+my_bf = BFA(router_count, initial_cost, router_name, which_port, adr_to_name)
+my_bf.who_to_send()
+
+# Prompt user to start BellmanFord Algorithm
+start_prompt = "To start BellmanFord Algorithm, Enter 's'\n"
+user_input = input(start_prompt)
+
+# Ensure user inputs 's' to start algorithm
+while user_input != 's':
+    user_input = input("Wrong input! " + start_prompt)
+
+# Start the timer
+start_time = timeit.default_timer()
+
+# Main loop
+while True:
+    # Check if a key has been pressed
+    hit = msvcrt.kbhit()
+    elapsed_time = timeit.default_timer() - start_time
+
+    # Send updates if more than 1 second has passed
+    if elapsed_time > 1:
+        my_bf.send()
+        start_time = timeit.default_timer()
+
+    # Receive updates
+    my_bf.receive()
+
+    # Check for keyboard input
+    if hit:
+        key = ord(msvcrt.getch())
+        if key == ord('u'):
+            # Read new cost from adj_mat.txt
+            with open("adj_mat.txt") as adj_matrix:
+                my_line = adj_matrix.readlines()[int(router_name) - 1]
+                new_cost = my_line.rstrip('\n').split(" ")
+                print('New cost is {}\n'.format(new_cost))
+                my_bf.check_cost(new_cost)

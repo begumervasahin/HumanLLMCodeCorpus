@@ -1,0 +1,50 @@
+import numpy as np
+import cv2
+import math
+import os
+import random
+import struct
+from Crypto.Cipher import AES
+
+# Read the image
+img = cv2.imread('messi.jpg')
+height, width, channels = img.shape
+print(f"Image dimensions: Height={height}, Width={width}")
+
+# Slice the image into multiple parts
+number_of_slices = 3
+width_of_slice = math.floor(width / number_of_slices)
+for x in range(1, number_of_slices):
+    cropped = img[0:height, ((x - 1) * width_of_slice + 1):x * width_of_slice]
+    image_name = f'd{x}.jpg'
+    cv2.imwrite(image_name, cropped)
+
+# Save the last slice
+cropped = img[0:height, (number_of_slices - 1) * width_of_slice:width]
+image_name = f'd{number_of_slices}.jpg'
+cv2.imwrite(image_name, cropped)
+
+# Encrypt each sliced image
+for x in range(1, number_of_slices + 1):
+    encrypt_file('1234567890123456', f'd{x}.jpg')
+
+# Move encrypted files to server directories
+for x in range(1, number_of_slices + 1):
+    os.rename(f'd{x}.jpg.enc', f'server{x}/d{x}.jpg.enc')
+
+# Decrypt each encrypted image in the server directories
+for x in range(1, number_of_slices + 1):
+    decrypt_file('1234567890123456', f'server{x}/d{x}.jpg.enc', f'd{x}_decrypted.jpg')
+
+# Concatenate decrypted images
+output_image = cv2.imread('d1.jpg')
+for x in range(2, number_of_slices + 1):
+    image_name = f'd{x}_decrypted.jpg'
+    img = cv2.imread(image_name)
+    output_image = np.concatenate((output_image, img), axis=1)
+
+# Save the final concatenated output
+cv2.imwrite('concatenated_output_final.jpg', output_image)
+
+# Prompt user to exit
+input("Processes complete. Press any key to exit.")

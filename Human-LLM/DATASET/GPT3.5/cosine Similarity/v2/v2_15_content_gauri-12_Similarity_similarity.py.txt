@@ -1,0 +1,63 @@
+import csv
+import re
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from nltk.corpus import stopwords
+import pymongo
+from pymongo import MongoClient
+
+def preprocess_annotation(raw_annotation):
+    # Remove non-alphabetic characters and convert to lowercase
+    letters_only = re.sub("[^a-zA-Z]", " ", raw_annotation)
+    lower_case = letters_only.lower()
+    # Tokenize the annotation and remove stopwords
+    words = lower_case.split()
+    stops = set(stopwords.words('english'))
+    words_nostop = [word for word in words if word not in stops]
+    return " ".join(words_nostop)
+
+# Read data from CSV file into pandas DataFrame
+data = pd.read_csv('book.csv')
+# Clean up column names and handle missing values
+data.columns = ['_', 'ISBN', 'Title', 'Series', 'Author', 'PubDate', 'Language', 'Bisac', 'Audience', 'Annotation']
+data.drop(['_','Title', 'PubDate', 'Language', 'Bisac', 'Audience'], axis=1, inplace=True)
+data.fillna({'Annotation': '', 'Series': '', 'Author': ''}, inplace=True)
+
+# Preprocess annotations
+data['Annotation'] = data['Annotation'].apply(preprocess_annotation)
+
+# Compute TF-IDF matrix for annotations and cosine similarity for series and author columns
+tfidf_vectorizer = TfidfVectorizer(max_features=20000)
+tfidf_matrix = tfidf_vectorizer.fit_transform(data['Annotation'])
+
+count_vectorizer = CountVectorizer()
+series_matrix = count_vectorizer.fit_transform(data['Series'])
+author_matrix = count_vectorizer.fit_transform(data['Author'])
+
+series_similarity = cosine_similarity(series_matrix)
+annotation_similarity = cosine_similarity(tfidf_matrix)
+author_similarity = cosine_similarity(author_matrix)
+
+# Create DataFrame for similarity metrics
+similarity_df = pd.DataFrame(columns=['ISBN1', 'ISBN2', 'SeriesSimilarity', 'AuthorSimilarity', 'AnnotationSimilarity'])
+for i in range(100):
+    for j in range(i+1, 100):
+        similarity_df = similarity_df.append({'ISBN1': data['ISBN'][i], 'ISBN2': data['ISBN'][j],
+                                              'SeriesSimilarity': series_similarity[i][j],
+                                              'AuthorSimilarity': author_similarity[i][j],
+                                              'AnnotationSimilarity': annotation_similarity[i][j]}, ignore_index=True)
+
+# Save similarity DataFrame to CSV file
+similarity_df.to_csv('similarity.csv')
+print("Saved similarity metrics to 'similarity.csv'")
+
+# Connect to MongoDB and insert data into collection
+mongo_client = MongoClient('localhost', 27017)
+db = mongo_client.similarity
+collection = db.cosine
+collection.insert_many(similarity_df.to_dict('records'))
+print("Inserted similarity metrics into MongoDB collection")
+
+print("Program execution completed!")

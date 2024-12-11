@@ -1,0 +1,116 @@
+from Action import Action
+import random
+
+class State:
+    def __init__(self, reward, is_terminal, state_key, action_list=None, count_actions=False):
+        """
+        Initialize a State object.
+
+        Parameters:
+            reward (float): The reward received for being in this state at timestep t.
+            is_terminal (int): 1 if this state is terminal, 0 otherwise.
+            state_key (object): Search key for this state, can be any value.
+            action_list (list, optional): List of actions this state can perform. Defaults to None.
+            count_actions (bool, optional): If True, actions will be counted. Defaults to False.
+        """
+        self.reward = reward
+        self.is_terminal = bool(is_terminal)
+        self.state_key = state_key
+        self.actions = action_list if action_list is not None else []
+        self.num_actions = len(self.actions)
+        self.count_actions = count_actions
+        self.action_counter = {} if count_actions else None
+        if self.count_actions and self.num_actions > 0:
+            for action in self.actions:
+                self.action_counter[action.getKey()] = 0
+
+    def try_action(self, action_key):
+        """
+        Try to perform an action.
+
+        Parameters:
+            action_key (object): The search key for an action that needs to be attempted.
+
+        Returns:
+            float or int: The result of the action if successful, -1 if the action failed.
+        """
+        for action in self.actions:
+            if action.getKey() == action_key:
+                if self.count_actions:
+                    self.action_counter[action_key] += 1
+                return action.test_action()
+        return -1
+
+    def get_key(self):
+        """
+        Get the search key for this state.
+
+        Returns:
+            object: The search key for this state.
+        """
+        return self.state_key
+
+    def get_reward(self):
+        """
+        Get the reward for being in this state.
+
+        Returns:
+            float: The reward for being in this state.
+        """
+        return self.reward
+
+    def is_terminal(self):
+        """
+        Check if this state is terminal.
+
+        Returns:
+            bool: True if this state is terminal, False otherwise.
+        """
+        return self.is_terminal
+
+    def add_action(self, action):
+        """
+        Add an action to this state.
+
+        Parameters:
+            action (Action): An object of type Action.
+
+        Raises:
+            NameError: If the action's search key already exists in another action object stored in the list.
+            TypeError: If the object passed in is not of type Action.
+        """
+        if isinstance(action, Action):
+            action_key = action.getKey()
+            if action_key in [a.getKey() for a in self.actions]:
+                raise NameError(f"Action key '{action_key}' already exists in the state's actions.")
+            self.actions.append(action)
+            if self.count_actions:
+                self.action_counter[action_key] = 0
+            self.num_actions += 1
+        else:
+            raise TypeError("Action must be an instance of the Action class.")
+
+    def get_num_actions(self):
+        """
+        Get the number of actions this state can perform.
+
+        Returns:
+            int: The number of actions.
+        """
+        return self.num_actions
+
+    def get_count(self):
+        """
+        Get the count of actions performed and their results.
+
+        Returns:
+            dict: A dictionary containing the action counter and action information.
+        """
+        if not self.count_actions:
+            raise ValueError("Counting is not enabled for this state.")
+
+        action_info = {}
+        for action in self.actions:
+            action_info[action.getKey()] = action.get_count()
+
+        return self.action_counter, action_info

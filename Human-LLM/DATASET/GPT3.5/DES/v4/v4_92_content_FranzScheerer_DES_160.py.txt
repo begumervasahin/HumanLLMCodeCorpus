@@ -1,0 +1,170 @@
+import random
+import math
+import hashlib
+import sys
+
+def read_number(file_name):
+    with open(file_name, 'rb') as f:
+        num = 0
+        byte_str = f.read()
+        for byte in byte_str:
+            num = (num << 8) ^ ord(byte)
+    return num
+
+def hex_text_to_num(text):
+    result = 0
+    for char in text:
+        if '0' <= char <= '9':
+            result = (result << 4) + ord(char) - 48
+        elif 'a' <= char <= 'f':
+            result = (result << 4) + ord(char) - 87
+        elif 'A' <= char <= 'F':
+            result = (result << 4) + ord(char) - 55
+    return result
+
+prime = hex_text_to_num("05 177B8A2A 0FD6A4FF 55CDA06B 0924E125 F86CAD9B")
+a = hex_text_to_num("04 3182D283 FCE38807 30C9A2FD D3F60165 29A166AF")
+b = hex_text_to_num("02 0C61E945 9E53D887 1BCAADC2 DFC8AD52 25228035")
+n4 = hex_text_to_num("05 177B8A2A 0FD6A4FF 55CCA7B8 A1E21C88 BD53B2C1")
+
+def inv(b, m):
+    s = 0
+    t = 1
+    a = m
+    while b != 1:
+        q = a // b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t += m
+    return t
+
+def h(x):
+    dx1 = hashlib.sha256(x.encode()).digest()
+    res = 0
+    for cx in dx1:
+        res = (res << 8) ^ ord(cx)
+    return res % n4
+
+def gen_P(x, a, b):
+    while pow(x**3 + a*x + b, (prime - 1)/2, prime) != 1:
+        x += 1
+    y = pow(x**3 + a*x + b, (prime + 1)/4, prime)
+    return [x % prime, y % prime]
+
+def add_P(P, Q):
+    x1 = P[0]
+    x2 = Q[0]
+    y1 = P[1]
+    y2 = Q[1]
+    while x1 < x2:
+        x1 += prime
+    if x1 == x2:
+        s = ((3*(x1**2) + a) * inv(2*y1, prime)) % prime
+    else:
+        s = ((y1-y2) * inv(x1-x2, prime)) % prime
+    xr = s**2 - x1 - x2
+    yr = s * (x1-xr) - y1
+    return [xr % prime, yr % prime]
+
+def mul_P(P, n):
+    isFirst = True
+    res_P = P
+    if n < 0:
+        res_P[1] = prime - res_P[1]
+        n = (-1)*n
+    PP = res_P
+    while n > 0:
+        if n % 2 != 0:
+            if isFirst:
+                res_P = PP
+                isFirst = False
+            else:
+                res_P = add_P(res_P, PP)
+        PP = add_P(PP, PP)
+        n = n / 2
+    return res_P
+
+def verify(G, s, Y, e, m):
+    return e == h(str(add_P(mul_P(G,s),mul_P(Y,e))[0]) + m)
+
+def ecdsa_v(G, m, S, Y):
+    si = inv(S[0], n4)
+    hh = h(m + str(S[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * S[1]) % n4
+    return add_P(mul_P(G, u1), mul_P(Y, u2))[0] == S[1]
+
+xx = 1
+while pow(xx**3 + a*xx + b, (prime - 1)/2, prime) != 1:
+    xx += 1
+
+yy = pow(xx**3 + a*xx + b, (prime + 1)/4, prime)
+P = [xx, yy]
+
+f = open(sys.argv[1], 'r')
+message = f.read()
+f.close()
+
+y = [read_number('y0'), read_number('y1')]
+sig = [read_number('s0'), read_number('s1')]
+
+print("Public key: X:", y[0] % prime)
+print("Public key: Y:", y[1] % prime)
+print("Signature X:", sig[0])
+print("Signature Y:", sig[1])
+print()
+
+print("The verification of signature:", verify(P, sig[0], y, sig[1], message))
+
+x = random.randint(2, n4-1)
+ydsa = mul_P(P, x)
+
+def ecdsa(G, m, x):
+    k = h(m + 'ecdsa')
+    R = mul_P(G, k)
+    hh = h(m+str(R[0]))
+    s = ( inv(k,n4) * (hh + R[0]*x) ) % n4
+    return [s, R[0]]
+
+sig = ecdsa(P, message, x)
+
+print("The verification of ecdsa signature:", ecdsa_v(P, message, sig, ydsa))
+
+def write_number(number, fnam):
+    f = open(fnam, 'wb')
+    n = number
+    while n > 0:
+        byte = n % 256
+        n = n / 256
+        f.write(chr(byte))
+    f.close()
+
+def sign_schnorr(G, m, x):
+    k = h(m + 'kk2')
+    R = mul_P(G, k)
+    e = h(str(R[0]) + m)
+    return [(k - x*e) % n4, e]
+
+onetime_private_key = h('kk1_' + str(random.randint(2, n4-1)))
+sig = sign_schnorr(P, message, onetime_private_key)
+y = mul_P(P, onetime_private_key)
+
+write_number(sig[0], 's0')
+write_number(sig[1], 's1')
+write_number(y[0], 'y0')
+write_number(y[1], 'y1')
+
+bit_length = 0
+while 2**bit_length < n4:
+    bit_length += 1
+
+print("\nMore security checks ")
+print("Bit length:", bit_length)
+print("Check prime:", pow(7, prime-1, prime) == 1)
+print("Prime order:", pow(7, n4-1, n4) == 1)
+print("Period:", P == mul_P(P, n4+1))

@@ -1,0 +1,105 @@
+from primitives import calculate_prime_primitives
+from prime import get_primes
+from random import randint
+from textwrap import wrap
+from time import sleep
+from sys import stdout
+
+def print_animation(animation_string):
+    for _ in range(5):
+        stdout.write(animation_string)
+        stdout.flush()
+        sleep(1)
+    print("\n")
+
+def print_detailed_calculation(base, exponent, modulo, sender):
+    calculation_result = wrap(str(base ** exponent), width=100)
+    print(f"\nThe number {sender} calculates is: {base} ** {exponent} (mod {modulo})\n")
+    for line in calculation_result:
+        print(line)
+    print()
+
+print("Diffie-Hellman encryption\n")
+
+shared_prime = get_primes(1000)
+shared_base = calculate_prime_primitives(shared_prime)
+alice_secret = randint(1, 1000)
+bob_secret = randint(1, 1000)
+
+print("\nWe start with two publicly shared variables:\n")
+print("Alice and Bob agree upon these two variables to begin with:\n")
+print("1) A publicly shared symmetric key:", shared_prime,
+      "(symmetric because it is the same for both Alice and Bob)")
+print("   The symmetric key is always a prime number.")
+print("2) A publicly shared base:", shared_base)
+print("   The base is always a primitive root of the public key.")
+
+input("\nPress Enter to continue...")
+
+print("\nAlice and Bob now both choose a private number which is totally secret.")
+print("This number can be any number and does not have to be a prime or other special number.")
+sleep(7)
+
+alice_send = (shared_base ** alice_secret) % shared_prime
+print("\nAlice sends over the public channel (Internet):", alice_send)
+print("This is calculated using her secret number, the shared base, and the shared key.\n")
+sleep(7)
+print_animation("---->")
+
+next_bit = input("\nPress Enter to continue or 'a' then Enter to see the detailed calculation...")
+
+if next_bit == "a":
+    print_detailed_calculation(shared_base, alice_secret, shared_prime, "Alice")
+    next_bit = input("Press Enter to continue...")
+
+bob_send = (shared_base ** bob_secret) % shared_prime
+print("\nBob sends over the public channel (Internet):", bob_send)
+print("This is calculated using his secret number, the shared base, and the shared key.\n")
+sleep(7)
+print_animation("---->")
+
+next_bit = input("\nPress Enter to continue or 'a' then Enter to see the detailed calculation...")
+
+if next_bit == "a":
+    print_detailed_calculation(shared_base, bob_secret, shared_prime, "Bob")
+    next_bit = input("Press Enter to continue...")
+
+print("\nThis is where the term 'asymmetric' comes from, as both transmissions are different.\n")
+sleep(5)
+
+print("Next, both Alice and Bob privately calculate the shared secret.")
+print("So, Alice uses her secret with the number Bob just sent her and the public key to create another number.")
+
+alice_shared_secret = (bob_send ** alice_secret) % shared_prime
+print("Alice calculates the shared secret to be:", alice_shared_secret)
+
+next_bit = input("\nPress Enter to continue or 'a' then Enter to see the detailed calculation...")
+
+if next_bit == "a":
+    print_detailed_calculation(bob_send, alice_secret, shared_prime, "Alice")
+    next_bit = input("Press Enter to continue...")
+
+print("\nBob does the same but with the number Alice sent him.")
+
+bob_shared_secret = (alice_send ** bob_secret) % shared_prime
+print("Bob calculates the shared secret to be:", bob_shared_secret)
+
+next_bit = input("\nPress Enter to continue or 'a' then Enter to see the detailed calculation...")
+
+if next_bit == "a":
+    print_detailed_calculation(alice_send, bob_secret, shared_prime, "Bob")
+    next_bit = input("Press Enter to continue...")
+
+print("\nCheck that Alice's shared secret equals Bob's shared secret.")
+print_animation("*-*")
+
+if alice_shared_secret == bob_shared_secret:
+    print("\nThe shared secrets match, communication is encrypted securely.")
+else:
+    print("\nSomething is wrong. There is a secret mismatch, communication is not securely encrypted.")
+    exit(1)
+
+print("\nNow the shared secret can be used to decrypt the message by both Alice and Bob.")
+
+exit_string = input("\nPress Enter to exit...")
+exit(0)

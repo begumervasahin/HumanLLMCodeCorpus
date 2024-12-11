@@ -1,0 +1,99 @@
+import os
+from glob import glob
+import requests
+import numpy as np
+from DFS0_Generating import multDFS0Generating
+from projectSetup import tempDataFolder, outputFolderRainFall
+
+# URLs for data retrieval
+url = "http://example.com/data/luongmua.txt"
+urlTram = "http://example.com/data/DanhsachTram.txt"
+
+def create_directory(dir_name, remove_files=False):
+    """
+    Create a directory if it doesn't exist and optionally remove files inside.
+    """
+    if not os.path.isdir(dir_name):
+        try:
+            os.mkdir(dir_name)
+        except OSError:
+            print("Cannot create folder!")
+    else:
+        if remove_files:
+            files = glob(os.path.join(dir_name, '*.*'))
+            if files:
+                try:
+                    for file in files:
+                        os.remove(file)
+                except OSError:
+                    print("Cannot remove files")
+            else:
+                print("Folder is empty!")
+
+def download_data(url, filename):
+    """
+    Download data from a URL and save it to a file.
+    """
+    try:
+        r = requests.get(url, allow_redirects=True)
+        open(filename, 'wb').write(r.content)
+    except ValueError:
+        print("Oops! Cannot get data from the " + url)
+
+def fetch_all_data():
+    """
+    Fetch all necessary data from specified URLs.
+    """
+    create_directory('./DataFromWebsite')
+    download_data(url, "./DataFromWebsite/luongmua.txt")
+    download_data(urlTram, "./DataFromWebsite/DanhsachTram.txt")
+
+def convert_to_text_format():
+    """
+    Convert raw data from the website to text format.
+    """
+    data = np.loadtxt(fname='./DataFromWebsite/luongmua.txt', delimiter=';', skiprows=1, dtype='str')
+    tram_id = 0
+    filename = ""
+    file_handle = None
+    data_to_write = []
+    create_directory('./TempData', remove_files=True)
+
+    for record in data:
+        if tram_id != int(record[0]):
+            tram_id = int(record[0])
+            filename = f"./TempData/{record[0]}.txt"
+            if file_handle:
+                if data_to_write:
+                    file_handle.writelines(data_to_write[::-1])
+                    file_handle.close()
+            data_to_write = []
+            file_handle = open(filename, "w")
+            line = f"{record[2]},{record[1]}\n"
+            data_to_write.append(line)
+        else:
+            line = f"{record[2]},{record[1]}\n"
+            data_to_write.append(line)
+
+    if file_handle:
+        if data_to_write:
+            file_handle.writelines(data_to_write[::-1])
+            file_handle.close()
+
+def convert_to_dfs0_format():
+    """
+    Convert text data to DFS0 format using the multDFS0Generating function.
+    """
+    for key in tempDataFolder:
+        multDFS0Generating(tempDataFolder[key], outputFolderRainFall[key])
+
+def main():
+    """
+    Main function to execute the data retrieval and conversion tasks.
+    """
+    fetch_all_data()
+    convert_to_text_format()
+    convert_to_dfs0_format()
+
+if __name__ == '__main__':
+    main()

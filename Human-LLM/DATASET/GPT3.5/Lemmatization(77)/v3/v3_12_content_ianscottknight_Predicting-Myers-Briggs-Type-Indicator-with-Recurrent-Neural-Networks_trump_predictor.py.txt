@@ -1,0 +1,80 @@
+import os
+import csv
+import pickle
+import numpy as np
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from keras.preprocessing import sequence
+from keras.models import load_model
+
+# Constants
+MODELS_DIR = "models"
+DATA_DIR = "data"
+TRUMP_TWEETS_PATH = os.path.join(DATA_DIR, "trumptweets.csv")
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+MAX_POST_LENGTH = 40
+
+# Load Trump tweets
+def load_trump_tweets(path):
+    tweets = []
+    with open(path, "r", encoding="ISO-8859-1") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            tweets.append(row[0])  # Assuming the tweet is in the first column
+    return tweets
+
+# Preprocessing
+def preprocess(tweets, mbti_types, lemmatizer, stop_words):
+    preprocessed_tweets = []
+    for tweet in tweets:
+        tweet_lower = tweet.lower()
+        for mbti_type in mbti_types:
+            tweet_lower = tweet_lower.replace(" " + mbti_type, "")
+        preprocessed_tweet = " ".join([lemmatizer.lemmatize(word) for word in tweet_lower.split(" ") if word not in stop_words])
+        preprocessed_tweets.append(preprocessed_tweet)
+    return preprocessed_tweets
+
+# Prediction
+def determine_final_prediction(predictions, dimensions):
+    final_prediction = ""
+    for index, dimension in enumerate(dimensions):
+        dimension_prediction = float(sum(predictions[:, index]) / len(predictions))
+        prediction = dimension[1] if dimension_prediction >= 0.5 else dimension[0]
+        final_prediction += prediction
+        print(f"{dimension}: {dimension_prediction}")
+    print(f"\nFinal prediction: {final_prediction}")
+
+# Main function
+def main():
+    # Load Trump tweets
+    tweets = load_trump_tweets(TRUMP_TWEETS_PATH)
+    
+    # MBTI types
+    mbti_types = ["INFJ", "ENTP", "INTP", "INTJ", "ENTJ", "ENFJ", "INFP", "ENFP", "ISFP", "ISTP", "ISFJ", "ISTJ", "ESTP", "ESFP", "ESTJ", "ESFJ"]
+    mbti_types = [mbti.lower() for mbti in mbti_types]
+    
+    # Initialize lemmatizer and stopwords
+    lemmatizer = WordNetLemmatizer()
+    stop_words = stopwords.words("english")
+    
+    # Load models and make predictions
+    for dimension in DIMENSIONS:
+        # Load model
+        model = load_model(os.path.join(MODELS_DIR, f"rnn_model_{dimension}.h5"))
+        
+        # Load tokenizer
+        with open(os.path.join(MODELS_DIR, f"rnn_tokenizer_{dimension}.pkl"), "rb") as file:
+            tokenizer = pickle.load(file)
+        
+        # Preprocess data
+        preprocessed_tweets = preprocess(tweets, mbti_types, lemmatizer, stop_words)
+        tokenized_tweets = tokenizer.texts_to_sequences(preprocessed_tweets)
+        padded_sequences = sequence.pad_sequences(tokenized_tweets, maxlen=MAX_POST_LENGTH)
+        
+        # Make predictions
+        predictions = model.predict(padded_sequences)
+        determine_final_prediction(predictions, DIMENSIONS)
+
+if __name__ == "__main__":
+    main()

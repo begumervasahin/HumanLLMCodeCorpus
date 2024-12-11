@@ -1,0 +1,56 @@
+from flask import Flask, render_template, request
+import divisibility_dfa
+
+app = Flask(__name__)
+
+@app.route('/')
+def render_homepage():
+    """Render the homepage."""
+    return render_template('index.html')
+
+@app.route('/faq')
+def render_faq():
+    """Render the FAQ page."""
+    return render_template('faq.html')
+
+@app.route('/regex', methods=['POST'])
+def generate_regex():
+    """Generate regex based on user input."""
+    form_data = request.form
+
+    # Check if 'base' and 'divisor' fields are present in the form data
+    if 'base' not in form_data or 'divisor' not in form_data:
+        return 'Missing form fields'
+
+    # Extract base and divisor from the form data
+    base = form_data['base']
+    divisor = form_data['divisor']
+
+    # Validate the base input
+    valid_bases = ('binary', 'decimal', 'hexadecimal')
+    if base not in valid_bases:
+        return 'Invalid base'
+
+    # Validate the divisor input
+    valid_divisors = [str(i) for i in range(1, 10)]
+    if divisor not in valid_divisors:
+        return 'Invalid divisor'
+
+    # Convert divisor to an integer
+    divisor = int(divisor)
+
+    # Build DFA and set the start state
+    dfa = divisibility_dfa.build_dfa(base, divisor)
+    dfa.set_start(divisor)
+
+    # Render the regex template with the generated regex
+    return render_template('regex.html', regex=divisibility_dfa.dfa_to_regex(dfa, 0))
+
+# Determine host and port for running the app
+debug = False
+host = '127.0.0.1' if debug else '0.0.0.0'
+port = int(os.environ.get('PORT', 5000))
+
+# Run the app
+if __name__ == '__main__':
+    app.run(host=host, port=port, debug=debug)

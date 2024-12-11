@@ -1,0 +1,58 @@
+from HopfClass import *
+import numpy as np
+from itertools import product
+import scipy.sparse as sps
+def Taft_Element_Names(n,g,x):
+	out=[]
+	for i in range(0,n):
+		for j in range(0,n):
+			out.append(g+'^'+str(j)+x+'^'+str(i))
+	return out
+def Taft_Mult(n):
+	poly = [0]*(n+1)
+	poly[0]=1
+	poly[n]=-1
+	omega=np.roots(poly)
+	out = np.zeros((n**2,n**4),dtype=complex)
+	N=range(0,n)
+	for i, j, k in product(N,N,N):
+		for l in range(0,n-j):
+			out[((i+k)%n)+n*(j+l),i+n*j+(k+n*l)*n**2]=omega[(n-1)-(-j*k)%n]
+	out = sps.csr_matrix(out.tolist(),dtype=complex)
+	return out
+def Taft_Comult(n,mult):
+	dim = n**2
+	out=np.zeros((dim**2,dim),dtype=complex)
+	xplusg=np.zeros(dim)
+	xplusg[1]=1
+	xplusg[n]=1
+	temp = np.zeros(dim)
+	temp[0]=1
+	prods =[temp]
+	N=range(1,n)
+	for i in N:
+		temp2 = np.kron(temp,xplusg)
+		temp = mult.dot(temp2)
+		prods.append(temp)
+	N=range(0,n)
+	for i, j in product(N,N):
+		for l in range(0,j+1):
+			out[((i+l)%n)+(j-l)*n+(i+n*l)*dim,i+j*n]=prods[j][l+(j-l)*n]
+	return out
+def Taft_Counit(n):
+	out = np.zeros((n),dtype=complex)
+	for i in range(0,n):
+		out[i]=1
+	return out
+def Taft_Antipode(n):
+	dim=n**2
+	poly = [0]*(n+1)
+	N=range(0,n)
+	poly[0]=1
+	out=np.zeros((dim,dim),dtype=complex)
+	poly[n]=-1
+	omega=np.roots(poly)
+	for i, j in product(N,N):
+		out[((-i)%n)+j*n]=(-1)**j*omega[(i*j)%n]
+	out = sps.csr_matrix(out.tolist(),dtype=complex)
+	return out

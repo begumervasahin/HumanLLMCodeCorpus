@@ -1,0 +1,64 @@
+ME = 'Alice'
+RECEIVER = 'Bob'
+TEXT = 'secret message'
+MY_SECRET_KEY = 6
+SHARED_PRIME = 541
+SHARED_BASE = 10
+KEY = '00000:09000:90999:09009:00000'
+UNLOCKED = '00900:09090:09000:09990:09990'
+LOCKED = '00900:09090:09090:09990:09990'
+
+def create_message(destination, payload):
+    '''Create a message to be sent to the destination.'''
+    return '{}:{}:{}'.format(ME, destination, payload)
+
+def get_diffie_hellman_shared_secret(partner_calculated_key):
+    '''Calculate the Diffie-Hellman shared secret.'''
+    return (partner_calculated_key ** MY_SECRET_KEY) % SHARED_PRIME
+
+def rotate(letter, key):
+    '''Rotate a lower or uppercase letter by the key.'''
+    if letter.islower():
+        code = (ord(letter) - ord('a') + key) % 26 + ord('a')
+        return chr(code)
+    elif letter.isupper():
+        code = (ord(letter) - ord('A') + key) % 26 + ord('A')
+        return chr(code)
+    return letter
+
+def encrypt(plaintext, key):
+    '''Encrypt a message using a Caesar cipher.'''
+    ciphertext = ''
+    for letter in plaintext:
+        ciphertext += rotate(letter, key)
+    return ciphertext
+
+def decrypt(ciphertext, key):
+    '''Decrypt a message.'''
+    return encrypt(ciphertext, -key)
+
+encrypted = False
+key_sent = False
+
+print("Sending Diffie-Hellman calculated key to Bob...")
+CALCULATED_KEY = (SHARED_BASE ** MY_SECRET_KEY) % SHARED_PRIME
+message = create_message(RECEIVER, CALCULATED_KEY)
+print("Message Sent:", message)
+
+print("\nWaiting for response from Bob...\n")
+
+while not encrypted:
+    print("No response received yet...")
+    encrypted_text = input("Enter the encrypted message received from Bob: ")
+    print("Decrypting message...")
+    shared_secret = get_diffie_hellman_shared_secret(int(CALCULATED_KEY))
+    offset = shared_secret % 26
+    decrypted_message = decrypt(encrypted_text, offset)
+    print("Decrypted Message:", decrypted_message)
+    encrypted = True
+
+print("\nCommunication encrypted.")
+print("Sending encrypted message to Bob...")
+message = create_message(RECEIVER, encrypted_text)
+print("Message Sent:", message)
+print("\nMessage sent successfully. Exiting...")

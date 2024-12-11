@@ -1,0 +1,80 @@
+import os
+import csv
+import pickle
+import numpy as np
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from keras.preprocessing import sequence
+from keras.preprocessing import text
+from keras.models import load_model
+
+MODELS_DIR = "models"
+DATA_DIR = "data"
+TRUMP_TWEETS_PATH = os.path.join(DATA_DIR, "trumptweets.csv")
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+MODEL_BATCH_SIZE = 128
+TOP_WORDS = 2500
+MAX_POST_LENGTH = 40
+EMBEDDING_VECTOR_LENGTH = 20
+
+# Load Trump tweets
+x_test = []
+with open(TRUMP_TWEETS_PATH, "r", encoding="ISO-8859-1") as f:
+    reader = csv.reader(f)
+    for row in reader:
+        x_test.append(row[0])  # Assuming the tweet is in the first column
+
+# MBTI types
+types = [
+    "INFJ", "ENTP", "INTP", "INTJ", "ENTJ",
+    "ENFJ", "INFP", "ENFP", "ISFP", "ISTP",
+    "ISFJ", "ISTJ", "ESTP", "ESFP", "ESTJ", "ESFJ"
+]
+types = [x.lower() for x in types]
+
+# Initialize lemmatizer and stopwords
+lemmatizer = WordNetLemmatizer()
+stop_words = stopwords.words("english")
+
+# Function to lemmatize and preprocess data
+def preprocess_data(x):
+    preprocessed = []
+    for post in x:
+        temp = post.lower()
+        for type_ in types:
+            temp = temp.replace(" " + type_, "")
+        temp = " ".join([lemmatizer.lemmatize(word) for word in temp.split(" ") if word not in stop_words])
+        preprocessed.append(temp)
+    return preprocessed
+
+# Final prediction function
+def final_prediction(predictions):
+    final = ""
+    for k in range(len(DIMENSIONS)):
+        prediction = float(sum(predictions[:, k]) / len(predictions))
+        print(DIMENSIONS[k])
+        print(prediction)
+        if prediction >= 0.5:
+            final += DIMENSIONS[k][1]
+        else:
+            final += DIMENSIONS[k][0]
+    print("\nFinal prediction: {}".format(final))
+
+# Load models and preprocessors, make predictions
+for dim in DIMENSIONS:
+    # Load model
+    model = load_model(os.path.join(MODELS_DIR, f"rnn_model_{dim}.h5"))
+    
+    # Load tokenizer
+    with open(os.path.join(MODELS_DIR, f"rnn_tokenizer_{dim}.pkl"), "rb") as f:
+        tokenizer = pickle.load(f)
+    
+    # Preprocess data
+    preprocessed_tweets = preprocess_data(x_test)
+    tokenized = tokenizer.texts_to_sequences(preprocessed_tweets)
+    padded_sequences = sequence.pad_sequences(tokenized, maxlen=MAX_POST_LENGTH)
+    
+    # Make predictions
+    predictions = model.predict(padded_sequences)
+    final_prediction(predictions)

@@ -1,0 +1,110 @@
+import sys
+import glob
+import pickle
+import math
+from helper import *
+
+def sigmoid(x):
+    """Sigmoid function"""
+    return 1.0 / (1.0 + math.exp(-x))
+
+def dot_product(w, x):
+    """Dot product of two vectors"""
+    product = 0.0
+    for i in range(len(w)):
+        product += w[i] * x[i]
+    return product
+
+def calculate_probability(w, features):
+    """Probability calculation using dot product and sigmoid"""
+    result = dot_product(w, features)
+    return sigmoid(result)
+
+def predict_contact_probability(w, i, j, pssm):
+    """Predict the probability of a contact between residues i and j"""
+    feature_vector = get_feature_vector(i, j, pssm)
+    normalized_feature_vector = normalize_feature(feature_vector)
+    extended_feature_vector = [1] + normalized_feature_vector
+    probability = calculate_probability(w, extended_feature_vector)
+    return probability
+
+def classify_contacts(w, pssm):
+    """Classify all residue pairs in the protein"""
+    w = w[:]
+    predictions = {}
+    all_pairs = get_all_residue_pairs(len(pssm))
+    for pair in all_pairs:
+        i, j = pair
+        prob = predict_contact_probability(w, i, j, pssm)
+        predictions[pair] = prob
+    sorted_predictions = dict(sorted(predictions.items(), key=lambda x: x[1], reverse=True))
+    return sorted_predictions
+
+def calculate_accuracy(predictions, true_contacts, sequence_length):
+    """Calculate accuracy of predictions compared to true contact pairs"""
+    l10 = sequence_length // 10
+    l5 = sequence_length // 5
+    l2 = sequence_length // 2
+    predicted_pairs = list(predictions.keys())
+    hit10 = len(set(predicted_pairs[:l10]) & set(true_contacts))
+    hit5 = len(set(predicted_pairs[:l5]) & set(true_contacts))
+    hit2 = len(set(predicted_pairs[:l2]) & set(true_contacts))
+    print('Hits (top L/10):', hit10)
+    print('Hits (top L/5):', hit5)
+    print('Hits (top L/2):', hit2)
+    return hit10 / l10, hit5 / l5, hit2 / l2
+
+def main():
+    if len(sys.argv) != 4:
+        print("Error: Missing RR or PSSM files")
+        return
+
+    pssm_filepath, rr_filepath, store = sys.argv[1:]
+
+    with open(store, 'rb') as dump_file:
+        w = pickle.load(dump_file)
+
+    isfile = os.path.isfile(pssm_filepath)
+    if isfile:
+        pssm_data = read_pssm_file(pssm_filepath)
+        rr_data = read_rr_file(rr_filepath)
+    elif os.path.isdir(pssm_filepath):
+        pssm_files = sorted(glob.glob(pssm_filepath + '/*.pssm'))
+        rr_files = sorted(glob.glob(rr_filepath + '/*.rr'))
+    else:
+        print("Error: The argument is neither a file nor a directory")
+        return
+
+    print("Model loaded from", store)
+    print("Calculating accuracy...")
+
+    if isfile:
+        predictions = classify_contacts(w, pssm_data)
+        filename = 'predicted_' + os.path.basename(rr_filepath)
+        write_rr_file(filename, rr_data['seq'], predictions)
+        L10, L5, L2 = calculate_accuracy(predictions, rr_data['contact_pairs'], len(pssm_data))
+        print('Accuracy of top L/10, L/5, L/2 for the protein sequence are: %.4f%%, %.4f%%, %.4f%%' %
+              (L10 * 100, L5 * 100, L2 * 100))
+    else:
+        num_files = len(pssm_files)
+        sum_L10 = sum_L5 = sum_L2 = 0.0
+        for i in range(num_files):
+            pssm_data = read_pssm_file(pssm_files[i])
+            rr_data = read_rr_file(rr_files[i])
+            predictions = classify_contacts(w, pssm_data)
+            filename = 'predicted_' + os.path.basename(rr_files[i])
+            write_rr_file(filename, rr_data['seq'], predictions)
+            print('Counting hits for', os.path.basename(rr_files[i]))
+            L10, L5, L2 = calculate_accuracy(predictions, rr_data['contact_pairs'], len(pssm_data))
+            sum_L10 += L10
+            sum_L5 += L5
+            sum_L2 += L2
+
+        average_L10 = sum_L10 / num_files * 100
+        average_L5 = sum_L5 / num_files * 100
+        average_L2 = sum_L2 / num_files * 100
+        print('Average accuracy of top L/10, L/5, L/2 are: %.8f%%, %.8f%%, %.8f%%' % (average_L10, average_L5, average_L2))
+
+if __name__ == '__main__':
+    main()
+

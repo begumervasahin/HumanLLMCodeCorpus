@@ -1,0 +1,101 @@
+import copy
+from decimal import Decimal
+from bellman_ford import bellman_ford
+
+class Portfolio:
+    def __init__(self, currencies):
+        self.currencies = currencies
+
+    def increase_currency(self, name, amount):
+        if amount < 0:
+            raise ValueError('Amount must be positive')
+        self.currencies[name] = self.currencies.get(name, 0) + amount
+
+    def decrease_currency(self, name, amount):
+        if name not in self.currencies or self.currencies[name] < amount:
+            raise RuntimeError('Insufficient funds')
+        self.currencies[name] -= amount
+
+def apply_exchange_fee(rates, fee_in_percentage):
+    rates_copy = copy.deepcopy(rates)
+    for from_currency, to_currency_rates in rates_copy.items():
+        for to_currency in to_currency_rates:
+            to_currency_rates[to_currency] *= (1 - fee_in_percentage)
+    return rates_copy
+
+def transform_rates_to_log(rates):
+    rates_copy = copy.deepcopy(rates)
+    for from_currency, to_currency_rates in rates_copy.items():
+        for to_currency in to_currency_rates:
+            to_currency_rates[to_currency] = -Decimal(to_currency_rates[to_currency]).ln()
+    return rates_copy
+
+def find_shortest_path_for_exchange(portfolio, target_currency, transformed_rates):
+    source_currency = None
+    final_predecessor = None
+    shortest_distance = float('inf')
+    for name, amount in portfolio.currencies.items():
+        if name == target_currency:
+            continue
+        distance, predecessor = bellman_ford(transformed_rates, name)
+        if distance[target_currency] < shortest_distance:
+            shortest_distance = distance[target_currency]
+            final_predecessor = predecessor
+            source_currency = name
+    if source_currency is None:
+        raise RuntimeError('No route to {}'.format(target_currency))
+    route = [target_currency]
+    while route[0] != source_currency:
+        target = final_predecessor[route[0]]
+        route.insert(0, target)
+    return source_currency, route
+
+def calculate_full_exchange_rate(route, rates):
+    route_copy = route.copy()
+    full_exchange_rate = Decimal(1)
+    while len(route_copy) > 1:
+        from_currency, to_currency = route_copy[-2], route_copy[-1]
+        full_exchange_rate *= Decimal(rates[from_currency][to_currency])
+        route_copy.pop(-2)
+    return full_exchange_rate
+
+def perform_currency_exchange(portfolio, rates, fee, target_currency, amount):
+    if not portfolio.currencies:
+        raise RuntimeError('You have no currency')
+
+    fee_included_rates = apply_exchange_fee(rates, fee)
+    transformed_rates = transform_rates_to_log(fee_included_rates)
+    source_currency, route = find_shortest_path_for_exchange(portfolio, target_currency, transformed_rates)
+    full_exchange_rate = calculate_full_exchange_rate(route, fee_included_rates)
+    max_exchange_amount = Decimal(portfolio.currencies[source_currency]) * Decimal(full_exchange_rate)
+
+    if amount > max_exchange_amount:
+        currency_cost = portfolio.currencies[source_currency]
+    else:
+        currency_cost = Decimal(amount) / Decimal(full_exchange_rate)
+
+    while len(route) > 1:
+        from_currency, to_currency = route[0], route[1]
+        exchange_rate = fee_included_rates[from_currency][to_currency]
+        exchanged_amount = Decimal(currency_cost) * Decimal(exchange_rate)
+        portfolio.decrease_currency(from_currency, currency_cost)
+        portfolio.increase_currency(to_currency, exchanged_amount)
+        print(f'Exchanged {currency_cost} {from_currency} to {exchanged_amount} {to_currency}')
+        currency_cost = exchanged_amount
+        route.pop(0)
+
+# Example usage:
+initial_currencies = {'USD': 1000, 'EUR': 500, 'GBP': 300}
+portfolio = Portfolio(initial_currencies)
+
+exchange_rates = {
+    'USD': {'USD': 1.0, 'EUR': 0.9, 'GBP': 0.75},
+    'EUR': {'USD': 1.1, 'EUR': 1.0, 'GBP': 0.85},
+    'GBP': {'USD': 1.33, 'EUR': 1.18, 'GBP': 1.0}
+}
+
+exchange_fee = 0.01  # 1% fee
+target_currency = 'GBP'
+exchange_amount = 200
+
+perform_currency_exchange(portfolio, exchange_rates, exchange_fee, target_currency, exchange_amount)

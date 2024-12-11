@@ -1,0 +1,116 @@
+import os
+import socket
+import sys
+
+NODE_ID = 2
+SERVER_PORT = 6558
+BUFFER_SIZE = 1024
+
+def send_data_to_client(file_name, fsize):
+    """
+    Reads data from a file and sends it to the client.
+    
+    :param file_name: The name of the file to read from.
+    :param fsize: The size of the data to read.
+    :return: The data read from the file.
+    """
+    try:
+        with open(file_name, 'rb') as file:
+            data = file.read(fsize)
+    except Exception as e:
+        print("Error:", e)
+        return 1
+    return data
+
+def write_data_locally(obj_id, file_name, data):
+    """
+    Writes data locally to a file.
+    
+    :param obj_id: The identifier of the object.
+    :param file_name: The name of the file to write to.
+    :param data: The data to write to the file.
+    """
+    dir_name = '/'.join(file_name.split('/')[:-2]) + '/' + 'Node-' + str(NODE_ID) + '/' + obj_id + '/'
+    file_path = dir_name + file_name.split('/')[-1]
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    print("Writing to:", file_path)
+    with open(file_path, 'wb') as file:
+        file.write(data)
+
+def listening_server():
+    """
+    Runs a server as a data node to handle client requests.
+    """
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('127.0.0.1', SERVER_PORT))
+    server_socket.listen(5)
+    
+    while True:
+        conn, address = server_socket.accept()
+        print("Data node", NODE_ID, "got a connection")
+        choice = int(conn.recv(BUFFER_SIZE).decode('utf-8'))
+        
+        if choice == 3:
+            # Writing data locally
+            handle_write_request(conn)
+        elif choice == 1:
+            # Reading data locally
+            handle_read_request(conn)
+        elif choice == 2:
+            # Placeholder for future functionality
+            pass
+        else:
+            sys.exit("Invalid input!!")
+    
+    server_socket.close()
+
+def handle_write_request(conn):
+    """
+    Handles a request to write data locally.
+    
+    :param conn: The connection socket.
+    """
+    conn.send(b'ACK')
+    obj_id = conn.recv(BUFFER_SIZE).decode('utf-8')
+    print('Received obj_id:', obj_id)
+    conn.send(b'ACK')
+    file_name = conn.recv(BUFFER_SIZE).decode('utf-8')
+    print('Received file name:', file_name)
+    conn.send(b'ACK')
+    print('Receiving the file size')
+    fsize = int(conn.recv(BUFFER_SIZE).decode('utf-8'))
+    print('File size:', fsize)
+    conn.send(b'ACK')
+    data = conn.recv(fsize * 2)
+    print('Writing to the file')
+    write_data_locally(obj_id, file_name, data)
+    print("\n\n")
+    conn.close()
+
+def handle_read_request(conn):
+    """
+    Handles a request to read data locally.
+    
+    :param conn: The connection socket.
+    """
+    conn.send(b'ACK')
+    file_name = conn.recv(BUFFER_SIZE).decode('utf-8')
+    print('File name:', file_name)
+    conn.send(b'ACK')
+    try:
+        fsize = os.path.getsize(file_name)
+    except Exception as e:
+        print("Error:", e)
+        conn.send(b"1")  # Indicates failure
+        return
+    conn.send(str(fsize).encode('utf-8'))
+    if conn.recv(3).decode('utf-8') == "ACK":
+        data = send_data_to_client(file_name, fsize)
+        conn.send(data)
+    print("\n\n")
+    conn.close()
+
+if __name__ == '__main__':
+    listening_server()

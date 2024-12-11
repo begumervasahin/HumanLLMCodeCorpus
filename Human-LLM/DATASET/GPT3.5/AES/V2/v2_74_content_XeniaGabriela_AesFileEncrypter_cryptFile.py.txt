@@ -1,0 +1,162 @@
+import os
+import platform
+import subprocess
+import sys
+from base64 import b64encode, b64decode
+from datetime import datetime
+from Crypto.Cipher import AES
+import binascii
+import hashlib
+
+class Cipher:
+    osPlatform = platform.system().lower()
+    AES_modes = {"OFB": AES.MODE_OFB}
+    pic_formats = ["jpg", "png", "tif"]
+    actions = {'e': 'Encrypting', 'd': 'Decrypting', 't': 'Testing'}
+
+    def v_bytes(self, string):
+        return bytes(string, "utf-8") if sys.version_info[0] == 3 else string
+
+    def v_input(self, string):
+        return input(string) if sys.version_info[0] == 3 else raw_input(string)
+
+    def clearConsole(self):
+        if self.osPlatform.startswith("win"):
+            os.system("cls")
+        elif self.osPlatform.startswith("linux"):
+            os.system("history -c")
+        else:
+            print("Make sure to clear your command line history after running the script!!!")
+
+    def terminalSize(self):
+        if self.osPlatform.startswith("linux"):
+            os.system("resize -s 40 120")
+            return 120
+        elif self.osPlatform.startswith("win"):
+            os.system("mode con: cols=120 lines=40")
+            return 120
+        else:
+            return 80
+
+    def start(self, argv):
+        if len(argv) == 1:
+            print(self.usage)
+            sys.exit()
+        self.parse_args(argv)
+        self.prepareArgs()
+        if self.AES_args["-a"] == "e":
+            self.encryptFile()
+        elif self.AES_args["-a"] == "d":
+            self.decryptFile()
+        elif self.AES_args["-a"] == "t":
+            self.testDecryption()
+
+    def parse_args(self, strings):
+        self.AES_args = {}
+        self.required_args = ["-a", "-f", "-u", "-k"]
+        missing_args = set(self.required_args) - set(strings)
+        if len(strings) < 9:
+            print("\nMissing arguments!")
+        if len(missing_args) > 0:
+            for arg in missing_args:
+                print("   You forgot to define %s" % (arg))
+            sys.exit()
+        for arg in self.required_args:
+            try:
+                self.AES_args[arg] = strings[strings.index(arg) + 1]
+            except:
+                print("   You have to define the value of %s" % (arg))
+        if self.AES_args["-a"] == "e" and (len(self.AES_args["-u"]) < 5 or len(self.AES_args["-k"]) < 12):
+            print("\n   The key must consist of 12 characters and the username must consists of 5 characters at least")
+            sys.exit()
+        if self.AES_args["-a"] == "e" and (len(self.AES_args["-k"]) < 12):
+            print("\n   It is recommended to use a key and user name with 24 characters in total at least")
+            go_on = self.v_input("\n   Are you sure that you want to continue? Type y/n for yes/no: ")
+            if go_on == "n":
+                sys.exit()
+        self.clearConsole()
+        print("\n%s %s ..." % (self.actions[self.AES_args["-a"]], self.AES_args["-f"]))
+        return self.AES_args
+
+    def prepareArgs(self):
+        if self.AES_args["-a"] not in ["e", "d", "t"]:
+            print("\n-a must be e for encryption or d for decryption")
+            sys.exit()
+        self.start_crypto = datetime.now()
+        self.AES_args["-f"] = self.AES_args["-f"].replace("\\", "/")
+        self.AES_args["-k"] = self.buildKey(self.AES_args["-k"], 251)
+        self.AES_args["-u"] = self.buildKey(self.AES_args["-u"], 239)[11:27]       
+
+    def buildKey(self, key, modulus):
+        salt, index = self.v_bytes(""), 0
+        for i in 4*key:
+            index += 1
+            hexPosition = hex(int(binascii.hexlify(self.v_bytes(i)), 16)**index % modulus)[2:4].replace("L", "")
+            hexPosition = "0" + hexPosition if len(hexPosition) == 1 else hexPosition
+            salt += binascii.unhexlify(hexPosition)
+        newKey = hashlib.pbkdf2_hmac("sha512", self.v_bytes(key), salt, 2746398)   
+
+        return newKey[17:49]
+
+    def encryptFile(self):
+        with open(self.AES_args["-f"], "rb") as readFile:
+            plaintext = b64encode(readFile.read())
+            plaintext += (16-len(plaintext)%16)*b'\x00'
+        obj = AES.new(self.AES_args["-k"], self.AES_modes["OFB"], self.AES_args["-u"])
+        ciphertext = obj.encrypt(plaintext)
+        self.writeFile(ciphertext, "_encrypted.")
+
+    def decryptFile(self):
+        with open(self.AES_args["-f"], "rb") as readFile:
+            ciphertext = readFile.read()
+            if self.AES_args["-f"].split(".").pop() not in self.pic_formats:       
+                hextext = binascii.hexlify(ciphertext).replace(b"0d0a", b"0a")     
+                ciphertext = binascii.unhexlify(hextext)
+        obj = AES.new(self.AES_args["-k"], self.AES_modes["OFB"], self.AES_args["-u"])
+        try:
+            decryptedtext = obj.decrypt(ciphertext)
+            decryptedtext = b64decode(decryptedtext)
+            self.writeFile(decryptedtext, "_decrypted.")
+        except:
+            print("\n   Are you sure you chose the right action for the file? \n   %s seems not to be encrypted with this script.\n" % (self.AES_args["-f"]))
+
+    def testDecryption(self):
+        print("\ntesting the encryption-decryption-process without saving encryption to a file")
+        with open(self.AES_args["-f"], "rb") as readFile:
+            plaintext = b64encode(readFile.read())
+            plaintext += (16-len(plaintext)%16)*b'\x00'
+        obj = AES.new(self.AES_args["-k"], self.AES_modes["OFB"], self.AES_args["-u"])
+        ciphertext = obj.encrypt(plaintext)
+        obj2 = AES.new(self.AES_args["-k"], self.AES_modes["OFB"], self.AES_args["-u"])
+        decryptedtext = obj2.decrypt(ciphertext)
+        decodedtext = b64decode(decryptedtext)
+        self.writeFile(decodedtext, "_tested.")
+
+    def writeFile(self, text, direction):
+        self.end_crypto = datetime.now()
+        pathParts = self.AES_args["-f"].split(".")
+        filePath = pathParts[0] + direction + pathParts[1]
+        fileName = filePath.split("/").pop()
+        changedName = self.v_input("\nThe new file name will be %s. If you want another name, type it, else just press enter: " % (fileName))
+        print(changedName)
+        newFileName = fileName if changedName == "" else changedName.split(".")[0] + "." + fileName.split(".").pop()
+        newFilePath = filePath.replace(fileName, newFileName)
+        with open(newFilePath, "wb") as newFile:
+            newFile.write(text)
+        self.cleanUp(newFileName, newFilePath)
+
+    def cleanUp(self, newFileName, newFilePath):
+        width = self.terminalSize()
+        print("\n%s" % (width * "-"))
+        print("%s saved in %s" % (newFileName, newFilePath.replace(newFileName, "")))
+        print("\nComputation time: %s" % (str(self.end_crypto - self.start_crypto)[2:]))
+        print("%s" % (width * "-"))
+        delete = self.v_input("\nDo you want to delete the original file? Type y/n for yes/no: ")
+        if delete == "y":
+            os.remove(self.AES_args["-f"])
+            print("Deleted %s\n" % (self.AES_args["-f"]))
+        if self.osPlatform.startswith("linux"):
+            print("type 'history -c' to clear the current command line history")   
+
+if __name__ == '__main__':
+    Cipher().start(sys.argv)

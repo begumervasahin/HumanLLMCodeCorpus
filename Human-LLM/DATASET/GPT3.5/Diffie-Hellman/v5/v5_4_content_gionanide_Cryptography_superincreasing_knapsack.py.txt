@@ -1,0 +1,109 @@
+from random import randint
+
+CHARS_PER_BLOCK = 2
+BLOCK_SIZE = 8 * CHARS_PER_BLOCK
+
+def build_superincreasing_knapsack():
+    SIK = [0] * BLOCK_SIZE
+    for i in range(BLOCK_SIZE):
+        sum_ij = sum(SIK[:i])
+        SIK[i] = sum_ij + randint(1, 5)
+    
+    superi = 0
+    for i in range(len(SIK) - 1):
+        superi += SIK[i]
+        if superi > SIK[i + 1]:
+            print("NON SIK")
+    
+    return SIK
+
+def coprime(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a == 1
+
+def choose_m_n(SIK):
+    sum_i = sum(SIK)
+    m = randint(41, 100)
+    n = 0
+    
+    while n < sum_i or not coprime(m, sum_i + 1):
+        m = randint(41, 100)
+        n = sum_i + 1
+    
+    return m, n
+
+def build_general_knapsack(m, n, SIK):
+    GK = [(ai * m) % n for ai in SIK]
+    return GK
+
+def modulo_multiplicative_inverse(A, M):
+    gcd, x, y = extended_euclid_gcd(A, M)
+    if x < 0:
+        x += M
+    return x
+
+def extended_euclid_gcd(a, b):
+    s, old_s = 0, 1
+    t, old_t = 1, 0
+    r, old_r = b, a
+    
+    while r != 0:
+        quotient = old_r // r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    
+    return old_r, old_s, old_t
+
+def char_to_ascii(binary):
+    ascii_val = ord(binary)
+    binary = "{0:b}".format(ascii_val).zfill(8)
+    return binary
+
+def encrypt_N_char(chars, GK):
+    binary_chars = "".join(char_to_ascii(char)[::-1] for char in chars)
+    return sum(int(bit) * val for bit, val in zip(binary_chars, GK))
+
+def decrypt_N_char(number, SIK):
+    decrypted = ""
+    d = (number * mmi) % n
+    
+    for sik_i in reversed(SIK):
+        if d >= sik_i:
+            decrypted = "1" + decrypted
+            d -= sik_i
+        else:
+            decrypted = "0" + decrypted
+    
+    decrypted = decrypted[::-1]
+    char1, char2 = chr(bit_to_char(decrypted[:8])), chr(bit_to_char(decrypted[8:]))
+    return char1 + char2
+
+def bit_to_char(bitstring):
+    out = sum(int(bit) * (1 << i) for i, bit in enumerate(reversed(bitstring)))
+    return out
+
+def encrypt_message(message, GK):
+    encrypted = [encrypt_N_char(block.ljust(CHARS_PER_BLOCK), GK) for block in [message[i:i + CHARS_PER_BLOCK] for i in range(0, len(message), CHARS_PER_BLOCK)]]
+    return encrypted
+
+def decrypt_message(crypto_list, SIK):
+    plaintext = "".join(decrypt_N_char(num, SIK) for num in crypto_list)
+    return plaintext
+
+# Generating and using knapsack
+SIK = [1, 4, 6, 12, 25, 50, 103, 205, 409, 820, 1639, 3276, 6554, 13106, 26212, 52425]
+m, n = choose_m_n(SIK)
+mmi = modulo_multiplicative_inverse(m, n)
+GK = build_general_knapsack(m, n, SIK)
+
+# Encrypting and decrypting a message
+encrypted_text = decrypt_message(encrypt_message("ciao, io mi chiamo francesco", GK), SIK)
+print("Encrypted Text:", encrypted_text)
+
+with open("encrypted.txt", "r") as file:
+    encrypted_lines = file.readlines()
+    decrypted_lines = [decrypt_message([int(line, 16)], SIK) for line in encrypted_lines]
+    decrypted_text = "".join(decrypted_lines)
+    print("Decrypted Text:", decrypted_text)

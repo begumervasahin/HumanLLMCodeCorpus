@@ -1,0 +1,115 @@
+import os
+import operator
+from math import log10, sqrt
+from collections import Counter
+from nltk.tokenize import RegexpTokenizer
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+
+# Initialize tokenizer, stemmer, and stopwords
+tokenizer = RegexpTokenizer(r'[a-zA-Z]+')
+stemmer = PorterStemmer()
+stop_words = set(stopwords.words('english'))
+
+# Global variables
+document_frequencies = {}
+inverse_document_frequencies = {}
+documents = {}
+document_vectors = {}
+total_word_counts = {}
+
+# Tokenize function
+def tokenize(document):
+    tokens = tokenizer.tokenize(document.lower())
+    tokens = [stemmer.stem(token) for token in tokens if token not in stop_words]
+    return tokens
+
+# Increment document frequencies
+def increment_document_frequencies(term_frequency_vector):
+    for token in term_frequency_vector:
+        if token not in document_frequencies:
+            document_frequencies[token] = 1
+            total_word_counts[token] = term_frequency_vector[token]
+        else:
+            document_frequencies[token] += 1
+            total_word_counts[token] += term_frequency_vector[token]
+
+# Read files and calculate TF-IDF
+def read_files(corpus_root):
+    for filename in os.listdir(corpus_root):
+        with open(os.path.join(corpus_root, filename), "r", encoding='UTF-8') as file:
+            document = file.read()
+            tokens = tokenize(document)
+            term_frequency_vector = Counter(tokens)
+            documents[filename] = term_frequency_vector
+            increment_document_frequencies(term_frequency_vector)
+
+    num_documents = len(documents)
+    for token, document_frequency in document_frequencies.items():
+        inverse_document_frequencies[token] = log10(num_documents / document_frequency)
+
+# Calculate TF-IDF vector
+def calculate_tfidf_vector(term_frequency_vector, with_idf):
+    tfidf_vector = {}
+    vector_length = 0.0
+
+    for token, term_frequency in term_frequency_vector.items():
+        if with_idf:
+            tfidf = (1 + log10(term_frequency)) * get_inverse_document_frequency(token)
+        else:
+            tfidf = 1 + log10(term_frequency)
+
+        tfidf_vector[token] = tfidf
+        vector_length += pow(tfidf, 2)
+
+    if vector_length > 0:
+        vector_length = sqrt(vector_length)
+        for token, tfidf in tfidf_vector.items():
+            tfidf_vector[token] /= vector_length
+
+    return tfidf_vector
+
+# Cosine similarity
+def cosine_similarity(vector1, vector2):
+    common_terms = set(vector1) & set(vector2)
+    similarity = sum(vector1[token] * vector2[token] for token in common_terms)
+    return similarity
+
+# Get query vector
+def get_query_vector(query_string):
+    tokens = tokenize(query_string)
+    term_frequency_vector = Counter(tokens)
+    return calculate_tfidf_vector(term_frequency_vector, False)
+
+# Query function
+def query(query_string):
+    query_vector = get_query_vector(query_string)
+    scores = {filename: cosine_similarity(query_vector, tfidf_vector) for filename, tfidf_vector in document_vectors.items()}
+    return max(scores.items(), key=operator.itemgetter(1))[0]
+
+# Get TF-IDF vector for a filename
+def get_tfidf_vector(filename):
+    return document_vectors[filename]
+
+# Get IDF for a token
+def get_inverse_document_frequency(token):
+    return inverse_document_frequencies.get(token, 0)
+
+# Document-document similarity
+def document_document_similarity(filename1, filename2):
+    vector1 = get_tfidf_vector(filename1)
+    vector2 = get_tfidf_vector(filename2)
+    return cosine_similarity(vector1, vector2)
+
+# Query-document similarity
+def query_document_similarity(query_string, filename):
+    query_vector = get_query_vector(query_string)
+    document_vector = get_tfidf_vector(filename)
+    return cosine_similarity(query_vector, document_vector)
+
+# Read files and calculate TF-IDF
+read_files('./presidential_debates')
+
+# Calculate TF-IDF vectors for documents
+for filename, term_frequency_vector in documents.items():
+    document_vectors[filename] = calculate_tfidf_vector(term_frequency_vector, True)

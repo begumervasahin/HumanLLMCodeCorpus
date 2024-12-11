@@ -1,0 +1,105 @@
+from operator import itemgetter
+
+def calculate_sorted_mis(mis_dict):
+    """
+    Calculates and returns a sorted list of MIS values.
+
+    Args:
+    - mis_dict (dict): Dictionary containing MIS values for items.
+
+    Returns:
+    - sorted_mis (list): Sorted list of MIS values.
+    """
+    sorted_mis = sorted(mis_dict.items(), key=itemgetter(1))
+    return sorted_mis
+
+def create_item_list(item_list, mis_dict):
+    """
+    Creates a list of items from the MIS dictionary.
+
+    Args:
+    - item_list (list): List to store items.
+    - mis_dict (dict): Dictionary containing MIS values for items.
+    """
+    for item, _ in mis_dict.items():
+        item_list.append(item)
+
+def initial_pass(m_values, l_list, mis_dict, support_count):
+    """
+    Performs the initial pass over the items list.
+
+    Args:
+    - m_values (list): Sorted list of MIS values.
+    - l_list (list): List of frequent items.
+    - mis_dict (dict): Dictionary containing MIS values for items.
+    - support_count (dict): Dictionary containing support counts for items.
+    """
+    min_mis_required = None
+    conf_flag = True
+
+    for item, mis_val in m_values:
+        if support_count[item] >= mis_dict[item] and conf_flag:
+            l_list.append(item)
+            min_mis_required = mis_dict[item]
+            conf_flag = False
+        elif not conf_flag:
+            if support_count[item] >= min_mis_required:
+                l_list.append(item)
+
+def check_cannot_be_together(frequent_sets, cannot_be_together):
+    """
+    Checks the constraints for items that cannot be together.
+
+    Args:
+    - frequent_sets (list): List of frequent item sets.
+    - cannot_be_together (list): List of sets that cannot occur together.
+
+    Returns:
+    - valid_sets (list): List of valid item sets.
+    """
+    valid_sets = [[] for _ in range(len(frequent_sets))]
+    frequent_val = 0
+
+    for freq_set in frequent_sets:
+        if len(freq_set) > 0:
+            for item_set in freq_set:
+                if frequent_val > 0:
+                    for constraint_set in cannot_be_together:
+                        if set(constraint_set).issubset(item_set):
+                            pass
+                        else:
+                            valid_sets[frequent_val].append(item_set)
+                else:
+                    valid_sets[frequent_val].append(item_set)
+            frequent_val += 1
+    return valid_sets
+
+def check_must_have(frequent_sets, must_have):
+    """
+    Checks if must-have items are included in frequent item sets.
+
+    Args:
+    - frequent_sets (list): List of frequent item sets.
+    - must_have (set): Set of must-have items.
+
+    Returns:
+    - final_sets (list): List of final frequent item sets.
+    """
+    final_sets = [[] for _ in range(len(frequent_sets))]
+    frequent_val = 0
+
+    for freq_set in frequent_sets:
+        if len(freq_set) > 0:
+            temp = set()
+            for item_set in freq_set:
+                for must in must_have:
+                    if frequent_val > 1:
+                        if must in item_set:
+                            temp.add(item_set)
+                            continue
+                    else:
+                        if item_set in must_have:
+                            temp.add(item_set)
+            final_sets[frequent_val - 1].extend(list(temp))
+        frequent_val += 1
+    return final_sets

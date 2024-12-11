@@ -1,0 +1,104 @@
+import cv2
+import math
+import os
+import random
+import struct
+from Crypto.Cipher import AES
+
+def read_image(image_path):
+    """Reads an image and returns its dimensions."""
+    img = cv2.imread(image_path)
+    height, width, channels = img.shape
+    print(f"Image dimensions: Height={height}, Width={width}")
+    return img, height, width
+
+def slice_image(img, slices):
+    """Slices the image into multiple parts."""
+    height, width, _ = img.shape
+    width_of_slice = math.floor(width / slices)
+    sliced_images = []
+    for x in range(1, slices):
+        start = (x - 1) * width_of_slice + 1
+        end = x * width_of_slice
+        cropped = img[0:height, start:end]
+        sliced_images.append(cropped)
+        cv2.imwrite(f'd{x}.jpg', cropped)
+    cropped = img[0:height, (slices - 1) * width_of_slice:width]
+    sliced_images.append(cropped)
+    cv2.imwrite(f'd{slices}.jpg', cropped)
+    return sliced_images
+
+def encrypt_image(key, image_path):
+    """Encrypts an image using AES encryption."""
+    iv = ''.join(chr(random.randint(0, 0xFF)) for i in range(16))
+    encryptor = AES.new(key, AES.MODE_CBC, iv)
+    chunksize = 64 * 1024
+    filesize = os.path.getsize(image_path)
+    with open(image_path, 'rb') as infile:
+        with open(image_path + '.enc', 'wb') as outfile:
+            outfile.write(struct.pack('<Q', filesize))
+            outfile.write(iv.encode())
+            while True:
+                chunk = infile.read(chunksize)
+                if len(chunk) == 0:
+                    break
+                elif len(chunk) % 16 != 0:
+                    chunk += b' ' * (16 - len(chunk) % 16)
+                outfile.write(encryptor.encrypt(chunk))
+
+def move_encrypted_images(slices):
+    """Moves encrypted image files to server directories."""
+    for x in range(1, slices + 1):
+        os.rename(f'd{x}.jpg.enc', f'server{x}/d{x}.jpg.enc')
+
+def decrypt_image(key, encrypted_image_path):
+    """Decrypts an image using AES decryption."""
+    out_filename = os.path.splitext(encrypted_image_path)[0]
+    with open(encrypted_image_path, 'rb') as infile:
+        origsize = struct.unpack('<Q', infile.read(struct.calcsize('Q')))[0]
+        iv = infile.read(16)
+        decryptor = AES.new(key, AES.MODE_CBC, iv)
+        with open(out_filename, 'wb') as outfile:
+            while True:
+                chunk = infile.read(24 * 1024)
+                if len(chunk) == 0:
+                    break
+                outfile.write(decryptor.decrypt(chunk))
+            outfile.truncate(origsize)
+
+def concatenate_images(slices):
+    """Concatenates decrypted images into a final output."""
+    output_image = cv2.imread('d1.jpg')
+    for x in range(2, slices + 1):
+        image_name = f'd{x}_decrypted.jpg'
+        img = cv2.imread(image_name)
+        output_image = np.concatenate((output_image, img), axis=1)
+    cv2.imwrite('concatenated_output_final.jpg', output_image)
+
+if __name__ == "__main__":
+    input_image_path = 'messi.jpg'
+    slices = 3
+    key = '1234567890123456'
+
+    # Read the image
+    img, _, _ = read_image(input_image_path)
+
+    # Slice the image
+    sliced_images = slice_image(img, slices)
+
+    # Encrypt sliced images
+    for idx, image in enumerate(sliced_images, 1):
+        encrypt_image(key, f'd{idx}.jpg')
+
+    # Move encrypted images to server directories
+    move_encrypted_images(slices)
+
+    # Decrypt images in server directories
+    for x in range(1, slices + 1):
+        decrypt_image(key, f'server{x}/d{x}.jpg.enc')
+
+    # Concatenate decrypted images
+    concatenate_images(slices)
+
+    # Prompt user to exit
+    input("Processes complete. Press any key to exit.")

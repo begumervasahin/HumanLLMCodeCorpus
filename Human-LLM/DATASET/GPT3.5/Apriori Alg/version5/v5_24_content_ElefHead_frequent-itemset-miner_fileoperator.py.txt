@@ -1,0 +1,124 @@
+import os
+import re
+from preprocess import Preprocess
+
+class FileOperator:
+    def __init__(self, datapath="./", data="data", params="params", results="results"):
+        """
+        Initializes the FileOperator class with default or user-specified paths.
+        """
+        self._path = datapath
+        self._data = {"data": data, "params": params, "results": results}
+        self._patterns = {
+            "data": r"(data)([0-9]*)-*(|[0-9]*)(.txt)",
+            "params": r"(params)([0-9]*)-*(|[0-9]*)(.txt)"
+        }
+
+    def get_constraints(self, set_number=""):
+        """
+        Retrieves constraints from parameter files based on set number.
+        """
+        try:
+            preprocess = Preprocess()
+            params_path = os.path.join(self._path, self._data['params'])
+            count = []
+            constraints = []
+
+            for filename in os.listdir(params_path):
+                match = re.match(self._patterns['params'], filename)
+                if match and match.group(2) == set_number:
+                    count.append(match.group(3))
+                    with open(os.path.join(params_path, filename), "r") as param_file:
+                        constraints.append(preprocess.preprocessConstraints(param_file.read().split("\n")))
+
+            if not constraints:
+                return {"error": True, "message": "No constraints found."}
+            return {"error": False, "constraints": constraints, "count": count}
+
+        except FileNotFoundError:
+            return {"error": True, "message": "Parameter files not found."}
+
+    def get_dataset_numbers(self):
+        """
+        Retrieves dataset numbers from data filenames.
+        """
+        try:
+            data_path = os.path.join(self._path, self._data['data'])
+            dataset_numbers = []
+
+            for filename in os.listdir(data_path):
+                match = re.match(self._patterns['data'], filename)
+                if match:
+                    dataset_numbers.append(match.group(2))
+
+            if not dataset_numbers:
+                return {"error": True, "message": "No dataset numbers found."}
+            return {"error": False, "dataset_numbers": set(dataset_numbers)}
+
+        except FileNotFoundError:
+            return {"error": True, "message": "Data files not found."}
+
+    def get_transactions(self, set_number=""):
+        """
+        Retrieves transactions from data files based on set number.
+        """
+        preprocess = Preprocess()
+
+        try:
+            data_path = os.path.join(self._path, self._data['data'])
+
+            for filename in os.listdir(data_path):
+                match = re.match(self._patterns['data'], filename)
+                if match and match.group(2) == set_number:
+                    transaction = ""
+                    with open(os.path.join(data_path, filename), "r") as data_file:
+                        for transaction in self._get_next_transaction(data_file):
+                            yield preprocess.preprocessTransaction(transaction.strip())
+
+        except FileNotFoundError:
+            raise Exception("Data files not found.")
+
+    def _get_next_transaction(self, reader):
+        """
+        Generator function to read transactions from a file character by character.
+        """
+        transaction = ""
+        while True:
+            char = reader.read(1)
+            transaction += char
+            if char == "}":
+                yield transaction
+                transaction = ""
+            if not char:
+                break
+
+    def write_frequent_itemset(self, frequent, tail_counts=None, k=0, datanum="", paramnum=None):
+        """
+        Writes frequent itemsets to result files.
+        """
+        if not frequent or k <= 1:
+            return
+
+        filename = f"results{datanum}"
+        if paramnum:
+            filename += f"-{paramnum}"
+        filename += ".txt"
+
+        results_directory = os.path.join(self._path, self._data['results'])
+        if not os.path.exists(results_directory):
+            os.makedirs(results_directory)
+
+        absolute_path = os.path.join(results_directory, filename)
+        write_mode = 'a' if os.path.exists(absolute_path) else 'w'
+
+        with open(absolute_path, write_mode) as result_file:
+            result_file.write(f"Frequent {k}-itemsets:\n")
+            if k == 1:
+                for itemset, count in frequent:
+                    result_file.write(f"\t{count} : {{ {itemset} }}\n")
+            else:
+                for itemset, count in frequent:
+                    result_file.write(f"\t{count} : {{ {', '.join(map(str, itemset))} }}\n")
+                    if tail_counts:
+                        result_file.write(f"Tailcount: {tail_counts.get(str(itemset), 0)}\n")
+            result_file.write(f"\tTotal number of frequent {k}-itemsets = {len(frequent)}\n\n")

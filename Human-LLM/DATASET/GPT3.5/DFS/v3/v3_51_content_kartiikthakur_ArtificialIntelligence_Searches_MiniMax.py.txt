@@ -1,0 +1,95 @@
+from sys import maxsize
+
+class BinaryTree:
+    def __init__(self, root_id, value):
+        self.left = None
+        self.right = None
+        self.root_id = root_id
+        self.value = value
+
+    def get_left_child(self):
+        return self.left
+
+    def get_right_child(self):
+        return self.right
+
+    def set_node_value(self, value):
+        self.value = value
+
+    def get_node_value(self):
+        return self.value
+
+    def insert_right(self, root_id, value):
+        if self.right is None:
+            self.right = BinaryTree(root_id, value)
+        else:
+            new_tree = BinaryTree(root_id, value)
+            new_tree.right = self.right
+            self.right = new_tree
+
+    def insert_left(self, root_id, value):
+        if self.left is None:
+            self.left = BinaryTree(root_id, value)
+        else:
+            new_tree = BinaryTree(root_id, value)
+            new_tree.left = self.left
+            self.left = new_tree
+
+def print_tree(tree):
+    if tree is not None:
+        print_tree(tree.get_left_child())
+        print(tree.get_node_value())
+        print_tree(tree.get_right_child())
+
+max_value = maxsize
+min_value = -maxsize - 1
+
+def test_tree():
+    my_tree = BinaryTree("1_00", max_value)
+    my_tree.insert_left("1_10", min_value)
+    my_tree.insert_right("1_11", min_value)
+
+    # More insertions...
+
+    return my_tree
+
+tree = test_tree()
+
+def find_path(root, target_value, path=[]):
+    max_levels = 5
+    if not root:
+        return []
+    if root.get_node_value() == target_value:
+        path.append(root.root_id)
+        return path
+    path.append(root.root_id)
+    find_path(root.get_left_child(), target_value, path)
+    find_path(root.get_right_child(), target_value, path)
+    return path[:max_levels]
+
+def find_max_value(node):
+    if node.get_node_value() != max_value and node.get_node_value() != min_value:
+        return node.get_node_value()
+    children = [node.get_right_child(), node.get_left_child()]
+    for child in children:
+        min_val = find_min_value(child)
+        max_val = max(min_value, min_val)
+    return max_val
+
+def find_min_value(node):
+    if node.get_node_value() != max_value and node.get_node_value() != min_value:
+        return node.get_node_value()
+    children = [node.get_right_child(), node.get_left_child()]
+    for child in children:
+        max_val = find_max_value(child)
+        min_val = min(max_value, max_val)
+    return min_val
+
+def minimax(tree):
+    optimal_value = find_max_value(tree)
+    return optimal_value
+
+optimal_value = minimax(tree)
+print("The Optimal value of the MiniMax Algorithm : " + str(optimal_value))
+print("\n The output Path is :")
+print(find_path(tree, optimal_value))

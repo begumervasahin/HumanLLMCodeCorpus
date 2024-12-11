@@ -1,0 +1,56 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Function to preprocess text
+def preprocess_text(text):
+    lemmatizer = WordNetLemmatizer()
+    stopwords_set = set(stopwords.words('english'))
+    cleaned_text = []
+    for word in text.split():
+        word = lemmatizer.lemmatize(word.lower())
+        if word not in stopwords_set and word not in string.punctuation and len(word) > 2 and not word.isdigit():
+            cleaned_text.append(word)
+    return cleaned_text
+
+# Start time
+start_time = time()
+
+# Read the words list CSV file
+words_df = pd.read_csv('wordslist.csv', header=0)
+words = words_df['word']
+
+# Directory containing emails
+emails_directory = "emails/"
+
+# Open the frequency CSV file for writing
+with open("frequency.csv", "w+") as output_file:
+    # Write the header
+    output_file.write(','.join(words) + ',output\n')
+
+    # Iterate over files in the directory
+    for idx, file in enumerate(os.listdir(emails_directory)):
+        file_name = os.path.join(emails_directory, file.decode("utf-8"))
+        
+        # Open the file for reading
+        with open(file_name, "r", encoding='utf-8', errors='ignore') as file_reading:
+            word_count = np.zeros(words.size)
+            
+            # Iterate over words in the file
+            for word in preprocess_text(file_reading.read()):
+                if word in words.values:
+                    word_count[words[words == word].index[0]] += 1
+
+            # Write word frequency to CSV file
+            output_file.write(','.join(map(str, word_count)) + ',' + ("-1" if len(file_name) == 68 else "1") + '\n')
+
+        # Print progress
+        if (idx + 1) % 100 == 0:
+            print("Done", idx + 1)
+
+# Print execution time
+print("Time taken to preprocess the emails:", round(time() - start_time, 2), "seconds")

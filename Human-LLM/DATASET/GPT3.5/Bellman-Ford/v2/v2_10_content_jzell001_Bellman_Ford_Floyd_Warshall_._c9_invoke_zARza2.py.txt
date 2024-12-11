@@ -1,0 +1,113 @@
+import sys
+import re
+import time
+import itertools
+
+# Regular expressions for parsing input
+graphRE = re.compile(r"(\d+)\s(\d+)")
+edgeRE = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+def BellmanFord(graph):
+    pathPairs = []
+    print("\nEntered BellmanFord\n")
+    
+    vertices = graph[0]
+    edges = graph[1]
+    
+    inf = float('inf')
+    dist = [inf] * len(vertices)
+    dist[0] = 0
+
+    print("dist before:", dist)
+
+    vertex_permutations = list(itertools.permutations(vertices, 2))
+
+    for _ in range(1, len(vertices)):
+        for u, v in vertex_permutations:
+            if dist[v] > dist[u] + float(edges[u][v]):
+                dist[v] = dist[u] + float(edges[u][v])
+
+    print("\ndist after:", dist)
+
+    print("\nChecking if negative cycle exists:")
+    negCycle = any(dist[v] > dist[u] + float(edges[u][v]) for u, v in vertex_permutations)
+
+    if negCycle:
+        print("A negative cycle exists")
+    else:
+        print("No negative cycles exist")
+
+    y = [(('0', '0'), '0')]
+    print(y)
+    print("\nExiting BellmanFord")
+    return pathPairs
+
+def FloydWarshall(graph):
+    pathPairs = []
+    # Implement Floyd-Warshall algorithm
+    return pathPairs
+
+def readFile(filename):
+    vertices = []
+    edges = []
+
+    with open(filename, 'r') as inFile:
+        line1 = inFile.readline()
+        graphMatch = graphRE.match(line1)
+        if not graphMatch:
+            print(line1 + " not properly formatted")
+            quit(1)
+
+        num_vertices = int(graphMatch.group(1))
+        vertices = list(range(num_vertices))
+
+        for _ in range(num_vertices):
+            row = [float("inf")] * num_vertices
+            edges.append(row)
+
+        for line in inFile.readlines():
+            line = line.strip()
+            edgeMatch = edgeRE.match(line)
+            if edgeMatch:
+                source = int(edgeMatch.group(1))
+                sink = int(edgeMatch.group(2))
+                weight = int(edgeMatch.group(3))
+                edges[source][sink] = weight
+
+    print("\nvertex    edges")
+    for i in range(len(edges)):
+        print(str(vertices[i]) + "         " + str(edges[i]))
+
+    return (vertices, edges)
+
+def main(filename, algorithm):
+    algorithm = algorithm[1:]
+    graph = readFile(filename)
+    print("\nalgorithm:", algorithm)
+
+    if algorithm in ('b', 'B'):
+        print("\nabout to call BellmanFord")
+        BellmanFord(graph)
+        print("\ncalled BellmanFord\n")
+    elif algorithm in ('f', 'F'):
+        FloydWarshall(graph)
+    elif algorithm == "both":
+        start = time.process_time()
+        BellmanFord(graph)
+        end = time.process_time()
+        BFTime = end - start
+
+        start = time.process_time()
+        FloydWarshall(graph)
+        end = time.process_time()
+        FWTime = end - start
+
+        print("Bellman-Ford timing:", BFTime)
+        print("Floyd-Warshall timing:", FWTime)
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python bellman_ford.py -<f|b> <input_file>")
+        quit(1)
+
+    main(sys.argv[2], sys.argv[1])

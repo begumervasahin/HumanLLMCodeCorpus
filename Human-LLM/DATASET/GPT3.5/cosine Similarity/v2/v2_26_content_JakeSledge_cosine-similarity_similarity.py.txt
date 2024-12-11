@@ -1,0 +1,77 @@
+import numpy as np
+
+def create_words_array(documents):
+    words = []
+    for doc in documents:
+        with open(doc, 'r') as file:
+            text = file.read()
+        text = text.split()
+        for word in text:
+            cleaned_word = word.replace(";", "")
+            if cleaned_word not in words:
+                words.append(cleaned_word)
+    return words
+
+def text_to_vec(doc, words):
+    with open(doc, 'r') as file:
+        text = file.read()
+        text = text.split()
+        text_vec = []
+        for word in words:
+            count = text.count(word)
+            text_vec.append(count)
+        return text_vec
+
+def calculate_angle(vec_one, vec_two):
+    dot_product = np.dot(vec_one, vec_two)
+    mag_one = np.linalg.norm(vec_one)
+    mag_two = np.linalg.norm(vec_two)
+    cos_val = dot_product / (mag_one * mag_two)
+    angle_degrees = np.degrees(np.arccos(cos_val))
+    return angle_degrees
+
+def compute_angle_between_docs(docs, vecs):
+    angles = {}
+    for i in range(len(vecs) - 1):
+        for j in range(i + 1, len(vecs)):
+            angle_key = "{} and {}".format(docs[i], docs[j])
+            angles[angle_key] = calculate_angle(vecs[i], vecs[j])
+    return angles
+
+def print_angles(angle_dict):
+    for key, value in angle_dict.items():
+        print("The angle between {} is {}".format(key, value))
+
+def run_similarity_analysis(docs):
+    words = create_words_array(docs)
+    vectors = [text_to_vec(doc, words) for doc in docs]
+    angle_dict = compute_angle_between_docs(docs, vectors)
+    print_angles(angle_dict)
+
+def compute_average_vector(docs, words):
+    vectors = [text_to_vec(doc, words) for doc in docs]
+    avg_vec = np.mean(vectors, axis=0)
+    return avg_vec
+
+def calculate_angles_for_train_test(train_sets, test_doc):
+    total_docs = [test_doc] + [doc for person in train_sets for doc in person]
+    words = create_words_array(total_docs)
+    avg_vecs = {person[0]: compute_average_vector(person, words) for person in train_sets}
+    test_vec = text_to_vec(test_doc, words)
+    angles = {}
+    for train_doc, train_vec in avg_vecs.items():
+        angles["{} and {}".format(train_doc, test_doc)] = calculate_angle(train_vec, test_vec)
+    return angles
+
+def identify_author(train_sets, test_doc):
+    angles = calculate_angles_for_train_test(train_sets, test_doc)
+    min_angle_key = min(angles, key=angles.get)
+    print("The document '{}' is likely written by the same author as '{}'".format(test_doc, min_angle_key))
+
+# Example Usage
+docs_to_compare = ["doc1.txt", "doc2.txt", "doc3.txt"]
+run_similarity_analysis(docs_to_compare)
+
+training_sets = [["author1_doc1.txt", "author1_doc2.txt"], ["author2_doc1.txt", "author2_doc2.txt"]]
+test_document = "test_doc.txt"
+identify_author(training_sets, test_document)

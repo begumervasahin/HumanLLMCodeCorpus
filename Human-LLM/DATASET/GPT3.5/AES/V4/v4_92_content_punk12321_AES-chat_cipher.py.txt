@@ -1,0 +1,108 @@
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+
+class AESMessage:
+    """
+    A class for AES encryption and decryption of messages.
+    """
+    
+    def __init__(self, key, plaintext=None, ciphertext=None):
+        """
+        Initializes the AESMessage object with a key and either plaintext for encryption or ciphertext for decryption.
+        
+        Args:
+            key (bytes): The encryption/decryption key.
+            plaintext (str, optional): The plaintext message to be encrypted.
+            ciphertext (bytes, optional): The ciphertext to be decrypted.
+            
+        Raises:
+            ValueError: If neither plaintext nor ciphertext is provided.
+        """
+        self.key = key
+        if plaintext:
+            self.plaintext = plaintext
+            self.ciphertext, self.iv = self._encrypt()
+        elif ciphertext:
+            self.ciphertext = ciphertext
+            self.plaintext, self.iv = self._decrypt()
+        else:
+            raise ValueError("Either plaintext or ciphertext must be provided.")
+    
+    def _encrypt(self):
+        """
+        Encrypts the plaintext using AES in CBC mode.
+        
+        Returns:
+            tuple: The encrypted message and the initialization vector used for encryption.
+        """
+        iv = get_random_bytes(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        padded_plaintext = self._pad(self.plaintext)
+        encrypted_message = cipher.encrypt(padded_plaintext)
+        return encrypted_message, iv
+    
+    def _decrypt(self):
+        """
+        Decrypts the ciphertext using AES in CBC mode.
+        
+        Returns:
+            tuple: The decrypted plaintext and the initialization vector extracted from the ciphertext.
+        """
+        iv = self.ciphertext[:AES.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted_message = cipher.decrypt(self.ciphertext[AES.block_size:]).decode('utf-8')
+        return self._unpad(decrypted_message), iv
+    
+    def _pad(self, message):
+        """
+        Pads the message to make its length a multiple of the block size.
+        
+        Args:
+            message (str): The message to pad.
+            
+        Returns:
+            bytes: The padded message.
+        """
+        padding_required = AES.block_size - len(message) % AES.block_size
+        padded_message = message + " " * padding_required
+        return padded_message.encode('utf-8')
+    
+    def _unpad(self, message):
+        """
+        Removes padding from the message.
+        
+        Args:
+            message (str): The message to unpad.
+            
+        Returns:
+            str: The unpadded message.
+        """
+        return message.rstrip(' ')
+    
+    def pack(self):
+        """
+        Packages the ciphertext with the initialization vector.
+        
+        Returns:
+            bytes: The concatenated initialization vector and ciphertext.
+        """
+        return self.iv + self.ciphertext
+
+class InvalidMessageException(Exception):
+    """
+    Custom exception for invalid message operations.
+    """
+    pass
+
+# Example usage
+if __name__ == "__main__":
+    key = get_random_bytes(16)  # AES key must be 16, 24, or 32 bytes long
+    plaintext = "Hello, World! AES encryption in action."
+    
+    # Encrypt the message
+    message = AESMessage(key, plaintext=plaintext)
+    print(f"Encrypted message: {message.ciphertext}")
+    
+    # Decrypt the message
+    decrypted_message = AESMessage(key, ciphertext=message.ciphertext)
+    print(f"Decrypted message: {decrypted_message.plaintext}")

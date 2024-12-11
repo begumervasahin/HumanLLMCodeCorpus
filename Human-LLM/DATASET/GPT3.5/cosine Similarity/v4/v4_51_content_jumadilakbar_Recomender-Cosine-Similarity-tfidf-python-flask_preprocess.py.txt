@@ -1,0 +1,31 @@
+import string
+import pandas as pd
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
+
+class TextPreprocessor:
+    def __init__(self):
+        self.stemmer = StemmerFactory().create_stemmer()
+        self.stopword_remover = StopWordRemoverFactory().create_stop_word_remover()  
+
+    def preprocess(self, text):
+        stemmed_text = self.stemmer.stem(text)
+        cleaned_text = self.stopword_remover.remove(stemmed_text)
+        lowercase_text = cleaned_text.lower()
+        preprocessed_text = lowercase_text.translate(str.maketrans('', '', string.punctuation)).split()
+        return preprocessed_text
+
+if __name__ == '__main__':
+    preprocessor = TextPreprocessor()
+
+    data = pd.read_csv('Coba.csv', sep=',')
+
+    preprocessed_documents = []
+    titles = data['TOPIK'].tolist()
+    for title in titles:
+        preprocessed_title = preprocessor.preprocess(title)
+        preprocessed_documents.append(' '.join(preprocessed_title))
+
+    data['preprocessed'] = preprocessed_documents
+
+    data.to_csv('Coba.csv', index=False)

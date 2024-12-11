@@ -1,0 +1,27 @@
+import unittest
+import redis
+from rq import Connection, Worker
+from flask.cli import FlaskGroup
+from your_project.worker import create_app  # Replace 'your_project.worker' with the correct import path
+
+# Create Flask app and FlaskGroup instance
+app = create_app()
+cli = FlaskGroup(create_app=create_app)
+
+# Define a command to run the RQ worker
+@cli.command('run_worker')
+def run_worker():
+    # Get Redis URL from app config
+    redis_url = app.config['REDIS_URL']
+
+    # Connect to Redis
+    redis_connection = redis.from_url(redis_url)
+
+    # Set up RQ worker with the specified queues
+    with Connection(redis_connection):
+        worker = Worker(app.config['QUEUES'])
+        worker.work()
+
+# Entry point to run CLI commands using FlaskGroup
+if __name__ == '__main__':
+    cli()

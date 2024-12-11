@@ -1,0 +1,44 @@
+import requests
+import json
+import warnings
+
+# Suppress SSL warnings
+warnings.filterwarnings('ignore')
+
+# Define constants
+URL = "https://172.27.26.163:9999/des"
+HEADERS = {
+    'Content-type': 'application/json',
+    'Origin': 'https://172.27.26.163:9999',
+    'Referer': 'https://172.27.26.163:9999/game/caves.swf'
+}
+DATA = {
+    "password": "555acfd4d3c1b7a398d71e4c1538ad4d",
+    "teamname": "Amalgam",
+    "plaintext": "password"
+}
+
+def main():
+    # Read plaintext passwords from input file
+    with open('input.txt') as input_file:
+        plaintexts = input_file.readlines()
+
+    # Open output file for writing ciphertext passwords
+    with open('response.txt', 'w+') as output_file:
+        # Iterate through each plaintext in the input file
+        for plaintext_line in plaintexts:
+            plaintext = plaintext_line.split(',')[0].strip()
+            DATA["plaintext"] = plaintext  # Update the plaintext in the data payload
+
+            # Send POST request to the server
+            response = requests.post(URL, json=DATA, headers=HEADERS, verify=False)
+
+            # Check if the request was successful (status code 200)
+            if response.status_code == 200:
+                ciphertext = json.loads(response.text)["ciphertext"]  # Extract ciphertext from the response
+                output_file.write(f"{ciphertext}\n")  # Write the ciphertext to the output file
+            else:
+                print("Failed to retrieve ciphertext")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,79 @@
+class GridNode:
+    def __init__(self, x, y, grid_size=9):
+        self.x = x
+        self.y = y
+        self.data = None
+        self.grid_size = grid_size
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
+    def set_f_value(self, f):
+        self.f = f
+
+    def get_f_value(self):
+        return self.f
+
+    def get_coordinates(self):
+        return (self.x, self.y)
+
+    def set_data(self, data):
+        self.data = data
+
+    def get_data(self):
+        return self.data
+
+    def get_neighbors(self, grid):
+        neighbors = []
+        for i in range(self.x - 1, self.x + 2):
+            for j in range(self.y - 1, self.y + 2):
+                if (i == self.x and j == self.y):
+                    continue
+                if (self._is_valid(i, j)):
+                    neighbor_node = GridNode(i, j)
+                    neighbor_node.set_data(grid[i][j])
+                    neighbors.append(neighbor_node)
+        return neighbors
+
+    def _is_valid(self, x, y):
+        return 0 <= x < self.grid_size and 0 <= y < self.grid_size
+
+    def get_closed_neighbors(self, grid):
+        neighbors = self.get_neighbors(grid)
+        return [cell for cell in neighbors if cell.get_data() == ' ']
+
+    def check_cell(self, grid):
+        if self.data == 'F' or self.data == ' ':
+            return 0
+        bombs = 0
+        neighbors = self.get_neighbors(grid)
+        closed = self.get_closed_neighbors(grid)
+        closed_count = len(closed)
+        for cell in neighbors:
+            if cell not in closed and cell.get_data() == 'F':
+                bombs += 1
+        if closed_count != 0 and grid[self.x][self.y] != ' ':
+            return (int(grid[self.x][self.y]) - bombs) / closed_count
+        else:
+            return 0
+
+# Example usage:
+if __name__ == "__main__":
+    # Example grid
+    grid = [
+        ['1', 'F', ' ', '2', ' '],
+        [' ', '2', 'F', ' ', ' '],
+        ['1', ' ', ' ', '2', 'F'],
+        [' ', '1', '1', ' ', '1'],
+        [' ', ' ', ' ', '2', ' ']
+    ]
+
+    # Create a grid node
+    node = GridNode(1, 1)
+
+    # Set data for the node
+    node.set_data(grid[node.x][node.y])
+
+    # Check the cell
+    result = node.check_cell(grid)
+    print("Result:", result)

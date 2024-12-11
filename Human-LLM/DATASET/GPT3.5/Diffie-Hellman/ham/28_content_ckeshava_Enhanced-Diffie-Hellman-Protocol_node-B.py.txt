@@ -1,0 +1,40 @@
+import socket
+import constants
+import generateMessage as getMsg
+import getVerificationString as getS
+import getPrivateMessageFromNodeA as f
+import getPrivateSecretFromMessage as getP
+import generateSharedKey as genK
+s = socket.socket()
+print("Socket successfully created")
+port = constants.PORT
+s.bind(('', port))
+print("socket binded to %s" %(port))
+s.listen(5)
+print("socket is listening")
+c, addr = s.accept()
+print('Got CONNECTION from', addr)
+msg, privateSecret, Xb = getMsg.generateMessage()
+privateMessage = '1' + msg
+print("Message: {}".format(privateMessage))
+print("\nCOMMITMENT message received from DEVICE A")
+commit_value_from_A = int(c.recv(2048).decode())
+print("\nMESSAGE sent to DEVICE A")
+c.send(privateMessage.encode())
+print("\nVerifying COMMITMENT and OPENING it")
+open_value_from_A = c.recv(2048).decode()
+private_message_A = f.getPrivateMessageFromNodeA(commit_value_from_A, open_value_from_A)
+print("COMMITMENT successfully VERIFIED")
+print("\nExtracting PRIVATE SECRET(g^Xa) and AUTHENTICATION STRING(Na) of DEVICE A")
+private_secret_from_A, N_a =  getP.getPrivateSecretFromMessage(private_message_A)
+print("\nVerifying the AUTHENTICATION STRINGS Na and Nb")
+S = getS.getVerificationString(privateMessage[(-1)*constants.RANDOM_STRING_LENGTH:], N_a)
+c.send(S.encode())
+S_from_A = c.recv(2048).decode()
+if S == S_from_A:
+    print("Authenticity of DEVICE A is VERIFIED\n")
+    print("\nThe SHARED KEY is:")
+    print("{}\n".format(genK.generateSharedKey(private_secret_from_A, Xb )))
+else:
+    print("Authenticity of  DEVICE A is NOT VERIFIED\n")
+c.close()

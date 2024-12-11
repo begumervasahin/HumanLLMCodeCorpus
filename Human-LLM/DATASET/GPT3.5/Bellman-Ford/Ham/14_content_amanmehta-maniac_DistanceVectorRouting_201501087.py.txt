@@ -1,0 +1,112 @@
+from collections import *
+import pdb
+import socket
+import re, time
+from threading import Thread
+from random import randint
+import os,re,socket,time,hashlib
+from datetime import datetime
+from collections import *
+class Server(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+    def run(self):
+        port = 60000
+        s = socket.socket()
+        host = ""
+        s.bind((host, port))
+        s.listen(5)
+        conn, addr = s.accept()
+        for i in range(1,N):
+            for u in range(1,N+1):
+                tosend=""
+                for v in range(1,N+1):
+                    tosend = tosend + str(v) + ' ' + str(d[u][v]) + "\n"
+                forwd_table_u = tosend
+                hashed = hashlib.md5(forwd_table_u).hexdigest()
+                for v in graph[u]:
+                    conn.send(forwd_table_u)
+                    time.sleep(0.01)
+                    conn.send(str(v))
+                    time.sleep(0.01)
+                    conn.send(str(u))
+                    time.sleep(0.01)
+                    conn.send(hashed)
+                    time.sleep(0.01)
+        time.sleep(0.01)
+        conn.send("Bye")
+        conn.close()
+class Receiver(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+    def run(self):
+        distance = defaultdict()
+        ii=0
+        s = socket.socket()
+        host = ""
+        port = 60000
+        s.connect((host, port))
+        s.send('Hello server!')
+        while True:
+            ii+=1
+            data = s.recv(1024)
+            if ii%4 == 1:
+                dist = data
+            elif ii%4 == 2:
+                node = int(data)
+            elif ii%4 == 3:
+                sender = int(data)
+            else:
+                hashVal = data;
+                ch = hashlib.md5(dist).hexdigest()
+                if ch == hashVal:
+                    dist = dist.split('\n')
+                    for i in range(len(dist) - 1):
+                        dist[i] = dist[i].split()
+                        dist[i][0], dist[i][1] = int(dist[i][0]), int(dist[i][1])
+                        distance[dist[i][0]] = dist[i][1]
+                    for j in graph:
+                        if d[node][j] > distance[j] + graph[sender][node]:
+                            d[node][j] = distance[j] + graph[sender][node]
+                else:
+                    print 'Some error occurred! Try again.'
+            if data == 'Bye': break
+        s.close()
+if __name__ == '__main__':
+    graph, i = defaultdict(dict), 0
+    N = 0
+    with open('test2') as f:
+        lines = f.readlines()
+        N = int(lines[0])
+        for i in range(1+int(lines[0])):
+            gf = lines[i].split()
+            if i != 0:
+                k=1
+                for l in range(int(gf[0])):
+                    if int(gf[k]) not in graph[i]:
+                        graph[int(gf[k])][i] = int(gf[k+1])
+                    else:
+                        graph[int(gf[k])][i] = min(graph[i][int(gf[k])], int(gf[k+1]))
+                    k=k+2
+    d = defaultdict(dict)
+    for node in range(1,N+1):
+        for Node in range(1,N+1):
+            if node != Node:
+                d[node][Node] = 10**123
+            else: d[node][Node] = 0
+    rec=Receiver()
+    ser=Server()
+    ser.start()
+    time.sleep(0.3)
+    rec.start()
+    ser.join()
+    rec.join()
+    print N
+    for i in range(1,N+1):
+        print N - 1,
+        for j in range(1,N+1):
+            if i!=j:
+                if d[i][j] >= 10**90:
+                    print j, 'inf',
+                else: print j,d[i][j],
+        print

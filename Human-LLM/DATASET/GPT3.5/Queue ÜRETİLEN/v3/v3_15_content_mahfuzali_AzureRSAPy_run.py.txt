@@ -1,0 +1,43 @@
+import azure.cosmos.cosmos_client as cosmos_client
+import azure.cosmos.errors as errors
+
+class DatabaseConfig:
+    HOST = 'mock_host'
+    MASTER_KEY = 'mock_master_key'
+    DATABASE_ID = 'mock_database_id'
+    COLLECTION_ID = 'mock_collection_id'
+    DATABASE_LINK = f'dbs/{DATABASE_ID}'
+
+class CosmosClientWrapper:
+    def __init__(self, host, master_key):
+        self.client = cosmos_client.CosmosClient(host, {'masterKey': master_key})
+
+    def create_database(self, database_id):
+        try:
+            self.client.CreateDatabase({"id": database_id})
+        except errors.HTTPFailure as e:
+            if e.status_code != 409:
+                raise errors.HTTPFailure(e.status_code)
+
+    def create_collection(self, database_link, collection_id):
+        try:
+            self.client.CreateContainer(database_link, {"id": collection_id})
+            print(f'Collection with id \'{collection_id}\' created')
+        except errors.HTTPFailure as e:
+            if e.status_code == 409:
+                print(f'Collection with id \'{collection_id}\' was found')
+            else:
+                raise errors.HTTPFailure(e.status_code)
+
+def main():
+    cosmos_client_instance = CosmosClientWrapper(DatabaseConfig.HOST, DatabaseConfig.MASTER_KEY)
+    try:
+        cosmos_client_instance.create_database(DatabaseConfig.DATABASE_ID)
+        cosmos_client_instance.create_collection(DatabaseConfig.DATABASE_LINK, DatabaseConfig.COLLECTION_ID)
+    except errors.HTTPFailure as e:
+        print('\nrun_sample has caught an error. {0}'.format(e._http_error_message))
+    finally:
+        print("\nrun_sample done")
+
+if __name__ == '__main__':
+    main()

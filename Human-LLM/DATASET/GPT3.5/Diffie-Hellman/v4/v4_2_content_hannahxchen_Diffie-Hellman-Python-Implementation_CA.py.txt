@@ -1,0 +1,54 @@
+import socket
+from Crypto import Random
+from Crypto.PublicKey import RSA
+
+# Generate RSA keys for the client and server
+rng1 = Random.new().read
+RSAkey1 = RSA.generate(1024, rng1)
+privatekey1 = RSAkey1
+publickey1 = RSAkey1.publickey()
+
+rng2 = Random.new().read
+RSAkey2 = RSA.generate(1024, rng2)
+privatekey2 = RSAkey2
+publickey2 = RSAkey2.publickey()
+
+# Create dictionaries to store keys
+client_keys = {'Client': privatekey1.exportKey(), 'Server': publickey1.exportKey()}
+server_keys = {'Client': publickey2.exportKey(), 'Server': privatekey2.exportKey()}
+
+# Create a socket for the Certificate Authority (CA)
+ca_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print("Socket created")
+
+# Bind the socket to a port
+ca_socket.bind(('localhost', 9999))
+print("Socket bind complete")
+
+# Listen for incoming connections
+ca_socket.listen(5)
+print("Server is now listening...")
+
+while True:
+    # Accept connections
+    connection, address = ca_socket.accept()
+    print("Connected with " + address[0])
+
+    # Receive the user name
+    user = connection.recv(1024)
+
+    # Send the appropriate key based on the user name
+    if user in client_keys:
+        connection.sendall(client_keys[user])
+        print("Sent client's key to the client")
+    elif user in server_keys:
+        connection.sendall(server_keys[user])
+        print("Sent server's key to the client")
+    else:
+        print("Access denied!")
+
+    # Close the connection
+    connection.close()
+
+# Close the CA socket
+ca_socket.close()

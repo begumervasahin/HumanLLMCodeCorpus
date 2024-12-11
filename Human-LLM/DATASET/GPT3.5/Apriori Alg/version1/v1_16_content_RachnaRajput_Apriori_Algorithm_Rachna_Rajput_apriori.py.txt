@@ -1,0 +1,135 @@
+import json
+import sys
+
+class AprioriAlgorithm:
+
+    def apriori(self, json_data, value):
+        array = json_data
+        thres = 0.3 * len(array)
+        phase1_list = []
+
+        res = []
+        for item in array:
+            res = list(set(res) | set(item))
+
+        mylist = []
+        d = [[res[elem]] for elem in range(len(res))]
+        if value:
+            print("C1:", d)
+
+        dict_count = {}
+        for arr in array:
+            for subarr in arr:
+                if subarr not in dict_count:
+                    dict_count[subarr] = 1
+                else:
+                    count = dict_count[subarr]
+                    count += 1
+                    dict_count[subarr] = count
+
+        for item in d:
+            for subitem in item:
+                count = dict_count[subitem]
+                if count >= thres:
+                    mylist.append(subitem)
+
+        l1 = [[res[elem]] for elem in range(len(mylist))]
+        if value:
+            print("L1:", l1)
+        else:
+            for item in l1:
+                phase1_list.append(item)
+
+        c2 = []
+        dict_count = {}
+        k = 1
+
+        for i in range(1, len(l1) + 1):
+            for j in range(i + 1, len(l1) + 1):
+                mylist = []
+                mylist.append(i)
+                mylist.append(j)
+                dict_count[k] = 1
+                k += 1
+                c2.append(mylist)
+
+        if value:
+            print("C2:", c2)
+
+        k = 1
+        for elem in c2:
+            count = 0
+            for arr in array:
+                if set(elem) <= set(arr):
+                    count += 1
+                    dict_count[k] = count
+            k += 1
+
+        l2 = []
+        for i in range(1, len(dict_count) + 1):
+            if dict_count[i] >= thres:
+               l2.append(c2[i - 1])
+
+        if value:
+            print("L2: ", l2)
+        else:
+            for item in l2:
+                phase1_list.append(item)
+
+        y = 3
+        while len(l2) != 0:
+            c3 = []
+            for i in range(0, len(l2) // 2 + 1):
+                for j in range(i + 1, len(l2) // 2 + 1):
+                    if l2[i][0] == l2[j][0]:
+                        mylist = []
+                        for x in range(1, len(l2[i])):
+                            mylist.append(l2[i][x])
+                            mylist.append(l2[j][x])
+                        mylist.sort()
+                        for item in l2:
+                            if set(mylist) == set(item):
+                                mylist.append(l2[i][0])
+                                mylist.sort()
+                                myset = set(mylist)
+                                mylist = list(myset)
+                                c3.append(mylist)
+
+            s = "C" + str(y) + ": "
+            if value:
+                print(s, c3)
+
+            k = 1
+            dict_count = {}
+            for elem in c3:
+                count = 0
+                for arr in array:
+                    if set(elem) <= set(arr):
+                        count += 1
+                        dict_count[k] = count
+                k += 1
+
+            l3 = []
+            for i in range(1, len(dict_count) + 1):
+                if dict_count[i] >= thres:
+                   l3.append(c3[i - 1])
+
+            s = "L" + str(y) + ": "
+            if value:
+                print(s, l3)
+            else:
+                for item in l3:
+                    phase1_list.append(item)
+
+            l2 = l3
+            y += 1
+
+        return phase1_list
+
+if __name__ == '__main__':
+    with open(sys.argv[1]) as json_file:
+        json_data = json.load(json_file)
+
+    checker = True
+    apriori_instance = AprioriAlgorithm()
+    apriori_instance.apriori(json_data, checker)

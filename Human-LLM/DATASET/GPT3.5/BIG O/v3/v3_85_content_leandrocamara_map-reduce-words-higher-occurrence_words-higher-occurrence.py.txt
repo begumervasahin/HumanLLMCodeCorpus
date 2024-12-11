@@ -1,0 +1,69 @@
+import csv
+import glob
+import mincemeat
+import os
+from stopwords import allStopWords
+
+def file_contents(file_name):
+    """Reads the contents of a file."""
+    with open(file_name, 'r') as f:
+        return f.read()
+
+def mapfn(k, v):
+    """Map function to process each line in a file."""
+    for line in v.splitlines():
+        fields = line.split(':::')
+        authors = fields[1]
+        title = fields[2]
+        valid_book = ''
+
+        for word in title.split():
+            word = word.strip('.,:?()"\'')  # Remove punctuation
+            if word.lower() not in allStopWords:  # Check if the word is not a stopword
+                for author in authors.split('::'):
+                    if author in {'Grzegorz Rozenberg', 'Philip S. Yu'}:
+                        valid_book = f'author: {author}; title: {title}'
+                        yield word, author
+        if valid_book:
+            print(valid_book)
+
+def reducefn(k, v):
+    """Reduce function to aggregate word occurrences per author."""
+    total_philip = total_rozenberg = 0
+    has_philip = has_rozenberg = False
+
+    for item in v:
+        if item == 'Grzegorz Rozenberg':
+            has_rozenberg = True
+            total_rozenberg += 1
+        if item == 'Philip S. Yu':
+            has_philip = True
+            total_philip += 1
+
+    if total_philip > 5 or total_rozenberg > 5:
+        authors = ''
+        if has_rozenberg:
+            authors += f'Grzegorz Rozenberg: {total_rozenberg}; '
+        if has_philip:
+            authors += f'Philip S. Yu: {total_philip}'
+        return [authors]
+    else:
+        return None
+
+path = '/home/leandro/Documents/puc/06-solutions/activities/map-reduce-words-higher-occurrence/'
+text_files = glob.glob(os.path.join(path, 'data', '*'))
+
+source = {file_name: file_contents(file_name) for file_name in text_files}
+
+s = mincemeat.Server()
+s.datasource = source
+s.mapfn = mapfn
+s.reducefn = reducefn
+
+results = s.run_server(password="mapreduce")
+
+with open(os.path.join(path, 'result.csv'), 'w') as csvfile:
+    writer = csv.writer(csvfile)
+    for k, v in results.items():
+        if v is not None:
+            writer.writerow([k, v])

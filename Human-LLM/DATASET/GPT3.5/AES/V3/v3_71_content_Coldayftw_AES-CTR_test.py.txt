@@ -1,0 +1,62 @@
+import string
+import unittest
+from aes import AES
+
+def pad_hex(s, length):
+    """Adds leading zeros to a hexadecimal string."""
+    return s[2:].zfill(length)
+
+def add_spaces_to_hex(hex_str):
+    """Adds spaces between every two characters in a hexadecimal string."""
+    return ' '.join(hex_str[i:i+2] for i in range(0, len(hex_str), 2))
+
+def read_lines_from_file(filename):
+    """Reads lines from a file and returns them as a list."""
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    return lines
+
+def hex_string_to_integer(hex_str):
+    """Converts a hexadecimal string to an integer."""
+    hex_str = '0x' + ''.join(hex_str.split())
+    return int(hex_str, 16)
+
+class AESTestCase(unittest.TestCase):
+    def setUp(self):
+        # Load the AES key from the file
+        key_lines = read_lines_from_file('key.txt')
+        aes_key = hex_string_to_integer(''.join(key_lines))
+        self.aes = AES(aes_key)
+
+    def test_encryption(self):
+        print("(Encryption)")
+        # Load input and counter values from files
+        input_lines = read_lines_from_file('en_input.txt')
+        counter_lines = read_lines_from_file('ctr.txt')
+
+        # Encrypt the input with AES
+        for input_line, counter_line in zip(input_lines, counter_lines):
+            counter = hex_string_to_integer(counter_line)
+            encrypted_input = self.aes.encrypt(counter)
+            input_value = hex_string_to_integer(input_line)
+            # XOR the encrypted input with the plaintext
+            ciphertext = encrypted_input ^ input_value
+            print(add_spaces_to_hex(pad_hex(hex(ciphertext), 32)).upper())
+
+    def test_decryption(self):
+        print("(Decryption)")
+        # Load input and counter values from files
+        input_lines = read_lines_from_file('de_input.txt')
+        counter_lines = read_lines_from_file('ctr.txt')
+
+        # Decrypt the input with AES
+        for input_line, counter_line in zip(input_lines, counter_lines):
+            counter = hex_string_to_integer(counter_line)
+            decrypted_input = self.aes.encrypt(counter)
+            input_value = hex_string_to_integer(input_line)
+            # XOR the decrypted input with the ciphertext
+            plaintext = decrypted_input ^ input_value
+            print(add_spaces_to_hex(pad_hex(hex(plaintext), 32)).upper())
+
+if __name__ == '__main__':
+    unittest.main()q

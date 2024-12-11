@@ -1,0 +1,61 @@
+import pyAesCrypt
+import extUtils
+import glob
+from os import remove, path
+
+# Set the buffer size for encryption/decryption
+BUFFER_SIZE = 64 * 1024
+
+def encrypt_file(input_file, output_file, password):
+    """Encrypts a single file."""
+    pyAesCrypt.encryptFile(input_file, output_file, password, BUFFER_SIZE)
+    # Remove the original plaintext file after encryption
+    remove(input_file)
+    return output_file
+
+def decrypt_file(input_file, output_file, password):
+    """Decrypts a single file."""
+    pyAesCrypt.decryptFile(input_file, output_file, password, BUFFER_SIZE)
+    # Remove the encrypted file after decryption
+    remove(input_file)
+    return output_file
+
+def encrypt(input_path, password):
+    """Encrypts either a file or a folder."""
+    if path.isfile(input_path):
+        # Encrypt a single file
+        return encrypt_file(input_path, extUtils.add_ext(input_path), password)
+    else:
+        # Encrypt all files in a folder
+        return encrypt_folder(input_path, password)
+
+def decrypt(input_path, password):
+    """Decrypts either a file or a folder."""
+    if path.isfile(input_path):
+        # Decrypt a single file
+        return decrypt_file(input_path, extUtils.remove_ext(input_path), password)
+    else:
+        # Decrypt all files in a folder
+        return decrypt_folder(input_path, password)
+
+def encrypt_folder(folder_path, password):
+    """Encrypts all files in a folder."""
+    files = glob.glob(path.join(folder_path, "**/*.*"), recursive=True)
+    encrypted_files = []
+    for file in files:
+        encrypted_files.append(encrypt(file, password))
+    return encrypted_files
+
+def decrypt_folder(folder_path, password):
+    """Decrypts all files in a folder."""
+    files = glob.glob(path.join(folder_path, "**/*.*"), recursive=True)
+    decrypted_files = []
+    for file in files:
+        decrypted_files.append(decrypt(file, password))
+    return decrypted_files
+
+# Example usage:
+# encrypted_file = encrypt("plaintext.txt", "password")
+# decrypted_file = decrypt("plaintext.txt.aes", "password")
+# encrypted_files = encrypt("folder_path", "password")
+# decrypted_files = decrypt("folder_path", "password")

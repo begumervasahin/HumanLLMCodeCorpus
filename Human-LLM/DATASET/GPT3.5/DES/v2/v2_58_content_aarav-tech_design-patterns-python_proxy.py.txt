@@ -1,0 +1,52 @@
+import abc
+
+# Abstract command class
+class AbstractCmd(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def execute(self, command):
+        pass
+
+# Concrete command class for real execution
+class RealCmd(AbstractCmd):
+    def execute(self, command):
+        print(f"{command} command executed.")
+
+# Proxy command class
+class ProxyCmd(AbstractCmd):
+    def __init__(self, user):
+        # Check if user is authorized
+        self.is_authorized = False
+        if user == "admin":
+            self.is_authorized = True
+        # Create real command executor
+        self.executor = RealCmd()
+        # Restricted commands for non-admin users
+        self.restricted_commands = ['rm', 'mv']
+
+    def execute(self, command):
+        # If user is authorized, execute the command
+        if self.is_authorized:
+            self.executor.execute(command)
+        else:
+            # Check if the command is restricted
+            if any([command.strip().startswith(cmd) for cmd in self.restricted_commands]):
+                raise Exception(f"{command} command is not allowed for non-admin users.")
+            else:
+                # Execute the command
+                self.executor.execute(command)
+
+# Main code
+if __name__ == '__main__':
+    # Create proxy command executors for admin and non-admin users
+    admin_executor = ProxyCmd("admin")
+    other_executor = ProxyCmd("other")
+    
+    # Test commands for both admin and non-admin users
+    try:
+        admin_executor.execute("ls -la")
+        admin_executor.execute("rm -rf /")
+        print("\n")
+        other_executor.execute("ls -la")
+        other_executor.execute("rm -rf")
+    except Exception as e:
+        print(e)

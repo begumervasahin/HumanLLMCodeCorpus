@@ -1,0 +1,44 @@
+from des_utils import generateKeys, get_bits, add_pads_if_necessary, encryptBlock, bin_to_hex
+from data_utils import joinNumbers
+
+def encrypt(message: str, key: str) -> str:
+    # Generate keys for encryption
+    encryption_keys = generateKeys(key)
+
+    # Convert the message to binary bits
+    binary_message = get_bits(message)
+
+    # Add necessary padding to the bits
+    padded_bits = add_pads_if_necessary(binary_message)
+
+    # Encrypt the message block by block
+    encrypted_blocks = []
+    for i in range(0, len(padded_bits), 64):
+        encrypted_blocks.extend(encryptBlock(padded_bits[i:i+64], encryption_keys))
+
+    # Convert the encrypted binary to hexadecimal
+    hex_cipher = ''
+    for i in range(0, len(encrypted_blocks), 4):
+        hex_cipher += bin_to_hex(joinNumbers(encrypted_blocks[i:i+4]))
+
+    return hex_cipher
+
+def decrypt(cipher: str, key: str) -> str:
+    # Generate keys for decryption
+    decryption_keys = generateKeys(key)
+    decryption_keys.reverse()
+
+    # Convert the cipher to binary bits
+    binary_cipher = get_bits(cipher)
+
+    # Decrypt the cipher block by block
+    decrypted_blocks = []
+    for i in range(0, len(binary_cipher), 64):
+        decrypted_blocks.extend(encryptBlock(binary_cipher[i:i+64], decryption_keys))
+
+    # Convert the decrypted binary to hexadecimal and remove trailing zeros
+    hex_message = ''
+    for i in range(0, len(decrypted_blocks), 4):
+        hex_message += bin_to_hex(joinNumbers(decrypted_blocks[i:i+4]))
+
+    return hex_message.rstrip('0')

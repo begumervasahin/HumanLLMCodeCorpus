@@ -1,0 +1,57 @@
+import nltk
+import re
+from nltk.corpus import stopwords
+
+def get_word_counts(tokenized, bags):
+    for word in tokenized:
+        bags[word] = bags.get(word, 0) + 1
+    return bags
+
+def calculate_matching_weights(bags_dict, user_bags):
+    matched_weights = {}
+    for faq, bag in bags_dict.items():
+        matched_weights[faq] = [user_bags.get(word, 0) * bag.get(word, 0) / sum(bag.values()) if word in bag else 0.0 for word in user_bags]
+    return matched_weights
+
+def preprocess_data(file_path, bags_dict, regexp):
+    with open(file_path) as data:
+        for line in data:
+            question, answer = map(lambda x: x.strip().lower(), line.split("?"))
+            combined_text = question + " " + answer
+            tokenized_text = nltk.word_tokenize(combined_text)
+            bags_dict[question] = get_word_counts(tokenized_text, {})
+
+def calculate_tfidf(matched_weights, user_bow_keys, bags_dict):
+    tfidf_scores = {}
+    for question, weights in matched_weights.items():
+        tfidf = sum(weights[i] * (50.0 / sum(1 for bag in bags_dict.values() if user_bow_keys[i] in bag)) for i in range(len(weights)))
+        tfidf_scores[question] = tfidf
+    return tfidf_scores
+
+def print_top_ten_results(matched_weights_sorted, table):
+    matched_count = 0
+    for question, score in matched_weights_sorted.items():
+        if matched_count == 10:
+            break
+        print("\n{}? {}".format(question, score))
+        print(table[question])
+        print("---")
+        matched_count += 1
+
+regexp = re.compile('[^a-zA-Z]')
+table = {}
+bags_dict = {}
+preprocess_data("data.txt", bags_dict, regexp)
+
+user_input = input("Enter a FAQ related to TOEFL: ")
+user_tokenized = regexp.sub(' ', user_input.lower())
+user_bow = get_word_counts(nltk.word_tokenize(user_tokenized), {})
+
+matched_weights = calculate_matching_weights(bags_dict, user_bow)
+matched_weights_next = calculate_tfidf(matched_weights, user_bow.keys(), bags_dict)
+matched_weights_sorted = dict(sorted(matched_weights_next.items(), key=lambda x: x[1], reverse=True))
+
+print("\n+++++++++++++++++++++++++++")
+print("+Top 10 results for Task 2+")
+print("+++++++++++++++++++++++++++")
+print_top_ten_results(matched_weights_sorted, table)

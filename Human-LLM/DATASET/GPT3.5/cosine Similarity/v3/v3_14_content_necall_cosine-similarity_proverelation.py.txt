@@ -1,0 +1,62 @@
+import distsim
+
+# Load the word vectors dictionary
+word_to_vec_dict = distsim.load_word2vec("nyt_word2vec.4k")
+
+# Define the two relation lists
+relationA = [
+    'act action add addition',
+    'attend attention decide decision',
+    'die death feed food',
+    'see scene grow growth',
+    'move movement advise advice',
+    'choose choice challenge challenge'
+]
+
+relationB = [
+    'buy bought eat ate',
+    'become became begin began',
+    'accept accepted add added',
+    'think thought build built',
+    'break broke wake woke',
+    'win won see saw',
+    'hold held hurt hurt',
+    'keep kept know knew',
+    'find found give gave',
+    'say said happen happened',
+    'offer offered open opened',
+    'pass passed tell told'
+]
+
+def calculate_accuracy(relation):
+    total_word = len(relation)
+    best1 = best5 = best10 = 0
+
+    for r in relation:
+        wordlist = r.split(' ')
+        w1, w2, w4 = word_to_vec_dict[wordlist[0]], word_to_vec_dict[wordlist[1]], word_to_vec_dict[wordlist[3]]
+
+        # Calculate the word closest to the expected word using vector arithmetic       
+        ret = distsim.show_nearest(word_to_vec_dict, w1 - w2 + w4, set([wordlist[0], wordlist[1], wordlist[3]]),
+                                   distsim.cossim_dense)
+
+        # Check if the expected word is in the top 1, 5, and 10 nearest words
+        if wordlist[2] == ret[0][0]:
+            best1 += 1
+        for i in range(5):
+            if wordlist[2] == ret[i][0]:
+                best5 += 1
+        for i in range(10):
+            if wordlist[2] == ret[i][0]:
+                best10 += 1
+
+    # Calculate the accuracy for top 1, 5, and 10 nearest words
+    acc_best1 = round(float(best1) / total_word, 2)
+    acc_best5 = round(float(best5) / total_word, 2)
+    acc_best10 = round(float(best10) / total_word, 2)
+
+    return acc_best1, acc_best5, acc_best10
+
+# Print the results for relationA and relationB
+print("Relation A Accuracy:", calculate_accuracy(relationA))
+print("Relation B Accuracy:", calculate_accuracy(relationB))

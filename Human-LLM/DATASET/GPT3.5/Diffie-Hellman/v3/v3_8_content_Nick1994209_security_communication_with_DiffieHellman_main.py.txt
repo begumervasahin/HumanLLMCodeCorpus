@@ -1,0 +1,53 @@
+import sys
+from PyQt5.QtWidgets import QWidget, QToolTip, QPushButton, QApplication, QFrame
+from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtGui import QFont, QColor
+import client_settings
+import server_settings
+
+class MainWidget(QWidget, client_settings.ClientSetSocketSettingsMixin, server_settings.ServerSetSocketSettingsMixin):
+    def __init__(self):
+        super().__init__()
+        self.objects_to_hide = ()
+        self.setup_GUI()
+
+    def setup_GUI(self):
+        self.create_frame()
+        self.create_buttons()
+        self.setWindowTitle('Client-Server Configuration')
+        self.setGeometry(450, 300, 300, 200)
+        self.show()
+
+    def create_frame(self):
+        frame = QFrame(self)
+        frame.setStyleSheet("QWidget { background-color: %s }" % QColor(0, 0, 0).name())
+        frame.setGeometry(0, 0, 800, 800)
+
+    def create_buttons(self):
+        QToolTip.setFont(QFont('SansSerif', 10))
+        
+        btn_server = self.create_button('Server', self.server_set_socket_settings_gui, 50, 50)
+        btn_client = self.create_button('Client', self.client_set_socket_settings_gui, 150, 50)
+        btn_exit = self.create_button('Quit', QCoreApplication.instance().quit, 200, 170)
+
+        self.objects_to_hide = (btn_exit, btn_client, btn_server)
+
+    def create_button(self, text, action, x, y):
+        button = QPushButton(text, self)
+        button.clicked.connect(action)
+        button.resize(button.sizeHint())
+        button.move(x, y)
+        return button
+
+    def hide_last_objects(self):
+        for obj in self.objects_to_hide:
+            obj.hide()
+
+    def show_current_objects(self):
+        for obj in self.objects_to_hide:
+            obj.show()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    main = MainWidget()
+    sys.exit(app.exec_())

@@ -1,0 +1,39 @@
+from util import getw, print_head
+from globals import Nb
+from inv_cipher import inv_cipher
+from key_expansion import key_expansion
+from cipher import cipher
+
+def main():
+    # Initial parameters
+    Nk_values = [4, 6, 8]
+    Nr_values = [10, 12, 14]
+    plaintext = bytearray.fromhex('00112233445566778899aabbccddeeff')
+
+    # Test for different key sizes
+    for Nk, Nr in zip(Nk_values, Nr_values):
+        key_hex = {
+            4: '000102030405060708090a0b0c0d0e0f',
+            6: '000102030405060708090a0b0c0d0e0f1011121314151617',
+            8: '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'
+        }[Nk]
+
+        key = bytearray.fromhex(key_hex)
+
+        print_head(plaintext, key)
+
+        # Generate key schedule
+        w = getw(Nb, Nr)
+        key_expansion(key, w, Nk, Nr)
+
+        # Encrypt plaintext
+        ciphertext = cipher(plaintext.copy(), w, Nr, debug=True)
+
+        # Decrypt ciphertext
+        out = inv_cipher(ciphertext, w, Nr, debug=True)
+
+        # Verify decryption
+        assert out == plaintext
+
+if __name__ == "__main__":
+    main()

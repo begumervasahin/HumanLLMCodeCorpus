@@ -1,0 +1,231 @@
+import os
+import pickle
+import math
+import numpy as np
+import time
+import threading
+import RPi.GPIO as GPIO
+import serial
+
+# Initialize GPIO and serial communication
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(2, GPIO.OUT)
+GPIO.setup(3, GPIO.OUT)
+GPIO.setup(18, GPIO.OUT, initial=GPIO.LOW)
+GPIO.output(18, GPIO.HIGH)
+ser = serial.Serial(
+    port='/dev/ttyUSB0',
+    baudrate=115200,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS,
+    timeout=0
+)
+
+# Load environment variables
+load_dotenv()
+device_id = os.getenv('id')
+
+# Initialize servo PWM objects
+servo_theta = GPIO.PWM(3, 50)
+servo_phi = GPIO.PWM(2, 50)
+
+# Global variables
+exit_thread = False
+current_mode = str(device_id)
+back_flag = True
+
+def main():
+    try:
+        start_time = time.time()
+        sequence = generate_sequence(device_id)
+        print('Mode sequence:', sequence)
+        path = pickle.load(open("path.p", "rb"))
+
+        # Start servo and handshake threads
+        servo_thread = threading.Thread(target=servo_path, args=(path, sequence))
+        handshake_thread = threading.Thread(target=handshake, args=(path, sequence))
+        handshake_thread.start()
+        servo_thread.start()
+        servo_thread.join()
+        handshake_thread.join()
+
+        end_time = time.time()
+        print("Start time:", start_time)
+        print("End time:", end_time)
+        print("Elapsed time:", end_time - start_time)
+    except KeyboardInterrupt:
+        ser.close()
+        raise
+
+def handshake(path, seq):
+    try:
+        global current_mode
+        print("Input waiting:", ser.in_waiting)
+        ser.read(ser.in_waiting)
+        ser.reset_input_buffer()
+        ser.reset_output_buffer()
+        ack_wait_time = 2 * path['ackWait']
+        slot_time = path['slotTime']
+        i = 0
+
+        while i < len(seq) and not exit_thread:
+            mode = seq[0]
+            print('Current mode:', mode)
+            slot_end_time = slot_time + time.time()
+            current_mode = mode
+
+            if current_mode == '1':
+                while time.time() < slot_end_time and not exit_thread:
+                    check_back_flag(slot_end_time)
+                    if slot_end_time - time.time() >= ack_wait_time:
+                        send_syn()
+                        listen_for_ack(ack_wait_time)
+                    elif slot_end_time - time.time() < ack_wait_time and (slot_end_time - time.time()) > 0:
+                        time.sleep(slot_end_time - time.time())
+            elif current_mode == '0':
+                listen_for_syn(slot_end_time, ack_wait_time)
+
+            i += 1
+    except KeyboardInterrupt:
+        ser.close()
+
+def send_syn():
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    ser.write(('hello').encode())
+
+def listen_for_ack(ack_wait_time):
+    global exit_thread
+    end_time = ack_wait_time + time.time()
+    timeout = end_time - time.time()
+
+    while end_time > time.time() and not exit_thread:
+        ser.timeout = timeout
+        x = ser.read(3)
+        try:
+            data = x.decode()
+            if data == 'ack':
+                exit_thread = True
+                print('Aligned!')
+                return
+        except Exception as e:
+            print(e)
+            ser.reset_output_buffer()
+
+def listen_for_syn(slot_end_time, ack_wait_time):
+    global exit_thread
+    while time.time() < slot_end_time:
+        check_back_flag(slot_end_time)
+        if time.time() >= slot_end_time:
+            return
+        if time.time() + ack_wait_time >= slot_end_time:
+            ser.timeout = slot_end_time - time.time()
+        else:
+            ser.timeout = ack_wait_time
+        x = ser.read(5)
+        try:
+            data = x.decode()
+            if data == 'hello':
+                for i in range(100):
+                    ser.write(('ack').encode())
+                exit_thread = True
+                print('Aligned!')
+                return
+        except Exception as e:
+            pass
+
+def check_back_flag(slot_end_time):
+    while back_flag == True and time.time() < slot_end_time:
+        ser.reset_input_buffer()
+        ser.reset_output_buffer()
+
+def servo_path(path, seq):
+    global back_flag
+    phi, theta, tran_wait, rec_wait = get_path(path)
+    i = 1
+    phi_rad, theta_rad = convert_values(phi[0], theta[0])
+    servo_phi.start(phi_rad)
+    servo_theta.start(theta_rad)
+
+    while not exit_thread:
+        j = i % len(phi)
+        phi_rad, theta_rad = convert_values(phi[j], theta[j])
+
+        if abs(phi[j] - phi[j-1]) >= 170:
+            back_flag = True
+            if phi[j-1] > 90:
+                angle = 180
+                direction = -1
+            else:
+                angle = 0
+                direction = 1
+
+            for back_i in range(100):
+                if exit_thread == True:
+                    break
+                phi_rad, theta_rad = convert_values(angle, theta[j-1])
+                servo_phi.ChangeDutyCycle(phi_rad)
+                servo_theta.ChangeDutyCycle(theta_rad)
+                angle += 1.8 * direction
+
+                if current_mode == '1':
+                    time.sleep(180 / path["wT"] / 100)
+                else:
+                    time.sleep(180 / path["wR"] / 100)
+
+            trans_sleep = 0
+            rec_sleep = 0
+        else:
+            back_flag = False
+            servo_phi.ChangeDutyCycle(phi_rad)
+            servo_theta.ChangeDutyCycle(theta_rad)
+
+        if current_mode == '1':
+            time.sleep(tran_wait[j])
+        else:
+            time.sleep(tran_wait[j])
+
+        i += 1
+
+def convert_values(phi, theta):
+    phi = translate((phi / 18) + 2.5, 2.5, 12.5, 2.2, 11.7)
+    theta = translate((theta / 18) + 2.5, 2.5, 12.5, 2.2, 11.7)
+    return phi, theta
+
+def translate(value, left_min, left_max, right_min, right_max):
+    left_span = left_max - left_min
+    right_span = right_max - right_min
+    value_scaled = float(value - left_min) / float(left_span)
+    return right_min + (value_scaled * right_span)
+
+def get_path(path):
+    phi = path['phi']
+    theta = path['theta']
+    tran_wait = path['tranWait']
+    rec_wait = path['recWait']
+
+    if device_id == '1':
+        phi += phi[::-1]
+        theta += theta[::-1]
+        tran_wait += tran_wait[::-1]
+        rec_wait += rec_wait[::-1]
+    elif device_id == '0':
+        phi = phi[::-1] + phi
+        theta = theta[::-1] + theta
+        tran_wait = tran_wait[::-1] + tran_wait
+        rec_wait = rec_wait[::-1] + rec_wait
+
+    return phi, theta, tran_wait, rec_wait
+
+def generate_sequence(device_id):
+    seq = str(device_id)
+    for i in range(0, math.floor(len(device_id) / 2) + 1):
+        seq += '0'
+    for i in range(0, math.ceil(len(device_id) / 2)):
+        seq += '1'
+    return seq
+
+if __name__ == "__main__":
+    main()

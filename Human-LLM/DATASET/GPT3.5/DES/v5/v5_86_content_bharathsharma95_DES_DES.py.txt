@@ -1,0 +1,60 @@
+"""
+Created on Sat Oct 26 18:08:31 2019
+@author: gorthy
+"""
+
+import time
+import readFile
+import encrypt
+import decrypt
+import os
+
+# Global variables
+key = None
+cipher = None
+
+def write_bytes_to_file(data, filename):
+    """Write byte data to a file."""
+    with open(filename, 'wb') as file:
+        byte_data = bytearray(data)
+        file.write(byte_data)
+
+def write_file_byt_to_norm(data):
+    """Write byte data to the corresponding file based on identifier."""
+    if data == key:
+        filename = 'keyBack.txt'
+    elif data == cipher:
+        filename = 'cipher.txt'
+    elif data == decypher:
+        filename = 'decypher.txt'
+    else:
+        print("Unknown identifier, debugging code needed")
+        print(time.ctime())
+        print("Exiting ...")
+        return
+
+    write_bytes_to_file(data, filename)
+
+if __name__ == "__main__":
+    start_time = time.ctime()
+    print("Script Started at:", start_time)
+    print("")
+
+    key = readFile.main("key.txt")
+    print("Key bytes data:", key)
+    print("")
+
+    file_size_in_bytes = os.path.getsize("input.txt")
+    print("File size in bytes:", file_size_in_bytes)
+
+    input_data_bytes = readFile.main("input.txt")
+    print("Input data bytes:", input_data_bytes)
+    print("")
+
+    cipher = encrypt.DESencryption(input_data_bytes, key)
+    print("Cipher:", cipher)
+    write_file_byt_to_norm(cipher)
+
+    cipher_bytes = readFile.main("cipher.txt")
+    decypher = decrypt.DESdecryption(cipher_bytes, key)
+    write_file_byt_to_norm(decypher)

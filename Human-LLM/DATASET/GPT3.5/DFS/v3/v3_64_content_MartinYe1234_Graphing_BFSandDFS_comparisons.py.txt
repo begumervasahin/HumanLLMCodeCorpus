@@ -1,0 +1,86 @@
+import matplotlib.pyplot as plt
+from random import randint
+from time import time
+
+def generate_graph(num_of_nodes, num_of_connections):
+    adj_list = {i: [] for i in range(num_of_nodes)}
+    adjacent = {i: [] for i in range(num_of_nodes)}
+    
+    for _ in range(num_of_connections):
+        x = randint(0, num_of_nodes - 1)
+        y = randint(0, num_of_nodes - 1)
+        
+        adj_list[x].append(y)
+        adj_list[y].append(x)
+        
+        adjacent[x].append(y)
+        adjacent[y].append(x)
+    
+    for i in range(num_of_nodes):
+        adj_list[i] = list(set(adj_list[i]) - {i})
+        adjacent[i] = list(set(adjacent[i]) - {i})
+    
+    return adj_list, adjacent
+
+def depth_first_search(node):
+    dfs_visited[node] = 1
+    
+    for neighbor in adj[node]:
+        if not dfs_visited[neighbor]:
+            depth_first_search(neighbor)
+
+def breadth_first_search(node):
+    queue = [node]
+    bfs_visited[node] = 1
+    
+    while queue:
+        for neighbour in adjacent[queue[0]]:
+            if bfs_visited[neighbour] == 0:
+                queue.append(neighbour)
+                bfs_visited[neighbour] = 1
+        
+        queue.pop(0)
+
+def run_tests(num_of_nodes, num_of_connections, runs):
+    dfs_data = []
+    bfs_data = []
+    
+    for _ in range(num_of_connections):
+        dfs_runtime = 0.0
+        bfs_runtime = 0.0
+        
+        for _ in range(runs):
+            adj, adjacent = generate_graph(num_of_nodes, num_of_connections)
+            dfs_visited = [0] * num_of_nodes
+            bfs_visited = [0] * num_of_nodes
+
+            start_time = time()
+            depth_first_search(0)
+            dfs_runtime += (time() - start_time)
+
+            start_time = time()
+            breadth_first_search(0)
+            bfs_runtime += (time() - start_time)
+
+        dfs_data.append(round((dfs_runtime / runs), 13))
+        bfs_data.append(round((bfs_runtime / runs), 13))
+
+    return dfs_data, bfs_data
+
+def plot_results(x_axis, dfs_data, bfs_data):
+    plt.figure(figsize=(16, 5))
+    plt.plot(x_axis, dfs_data, label='DFS', color='blue')
+    plt.plot(x_axis, bfs_data, label='BFS', color='orange')
+    plt.xlabel('Number of Connections')
+    plt.ylabel('Runtime (seconds)')
+    plt.title('BFS (Orange) / DFS (Blue) Comparison')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    num_of_nodes = 200
+    num_of_connections = 2000
+    runs = 200
+    x_axis = [i + 1 for i in range(num_of_connections)]
+    dfs_data, bfs_data = run_tests(num_of_nodes, num_of_connections, runs)
+    plot_results(x_axis, dfs_data, bfs_data)

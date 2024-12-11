@@ -1,0 +1,71 @@
+import re
+import sys
+
+class TestParser:
+    def __init__(self, path):
+        self.path = path
+
+    def remove_comments(self, raw_lines):
+        """
+        Remove comments from raw lines.
+        """
+        fixed_lines = []
+        for line in raw_lines:
+            idx = line.find('#')
+            if idx == -1:
+                fixed_lines.append(line)
+            else:
+                fixed_lines.append(line[:idx])
+        return '\n'.join(fixed_lines)
+
+    def parse(self):
+        """
+        Parse the test file and extract information.
+        """
+        test = {}
+        with open(self.path) as handle:
+            raw_lines = handle.read().split('\n')
+        test_text = self.remove_comments(raw_lines)
+        test['__raw_lines__'] = raw_lines
+        test['path'] = self.path
+        test['__emit__'] = []
+
+        lines = test_text.split('\n')
+        for line in lines:
+            if re.match(r'\A\s*\Z', line):
+                test['__emit__'].append(("raw", line))
+                continue
+
+            m = re.match(r'\A([^"]*?):\s*"([^"]*)"\s*\Z', line)
+            if m:
+                test[m.group(1)] = m.group(2)
+                test['__emit__'].append(("oneline", m.group(1)))
+                continue
+
+            m = re.match(r'\A([^"]*?):\s*"""\s*\Z', line)
+            if m:
+                msg = []
+                while not re.match(r'\A\s*"""\s*\Z', line):
+                    msg.append(line)
+                test[m.group(1)] = '\n'.join(msg)
+                test['__emit__'].append(("multiline", m.group(1)))
+                continue
+
+            print(f'Error parsing test file: {self.path}')
+            sys.exit(1)
+
+        return test
+
+def emit_test_dict(test_dict, handle):
+    """
+    Emit the test dictionary to a file handle.
+    """
+    for kind, data in test_dict['__emit__']:
+        if kind == "raw":
+            handle.write(data + "\n")
+        elif kind == "oneline":
+            handle.write(f'{data}: "{test_dict[data]}"\n')
+        elif kind == "multiline":
+            handle.write(f'{data}: """\n{test_dict[data]}\n"""\n')
+        else:
+            raise Exception("Bad __emit__")

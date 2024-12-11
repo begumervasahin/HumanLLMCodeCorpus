@@ -1,0 +1,63 @@
+import os
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto import Random
+
+class Colors:
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    RED = '\033[31m'
+    ENDC = '\033[0m'
+
+def encrypt_message(key, filename):
+    chunk_size = 64 * 256
+    output_file = "en_" + filename
+
+    # Get the size of the file
+    file_size = str(os.path.getsize(filename)).zfill(16)
+
+    # Generate a random initialization vector (IV)
+    IV = Random.new().read(16)
+
+    # Create AES encryptor with the provided key and IV
+    encryptor = AES.new(key, AES.MODE_CBC, IV)
+
+    # Encrypt the file
+    with open(filename, 'rb') as infile:
+        with open(output_file, 'wb') as outfile:
+            # Write the file size and IV to the output file
+            outfile.write(file_size.encode('utf-8'))
+            outfile.write(IV)
+
+            # Encrypt and write the file contents chunk by chunk
+            while True:
+                chunk = infile.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                elif len(chunk) % 16 != 0:
+                    chunk += b' ' * (16 - (len(chunk) % 16))
+                outfile.write(encryptor.encrypt(chunk))
+
+    # Print success message
+    print(Colors.GREEN + "\n\n[Encrypted message stored in file]: en_" + filename + "\n\n")
+
+def create_key(password):
+    # Create a key from the provided password using SHA-256 hash
+    hasher = SHA256.new(password.encode('utf-8'))
+    return hasher.digest()
+
+def main():
+    # Prompt user for input
+    print(Colors.RED + "\n           Python AES Encryptor            ")
+    filename = input(Colors.BLUE + "[Message Filename]: " + Colors.ENDC)
+    password = input(Colors.BLUE + "[Password]: " + Colors.ENDC)
+
+    # Create key from password
+    key = create_key(password)
+
+    # Encrypt the message
+    encrypt_message(key, filename)
+
+if __name__ == "__main__":
+    # Run the main function when the script is executed
+    main()

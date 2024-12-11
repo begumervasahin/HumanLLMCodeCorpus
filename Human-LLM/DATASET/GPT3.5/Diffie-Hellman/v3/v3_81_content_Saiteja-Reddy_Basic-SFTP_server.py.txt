@@ -1,0 +1,124 @@
+import socket
+import threading
+from random import randrange, getrandbits
+from struct import calcsize
+from DH import unpack_DH_share_pack, create_DH_reshare_pack
+from message import unpack_message, create_message, decrypt
+import hashlib
+from pathlib import Path
+import os
+from constants import *
+
+pass_file = {}
+
+def get_local_ip_address():
+    """Get the IP address of the local machine."""
+    hostname = socket.gethostname()
+    return socket.gethostbyname(hostname)
+
+def check_credentials(user_id, password):
+    """Check user credentials."""
+    global pass_file
+    salt = pass_file[user_id]['salt']
+    prime = pass_file[user_id]['prime']
+    combined_password = password + str(salt) + str(prime)
+    hashed_password = hashlib.sha1(combined_password.encode()).hexdigest()
+    if pass_file[user_id]['password'] == hashed_password:
+        return 1
+    return -1
+
+def handle_client_connection(conn, addr):
+    """Thread function to handle client connections."""
+    local_ip = get_local_ip_address()
+    client_ip = addr[0]
+    
+    # Perform Diffie-Hellman key exchange
+    DH_share_pack = conn.recv(calcsize('iii'))
+    DH_data = unpack_DH_share_pack(DH_share_pack)
+    print("Received from Client:", DH_data)
+    
+    Xb = randrange(2, DH_data['prime'] - 2)
+    Yb = pow(DH_data['alpha'], Xb, DH_data['prime'])
+    DH_reshare_pack = create_DH_reshare_pack(Yb)
+    conn.sendall(DH_reshare_pack)
+    
+    prime = DH_data['prime']
+    key = pow(DH_data['Ya'], Xb, prime)
+    print("Key:", key)
+    print("Prime:", prime)
+    print("Diffie-Hellman key exchange completed.\n")
+    
+    while True:
+        msg = conn.recv(calcsize('iqq10s10si10si80si'))
+        msg = unpack_message(msg)
+        print("Received from client:", msg)
+        
+        if msg['opcode'] == LOGINCREAT:
+            user_id = decrypt(msg['ID'], key)
+            password = decrypt(msg['password'], key)
+            print("Login Creation Request:", user_id, password)
+            salt = abs(getrandbits(6))
+            password = password + str(salt) + str(prime)
+            hashed_password = hashlib.sha1(password.encode()).hexdigest()
+            if user_id in pass_file.keys():
+                reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=LOGINREPLY, status=0)
+                print("Sent LOGINREPLY Message:", unpack_message(reply_msg))
+                conn.sendall(reply_msg)
+            else:
+                pass_file[user_id] = {'password': hashed_password, 'prime': prime, 'salt': salt}
+                print("Pass File:", pass_file)
+                reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=LOGINREPLY, status=1)
+                print("Sent LOGINREPLY Message:", unpack_message(reply_msg))
+                conn.sendall(reply_msg)
+        
+        elif msg['opcode'] == AUTHREQUEST:
+            user_id = decrypt(msg['ID'], key)
+            password = decrypt(msg['password'], key)
+            print("Authentication Request:", user_id, password)
+            if user_id not in pass_file.keys():
+                reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=AUTHREPLY, status=0)
+                print("Sent AUTHREPLY Message:", unpack_message(reply_msg))
+                conn.sendall(reply_msg)
+            else:
+                status = check_credentials(user_id, password)
+                reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=AUTHREPLY, status=status)
+                print("Sent AUTHREPLY Message:", unpack_message(reply_msg))
+                conn.sendall(reply_msg)
+        
+        elif msg['opcode'] == SERVICEREQUEST:
+            user_id = decrypt(msg['ID'], key)
+            file_path = msg['file']
+            filename = Path(file_path).name
+            print("Service Request:", user_id, file_path)
+            if not os.path.isfile(file_path):
+                reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=SERVICEDONE, status=-1)
+                print("Sent SERVICEDONE Message:", unpack_message(reply_msg))
+                conn.sendall(reply_msg)
+            else:
+                with open(file_path, 'rb') as file:
+                    print("Transferring file to client!!")
+                    while True:
+                        data_chunk = file.read(10)
+                        if not data_chunk:
+                            break
+                        reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=SERVICEDONE, file=filename, buf=data_chunk, status=0)
+                        conn.sendall(reply_msg)
+                    reply_msg = create_message(s_addr=local_ip, d_addr=client_ip, opcode=SERVICEDONE, file=filename, status=1)
+                    conn.sendall(reply_msg)
+                    print("Done Transferring File to client!!!")
+    conn.close()
+
+HOST = '127.0.0.1'
+PORT = 65432
+
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen()
+
+while True:
+    conn, addr = server_socket.accept()
+    print('Connected by', addr)
+    thread = threading.Thread(target=handle_client_connection, args=(conn, addr,))
+    thread.start()
+
+server_socket.close()

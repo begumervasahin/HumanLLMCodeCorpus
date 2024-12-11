@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import math
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Read the ratings dataset
+ratings_df = pd.read_csv('ratings.csv')
+
+# Read the movie titles dataset
+movie_titles_df = pd.read_csv('movies.csv')
+
+# Merge datasets on movieId
+merged_df = pd.merge(ratings_df, movie_titles_df, on='movieId')
+
+# Compute average rating and number of ratings for each movie
+average_ratings = merged_df.groupby('title')['rating'].mean()
+num_ratings = merged_df.groupby('title')['rating'].count()
+ratings_summary = pd.DataFrame({'average_rating': average_ratings, 'num_ratings': num_ratings})
+
+# Visualize rating and number of ratings distributions
+plt.figure()
+ratings_summary['average_rating'].hist(bins=50)
+plt.title('Distribution of Average Ratings')
+plt.xlabel('Rating')
+plt.ylabel('Frequency')
+plt.show()
+
+plt.figure()
+ratings_summary['num_ratings'].hist(bins=60)
+plt.title('Distribution of Number of Ratings')
+plt.xlabel('Number of Ratings')
+plt.ylabel('Frequency')
+plt.show()
+
+# Plot jointplot for rating vs. number of ratings
+plt.figure()
+sns.jointplot(x='average_rating', y='num_ratings', data=ratings_summary)
+plt.show()
+
+# Create pivot table for user ratings
+pivot_table = merged_df.pivot_table(index='userId', columns='title', values='rating')
+
+# Compute correlations with specific movies
+air_force_one_ratings = pivot_table['Air Force One (1997)']
+similar_to_air_force_one = pivot_table.corrwith(air_force_one_ratings)
+
+forrest_gump_ratings = pivot_table['(500) Days of Summer (2009)']
+similar_to_forrest_gump = pivot_table.corrwith(forrest_gump_ratings)
+
+contact_ratings = pivot_table['Contact (1997)']
+similar_to_contact = pivot_table.corrwith(contact_ratings)
+
+# Drop NaN values
+similar_to_air_force_one.dropna(inplace=True)
+similar_to_forrest_gump.dropna(inplace=True)
+similar_to_contact.dropna(inplace=True)
+
+# Compute cosine similarity manually
+def cosine_similarity_manual(a, b):
+    dot_product = np.dot(a, b)
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    return dot_product / (norm_a * norm_b)
+
+def cosine_similarity_vector_matrix(vector, matrix):
+    return (np.sum(vector * matrix, axis=1) /
+            (np.sqrt(np.sum(matrix**2, axis=1)) * np.sqrt(np.sum(vector**2))))[::-1]
+
+utility_matrix = pivot_table.fillna(0)
+movie1_ratings = air_force_one_ratings.fillna(0)
+utility_matrix_values = utility_matrix.values
+movie1_values = movie1_ratings.values
+
+r = utility_matrix_values[:, 10]
+similar_manual = cosine_similarity_manual(movie1_values, r)
+similar_cosine_simi = cosine_similarity_vector_matrix(movie1_values, r.reshape(1, -1))
+
+# Compute cosine similarity using sklearn
+similarity_sklearn = cosine_similarity(movie1_values.reshape(1, -1), r.reshape(1, -1))
+
+# Find similar movies based on cosine similarity
+sim_scores = list(enumerate(similarity_sklearn.flatten()))
+sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:11]
+movie_indices = [i[0] for i in sim_scores]
+similar_movies_sklearn = movie_titles_df['title'].iloc[movie_indices]
+
+# Print similar movies
+print("Similar movies to 'Air Force One (1997)':")
+print(similar_movies_sklearn)

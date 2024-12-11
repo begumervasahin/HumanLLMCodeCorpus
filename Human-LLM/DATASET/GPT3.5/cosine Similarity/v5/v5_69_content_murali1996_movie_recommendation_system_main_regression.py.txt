@@ -1,0 +1,114 @@
+import pandas as pd
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+from import_movielens_data import import_data
+from evaluate_funcs import evaluate
+import sys
+
+# Function to give movie recommendations
+def give_recommendations(ratings, user_id, retrieve_top=5):
+    print(f'Selected User ID: {user_id}')
+
+    # Load item data and item features
+    with open("u_item.pickle", "rb") as item_file:
+        items_df = pickle.load(item_file, encoding='bytes')
+    with open("item_feat.pickle", "rb") as feat_file:
+        item_feat = pickle.load(feat_file, encoding='bytes')
+
+    # Compute item similarity matrix
+    item_sim_mat = np.dot(item_feat, item_feat.T) / np.outer(np.linalg.norm(item_feat, axis=1), np.linalg.norm(item_feat, axis=1))
+
+    # Get user's watched and to-be-predicted items
+    user_ratings = ratings.pivot(index='user_id', columns='movie_id', values='rating').to_numpy()
+    watched_items = np.where(~np.isnan(user_ratings[user_id - 1]))[0]
+    to_pred_ind = np.where(np.isnan(user_ratings[user_id - 1]))[0]
+
+    # Compute predicted ratings based on item similarity
+    predictions = []
+    for ind in to_pred_ind:
+        pred_rating = np.sum(user_ratings[user_id - 1, watched_items] * item_sim_mat[ind, watched_items])
+        predictions.append((pred_rating, ind))
+
+    # Sort predictions by predicted rating
+    predictions.sort(reverse=True)
+
+    # Get movie names for top predicted items
+    top_movies = predictions[:retrieve_top]
+    top_movies_df = pd.DataFrame(columns=['VAL', 'ITEM_ID', 'MOVIE_NAME'])
+    for i, (val, item_id) in enumerate(top_movies, start=1):
+        movie_name = items_df.loc[items_df['movie_id'] == item_id + 1, 'movie_title'].iloc[0]
+        top_movies_df.loc[i] = [val, item_id + 1, movie_name]
+
+    # Plot genre frequency comparison
+    plot_genre_frequency(ratings, user_id, top_movies_df)
+
+    return top_movies_df
+
+# Function to plot genre frequency comparison
+def plot_genre_frequency(ratings, user_id, top_movies_df):
+    genre_columns = ['Action', 'Adventure', 'Animation', 'Children\'s', 'Comedy', 'Crime', 'Documentary',
+                     'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
+                     'Thriller', 'War', 'Western']
+
+    # Compute genre frequency for watched movies
+    user_movies = ratings.loc[ratings['user_id'] == user_id]
+    watched_genre_freq = user_movies[genre_columns].sum()
+
+    # Compute genre frequency for top recommended movies
+    pred_movies = ratings.loc[ratings['movie_id'].isin(top_movies_df['ITEM_ID'])]       
+    pred_genre_freq = pred_movies[genre_columns].sum()
+
+    # Normalize genre frequencies
+    watched_genre_freq /= watched_genre_freq.max()
+    pred_genre_freq /= pred_genre_freq.max()
+
+    # Plot genre frequency comparison
+    plt.figure(figsize=(10, 6))
+    plt.bar(np.arange(len(genre_columns)), watched_genre_freq, width=0.35, label='Watched', color='b', alpha=0.4)
+    plt.bar(np.arange(len(genre_columns)) + 0.35, pred_genre_freq, width=0.35, label='Predicted', color='r', alpha=0.4)
+    plt.xlabel('Genres')
+    plt.ylabel('Avg. responses')
+    plt.title('Genre Frequency Comparison')
+    plt.xticks(np.arange(len(genre_columns)), genre_columns, rotation=90)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+# Main function to execute the recommendation system
+def main(user_id=10):
+    # Import data
+    import_data()
+
+    # Load ratings data
+    with open("ratings.pickle", "rb") as ratings_file:
+        ratings = pickle.load(ratings_file, encoding='bytes')
+
+    # Set parameters for recommendation system
+    n_features = 15
+    max_users = ratings['user_id'].nunique()
+    max_items = ratings['movie_id'].nunique()
+    gaus_mean = 0
+    gaus_var = 0.75
+    alpha = 200
+    lbd = 0.02
+    error_threshold = 0.000005
+    retrieve_top = 5
+    num_iter = 0
+    continue_from_prev_model = 1
+    save_model = 0
+
+    # Evaluate the recommendation model
+    evaluate(ratings, max_users, max_items, n_features, gaus_mean, gaus_var, num_iter, alpha, lbd,
+             error_threshold, continue_from_prev_model, save_model)
+
+    # Get recommendations for the user
+    return give_recommendations(ratings, user_id, retrieve_top)
+
+if __name__ == "__main__":
+    # Check if user ID is provided as argument
+    if len(sys.argv) < 2:
+        print("Please provide a user ID as an argument.")
+    else:
+        user_id = int(sys.argv[1])
+        print(main(user_id))

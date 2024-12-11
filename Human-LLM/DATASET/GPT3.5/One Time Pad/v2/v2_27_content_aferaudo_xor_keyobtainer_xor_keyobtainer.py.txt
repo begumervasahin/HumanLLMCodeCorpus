@@ -1,0 +1,47 @@
+import base64
+import sys
+import re
+
+def xor(data, key):
+    # XOR operation between data and key
+    return bytearray(a ^ b for a, b in zip(data, key))
+
+def print_help():
+    # Print usage instructions
+    print("Usage: python3 cipher.py [plain_text] [hide_text_base64]")
+
+def main(argv):
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) < 3:
+        print_help()
+        exit(0)
+
+    # Extract plain text and base64-encoded hide text from command-line arguments
+    plain_text = sys.argv[1]
+    hide_text_base64 = sys.argv[2]
+
+    # Print received plain text and base64-encoded hide text
+    print("Plain text received:", plain_text)
+    print("Base64 received:", hide_text_base64)
+
+    # Convert plain text to binary
+    plain_text_bin = plain_text.encode()
+    print("Plain text binary:", plain_text_bin)
+
+    # Decode base64-encoded hide text
+    base64_ciph = base64.b64decode(hide_text_base64)
+    print("Decoded hide text:", base64_ciph)
+
+    # XOR base64-encoded hide text with plain text binary to derive the key
+    key_repeated = xor(base64_ciph, plain_text_bin)
+    print("Key with repetition:", key_repeated)
+
+    # Find the key without repetition using regular expression
+    pattern = re.compile(r"(.+?)\1+")
+    key = min(pattern.findall(key_repeated.decode()) or [""], key=len)
+    print("Key without repetition:", key)
+
+    print("\n\nYou can now use this key to encrypt your own message.\n\n")
+
+if __name__ == '__main__':
+    main(sys.argv)

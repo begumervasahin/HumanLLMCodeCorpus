@@ -1,0 +1,54 @@
+from nltk.corpus import stopwords
+from nltk.corpus import wordnet
+import difflib as dl
+import os
+import string
+
+# Function to get similar words using difflib
+get_close_matches = dl.get_close_matches
+
+# Function to strip punctuation from words
+def strip_punctuation(word):
+    return word.translate(str.maketrans('', '', string.punctuation))
+
+# Function to read a text file and remove stopwords
+def process_text_file(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.read()
+        word_tokens = lines.split()
+        stop_words = set(stopwords.words('english'))
+        filtered_sentence = [strip_punctuation(w) for w in word_tokens if w.lower() not in stop_words]
+    return filtered_sentence
+
+# Perform OCR on the image and save text to a file
+os.system("tesseract new_img.png st_sheet.txt")
+
+# Read and process the reference text file
+ref_lines = process_text_file("new_text.txt")
+
+# Read and process the OCR text file
+ocr_lines = process_text_file("st_sheet.txt")
+
+# Create a dictionary to store synonyms for each word in the reference text
+synonyms = {word: [] for word in ref_lines}
+for word in ref_lines:
+    for synset in wordnet.synsets(word):
+        for lemma in synset.lemmas():
+            synonyms[word].append(lemma.name())
+
+# Initialize counters
+num_synonyms_matched = 0
+num_words_matched = 0
+
+# Count the number of matches between the reference and OCR text
+for word in ref_lines:
+    if get_close_matches(word, ocr_lines):
+        num_synonyms_matched += 1
+        num_words_matched += 1
+
+# Calculate the similarity ratio
+similarity_ratio = float(num_words_matched + num_synonyms_matched) / float(len(ref_lines) + num_synonyms_matched)
+
+# Print the result
+print("The Student is awarded")
+print('%d%% Marks' % int(similarity_ratio * 100))

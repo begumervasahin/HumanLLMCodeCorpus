@@ -1,0 +1,53 @@
+from __future__ import print_function, division
+from CPUtimer import CPUTimer
+from data2 import instance_iterator, print_solution
+
+def solve(instance_path):
+    # Initialize CPU timer
+    timer = CPUTimer()
+
+    # Iterate over instances from the specified path
+    for instance in instance_iterator(instance_path):
+        instance_name, capacity, values, weights = instance
+
+        # Reset and start the timer for each instance
+        timer.reset()
+        timer.start()
+
+        # Solve the knapsack problem twice
+        for _ in range(2):
+            items = knapsack(capacity, values, weights)
+            timer.lap()
+
+        # Stop the timer after solving
+        timer.stop()
+
+        # Print the solution for the instance
+        print_solution(values, weights, items, instance_name, '2a', timer)
+
+def knapsack(capacity, values, weights):
+    # Prepare items with index, weight, and value per weight
+    items = [(i + 1, w, v / w) for i, (v, w) in enumerate(zip(values, weights))]
+
+    # Sort items by value per weight in descending order
+    items = sorted(items, key=lambda t: t[2], reverse=True)
+
+    selected_items = [0] * len(values)  # Initialize selected items
+    total_weight = 0
+
+    # Greedy algorithm to fill the knapsack
+    for i, w, _ in items:
+        if total_weight + w <= capacity:
+            selected_items[i - 1] = 1
+            total_weight += w
+        else:
+            selected_items[i - 1] = (capacity - total_weight) / w
+            total_weight = capacity
+            break
+
+    # Return selected items with their fractions
+    return [(i + 1, fract) for i, fract in enumerate(selected_items) if fract > 0]
+
+# Example usage
+instance_path = "path_to_instance_file"  # Replace with the actual path to your instance file
+solve(instance_path)

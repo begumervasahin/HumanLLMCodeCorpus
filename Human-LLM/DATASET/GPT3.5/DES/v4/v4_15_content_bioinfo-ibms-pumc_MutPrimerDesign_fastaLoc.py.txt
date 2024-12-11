@@ -1,0 +1,61 @@
+import sys
+from Bio import SeqIO
+
+class FastaLoc:
+    """
+    Extracts sequences from a FASTA file based on specified segments.
+    """
+
+    def __init__(self, fasta_file, segments):
+        """
+        Initialize FastaLoc object.
+
+        Parameters:
+            fasta_file (str): Path to the FASTA file.
+            segments (list): List of segments to extract, each represented as a tuple (chromosome, mRNA ID, start, end, strand, tmp_loc).
+        """
+        self.fasta_file = fasta_file
+        self.segments = segments
+        self.results = {}
+
+    def get_sequences(self):
+        """
+        Extract sequences from the FASTA file based on the specified segments.
+
+        Returns:
+            dict: A dictionary containing extracted sequences.
+        """
+        results = {}
+        for gene in SeqIO.parse(self.fasta_file, 'fasta'):
+            for segment in self.segments:
+                chrom, mrna_id, start, end, strand, tmp_loc = segment
+                if gene.id == chrom:
+                    seq1 = gene.seq[int(start) - 1:int(end)]
+                    if strand == "-":
+                        seq1 = seq1.reverse_complement()
+                    results[f"{mrna_id}|{chrom}|{start}_{end}|center:{tmp_loc}"] = seq1
+                    if len(results) == len(self.segments):
+                        break
+        self.results = results
+        return results
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python fastaLoc.py fastaFile chr start end")
+        exit()
+
+    fasta_file = sys.argv[1]
+    chrom = sys.argv[2]
+    loc1 = sys.argv[3] if len(sys.argv) > 3 else ""
+    loc2 = sys.argv[4] if len(sys.argv) > 4 else ""
+
+    for gene in SeqIO.parse(fasta_file, 'fasta'):
+        if gene.id == chrom:
+            if loc1 and loc2:
+                print(f">{gene.id}_{loc1}_{loc2}")
+                seq1 = gene.seq[int(loc1) - 1:int(loc2)]
+                print(seq1)
+            else:
+                print(f">{gene.id}")
+                print(str(gene.seq))
+            exit()

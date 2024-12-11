@@ -1,0 +1,86 @@
+import os
+import sys
+import subprocess
+
+class ProjectGenerator:
+    def __init__(self):
+        self.tools = ["laravel", "vue", "composer"]
+        self.current_file = os.path.realpath(__file__)
+        self.current_directory = os.getcwd()
+
+    def check_parameters(self):
+        """Check if the required command-line arguments are provided."""
+        return len(sys.argv) <= 1
+
+    def execute_command(self, command):
+        """Execute a shell command."""
+        stdout, stderr = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+        if stderr is not None:
+            print("The command {} does not exist or was executed incorrectly.".format(command[0]))    
+            sys.exit(1)
+        return True
+
+    def create_laravel_project(self, project_name_index=None):
+        """Create a Laravel project."""
+        if project_name_index is None:
+            project_name_index = 1
+        os.chdir(self.current_directory)
+        print("Creating Laravel project...")
+        self.execute_command([self.tools[0], "new", "api.{}".format(sys.argv[project_name_index])])
+        os.chdir(os.path.join(self.current_directory, "api.{}".format(sys.argv[project_name_index])))
+        print("Installing Composer dependencies...")
+        self.execute_command([self.tools[2], "require", "nuwave/lighthouse", "mll-lab/laravel-graphql-playground"])
+        print("Publishing Lighthouse configuration...")
+        self.execute_command(["php", "artisan", "vendor:publish", '--provider="Nuwave\\Lighthouse\\LighthouseServiceProvider"'])
+        print("Publishing GraphQL Playground configuration...")
+        self.execute_command(["php", "artisan", "vendor:publish", '--provider="MLL\\GraphQLPlayground\\GraphQLPlaygroundServiceProvider"'])
+
+    def create_vue_project(self, project_name_index=None):
+        """Create a Vue project."""
+        if project_name_index is None:
+            project_name_index = -1
+        os.chdir(self.current_directory)
+        print("Creating Vue project...")
+        os.system("{0} create {1}".format(self.tools[1], sys.argv[project_name_index]))    
+        os.chdir(os.path.join(self.current_directory, sys.argv[project_name_index]))
+        print("Adding Apollo to Vue project...")
+        os.system("{} add apollo".format(self.tools[1]))
+
+    def scaffold_projects(self):
+        """Create scaffold projects based on command-line arguments."""
+        if self.check_parameters():
+            print("Invalid or missing arguments.")
+            sys.exit(1)
+        if len(sys.argv) == 3 and sys.argv[2] not in self.tools:
+            self.create_laravel_project()
+            self.create_vue_project()
+            return True
+        if len(sys.argv) >= 4 and sys.argv[-1] not in self.tools:
+            if self.tools[0] in sys.argv:
+                index = sys.argv.index(self.tools[0]) + 1
+                if sys.argv[index] not in self.tools:
+                    self.create_laravel_project(index)
+                else:
+                    self.create_laravel_project()
+            if self.tools[1] in sys.argv:
+                index = sys.argv.index(self.tools[1]) + 1
+                if sys.argv[index] not in self.tools:
+                    self.create_vue_project(index)
+                else:
+                    self.create_vue_project()
+
+    def run_docker(self):
+        """Run Docker."""
+        print("Running Docker...")
+
+    def run_podman(self):
+        """Run Podman."""
+        print("Running Podman...")
+
+if __name__ == "__main__":
+    project_generator = ProjectGenerator()
+    {
+        "scaffold": project_generator.scaffold,
+        "docker": project_generator.run_docker,
+        "podman": project_generator.run_podman
+    }[sys.argv[1]]()

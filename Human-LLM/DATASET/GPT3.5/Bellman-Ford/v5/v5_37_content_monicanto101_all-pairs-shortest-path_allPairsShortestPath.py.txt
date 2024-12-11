@@ -1,0 +1,123 @@
+import argparse
+import os
+import re
+import cProfile
+import pstats
+import io
+
+# Define command-line arguments
+parser = argparse.ArgumentParser(description='Calculate the shortest path between all pairs of vertices in a graph')
+parser.add_argument('--algorithm', default='a', help='Algorithm: Select the algorithm to run, default is all. (a)ll, (b)ellman-ford only or (f)loyd-warshall only')
+parser.add_argument('-v', '--verbose', action='store_true')
+parser.add_argument('--profile', action='store_true')
+parser.add_argument('filename', metavar='<filename>', help='Input file containing graph')
+
+# Regular expressions for parsing graph input
+GRAPH_RE = re.compile(r"(\d+)\s(\d+)")
+EDGE_RE = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+def bellman_ford(vertices, edges):
+    path_pairs = []
+    num_vertices = len(vertices)
+    for source in vertices:
+        distances = [float('inf')] * num_vertices
+        distances[source] = 0
+        for _ in range(num_vertices - 1):
+            for vertex in vertices:
+                for neighbor in range(num_vertices):
+                    weight = float(edges[vertex][neighbor])
+                    new_distance = distances[vertex] + weight
+                    if new_distance < distances[neighbor]:
+                        distances[neighbor] = new_distance
+        path_pairs.append(distances)
+    for vertex in vertices:
+        if path_pairs[vertex][vertex] < 0:
+            return [[0, 0]]
+    print('Bellman-Ford algorithm is incomplete')
+    return path_pairs
+
+def floyd_warshall(vertices, edges):
+    path_pairs = []
+    num_vertices = len(vertices)
+    distances = [[float('inf')] * num_vertices for _ in range(num_vertices)]
+    for vertex in vertices:
+        for neighbor in range(num_vertices):
+            distances[neighbor][vertex] = float(edges[neighbor][vertex])
+        distances[vertex][vertex] = 0
+    for intermediate in vertices:
+        for source in vertices:
+            for destination in vertices:
+                distances[source][destination] = min(distances[source][destination], distances[source][intermediate] + distances[intermediate][destination])
+    for vertex in vertices:
+        if distances[vertex][vertex] < 0:
+            return [[0, 0]]
+    print('Floyd-Warshall algorithm is incomplete')
+    return distances
+
+def read_file(filename):
+    with open(filename, 'r') as file:
+        first_line = file.readline().strip()
+        if not first_line:
+            print('File is empty')
+            quit(1)
+        match = GRAPH_RE.match(first_line)
+        if not match:
+            print(f'First line "{first_line}" is not properly formatted')
+            quit(1)
+        num_vertices = int(match.group(1))
+        vertices = list(range(num_vertices))
+        edges = [[float('inf')] * num_vertices for _ in range(num_vertices)]
+        for line in file:
+            line = line.strip()
+            match = EDGE_RE.match(line)
+            if not match:
+                print(f'Invalid edge format: "{line}"')
+                continue
+            source = int(match.group(1)) - 1
+            destination = int(match.group(2)) - 1
+            weight = int(match.group(3))
+            if source < 0 or source >= num_vertices or destination < 0 or destination >= num_vertices:
+                print(f'Edge out of range: "{line}"')
+                continue
+            edges[source][destination] = weight
+    return vertices, edges
+
+def matrix_equality(a, b):
+    if len(a) != len(b) or len(a[0]) != len(b[0]):
+        return False
+    for i in range(len(a)):
+        for j in range(len(a[0])):
+            if a[i][j] != b[i][j]:
+                return False
+    return True
+
+def main(filename, algorithm):
+    vertices, edges = read_file(filename)
+    if algorithm.lower() == 'b':
+        path_pairs = bellman_ford(vertices, edges)
+    elif algorithm.lower() == 'f':
+        path_pairs = floyd_warshall(vertices, edges)
+    elif algorithm.lower() == 'a':
+        print('Running both algorithms')
+        path_pairs_bf = bellman_ford(vertices, edges)
+        path_pairs_fw = floyd_warshall(vertices, edges)
+        if not matrix_equality(path_pairs_bf, path_pairs_fw):
+            print('Floyd-Warshall and Bellman-Ford did not produce the same result')
+        path_pairs = path_pairs_bf
+
+    output_filename = os.path.splitext(filename)[0] + '_shortestPaths.txt'
+    with open(output_filename, 'w') as file:
+        for row in path_pairs:
+            file.write(' '.join(map(str, row)) + '\n')
+
+    if args.profile:
+        profiler = cProfile.Profile()
+        profiler.enable()
+        main(args.filename, args.algorithm)
+        profiler.disable()
+        profiler_stats = pstats.Stats(profiler)
+        profiler_stats.strip_dirs().sort_stats('cumulative').print_stats()
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args.filename, args.algorithm)

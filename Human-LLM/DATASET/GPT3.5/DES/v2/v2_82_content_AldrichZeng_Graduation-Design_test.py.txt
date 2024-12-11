@@ -1,0 +1,65 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+import resnet
+import os
+from datetime import datetime
+import numpy as np
+import config as conf
+
+# Check if CUDA is available, otherwise use CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Define data transformations for the dataset
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+# Load the validation dataset
+validation_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+validation_loader = torch.utils.data.DataLoader(validation_dataset, batch_size=conf.batch_size, shuffle=False)
+
+# Instantiate the neural network (replace with your model)
+net = resnet.ResNet50().to(device)
+
+# Load checkpoint if available
+if os.path.exists(conf.checkpoint_path):
+    net.load_state_dict(torch.load(conf.checkpoint_path))
+    print("Checkpoint loaded")
+
+# Print start time and global step
+print(f"{datetime.now()} Start validation")
+print(f"{datetime.now()} Global step = {conf.global_step}")
+
+# Set network to evaluation mode
+net.eval()
+
+# Perform validation
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for val_data in validation_loader:
+        images, labels = val_data
+        images, labels = images.to(device), labels.to(device)
+        outputs = net(images)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+    accuracy = correct / total
+    print(f"{datetime.now()} Validation Accuracy = {accuracy:.4f}")
+
+    # Save model if accuracy is higher
+    if accuracy > conf.highest_accuracy:
+        conf.highest_accuracy = accuracy
+        print(f"{datetime.now()} Saving model...")
+        torch.save(net.state_dict(), conf.checkpoint_path)
+        print(f"{datetime.now()} Model saved")
+        with open(conf.highest_accuracy_path, 'w') as f:
+            f.write(str(conf.highest_accuracy))
+        with open(conf.global_step_path, 'w') as f:
+            f.write(str(conf.global_step))
+        print(f"{datetime.now()} Model saved at global step = {conf.global_step}")

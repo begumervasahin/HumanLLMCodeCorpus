@@ -1,0 +1,101 @@
+import requests
+import numpy as np
+import os
+from glob import glob
+from DFS0_Generating import multDFS0Generating  # Assuming this function is defined elsewhere
+from projectSetup import tempDataFolder, outputFolderRainFall  # Assuming these variables are defined elsewhere
+
+# URLs for data retrieval
+url = "http://example.com/data/luongmua.txt"
+urlTram = "http://example.com/data/DanhsachTram.txt"
+
+def create_directory(dir_name, remove_files=False):
+    """
+    Create a directory if it doesn't exist and optionally remove files inside.
+    """
+    if not os.path.isdir(dir_name):
+        try:
+            os.mkdir(dir_name)
+        except OSError:
+            print("Cannot create folder!")
+    else:
+        if remove_files:
+            files = glob(os.path.join(dir_name, '*.*'))
+            if files:
+                try:
+                    for file in files:
+                        os.remove(file)
+                except OSError:
+                    print("Cannot remove files")
+            else:
+                print("Folder is empty!")
+
+def get_data_from_website(url, filename):
+    """
+    Download data from a URL and save it to a file.
+    """
+    try:
+        r = requests.get(url, allow_redirects=True)
+        open(filename, 'wb').write(r.content)
+    except ValueError:
+        print("Oops! Cannot get data from the " + url)
+
+def get_all_data_from_website():
+    """
+    Get all necessary data from specified URLs.
+    """
+    create_directory('./DataFromWebsite')
+    get_data_from_website(url, "./DataFromWebsite/luongmua.txt")
+    get_data_from_website(urlTram, "./DataFromWebsite/DanhsachTram.txt")
+
+def convert_raw_data_to_txt_format():
+    """
+    Convert raw data from the website to text format.
+    """
+    temp = np.loadtxt(fname='./DataFromWebsite/luongmua.txt', delimiter=';', skiprows=1, dtype='str')
+    temp_tram = 0
+    filename = ""
+    file_handle = 0
+    list_of_data = []
+    create_directory('./TempData', remove_files=True)
+
+    for i in temp:
+        if temp_tram != int(i[0]):
+            temp_tram = int(i[0])
+            filename = f"./TempData/{i[0]}.txt"
+            if file_handle != 0:
+                if list_of_data:
+                    for line_index in list_of_data:
+                        file_handle.write(line_index)
+                    file_handle.close()
+            list_of_data = []
+            file_handle = open(filename, "w")
+            line = f"{i[2]},{i[1]}\n"
+            list_of_data.insert(0, line)
+        else:
+            line = f"{i[2]},{i[1]}\n"
+            list_of_data.insert(0, line)
+
+    if file_handle != 0:
+        if list_of_data:
+            for line_index in list_of_data:
+                file_handle.write(line_index)
+            file_handle.close()
+
+def convert_txt_data_to_dfs0():
+    """
+    Convert text data to DFS0 format using the multDFS0Generating function.
+    """
+    for key in tempDataFolder:
+        multDFS0Generating(tempDataFolder[key], outputFolderRainFall[key])
+
+def main():
+    """
+    Main function to execute the data retrieval and conversion tasks.
+    """
+    get_all_data_from_website()
+    convert_raw_data_to_txt_format()
+    convert_txt_data_to_dfs0()
+
+if __name__ == '__main__':
+    main()

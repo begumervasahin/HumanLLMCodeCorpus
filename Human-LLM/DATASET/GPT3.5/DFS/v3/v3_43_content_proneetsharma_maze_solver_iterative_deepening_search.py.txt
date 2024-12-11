@@ -1,0 +1,79 @@
+import sys
+import os
+import collections
+from helper import write_to_file, next_movement
+
+# Set recursion limit to avoid stack overflow
+sys.setrecursionlimit(4500)
+
+def depth_limited_search(maze_map, maze_dict, pose_queue, depth, end, obstacle):
+    if not pose_queue:
+        return False
+
+    current = pose_queue.popleft()
+    if current == end:
+        return True
+
+    if depth <= 0:
+        return False
+
+    for next_pos in next_movement(current):
+        if next_pos not in maze_dict and next_pos not in obstacle:
+            maze_dict[next_pos] = current
+            pose_queue.append(next_pos)
+
+    return depth_limited_search(maze_map, maze_dict, pose_queue, depth - 1, end, obstacle)
+
+def iterative_deepening_depth_first_search(maze_map):
+    obstacles = []
+    goals = []
+    start = None
+
+    # Parse maze_map to extract obstacles, goals, and start position
+    for i in range(len(maze_map)):
+        for j in range(len(maze_map[0]) - 1):
+            if maze_map[i][j] in ("|", "="):
+                obstacles.append((i, j))
+            elif maze_map[i][j] == "*":
+                goals.append((i, j))
+            elif maze_map[i][j] == "s":
+                start = (i, j)
+
+    # Set maximum depth for IDDFS
+    max_depth = len(maze_map) * len(maze_map[0])
+
+    all_paths = []
+    for goal in goals:
+        for depth in range(max_depth + 1):
+            maze_dict = {start: None}
+            pose_queue = collections.deque([start])
+            if depth_limited_search(maze_map, maze_dict, pose_queue, depth, goal, obstacles):
+                path = []
+                current = goal
+                while current != start:
+                    path.append(current)
+                    current = maze_dict[current]
+                all_paths.append(path)
+                break
+
+    return all_paths
+
+if __name__ == '__main__':
+    working_directory = os.getcwd()
+    map_directory = 'maps'  # Default map directory
+
+    # Check if map directory is provided as command-line argument
+    if len(sys.argv) > 1:
+        map_directory = sys.argv[1]
+
+    # Read maps from files
+    maps = []
+    for i in range(1, 4):
+        file_path_map = os.path.join(working_directory, map_directory, f'map{i}.txt')
+        with open(file_path_map) as f:
+            maps.append(f.readlines())
+
+    # Perform IDDFS on each map and write results to output files
+    for idx, maze_map in enumerate(maps):
+        paths = iterative_deepening_depth_first_search(maze_map)
+        write_to_file(f"./results/iddfs_map{idx + 1}.txt", paths, maze_map)

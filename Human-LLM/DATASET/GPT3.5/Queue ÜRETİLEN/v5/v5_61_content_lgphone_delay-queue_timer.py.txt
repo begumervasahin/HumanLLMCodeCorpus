@@ -1,0 +1,66 @@
+import time
+import json
+import uuid
+
+from delay_queue.utils import redis_client, release_redis_lock
+from delay_queue.config import (
+    JOB_POOL_KEY, DELAY_POOL_KEY, READY_POOL_KEY,
+    TIMER_LOCK_KEY, TIMER_LOCK_EXP_TIME,
+    JOB_LOCK_KEY_PREFIX, JOB_LOCK_EXP_TIME
+)
+
+def timer_func():
+    """Handle the timer logic for processing delayed tasks."""
+    while True:
+        # Generate a unique lock value
+        lock_value = uuid.uuid4().hex[:20]
+
+        # Attempt to acquire the timer lock
+        if redis_client.set(TIMER_LOCK_KEY, lock_value, ex=TIMER_LOCK_EXP_TIME, nx=True):
+            current_time_ms = int(time.time() * 1000)
+
+            # Retrieve task IDs with timestamps earlier than the current time
+            task_id_list = redis_client.zrangebyscore(DELAY_POOL_KEY, '-inf', current_time_ms)
+            task_id_list = [i.decode('utf-8') for i in task_id_list]
+
+            # Process each delayed task
+            for task_id in task_id_list:
+                print(f'Delayed task: {task_id}')
+
+                # Retrieve task details from the job pool
+                task_dict_raw = redis_client.hget(JOB_POOL_KEY, task_id)
+
+                if task_dict_raw:
+                    task_dict = json.loads(task_dict_raw.decode('utf-8'))
+
+                    # Check if the task is still in delay status
+                    if task_dict['status'] == 'delay':
+                        job_lock_key = JOB_LOCK_KEY_PREFIX + task_dict['id']
+                        job_lock_value = uuid.uuid4().hex[:20]
+
+                        # Attempt to acquire the job lock for the task
+                        if redis_client.set(job_lock_key, job_lock_value, ex=JOB_LOCK_EXP_TIME, nx=True):
+                            # Move the task from delay pool to ready pool
+                            redis_client.zrem(DELAY_POOL_KEY, task_dict['id'])
+                            redis_client.lpush(READY_POOL_KEY, task_dict['id'])
+                            task_dict['status'] = 'ready'
+                            redis_client.hset(JOB_POOL_KEY, task_dict['id'], json.dumps(task_dict))
+
+                            # Release the job lock
+                            if not release_redis_lock(job_lock_key, job_lock_value):
+                                print('Failed to release job lock')
+
+            # Release the timer lock
+            if not release_redis_lock(TIMER_LOCK_KEY, lock_value):
+                print('Failed to release timer lock')
+
+        # Wait for a short interval before checking again
+        time.sleep(0.1)
+
+if __name__ == "__main__":
+    print('Starting timer')
+    try:
+        timer_func()
+    except KeyboardInterrupt:
+        print('Exiting timer')
+        exit(0)

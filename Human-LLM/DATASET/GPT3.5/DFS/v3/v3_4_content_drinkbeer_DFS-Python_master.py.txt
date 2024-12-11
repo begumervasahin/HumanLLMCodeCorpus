@@ -1,0 +1,52 @@
+import socket
+import threading
+import json
+from common import *
+from heartbeat import *
+from protocol import *
+from dispatch import *
+from datetime import datetime
+
+# Initialize and start the heartbeat check thread
+heartbeat_checker = heartBeatCheck()
+heartbeat_checker.daemon = True
+heartbeat_checker.start()
+
+# Initialize and start the dispatch check thread
+dispatch_checker = dispatchCheck()
+dispatch_checker.start()
+
+def process_command(connection):
+    """Process commands received from a client connection."""
+    while True:
+        data = connection.recv(1024)
+        if not data:
+            break
+        execute_command(connection, data)
+    connection.close()
+
+def execute_command(connection, command_string):
+    """Execute a command received from a client."""
+    command_obj = json.loads(command_string)
+    param_list = command_obj['param_list']
+    command = command_obj['command']
+    if command == 'heartbeat':
+        heartBeat(param_list)
+    else:
+        send_command(connection, command, param_list)
+
+def handle_incoming_connections():
+    """Handle incoming client connections and spawn threads to process commands."""
+    log.debug('Receiving commands')
+    global client_socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.bind((HOST, M_PORT))
+    client_socket.listen(1)
+    while True:
+        conn, addr = client_socket.accept()
+        log.debug('Connected by: %s', addr)
+        threading.Thread(target=process_command, args=(conn,)).start()
+    client_socket.close()
+
+if __name__ == "__main__":
+    handle_incoming_connections()

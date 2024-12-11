@@ -1,0 +1,55 @@
+from PIL import Image
+
+def insert_cascade(foreground_path, background_image, cascade_factor=0.01, initial_x=0, initial_y=0):
+    """
+    Inserts a procedurally generated cascade of a given image onto a background image.
+
+    Args:
+        foreground_path (str): Path to the foreground image.
+        background_image (PIL.Image.Image): Background image onto which the cascade will be inserted.
+        cascade_factor (float): Factor controlling the cascade's behavior (default is 0.01).
+        initial_x (int): Initial x-coordinate for the cascade (default is 0).
+        initial_y (int): Initial y-coordinate for the cascade (default is 0).
+
+    Returns:
+        PIL.Image.Image: Image with the inserted cascade.
+    """
+    foreground = Image.open(foreground_path).convert("RGBA")        
+    background_size = background_image.size
+    foreground_size = foreground.size
+    acceleration = -1
+    velocity = 0.0
+    displacement_y = 0.0
+
+    for i in range(int(cascade_factor * 100)):
+        displacement_y = velocity * i + 0.5 * acceleration * (i ** 2)
+        velocity += acceleration * i
+        pos = (int(initial_x + 11 * i), int(initial_y - displacement_y))
+        background_image.paste(foreground, pos)
+
+        if background_size[1] - foreground_size[1] <= pos[1] + foreground_size[1]:
+            velocity = -velocity
+            acceleration *= 0.9
+
+    return background_image
+
+def insert_pic(foreground_path, background_image, rotation_factor=0, initial_x=0, initial_y=0):
+    """
+    Inserts an image at the specified location with a given rotation and scale onto a background image.
+
+    Args:
+        foreground_path (str): Path to the foreground image.
+        background_image (PIL.Image.Image): Background image onto which the image will be inserted.
+        rotation_factor (int): Rotation factor controlling the rotation of the foreground image (default is 0).
+        initial_x (int): Initial x-coordinate for the insertion (default is 0).
+        initial_y (int): Initial y-coordinate for the insertion (default is 0).
+
+    Returns:
+        PIL.Image.Image: Image with the inserted foreground image.
+    """
+    foreground = Image.open(foreground_path).convert("RGBA")        
+    pos = (initial_x, initial_y)
+    foreground = foreground.rotate(rotation_factor * 100)
+    background_image.paste(foreground, pos, foreground)
+
+    return background_image

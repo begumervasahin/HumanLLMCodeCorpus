@@ -1,0 +1,101 @@
+def default_ambig_solver( l ):
+     if(type(l) is not list):
+        raise ValueError
+     else:
+         if( len(l) == 0 ):
+              return None
+         else:
+              return( l[0] )
+class namelistmap( ):
+    def __init__( self, inverse_ambiguity_solver = default_ambig_solver ):
+        self.itemlistmap = {}
+        self.item_to_nm_map = {}
+        self.nm_ambig_solver = inverse_ambiguity_solver
+    def set( self, nm, itemlist ):
+        uniq_itemlist = list( set( itemlist ))
+        self.itemlistmap[ nm ] = uniq_itemlist
+        for i in uniq_itemlist:
+            if i in self.item_to_nm_map.keys():
+                if nm not in self.item_to_nm_map[ i ]:
+                    self.item_to_nm_map[ i ].append( nm )
+            else:
+                self.item_to_nm_map[ i ] = [ nm ]
+    def add( self, nm, item ):
+        if self.get( nm ) is None:
+           self.set( nm, [ item ] )
+        else:
+           self.set( nm, self.itemlistmap[ nm ]  + [ item ] )
+    def empty( self ):
+         return( self.itemlistmap == {} )
+    def get( self, nm ):
+         if nm in self.itemlistmap.keys():
+              return( self.itemlistmap[ nm ] )
+         else:
+              return None
+    def get_all_keys( self ):
+        return( self.itemlistmap.keys() )
+    def get_key_for( self, it ):
+         if( it in self.item_to_nm_map.keys() ):
+           return( self.nm_ambig_solver( self.item_to_nm_map[ it ] ) )
+         else:
+           return None
+    def get_key_list_for( self, it ):
+        if( it in self.item_to_nm_map.keys() ):
+           return( self.item_to_nm_map[ it ] )
+        else:
+           return []
+    def get_key_list_for_matching_items( self, item_matching_fun = lambda *x : False, item_matching_arglist = [] ):
+        matched_key_list = []
+        for k in self.get_all_keys():
+               if( item_matching_fun( self.itemlistmap[ k ],  *item_matching_arglist )):
+                    matched_key_list.append( k )
+        return matched_key_list
+    def remove( self, nm = None, item = None ):
+        if( nm is not None ):
+            assert( item is None )
+            for i in self.itemlistmap[ nm ]:
+                assert( nm in self.item_to_nm_map[ i ] )
+                self.item_to_nm_map[ i ].remove( nm )
+            self.itemlistmap.pop( nm )
+        else:
+            if( item is not None ):
+                if( item in self.item_to_nm_map.keys() ):
+                     aux_nm_list = []
+                     for nm in self.item_to_nm_map[ item ]:
+                          self.itemlistmap[ nm ].remove( item )
+                          aux_nm_list.append( nm )
+                     for n in aux_nm_list:
+                          if self.itemlistmap[ n ] is []:
+                               self.itemlistmap.remove( n )
+                     self.item_to_nm_map.pop( item )
+                else:
+                    dummy = None
+    def clear( self ):
+          self.itemlistmap = {}
+          self.item_to_nm_map = {}
+    def set_ambig_solver( self, ambg ):
+         self.nm_ambig_solver = ambg
+    def __str__( self ):
+         sout = '===direct map==\n'
+         for n in self.itemlistmap.keys():
+              sout += str( n ) + ' --> ' + str( self.itemlistmap[ n ] ) + '\n'
+         sout += '===reverse map===\n'
+         all_item_values = []
+         for n in self.itemlistmap.keys():
+              for i in self.itemlistmap[ n ]:
+                   if i not in all_item_values:
+                        all_item_values.append( i )
+         for i in all_item_values:
+              sout += str(i) + ' --> ' +  str( self.item_to_nm_map[ i ] ) + '\n'
+         sout += '====='
+         return( sout )
+    def __repr__( self ):
+         return( '<nm_ambig_solver: ' + str( self.nm_ambig_solver ) + ' itemlistmap: ' + str( self.itemlistmap )  + ' reverse_map: ' + str( self.item_to_nm_map )  + '>' )
+    def keys_for_item( self, item = None ):
+        if( item is not None ):
+            if( item in self.item_to_nm_map.keys() ):
+                return( self.item_to_nm_map[ item ] )
+            else:
+                return( [] )
+        else:
+            return( [] )

@@ -1,0 +1,109 @@
+import numpy as np
+import DNN_tandem
+import os
+import time
+import scipy.io
+
+# Define parameters
+mode = 'FNN'
+n_input = 9
+n_classes = 6
+fnn_size = [n_input, 1024, 512, 512, 256, 256, 128, n_classes]
+inn_size = [n_classes, 512, 256, n_input]
+trainfile = './data/inverse2d_train.npy'
+testfile = './data/inverse2d_test.npy'
+
+# Load and preprocess data
+data_train = np.load(trainfile)
+data_test = np.load(testfile)
+data_train = np.delete(data_train, [9, 10, 11], axis=1)
+data_test = np.delete(data_test, [9, 10, 11], axis=1)
+test_x = data_test[:, :n_input]
+test_y = data_test[:, n_input:n_classes + n_input]
+
+# Set training parameters based on mode
+if mode == 'FNN':
+    batch_size = 2000
+    training_epochs = 5000
+    start_lr = 0.0005
+    decay_rate = 0.93
+    decay_step = 400 * 300
+elif mode == 'tandem':
+    batch_size = 800
+    training_epochs = 2000
+    start_lr = 0.0001
+    decay_rate = 0.93
+    decay_step = 400 * 100
+
+# Initialize tandem network
+tandem = DNN_tandem.tandem_network(
+    INN_size=inn_size,
+    FNN_size=fnn_size,
+    starter_learning_rate=start_lr,
+    decay_step=decay_step,
+    decay_rate=decay_rate
+)
+
+os.makedirs("./model", exist_ok=True)
+
+if mode == 'tandem':
+    tandem.restore_FNN('./model/DNN_tandem_FNN.ckpt')
+
+tandem.reset_global_step()
+
+# Training loop
+start_time = time.time()
+output = open("DNN_" + mode + "-t.txt", "w+")
+
+for n_epoch in range(training_epochs):
+    np.random.shuffle(data_train)
+    
+    for i in range(len(data_train) // batch_size):
+        batch_x = data_train[i * batch_size: (i + 1) * batch_size, :n_input]
+        batch_y = data_train[i * batch_size: (i + 1) * batch_size, n_input: n_classes + n_input]
+        tandem.train(batch_x, batch_y, mode)
+    
+    train_err = tandem.show_loss(batch_x, batch_y, mode)
+    test_err = tandem.show_loss(test_x, test_y, mode)
+    lr = tandem.show_lr()
+
+    print(f"Epoch: {n_epoch}, Train Error: {train_err}, Test Error: {test_err}, Learning Rate: {lr}")
+    output.write(f"{train_err} {test_err} {lr}\n")
+
+    if (n_epoch + 1) % 100 == 0:
+        if mode == 'FNN':
+            tandem.copy_FNN()
+            tandem.save_FNN('./model/DNN_tandem_FNN.ckpt')
+        elif mode == 'tandem':
+            tandem.save('./model/DNN_tandem.ckpt')
+
+training_time = time.time() - start_time
+output.write(f"%Training Time: {training_time}")
+output.close()
+print(f"Training Time: {training_time}")
+
+# Function to calculate error
+def calculate_error(predicted, actual):
+    return np.sqrt(np.mean(np.square(predicted - actual)))
+
+# Test and evaluate the model
+tandem = DNN_tandem.tandem_network(INN_size=inn_size, FNN_size=fnn_size, training=True)
+tandem.restore('./model/DNN_tandem.ckpt')
+
+response = tandem.test(test_x, test_y, "FNN")
+error_rms = calculate_error(response, test_y)
+
+print(np.concatenate((test_y, response), axis=1)[:5])
+print(f"Root Mean Square Error: {error_rms}")
+
+design = tandem.test(test_x, test_y, 'INN')
+response = tandem.test(design, test_y, 'FNN')
+error_rms = calculate_error(response, test_y)
+
+print(np.concatenate((test_y, response), axis=1)[:5])
+print(f"Root Mean Square Error: {error_rms}")
+
+# Save predictions to a MATLAB file
+s = response[:, :3]
+c = response[:, 3:]
+scipy.io.savemat('prediction.mat', {'pred_design': design, 'pred_siny': s, 'pred_cosy': c})

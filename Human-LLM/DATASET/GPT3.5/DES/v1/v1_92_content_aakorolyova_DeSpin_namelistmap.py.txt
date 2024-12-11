@@ -1,0 +1,104 @@
+class NamelistMap:
+    def __init__(self, inverse_ambiguity_solver=None):
+        self.itemlistmap = {}
+        self.item_to_nm_map = {}
+        self.nm_ambig_solver = inverse_ambiguity_solver or default_ambig_solver
+
+    def set(self, nm, itemlist):
+        uniq_itemlist = list(set(itemlist))
+        self.itemlistmap[nm] = uniq_itemlist
+        for i in uniq_itemlist:
+            if i in self.item_to_nm_map.keys():
+                if nm not in self.item_to_nm_map[i]:
+                    self.item_to_nm_map[i].append(nm)
+            else:
+                self.item_to_nm_map[i] = [nm]
+
+    def add(self, nm, item):
+        if self.get(nm) is None:
+            self.set(nm, [item])
+        else:
+            self.set(nm, self.itemlistmap[nm] + [item])
+
+    def empty(self):
+        return not bool(self.itemlistmap)
+
+    def get(self, nm):
+        return self.itemlistmap.get(nm)
+
+    def get_all_keys(self):
+        return self.itemlistmap.keys()
+
+    def get_key_for(self, it):
+        return self.nm_ambig_solver(self.item_to_nm_map.get(it, []))
+
+    def get_key_list_for(self, it):
+        return self.item_to_nm_map.get(it, [])
+
+    def get_key_list_for_matching_items(self, item_matching_fun=lambda x, *args: False, item_matching_arglist=[]):
+        matched_key_list = []
+        for k in self.get_all_keys():
+            if item_matching_fun(self.itemlistmap[k], *item_matching_arglist):
+                matched_key_list.append(k)
+        return matched_key_list
+
+    def remove(self, nm=None, item=None):
+        if nm is not None:
+            assert item is None
+            for i in self.itemlistmap[nm]:
+                assert nm in self.item_to_nm_map[i]
+                self.item_to_nm_map[i].remove(nm)
+            self.itemlistmap.pop(nm)
+        elif item is not None:
+            if item in self.item_to_nm_map.keys():
+                aux_nm_list = []
+                for nm in self.item_to_nm_map[item]:
+                    self.itemlistmap[nm].remove(item)
+                    aux_nm_list.append(nm)
+                for n in aux_nm_list:
+                    if not self.itemlistmap[n]:
+                        self.itemlistmap.pop(n)
+                self.item_to_nm_map.pop(item)
+
+    def clear(self):
+        self.itemlistmap.clear()
+        self.item_to_nm_map.clear()
+
+    def set_ambig_solver(self, ambg):
+        self.nm_ambig_solver = ambg
+
+    def __str__(self):
+        sout = '===direct map==\n'
+        for n, items in self.itemlistmap.items():
+            sout += f'{n} --> {items}\n'
+        sout += '===reverse map===\n'
+        for item, nms in self.item_to_nm_map.items():
+            sout += f'{item} --> {nms}\n'
+        sout += '====='
+        return sout
+
+    def __repr__(self):
+        return f'<NamelistMap: nm_ambig_solver={self.nm_ambig_solver}, itemlistmap={self.itemlistmap}, reverse_map={self.item_to_nm_map}>'
+
+    def keys_for_item(self, item=None):
+        if item is not None:
+            return self.item_to_nm_map.get(item, [])
+        return []
+
+def default_ambig_solver(l):
+    if not isinstance(l, list):
+        raise ValueError("Input must be a list")
+    elif len(l) == 0:
+        return None
+    else:
+        return l[0]
+
+if __name__ == "__main__":
+    # Example usage
+    namelist_map = NamelistMap()
+    namelist_map.set("name1", ["item1", "item2"])
+    namelist_map.add("name2", "item1")
+    print(namelist_map.get("name1"))  # Output: ['item1', 'item2']
+    print(namelist_map.get_key_for("item1"))  # Output: name1
+    print(namelist_map.get_key_list_for("item1"))  # Output: ['name1', 'name2']
+    print(namelist_map)

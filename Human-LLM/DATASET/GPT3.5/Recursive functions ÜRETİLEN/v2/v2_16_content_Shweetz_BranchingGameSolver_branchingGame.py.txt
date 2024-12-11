@@ -1,0 +1,101 @@
+import copy
+
+# Initial game table
+table_1 = [[[2, 3], [1, 4]], [[4, 5], [6, 0]]]
+
+# Flag indicating whether the first player tries to maximize or minimize
+try_to_maximize_1 = True
+
+# Deep copy of the initial game table
+table_2 = copy.deepcopy(table_1)
+
+# Flag indicating whether the second player tries to maximize or minimize
+try_to_maximize_2 = False
+
+# Depth of the search tree
+depth = 3
+
+# Current turn number
+turn = 1
+
+# List to store paths and corresponding scores
+path_list = []
+
+
+def init():
+    """Initialize the path string with spaces"""
+    path = ""
+    for i in range(depth):
+        path += " "
+    return path
+
+
+def search(table, try_to_maximize, current_turn, path):
+    """Recursive function to search the game tree"""
+    for i in range(len(table)):
+        # Update the path for the current turn
+        path = path[:current_turn - 1] + str(i + 1) + path[current_turn:]
+        print("Turn " + str(current_turn) + ", Path: " + str(path) + ", Computing " + str(table[i]))
+
+        if isinstance(table[i], int) is False:
+            # Recursively search the subtree
+            table[i] = search(table[i], not try_to_maximize, current_turn + 1, path)
+
+    if try_to_maximize:
+        # Maximize the score if it's the first player's turn
+        result = max(table)
+        action = "max"
+    else:
+        # Minimize the score if it's the second player's turn
+        result = min(table)
+        action = "min"
+
+    # Update the path for the current turn based on the result
+    path = path[:current_turn - 1] + str(table.index(result) + 1) + path[current_turn:]
+
+    # Append the path and corresponding score to the list
+    path_entry = (path, result)
+    path_list.append(path_entry)
+
+    # Print the result for the current turn
+    print("Turn " + str(current_turn) + ", Path: " + path + ", " + action + " of " + str(table) + " is " + str(result))
+
+    return result
+
+
+def find_path(path_list, result, string, index):
+    """Recursive function to find the path based on the result"""
+    if index < depth - 1:
+        # Find the next step in the path
+        next_steps = [x for x, y in path_list if result == y and " " != x[index] and " " == x[index + 1]]
+    else:
+        # Find the final step in the path
+        next_steps = [x for x, y in path_list if result == y and " " != x[index]]
+
+    # Append the next step to the string
+    string += next_steps[0][index]
+
+    if len(string) == depth:
+        # Return the complete path
+        return string
+    else:
+        # Continue searching for the next step in the path
+        return find_path(path_list, result, string, index + 1)
+
+
+# Main code
+print("Game Table: " + str(table_1) + "\n")
+
+# First player wants to maximize
+print("1st Player wants to maximize")
+current_path = init()
+result = search(table_1, try_to_maximize_1, turn, current_path)
+current_path = find_path(path_list, result, "", 0)
+print("Score: " + str(result) + " (if the 1st Player wants to maximize), Path: " + current_path + "\n")
+
+# First player wants to minimize
+print("1st Player wants to minimize")
+current_path = init()
+result = search(table_2, try_to_maximize_2, turn, current_path)
+current_path = find_path(path_list, result, "", 0)
+print("Score: " + str(result) + " (if the 1st Player wants to minimize), Path: " + current_path)

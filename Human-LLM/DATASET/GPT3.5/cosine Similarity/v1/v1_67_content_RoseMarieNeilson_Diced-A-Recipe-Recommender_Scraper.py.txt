@@ -1,0 +1,62 @@
+import requests
+from bs4 import BeautifulSoup
+from pymongo import MongoClient
+
+def get_url(url):
+    '''
+    Extract recipe links from a search page URL
+    '''
+    all_recipes = requests.get(url).content
+    soup = BeautifulSoup(all_recipes, 'html.parser')
+    url_links = []
+    for a in soup.find_all("a"):
+        link = str(a.get('href')).strip()
+        if link.startswith('/recipe/'):
+            url_links.append('http://allrecipes.com' + link)
+    return url_links
+
+def store_data(mongo_update_lst, recipe_db):
+    '''
+    Store Recipe Information in MongoDB
+    '''
+    for json_dct in mongo_update_lst:
+        recipe_db.insert_one(json_dct)
+
+def scrape_search(list_link):
+    '''
+    Scrape recipe data from a list of recipe links
+    '''
+    mongo_update_lst = []
+    for recipe in list_link:
+        r = request_info(recipe)
+        mongo_update_lst.append(r)
+    return mongo_update_lst
+
+def request_info(link):
+    '''
+    Extract recipe information from a recipe page URL
+    '''
+    content = requests.get(link).content
+    soup = BeautifulSoup(content, "html.parser")
+    item_name = soup.find('h1', {'class':'recipe-summary__h1'}).text
+    submitter_name = soup.find('span', {'class':'submitter__name'}).text
+    submitter_desc = soup.find('div', {'class':'submitter__description'}).text
+    stars = soup.find('div', {'class':'rating-stars'}).get('data-ratingstars')
+    ingred_list = [s.text.strip().split('\n')[0] for s in soup.find_all('li', {'class': 'checkList__line'}) if not s.text.strip().startswith(('Add', 'ADVERTISEMEN'))]
+    direction_list = [d.text.strip() for d in soup.find_all('span', {'class':'recipe-directions__list--item'})]
+    json_dct = {'item_name': item_name, 'ingred_list': ingred_list, 'direction_list': direction_list, 'stars': stars, 'submitter_name': submitter_name, 'submitter_desc': submitter_desc}
+    return json_dct
+
+if __name__ == '__main__':
+    # Example URL to scrape
+    url = "http://allrecipes.com/recipe/260696/cauliflower-pizza-bites/"
+
+    # Connect to MongoDB
+    db_client = MongoClient()
+    db = db_client['allrecipes']
+    recipe_db = db['recipe_data']
+
+    # Scrape and store recipe data
+    recipe_links = get_url(url)
+    scraped_data = scrape_search(recipe_links)
+    store_data(scraped_data, recipe_db)

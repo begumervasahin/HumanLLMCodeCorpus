@@ -1,0 +1,95 @@
+import hashlib
+import sys
+
+def read_number(file_name):
+    with open(file_name, 'rb') as f:
+        snum = f.read()
+        n = 0
+        for i in range(len(snum)):
+            n = (n << 8) ^ snum[len(snum)-i-1]
+    return n
+
+def inverse(b, m):
+    s = 0
+    t = 1
+    a = m
+    while b != 1:
+        q = a / b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t = t + m
+    return t
+
+def hash_message(x):
+    dx1 = hashlib.sha256(x.encode()).digest()
+    res = 0
+    for cx in dx1:
+        res = (res << 8) ^ cx
+    return res
+
+def generate_point(y, b, prime):
+    yy = (y * y - b) % prime
+    x = pow(yy, inverse(3, prime-1), prime)
+    return [(x) % prime, (y) % prime]
+
+def add_points(P, Q, prime):
+    x1, x2 = P[0], Q[0]
+    y1, y2 = P[1], Q[1]
+    while x1 < x2:
+        x1 = x1 + prime
+    if x1 == x2:
+        s = ((3*(x1**2) + 0) * inverse(2*y1, prime)) % prime
+    else:
+        s = ((y1-y2) * inverse(x1-x2, prime)) % prime
+    xr = s**2 - x1 - x2
+    yr = s * (x1-xr) - y1
+    return [xr % prime, yr % prime]
+
+def multiply_point(P, n, prime):
+    isFirst = True
+    resP = P
+    if n < 0:
+        resP[1] = prime - resP[1]
+        n = (-1)*n
+    PP = resP
+    while n > 0:
+        if (n % 2 != 0):
+            if isFirst:
+                resP = PP
+                isFirst = False
+            else:
+                resP = add_points(resP, PP, prime)
+        PP = add_points(PP, PP, prime)
+        n = n / 2
+    return resP
+
+def verify_signature(G, s, Y, e, m, prime):
+    return e == hash_message(str(add_points(multiply_point(G, s, prime), multiply_point(Y, e, prime), prime)[0]) + m)
+
+def ecdsa_verification(G, m, S, Y, prime):
+    si = inverse(S[0], prime)
+    hh = hash_message(m + str(S[1]))
+    u1 = (si * hh) % prime
+    u2 = (si * S[1]) % prime
+    return add_points(multiply_point(G, u1, prime), multiply_point(Y, u2, prime), prime)[0] == S[1]
+
+if __name__ == "__main__":
+    prime = 1496577676626844588240573268701473812127674924030189
+    b = 7
+    P = generate_point(17, b, prime)
+    P = multiply_point(P, 90, prime)
+    message = open(sys.argv[1], 'r').read()
+    y = [read_number('y0'), read_number('y1')]
+    sig = [read_number('s0'), read_number('s1')]
+    print("Public key: X: ", y[0] % prime)
+    print("Public key: Y: ", y[1] % prime)
+    print("Signature X: ", sig[0])
+    print("Signature Y: ", sig[1])
+    print("")
+    print("The verification of signature:", verify_signature(P, sig[0], y, sig[1], message, prime))
+    print("The verification of ECDSA signature:", ecdsa_verification(P, message, sig, y, prime))

@@ -1,0 +1,53 @@
+"""
+Script to compute the Longest Common Substring (LCS) between two text files.
+"""
+
+import sys
+import serial_hash_search
+import parallel_hash_search
+
+# Flag to determine whether to use parallel or serial implementation
+PARALLEL = False
+
+def read_text(file_name):
+    """
+    Read the content of a text file.
+
+    Args:
+        file_name (str): The path to the text file.
+
+    Returns:
+        str: The content of the text file.
+    """
+    with open(file_name, 'r', encoding='utf-8') as file:
+        return file.read()
+
+if __name__ == '__main__':
+    """
+    Command line arguments:
+        str: the path to the text file to compute the LCS of
+        str: the path to the second text file to compute the LCS of
+    Prints:
+        int: the length of the LCS
+        list: a list of all longest common substrings
+    """
+    if len(sys.argv) == 3:
+        file1_path = str(sys.argv[1])
+        file2_path = str(sys.argv[2])
+        text1 = read_text(file1_path)
+        text2 = read_text(file2_path)
+    else:
+        print('Please provide two text file arguments.')
+        exit()
+
+    lcs_function = parallel_hash_search.lcs if PARALLEL else serial_hash_search.lcs
+    length, substrings = lcs_function(text1, text2)
+
+    if len(substrings) == 1:
+        multiple = ('is', len(substrings), '')
+    else:
+        multiple = ('are', len(substrings), 's')
+
+    print(f'The length of the longest common substring is: {length}')
+    print(f'There {multiple[0]} {multiple[1]} longest common substring{multiple[2]}:')
+    print('\n'.join(f'"{s}"' for s in substrings), end='')

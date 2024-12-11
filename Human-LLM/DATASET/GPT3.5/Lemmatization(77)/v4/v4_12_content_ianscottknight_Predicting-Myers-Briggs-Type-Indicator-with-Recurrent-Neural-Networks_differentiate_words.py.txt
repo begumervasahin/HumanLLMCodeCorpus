@@ -1,0 +1,60 @@
+import os
+import collections
+import re
+
+DATA_DIR = "data"
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+WORDS_TO_REMOVE = [
+    "intj", "intp", "infj", "infp", "istj", "istp", "isfj", "isfp",
+    "entj", "entp", "enfj", "enfp", "estj", "estp", "esfj", "esfp",
+    "si", "ni", "ti", "fi", "se", "ne", "te", "fe", "nt", "nf",
+    "sxsp", "spsx", "spso", "sxso", "sosp", "sosx", "sp", "sx",
+    "sj", "sf", "st", "le", "socionic", "socionics", "enneagram",
+    "d", "w", "mbti",
+]
+
+# Process data for each dimension
+for dimension in DIMENSIONS:
+    # Count occurrences of words in files for each dimension
+    wordcount_a = collections.Counter()
+    wordcount_b = collections.Counter()
+
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"), "r") as file_a:
+        wordcount_a.update(file_a.read().split())
+
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"), "r") as file_b:
+        wordcount_b.update(file_b.read().split())
+
+    # Combine unique keys from both wordcounts
+    cache = set(wordcount_a.keys()) | set(wordcount_b.keys())
+
+    # Calculate differences in word counts
+    a = {}
+    b = {}
+
+    for key in cache:
+        if key in wordcount_a:
+            if key in wordcount_b:
+                if wordcount_a[key] > wordcount_b[key]:
+                    a[key] = wordcount_a[key] - wordcount_b[key]
+                elif wordcount_a[key] < wordcount_b[key]:
+                    b[key] = wordcount_b[key] - wordcount_a[key]
+            else:
+                a[key] = wordcount_a[key]
+        elif key in wordcount_b:
+            b[key] = wordcount_b[key]
+
+    # Write special words to files
+    regex = re.compile("[^a-zA-Z]")
+
+    with open(os.path.join(DATA_DIR, f"special_words_{dimension[0]}.txt"), "w") as file_a:
+        for key in a.keys():
+            mod = regex.sub("", str(key))
+            if mod not in WORDS_TO_REMOVE and a[key] > 2:
+                file_a.write(f"{mod}\n" * a[key])
+
+    with open(os.path.join(DATA_DIR, f"special_words_{dimension[1]}.txt"), "w") as file_b:
+        for key in b.keys():
+            mod = regex.sub("", str(key))
+            if mod not in WORDS_TO_REMOVE and b[key] > 2:
+                file_b.write(f"{mod}\n" * b[key])

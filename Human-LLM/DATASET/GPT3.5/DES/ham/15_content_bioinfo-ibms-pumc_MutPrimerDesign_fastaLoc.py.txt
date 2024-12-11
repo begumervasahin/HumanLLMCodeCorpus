@@ -1,0 +1,44 @@
+import glob
+import sys
+import re
+from Bio import SeqIO
+class FastaLoc(object):
+    def __init__(self,fastaFile,segments):
+        self.fastafile = fastaFile
+        self.segments = segments
+        self.results = {}
+    def getSeq(self):
+        results = {}
+        for gene in SeqIO.parse(self.fastafile,'fasta'):
+            for segment in  self.segments:
+                chrom,mrnaid,start,end,strand,tmploc = segment
+                if gene.id == chrom:
+                    seq1 = gene.seq[int(start)-1:int(end)]
+                    if strand == "-":
+                        results[mrnaid + "|" + chrom + "|" + start + "_" + end+ "|center:" + str(tmploc)] = seq1.reverse_complement()
+                    else:
+                        results[mrnaid + "|" + chrom + "|" + start + "_" + end+"|center:"+str(tmploc)] = seq1
+                    if len(results) == len(self.segments):break
+        self.results = results
+        return results
+if __name__ == "__main__":
+    if(len(sys.argv) < 2):
+        print ("fastaLoc.py fastaFile chr start end")
+        exit()
+    name = sys.argv[1]
+    chrom = sys.argv[2]
+    loc1 = loc2 = ""
+    if len(sys.argv) > 3:
+        loc1 = sys.argv[3]
+    if len(sys.argv) > 4:
+        loc2 = sys.argv[4]
+    for gene in SeqIO.parse(name,'fasta'):
+        if gene.id == chrom:
+            if loc1 != "" and loc2 != "":
+                print (">"+gene.id + "_" + loc1 + "_" + loc2)
+                seq1 = gene.seq[int(loc1)-1:int(loc2)]
+                print (seq1)
+            else:
+                print (">"+gene.id)
+                print(str(gene.seq))
+            exit()

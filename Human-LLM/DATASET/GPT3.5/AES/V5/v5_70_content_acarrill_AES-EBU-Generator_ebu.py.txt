@@ -1,0 +1,89 @@
+import numpy as np
+import wave as wv
+import sys
+
+def create_frame(audio_sample_x, audio_sample_y, status_list, status_cursor, bit_depth):
+    """
+    Create a frame for audio samples.
+    """
+    if bit_depth == 3:
+        sub_frame_type = b'0xD8' if status_cursor == 0 else b'0xD2'
+        first_sub_frame = [sub_frame_type, audio_sample_x, 1, 0, int(status_list[status_cursor]), 1]
+        sub_frame_y = [b'0xD4', audio_sample_y, 1, 0, int(status_list[status_cursor]), 1]
+    else:
+        sub_frame_type = b'0xD8' if status_cursor == 0 else b'0xD2'
+        first_sub_frame = [sub_frame_type, b'0x0', audio_sample_x, 1, 0, int(status_list[status_cursor]), 1]
+        sub_frame_y = [b'0xD4', b'0x0', audio_sample_y, 1, 0, int(status_list[status_cursor]), 1]
+
+    return [first_sub_frame, sub_frame_y]
+
+def create_block(audio):
+    """
+    Create a list of blocks with audio samples.
+    """
+    bit_depth = audio.getsampwidth()
+    frame_list = []
+    block_list = []
+    num_samples = audio.getnframes()
+    status_list = build_status_bits()
+    status_cursor = 0
+
+    while audio.tell() != num_samples:
+        audio_samples = audio.readframes(2)
+        frame = create_frame(audio_samples[0:2], audio_samples[2:5], status_list, status_cursor, bit_depth)
+        frame_list.append(frame)
+        status_cursor += 1
+
+        if len(frame_list) == 192:
+            block_list.append(frame_list)
+            frame_list = []
+            status_cursor = 0
+
+    if frame_list:
+        block_list.append(frame_list)
+
+    return block_list
+
+def insert_in_status_list(status_list, status_byte, status_byte_num):
+    """
+    Insert status byte into the status list.
+    """
+    index = status_byte_num * 8
+    for bit in status_byte:
+        status_list[index] = bit
+        index += 1
+    return status_list
+
+def build_status_bits():
+    """
+    Build status bits based on user input.
+    """
+    status_list = np.zeros(192)
+
+    print("Select an implementation of status bits:")
+    print("1: Minimum\n2: Standard\n3: Enhanced")
+    mode = int(input())
+
+    print("Enter the status bytes:")
+    if mode >= 2:
+        for bit in range(3):
+            status_byte = input(f"Write the {bit} status byte (e.g., 01110010):")
+            status_list = insert_in_status_list(status_list, status_byte, bit)   
+
+        if mode == 3:
+            for bit in range(3, 23):
+                if bit != 5:
+                    status_byte = input(f"Write the {bit} status byte (e.g., 01110010):")
+                    status_list = insert_in_status_list(status_list, status_byte, bit)
+
+    return status_list
+
+if __name__ == "__main__":
+    try:
+        audio_data = sys.argv[1]
+    except IndexError:
+        sys.exit("Usage: python ebu.py AudioFile")
+
+    with wv.open(audio_data, 'r') as audio:
+        block_list = create_block(audio)
+        print(block_list)

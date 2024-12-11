@@ -1,0 +1,132 @@
+import re
+from socket import socket, AF_INET, SOCK_DGRAM
+
+class BellmanFordAlgorithm:
+    def __init__(self, router_count, initial_costs, my_name, ports_map, address_to_name):        
+        self.use_who = {}
+        self.new_pm = None
+        self.pm_address = None
+        self.initial_costs = initial_costs
+        self.old_pm = {}
+        self.ports = ports_map
+        self.my_port = ports_map[my_name]
+        self.name = my_name
+        self.router_count = router_count
+        self.address_to_name = address_to_name
+        self.table = []
+        self.lie_table = []
+        self.initialize_tables()
+        self.show_table()
+        self.permission = []
+        self.router_socket = socket(AF_INET, SOCK_DGRAM)
+        self.router_socket.bind(('', self.my_port))
+        self.socket_ip = '127.0.0.1'
+        self.router_socket.settimeout(0.5)
+
+    def initialize_tables(self):
+        for m in range(self.router_count):
+            self.table.append([])
+            self.lie_table.append([])
+            for n in range(self.router_count):
+                self.table[m].append('99')
+                self.lie_table[m].append(self.initial_costs[n])
+        for m in range(self.router_count):
+            self.table[int(self.name) - 1][m] = self.initial_costs[m]
+            if self.initial_costs[m] == 'N':
+                self.use_who[m + 1] = ''
+            else:
+                self.use_who[m + 1] = str(m + 1)
+
+    def determine_who_to_send(self):
+        self.permission.clear()
+        for m in range(self.router_count):
+            if self.initial_costs[m] == 'N':
+                self.permission.append(False)
+            else:
+                self.permission.append(True)
+
+    def send_update(self):
+        message = str()
+        for sending_router in range(self.router_count):
+            if self.permission[sending_router]:
+                if not(sending_router + 1 == int(self.name)):
+                    for m in range(self.router_count):
+                        message = message + self.lie_table[sending_router][m] + '@'     
+                    self.router_socket.sendto(bytes(message, 'UTF-8'),
+                                            (self.socket_ip, self.ports[str(sending_router + 1)]))
+                    message = str()
+
+    def receive_update(self):
+        try:
+            message, client_address = self.router_socket.recvfrom(2048)
+            self.new_pm = re.split("@", message.decode())
+            self.new_pm.remove('')
+            self.pm_address = client_address[1]
+            if self.pm_address in list(self.old_pm.keys()):
+                if not(self.old_pm[self.pm_address] == self.new_pm):
+                    self.old_pm[self.pm_address] = self.new_pm
+                    self.table[self.address_to_name[self.pm_address] - 1] = self.new_pm
+                    print("Router {} sent a new update: {}".format(self.pm_address, self.new_pm))
+                    self.calculate_algorithm()
+            else:
+                self.old_pm[self.pm_address] = self.new_pm
+                self.table[self.address_to_name[self.pm_address] - 1] = self.new_pm
+                print("Router {} sent a new update: {}".format(self.pm_address, self.new_pm)) 
+                self.calculate_algorithm()
+        except:
+            pass
+
+    def calculate_algorithm(self):
+        distance = []
+        for destination_router in range(self.router_count):
+            if not(int(self.name) - 1 == destination_router):
+                if self.table[int(self.name) - 1][destination_router] == 'N':
+                    temp = '99'
+                else:
+                    temp = self.table[int(self.name) - 1][destination_router]
+                for connecting_router in range(self.router_count):
+                    if self.initial_costs[connecting_router] == 'N':
+                        cost1 = 99
+                    else:
+                        cost1 = int(self.initial_costs[connecting_router])
+                    if self.table[connecting_router][destination_router] == 'N':
+                        cost2 = 99
+                    else:
+                        cost2 = int(self.table[connecting_router][destination_router])
+                    distance.append(cost1 + cost2)
+                min_distance = min(distance)
+                if min_distance < int(temp):
+                    self.table[int(self.name) - 1][destination_router] = str(min_distance)
+                    for m in range(self.router_count):
+                        self.lie_table[m][destination_router] = str(min_distance)
+                    min_through = distance.index(min_distance)
+                    self.use_who[destination_router + 1] = str(min_through + 1)
+                    lie_to = min_through
+                    self.lie_table[lie_to][destination_router] = '99'
+                    self.send_update()
+                distance.clear()
+        self.show_table()
+
+    def show_table(self):
+        print("\nThe Cost table of router {} is :".format(self.name))
+        print("        ", end="")
+        for h in range(self.router_count):
+                print("{:<8}".format(h + 1), end="")
+        print("\n----------------------------------------------------")
+        for row in range(self.router_count):
+            print("{}|      ".format(row + 1), end="")
+            for col in range(self.router_count):
+                if row == int(self.name) - 1:
+                    print("{:<2}\{:<5}".format(self.table[row][col], self.use_who[col + 1]), end="")
+                else:
+                    print("{:<8}".format(self.table[row][col]), end="")
+            print()
+        print("----------------------------------------------------")
+
+    def check_cost_change(self, new_costs):
+        if self.initial_costs == new_costs:
+            print("No Cost Change!")
+        else:
+            self.initial_costs = new_costs
+            print("Link costs of router {} have changed!".format(self.name))
+            self.table[int(self.name) - 1] = new

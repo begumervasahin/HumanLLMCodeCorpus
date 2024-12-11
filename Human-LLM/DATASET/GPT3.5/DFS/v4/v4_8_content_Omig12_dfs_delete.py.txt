@@ -1,0 +1,56 @@
+import socket
+import sys
+from Packet import Packet
+
+def usage():
+    """
+    Print usage instructions.
+    """
+    print("Usage:\n\tFrom DFS: python {} <server>:<port>:<dfs file path>\n\t".format(sys.argv[0]))
+    sys.exit(0)
+
+def del_from_dfs(address, fname):
+    """
+    Contact the metadata server to request file block information.
+    Delete the data blocks from the data nodes.
+    """
+    # Connect to the metadata server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(address)
+
+    # Send delete request
+    packet = Packet()
+    packet.BuildDelPacket(fname)
+    sock.sendall(packet.getEncodedPacket())
+
+    # Receive response from metadata server
+    received = sock.recv(4096)
+    packet.DecodePacket(received)
+
+    # Delete data blocks from data nodes
+    for node_ip, node_port, block_id in packet.getDataNodes():
+        print("Deleting block {} from {}:{}".format(block_id, node_ip, node_port))
+        node_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        node_sock.connect((node_ip, int(node_port)))
+        packet.BuildDelDataBlockPacket(block_id)
+        node_sock.sendall(packet.getEncodedPacket())
+        s = node_sock.recv(4096)
+        print(block_id, s)
+        node_sock.close()
+
+    print(received)
+    sock.close()
+
+if __name__ == "__main__":
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != 2:
+        usage()
+
+    # Parse the arguments
+    file_info = sys.argv[1].split(":")
+    ip = file_info[0]
+    port = int(file_info[1])
+    file_path = file_info[2]
+
+    # Delete the file from DFS
+    del_from_dfs((ip, port), file_path)

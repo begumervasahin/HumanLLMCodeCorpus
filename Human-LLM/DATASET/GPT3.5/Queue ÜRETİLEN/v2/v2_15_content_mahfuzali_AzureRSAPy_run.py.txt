@@ -1,0 +1,63 @@
+import azure.cosmos.documents as documents
+import azure.cosmos.cosmos_client as cosmos_client
+import azure.cosmos.errors as errors
+
+class IDisposable:
+    def __init__(self, obj):
+        self.obj = obj
+    def __enter__(self):
+        return self.obj
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.obj.Close()
+
+class Hash:
+    pass
+
+class Key:
+    def generate_keys(self):
+        return {'publicKey': 'mock_public_key', 'privateKey': 'mock_private_key'}
+
+class Signature:
+    pass
+
+class Encrypt:
+    pass
+
+class User:
+    def __init__(self, public_key, private_key):
+        self.public_key = public_key
+        self.private_key = private_key
+
+class Database:
+    HOST = 'mock_host'
+    MASTER_KEY = 'mock_master_key'
+    DATABASE_ID = 'mock_database_id'
+    COLLECTION_ID = 'mock_collection_id'
+    database_link = f'dbs/{DATABASE_ID}'
+
+def main():
+    cosmos_client_instance = cosmos_client.CosmosClient(Database.HOST, {'masterKey': Database.MASTER_KEY})
+    with IDisposable(cosmos_client_instance) as client:
+        try:
+            try:
+                client.CreateDatabase({"id": Database.DATABASE_ID})
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    pass
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+            try:
+                client.CreateContainer(Database.database_link, {"id": Database.COLLECTION_ID})
+                print('Collection with id \'{0}\' created'.format(Database.COLLECTION_ID))
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    print('Collection with id \'{0}\' was found'.format(Database.COLLECTION_ID))
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+        except errors.HTTPFailure as e:
+            print('\nrun_sample has caught an error. {0}'.format(e._http_error_message))
+        finally:
+            print("\nrun_sample done")
+
+if __name__ == '__main__':
+    main()

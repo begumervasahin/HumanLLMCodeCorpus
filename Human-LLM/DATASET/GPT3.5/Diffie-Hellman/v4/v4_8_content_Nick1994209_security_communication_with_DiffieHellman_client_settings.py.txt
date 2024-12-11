@@ -1,0 +1,91 @@
+import sys
+import random
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QLineEdit, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QHBoxLayout
+)
+from PyQt5.QtCore import QCoreApplication
+
+from client_communication import ClientCommunicationMixin
+
+class ClientSetSocketSettingsMixin(ClientCommunicationMixin):
+    def client_set_socket_settings_gui(self):
+        self.setup_ui()
+        self.setup_input_fields()
+        self.setup_buttons()
+        self.setup_layout()
+
+        self.setGeometry(600, 300, 400, 200)
+        self.setWindowTitle('Client')
+        self.show()
+
+    def setup_ui(self):
+        self.window = QWidget()
+        self.layout = QVBoxLayout()
+        self.window.setLayout(self.layout)
+        self.objects_to_hide = []
+
+    def setup_input_fields(self):
+        self.input_port_client = QLineEdit()
+        self.input_port_client.setPlaceholderText("Enter port number")
+        self.input_ip_client = QLineEdit()
+        self.input_ip_client.setPlaceholderText("Enter IP address")
+        self.input_ip_client.setText('localhost')
+        self.input_secret_key_client = QLineEdit()
+        self.input_secret_key_client.setPlaceholderText("Enter secret key")
+
+        labels_layout = QHBoxLayout()
+        labels_layout.addWidget(self.create_label("port"))
+        labels_layout.addWidget(self.create_label("ip"))
+        labels_layout.addWidget(self.create_label("key"))
+
+        input_fields_layout = QHBoxLayout()
+        input_fields_layout.addWidget(self.input_port_client)
+        input_fields_layout.addWidget(self.input_ip_client)
+        input_fields_layout.addWidget(self.input_secret_key_client)
+
+        self.layout.addLayout(labels_layout)
+        self.layout.addLayout(input_fields_layout)
+
+    def create_label(self, text):
+        label = QLabel(text)
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        label.setStyleSheet("QLabel {color: white;}")
+        return label
+
+    def setup_buttons(self):
+        btn_random_secret_key = QPushButton('Generate Key')
+        btn_random_secret_key.clicked.connect(self.random_secret_key)
+        btn_next = QPushButton('Next')
+        btn_next.clicked.connect(self.next_client_window)
+        btn_exit = QPushButton('Quit')
+        btn_exit.clicked.connect(QCoreApplication.instance().quit)
+        btn_widget_choice = QPushButton('Back')
+        btn_widget_choice.clicked.connect(self.gui_choice_server_client)
+
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addWidget(btn_random_secret_key)
+        buttons_layout.addWidget(btn_next)
+        buttons_layout.addWidget(btn_exit)
+        buttons_layout.addWidget(btn_widget_choice)
+
+        self.layout.addLayout(buttons_layout)
+        self.objects_to_hide.extend([btn_exit, btn_widget_choice, btn_next, btn_random_secret_key])
+
+    def setup_layout(self):
+        self.window.setLayout(self.layout)
+
+    def random_secret_key(self):
+        self.input_secret_key_client.setText(str(random.randint(0, 10000)))
+
+    def next_client_window(self):
+        if self.input_port_client.text() and self.input_ip_client.text() and self.input_secret_key_client.text():
+            if self.input_port_client.text().isdigit():
+                self.client_communication()
+
+    def run(self):
+        self.client_set_socket_settings_gui()
+        sys.exit(self.app.exec_())
+
+if __name__ == '__main__':
+    client = ClientSetSocketSettingsMixin()
+    client.run()

@@ -1,0 +1,49 @@
+import os
+import collections
+import pandas as pd
+import csv
+import re
+
+# Constants
+DATA_DIR = "data"
+MBTI_UNCLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_unclean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+# Read the MBTI data from the CSV file
+df = pd.read_csv(MBTI_UNCLEAN_CSV_PATH)
+
+# Count the occurrences of each MBTI dimension
+counts = collections.defaultdict(int)
+for dimension in DIMENSIONS:
+    letter_1, letter_2 = dimension
+    for index, row in df.iterrows():
+        mbti = row["type"]
+        posts = row["posts"].split("|||")
+        for post in posts:
+            # Skip empty posts, posts containing URLs, or non-alphanumeric posts
+            if not post or "http" in post or not re.search("[a-zA-Z]", post):
+                continue
+            if letter_1 in mbti:
+                counts[letter_1] += 1
+            if letter_2 in mbti:
+                counts[letter_2] += 1
+
+# Create training CSV files for each MBTI dimension
+for dimension in DIMENSIONS:
+    letter_1, letter_2 = dimension
+    # Determine the limit based on the less frequent MBTI dimension
+    limit = min(counts[letter_1], counts[letter_2])
+
+    posts = []
+    # Collect posts for the current dimension until reaching the limit
+    for index, row in df.iterrows():
+        if letter_1 in row["type"]:
+            posts.extend([post for post in row["posts"].split("|||") if post and "http" not in post and re.search("[a-zA-Z]", post)])
+            if len(posts) >= limit:
+                break
+
+    # Write the collected posts to a CSV file
+    train_csv_path = os.path.join(DATA_DIR, f"train_{letter_1}.csv")
+    with open(train_csv_path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows([[post] for post in posts])

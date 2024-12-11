@@ -1,0 +1,57 @@
+import argparse
+import math
+import graph_tool
+import graph_tool.search
+from CurrencyExchangeReader import CurrencyExchangeReader
+
+class ArbitrageDetector:
+    def __init__(self, data_file):
+        self.exchange_rate_graph = graph_tool.Graph()
+        self.currency_code_vertex_map = {}
+        self.vertex_labels = self.exchange_rate_graph.new_vertex_property("string")
+        self.exchange_rates = self.exchange_rate_graph.new_edge_property("float")
+        self.currency_data_reader = CurrencyExchangeReader(data_file)
+
+    def detect_arbitrage(self):
+        currency_codes, currency_exchange_rates = self.currency_data_reader.read_data()
+
+        # Create vertices for each currency code
+        for code in currency_codes:
+            vertex = self.exchange_rate_graph.add_vertex()
+            self.currency_code_vertex_map[code] = vertex
+            self.vertex_labels[vertex] = code
+
+        # Create edges with corresponding exchange rates
+        for exchange_rate in currency_exchange_rates:
+            if self.is_valid_exchange_rate(exchange_rate):
+                from_vertex = self.currency_code_vertex_map[exchange_rate.fromCurrency]
+                to_vertex = self.currency_code_vertex_map[exchange_rate.toCurrency]
+                edge = self.exchange_rate_graph.add_edge(from_vertex, to_vertex)
+                self.exchange_rates[edge] = -math.log(exchange_rate.exchangeRate)
+
+        # Detect arbitrage using Bellman-Ford algorithm
+        all_edges_minimized, _, _ = graph_tool.search.bellman_ford_search(
+            self.exchange_rate_graph,
+            self.exchange_rate_graph.vertex(0),
+            self.exchange_rates,
+            infinity=float("inf")
+        )
+        return all_edges_minimized
+
+    def is_valid_exchange_rate(self, exchange_rate):
+        return (exchange_rate.fromCurrency != exchange_rate.toCurrency and
+                exchange_rate.exchangeRate > 0)
+
+def parse_command_line_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("currency_exchange_file", type=str, help="Path to the currency exchange rates file")
+    args = parser.parse_args()
+    return args.currency_exchange_file
+
+def main():
+    currency_exchange_file = parse_command_line_args()
+    arbitrage_detector = ArbitrageDetector(currency_exchange_file)
+    arbitrage_detector.detect_arbitrage()
+
+if __name__ == '__main__':
+    main()

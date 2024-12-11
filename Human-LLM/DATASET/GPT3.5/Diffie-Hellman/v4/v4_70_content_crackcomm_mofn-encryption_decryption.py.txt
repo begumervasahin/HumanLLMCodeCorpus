@@ -1,0 +1,39 @@
+import base64
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from util import print_key, public_bytes, exchange_key
+from keys import secret_alice, secret_bob, secret_joe, ephemeral_key
+from encryption import shared_alice, shared_bob, shared_joe
+
+# Perform key exchanges between Alice, Bob, and Joe
+shared_alice_joe = shared_alice.exchange(shared_joe.public_key())
+shared_alice_bob = shared_alice.exchange(shared_bob.public_key())
+shared_bob_joe = shared_joe.exchange(shared_bob.public_key())
+
+# Perform ephemeral key exchanges
+ephemeral_alice_joe = exchange_key(shared_alice_joe, ephemeral_key.public_key())
+ephemeral_alice_bob = exchange_key(shared_alice_bob, ephemeral_key.public_key())
+ephemeral_bob_joe = exchange_key(shared_bob_joe, ephemeral_key.public_key())
+
+def main():
+    # Initialize HKDF for key derivation
+    backend = default_backend()
+    hkdf = HKDF(
+        algorithm=hashes.BLAKE2s(32),
+        length=32,
+        salt=public_bytes(ephemeral_key),
+        info=b'MofN-Encryption-demo',
+        backend=backend
+    )
+
+    # Derive encryption key using HKDF
+    combined_keys = ephemeral_alice_joe + b'\x01' + ephemeral_alice_bob + b'\x02' + ephemeral_bob_joe
+    key = hkdf.derive(combined_keys)
+
+    # Print the base64-encoded derived key
+    print(base64.b64encode(key))
+
+if __name__ == "__main__":
+    main()

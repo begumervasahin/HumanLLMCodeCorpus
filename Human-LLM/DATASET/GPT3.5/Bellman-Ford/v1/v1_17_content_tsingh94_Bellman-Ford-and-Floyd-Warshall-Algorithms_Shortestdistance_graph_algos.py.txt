@@ -1,0 +1,128 @@
+import os
+import re
+import sys
+import time
+
+graphRE = re.compile(r"(\d+)\s(\d+)")
+edgeRE = re.compile(r"(\d+)\s(\d+)\s(\d+)")
+
+
+def change_edge_matrix(edges):
+    for v in range(len(edges)):
+        for e in range(len(edges[v])):
+            if isinstance(edges[v][e], str):
+                edges[v][e] = int(edges[v][e])
+    return edges
+
+
+def BellmanFord(G):
+    pathPairs = []
+    edges = change_edge_matrix(G[1])
+    val_infinity = edges[0][0]
+    for n in range(len(G[0])):
+        one_node_to_rest = [val_infinity if m != n else 0 for m in range(len(G[0]))]
+        for _ in range(len(G[0])):
+            new_row = []
+            for i in range(len(edges)):
+                if i != n:
+                    val_assign = one_node_to_rest[i]
+                    for k in range(len(edges[i])):
+                        check_node_weight = edges[k][i]
+                        check_node_weight_prev_val = one_node_to_rest[k]
+                        if check_node_weight != val_infinity and check_node_weight_prev_val != val_infinity:
+                            if check_node_weight + check_node_weight_prev_val < val_assign:
+                                val_assign = check_node_weight + check_node_weight_prev_val
+                    new_row.append(val_assign)
+                else:
+                    new_row.append(0)
+            one_node_to_rest = new_row
+        pathPairs.append(one_node_to_rest)
+    return pathPairs
+
+
+def FloydWarshall(G):
+    pathPairs = change_edge_matrix(G[1])
+    for i in range(len(G[0])):
+        pathPairs[i][i] = 0
+    for k in range(len(G[0])):
+        for i in range(len(pathPairs)):
+            for j in range(len(pathPairs[i])):
+                result = pathPairs[i][k] + pathPairs[k][j]
+                if result < pathPairs[i][j]:
+                    pathPairs[i][j] = result
+    return pathPairs
+
+
+def readFile(filename):
+    with open(filename, 'r') as inFile:
+        line1 = inFile.readline()
+        graphMatch = graphRE.match(line1)
+        if not graphMatch:
+            print(line1 + " not properly formatted")
+            sys.exit(1)
+        vertices = list(range(int(graphMatch.group(1))))
+        edges = [[float("inf")] * len(vertices) for _ in range(len(vertices))]
+        for line in inFile.readlines():
+            line = line.strip()
+            edgeMatch = edgeRE.match(line)
+            if edgeMatch:
+                source = edgeMatch.group(1)
+                sink = edgeMatch.group(2)
+                if int(source) >= len(vertices) or int(sink) >= len(vertices):
+                    print(
+                        "Attempting to insert an edge between "
+                        + str(source)
+                        + " and "
+                        + str(sink)
+                        + " in a graph with "
+                        + str(len(vertices))
+                        + " vertices"
+                    )
+                    sys.exit(1)
+                weight = edgeMatch.group(3)
+                edges[int(source)][int(sink)] = weight
+    return vertices, edges
+
+
+def writeFile(lengthMatrix, filename):
+    filename = os.path.splitext(os.path.split(filename)[1])[0]
+    with open('output/' + filename + '_output.txt', 'w') as outFile:
+        for vertex in lengthMatrix:
+            outFile.write(','.join(map(str, vertex)) + '\n')
+
+
+def main(filename, algorithm):
+    algorithm = algorithm[1:]
+    G = readFile(filename)
+    pathLengths = []
+    if algorithm == 'b' or algorithm == 'B':
+        start = time.process_time()
+        pathLengths = BellmanFord(G)
+        end = time.process_time()
+        BFTime = end - start
+        print("Bellman-Ford timing: " + str(BFTime))
+    if algorithm == 'f' or algorithm == 'F':
+        start = time.process_time()
+        pathLengths = FloydWarshall(G)
+        end = time.process_time()
+        FWTime = end - start
+        print("Floyd-Warshall timing: " + str(FWTime))
+    if algorithm == "both":
+        start = time.process_time()
+        BellmanFord(G)
+        end = time.process_time()
+        BFTime = end - start
+        start = time.process_time()
+        FloydWarshall(G)
+        end = time.process_time()
+        FWTime = end - start
+        print("Bellman-Ford timing: " + str(BFTime))
+        print("Floyd-Warshall timing: " + str(FWTime))
+    writeFile(pathLengths, filename)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("python bellman_ford.py -<f|b> <input_file>")
+        sys.exit(1)
+    main(sys.argv[2], sys.argv[1])

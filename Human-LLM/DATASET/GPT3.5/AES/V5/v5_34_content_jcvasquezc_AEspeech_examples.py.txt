@@ -1,0 +1,49 @@
+# Import necessary modules
+from AEspeech import AEspeech
+import os
+
+# Main entry point of the script
+if __name__ == "__main__":
+    # Set the current directory
+    PATH = os.path.dirname(os.path.abspath(__file__))
+
+    # Define the WAV file path
+    wav_file = PATH + "/audios/pataka.wav"
+
+    # Initialize AEspeech object with CAE model and window size 1024
+    aespeech = AEspeech(model_type="CAE", window_size=1024)
+
+    # Compute and print the size of spectrograms for the WAV file
+    mat_spec = aespeech.compute_spectrograms(wav_file)
+    print("Spectrogram size:", mat_spec.size())
+
+    # Compute and print the shape of bottleneck features for the WAV file
+    bottle = aespeech.compute_bottleneck_features(wav_file)
+    print("Bottleneck features shape:", bottle.shape)
+
+    # Compute and print the shape of reconstruction error features for the WAV file
+    error = aespeech.compute_rec_error_features(wav_file)
+    print("Reconstruction error features shape:", error.shape)      
+
+    # Define the WAV directory path
+    wav_directory = PATH + "/audios/"
+
+    # Compute dynamic features for all WAV files in the directory   
+    df = aespeech.compute_dynamic_features(directory=wav_directory)
+    print("Dynamic features:")
+    print(df)
+    print("Bottleneck features shape:", df["bottleneck"].shape)     
+    print("Error features shape:", df["error"].shape)
+    print("WAV file paths shape:", df["wav_file"].shape)
+    print("Frame shape:", df["frame"].shape)
+
+    # Compute global features for all WAV files in the directory    
+    global_features_bottle, global_features_error = aespeech.compute_global_features(directory=wav_directory)      
+    print("Global features (bottleneck):")
+    print(global_features_bottle)
+    print("Global features (error):")
+    print(global_features_error)
+
+    # Export dataframes to CSV files
+    global_features_bottle.to_csv(PATH + "/bottle_example.csv")
+    global_features_error.to_csv(PATH + "/error_example.csv")

@@ -1,0 +1,109 @@
+import requests
+import re
+import argparse
+from bs4 import BeautifulSoup
+import json
+from dict2xml import dict2xml
+
+def parse_html(html):
+    """
+    Extract book information from HTML content.
+
+    Args:
+        html (str): The HTML content of the webpage.
+
+    Returns:
+        dict: A dictionary containing book information.
+    """
+    book_info = {}
+    soup = BeautifulSoup(html, features="html.parser")
+    for div in soup.find_all("div", class_="details-row"):
+        key = div.find("p").text.strip()
+        value = div.text.replace(key, "").strip()
+        value = " ".join(value.split())
+        if value:
+            book_info[key] = value
+    return book_info
+
+def get_infos_from_id(book_id: int, sign: str = ""):
+    """
+    Get book information from book ID.
+
+    Args:
+        book_id (int): The ID of the book.
+        sign (str, optional): The sign parameter. Defaults to "".
+
+    Returns:
+        dict: A dictionary containing book information.
+    """
+    url = f"https://www.izneo.com/book/{book_id}"
+    if sign:
+        url += f"?{sign}"
+    response = requests.get(url, allow_redirects=True)
+    book_infos = json.loads(response.text)["data"]
+    filtered_infos = {key: value.strip() for key, value in book_infos.items() if key in ["title", "subtitle", "serie_name", "volume", "shelf_name", "gender_name", "readDirection", "synopsis"]}
+    return filtered_infos
+
+def get_infos_from_url(url: str):
+    """
+    Get book information from URL.
+
+    Args:
+        url (str): The URL of the book.
+
+    Returns:
+        dict: A dictionary containing book information.
+    """
+    response = requests.get(url, allow_redirects=True)
+    if response.status_code not in [200, 201]:
+        print("Impossible de récupérer la page")
+        return {}
+    return parse_html(response.text)
+
+def main():
+    """
+    Main function to run the script.
+    """
+    parser = argparse.ArgumentParser(description="Script pour obtenir les infos sur une BD Izneo.")
+    parser.add_argument("url", metavar="URL", type=str, default=None, help="L'URL d'une BD.")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        metavar="OUTPUT_FILE",
+        default="",
+        help="Enregistrer le résultat dans un fichier (JSON ou XML).",
+    )
+    args = parser.parse_args()
+    url = args.url
+    output_file = args.output
+    if not re.match("^http[s]*://.*", url):
+        print("URL invalide")
+        return
+    book_id_match = re.findall(".+-(\d+)", url)
+    if not book_id_match:
+        print("Impossible de trouver l'identifiant du livre...")
+        return
+    book_id = book_id_match[0]
+    sign = re.match("(.+)login=cvs&sign=([^&]*)", url)
+    if sign:
+        sign = "login=cvs&sign=" + sign.group(2)
+    book_info = get_infos_from_url(url)
+    book_info.update(get_infos_from_id(book_id, sign))
+    for key, val in book_info.items():
+        print(f"{key:20} : {val}")
+    if output_file:
+        if not output_file.lower().endswith((".json", ".xml")):
+            output_file += ".json"
+        if output_file.lower().endswith(".json"):
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(book_info, f, indent=4, ensure_ascii=False)
+        if output_file.lower().endswith(".xml"):
+            with open(output_file, "w", encoding="utf-8") as f:
+                xml_content = dict2xml(book_info, wrap="root", indent="  ")
+                f.write(xml_content)
+        print()
+        print(f'Les informations ont été enregistrées dans le fichier "{output_file}".')
+
+if __name__ == "__main__":
+    main()

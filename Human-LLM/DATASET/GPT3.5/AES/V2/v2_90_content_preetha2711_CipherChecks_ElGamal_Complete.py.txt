@@ -1,0 +1,91 @@
+import random
+import math
+import sys
+
+# Set recursion limit to avoid stack overflow
+sys.setrecursionlimit(100000)
+
+# Miller-Rabin primality test
+def miller_rabin(number):
+    # Initialize result variable
+    is_prime = False
+    # Initialize variables for Miller-Rabin test
+    num_minus_1 = number - 1
+    exponent = 0
+    # Divide num_minus_1 by 2 until it's odd and count the number of divisions
+    while num_minus_1 % 2 == 1:
+        num_minus_1 = num_minus_1 / 2
+        exponent += 1
+    # Calculate m and a random integer a
+    m = num_minus_1 // (2 ** exponent)
+    a = random.randint(0, num_minus_1)
+    # Compute b = a^m mod number
+    b = pow(a, m, number)
+    # Check if b is congruent to 1 or -1 (mod number)
+    if b == 1:
+        is_prime = True
+    else:
+        for i in range(exponent):
+            if b % number == -1:
+                is_prime = True
+            else:
+                b = pow(b, 2, number)
+    return is_prime
+
+# Generate a prime number of specified length
+def generate_prime(length=300):
+    # Initialize flag to indicate primality
+    is_prime = False
+    # Repeat until a prime number is generated
+    while is_prime != True:
+        # Generate a random number of specified length
+        random_num = random.getrandbits(length)
+        # Set the most significant and least significant bits to 1 to ensure oddness
+        random_num |= (1 << length - 1) | 1
+        # Check primality using Miller-Rabin test
+        is_prime = miller_rabin(random_num)
+        # If the number is prime, assign it to prime_number and exit the loop
+        prime_number = random_num
+        return prime_number
+
+# Get two prime numbers p and q such that q = 2p + 1
+def get_two_primes():
+    # Initialize flag to indicate primality of q
+    is_prime_q = False
+    # Repeat until two prime numbers p and q are generated
+    while is_prime_q != True:
+        # Generate a prime number p
+        p = generate_prime()
+        # Calculate q = 2p + 1
+        q = 2 * p + 1
+        # Check primality of q using Miller-Rabin test
+        is_prime_q = miller_rabin(q)
+    return p, q
+
+# Lucas test for finding primitive roots modulo p
+def lucas_test(p):
+    # Initialize variables
+    Q = []
+    prim_roots = []
+    # Find divisors of (p-1)
+    for i in range(2, p):
+        if (p - 1) % i == 0:
+            Q.append(i)
+    # Check if each integer from 2 to p-1 is a primitive root modulo p
+    for g in range(2, p):
+        is_primitive_root = True
+        for q in Q:
+            if (g ** int((p - 1) / q)) % p == 1:
+                is_primitive_root = False
+                break
+        if is_primitive_root == True:
+            prim_roots.append(g)
+    return prim_roots
+
+# Generate two prime numbers p and q
+p, q = get_two_primes()
+print("p:", p)
+print("q:", q)
+
+# Test Lucas test for primitive roots modulo p
+print("Primitive roots of p:", lucas_test(p))

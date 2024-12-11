@@ -1,0 +1,75 @@
+import folium
+import os
+from math import cos, asin, sqrt
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import QFileDialog
+import pandas as pd
+from geopy.distance import great_circle
+from geopy.geocoders import Nominatim
+from folium import plugins
+from folium.plugins import MeasureControl
+from warshall import main
+
+# Initialize geolocator
+geolocator = Nominatim(user_agent="Hacettepe_Geomatik")
+
+# Function to calculate distance between two points using Haversine formula
+def calculate_distance(lat1, lon1, lat2, lon2):
+    p = 0.017453292519943295
+    a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2
+    return 12742 * asin(sqrt(a))
+
+# User Interface Class
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.setWindowTitle("Shortest Route Mapper")
+        self.resize(442, 314)
+        self.central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.grid_layout = QtWidgets.QGridLayout(self.central_widget)
+
+        # Combo boxes for airport selection
+        self.combo_box_from = QtWidgets.QComboBox()
+        self.combo_box_to = QtWidgets.QComboBox()
+        self.label_from = QtWidgets.QLabel("Nerden:")
+        self.label_to = QtWidgets.QLabel("Nereye:")
+
+        # Push buttons for actions
+        self.button_ok = QtWidgets.QPushButton("Tamam")
+        self.button_browse = QtWidgets.QPushButton("TXT Dosyasý")
+
+        # Add widgets to the layout
+        self.grid_layout.addWidget(self.label_from, 0, 0)
+        self.grid_layout.addWidget(self.combo_box_from, 0, 1)
+        self.grid_layout.addWidget(self.label_to, 1, 0)
+        self.grid_layout.addWidget(self.combo_box_to, 1, 1)
+        self.grid_layout.addWidget(self.button_ok, 2, 1)
+        self.grid_layout.addWidget(self.button_browse, 2, 0)
+
+        # Connect buttons to functions
+        self.button_ok.clicked.connect(self.handle_ok_click)
+        self.button_browse.clicked.connect(self.browse_txt_file)
+
+    # Function to browse and read data from a text file
+    def browse_txt_file(self):
+        file_path, _ = QFileDialog.getOpenFileName()
+        print("Selected file:", file_path)
+        # Process the text file...
+
+    # Function to handle OK button click event
+    def handle_ok_click(self):
+        source = self.combo_box_from.currentText()
+        destination = self.combo_box_to.currentText()
+        # Handle OK button click...
+
+# Main function
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.show()
+    sys.exit(app.exec_())

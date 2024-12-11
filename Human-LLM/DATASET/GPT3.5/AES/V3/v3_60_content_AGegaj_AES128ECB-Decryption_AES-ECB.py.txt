@@ -1,0 +1,48 @@
+from Cryptodome.Cipher import AES
+import binascii
+
+def get_deterministic_keys():
+    """Retrieve deterministic keys from a file."""
+    keys = []
+    with open("C:/Users/a.gegaj/Documents/FIEK-Master/Siguri e informacionit/keys.txt", "r") as keys_file:
+        for key in keys_file:
+            k3 = key[6:8]
+            k0 = key[0:2]
+            k5 = key[10:12]
+            k4 = key[8:10]
+            if int(k3, 16) < 0x2b and int(k0, 16) < int(k5, 16) and int(k4, 16) < 0x20:
+                keys.append(key.rstrip())
+    return keys
+
+def generate_candidate_keys(deterministic_keys):
+    """Generate candidate keys based on deterministic keys."""
+    hex_list = [hex(i)[2:].zfill(2) for i in range(16)]
+    candidate_keys = []
+    for k in deterministic_keys:
+        for hex1 in hex_list:
+            for hex2 in hex_list:
+                for hex3 in hex_list:
+                    for hex4 in hex_list:
+                        candidate_key = k + hex1 + hex2 + hex3 + hex4
+                        candidate_keys.append(candidate_key)
+    return candidate_keys
+
+def decrypt_message(cipher, key):
+    """Decrypt a cipher using a given key."""
+    decipher = AES.new(binascii.unhexlify(key), AES.MODE_ECB)
+    plain_text = decipher.decrypt(binascii.unhexlify(cipher))
+    return plain_text
+
+def find_code_in_message(cipher):
+    """Find a specific code within decrypted messages."""
+    deterministic_keys = get_deterministic_keys()
+    candidate_keys = generate_candidate_keys(deterministic_keys)
+    for key in candidate_keys:
+        plain_text = decrypt_message(cipher, key)
+        if plain_text[0] == 71 and plain_text[1] == 82 and plain_text[3] == 48 and plain_text[4] == 52:
+            print("Key:", key)
+            print("Decrypted Message:", plain_text.decode('utf-8'))
+            print("CODE:", plain_text.decode('utf-8')[11:])
+            break
+
+find_code_in_message('6ba84490e67cfba8fd07354d2899b58f')

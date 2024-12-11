@@ -1,0 +1,90 @@
+import os
+import sys
+import msvcrt
+import threading
+import json
+import time
+from socket import *
+
+sendlock = threading.Lock()
+
+# Function to send cost change messages to nodes
+def send(port, node, cost):
+    with sendlock:
+        sock = socket(AF_INET, SOCK_DGRAM)
+        message = {
+            'packettype': "change",
+            'sendingNode': "CostEditor",
+            'node': node,
+            'cost': cost,
+            'port': port
+        }
+        message = json.dumps(message)
+        sock.sendto(message.encode(), ('localhost', port))
+
+# Mock function to read cost data from files (replace this with actual data reading logic)
+def readFile(filename):
+    # Placeholder for actual file reading logic
+    return {'cost': 0, 'port': 0}  # Dummy data for demonstration
+
+nodes = {}  # Dictionary to store node cost data
+
+# Populate nodes dictionary with data from command line arguments (mock data for demonstration)
+for arg in sys.argv[1:]:
+    node = arg[-5]  # Extract node name
+    nodes[node] = readFile(arg)
+
+pointer = 0  # Pointer to track user selection
+userInput = 'n'  # User input initialization
+nodestaken = False  # Flag to indicate if nodes are selected
+
+while True:
+    os.system("cls")  # Clear screen (Windows specific)
+    print("\n\t         COST EDITOR\n")
+    print("\t   Use Q and W for cursor\n\t   Use double E to select\n\n")
+    print("="*44)
+
+    done = []
+    optionNum = 0
+    for nodeA in nodes:
+        for nodeB in nodes[nodeA]:
+            if nodeB not in done:
+                if(optionNum == pointer):
+                    print("  ->", end="")
+                    if(userInput == 'E' or userInput == 'e'):
+                        nodestaken = True
+                        nodeAChanged = nodeA
+                        nodeBChanged = nodeB
+                        userInput = 'n'
+                print("\t Cost between " + nodeA + " and " + nodeB + " is " + str(nodes[nodeA][nodeB]['cost']))
+                optionNum += 1
+        done.append(nodeA)
+
+    print("="*44)
+    userInput = msvcrt.getch().decode("utf-8")  # Get user keyboard input
+
+    if userInput == 'Q' or userInput == 'q':
+        pointer -= 1
+    elif userInput == 'W' or userInput == 'w':
+        pointer += 1
+
+    pointer = max(pointer, 0)
+    pointer = min(pointer, optionNum - 1)
+
+    if nodestaken:
+        nodestaken = False
+        userInput = 'n'
+        print("\n    Enter new cost for nodes " + nodeAChanged + " and " + nodeBChanged + " : ", end="")
+        newcost = input()
+        print()
+        print("  Sending control packet to " + nodeAChanged + " at port", nodes[nodeBChanged][nodeAChanged]['port'])
+        changethread1 = threading.Thread(target=send, kwargs={'port': nodes[nodeBChanged][nodeAChanged]['port'], 'node': nodeBChanged, 'cost': newcost})
+        changethread1.start()
+        print("  Sending control packet to " + nodeBChanged + " at port", nodes[nodeAChanged][nodeBChanged]['port'])
+        changethread2 = threading.Thread(target=send, kwargs={'port': nodes[nodeAChanged][nodeBChanged]['port'], 'node': nodeAChanged, 'cost': newcost})
+        changethread2.start()
+        nodes[nodeAChanged][nodeBChanged]['cost'] = newcost
+        nodes[nodeBChanged][nodeAChanged]['cost'] = newcost
+        time.sleep(1)
+        print("\n              Costs updated")
+        time.sleep(2)

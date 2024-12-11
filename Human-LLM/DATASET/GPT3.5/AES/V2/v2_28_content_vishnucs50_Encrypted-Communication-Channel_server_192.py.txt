@@ -1,0 +1,98 @@
+import random
+from Crypto.Cipher import AES
+import socket
+from time import time
+
+# Server configuration
+HOST = '127.0.0.1'
+PORT = 56739
+BUFFER_SIZE = 4096
+
+# Static values for Diffie-Hellman key exchange
+X_BOB = 253
+KEY_BITS = 24
+
+# Initialize the server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind((HOST, PORT))
+
+def receive_message():
+    """Receive a message from the client."""
+    data, addr = server_socket.recvfrom(BUFFER_SIZE)
+    print("Received message:", data.decode())
+    return data, addr
+
+def perform_diffie_hellman_exchange(a, q, y_alice):
+    """Perform Diffie-Hellman key exchange."""
+    sec_bob = random.randint(1, q - 1)
+    y_bob = (a ** sec_bob) % q
+    return sec_bob, y_bob
+
+def derive_shared_secret(sec_bob, y_alice, q):
+    """Derive the shared secret key."""
+    shared_secret = (y_alice ** sec_bob) % q
+    return format(shared_secret, '0' + str(KEY_BITS) + 'b')
+
+def encrypt_message(key, message):
+    """Encrypt a message using AES."""
+    cipher = AES.new(key.encode(), AES.MODE_ECB)
+    plaintext = message.encode('utf-8')
+    padded_plaintext = plaintext.ljust((len(plaintext) + 15) // 16 * 16, b'\0')
+    return cipher.encrypt(padded_plaintext)
+
+def decrypt_message(key, ciphertext):
+    """Decrypt a message using AES."""
+    cipher = AES.new(key.encode(), AES.MODE_ECB)
+    plaintext = cipher.decrypt(ciphertext)
+    return plaintext.decode('utf-8').rstrip('\0')
+
+def generate_nonce():
+    """Generate a random nonce."""
+    return random.getrandbits(32)
+
+def main():
+    """Main server logic."""
+    while True:
+        # Receive alpha, q, and Y_a from Alice
+        data, addr = receive_message()
+        alpha, q, y_alice = map(int, data.decode().split(','))
+
+        # Perform Diffie-Hellman key exchange
+        sec_bob, y_bob = perform_diffie_hellman_exchange(alpha, q, y_alice)
+
+        # Send Y_b to Alice
+        server_socket.sendto(str(y_bob).encode(), addr)
+
+        # Derive shared secret key
+        key = derive_shared_secret(sec_bob, y_alice, q)
+
+        # Receive initial challenge from Alice
+        data, addr = receive_message()
+        initial_challenge = int(decrypt_message(key, data))
+
+        # Generate and send response challenge
+        nonce = generate_nonce()
+        response_challenge = nonce - 1
+        response_message = f"{nonce},{response_challenge}"
+        encrypted_response = encrypt_message(key, response_message)
+        server_socket.sendto(encrypted_response, addr)
+
+        # Receive final challenge from Alice
+        data, addr = receive_message()
+        final_challenge = int(decrypt_message(key, data))
+
+        # Check authentication
+        if final_challenge == response_challenge:
+            authentication_message = "Authentication successful" * 6
+            print("Authentication successful")
+        else:
+            authentication_message = "Authentication failure"
+            print("Authentication failure")
+
+        # Send authentication result to Alice
+        server_socket.sendto(authentication_message.encode(), addr)
+
+    server_socket.close()
+
+if __name__ == "__main__":
+    main()

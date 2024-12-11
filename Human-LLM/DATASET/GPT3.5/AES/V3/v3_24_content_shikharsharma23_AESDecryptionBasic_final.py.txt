@@ -1,0 +1,93 @@
+def decrypt_message(encrypted_data, key):
+    """
+    Decrypts a message encrypted as a list of integers using a specified key.
+    
+    Args:
+        encrypted_data (list of int): The encrypted message as a list of integers.
+        key (int): The decryption key.
+        
+    Returns:
+        str: The decrypted message.
+    """
+    encrypted_bytes = bytearray(encrypted_data)
+    decrypted_bytes = decrypt_bytes_with_key(encrypted_bytes, key)
+    return convert_bytes_to_str(decrypted_bytes)
+
+def decrypt_bytes_with_key(data_bytes, key):
+    """
+    Decrypts each byte in the provided bytearray using the given key.
+    
+    Args:
+        data_bytes (bytearray): Bytearray containing the data to decrypt.
+        key (int): The decryption key.
+        
+    Returns:
+        bytearray: The decrypted data as a bytearray.
+    """
+    key_nibbles = byte_to_four_nibbles(key)
+    decrypted_bytes = bytearray()
+
+    for byte in data_bytes:
+        byte_nibbles = byte_to_four_nibbles(byte)
+        decrypted_nibbles = process_decryption_steps(byte_nibbles, key_nibbles)
+        decrypted_bytes.append(four_nibbles_to_byte(decrypted_nibbles))
+
+    return decrypted_bytes
+
+def process_decryption_steps(nibbles, key_nibbles):
+    """
+    Applies the decryption steps to a set of four nibbles.
+    
+    Args:
+        nibbles (list of int): The four nibbles to decrypt.
+        key_nibbles (list of int): The four nibbles from the decryption key.
+        
+    Returns:
+        list of int: The decrypted nibbles.
+    """
+    # Sequential decryption steps using the provided key nibbles
+    steps = [apply_xor, swap_last_two_nibbles, apply_sbox_transformation,
+             apply_xor, subtract_nibbles_cyclic, swap_last_two_nibbles,
+             apply_sbox_transformation, apply_xor]
+    for step in steps:
+        nibbles = step(nibbles, key_nibbles)
+    return nibbles
+
+def byte_to_four_nibbles(byte):
+    """Splits a byte into four 2-bit nibbles."""
+    return [(byte >> (6 - 2 * i)) & 0x03 for i in range(4)]
+
+def four_nibbles_to_byte(nibbles):
+    """Combines four 2-bit nibbles back into a byte."""
+    return sum(n << (6 - 2 * i) for i, n in enumerate(nibbles))
+
+def apply_xor(nibbles, key_nibbles):
+    """Applies XOR operation between each nibble and the corresponding key nibble."""
+    return [n ^ k for n, k in zip(nibbles, key_nibbles)]
+
+def swap_last_two_nibbles(nibbles, _=None):
+    """Swaps the last two nibbles in place."""
+    nibbles[2], nibbles[3] = nibbles[3], nibbles[2]
+    return nibbles
+
+def apply_sbox_transformation(nibbles, _=None):
+    """Applies a predefined S-box transformation to each nibble."""
+    s_box = {0: 2, 1: 0, 2: 3, 3: 1}
+    return [s_box[n] for n in nibbles]
+
+def subtract_nibbles_cyclic(nibbles, _=None):
+    """Subtracts the last two nibbles from the first two, modulo 4."""
+    return [(nibbles[i] - nibbles[i + 2]) % 4 for i in range(2)] + nibbles[2:]
+
+def convert_bytes_to_str(byte_array):
+    """Converts a bytearray back into a string."""
+    return ''.join(chr(b) for b in byte_array)
+
+if __name__ == '__main__':
+    encrypted_data = [
+        # The encrypted data
+    ]
+    decryption_key = 84  # Example key
+
+    decrypted_text = decrypt_message(encrypted_data, decryption_key)
+    print("Decrypted text:", decrypted_text)

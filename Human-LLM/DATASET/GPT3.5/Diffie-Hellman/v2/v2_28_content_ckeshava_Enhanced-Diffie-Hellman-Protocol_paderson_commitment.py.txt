@@ -1,0 +1,118 @@
+from Crypto.Util import number
+import random
+import constants
+
+def generate_p_g_q(length_of_message=0):
+    """
+    Generate prime numbers p, q and a generator g.
+    Args:
+        length_of_message (int): Length of the message.
+    Returns:
+        int: Prime number p.
+        int: Generator g.
+        int: Prime number q.
+    """
+    # Generate a safe prime q
+    q = number.getPrime(max(constants.LENGTH_OF_PRIME, length_of_message + 1))
+    
+    # Calculate p = 2*q + 1
+    p = 2 * q + 1
+    
+    # Select a generator g
+    g = 2
+    
+    return p, g, q
+
+def generate_a():
+    """
+    Generate a random private key 'a'.
+    Returns:
+        int: Random private key 'a'.
+    """
+    return random.randint(constants.RAND_NUMBER_LOWER_BOUND, constants.RAND_NUMBER_UPPER_BOUND)
+
+def generate_h(g, p, a):
+    """
+    Generate public key 'h'.
+    Args:
+        g (int): Generator.
+        p (int): Prime number.
+        a (int): Private key.
+    Returns:
+        int: Public key 'h'.
+    """
+    # Calculate h = g^a mod p
+    return pow(g, a, p)
+
+def generate_r(q):
+    """
+    Generate a random value 'r' in the range [0, q-1].
+    Args:
+        q (int): Prime number.
+    Returns:
+        int: Random value 'r'.
+    """
+    return random.randint(0, q - 1)
+
+def commit(m, g, h, r, p):
+    """
+    Create a commitment.
+    Args:
+        m (int): Message.
+        g (int): Generator.
+        h (int): Public key.
+        r (int): Random value.
+        p (int): Prime number.
+    Returns:
+        int: Commitment 'c'.
+    """
+    # Calculate c = (g^m * h^r) mod p
+    t1 = pow(g, m, p)
+    t2 = pow(h, r, p)
+    return (t1 * t2) % p
+
+def open_commitment(m, g, h, r, p, c):
+    """
+    Open a commitment and verify its validity.
+    Args:
+        m (int): Original message.
+        g (int): Generator.
+        h (int): Public key.
+        r (int): Random value.
+        p (int): Prime number.
+        c (int): Commitment.
+    Returns:
+        int or None: Original message if commitment is valid, otherwise None.
+    """
+    # Calculate c' = (g^m * h^r) mod p
+    t1 = pow(g, m, p)
+    t2 = pow(h, r, p)
+    c_ = (t1 * t2) % p
+    
+    # Check if c and c' match
+    if c_ == c:
+        return m  # Return the original message 'm' if the commitment is valid
+    else:
+        return None  # Return None if the commitment is invalid
+
+# Example usage:
+if __name__ == "__main__":
+    # Generate p, g, and q
+    p, g, q = generate_p_g_q()
+    
+    # Generate a random private key 'a'
+    a = generate_a()
+    
+    # Generate h = g^a mod p
+    h = generate_h(g, p, a)
+    
+    # Generate a random value 'r' in the range [0, q-1]
+    r = generate_r(q)
+    
+    # Example commitment and opening
+    m = 12345  # Example message
+    c = commit(m, g, h, r, p)  # Commitment
+    m_opened = open_commitment(m, g, h, r, p, c)  # Open the commitment
+    print("Original Message:", m)
+    print("Commitment:", c)
+    print("Opened Message:", m_opened)

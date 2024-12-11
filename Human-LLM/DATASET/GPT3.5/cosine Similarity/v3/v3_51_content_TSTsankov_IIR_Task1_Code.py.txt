@@ -1,0 +1,97 @@
+import feedparser
+import collections
+import itertools
+import operator
+import multiprocessing
+import string
+import math
+
+# Function to split a list into the specified number of parts
+def split_list(alist, wanted_parts=1):
+    length = len(alist)
+    return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts] for i in range(wanted_parts)]
+
+# List of RSS feed URLs
+FEED_URLS = [
+    'https://www.theguardian.com/world/rss',
+    'http://rss.nytimes.com/services/xml/rss/nyt/Europe.xml',
+    'http://www.independent.co.uk/news/rss',
+    'http://feeds.skynews.com/feeds/rss/world.xml',
+    'http://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+    'https://www.cnet.com/rss/news/',
+    'http://rss.dw.com/rdf/rss-en-all'
+]
+
+# Fetching RSS feeds and removing duplicates
+lines = []
+i = 0
+for url in FEED_URLS:
+    news_feed = feedparser.parse(url)
+    print(url + ' Number of RSS posts :' + str(len(news_feed.entries)))
+    for entry in news_feed.entries:
+        found = False
+        for element in lines:
+            if element['link'] == entry.id:
+                found = True
+                print('Duplicate')
+        if not found and len(entry.summary) > 0:
+            lines.append({'id': i, 'link': entry.link, 'title': entry.title, 'summary': entry.summary, 'date': entry.updated})
+            i += 1
+
+# Splitting data into two parts
+data = split_list(lines, 2)
+
+# List of stopwords
+STOPWORDS = ['ourselves', 'the', 'hers', 'between', 'yourself', 'but', 'again', 'there', 'about', 'once', 'during', 'out', 'very', 'having', 'with', 'they', 'own', 'an', 'be', 'some', 'for', 'do', 'its', 'yours', 'such', 'into', 'of', 'most', 'itself', 'other', 'off', 'is', 's', 'am', 'or', 'who', 'as', 'from', 'him', 'each', 'themselves', 'until', 'below', 'are', 'we', 'these', 'your', 'his', 'through', 'don', 'nor', 'me', 'were', 'her', 'more', 'himself', 'this', 'down', 'should', 'our', 'their',
+             'while', 'above', 'both', 'up', 'to', 'ours', 'had', 'she', 'all', 'no', 'when', 'at', 'any', 'before', 'them', 'same', 'and', 'been', 'have', 'in', 'will', 'on', 'does', 'yourselves', 'then', 'that', 'because', 'what', 'over', 'why', 'so', 'can', 'did', 'not', 'now', 'under', 'he', 'you', 'herself', 'has', 'just', 'where', 'too', 'only', 'myself', 'which', 'those', 'i', 'after', 'few', 'whom', 't', 'being', 'if', 'theirs', 'my', 'against', 'a', 'by', 'doing', 'it', 'how', 'further', 'was', 'here', 'than']    
+
+# Class for Simple MapReduce implementation
+class SimpleMapReduce(object):
+    def __init__(self, map_func, reduce_func, num_workers=None):
+        self.map_func = map_func
+        self.reduce_func = reduce_func
+        self.pool = multiprocessing.Pool(num_workers)
+
+    def partition(self, mapped_values):
+        partitioned_data = collections.defaultdict(list)
+        for key, value in mapped_values:
+            partitioned_data[key].append(value)
+        return partitioned_data.items()
+
+    def __call__(self, inputs, chunksize=1):
+        map_responses = self.pool.map(self.map_func, inputs, chunksize=chunksize)       
+        partitioned_data = self.partition(itertools.chain(*map_responses))
+        reduced_values = self.pool.map(self.reduce_func, partitioned_data)
+        return reduced_values
+
+# Function to map RSS feed summary to words
+def rss_to_words(id):
+    output = []
+    for line in data[id]:
+        words = [x.strip(string.punctuation) for x in line['summary'].split()]
+        for word in words:
+            word = word.lower()
+            if word.isalpha() and word not in STOPWORDS:
+                output.append((word, (line['id'], 1)))
+    return output
+
+# Function to convert list to dictionary
+def list_to_dict(item):
+    word, docval = item
+    groups = collections.defaultdict(int)
+    for docid, value in docval:
+        groups[docid] += value
+    IDF = math.log10(len(lines) / len(groups))
+    doc_array = [{'occ': 0, 'DF': 0, 'IDF': IDF}] * len(lines)
+    for docID, word_occurrence in groups.items():
+        doc_array[docID] = {'occ': word_occurrence, 'DF': 1 + math.log10(word_occurrence), 'IDF': IDF}
+    return (word, doc_array)
+
+# Function to calculate cosine similarity
+def calc_cosine(v1, v2):
+    ans = 0
+    for i in range(len(v1)):
+        ans += v1[i] * v2[i]
+    return ans / (calc_length(v1) * calc_length(v2))
+
+#

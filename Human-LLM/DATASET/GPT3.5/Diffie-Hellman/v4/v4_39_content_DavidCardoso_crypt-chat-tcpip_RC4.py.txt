@@ -1,0 +1,45 @@
+class RC4:
+    def __init__(self, key='160'):
+        self.key = key
+
+    def initialize_state(self):
+        global S
+        S = list(range(256))  # Initialize S as a list of integers from 0 to 255
+        j = 0
+        key_int = self.convert_to_int(self.key)
+        key_length = len(key_int)
+        for i in range(256):
+            j = (j + S[i] + key_int[i % key_length]) % 256
+            S[i], S[j] = S[j], S[i]  # Swap values in S based on key scheduling algorithm
+
+    def generate_keystream(self, length):
+        global S
+        i = j = 0
+        keystream = []
+        for _ in range(length):
+            i = (i + 1) % 256
+            j = (j + S[i]) % 256
+            S[i], S[j] = S[j], S[i]  # Swap values in S based on pseudo-random generation algorithm
+            keystream_byte = S[(S[i] + S[j]) % 256]
+            keystream.append(keystream_byte)  # Generate keystream bytes
+        return keystream
+
+    def convert_to_int(self, text):
+        return [ord(char) for char in text]  # Convert characters to ASCII integers
+
+    def convert_to_text(self, nums):
+        return ''.join([chr(num) for num in nums])  # Convert ASCII integers to characters
+
+    def encrypt(self, plaintext):
+        self.initialize_state()  # Initialize RC4 state using the key
+        plaintext_int = self.convert_to_int(plaintext)  # Convert plaintext to ASCII integers
+        keystream = self.generate_keystream(len(plaintext_int))  # Generate keystream
+        encrypted_int = [plaintext_int[i] ^ keystream[i] for i in range(len(plaintext_int))]  # XOR plaintext and keystream
+        return self.convert_to_text(encrypted_int)  # Convert encrypted ASCII integers back to characters
+
+    def decrypt(self, ciphertext):
+        self.initialize_state()  # Reinitialize RC4 state using the key
+        ciphertext_int = self.convert_to_int(ciphertext)  # Convert ciphertext to ASCII integers
+        keystream = self.generate_keystream(len(ciphertext_int))  # Generate keystream
+        decrypted_int = [ciphertext_int[i] ^ keystream[i] for i in range(len(ciphertext_int))]  # XOR ciphertext and keystream
+        return self.convert_to_text(decrypted_int)  # Convert decrypted ASCII integers back to characters

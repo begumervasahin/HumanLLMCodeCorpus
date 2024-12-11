@@ -1,0 +1,71 @@
+from sympy.ntheory import is_primitive_root, nextprime
+from secrets import randbits
+
+class DiffieHellman:
+    def __init__(self, key_size, secret, key=None):
+        """
+        Initialize the DiffieHellman object.
+
+        Parameters:
+        - key_size (int): The size of the key in bits.     
+        - secret (int): The shared secret between parties. 
+        - key (tuple, optional): Tuple containing the prime and base. Defaults to None.
+        """
+        self.key_size = key_size
+        self.secret = secret
+        self.prime = None
+        self.base = None
+
+        if key is None:
+            self.generate_public_secret()
+        else:
+            self.prime, self.base = key
+
+    def get_common(self):
+        """Return the prime and base."""
+        return self.prime, self.base
+
+    def generate_prime(self):
+        """Generate a prime number."""
+        self.prime = nextprime(randbits(self.key_size))    
+
+    def generate_public_secret(self):
+        """Generate the public prime and base."""
+        self.generate_prime()
+        self.find_primitive_root_mod()
+
+    def find_primitive_root_mod(self):
+        """Find a primitive root modulo prime."""
+        for x in range(2, self.prime):
+            if is_primitive_root(x, self.prime):
+                self.base = x
+                break
+
+    def compute_shared(self):
+        """Compute the shared secret."""
+        return pow(self.base, self.secret, self.prime)     
+
+    def get_shared_secret(self, other_public):
+        """Compute the shared secret from the other party's public key."""
+        return pow(other_public, self.secret, self.prime)        
+
+# Example usage:
+if __name__ == "__main__":
+    key_size = 512  # Key size in bits
+    secret = 123456789  # Alice and Bob's shared secret    
+
+    # Alice and Bob generate their public/private keys     
+    alice = DiffieHellman(key_size, secret)
+    bob = DiffieHellman(key_size, secret)
+
+    # Alice and Bob exchange their public keys
+    alice_public = alice.get_common()[1]
+    bob_public = bob.get_common()[1]
+
+    # Alice and Bob compute the shared secret
+    alice_shared_secret = alice.get_shared_secret(bob_public)
+    bob_shared_secret = bob.get_shared_secret(alice_public)
+
+    # Print the shared secrets
+    print("Alice's shared secret:", alice_shared_secret)   
+    print("Bob's shared secret:", bob_shared_secret)

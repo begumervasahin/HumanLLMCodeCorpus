@@ -1,0 +1,57 @@
+from nltk.corpus import stopwords
+from nltk.corpus import wordnet
+import difflib as dl
+import os
+import string
+import new
+
+# Importing necessary functions from difflib
+get_close_matches = dl.get_close_matches
+
+# OCR image and save text to a file
+os.system("tesseract {} st_sheet".format(new.img))
+
+# Read text files and remove stopwords
+with open(str(new.tea), 'r') as file:
+    lines1 = file.read()
+    word_tokens1 = lines1.split()
+    stop_words = set(stopwords.words('english'))
+    filtered_sentence1 = [word for word in word_tokens1 if word not in stop_words]
+
+    # Strip punctuation from words
+    filtered_sentence1 = [word.strip(string.punctuation) for word in filtered_sentence1]
+
+# Read OCR text file and remove stopwords
+with open("st_sheet.txt", 'r') as file:
+    lines2 = file.read()
+    word_tokens2 = lines2.split()
+    filtered_sentence2 = [word for word in word_tokens2 if word not in stop_words]
+
+    # Strip punctuation from words
+    filtered_sentence2 = [word.strip(string.punctuation) for word in filtered_sentence2]
+
+# Create a dictionary to store synonyms for each word in lines1
+synonyms = {word: [] for word in filtered_sentence1}
+for word, synonym_list in synonyms.items():
+    for synset in wordnet.synsets(word):
+        for lemma in synset.lemmas():
+            synonym_list.append(lemma.name())
+
+# Initialize counters
+num_synonyms_matched = 0
+num_words_matched = 0
+
+# Count matches between lines1 and lines2 using difflib
+for word in filtered_sentence1:
+    if get_close_matches(word, filtered_sentence2):
+        num_synonyms_matched += 1
+for word in filtered_sentence1:
+    if get_close_matches(word, filtered_sentence2):
+        num_words_matched += 1
+
+# Calculate the similarity ratio
+similarity_ratio = float(num_words_matched + num_synonyms_matched) / float(len(filtered_sentence1) + num_synonyms_matched)
+
+# Print the result
+print("The Student is awarded")
+print('{}% Marks'.format(int(similarity_ratio * 100)))

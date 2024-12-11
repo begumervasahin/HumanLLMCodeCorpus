@@ -1,0 +1,252 @@
+import sys
+import math
+import hashlib
+import random
+import time
+
+# Function to write a number to a file
+def write_number(number, filename):
+    with open(filename, 'wb') as file:
+        n = number
+        while n > 0:
+            byte = n % 256
+            n //= 256
+            file.write(chr(byte))
+
+# Function to convert binary to numerical representation
+def binary_to_number(x):
+    result = 0
+    for c in x:
+        result = (result << 8) ^ ord(c)
+    return result
+
+# Function to convert numerical to binary representation
+def number_to_binary(x):
+    result = ''
+    while x > 0:
+        result = chr(x % 256) + result
+        x //= 256
+    return result
+
+# Function to find greatest common divisor
+def gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+# Function to find the next prime number
+def next_prime(p):
+    while p % 8 != 3 or p % 3 != 2:
+        p += 1
+    return next_prime_odd(p)
+
+# Function to find the next prime number (odd)
+def next_prime_odd(p):
+    m_ = 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while True:
+        while gcd(p, m_) != 1:
+            p += 24
+        q = (p + 1) / 4 / 3
+        if pow(2, p - 1, p) != 1 or pow(3, p - 1, p) != 1 or pow(5, p - 1, p) != 1 or pow(17, p - 1, p) != 1:
+            p += 24
+            continue
+        break
+    return p
+
+# Initialize prime number and constants
+prime = 1393796574908163946345982392040522594173643
+h_ = 1
+n4 = (prime + 0) / h_
+b = 0
+a = 0
+
+# Function to find multiplicative inverse
+def inverse(b, m):
+    s = 0
+    t = 1
+    a = m
+    while b != 1:
+        q = a / b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t += m
+    return t
+
+# Function for encryption
+def encrypt(m, key, prime):
+    return pow(m, key, prime)
+
+# Function for decryption
+def decrypt(c, key, prime):
+    key = inverse(key, prime - 1)
+    return pow(c, key, prime)
+
+# Function to convert hexadecimal/text to number
+def hex_text_to_number(x):
+    result = 0
+    for c in x:
+        if ord(c) < 58 and ord(c) >= 48:
+            result = (result << 4) + ord(c) - 48
+        elif ord(c) <= ord('f') and ord(c) >= ord('a'):
+            result = (result << 4) + ord(c) - 87
+    return result
+
+# Function to convert code to number
+def code_to_number(x):
+    result = 0
+    for c in x:
+        if ord(c) >= 48 and ord(c) < 58:
+            result = (result << 6) + ord(c) - 48
+        if ord(c) >= 65 and ord(c) < 91:
+            result = (result << 6) + ord(c) - 55
+        if ord(c) >= 97 and ord(c) < 123:
+            result = (result << 6) + ord(c) - 61
+        if c == "'":
+            result = (result << 6) + 62
+        if c == '/':
+            result = (result << 6) + 63
+    return result
+
+# Function to convert number to code
+def number_to_code(x):
+    result = ''
+    while x > 0:
+        y = x % 64
+        if y < 10:
+            result = chr(y + 48) + result
+        elif y < 36:
+            result = chr(y + 55) + result
+        elif y < 62:
+            result = chr(y + 61) + result
+        elif y == 62:
+            result = "'" + result
+        elif y == 63:
+            result = '/' + result
+        x /= 64
+    return result
+
+# Hash function
+def hash_function(x):
+    dx1 = hashlib.sha256(x).digest()
+    result = 0
+    for cx in dx1:
+        result = (result << 8) ^ ord(cx)
+    return result % n4
+
+# Function to generate random number
+def random_number_256(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+# Function to generate random number
+def random_number_X(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    md.update(str(time.gmtime().tm_year + time.gmtime().tm_mday))
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+# Function to generate point on elliptic curve
+def generate_point(x, a, b):
+    while pow(x**3 + a * x + b, (prime - 1) / 2, prime) != 1:
+        x += 1
+    y = pow(x**3 + a * x + b, (prime + 1) / 4, prime)
+    return [(x) % prime, (y) % prime]
+
+# Function to add two points on elliptic curve
+def add_points(P, Q):
+    x1 = P[0]
+    x2 = Q[0]
+    y1 = P[1]
+    y2 = Q[1]
+    if x2 > x1:
+        x2 -= prime
+    if x1 == x2:
+        s = ((3 * (x1**2) + a) * inverse(2 * y1, prime)) % prime
+    else:
+        s = ((y1 - y2) * inverse(x1 - x2, prime)) % prime
+    xr = s**2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+# Function to multiply point by scalar
+def multiply_point(P, n):
+    is_first = True
+    res_P = P
+    if n < 0:
+        res_P[1] = prime - res_P[1]
+        n = (-1) * n
+    PP = res_P
+    while n > 0:
+        if (n & 1) != 0:
+            if is_first:
+                res_P = PP
+                is_first = False
+            else:
+                res_P = add_points(res_P, PP)
+        PP = add_points(PP, PP)
+        n = n >> 1
+    return res_P
+
+# Function to sign message using Schnorr signature
+def sign_schnorr(G, m, x):
+    k = random_number_X(m)
+    R = multiply_point(G, k)
+    e = hash_function(str(R[0]) + m)
+    return [(k - x * e) % n4, e]
+
+# Function to sign message using ECDSA signature
+def sign_ecdsa(G, m, x):
+    k = random_number_X(m)
+    R = multiply_point(G, k)
+    hh = hash_function(m + str(R[0] % n4))
+    s = (inverse(k, n4) * (hh + (R[0] % n4) * x)) % n4
+    return [s, R[0] % n4]
+
+# Function to verify ECDSA signature
+def verify_ecdsa(G, m, S, Y):
+    si = inverse(S[0], n4)
+    hh = hash_function(m + str(S[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * S[1]) % n4
+    return add_points(multiply_point(G, u1), multiply_point(Y, u2))[0] % n4 == S[1]
+
+# Base point
+P = [1, 1]
+print "Base point:\n", P
+
+# Second point
+Q = multiply_point(P, random.randint(1, n4))
+print "Second point\n", Q
+
+# Read message from file
+with open(sys.argv[1], 'r') as file:
+    message = file.read()
+
+# Generate public key
+x = random_number_256(sys.argv[1])
+y = multiply_point(P, x)
+write_number(y[0], 'y0')
+write_number(y[1], 'y1')
+
+# Sign message using ECDSA
+signature = sign_ecdsa(P, message, x)
+print "Verify: ", verify_ecdsa(P, message, signature, y)
+write_number(signature[0], 's0')
+write_number(signature[1], 's1')
+print "test Schnorr ", hash_function(str(add_points(multiply_point(P, signature[0]), multiply_point(y, signature[1]))[0]) + message) == signature[1]

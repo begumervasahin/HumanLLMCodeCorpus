@@ -1,0 +1,78 @@
+import os
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto import Random
+
+def encrypt_file(key, input_filename):
+    """
+    Encrypts a file using AES encryption with CBC mode.
+    
+    Args:
+        key (bytes): The encryption key.
+        input_filename (str): The name of the file to encrypt.
+    """
+    chunk_size = 64 * 1024
+    output_filename = "encrypted_" + input_filename
+    file_size = str(os.path.getsize(input_filename)).zfill(16)
+    IV = Random.new().read(16)
+    encryptor = AES.new(key, AES.MODE_CBC, IV)
+    
+    with open(input_filename, 'rb') as input_file:
+        with open(output_filename, 'wb') as output_file:
+            output_file.write(file_size.encode('utf-8'))
+            output_file.write(IV)
+            while True:
+                chunk = input_file.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                elif len(chunk) % 16 != 0:
+                    chunk += b' ' * (16 - (len(chunk) % 16))
+                output_file.write(encryptor.encrypt(chunk))
+
+def decrypt_file(key, input_filename):
+    """
+    Decrypts a file that was encrypted using AES encryption with CBC mode.
+    
+    Args:
+        key (bytes): The decryption key.
+        input_filename (str): The name of the encrypted file to decrypt.
+    """
+    chunk_size = 64 * 1024
+    output_filename = "decrypted_" + input_filename.split('_', 1)[1]
+    
+    with open(input_filename, 'rb') as input_file:
+        file_size = int(input_file.read(16))
+        IV = input_file.read(16)
+        decryptor = AES.new(key, AES.MODE_CBC, IV)
+        
+        with open(output_filename, 'wb') as output_file:
+            while True:
+                chunk = input_file.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                output_file.write(decryptor.decrypt(chunk))
+            output_file.truncate(file_size)
+
+def generate_key_from_password(password):
+    """
+    Generates a cryptographic key from a password.
+    
+    Args:
+        password (str): The password from which to generate the key.
+    
+    Returns:
+        bytes: The generated key.
+    """
+    hasher = SHA256.new(password.encode('utf-8'))
+    return hasher.digest()
+
+if __name__ == "__main__":
+    password = input("Enter password: ")
+    key = generate_key_from_password(password)
+    filename = input("Enter filename: ")
+    
+    encrypt_file(key, filename)
+    print("Encryption successful!")
+    
+    decrypt_file(key, "encrypted_" + filename)
+    print("Decryption successful!")

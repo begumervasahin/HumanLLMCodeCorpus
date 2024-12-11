@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import numpy as np
+import csv
+from sklearn.manifold import TSNE
+from sklearn.decomposition import TruncatedSVD
+
+# Initialize counter for output files
+i = 1
+
+# Main loop for processing files
+while True:
+    # Prompt the user to enter a file name or to exit
+    filename = input("Enter file name with extension or write 'exit' to stop: ")
+
+    # Check if the user wants to exit
+    if filename.upper() == 'EXIT':
+        break
+
+    # Read data from the file
+    with open(filename) as file:
+        lines = [line.split('\t') for line in file]
+
+    # Convert data to numpy array
+    input_data = np.asarray(lines)
+    disease_name = input_data[:, -1]
+
+    # Clean up disease names
+    for j in range(len(disease_name)):
+        disease_name[j] = disease_name[j].strip()
+
+    # Extract numeric data
+    mat = input_data[:, :(input_data.shape[1] - 1)]
+    data = np.mat(mat.astype(float))
+
+    # Calculate mean and center the data
+    mean = np.mean(data, axis=0)
+    centered_data = np.subtract(data, mean)
+
+    # Calculate covariance matrix
+    cov_mat = np.cov(np.transpose(centered_data))
+
+    # Calculate eigenvalues and eigenvectors
+    eigen_values, eigen_vectors = np.linalg.eig(cov_mat)
+    eigen_values = np.reshape(eigen_values, (1, data.shape[1]))
+    sort_indices = eigen_values.argsort()
+    result = np.append(eigen_vectors[:, sort_indices[0][-1]], eigen_vectors[:, sort_indices[0][-2]])
+    result = np.reshape(result, (data.shape[1], 2), order='F')
+
+    # Project data onto new basis
+    new_data_points = centered_data * result
+    new_data_points = new_data_points.tolist()
+
+    # Append disease names to the new data points
+    for j in range(len(new_data_points)):
+        new_data_points[j].append(disease_name[j])
+
+    # Write PCA output to a CSV file
+    output_file = 'pca_' + str(i) + '.csv'
+    with open(output_file, "w") as output:
+        writer = csv.writer(output)
+        writer.writerows(new_data_points)
+
+    # Perform t-SNE
+    data_tsne = TSNE(n_components=2).fit_transform(data)
+    tsne = np.c_[data_tsne, disease_name]
+
+    # Write t-SNE output to a CSV file
+    tsne_output = 'tsne_' + str(i) + '.csv'
+    with open(tsne_output, "w") as output:
+        writer = csv.writer(output)
+        writer.writerows(tsne)
+
+    # Perform SVD
+    svd = TruncatedSVD(n_components=2)
+    data_svd = svd.fit_transform(centered_data)
+    data_svd = np.c_[data_svd, disease_name]
+
+    # Write SVD output to a CSV file
+    svd_output = 'svd_' + str(i) + '.csv'
+    with open(svd_output, "w") as output:
+        writer = csv.writer(output)
+        writer.writerows(data_svd)
+
+    # Increment the counter
+    i += 1

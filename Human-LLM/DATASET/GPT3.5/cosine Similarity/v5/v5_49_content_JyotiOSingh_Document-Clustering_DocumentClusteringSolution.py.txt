@@ -1,0 +1,87 @@
+import urllib.request
+import re
+import math
+from bs4 import BeautifulSoup
+
+def read_web_page_content(url):
+    """Reads webpage content and removes HTML tags."""
+    html = urllib.request.urlopen(url).read()
+    soup = BeautifulSoup(html, "lxml")
+    for script in soup(["script", "style"]):
+        script.extract()
+    text = soup.get_text()
+    return text.lower()
+
+def convert_content_to_word_list(content):
+    """Converts content to a list of words."""
+    return re.compile(r'\W+', re.UNICODE).split(content)
+
+def strip_common_words(word_list):
+    """Removes common stop words from the word list."""
+    common_words = ["the", "for", "of", "if", "to", "are", "a", "is", "as", "at", "any", "in", "on", "can", "an",
+                    "or", "not", "that", "than", "which", 'very', 'well', 'was', 'that', 'then', 'and', 'be',
+                    'also', 'such', 'from', 'into']
+    return [word for word in word_list if word not in common_words]
+
+def calculate_term_frequency(term_list):
+    """Calculates the term frequency in the given word list."""
+    return {term: term_list.count(term) for term in term_list}
+
+def calculate_cosine_similarity(url1, url2):
+    """Calculates cosine similarity between two webpages."""
+    content1 = read_web_page_content(url1)
+    content2 = read_web_page_content(url2)
+    words1 = strip_common_words(convert_content_to_word_list(content1))
+    words2 = strip_common_words(convert_content_to_word_list(content2))
+    term_freq1 = calculate_term_frequency(words1)
+    term_freq2 = calculate_term_frequency(words2)
+    numerator = calculate_cosine_similarity_num(term_freq1, term_freq2)
+    denominator = calculate_cosine_similarity_denom(term_freq1, term_freq2)
+    cosine_similarity = numerator / denominator if denominator != 0 else 0
+    return cosine_similarity
+
+def calculate_cosine_similarity_num(dict1, dict2):
+    """Calculates the numerator of cosine similarity."""
+    return sum(dict1[key] * dict2[key] for key in dict1 if key in dict2)
+
+def calculate_cosine_similarity_denom(dict1, dict2):
+    """Calculates the denominator of cosine similarity."""
+    sum1 = sum(val ** 2 for val in dict1.values())
+    sum2 = sum(val ** 2 for val in dict2.values())
+    return math.sqrt(sum1) * math.sqrt(sum2)
+
+def read_input_file(file_name):
+    """Reads URLs from an input file and stores them in a dictionary."""
+    urls = {}
+    try:
+        with open(file_name, "r") as file:
+            for idx, line in enumerate(file, start=1):
+                urls[idx] = line.strip()
+    except IOError:
+        print(f"Error: Unable to find the file '{file_name}'.")
+    except Exception as e:
+        print(f"Error while trying to open the file: {e}")
+    return urls
+
+def calculate_cosine_similarity_using_input_file():
+    """Calculates cosine similarity for URLs provided in an input file."""
+    web_pages = read_input_file("input.txt")
+    try:
+        with open("output.txt", "w") as output_file:
+            output_file.write("Following webpages have been processed to find the cosine similarity:\n\n")
+            for idx, url in web_pages.items():
+                output_file.write(f"{idx}: {url}\n\n")
+            output_file.write("\nCosine similarity for the above webpages is:\n\n")
+            for key1, url1 in web_pages.items():
+                similarities = [round(calculate_cosine_similarity(url1, url2), 2) for url2 in web_pages.values()]
+                output_file.write(f"{key1}: {similarities}\n")
+            output_file.write("\nHighest matches for each webpage:\n\n")
+            for key1, url1 in web_pages.items():
+                similarities = [calculate_cosine_similarity(url1, url2) for url2 in web_pages.values()]
+                max_similarity = max(similarities)
+                max_index = similarities.index(max_similarity) + 1
+                output_file.write(f"{key1}: {web_pages[max_index]}\n")
+    except IOError:
+        print("Error: Unable to write to the output file.")
+
+calculate_cosine_similarity_using_input_file()

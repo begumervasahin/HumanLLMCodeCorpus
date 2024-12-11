@@ -1,0 +1,66 @@
+import re
+from collections import Counter
+import math
+
+def document_to_vector(document):
+    """
+    Convert a document into a word frequency vector.
+
+    Parameters:
+        document (str): The document to convert.
+
+    Returns:
+        Counter: Word frequency vector.
+    """
+    word_list = re.compile(r'\w+')
+    all_words = word_list.findall(document)
+    return Counter(all_words)
+
+def cosine_similarity(vector1, vector2):
+    """
+    Calculate the cosine similarity between two word frequency vectors.
+
+    Parameters:
+        vector1 (Counter): Word frequency vector 1.
+        vector2 (Counter): Word frequency vector 2.
+
+    Returns:
+        float: Cosine similarity between the two vectors.
+    """
+    common_words = set(vector1.keys()) & set(vector2.keys())
+    sum_of_products = sum([vector1[word] * vector2[word] for word in common_words])     
+    sum_of_sq1 = sum([vector1[word] ** 2 for word in vector1.keys()])
+    sum_of_sq2 = sum([vector2[word] ** 2 for word in vector2.keys()])
+    multiplier_of_sum = math.sqrt(sum_of_sq1) * math.sqrt(sum_of_sq2)
+    return sum_of_products / multiplier_of_sum
+
+def check_plagiarism(original_document, new_document, threshold=0.40):
+    """
+    Check plagiarism between two documents.
+
+    Parameters:
+        original_document (str): The original document.
+        new_document (str): The new document to check for plagiarism.
+        threshold (float): Threshold for considering plagiarism.
+
+    Returns:
+        bool: True if plagiarism is detected, False otherwise.
+    """
+    vector_1 = document_to_vector(original_document.lower())
+    vector_2 = document_to_vector(new_document.lower())
+
+    plagiarism_factor = cosine_similarity(vector_1, vector_2)
+    print('Plagiarism factor:', plagiarism_factor)
+
+    if plagiarism_factor > threshold:
+        print('Your document is plagiarized.')
+        return True
+    else:
+        print('Your document is not plagiarized.')
+        return False
+
+# Example usage
+if __name__ == "__main__":
+    original_document = 'AI is our friend and it has been friendly'
+    new_document = 'AI and humans have always been friendly'
+    check_plagiarism(original_document, new_document)

@@ -1,0 +1,74 @@
+import string
+import unittest
+from aes import AES  # Assuming AES implementation is in aes.py
+
+# Function to pad hexadecimal string
+def pad_hexadecimal(s, i):
+    return s[2:].zfill(i)
+
+# Function to format output with spaces
+def format_output_with_spaces(s):
+    output = ''
+    for i in range(len(s) + 1):
+        if i % 2 == 0:
+            if i > 2:
+                output = output + ' '
+            output = output + s[i - 2:i]
+    return output
+
+# Function to open and read a file
+def open_file(filename):
+    with open(filename, 'r') as fp:
+        lines = fp.readlines()
+    return lines
+
+# Function to convert lines from file to hexadecimal integer
+def convert_to_hex(lines):
+    s = ''
+    for i in range(len(lines)):
+        for word in lines[i].split():
+            s = s + word.strip(string.whitespace)
+    s = '0x' + s
+    return int(s, 16)
+
+# Test class for AES encryption and decryption
+class AES_TEST(unittest.TestCase):
+    def setUp(self):
+        # Read the key from file and initialize AES object
+        lines = open_file('key.txt')
+        self.AES = AES(convert_to_hex(lines))
+
+    def test_encryption(self):
+        print("(for encryption)")
+        # Read input and counter from files
+        lines = open_file('en_input.txt')
+        lines2 = open_file('ctr.txt')
+        
+        # Encrypt first half of input
+        encrypted = self.AES.encrypt(int(pad_hexadecimal(hex(convert_to_hex(lines2)), 64)[:32], 16))
+        ciphertext = encrypted ^ int(pad_hexadecimal(hex(convert_to_hex(lines)), 64)[:32], 16)    
+        print(format_output_with_spaces(pad_hexadecimal(hex(ciphertext), 32)).upper())
+        
+        # Encrypt second half of input
+        encrypted = self.AES.encrypt(int(pad_hexadecimal(hex(convert_to_hex(lines2)), 64)[32:], 16))
+        ciphertext2 = encrypted ^ int(pad_hexadecimal(hex(convert_to_hex(lines)), 64)[32:], 16)   
+        print(format_output_with_spaces(pad_hexadecimal(hex(ciphertext2), 32).upper()))
+
+    def test_decryption(self):
+        print("(for decryption)")
+        # Read input and counter from files
+        lines = open_file('de_input.txt')
+        lines2 = open_file('ctr.txt')
+        
+        # Decrypt first half of input
+        decrypted = self.AES.encrypt(int(pad_hexadecimal(hex(convert_to_hex(lines2)), 64)[:32], 16))
+        plaintext = decrypted ^ int(pad_hexadecimal(hex(convert_to_hex(lines)), 64)[:32], 16)     
+        print(format_output_with_spaces(pad_hexadecimal(hex(plaintext), 32).upper()))
+        
+        # Decrypt second half of input
+        decrypted = self.AES.encrypt(int(pad_hexadecimal(hex(convert_to_hex(lines2)), 64)[32:], 16))
+        plaintext2 = decrypted ^ int(pad_hexadecimal(hex(convert_to_hex(lines)), 64)[32:], 16)    
+        print(format_output_with_spaces(pad_hexadecimal(hex(plaintext2), 32).upper()))
+
+if __name__ == '__main__':
+    unittest.main()

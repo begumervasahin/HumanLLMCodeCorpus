@@ -1,0 +1,170 @@
+import numpy as np
+from sklearn.datasets import fetch_openml
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+import os
+
+def load_mnist(flatten=True, validation=False):
+    """Load the MNIST dataset."""
+    mnist_data = fetch_openml('mnist_784', version=1)
+    images = mnist_data.data.astype('float32') / 255.
+    labels = mnist_data.target.astype('int')
+
+    if flatten:
+        images = images.reshape(images.shape[0], -1)
+    else:
+        images = images.reshape(*images.shape, 1)
+
+    if validation:
+        return (images[:60000], labels[:60000]), (images[60000:], labels[60000:])       
+    else:
+        return (images, labels), (None, None)
+
+def load_fashion_mnist(flatten=True, validation=False):
+    """Load the Fashion MNIST dataset."""
+    fashion_mnist_data = fetch_openml('Fashion-MNIST', version=1)
+    images = fashion_mnist_data.data.astype('float32') / 255.
+    labels = fashion_mnist_data.target.astype('int')
+
+    if flatten:
+        images = images.reshape(images.shape[0], -1)
+    else:
+        images = images.reshape(*images.shape, 1)
+
+    if validation:
+        return (images[:60000], labels[:60000]), (images[60000:], labels[60000:])       
+    else:
+        return (images, labels), (None, None)
+
+def load_usps(data_path='./data/usps', validation=False):
+    """Load the USPS dataset."""
+    usps_data = fetch_openml('USPS', version=2)
+    images = usps_data.data.astype('float32')
+    labels = usps_data.target.astype('int')
+
+    if validation:
+        return (images[:7000], labels[:7000]), (images[7000:], labels[7000:])
+    else:
+        return (images, labels), (None, None)
+
+def load_reuters(data_path='./data/reuters', validation=False):
+    """Load the Reuters dataset."""
+    if not os.path.exists(os.path.join(data_path, 'reutersidf10k.npy')):
+        print('Creating Reuters IDF features...')
+        make_reuters_data(data_path)
+        print('Reuters IDF features saved to', data_path)
+
+    reuters_data = np.load(os.path.join(data_path, 'reutersidf10k.npy'), allow_pickle=True).item()
+    images = reuters_data['data']
+    labels = reuters_data['label']
+
+    images = images.reshape((images.shape[0], -1)).astype('float64')
+    labels = labels.reshape((labels.size,))
+
+    if validation:
+        train_images = images[:7769]
+        train_labels = labels[:7769]
+        test_images = images[7769:]
+        test_labels = labels[7769:]
+        return (train_images, train_labels), (test_images, test_labels)
+    else:
+        return (images, labels), (None, None)
+
+def make_reuters_data(data_dir):
+    """Make Reuters dataset."""
+    np.random.seed(1234)
+
+    # RCV1-V2 data is heavy and not included.
+    # Download from http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm
+    # Files needed:
+    # 'rcv1-v2.topics.qrels'
+    # 'lyrl2004_tokens_test_pt0.dat'
+    # 'lyrl2004_tokens_test_pt1.dat'
+    # 'lyrl2004_tokens_test_pt2.dat'
+    # 'lyrl2004_tokens_test_pt3.dat'
+    # 'lyrl2004_tokens_train.dat'
+
+    did_to_cat = {}
+    cat_list = ['CCAT', 'GCAT', 'MCAT', 'ECAT']
+
+    with open(os.path.join(data_dir, 'rcv1-v2.topics.qrels')) as fin:
+        for line in fin:
+            cat, did = line.strip().split(' ')[:2]
+            did = int(did)
+            if cat in cat_list:
+                did_to_cat.setdefault(did, []).append(cat)
+
+        for did in list(did_to_cat.keys()):
+            if len(did_to_cat[did]) > 1:
+                del did_to_cat[did]
+
+    dat_list = [
+        'lyrl2004_tokens_test_pt0.dat',
+        'lyrl2004_tokens_test_pt1.dat',
+        'lyrl2004_tokens_test_pt2.dat',
+        'lyrl2004_tokens_test_pt3.dat',
+        'lyrl2004_tokens_train.dat'
+    ]
+
+    data = []
+    target = []
+    cat_to_cid = {'CCAT': 0, 'GCAT': 1, 'MCAT': 2, 'ECAT': 3}
+
+    for dat in dat_list:
+        with open(os.path.join(data_dir, dat)) as fin:
+            doc = ''
+            for line in fin:
+                if line.startswith('.I'):
+                    if doc:
+                        if did in did_to_cat:
+                            data.append(doc)
+                            target.append(cat_to_cid[did_to_cat[did][0]])
+                    _, did = line.strip().split(' ')[:2]
+                    did = int(did)
+                    doc = ''
+                elif line.startswith('.W'):
+                    doc = ''
+                else:
+                    doc += line
+
+    assert len(data) == len(did_to_cat)
+
+    vectorizer = CountVectorizer(dtype=np.float64, max_features=2000).fit(data)
+    x = vectorizer.transform(data)
+    y = np.asarray(target)
+
+    transformer = TfidfTransformer(norm='l2', sublinear_tf=True).fit(x)
+    x = transformer.transform(x)
+    x = x[:10000].astype(np.float32)
+
+    y = y[:10000]
+    x = np.asarray(x.todense()) * np.sqrt(x.shape[1])
+
+    p = np.random.permutation(x.shape[0])
+    x = x[p]
+    y = y[p]
+
+    assert x.shape[0] == y.shape[0]
+    x = x.reshape((x.shape[0], -1))
+
+    np.save(os.path.join(data_dir, 'reutersidf10k.npy'), {'data': x, 'label': y})
+
+def load_data(dataset_name, flatten=True, validation=False):
+    """Load the specified dataset."""
+    loaders = {
+        'mnist': load_mnist,
+        'fmnist': load_fashion_mnist,
+        'usps': load_usps,
+        'reuters10k': load_reuters,
+        'reuters': load_reuters,
+    }
+    if dataset_name not in loaders:
+        print('Dataset "{}" not available! Available datasets are mnist, fmnist, usps, and reuters.'.format(dataset_name))
+        exit(0)
+    return loaders[dataset_name](flatten=flatten, validation=validation)
+
+# Example usage:
+if __name__ == "__main__":
+    dataset_name = 'mnist'
+    (x_train, y_train), (x_test, y_test) = load_data(dataset_name, flatten=True, validation=True)
+    print(f"{dataset_name} training set shape: {x_train.shape}, {y_train.shape}")       
+    print(f"{dataset_name} testing set shape: {x_test.shape}, {y_test.shape}")

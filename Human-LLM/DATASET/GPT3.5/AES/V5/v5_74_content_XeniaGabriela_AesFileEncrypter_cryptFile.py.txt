@@ -1,0 +1,187 @@
+import os
+import platform
+import sys
+import binascii
+import hashlib
+from base64 import b64encode, b64decode
+from datetime import datetime
+from Crypto.Cipher import AES
+
+# Operating system platform detection
+os_platform = platform.system().lower()
+
+# Dictionary mapping actions to descriptions
+actions = {
+    'e': 'Encrypting',
+    'd': 'Decrypting',
+    't': 'Testing'
+}
+
+# Function to convert string to bytes
+def to_bytes(string):
+    return bytes(string, "utf-8") if sys.version_info[0] == 3 else string
+
+# Function to handle user input compatibility between Python 2 and 3
+def user_input(prompt):
+    return input(prompt) if sys.version_info[0] == 3 else raw_input(prompt)
+
+# Function to clear the console screen
+def clear_console():
+    if os_platform.startswith("win"):
+        os.system("cls")
+    elif os_platform.startswith("linux"):
+        os.system("history -c")
+    else:
+        print("Remember to clear your command line history after running the script!!!")
+
+# Function to determine terminal size
+def terminal_size():
+    if os_platform.startswith("linux"):
+        os.system("resize -s 40 120")
+        return 120
+    elif os_platform.startswith("win"):
+        os.system("mode con: cols=120 lines=40")
+        return 120
+    else:
+        return 80
+
+# Class for encryption and decryption
+class Cipher(object):
+    start_time = 0
+    end_time = 0
+    AES_modes = {"OFB": AES.MODE_OFB}
+    required_args = ["-a", "-f", "-u", "-k"]
+
+    usage = """
+    Usage:
+    python cryptFile.py -a action -f file -u user -k key
+    Actions: e (encrypt), d (decrypt), t (test)
+    """
+
+    def start(self, argv):
+        if len(argv) == 1:
+            print(self.usage)
+            sys.exit()
+
+        self.parse_args(argv)
+        self.prepare_args()
+
+        if AES_args["-a"] == "e":
+            self.encrypt_file()
+        if AES_args["-a"] == "d":
+            self.decrypt_file()
+        if AES_args["-a"] == "t":
+            self.test_decryption()
+
+    def parse_args(self, strings):
+        missing_args = set(self.required_args) - set(strings)
+        if len(strings) < 9:
+            print("\nMissing arguments!")
+        if len(missing_args) > 0:
+            for arg in missing_args:
+                print("   Missing argument: %s" % (arg))
+            sys.exit()
+
+        for arg in self.required_args:
+            try:
+                AES_args[arg] = strings[strings.index(arg) + 1]
+            except:
+                print("   Please specify the value of %s" % (arg))
+
+        if AES_args["-a"] == "e" and (len(AES_args["-u"]) < 5 or len(AES_args["-k"]) < 12):
+            print("\n   Key must be at least 12 characters long and username at least 5 characters long")
+            sys.exit()
+        if AES_args["-a"] == "e" and (len(AES_args["-k"]) < 12):
+            print("\n   It is recommended to use a key and username with a total of at least 24 characters")
+            continue_prompt = user_input("\n   Do you want to continue? Type y/n: ")
+            if continue_prompt.lower() != "y":
+                sys.exit()
+
+        clear_console()
+        print("\n%s %s ..." % (actions[AES_args["-a"]], AES_args["-f"]))
+        return AES_args
+
+    def prepare_args(self):
+        if AES_args["-a"] not in ["e", "d", "t"]:
+            print("\n-a must be 'e' for encryption, 'd' for decryption, or 't' for testing")
+            sys.exit()
+
+        self.start_time = datetime.now()
+
+        AES_args["-f"] = AES_args["-f"].replace("\\", "/")
+        AES_args["-k"] = self.generate_key(AES_args["-k"], 251)
+        AES_args["-u"] = self.generate_key(AES_args["-u"], 239)[11:27]
+
+    def generate_key(self, key, modulus):
+        salt, index = to_bytes(""), 0
+        for i in 4*key:
+            index += 1
+            hex_position = hex(int(binascii.hexlify(to_bytes(i)), 16)**index % modulus)[2:4].replace("L", "")
+            hex_position = "0" + hex_position if len(hex_position) == 1 else hex_position
+            salt += binascii.unhexlify(hex_position)
+        new_key = hashlib.pbkdf2_hmac("sha512", to_bytes(key), salt, 2746398)
+        return new_key[17:49]
+
+    def encrypt_file(self):
+        with open(AES_args["-f"], "rb") as read_file:
+            plaintext = b64encode(read_file.read())
+            plaintext += (16-len(plaintext)%16)*b'\x00'
+        obj = AES.new(AES_args["-k"], self.AES_modes["OFB"], AES_args["-u"])
+        ciphertext = obj.encrypt(plaintext)
+        self.write_file(ciphertext, "_encrypted.")
+
+    def decrypt_file(self):
+        with open(AES_args["-f"], "rb") as read_file:
+            ciphertext = read_file.read()
+            if AES_args["-f"].split(".").pop() not in pic_formats:
+                hextext = binascii.hexlify(ciphertext).replace(b"0d0a", b"0a")
+                ciphertext = binascii.unhexlify(hextext)
+        obj = AES.new(AES_args["-k"], self.AES_modes["OFB"], AES_args["-u"])
+        try:
+            decrypted_text = obj.decrypt(ciphertext)
+            decrypted_text = b64decode(decrypted_text)
+            self.write_file(decrypted_text, "_decrypted.")
+        except:
+            print("\n   Are you sure you chose the right action for the file? \n   %s seems not to be encrypted with this script.\n" % (AES_args["-f"]))
+
+    def test_decryption(self):
+        print("\nTesting the encryption-decryption process without saving encryption to a file")
+        with open(AES_args["-f"], "rb") as read_file:
+            plaintext = b64encode(read_file.read())
+            plaintext += (16-len(plaintext)%16)*b'\x00'
+        obj = AES.new(AES_args["-k"], self.AES_modes["OFB"], AES_args["-u"])
+        ciphertext = obj.encrypt(plaintext)
+        obj2 = AES.new(AES_args["-k"], self.AES_modes["OFB"], AES_args["-u"])
+        decrypted_text = obj2.decrypt(ciphertext)
+        decoded_text = b64decode(decrypted_text)
+        self.write_file(decoded_text, "_tested.")
+
+    def write_file(self, text, direction):
+        self.end_time = datetime.now()
+        path_parts = AES_args["-f"].split(".")
+        file_path = path_parts[0] + direction + path_parts[1]
+        file_name = file_path.split("/").pop()
+        changed_name = user_input("\nThe new file name will be %s. If you want another name, type it, else just press enter: " % (file_name))
+        print(changed_name)
+        new_file_name = file_name if changed_name == "" else changed_name.split(".")[0] + "." + file_name.split(".").pop()
+        new_file_path = file_path.replace(file_name, new_file_name)
+        with open(new_file_path, "wb") as new_file:
+            new_file.write(text)
+        self.clean_up(new_file_name, new_file_path)
+
+    def clean_up(self, new_file_name, new_file_path):
+        width = terminal_size()
+        print("\n%s" % (width * "-"))
+        print("%s saved in %s" % (new_file_name, new_file_path.replace(new_file_name, "")))
+        print("\nComputation time: %s" % (str(self.end_time - self.start_time)[2:]))
+        print("%s" % (width * "-"))
+        delete = user_input("\nDo you want to delete the original file? Type y/n for yes/no: ")
+        if delete == "y":
+            os.remove(AES_args["-f"])
+            print("Deleted %s\n" % (AES_args["-f"]))
+        if os_platform.startswith("linux"):
+            print("type 'history -c' to clear the current command line history")   
+
+# Starting the script
+if __name__ == '__main__':
+    Cipher().start(sys.argv)

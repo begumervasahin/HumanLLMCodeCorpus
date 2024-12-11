@@ -1,0 +1,85 @@
+class GridNode:
+    def __init__(self, x, y, grid_size=9):
+        # Initialize the GridNode with its coordinates (x, y)
+        # and the size of the grid it belongs to
+        self.x = x
+        self.y = y
+        self.data = None  # Data associated with the node
+        self.grid_size = grid_size  # Size of the grid
+
+    def __eq__(self, other):
+        # Check if two GridNodes are equal based on their coordinates
+        return self.x == other.x and self.y == other.y
+
+    def set_f_value(self, f):
+        # Set the 'f' value of the node
+        self.f = f
+
+    def get_f_value(self):
+        # Get the 'f' value of the node
+        return self.f
+
+    def get_x(self):
+        # Get the x-coordinate of the node
+        return self.x
+
+    def get_y(self):
+        # Get the y-coordinate of the node
+        return self.y
+
+    def get_xy(self):
+        # Get the coordinates (x, y) of the node
+        return (self.x, self.y)
+
+    def set_data(self, data):
+        # Set the data associated with the node
+        self.data = data
+
+    def get_data(self):
+        # Get the data associated with the node
+        return self.data
+
+    def get_neighbors(self, grid):
+        # Get the neighboring nodes of the current node
+        neighbors = []
+        for a in range(self.x - 1, self.x + 2):
+            for b in range(self.y - 1, self.y + 2):
+                if a == self.x and b == self.y:
+                    continue
+                if self.is_valid(a, b):
+                    # Create a GridNode for each valid neighbor
+                    node = GridNode(a, b)
+                    node.set_data(grid[a][b])
+                    neighbors.append(node)
+        return neighbors
+
+    def is_valid(self, x, y):
+        # Check if the given coordinates are within the grid boundaries
+        return 0 <= x < self.grid_size and 0 <= y < self.grid_size
+
+    def closed_neighbors_to_open(self, grid):
+        # Get the closed neighbors that can be opened
+        neighbors = []
+        closed = []
+        neighbors = self.get_neighbors(grid)
+        for cell in neighbors:
+            if cell.get_data() == ' ':
+                closed.append(cell)
+        return closed
+
+    def check_cell(self, grid):
+        # Check the current cell for bombs and calculate the result
+        if self.data == 'F' or self.data == ' ':
+            return 0
+        bombs = 0
+        neighbors = self.get_neighbors(grid)
+        closed = self.closed_neighbors_to_open(grid)
+        closed_count = len(closed)
+        for cell in neighbors:
+            if cell not in closed:
+                if cell.get_data() == 'F':
+                    bombs += 1
+        if closed_count != 0 and grid[self.x][self.y] != ' ':
+            return (int(grid[self.x][self.y]) - bombs) / closed_count
+        else:
+            return 0

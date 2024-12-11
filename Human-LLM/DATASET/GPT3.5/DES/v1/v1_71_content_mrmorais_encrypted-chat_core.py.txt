@@ -1,0 +1,102 @@
+from select import select
+from enum import Enum
+import sys
+
+class OutputType(Enum):
+    LOG = 1
+    GUEST = 2
+
+class InputType(Enum):
+    INTERNAL = 1
+    EXTERNAL = 2
+
+class NameReference(Enum):
+    ME = 1
+    GUEST = 2
+
+class ChatCore:
+    input_socket = None
+    chat_input_handler = None
+    chat_output_handler = None
+    connections_list = []
+
+    def __init__(self, host, port):
+        self.connector = ChatConnector(host, port)
+        self.host = host
+        self.port = port
+
+    def close_all(self):
+        self.connector.close_guest_connection()
+        self.connector.close_host_connection()
+
+    def initialize(self):
+        self.chat_output_handler(OutputType.LOG, f"[core] Initializing chat server on {self.host}:{self.port} ... ")
+        try:
+            self.host_socket = self.connector.bind_and_listen()
+            self.chat_output_handler(OutputType.LOG, "[core] OK")
+        except Exception as exc:
+            self.chat_output_handler(OutputType.LOG, "[core] FAILED because: " + str(exc))
+            sys.exit(1)
+        self.refresh_connections_list()
+
+    def set_message_handlers(self, input_handler, output_handler):
+        self.chat_input_handler = input_handler
+        self.chat_output_handler = output_handler
+
+    def set_input_text_stream(self, in_stream):
+        self.in_stream = in_stream
+
+    def set_chat_change_name_handler(self, change_name_handler):
+        self.chat_change_name = change_name_handler
+
+    def refresh_connections_list(self):
+        conn_list = [self.in_stream]
+        if self.connector.get_host_socket() is not None:
+            conn_list.append(self.connector.get_host_socket())
+        if self.connector.get_guest_socket() is not None:
+            conn_list.append(self.connector.get_guest_socket())
+        self.connections_list = conn_list
+
+    def connect_to(self, host, port):
+        self.connector.connect_to(host, port)
+        self.refresh_connections_list()
+
+    def close_conn(self):
+        self.connector.close_guest_connection()
+        self.refresh_connections_list()
+
+    def send_message(self, text):
+        self.connector.send_message(text)
+
+    def run_chat_loop(self):
+        while True:
+            read_sockets, _, _ = select(self.connections_list, [], [])
+            for sock in read_sockets:
+                if sock == self.in_stream:
+                    user_input = self.in_stream.readline()
+                    user_input = user_input.strip('\n').strip(' ')
+                    self.chat_input_handler(InputType.INTERNAL, user_input)
+                elif sock == self.host_socket:
+                    sock_conn, addr = sock.accept()
+                    if self.connector.get_guest_socket() is not None:
+                        sock_conn.send(bytes("[~info] The server you're trying to reach is busy", "utf-8"))
+                        sock_conn.close()
+                    else:
+                        self.chat_change_name(NameReference.GUEST, f"{addr[0]}:{addr[1]}")
+                        self.connector.set_guest_socket(sock_conn)
+                        self.chat_output_handler(OutputType.LOG, f"[~info] {addr[0]} is now connected to you")
+                        self.refresh_connections_list()
+                else:
+                    try:
+                        data = sock.recv(4096)
+                        if data:
+                            self.chat_input_handler(InputType.EXTERNAL, data.decode('utf-8'))
+                    except Exception as exc:
+                        self.chat_output_handler(OutputType.LOG, "[~info] your friend is now offline because: " + str(exc))
+                        self.connector.close_guest_connection()
+                        continue
+        self.connector.close_host_connection()
+
+# You'll need to implement the ChatConnector class and provide implementations for methods like
+# bind_and_listen, connect_to, close_guest_connection, close_host_connection, get_host_socket, get_guest_socket,
+# set_guest_socket, and send_message according to your requirements.

@@ -1,0 +1,48 @@
+def initialize(graph, source):
+    """
+    Initialize distance and predecessor dictionaries for the Bellman-Ford algorithm.
+    """
+    distance = {node: float('inf') for node in graph}
+    predecessor = {node: None for node in graph}
+    distance[source] = 0
+    return distance, predecessor
+
+def relax(node, neighbor, graph, distance, predecessor):
+    """
+    Update distance and predecessor if a shorter path is found.
+    """
+    new_distance = distance[node] + graph[node][neighbor]
+    if distance[neighbor] > new_distance:
+        distance[neighbor] = new_distance
+        predecessor[neighbor] = node
+
+def bellman_ford(graph, source):
+    """
+    Bellman-Ford algorithm for finding shortest paths in a graph.
+    """
+    distance, predecessor = initialize(graph, source)
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            for neighbor in graph[node]:
+                relax(node, neighbor, graph, distance, predecessor)
+    for node in graph:
+        for neighbor in graph[node]:
+            if distance[neighbor] > distance[node] + graph[node][neighbor]:
+                raise RuntimeError('Negative cycle detected, cannot find shortest paths')
+    return distance, predecessor
+
+# Example usage
+graph = {
+    'A': {'B': -1, 'C': 4},
+    'B': {'C': 3, 'D': 2, 'E': 2},
+    'C': {},
+    'D': {'B': 1, 'C': 5},
+    'E': {'D': -3}
+}
+source_node = 'A'
+try:
+    shortest_distances, predecessors = bellman_ford(graph, source_node)
+    print("Shortest distances:", shortest_distances)
+    print("Predecessors:", predecessors)
+except RuntimeError as e:
+    print(e)

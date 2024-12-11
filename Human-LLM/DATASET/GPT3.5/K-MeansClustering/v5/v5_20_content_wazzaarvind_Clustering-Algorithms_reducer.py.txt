@@ -1,0 +1,63 @@
+import sys
+import numpy as np
+
+def parse_input(line):
+    """
+    Parse input line into cluster, index, and matrix.
+
+    Args:
+    - line (str): Input line.
+
+    Returns:
+    - cluster (int): Cluster number.
+    - index (int): Index.
+    - matrix (numpy.ndarray): Matrix as NumPy array.
+    """
+    cluster, index, matrixString = line.strip().split('\t')
+    matrix = np.array([float(x) for x in matrixString.split(',')])
+    return int(cluster), int(index), matrix
+
+def print_cluster_data(cluster, output_matrix, centroid):
+    """
+    Print cluster data including cluster number, output matrix, and centroid.
+
+    Args:
+    - cluster (int): Cluster number.
+    - output_matrix (list): List of indices in the cluster.
+    - centroid (numpy.ndarray): Centroid of the cluster.
+    """
+    print('%s\t%s\t%s' % (cluster, ','.join(map(str, output_matrix)), ','.join(map(str, centroid))))
+
+def main():
+    output_matrix = []
+    sum_for_centroid = []
+    new_cluster = -2
+    len_matrix = -1
+
+    for line in sys.stdin:
+        cluster, index, matrix = parse_input(line)
+        
+        # Update the length of the matrix if necessary
+        if len_matrix == -1:
+            len_matrix = len(matrix)
+
+        if new_cluster != cluster:
+            if new_cluster != -2:
+                # Print data for previous cluster
+                centroid = sum_for_centroid / len(output_matrix)
+                print_cluster_data(new_cluster, output_matrix, centroid)
+
+            # Reset variables for the new cluster
+            output_matrix = []
+            sum_for_centroid = np.zeros(len_matrix)
+            new_cluster = cluster
+
+        output_matrix.append(index)
+        sum_for_centroid += matrix
+
+    # Print data for the last cluster
+    centroid = sum_for_centroid / len(output_matrix)
+    print_cluster_data(new_cluster, output_matrix, centroid)
+
+if __name__ == "__main__":
+    main()

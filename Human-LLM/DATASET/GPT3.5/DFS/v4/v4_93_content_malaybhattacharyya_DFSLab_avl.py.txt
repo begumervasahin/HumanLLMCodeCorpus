@@ -1,0 +1,76 @@
+import sys
+
+class AVLNode:
+    """A single node in an AVL tree."""
+    def __init__(self, data, left=-1, right=-1, parent=-1, height=-1):
+        self.data = data
+        self.left = left
+        self.right = right
+        self.parent = parent
+        self.height = height
+
+class AVLTree:
+    """AVL Tree implementation."""
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.nodelist = [AVLNode(0) for _ in range(capacity)]
+        self.num_nodes = 0
+        self.root = -1
+
+    def height(self, nodeindex):
+        if nodeindex == -1:
+            return -1
+        else:
+            return self.nodelist[nodeindex].height
+
+    def rotate_LL(self, parent, start_index):
+        k2 = start_index
+        k1 = self.nodelist[k2].left
+        Z = self.nodelist[k2].right
+        X = self.nodelist[k1].left
+        Y = self.nodelist[k1].right
+        self.nodelist[k2].left = Y
+        self.nodelist[k1].right = k2
+        self.nodelist[k1].parent = parent
+        self.nodelist[k2].parent = k1
+        if Y != -1:
+            self.nodelist[Y].parent = k2
+        self.nodelist[k2].height = 1 + max(self.height(Y), self.height(Z))
+        self.nodelist[k1].height = 1 + max(self.height(X), self.height(k2))
+        return k1
+
+    # Other rotation methods omitted for brevity...
+
+    def balance(self, parent, start_index):
+        thisnode = start_index
+        left = self.nodelist[thisnode].left
+        right = self.nodelist[thisnode].right
+        if self.height(left) - self.height(right) > 1:
+            if self.height(self.nodelist[left].left) >= self.height(self.nodelist[left].right):
+                return self.rotate_LL(parent, start_index)
+            else:
+                return self.rotate_RL(parent, start_index)
+        elif self.height(right) - self.height(left) > 1:
+            if self.height(self.nodelist[right].right) >= self.height(self.nodelist[right].left):
+                return self.rotate_RR(parent, start_index)
+            else:
+                return self.rotate_LR(parent, start_index)
+        return start_index
+
+    # Other methods omitted for brevity...
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        sys.exit('Usage: %s <number>' % sys.argv[0])
+
+    data = [3, 2, 1, 4, 5, 6, 7, 16, 15, 14, 13, 12, 11, 10, 8, 9]
+    N = len(data)
+    bt = AVLTree(N)
+    print("Data:", data)
+
+    for i in range(N):
+        bt.root = bt.insert(-1, bt.root, data[i])
+        # Printing tree structure
+        print_tree_structure(bt.root)
+
+    # Other operations omitted for brevity...

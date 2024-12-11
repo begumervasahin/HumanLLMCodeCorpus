@@ -1,0 +1,63 @@
+class Portfolio:
+    def __init__(self, currencies):
+        self.currencies = currencies
+
+    def incr_currency(self, currency, amount):
+        if amount < 0:
+            raise ValueError('Negative amount')
+        self.currencies[currency] = self.currencies.get(currency, 0) + amount
+
+    def decr_currency(self, currency, amount):
+        if currency not in self.currencies or amount > self.currencies[currency]:
+            raise RuntimeError('Insufficient funds')
+        self.currencies[currency] -= amount
+
+def exchange(portfolio, exchange_rates, exchange_fee, target_currency, target_amount):
+    def dfs(curr, amount, visited):
+        if curr == target_currency:
+            return amount
+        visited.add(curr)
+        max_amount = 0
+        for next_curr, rate in exchange_rates[curr].items():
+            if next_curr not in visited and rate > 0:
+                max_amount = max(max_amount, dfs(next_curr, amount * rate, visited))
+        visited.remove(curr)
+        return max_amount
+
+    if not portfolio.currencies:
+        raise RuntimeError('You have no currency')
+    if target_currency not in exchange_rates:
+        raise RuntimeError('No route to ' + target_currency)
+    amount = dfs('USD', target_amount, set())
+    if amount <= 0:
+        raise RuntimeError('Negative cycle detected, cannot find the shortest paths')
+    portfolio.decr_currency('USD', amount + (amount * exchange_fee))
+    portfolio.incr_currency(target_currency, target_amount)
+
+# Test the Portfolio and exchange functions
+def test_portfolio_exchange():
+    # Test Portfolio class
+    portfolio = Portfolio({'USD': 100})
+    assert portfolio.currencies == {'USD': 100}
+
+    portfolio.incr_currency('USD', 50)
+    assert portfolio.currencies['USD'] == 150
+
+    portfolio.decr_currency('USD', 75)
+    assert portfolio.currencies['USD'] == 75
+
+    # Test exchange function
+    exchange_rates = {
+        'USD': {'BTC': 1, 'ETH': 4},
+        'BTC': {'ETH': 3},
+        'ETH': {},
+        'LTC': {}
+    }
+    exchange(portfolio, exchange_rates, 0.01, 'ETH', 10)
+    assert float(portfolio.currencies['ETH']) == 10
+    assert float(portfolio.currencies['USD']) == 64.75
+
+    print('All tests passed successfully.')
+
+if __name__ == '__main__':
+    test_portfolio_exchange()

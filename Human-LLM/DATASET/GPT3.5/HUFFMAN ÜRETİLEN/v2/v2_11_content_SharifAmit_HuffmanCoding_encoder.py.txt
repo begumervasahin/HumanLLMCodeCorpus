@@ -1,0 +1,103 @@
+# Open the input file for reading
+with open("input.txt", "r") as file:
+    # Read the first line and convert it to lowercase
+    original_string = file.readline().lower()
+
+# Create a set of unique characters in the string
+unique_chars = list(set(original_string))
+
+# Display the original string and the character list
+print("The String:", original_string)
+print("The char list:", unique_chars)
+
+# Initialize a list to store the frequency of each character
+char_frequencies = [0] * len(unique_chars)
+
+# Populate the frequency table
+for char in original_string:
+    count = original_string.count(char)
+    char_index = unique_chars.index(char)
+    if char_frequencies[char_index] == 0:
+        char_frequencies[char_index] = count
+
+# Display the frequency table before sorting
+print("Frequency Table before sorting:")
+print(char_frequencies)
+
+# Initialize lists to store sorted frequencies and corresponding characters
+sorted_frequencies = []
+sorted_chars = []
+
+# Sort the frequencies and corresponding characters
+while char_frequencies:
+    max_freq = max(char_frequencies)
+    index = char_frequencies.index(max_freq)
+    sorted_frequencies.append(max_freq)
+    sorted_chars.append(unique_chars[index])
+    char_frequencies.pop(index)
+    unique_chars.pop(index)
+
+# Display the frequency table after sorting
+print("Frequency Table after sorting:")
+print(sorted_frequencies)
+print(sorted_chars)
+
+# Calculate the number of nodes and leafs in the tree
+num_nodes = sum(1 for freq in sorted_frequencies if freq != 0)
+num_leafs = 2 * num_nodes - 1
+print("Number of nodes in the tree:", num_leafs)
+print("Number of leafs in the tree:", num_nodes)
+
+# Initialize encoder and binary tree lists
+encoder = ["null"] * num_nodes
+binary_tree = list(sorted_frequencies)
+string_tree = list(sorted_chars)
+
+# Huffman encoding algorithm
+while len(binary_tree) > 1:
+    right_freq = min(binary_tree)
+    right_char = string_tree[binary_tree.index(right_freq)]
+    binary_tree.remove(right_freq)
+    string_tree.remove(right_char)
+
+    left_freq = min(binary_tree)
+    left_char = string_tree[binary_tree.index(left_freq)]
+    binary_tree.remove(left_freq)
+    string_tree.remove(left_char)
+
+    total_freq = right_freq + left_freq
+    total_char = left_char + right_char
+    string_tree.append(total_char)
+    binary_tree.append(total_freq)
+
+    for char in right_char:
+        char_index = sorted_chars.index(char)
+        encoder[char_index] = "0" + encoder[char_index]
+
+    for char in left_char:
+        char_index = sorted_chars.index(char)
+        encoder[char_index] = "1" + encoder[char_index]
+
+# Display the final encoder
+print("Encoder:", encoder)
+
+# Generate the encoded string
+encoded_string = ""
+for char in original_string:
+    char_index = sorted_chars.index(char)
+    encoded_string += encoder[char_index]
+
+print("Encoded String:", encoded_string)
+
+# Write the encoded string to output.txt
+with open("output.txt", "w") as output_file:
+    output_file.write(encoded_string)
+
+# Write the dictionary to dictionary.txt
+with open("dictionary.txt", "w") as dict_file:
+    for i in range(len(encoder)):
+        char = sorted_chars[i]
+        code = encoder[i]
+        entry = char + "=" + code
+        print(entry)
+        dict_file.write(entry + "\n")

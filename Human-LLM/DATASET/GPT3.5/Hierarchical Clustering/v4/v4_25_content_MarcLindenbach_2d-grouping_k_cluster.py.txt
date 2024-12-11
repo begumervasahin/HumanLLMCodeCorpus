@@ -1,0 +1,78 @@
+from cluster import *
+
+# Constants
+COLOURS = [
+    (255, 127, 39),
+    (34, 177, 76),
+    (0, 162, 232),
+    (163, 73, 164),
+    (255, 242, 0),
+    (63, 72, 204),
+]
+CLUSTER_POINT_SIZE = 8
+
+def k_cluster(points, k=6, distance=p_distance, file_name='k-iteration-%d.jpeg'):
+    # Render initial clustering
+    render_k(points, file_name=file_name % 0)
+    
+    # Generate initial cluster points
+    clusters = generate_points(n=k)
+    last_matches = None
+    
+    # Iterate until convergence or max iterations
+    for iteration in range(1, 100):
+        print('Iteration %d...' % iteration)
+        
+        # Initialize best matches for each cluster
+        best_matches = [[] for _ in range(k)]
+        
+        # Assign each point to the nearest cluster
+        for i in range(len(points)):
+            point = points[i]
+            best_match = 0
+            for j in range(k):
+                d = distance(clusters[j], point)
+                if d < distance(clusters[best_match], point):
+                    best_match = j
+            best_matches[best_match].append(i)
+        
+        # Check for convergence
+        if last_matches == best_matches:
+            break
+        last_matches = best_matches
+        
+        # Update cluster centroids and render new clustering
+        render_k(points, clusters=clusters, best_matches=best_matches, file_name=file_name % iteration)
+        for i in range(len(clusters)):
+            cluster_points = [points[idx] for idx in best_matches[i]]
+            if cluster_points:
+                avgs = [sum(coord) / len(cluster_points) for coord in zip(*cluster_points)]
+                clusters[i] = avgs
+    
+    return clusters
+
+def render_k(points, clusters=None, best_matches=None, file_name='cluster.jpeg'):
+    # Create image and draw object
+    img, draw = create_image()
+    
+    # Draw lines between points and cluster centroids
+    if best_matches:
+        for i in range(len(best_matches)):
+            for j in range(len(best_matches[i])):
+                x1 = points[best_matches[i][j]][0]
+                y1 = points[best_matches[i][j]][1]
+                x2 = clusters[i][0]
+                y2 = clusters[i][1]
+                draw.line((x1, y1, x2, y2), fill=COLOURS[i])
+    
+    # Draw cluster centroids
+    if clusters:
+        for i in range(len(clusters)):
+            draw_point(draw, clusters[i], COLOURS[i], size=CLUSTER_POINT_SIZE)
+    
+    # Draw individual points
+    for point in points:
+        draw_point(draw, point, POINT_COLOR)
+    
+    # Save image
+    img.save(file_name)

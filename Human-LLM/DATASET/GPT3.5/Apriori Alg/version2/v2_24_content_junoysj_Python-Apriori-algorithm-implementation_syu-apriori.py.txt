@@ -1,0 +1,95 @@
+from optparse import OptionParser
+import csv
+from collections import defaultdict
+
+
+def get_one_itemset(dataset_file):
+    """
+    Get all distinct 1-itemsets from the dataset file.
+    """
+    transactions = []
+    itemset = set()
+    for trans in dataset_file:
+        transactions.append(frozenset(trans))
+        for item in trans:
+            itemset.add(frozenset([item]))
+    return itemset, transactions
+
+
+def get_freq_one_itemsets(one_itemset, transactions, min_sup):
+    """
+    Get frequent 1-itemsets from the dataset.
+    """
+    freq_one_itemset = set()
+    for item in one_itemset:
+        item_count = sum(1 for trans in transactions if item.issubset(trans))
+        if float(item_count) / len(transactions) >= min_sup:
+            freq_one_itemset.add(item)
+    return freq_one_itemset
+
+
+def apriori_gen(currentL, k):
+    """
+    Generate k+1-itemset from k-itemset.
+    """
+    Ck = []
+    for i in currentL:
+        for j in currentL:
+            c = i.union(j)
+            if len(c) == k:
+                Ck.append(c)
+    Ck_without_duplicate = set(Ck)
+    return list(Ck_without_duplicate)
+
+
+def main():
+    optparser = OptionParser()
+    optparser.add_option(
+        '-f',
+        '--inputFile',
+        dest='input',
+        help='filename containing csv',
+        default=None)
+    optparser.add_option(
+        '-s',
+        '--min_sup',
+        dest='minS',
+        help='minimum support value',
+        default=0.2,
+        type='float')
+    (options, args) = optparser.parse_args()
+    min_sup = options.minS
+
+    with open(options.input, 'r') as infile:
+        dataset_file = csv.reader(infile)
+        itemset, transactions = get_one_itemset(dataset_file)
+
+    L = [set(), ]  # Set L[0] as an empty set
+    frequ_one_itemset = get_freq_one_itemsets(itemset, transactions, min_sup)
+    L.append(frequ_one_itemset)
+
+    C = [set(), set(itemset)]  # Set C[0] as an empty set, C[1] as itemset
+    currentL = L[1]
+
+    k = 2
+    while currentL:
+        C.append(apriori_gen(currentL, k))
+        Ccount = defaultdict(int)
+        for c in C[k]:
+            for trans in transactions:
+                if c.issubset(trans):
+                    Ccount[c] += 1
+        L.append(set())
+        for c in C[k]:
+            if float(Ccount[c]) / len(transactions) >= min_sup:
+                L[k].add(c)
+        currentL = L[k]
+        k += 1
+
+    for l in L:
+        for s in l:
+            print(s)
+
+
+if __name__ == '__main__':
+    main()

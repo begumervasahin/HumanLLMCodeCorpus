@@ -1,0 +1,114 @@
+import random
+import math
+
+class StateController:
+    def __init__(self):
+        self.states = []
+
+    def add_state(self, state):
+        self.states.append(state)
+
+    def get_num_states(self):
+        return len(self.states)
+
+    def switch_state(self, state_key):
+        for state in self.states:
+            if state.get_key() == state_key:
+                self.current_state = state
+                return
+
+class State:
+    def __init__(self, state_key, num_actions, reward, terminal=False):
+        self.state_key = state_key
+        self.num_actions = num_actions
+        self.reward = reward
+        self.terminal = terminal
+
+    def get_key(self):
+        return self.state_key
+
+    def get_num_actions(self):
+        return self.num_actions
+
+    def get_reward(self):
+        return self.reward
+
+    def is_terminal(self):
+        return self.terminal
+
+class ReinforcementMaze:
+    def __init__(self, gamma, state_controller):
+        self.state_controller = state_controller
+        self.num_states = state_controller.get_num_states()
+        self.gamma = gamma
+        self.utility_list = {state.get_key(): 0 for state in state_controller.states}
+        self.policy_list = {state.get_key(): 0 for state in state_controller.states}
+
+    def create_utilities(self, tolerance, action_probabilities):
+        adjusted_utilities = self.__create_adjusted_utility_list(1)
+        for state_key in range(1, self.num_states + 1):
+            last_utility = self.utility_list[state_key]
+            current_utility = adjusted_utilities[state_key]
+            utility_difference = current_utility - last_utility
+            utility_difference = math.fabs(utility_difference)
+            while utility_difference > tolerance:
+                last_utility = current_utility
+                temp_result = self.__value_iteration(state_key, action_probabilities, self.utility_list)
+                self.utility_list[state_key] = temp_result[0]
+                self.policy_list[state_key] = temp_result[1]
+                current_utility = self.utility_list[state_key]
+                utility_difference = current_utility - last_utility
+                utility_difference = math.fabs(utility_difference)
+        return self.utility_list.copy(), self.policy_list.copy()
+
+    def __create_adjusted_utility_list(self, value=1.0):
+        adjusted_utilities = {}
+        for state_key in range(1, self.num_states + 1):
+            adjusted_utilities[state_key] = self.utility_list[state_key] + value
+        return adjusted_utilities
+
+    def __value_iteration(self, state_key, action_probabilities, utility_list):
+        self.state_controller.switch_state(state_key)
+        if self.state_controller.current_state.is_terminal():
+            return self.state_controller.current_state.get_reward(), 0
+        policy = 0
+        action_dict = action_probabilities[state_key]
+        up_dict = action_dict[1]
+        left_dict = action_dict[2]
+        down_dict = action_dict[3]
+        right_dict = action_dict[4]
+        up_sum = sum(utility_list[i] * up_dict[i] for i in up_dict.keys())
+        left_sum = sum(utility_list[i] * left_dict[i] for i in left_dict.keys())
+        down_sum = sum(utility_list[i] * down_dict[i] for i in down_dict.keys())
+        right_sum = sum(utility_list[i] * right_dict[i] for i in right_dict.keys())
+        random_value = random.randint(1, 10000)
+        highest_utility = None
+        policy = None
+        if random_value > 1500:
+            highest_utility = up_sum
+            policy = 1
+            if left_sum > highest_utility:
+                highest_utility = left_sum
+                policy = 2
+            if down_sum > highest_utility:
+                highest_utility = down_sum
+                policy = 3
+            if right_sum > highest_utility:
+                highest_utility = right_sum
+                policy = 4
+        else:
+            if random_value <= 375:
+                highest_utility = up_sum
+                policy = 1
+            elif 375 < random_value <= 750:
+                highest_utility = left_sum
+                policy = 2
+            elif 750 < random_value <= 1125:
+                highest_utility = down_sum
+                policy = 3
+            else:
+                highest_utility = right_sum
+                policy = 4
+        cost = self.gamma * highest_utility
+        reward = self.state_controller.current_state.get_reward()
+        return reward + cost, policy

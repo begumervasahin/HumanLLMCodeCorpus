@@ -1,0 +1,70 @@
+import cv2
+import numpy as np
+import os
+import pickle
+
+def extract_features(image_path, vector_size=32):
+    """
+    Extracts features from an image using KAZE feature detector and descriptor.
+
+    Args:
+        image_path (str): Path to the image file.
+        vector_size (int): Size of the feature vector.
+
+    Returns:
+        np.ndarray: Feature descriptor vector.
+    """
+    # Read the image
+    image = cv2.imread(image_path)
+
+    try:
+        # Create a KAZE feature detector
+        kaze = cv2.KAZE_create()
+
+        # Detect keypoints and compute descriptors
+        keypoints, descriptors = kaze.detectAndCompute(image, None)
+
+        # Sort keypoints based on response and select top ones
+        keypoints = sorted(keypoints, key=lambda x: -x.response)[:vector_size]
+
+        # Flatten and normalize the descriptors
+        descriptors = descriptors.flatten()
+        needed_size = vector_size * 64
+        if descriptors.size < needed_size:
+            descriptors = np.concatenate([descriptors, np.zeros(needed_size - descriptors.size)])
+    except cv2.error as e:
+        print('Error:', e)
+        return None
+
+    return descriptors
+
+def batch_extract_features(images_path, pickled_db_path="features.pkl"):
+    """
+    Extracts features from a batch of images and saves them to a pickled file.
+
+    Args:
+        images_path (str): Path to the directory containing images.
+        pickled_db_path (str): Path to save the pickled feature database.
+    """
+    # Get the list of image files in the directory
+    image_files = [os.path.join(images_path, filename) for filename in sorted(os.listdir(images_path))]     
+
+    # Dictionary to store extracted features
+    feature_dict = {}
+
+    # Extract features from each image
+    for file_path in image_files:
+        print('Extracting features from image:', file_path)
+        filename = os.path.basename(file_path).lower()
+        feature_dict[filename] = extract_features(file_path)
+
+    # Save the extracted features to a pickled file
+    with open(pickled_db_path, 'wb') as file:
+        pickle.dump(feature_dict, file)
+
+if __name__ == '__main__':
+    # Provide the path to the directory containing images
+    images_directory = 'path/to/images'
+
+    # Extract features from images and save to a pickled file
+    batch_extract_features(images_directory)

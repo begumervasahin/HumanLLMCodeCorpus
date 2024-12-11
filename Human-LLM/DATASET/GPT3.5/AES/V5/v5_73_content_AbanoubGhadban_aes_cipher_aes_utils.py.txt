@@ -1,0 +1,119 @@
+import aes_constants as const
+from data_utils import *
+
+
+def subBytes(bytes_list: list) -> list:
+    """Substitute bytes using S-box."""
+    new_bytes = []
+    for byte in bytes_list:
+        new_bytes.append(const.S_BOX[byte])
+    return new_bytes
+
+
+def invSubBytes(bytes_list: list) -> list:
+    """Invert substitute bytes using inverse S-box."""
+    inv_bytes = []
+    for byte in bytes_list:
+        inv_bytes.append(const.S_BOX_INV[byte])
+    return inv_bytes
+
+
+def xorMatrix(matrix1: list, matrix2: list) -> list:
+    """Perform XOR operation on two matrices."""
+    assert len(matrix1) == len(matrix2), "Two lists must have the same length"
+    result = [byte1 ^ byte2 for byte1, byte2 in zip(matrix1, matrix2)]
+    return result
+
+
+def shiftRows(state: list) -> list:
+    """Perform shift rows operation."""
+    assert len(state) == 16, "State length must be 16 bytes"
+    rows = [state[i::4] for i in range(4)]
+    new_state = [rows[row][col] for col in range(4) for row in range(4)]
+    return new_state
+
+
+def invShiftRows(state: list) -> list:
+    """Perform inverse shift rows operation."""
+    assert len(state) == 16, "State length must be 16 bytes"
+    rows = [state[i::4] for i in range(4)]
+    new_state = [rows[row][-shift:] + rows[row][:-shift] for col in range(4) for row in range(4)]
+    return new_state
+
+
+def mixColumns(state: list) -> list:
+    """Mix columns."""
+    new_state = []
+    for i in range(16):
+        r = const.MIX_COLUMNS_MTX[(i % 4) * 4:(i % 4) * 4 + 4]
+        c = state[i - i % 4:i - i % 4 + 4]
+        result = 0
+        for j in range(4):
+            result ^= c[j] if r[j] == 1 else const.GALOIS_MULTIP[r[j]][c[j]]
+        new_state.append(result)
+    return new_state
+
+
+def invMixColumns(state: list) -> list:
+    """Perform inverse mix columns operation."""
+    new_state = []
+    for i in range(16):
+        r = const.INV_MIX_COLUMNS_MTX[(i % 4) * 4:(i % 4) * 4 + 4]
+        c = state[i - i % 4:i - i % 4 + 4]
+        result = 0
+        for j in range(4):
+            result ^= c[j] if r[j] == 1 else const.GALOIS_MULTIP[r[j]][c[j]]
+        new_state.append(result)
+    return new_state
+
+
+def generateRoundKeys(hexa_key: str) -> list:
+    """Generate round keys."""
+    assert len(hexa_key) == 32, "Cipher key must be 128 byte length"
+    aes_key = hexToDec(hexa_key)
+    keys = [aes_key]
+    for i in range(10):
+        prev_key = keys[i]
+        cur_key = []
+        rcon = [const.RCON[i], 0, 0, 0]
+        row0 = prev_key[12:]
+        row0 = row0[1:] + row0[:1]
+        row0 = subBytes(row0)
+        cur_key.extend(xorMatrix(xorMatrix(prev_key[0:4], row0), rcon))
+        for j in range(3):
+            cur_row = cur_key[j * 4:j * 4 + 4]
+            prev_row = prev_key[j * 4 + 4:j * 4 + 8]
+            cur_key.extend(xorMatrix(prev_row, cur_row))
+        keys.append(cur_key)
+    return keys
+
+
+def encryptBlock(hexa_block: str, hexa_key: str) -> str:
+    """Encrypt a block."""
+    keys = generateRoundKeys(hexa_key)
+    block = hexToDec(hexa_block)
+    block = xorMatrix(block, keys[0])
+    for r in range(10):
+        block = subBytes(block)
+        block = shiftRows(block)
+        if r != 9:
+            block = mixColumns(block)
+        block = xorMatrix(block, keys[r + 1])
+    return decToHex(block)
+
+
+def decryptBlock(hexa_block: str, hexa_key: str) -> str:
+    """Decrypt a block."""
+    keys = generateRoundKeys(hexa_key)
+    keys.reverse()
+    block = hexToDec(hexa_block)
+    block = xorMatrix(block, keys[0])
+    for r in range(10):
+        block = invSubBytes(block)
+        block = invShiftRows(block)
+        if r != 9:
+            block = invMixColumns(block)
+            block = xorMatrix(block, invMixColumns(keys[r + 1]))
+        else:
+            block = xorMatrix(block, keys[r + 1])
+    return decToHex(block)

@@ -1,0 +1,160 @@
+import argparse
+import os
+import re
+import sys
+import time
+import math
+import cProfile
+
+# Parsing command-line arguments
+parser = argparse.ArgumentParser(description='Calculate the shortest path between all pairs of vertices in a graph')
+parser.add_argument('--algorithm', default='a', help='Algorithm: Select the algorithm to run, default is all. (a)ll, (b)ellman-ford only or (f)loyd-warshall only')
+parser.add_argument('-v', '--verbose', action='store_true')
+parser.add_argument('--profile', action='store_true')
+parser.add_argument('filename', metavar='<filename>', help='Input file containing graph')
+
+# Regular expressions for parsing input
+graph_regex = re.compile("(\\d+)\\s(\\d+)")
+edge_regex = re.compile("(\\d+)\\s(\\d+)\\s(-?\\d+)")
+
+# Global variables
+vertices = []
+edges = []
+
+# Profiling
+pr = cProfile.Profile()
+pr.enable()
+
+# Timing
+start_time = time.time()
+
+# Bellman-Ford algorithm implementation
+def bellman_ford(G):
+    path_pairs = []
+    edges = []
+    num_vertices = len(vertices)
+    
+    # Constructing edges list
+    for i in range(num_vertices):
+        for j in range(num_vertices):
+            if math.isinf(float(G[1][i][j])):
+                e = [(int(i), int(j)), float(G[1][i][j])]
+                edges.append(e)
+    
+    # Bellman-Ford algorithm
+    for k in range(num_vertices):
+        dist = [float("inf")] * num_vertices
+        dist[k] = 0
+        for _ in range(num_vertices - 1):
+            for edge in edges:
+                if dist[edge[0][1]] > dist[edge[0][0]] + edge[1]:
+                    dist[edge[0][1]] = dist[edge[0][0]] + edge[1]
+    
+    # Detecting negative cycles
+    for edge in edges:
+        if dist[edge[0][1]] > dist[edge[0][0]] + edge[1]:
+            print("Negative cycle detected")
+            return 0
+    
+    # Constructing path pairs
+    for x in range(num_vertices):
+        edge = ((k, x), dist[x])
+        path_pairs.append(edge)
+    
+    print(path_pairs)
+    return path_pairs
+
+# Floyd-Warshall algorithm implementation
+def floyd_warshall(G):
+    path_pairs = []
+    num_vertices = len(G[0])
+    d = [[float(edges[i][j]) for j in range(num_vertices)] for i in range(num_vertices)]
+    
+    # Floyd-Warshall algorithm
+    for k in range(num_vertices):
+        for i in range(num_vertices):
+            for j in range(num_vertices):
+                if d[i][j] > d[i][k] + d[k][j]:
+                    d[i][j] = d[i][k] + d[k][j]
+    
+    # Detecting negative cycles
+    for i in range(num_vertices):
+        if d[i][i] < 0:
+            print("Negative cycle detected")
+            return 0
+    
+    # Constructing path pairs
+    for i in range(num_vertices):
+        for j in range(num_vertices):
+            edge = ((i, j), d[i][j])
+            path_pairs.append(edge)
+    
+    print(path_pairs)
+    return path_pairs
+
+# Reading input file
+def read_file(filename):
+    global vertices
+    global edges
+    
+    with open(filename, 'r') as infile:
+        line1 = infile.readline()
+        graph_match = graph_regex.match(line1)
+        
+        if not graph_match:
+            print(line1 + " is not properly formatted")
+            quit(1)
+        
+        vertices = list(range(int(graph_match.group(1))))
+        
+        # Initializing edges
+        edges = [[float("inf")] * len(vertices) for _ in range(len(vertices))]
+        
+        # Reading edges
+        for line in infile.readlines():
+            line = line.strip()
+            edge_match = edge_regex.match(line)
+            if edge_match:
+                source = edge_match.group(1)
+                sink = edge_match.group(2)
+                
+                if int(source) > len(vertices) or int(sink) > len(vertices):
+                    print(f"Attempting to insert an edge between {source} and {sink} in a graph with {vertices} vertices")
+                    quit(1)
+                
+                weight = edge_match.group(3)
+                edges[int(source) - 1][int(sink) - 1] = weight
+    
+    return (vertices, edges)
+
+# Checking matrix equality
+def matrix_equality(a, b):
+    if len(a) != len(b) or len(a) == 0 or len(b) == 0:
+        return False
+    
+    if a[0] != b[0]:
+        return False
+    
+    for i, row in enumerate(a):
+        for j, value in enumerate(b):
+            if a[i][j] != b[i][j]:
+                return False
+    
+    return True
+
+# Main function
+def main(filename, algorithm):
+    global start_time
+    G = read_file(filename)
+    if algorithm == 'a':
+        print('Running both algorithms')
+        bellman_ford_results = bellman_ford(G)
+        floyd_warshall_results = floyd_warshall(G)
+        print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args.filename, args.algorithm)
+
+# Profiling stats
+pr.print_stats(sort='time')

@@ -1,0 +1,117 @@
+import matplotlib.pyplot as plt
+from nltk import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from collections import Counter
+import math
+import numpy as np
+
+# Function to normalize a word
+def normalize(word):
+    """
+    Normalize a word by converting it to lowercase and applying stemming.
+
+    Args:
+    - word (str): Word to be normalized.
+
+    Returns:
+    - str: Normalized word.
+    """
+    return ps.stem(word.lower())
+
+# Function to calculate cosine similarity between two vectors
+def get_cosine(vec1, vec2):
+    """
+    Calculate cosine similarity between two vectors.
+
+    Args:
+    - vec1 (Counter): First vector.
+    - vec2 (Counter): Second vector.
+
+    Returns:
+    - float: Cosine similarity between the two vectors.
+    """
+    intersection = set(vec1) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+    sum1 = sum([vec1[x]**2 for x in vec1.keys()])
+    sum2 = sum([vec2[x]**2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    return numerator / denominator if denominator != 0 else 0.0
+
+# Function to convert text to a vector representation
+def text_to_vector(text):
+    """
+    Convert text to a vector representation.
+
+    Args:
+    - text (str): Input text.
+
+    Returns:
+    - Counter: Vector representation of the text.
+    """
+    return Counter(normalize(word) for word in word_tokenize(text)
+                   if word not in stop_words and word not in special)
+
+# Function to calculate cosine similarity between sentences in a document
+def f_s_to_s(sent):
+    """
+    Calculate cosine similarity between sentences in a document.
+
+    Args:
+    - sent (list): List of sentences to compare.
+
+    Returns:
+    - np.ndarray: Array of cosine similarities.
+    """
+    cosine_mat = np.zeros(N + 1)
+    for i, text in enumerate(sentences):
+        maxi = 0
+        vector1 = text_to_vector(text)
+        for text1 in sent:
+            cosine = get_cosine(vector1, text_to_vector(text1))
+            maxi = max(maxi, cosine)
+        cosine_mat[i] = maxi
+    return cosine_mat
+
+def main():
+    # Calculate sentence-to-sentence similarity
+    mat = f_s_to_s(sentences1)
+    print(mat)
+
+    # Calculate the total similarity
+    total_similarity = sum(mat)
+    print(total_similarity)
+
+    # Plot the document similarity graph
+    plt.plot(mat, range(len(mat)))
+    plt.xlabel('Points')
+    plt.ylabel('Line')
+    plt.title('Document Similarity Graph')
+    plt.show()
+
+if __name__ == '__main__':
+    # Open and read the input text files
+    with open("model.txt", "r") as input_text:
+        text = input_text.read()
+
+    with open("ans1.txt", "r") as input_text1:
+        text1 = input_text1.read()
+
+    # Close the input text files
+
+    # Tokenize sentences
+    sentences = sent_tokenize(text)
+    sentences1 = sent_tokenize(text1)
+
+    # Get the number of sentences
+    N = len(sentences)
+    N1 = len(sentences1)
+
+    # Initialize Porter Stemmer and set of stop words
+    ps = PorterStemmer()
+    stop_words = set(stopwords.words('english'))
+
+    # Define special characters to exclude
+    special = ['.', ',', '\'', '"', '-', '/', '*', '+', '=', '!', '@', '$', '%', '^', '&', '``', '\'\'', 'We', 'The', 'This']
+
+    main()

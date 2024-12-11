@@ -1,0 +1,86 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import sys
+
+def display_graph(MST_edges, vertices):
+    G = nx.Graph()
+    for edge in MST_edges:
+        G.add_edge(vertices[edge[0]], vertices[edge[1]], weight=int(edge[2]))
+
+    edge_labels = {(u, v): str(d['weight']) for u, v, d in G.edges(data=True)}
+    pos = nx.spring_layout(G, k=20, iterations=150)
+    
+    nx.draw_networkx_nodes(G, pos, node_size=300, node_shape='h', alpha=0.5)
+    nx.draw_networkx_edges(G, pos, width=2, edge_color='b', alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=9, font_family='sans-serif')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+    
+    plt.axis('off')
+    plt.show()
+
+def sort_edges(graph):
+    sorted_graph = sorted(graph, key=lambda x: x[2])
+    return sorted_graph
+
+def find_root(vertex, parent):
+    while vertex != parent[vertex]:
+        vertex = parent[vertex]
+    return vertex
+
+def union(parent, size, root_v, root_u):
+    if size[root_v] > size[root_u]:
+        parent[root_u] = root_v
+    elif size[root_v] < size[root_u]:
+        parent[root_v] = root_u
+    else:
+        parent[root_u] = root_v
+        size[root_v] += 1
+
+def kruskal(wc_graph, num_vertices):
+    MST_edges = []
+    sorted_graph = sort_edges(wc_graph)
+    parent = list(range(num_vertices))
+    size = [0] * num_vertices
+    encountered_edges = 0
+    k = 0
+
+    while encountered_edges < (num_vertices - 1):
+        v, u, weight = sorted_graph[k]
+        k += 1
+        root_u = find_root(v, parent)
+        root_v = find_root(u, parent)
+        
+        if root_v != root_u:
+            encountered_edges += 1
+            MST_edges.append([v, u, weight])
+            union(parent, size, root_v, root_u)
+    
+    return MST_edges
+
+if __name__ == "__main__":
+    file_name = sys.argv[1]
+    
+    vertices = set()
+    with open(file_name) as f:
+        for line in f:
+            columns = line.strip().split(' ')
+            vertices.update(columns[:2])
+    vertices_list = list(vertices)
+    num_vertices = len(vertices)
+    
+    wc_graph = []
+    with open(file_name) as f:
+        for line in f:
+            columns = line.strip().split(' ')
+            wc_graph.append([vertices_list.index(columns[0]), vertices_list.index(columns[1]), int(columns[2])])
+    
+    MST_edges = kruskal(wc_graph, num_vertices)
+    
+    total_weight = 0
+    print("The minimum spanning tree is as follows:")
+    for edge in MST_edges:
+        print(vertices_list[edge[0]], " to ", vertices_list[edge[1]], " = ", edge[2], "miles")
+        total_weight += edge[2]
+    print("Total weight: ", total_weight, " miles.")
+    
+    display_graph(MST_edges, vertices_list)

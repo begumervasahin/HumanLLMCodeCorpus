@@ -1,0 +1,42 @@
+import os
+import sys
+import requests
+import pymongo
+from flask import Flask, request, jsonify
+from encryption import AESCipher
+from pprint import pprint
+
+# Initializing Flask application
+app = Flask(__name__)
+
+# Encryption keys
+aes_key = "94CA61A3CFC9BB7B8FF07C723917851A"
+server_key = "7596DE01913A20EC9069DBE508C5FEA3"
+
+# MongoDB configurations
+serv_addr = "localhost"
+port = "27017"
+mongo_db_addr = f"mongodb://{serv_addr}:{port}"
+mongo_client = pymongo.MongoClient(mongo_db_addr)
+mongo_db = mongo_client.dfs
+
+# Server configurations
+full_serv_addr = "http://127.0.0.1:5000"
+headers = {"Content-type": "application/json"}
+
+# Initialize AES cipher
+cipher = AESCipher(aes_key)
+
+# Function to register server
+def register():
+    server_name = input("Enter server name: ")
+    if mongo_db.servers.find_one({"server_name": server_name}):
+        print("ERR: Server with this name already exists!")
+        sys.exit(1)
+    data = {"server_name": server_name, "server_key": cipher.encode_string(server_key).decode()}
+    response = requests.post(f"{full_serv_addr}/register_server", data=json.dumps(data), headers=headers)
+
+# Main function
+if __name__ == '__main__':
+    register()
+    app.run()

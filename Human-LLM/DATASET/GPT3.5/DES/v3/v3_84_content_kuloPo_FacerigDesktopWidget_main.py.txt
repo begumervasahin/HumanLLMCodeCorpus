@@ -1,0 +1,87 @@
+import pygame
+import numpy as np
+import cv2
+import os
+from configparser import ConfigParser
+import gui
+
+def find_available_cameras():
+    available_cams = []
+    for cam_index in range(10):
+        cap = cv2.VideoCapture(cam_index)
+        if cap is not None and cap.isOpened():
+            available_cams.append(cam_index)
+            cap.release()
+    return available_cams
+
+def apply_transparency(frame, config):
+    sensitivity = config.getint('main', 'sensitivity')
+    green_color = np.array([0, 255, 0])
+    mask = np.sum((frame - green_color) ** 2, axis=-1) < sensitivity ** 2
+    frame[mask] = green_color
+
+def update_settings():
+    global camera
+    selected_index = int(menu_obj[0].get())
+    if selected_index != config.getint('main', 'DeviceIndex'):
+        config.set('main', 'DeviceIndex', str(selected_index))
+        camera.release()
+        camera = cv2.VideoCapture(selected_index)
+    config.set('main', 'X_AxisOffset', str(menu_obj[1].get()))
+    config.set('main', 'Y_AxisOffset', str(menu_obj[2].get()))
+    config.set('main', 'sensitivity', str(menu_obj[3].get()))
+    save_configuration(config)
+    gui.update_location(hwnd, geometry)
+
+def read_configuration():
+    config_dir = os.path.expandvars(r'%LOCALAPPDATA%\FacefigDesktopWidget')
+    config_path = os.path.join(config_dir, 'config.ini')
+    config = ConfigParser()
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+    if not os.path.exists(config_path):
+        config['main'] = {
+            'DeviceIndex': '1',
+            'X_AxisOffset': '0',
+            'Y_AxisOffset': '0',
+            'sensitivity': '150'
+        }
+        save_configuration(config)
+    else:
+        config.read(config_path)
+    return config
+
+def save_configuration(config):
+    config_path = os.path.join(os.path.expandvars(r'%LOCALAPPDATA%\FacefigDesktopWidget'), 'config.ini')
+    with open(config_path, 'w') as f:
+        config.write(f)
+
+def handle_window_close():
+    global running
+    running = False
+    pygame.quit()
+
+if __name__ == '__main__':
+    camera_list = find_available_cameras()
+    config = read_configuration()
+    camera = cv2.VideoCapture(config.getint('main', 'DeviceIndex'))
+    geometry = gui.get_geometry(camera)
+    hwnd, display = gui.main_window_setup(config, geometry)
+    menu, menu_obj = gui.menu_setup(config, camera_list, update_settings, handle_window_close)
+    running = True
+    while running:
+        _, frame = camera.read()
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        apply_transparency(RGB, config)
+        try:
+            pygame.surfarray.blit_array(display, RGB)
+        except ValueError:
+            pass
+        pygame.display.flip()
+        menu.update()
+        cv2.waitKey(1)
+        if running and pygame.QUIT in [event.type for event in pygame.event.get()]:     
+            pygame.quit()
+            camera.release()
+            running = False

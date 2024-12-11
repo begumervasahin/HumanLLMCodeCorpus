@@ -1,0 +1,42 @@
+import socket
+import threading
+
+IP = "127.0.0.1"
+Port = 5555
+MSG_HEADER = 10
+
+lock = threading.Lock()
+socket_list = []
+clients_list = {}
+
+def handle_client(client):
+    while True:
+        data = client.recv(1024)
+        if not data:
+            print('Connection closed')
+            lock.release()
+            break
+        data = data[::-1]  # Reverse the data
+        client.send(data)
+    client.close()
+
+def main():
+    # Create a server socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((IP, Port))
+    print(f"Server Socket bound at {IP}:{Port}")
+    server_socket.listen()
+
+    socket_list.append(server_socket)
+    print("Socket is listening...")
+
+    while True:
+        client, address = server_socket.accept()
+        lock.acquire()
+        print(f"Connected to {address[0]}:{address[1]}")
+        threading.Thread(target=handle_client, args=(client,)).start()
+
+    server_socket.close()
+
+if __name__ == "__main__":
+    main()

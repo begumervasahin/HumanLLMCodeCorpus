@@ -1,0 +1,92 @@
+import os
+import sys
+import msvcrt
+import threading
+import json
+import time
+from socket import socket, AF_INET, SOCK_DGRAM
+
+send_lock = threading.Lock()
+
+def send_cost_change(port, node, cost):
+    with send_lock:
+        sock = socket(AF_INET, SOCK_DGRAM)
+        message = {
+            'packettype': "change",
+            'sendingNode': "CostEditor",
+            'node': node,
+            'cost': cost,
+            'port': port
+        }
+        message_json = json.dumps(message)
+        sock.sendto(message_json.encode(), ('localhost', port))
+
+def read_file(filename):
+    # Placeholder for actual file reading logic
+    return {'cost': 0, 'port': 0}  # Dummy data for demonstration
+
+def print_header():
+    os.system("cls")  # Clear screen (Windows specific)
+    print("\n\t         COST EDITOR\n")
+    print("\t   Use Q and W for cursor\n\t   Use double E to select\n\n")
+    print("=" * 44)
+
+def print_costs(nodes, pointer):
+    done = []
+    option_num = 0
+
+    for node_a in nodes:
+        for node_b in nodes[node_a]:
+            if node_b not in done:
+                if option_num == pointer:
+                    print("  ->", end="")
+                print(f"\t Cost between {node_a} and {node_b} is {nodes[node_a][node_b]['cost']}")
+                option_num += 1
+        done.append(node_a)
+
+def main():
+    nodes = {}
+    for arg in sys.argv[1:]:
+        node = arg[-5]
+        nodes[node] = read_file(arg)
+
+    pointer = 0
+    user_input = 'n'
+    nodes_taken = False
+
+    while True:
+        print_header()
+        print_costs(nodes, pointer)
+        print("=" * 44)
+        user_input = msvcrt.getch().decode("utf-8")
+
+        if user_input in ['Q', 'q']:
+            pointer -= 1
+        elif user_input in ['W', 'w']:
+            pointer += 1
+
+        pointer = max(pointer, 0)
+        pointer = min(pointer, len(nodes) - 1)
+
+        if nodes_taken:
+            nodes_taken = False
+            user_input = 'n'
+            print("\n    Enter new cost for selected nodes: ", end="")
+            new_cost = input()
+            print()
+            for node_a in nodes:
+                for node_b in nodes[node_a]:
+                    if pointer == 0:
+                        port_a_to_b = nodes[node_a][node_b]['port']
+                        nodes[node_a][node_b]['cost'] = new_cost
+                        threading.Thread(target=send_cost_change, kwargs={'port': port_a_to_b, 'node': node_a, 'cost': new_cost}).start()
+                    elif pointer == 1:
+                        port_b_to_a = nodes[node_b][node_a]['port']
+                        nodes[node_b][node_a]['cost'] = new_cost
+                        threading.Thread(target=send_cost_change, kwargs={'port': port_b_to_a, 'node': node_b, 'cost': new_cost}).start()
+            time.sleep(1)
+            print("\n              Costs updated")
+            time.sleep(2)
+
+if __name__ == "__main__":
+    main()

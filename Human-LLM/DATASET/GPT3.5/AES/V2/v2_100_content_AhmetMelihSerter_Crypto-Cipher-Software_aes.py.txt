@@ -1,0 +1,49 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import AES
+
+class AESCipher:
+    def __init__(self, key):
+        # Initialization of AESCipher object
+        self.block_size = 32  # Block size for AES encryption
+        self.key = hashlib.sha256(key.encode()).digest()  # Hashing the key for security
+
+    def encrypt(self, message):
+        # Encrypts a message using AES encryption
+        encoded_message = base64.b64encode(message.encode("cp857"))  # Encoding the message using CP857 encoding
+        padded_message = self._pad(encoded_message.decode("cp857"))  # Pads the message to make its length a multiple of block size
+        initialization_vector = Random.new().read(AES.block_size)  # Generates a random initialization vector
+        cipher = AES.new(self.key, AES.MODE_CBC, initialization_vector)  # Creates a new AES cipher object with Cipher Block Chaining (CBC) mode
+        encrypted_message = base64.b64encode(initialization_vector + cipher.encrypt(padded_message)).decode("cp857")  # Encrypts the message and concatenates it with the initialization vector
+        return encrypted_message
+
+    def decrypt(self, encrypted_message):
+        # Decrypts an encrypted message using AES decryption
+        decoded_message = base64.b64decode(encrypted_message)  # Decodes the encrypted message
+        initialization_vector = decoded_message[:AES.block_size]  # Retrieves the initialization vector from the encrypted message
+        cipher = AES.new(self.key, AES.MODE_CBC, initialization_vector)  # Creates a new AES cipher object with Cipher Block Chaining (CBC) mode using the initialization vector
+        decrypted_message = base64.b64decode(self._unpad(cipher.decrypt(decoded_message[AES.block_size:]))).decode("cp857")  # Decrypts the message and removes padding
+        return decrypted_message
+
+    def _pad(self, s):
+        # Pads the message to make its length a multiple of the block size
+        padding_length = self.block_size - len(s) % self.block_size
+        return s + padding_length * chr(padding_length)
+
+    @staticmethod
+    def _unpad(s):
+        # Removes the padding from a message
+        return s[:-ord(s[-1])]
+
+# Example usage:
+if __name__ == "__main__":
+    secret_key = "YourSecretKeyHere"  # Replace with your secret key
+    message = "Hello, world!"   # Message to encrypt
+
+    cipher = AESCipher(secret_key)
+    encrypted_message = cipher.encrypt(message)
+    print("Encrypted message:", encrypted_message)
+
+    decrypted_message = cipher.decrypt(encrypted_message)
+    print("Decrypted message:", decrypted_message)

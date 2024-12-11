@@ -1,0 +1,21 @@
+import pandas as panda
+r_cols = ['user_id', 'movie_id', 'rating']
+ratings = panda.read_csv('u.data', sep='\t', names=r_cols, usecols=range(3))
+m_cols = ['movie_id', 'title']
+movies = panda.read_csv('u.item', sep='|', names=m_cols, usecols=range(2))
+ratings = panda.merge(movies, ratings)
+userRatings = ratings.pivot_table(index=['user_id'],columns=['title'],values='rating')
+corrMatrix = userRatings.corr(method='pearson', min_periods=100)
+userId = 2
+myRatings = userRatings.loc[userId].dropna()
+simCandidates = panda.Series()
+for i in range(0, len(myRatings.index)):
+    sims = corrMatrix[myRatings.index[i]].dropna()
+    sims = sims.map(lambda x: x * myRatings[i])
+    simCandidates = simCandidates.append(sims)
+simCandidates.sort_values(inplace = True, ascending = False)
+simCandidates = simCandidates.groupby(simCandidates.index).sum()
+simCandidates.sort_values(inplace = True, ascending = False)
+filteredSims = simCandidates.drop(myRatings.index, errors='ignore')
+print(filteredSims.head())
+filteredSims.to_csv("filteredSims.csv")

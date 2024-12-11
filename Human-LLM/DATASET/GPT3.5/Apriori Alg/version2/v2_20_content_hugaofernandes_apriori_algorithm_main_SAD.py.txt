@@ -1,0 +1,68 @@
+# -*- coding: utf-8 -*-
+
+import pandas as pd
+import numpy as np
+from itertools import combinations
+
+
+def apriori(data, support, minlen, confidence):
+    # Convert data to one-hot encoded DataFrame
+    one_hot_encoded_data = pd.get_dummies(data.unstack().dropna()).groupby(level=1).sum()
+    num_columns, num_rows = one_hot_encoded_data.shape
+    patterns = []
+    iterations = 0
+
+    # Iterate over column combinations
+    for num_columns_combination in range(minlen, num_rows + 1):
+        for columns in combinations(one_hot_encoded_data, num_columns_combination):
+            # Calculate support for the pattern
+            pattern_support = one_hot_encoded_data[list(columns)].all(axis=1).sum()
+            pattern_support = float(pattern_support) / num_columns
+            aux_columns = list(columns)
+            del aux_columns[-1]
+            pattern_confidence = 0
+            b = one_hot_encoded_data[aux_columns].all(axis=1).sum()
+
+            # Calculate confidence for the pattern
+            if b != 0:
+                pattern_confidence = float(pattern_support) / b
+
+            patterns.append([",".join(columns), pattern_support * 100, pattern_confidence * 100])
+            iterations += 1
+
+    # Create DataFrame for patterns and filter by support and confidence
+    patterns_df = pd.DataFrame(patterns, columns=["Pattern", "Support", "Confidence"])
+    results = patterns_df[(patterns_df.Support >= support) & (patterns_df.Confidence >= confidence)]
+
+    print(results)
+    print('Iterations:', iterations)
+
+
+def legsFunction(legs, n, s):
+    if legs == n:
+        return s
+    return np.nan
+
+
+# Load zoo dataset
+zoo = pd.read_csv('zooOriginal.csv', sep=',', header=None)
+zoo.columns = ['name', 'hair', 'feathers', 'eggs', 'milk', 'airborne', 'aquatic', 'predator', 'toothed',
+               'backbone', 'breathes', 'venomous', 'fins', 'legs', 'tail', 'domestic', 'catsize', 'type']
+zoo = zoo.drop(['name'], axis=1)
+zoo = zoo.drop(['type'], axis=1)
+
+# Handle legs feature
+legs = zoo['legs']
+zoo = zoo.drop(['legs'], axis=1)
+for i in list(zoo.columns.values):
+    zoo[i] = zoo[i].replace(1, i)
+    zoo[i] = zoo[i].replace(0, np.nan)
+zoo['No Legs'] = legs.apply(lambda x: legsFunction(x, 0, 'No Legs'))
+zoo['2 Legs'] = legs.apply(lambda x: legsFunction(x, 2, '2 Legs'))
+zoo['4 Legs'] = legs.apply(lambda x: legsFunction(x, 4, '4 Legs'))
+zoo['5 Legs'] = legs.apply(lambda x: legsFunction(x, 5, '5 Legs'))
+zoo['6 Legs'] = legs.apply(lambda x: legsFunction(x, 6, '6 Legs'))
+zoo['8 Legs'] = legs.apply(lambda x: legsFunction(x, 8, '8 Legs'))
+
+# Run Apriori algorithm on zoo dataset
+apriori(zoo, 30, 4, 97)

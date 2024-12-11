@@ -1,0 +1,61 @@
+import sys
+
+def read_sbox_from_file(file_path):
+    """Read S-box values from the specified file."""
+    with open(file_path, "r") as file:
+        contents = file.read().strip()
+    # Convert each character in the file to its hexadecimal equivalent
+    return [int(char, 16) for char in contents]
+
+def input_sbox_values():
+    """Prompt the user to manually input S-box values."""
+    sbox = []
+    print('Please enter the S-box values (0-9, a-f):')
+    for i in range(16):
+        while True:
+            value = input(f'Value for {hex(i)}: ').lower()
+            if value in '0123456789abcdef':   
+                sbox.append(int(value, 16))
+                break
+            else:
+                print("Invalid input. Please enter a single hex digit.")
+    return sbox
+
+def calculate_lat(sbox):
+    """Calculate and return the Linear Approximation Table for a given S-box."""
+    lat = []
+    for input_mask in range(16):
+        row = []
+        for output_mask in range(16):
+            count = sum(1 for value in range(16)
+                        if (bin(input_mask & value).count('1') % 2) ==
+                           (bin(output_mask & sbox[value]).count('1') % 2))
+            row.append(count - 8)  # Adjust for bias
+        lat.append(row)
+    return lat
+
+def print_lat(lat):
+    """Display the Linear Approximation Table."""
+    header = '     ' + ' '.join(f'{i:X:>4}' for i in range(16))
+    separator = '\n    ' + '---- ' * 16
+    print(header + separator)
+    for i, row in enumerate(lat):
+        row_str = ' '.join(f'{val:4}' for val in row)
+        print(f'{i:X} |{row_str} |')
+        print(separator)
+
+def calculate_non_linearity(lat):
+    """Calculate and return the non-linearity measure from the LAT."""
+    max_difference = max(max(abs(val) for val in row) for row in lat)
+    non_linearity_measure = (2**(4-1) - max_difference) / (2**(4-1) - 2**(4/2 - 1)) * 100
+    return non_linearity_measure
+
+if __name__ == '__main__':
+    print('\nS-box Linear Approximation Table (LAT) Calculator\n')
+    sbox = read_sbox_from_file(sys.argv[1]) if len(sys.argv) > 1 else input_sbox_values()
+    
+    lat = calculate_lat(sbox)
+    print_lat(lat)
+    
+    non_linearity = calculate_non_linearity(lat)
+    print(f'Non-linear Measure: {non_linearity:.2f}%')

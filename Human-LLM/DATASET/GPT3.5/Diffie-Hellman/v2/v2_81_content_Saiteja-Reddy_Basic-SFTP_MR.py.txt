@@ -1,0 +1,76 @@
+from random import randrange, getrandbits
+import math
+
+def is_prime(n, k=128):
+    """Check if a number is prime using the Miller-Rabin primality test."""
+    if n in {2, 3}:
+        return True
+    if n <= 1 or n % 2 == 0:
+        return False
+
+    # Write n as 2^r * d + 1
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+
+    # Perform Miller-Rabin primality test
+    for _ in range(k):
+        a = randrange(2, n - 1)
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+
+def generate_prime_candidate(length):
+    """Generate a probable prime candidate."""
+    p = getrandbits(length)
+    p |= (1 << length - 1) | 1
+    return p
+
+def generate_prime_number(length=26):
+    """Generate a prime number with a specified bit length."""
+    prime_candidate = 4
+    while not is_prime(prime_candidate, 128):
+        prime_candidate = generate_prime_candidate(length)
+    return prime_candidate
+
+def find_prime_factors(num):
+    """Find the prime factors of a positive integer."""
+    prime_factors = set()
+    while num % 2 == 0:
+        prime_factors.add(2)
+        num //= 2
+    for i in range(3, math.isqrt(num) + 1, 2):
+        while num % i == 0:
+            prime_factors.add(i)
+            num //= i
+    if num > 2:
+        prime_factors.add(num)
+    return prime_factors
+
+def get_prime_and_primitive_root():
+    """Generate a prime number p and its primitive root g."""
+    prime_number = generate_prime_number()
+    phi = prime_number - 1
+    prime_factors_phi = find_prime_factors(phi)
+    
+    for i in range(2, phi + 1):
+        flag = False
+        for factor in prime_factors_phi:
+            if pow(i, phi // factor, prime_number) == 1:
+                flag = True
+                break
+        if not flag:
+            return prime_number, i
+
+# Example usage:
+p, g = get_prime_and_primitive_root()
+print("Prime Number (p):", p)
+print("Primitive Root (g):", g)

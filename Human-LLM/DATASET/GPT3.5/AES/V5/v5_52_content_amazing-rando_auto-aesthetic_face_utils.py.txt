@@ -1,0 +1,140 @@
+import numpy as np
+import cv2
+from PIL import Image
+from random import choice, randint
+from glob import glob
+
+def calculate_bounds_with_offset(rect, offset):
+    """Calculate new bounds for a rectangle, applying an offset.
+    
+    Args:
+        rect: The original rectangle as a tuple (x, y, width, height).
+        offset: The offset to apply as a tuple (offset_x1, offset_y1, offset_x2, offset_y2).
+    
+    Returns:
+        A tuple of tuples representing the new upper-left and lower-right corners of the rectangle.
+    """
+    upper_left = (rect[0] + offset[0], rect[1] + offset[1])
+    lower_right = (rect[0] + rect[2] + offset[2], rect[1] + rect[3] + offset[3])
+    return upper_left, lower_right
+
+def detect_feature_with_classifier(classifier, image, sensitivity=10):
+    """Detects features in an image using a given classifier.
+    
+    Args:
+        classifier: The classifier used for feature detection.
+        image: The image to detect features in.
+        sensitivity: The sensitivity of detection; lower values lead to more detections.
+    
+    Returns:
+        The first detected feature as a list [x, y, width, height], or None if no feature is detected.
+    """
+    features = classifier.detectMultiScale(image, 1.5, sensitivity)
+    for (x, y, w, h) in features:
+        if w * h > 0:  # Ensure the rectangle is valid
+            return [x, y, w, h]
+    return None
+
+def apply_vertical_drag_effect(image, rect):
+    """Apply a vertical drag effect to a specific area of an image.
+    
+    Args:
+        image: The image to modify.
+        rect: The rectangle area (x, y, width, height) to apply the effect to.
+    
+    Returns:
+        The image with the applied vertical drag effect.
+    """
+    center_y = rect[1] + rect[3] // 2
+    image[:center_y, rect[0]:rect[0] + rect[2]] = \
+        image[center_y, rect[0]:rect[0] + rect[2]]
+    return image
+
+def apply_horizontal_drag_effect(image, rect):
+    """Apply a horizontal drag effect to a specific area of an image.
+    
+    Args:
+        image: The image to modify.
+        rect: The rectangle area (x, y, width, height) to apply the effect to.
+    
+    Returns:
+        The image with the applied horizontal drag effect.
+    """
+    center_x = randint(rect[0], rect[0] + rect[2])
+    image[rect[1]:rect[1] + rect[3], :center_x] = \
+        image[rect[1]:rect[1] + rect[3], center_x:center_x + 1]
+    return image
+
+def apply_stagger_effect(image, rect):
+    """Apply a stagger effect to simulate a glitch within a specified rectangle.
+    
+    Args:
+        image: The image to modify.
+        rect: The rectangle area (x, y, width, height) to apply the effect to.
+    
+    Returns:
+        The image with the applied stagger effect.
+    """
+    for strip_start in range(rect[1], rect[1] + rect[3], 20):        
+        strip_end = min(strip_start + 20, rect[1] + rect[3])
+        offset = randint(-10, 10)
+        if 0 <= rect[0] + offset < image.shape[1] and 0 <= rect[0] + rect[2] + offset < image.shape[1]:
+            image[strip_start:strip_end, rect[0] + offset:rect[0] + rect[2] + offset] = \
+                image[strip_start:strip_end, rect[0]:rect[0] + rect[2]]
+    return image
+
+def overlay_censor_bar(image, censor_bar_path, rect):
+    """Overlay a censor bar image on a specified rectangle of an image.
+    
+    Args:
+        image: The base image as a numpy array.
+        censor_bar_path: The file path to the censor bar image.
+        rect: The rectangle area (x, y, width, height) where the censor bar will be placed.
+    
+    Returns:
+        The modified image as a numpy array.
+    """
+    censor_bar = Image.open(censor_bar_path).resize((rect[2], rect[3]))
+    image_pil = Image.fromarray(image).convert("RGBA")
+    image_pil.paste(censor_bar, (rect[0], rect[1]), censor_bar)
+    return np.array(image_pil)
+
+def apply_effect_based_on_type(image, rect, effect_type, censor_bar_dir=None):
+    """Modify an image according to a specified effect type within a given rectangle.
+    
+    Args:
+        image: The image to modify.
+        rect: The rectangle area (x, y, width, height) to apply the effect to.
+        effect_type: The type of effect to apply ("cover", "stagger", "drag").
+        censor_bar_dir: The directory containing censor bar images (required if effect_type is "cover").
+    
+    Returns:
+        The modified image.
+    """
+    if rect:
+        if effect_type == "cover" and censor_bar_dir:
+            censor_bar_path = choice(glob(f"{censor_bar_dir}/*"))
+            return overlay_censor_bar(image, censor_bar_path, rect)
+        elif effect_type == "stagger":
+            return apply_stagger_effect(image, rect)
+        elif effect_type == "drag":
+            direction = choice(["horizontal", "vertical"])
+            if direction == "vertical":
+                return apply_vertical_drag_effect(image, rect)
+            else:
+                return apply_horizontal_drag_effect(image, rect)
+    return image
+
+# Example usage
+if __name__ == "__main__":
+    image_path = "path/to/your/image.jpg"
+    image = cv2.imread(image_path)
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    classifier_path = 'path/to/your/haarcascade_frontalface_default.xml'
+    face_classifier = cv2.CascadeClassifier(classifier_path)
+
+    face_rect = detect_feature_with_classifier(face_classifier, gray_image)
+    modified_image = apply_effect_based_on_type(image, face_rect, "drag", "path/to/censor_bars")
+
+    cv2.imwrite("modified_image.jpg", modified_image)

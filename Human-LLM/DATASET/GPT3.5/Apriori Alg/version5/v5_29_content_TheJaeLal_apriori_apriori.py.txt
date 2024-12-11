@@ -1,0 +1,133 @@
+# Function to read transaction data from a file
+def read_from_file(filename):
+    """
+    Read transaction data from the specified file.
+    
+    Parameters:
+    - filename: Name of the file containing transaction data
+    
+    Returns:
+    - dataset: List of transactions
+    """
+    with open(filename, 'r') as file:
+        dataset = file.read().split('\n')
+        # Parsing transaction data
+        dataset = [line.split(':')[1].split(',') for line in dataset if not (line.startswith('#') or line.strip() == "")]
+    return dataset
+
+# Function to remove items/sets whose frequency/count/support is less than the threshold
+def prune(item_set, threshold):
+    """
+    Remove items/sets whose frequency/count/support is less than the threshold.
+    
+    Parameters:
+    - item_set: Dictionary containing item frequencies
+    - threshold: Minimum threshold for item frequency
+    
+    Returns:
+    - frequent_items: List of frequent items
+    """
+    frequent_items = [item for item, count in item_set.items() if count >= threshold]
+    return frequent_items
+
+# Function to create combinations of sets/items
+def combine_sets(frequent_items):
+    """
+    Create combinations of sets/items.
+    
+    Parameters:
+    - frequent_items: List of frequent item sets
+    
+    Returns:
+    - new_item_set: List of combined item sets
+    """
+    new_item_set = []
+
+    for i in range(len(frequent_items)):
+        for j in range(i + 1, len(frequent_items)):
+            new_set = frequent_items[i].union(frequent_items[j])
+            new_item_set.append(new_set)
+
+    return new_item_set
+
+# Function to calculate the count/frequency of the new sets in the database
+def get_count(new_item_set, database):
+    """
+    Calculate the count/frequency of the new sets in the database.
+    
+    Parameters:
+    - new_item_set: List of new item sets
+    - database: List of transaction data
+    
+    Returns:
+    - item_set: Dictionary containing frequency of new item sets
+    """
+    item_set = {}
+
+    for item in new_item_set:
+        for entry in database:
+            if item.issubset(entry):
+                item_set[item] = item_set.get(item, 0) + 1
+
+    return item_set
+
+# Main part of the program
+if __name__ == "__main__":
+    # Input file containing transaction data
+    input_file = 'input.dat'
+
+    # Read transaction data from file
+    database = read_from_file(input_file)
+
+    # Convert database to a list of sets/frozensets
+    database = [frozenset(entry) for entry in database]
+
+    print('***Initial Frequency Count***')
+    item_set = {}
+    for entry in database:
+        for item in entry:
+            item_set[item] = item_set.get(item, 0) + 1
+
+    for item, count in item_set.items():
+        print(item, ':', count)
+
+    # Set the support threshold
+    print('Enter Support_Threshold:')
+    threshold = int(input('>>> '))
+    print('threshold =', threshold)
+
+    # Initialization necessary if only one item in item_set
+    previous_item_set = item_set
+
+    while True:
+        # Create a list of elements/sets whose support is greater than threshold
+        frequent_items = prune(item_set, threshold)
+
+        print('\n****Frequent Items****')
+        for f in frequent_items:
+            print(f)
+
+        # Stop if you only have 1 set/item left in frequent items
+        if len(frequent_items) < 1:
+            frequent_items = previous_item_set
+            break
+
+        print("\n***New Iteration***")
+
+        # Make sets using the sets/items from this list
+        new_item_set = combine_sets(frequent_items)
+
+        previous_item_set = frequent_items
+
+        # Get the count/frequency of new items/sets in the database
+        item_set = get_count(new_item_set, database)
+
+        print('\n***Frequency Count***')
+        for item, count in item_set.items():
+            print(item, ':', count)
+
+    print('\n***************************************************************')
+    print('The most frequently associated items are:')
+    for item in frequent_items:
+        print('{', ', '.join(item), '}')
+    print('\n')

@@ -1,0 +1,140 @@
+import os
+import nltk
+from collections import Counter
+from nltk.tokenize import RegexpTokenizer
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+import collections
+import operator
+import math
+
+corpusroot = './presidential_debates'
+
+def tokenize(corpusroot):
+    tokens_list = []
+    tf_list = []
+    file_list = []
+
+    for filename in os.listdir(corpusroot):
+        file_list.append(filename)
+        with open(os.path.join(corpusroot, filename), "r", encoding='UTF-8') as file:
+            doc = file.read().lower()
+
+        tokenizer = RegexpTokenizer(r'[a-zA-Z]+')
+        tokens = tokenizer.tokenize(doc)
+
+        tokens = [token for token in tokens if token not in stopwords.words("english")]
+
+        stemmer = PorterStemmer()
+        stem_out = [stemmer.stem(token) for token in tokens]
+
+        tokens_list.append(stem_out)
+        tf_list.append(dict(collections.Counter(stem_out)))
+
+    return tokens_list, tf_list, file_list
+
+def calculate_tfwt(tf_list):
+    tfwt_list = []
+    for tf_dict in tf_list:
+        tfwt_dict = {}
+        for token, freq in tf_dict.items():
+            tfwt_dict[token] = 1 + math.log10(freq)
+        tfwt_list.append(tfwt_dict)
+    return tfwt_list
+
+def calculate_idf(tf_list):
+    unique_words = set(token for tf_dict in tf_list for token in tf_dict.keys())
+    idf_dict = {}
+    for word in unique_words:
+        count = sum(1 for tf_dict in tf_list if word in tf_dict)
+        idf_dict[word] = math.log10(len(tf_list) / count)
+    return idf_dict
+
+def calculate_tf_idf(tfwt_list, idf_dict):
+    tf_idf_list = []
+    for tfwt_dict in tfwt_list:
+        tf_idf_dict = {}
+        for token, tfwt in tfwt_dict.items():
+            if token in idf_dict:
+                tf_idf_dict[token] = tfwt * idf_dict[token]
+        tf_idf_list.append(tf_idf_dict)
+    return tf_idf_list
+
+def normalize(tf_idf_list):
+    normalized_tf_idf = []
+    for tf_idf_dict in tf_idf_list:
+        norm_factor = math.sqrt(sum(tfidf ** 2 for tfidf in tf_idf_dict.values()))
+        normalized_tf_idf.append({token: tfidf / norm_factor for token, tfidf in tf_idf_dict.items()})
+    return normalized_tf_idf
+
+def get_weight(filename, token, file_list, normalized_tf_idf):
+    token_index = file_list.index(filename)
+    if token_index >= 0:
+        doc_dict = normalized_tf_idf[token_index]
+        if token in doc_dict:
+            print(doc_dict[token])
+        else:
+            print("Token not found in document")
+    else:
+        print("File not found in the corpus")
+
+def query(qstring, tokenizer):
+    q_tokens = tokenizer.tokenize(qstring.lower())
+    q_tokens = [token for token in q_tokens if token not in stopwords.words("english")]
+    stemmer = PorterStemmer()
+    q_stem_out = [stemmer.stem(token) for token in q_tokens]
+    q_dict = dict(collections.Counter(q_stem_out))
+    qtf_dict = {token: 1 + math.log10(freq) for token, freq in q_dict.items()}
+    sums_q = math.sqrt(sum(freq ** 2 for freq in qtf_dict.values()))
+    normalized_query = {token: freq / sums_q for token, freq in qtf_dict.items()}
+    return normalized_query
+
+def create_postings_list(file_list, tokens_list):
+    postings_list = {}
+    for token in set(token for tokens in tokens_list for token in tokens):
+        token_dict = {}
+        for i, tokens in enumerate(tokens_list):
+            if token in tokens:
+                token_dict[file_list[i]] = tokens.count(token)
+        postings_list[token] = token_dict
+    return postings_list
+
+def get_top_k(postings_list, qtf_dict, k=10):
+    top_k = {}
+    for token, tf in qtf_dict.items():
+        if token in postings_list:
+            sorted_postings = sorted(postings_list[token].items(), key=operator.itemgetter(1), reverse=True)
+            top_k[token] = sorted_postings[:k]
+    return top_k
+
+def similarity(top_k, file_list, normalized_query):
+    final_score_dict = {}
+    for file in file_list:
+        score = 0
+        for token, tf in normalized_query.items():
+            if token in top_k:
+                for doc, tfidf in top_k[token]:
+                    if doc == file:
+                        score += tf * tfidf
+                        break
+                    else:
+                        score += tf * top_k[token][-1][1]
+        final_score_dict[file] = score
+    return final_score_dict
+
+if __name__ == "__main__":
+    tokens_list, tf_list, file_list = tokenize(corpusroot)
+    tfwt_list = calculate_tfwt(tf_list)
+    idf_dict = calculate_idf(tf_list)
+    tf_idf_list = calculate_tf_idf(tfwt_list, idf_dict)
+    normalized_tf_idf = normalize(tf_idf_list)
+
+    qstring = input("Enter your query: ")
+    normalized_query = query(qstring, RegexpTokenizer(r'[a-zA-Z]+'))
+
+    postings_list = create_postings_list(file_list, tokens_list)
+    top_k = get_top_k(postings_list, normalized_query)
+    final_scores = similarity(top_k, file_list, normalized_query)
+
+    for file, score in sorted(final_scores.items(), key=operator.itemgetter(1), reverse=True):
+        print(file, score)

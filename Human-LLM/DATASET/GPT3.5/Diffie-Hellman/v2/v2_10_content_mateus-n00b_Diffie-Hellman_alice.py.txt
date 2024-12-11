@@ -1,0 +1,52 @@
+import os
+import json
+from socket import *
+import random
+
+# Establish a TCP socket
+tcp = socket(AF_INET, SOCK_STREAM)
+tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+tcp.bind(('localhost', 2222))
+tcp.listen(2)
+
+# List of prime numbers for Diffie-Hellman key exchange
+PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+
+# Initialize variables
+TEMP = {}
+FOO = ''
+a = random.randint(1, 35535)
+p = random.choice(PRIMES)
+g = random.randint(1, 35535)
+TEMP = {'p': p, 'base': g}
+
+# Accept incoming connection
+conn, addr = tcp.accept()
+
+# Perform Diffie-Hellman key exchange
+while True:
+    msg = conn.recv(1024)
+    if b"NEGOTIATION" in msg:
+        # Send base and prime number to the client
+        conn.send(json.dumps(TEMP).encode())
+        print("Sending base and prime number...")
+        break
+
+# Calculate A = g^a mod p
+A = pow(g, a, p)
+
+# Receive B from the client
+msg = conn.recv(1024)
+FOO = json.loads(msg.decode())
+B = FOO['B']
+
+# Calculate the secret key s
+s = pow(B, a, p)
+
+# Send A = g^a mod p to the client
+print("Sending my g^a mod p")
+TEMP = {'A': A}
+conn.send(json.dumps(TEMP).encode())
+
+# Print the secret key
+print("The secret is %d " % s)

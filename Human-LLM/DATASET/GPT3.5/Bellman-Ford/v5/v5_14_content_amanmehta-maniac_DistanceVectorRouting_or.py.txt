@@ -1,0 +1,90 @@
+from collections import defaultdict
+
+def initialize_distances(graph, source):
+    """
+    Prepares the initial distances from the source to all nodes in the graph.
+    Distance to the source is 0, and to all other nodes is infinity.
+    
+    Args:
+        graph: The graph represented as a dictionary of dictionaries.
+        source: The source node from which distances are calculated.
+    
+    Returns:
+        A dictionary mapping each node to its distance from the source.
+    """
+    distances = defaultdict(lambda: float('inf'))
+    distances[source] = 0
+    return distances
+
+def bellman_ford(graph, source):
+    """
+    Implements the Bellman-Ford algorithm to find the shortest path from the source
+    to all other nodes in a weighted graph, handling negative weights as well.
+
+    Args:
+        graph: The graph represented as a dictionary of dictionaries.
+        source: The source node for which to find shortest paths.
+    
+    Returns:
+        A dictionary of shortest distances from the source to each node.
+        
+    Raises:
+        ValueError: If a negative-weight cycle is detected in the graph.
+    """
+    distances = initialize_distances(graph, source)
+
+    # Relaxation step - iteratively update distances if a shorter path is found
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            for neighbour, weight in graph[node].items():
+                if distances[node] + weight < distances[neighbour]:
+                    distances[neighbour] = distances[node] + weight
+
+    # Check for negative-weight cycles
+    for node in graph:
+        for neighbour, weight in graph[node].items():
+            if distances[node] + weight < distances[neighbour]:
+                raise ValueError("Graph contains a negative-weight cycle")
+
+    return distances
+
+def load_graph_from_file(filename):
+    """
+    Loads a graph from a specified file. The file format should have the source node
+    on the first line and then one edge per line as "u v w" where u and v are node identifiers
+    and w is the weight of the edge.
+    
+    Args:
+        filename: The path to the file containing the graph data.
+    
+    Returns:
+        A tuple containing the graph and the source node.
+    """
+    graph = defaultdict(dict)
+    with open(filename) as file:
+        lines = file.readlines()
+        source = int(lines[0].strip())
+
+        for line in lines[1:]:
+            start, end, weight = map(int, line.split())
+            graph[start][end] = weight
+
+    return graph, source
+
+def main():
+    """
+    Main function demonstrating the use of the Bellman-Ford algorithm to find shortest paths.
+    """
+    filename = 'test.txt'
+    graph, source = load_graph_from_file(filename)
+
+    try:
+        distances = bellman_ford(graph, source)
+        print("Shortest distances from source node:")
+        for node, distance in sorted(distances.items()):
+            print(f"Node {node}: {distance}")
+    except ValueError as error:
+        print(error)
+
+if __name__ == '__main__':
+    main()

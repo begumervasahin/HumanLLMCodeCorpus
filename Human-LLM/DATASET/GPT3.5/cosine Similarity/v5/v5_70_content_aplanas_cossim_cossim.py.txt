@@ -1,0 +1,60 @@
+import os
+import argparse
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def load_files_from_directory(directory):
+    """Load files from the specified directory."""
+    files = [os.path.join(directory, file) for file in os.listdir(directory)
+             if os.path.isfile(os.path.join(directory, file))]
+    return files
+
+def calculate_max_similarity(tfidf_sample, tfidf_corpus):
+    """Calculate the maximum cosine similarity between the sample and the corpus."""
+    similarity = cosine_similarity(tfidf_sample, tfidf_corpus)
+    max_similarity_index = similarity.argsort()[0][-2]
+    max_similarity_score = similarity[0][max_similarity_index]
+    return max_similarity_index, max_similarity_score
+
+def main(good_dir, bad_dir, sample_file):
+    """Compare the sample file with good and bad samples."""
+    # Load files from directories
+    good_files = load_files_from_directory(good_dir)
+    bad_files = load_files_from_directory(bad_dir)
+
+    # Combine sample with good and bad files
+    all_files_good = good_files + [sample_file]
+    all_files_bad = bad_files + [sample_file]
+
+    # Compute TF-IDF vectors for good and bad files
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_good = tfidf_vectorizer.fit_transform(open(file, 'r', errors='ignore').read() for file in all_files_good)
+    tfidf_bad = tfidf_vectorizer.fit_transform(open(file, 'r', errors='ignore').read() for file in all_files_bad)
+
+    # Calculate maximum similarity scores
+    index_good, similarity_good = calculate_max_similarity(tfidf_good[-1], tfidf_good)
+    index_bad, similarity_bad = calculate_max_similarity(tfidf_bad[-1], tfidf_bad)
+
+    # Print results
+    print('Maximum similarity with good samples:', similarity_good)
+    print('Maximum similarity with bad samples:', similarity_bad)
+
+    # Determine similar document
+    similar_document = good_files[index_good] if similarity_good >= similarity_bad else bad_files[index_bad]
+    print('Similar document:', similar_document)
+
+if __name__ == '__main__':
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Basic cosine similarity comparator.') 
+    parser.add_argument('--good', help='directory where the good samples are')
+    parser.add_argument('--bad', help='directory where the bad samples are')
+    parser.add_argument('sample', help='file to compare with')
+    args = parser.parse_args()
+
+    # Check if directories are provided
+    if not args.good or not args.bad:
+        print('Provide directory paths for good and bad samples')
+        exit(1)
+
+    # Call the main function
+    main(args.good, args.bad, args.sample)

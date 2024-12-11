@@ -1,0 +1,65 @@
+from argparse import ArgumentParser
+
+def calculate_private_keys_and_shared_secret(A, B, p, g):
+    """
+    Calculate the private keys and shared secret key for Diffie-Hellman key exchange.
+    
+    Args:
+        A (int): Public key of party A.
+        B (int): Public key of party B.
+        p (int): Prime modulus value.
+        g (int): Base value.
+    
+    Returns:
+        tuple: Tuple containing private keys of A and B, and the shared secret key.
+    """
+    private_key_A, private_key_B = None, None
+    
+    # Iterate through possible values of private keys
+    for x in range(1, p):
+        # Check if the calculated value matches the public key of party A
+        if pow(g, x, p) == A:
+            private_key_A = x
+        # Check if the calculated value matches the public key of party B
+        if pow(g, x, p) == B:
+            private_key_B = x
+            
+    return private_key_A, private_key_B
+
+def main():
+    # Parse command line arguments
+    parser = ArgumentParser(description="Diffie-Hellman Key Exchange")
+    parser.add_argument("-A", "--A_public_key", required=True, help="Public key of party A")
+    parser.add_argument("-B", "--B_public_key", required=True, help="Public key of party B")
+    parser.add_argument("-g", "--base", required=True, help="Base value")
+    parser.add_argument("-p", "--prime", required=True, help="Prime modulus value")
+    args = parser.parse_args()
+    
+    # Extract values from command line arguments
+    A_public_key = int(args.A_public_key)
+    B_public_key = int(args.B_public_key)
+    base_value = int(args.base)
+    prime_modulus = int(args.prime)
+    
+    # Calculate private keys and shared secret key
+    private_key_A, private_key_B = calculate_private_keys_and_shared_secret(A_public_key, B_public_key, prime_modulus, base_value)
+    
+    # Print the private keys and shared secret key
+    if private_key_A is not None:
+        print('Private key of party A: {}'.format(private_key_A))
+    else:
+        print("Could not find the private key of party A :(")
+        
+    if private_key_B is not None:
+        print('Private key of party B: {}'.format(private_key_B))
+    else:
+        print("Could not find the private key of party B :(")
+        
+    if private_key_A is not None and private_key_B is not None:
+        shared_secret_key = pow(B_public_key, private_key_A, prime_modulus)
+        print('Shared secret key between parties A and B: {}'.format(shared_secret_key))
+    else:
+        print('Could not find the shared secret key :(')
+
+if __name__ == '__main__':
+    main()

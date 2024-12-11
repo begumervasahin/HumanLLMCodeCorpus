@@ -1,0 +1,107 @@
+# Open the input file for reading
+with open("timesData.csv", 'r') as f:
+    # Initialize variables to store maximum values
+    max_num_students = 0
+    max_stud_staff_ratio = 0.0
+    
+    # Iterate through each line in the file
+    for line in f:
+        # Split the line into columns
+        columns = line.strip().split(',')
+        
+        # Skip the header row
+        if columns[0] == "world_rank":
+            continue
+        
+        # Initialize variables for processed data
+        new_line = []
+        skip_until = 0
+        
+        # Process each column, handling quoted values
+        for i in range(len(columns)):
+            if i <= skip_until:
+                continue
+            
+            if '"' in columns[i]:
+                # Handle quoted values
+                new_element = columns[i]
+                j = i + 1
+                while '"' not in columns[j]:
+                    j += 1
+                new_element = "".join(columns[i:j + 1]).strip('"')
+                new_line.append(new_element)
+                skip_until = j
+            else:
+                new_line.append(columns[i])
+        
+        # Extract relevant data and update maximum values
+        try:
+            num_students = int(new_line[-5])
+            student_staff_ratio = float(new_line[-4])
+            
+            max_num_students = max(max_num_students, num_students)
+            max_stud_staff_ratio = max(max_stud_staff_ratio, student_staff_ratio)
+        except (ValueError, IndexError):
+            continue
+
+# Write metadata to the metadata file
+with open("metadata.txt", 'w') as meta:
+    meta.write("max_num_students: %d\n" % max_num_students)
+    meta.write("max_stud_staff_ratio: %f\n" % max_stud_staff_ratio)
+
+# Open the input file again for data processing
+with open("timesData.csv", 'r') as f, \
+     open("universities.points", 'w') as pts, \
+     open("universities.labels", 'w') as lbls:
+    
+    # Process each line in the input file
+    for line in f:
+        # Split the line into columns
+        columns = line.strip().split(',')
+        
+        # Skip the header row
+        if columns[0] == "world_rank":
+            continue
+        
+        # Initialize variables for processed data
+        new_line = []
+        skip_until = 0
+        
+        # Process each column, handling quoted values
+        for i in range(len(columns)):
+            if i <= skip_until:
+                continue
+            
+            if '"' in columns[i]:
+                # Handle quoted values
+                new_element = columns[i]
+                j = i + 1
+                while '"' not in columns[j]:
+                    j += 1
+                new_element = "".join(columns[i:j + 1]).strip('"')
+                new_line.append(new_element)
+                skip_until = j
+            else:
+                new_line.append(columns[i])
+        
+        # Extract relevant data and write to points and labels files
+        try:
+            num_students = float(new_line[-5]) / max_num_students
+            student_staff_ratio = 1.0 - (float(new_line[-4]) / max_stud_staff_ratio)
+            name = new_line[0]
+            teaching_score = float(new_line[2]) / 100
+            tot_score = new_line[-6]
+            
+            # Write university name to labels file
+            lbls.write(name + "\n")
+            
+            # Convert total score to normalized value
+            try:
+                tot_score = float(tot_score) / 100
+            except ValueError:
+                tot_score = teaching_score
+            
+            # Write normalized data to points file
+            pts.write(f"{tot_score} {num_students} {student_staff_ratio}\n")
+        except (ValueError, IndexError):
+            continue

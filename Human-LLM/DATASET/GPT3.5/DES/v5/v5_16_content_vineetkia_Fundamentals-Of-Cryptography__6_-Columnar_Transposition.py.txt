@@ -1,0 +1,78 @@
+import math
+
+def encrypt_message(message, key):
+    """
+    Encrypts a message using the columnar transposition cipher with the given key.      
+
+    Parameters:
+        message (str): The message to be encrypted.
+        key (str): The encryption key.
+
+    Returns:
+        str: The encrypted message.
+    """
+    cipher = ""
+    key_index = 0
+    message_length = len(message)
+    message_list = list(message)
+    key_list = sorted(list(key))
+    columns = len(key)
+    rows = int(math.ceil(message_length / columns))
+    fill_null = (rows * columns) - message_length
+    message_list.extend('_' * fill_null)
+    matrix = [message_list[i: i + columns] for i in range(0, len(message_list), columns)]
+
+    for _ in range(columns):
+        current_index = key.index(key_list[key_index])
+        column_chars = [row[current_index] for row in matrix]
+        cipher += ''.join(column_chars)
+        key_index += 1
+
+    return cipher
+
+def decrypt_message(cipher, key):
+    """
+    Decrypts a message encrypted using the columnar transposition cipher with the given key.
+
+    Parameters:
+        cipher (str): The encrypted message.
+        key (str): The encryption key.
+
+    Returns:
+        str: The decrypted message.
+    """
+    message = ""
+    key_index = 0
+    message_index = 0
+    message_length = len(cipher)
+    message_list = list(cipher)
+    columns = len(key)
+    rows = int(math.ceil(message_length / columns))
+    key_list = sorted(list(key))
+    decrypted_cipher = [[] for _ in range(rows)]
+
+    for _ in range(columns):
+        current_index = key.index(key_list[key_index])
+        for j in range(rows):
+            decrypted_cipher[j].append(message_list[message_index])
+            message_index += 1
+        key_index += 1
+
+    try:
+        message = ''.join(''.join(row) for row in decrypted_cipher)
+    except TypeError:
+        raise TypeError("This program cannot handle repeating words.")
+
+    null_count = message.count('_')
+    if null_count > 0:
+        message = message[:-null_count]
+
+    return message
+
+if __name__ == "__main__":
+    key = "HACK"
+    message = "HelloWorld Nice"
+    encrypted_message = encrypt_message(message, key)
+    print("Encrypted Message:", encrypted_message)
+    decrypted_message = decrypt_message(encrypted_message, key)
+    print("Decrypted Message:", decrypted_message)

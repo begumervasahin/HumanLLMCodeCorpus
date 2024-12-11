@@ -1,0 +1,133 @@
+import hashlib
+
+def get_password():
+    """
+    Prompt the user to enter a password, hash it twice using SHA-256, and return the concatenated hashes.
+    """
+    password = input('Enter your password: ')
+    first_pass = hashlib.sha256(password.encode()).hexdigest()
+    second_pass = hashlib.sha256(first_pass.encode()).hexdigest()
+    return first_pass + second_pass
+
+def encrypt_text(password, text_file):
+    """
+    Encrypt the text from a file using a password and the Feistel cipher.
+    """
+    first_pass = hashlib.sha256(password.encode()).hexdigest()
+    second_pass = hashlib.sha256(first_pass.encode()).hexdigest()
+    keys = build_keys(password)
+    blocks = prepare_text(text_file)
+    encrypted_text = ""
+    
+    for block in blocks:
+        encrypted_block = encipher_block(block, keys)
+        encrypted_text += encrypted_block
+    
+    return encrypted_text
+
+def decrypt_text(password, encrypted_text):
+    """
+    Decrypt the encrypted text using the same password and the Feistel cipher.
+    """
+    keys = build_keys(password)
+    blocks = prepare_text(encrypted_text)
+    decrypted_text = ""
+    
+    for block in reversed(blocks):
+        decrypted_block = decipher_block(block, keys)
+        decrypted_text = decrypted_block + decrypted_text
+    
+    return decrypted_text
+
+def build_keys(password):
+    """
+    Build the keys stream from the password.
+    """
+    key_stream = [password[i:i + 8] for i in range(0, len(password), 8)]
+    return ["0x" + key for key in key_stream]
+
+def prepare_text(file_path):
+    """
+    Read the text from a file and prepare it for encryption or decryption.
+    """
+    with open(file_path, 'r') as file:
+        text = file.read()
+    if len(text) % 8 != 0:
+        padding = 8 - (len(text) % 8)
+        text += " " * padding
+    return [hex(ord(char)) for char in text]
+
+def encipher_block(plaintext_block, keys):
+    """
+    Encipher a block of plaintext using Feistel cipher encryption.
+    """
+    left, right = split_block(plaintext_block)
+    for key in keys:
+        left, right = feistel_cipher_round(left, right, key)
+    return combine_block(left, right)
+
+def decipher_block(cipher_block, keys):
+    """
+    Decipher a block of ciphertext using Feistel cipher decryption.
+    """
+    left, right = split_block(cipher_block)
+    for key in reversed(keys):
+        left, right = feistel_cipher_decrypt_round(left, right, key)
+    return combine_block(left, right)
+
+def split_block(block):
+    """
+    Split a block into left and right halves.
+    """
+    midpoint = len(block) // 2
+    return block[:midpoint], block[midpoint:]
+
+def combine_block(left, right):
+    """
+    Combine left and right halves of a block.
+    """
+    return right + left
+
+def feistel_cipher_round(left, right, key):
+    """
+    Perform a round of Feistel cipher encryption.
+    """
+    temp_right = right
+    right = xor_hex_strings(left, f(key, right))
+    left = temp_right
+    return left, right
+
+def feistel_cipher_decrypt_round(left, right, key):
+    """
+    Perform a round of Feistel cipher decryption.
+    """
+    temp_left = left
+    left = xor_hex_strings(right, f(key, left))
+    right = temp_left
+    return left, right
+
+def xor_hex_strings(op1, op2):
+    """
+    Perform bitwise XOR operation on two hexadecimal strings.
+    """
+    a = int(op1, 16)
+    b = int(op2, 16)
+    return hex(a ^ b)[2:]
+
+def f(key, oper):
+    """
+    Dummy function for Feistel cipher.
+    """
+    return key
+
+# Example usage
+def main():
+    password = get_password()
+    encrypted_text = encrypt_text(password, '/home/manos/text.txt')
+    print('Encrypted text:', encrypted_text)
+    
+    decrypted_text = decrypt_text(password, encrypted_text)
+    print('Decrypted text:', decrypted_text)
+
+if __name__ == "__main__":
+    main()

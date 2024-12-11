@@ -1,0 +1,104 @@
+from tkinter import *
+from tkinter import filedialog
+from keygen import generate_private_key, generate_public_key, generate_secret_key
+from encrypt_decrypt import encrypt_file, decrypt_file
+
+class EncryptorDecryptorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title('Encryptor-Decryptor')
+        self.root.geometry('600x400')
+        self.root.resizable(False, False)
+
+        self.private_file = ''
+        self.public_file = ''
+        self.file_name = ''
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.create_key_input_section()
+        self.create_file_input_section()
+        self.create_action_buttons()
+
+    def create_key_input_section(self):
+        key_input_frame = Frame(self.root)
+        key_input_frame.pack(pady=10)
+
+        Label(key_input_frame, text='Private Key : ').grid(row=0, column=0)
+        Label(key_input_frame, text='Public Key : ').grid(row=1, column=0)
+
+        self.entry_private_key = Entry(key_input_frame)
+        self.entry_private_key.insert(END, 'Enter Private Key Name')
+        self.entry_public_key = Entry(key_input_frame)
+        self.entry_public_key.insert(END, 'Enter Public Key Name')
+
+        self.entry_private_key.grid(row=0, column=1, padx=10, pady=5)
+        self.entry_public_key.grid(row=1, column=1, padx=10, pady=5)
+
+        Button(key_input_frame, text='Generate', command=self.generate_private_key).grid(row=0, column=2, padx=10)
+        Button(key_input_frame, text='Generate', command=self.generate_public_key).grid(row=1, column=2, padx=10)
+
+    def create_file_input_section(self):
+        file_input_frame = Frame(self.root)
+        file_input_frame.pack(pady=10)
+
+        Label(file_input_frame, text='Encryption/Decryption : ').grid(row=0, column=0)
+        Label(file_input_frame, text='Private key : ').grid(row=1, column=0)
+        Label(file_input_frame, text='Public key of other user : ').grid(row=2, column=0)
+        Label(file_input_frame, text='File : ').grid(row=3, column=0)
+
+        self.entry_encryption_key = Entry(file_input_frame)
+        self.entry_private_key_file = Entry(file_input_frame)
+        self.entry_public_key_file = Entry(file_input_frame)
+        self.entry_file = Entry(file_input_frame)
+
+        self.entry_encryption_key.grid(row=1, column=1, padx=10, pady=5)
+        self.entry_private_key_file.grid(row=2, column=1, padx=10, pady=5)
+        self.entry_public_key_file.grid(row=3, column=1, padx=10, pady=5)
+        self.entry_file.grid(row=4, column=1, padx=10, pady=5)
+
+        Button(file_input_frame, text='Browse', command=lambda: self.select_file(self.entry_encryption_key, 'Private Key')).grid(row=1, column=2, padx=10)
+        Button(file_input_frame, text='Browse', command=lambda: self.select_file(self.entry_private_key_file, 'Public Key')).grid(row=2, column=2, padx=10)
+        Button(file_input_frame, text='Browse', command=lambda: self.select_file(self.entry_public_key_file, 'File')).grid(row=3, column=2, padx=10)
+
+    def create_action_buttons(self):
+        action_frame = Frame(self.root)
+        action_frame.pack(pady=10)
+
+        Button(action_frame, text='Encrypt', command=self.encrypt_file).grid(row=0, column=0, padx=10)
+        Button(action_frame, text='Decrypt', command=self.decrypt_file).grid(row=0, column=1, padx=10)
+
+    def select_file(self, entry_widget, file_type):
+        filename = filedialog.askopenfilename(title=f"Select {file_type} File", filetypes=(("All files", "*.*"), ("Text files", "*.txt")))
+        if filename:
+            entry_widget.delete(0, END)
+            entry_widget.insert(0, filename.split('/')[-1])  # Extract file name and display in entry widget
+            # Update global variables based on the type of file
+            if file_type == 'Private Key':
+                self.private_file = filename.split('/')[-1]
+            elif file_type == 'Public Key':
+                self.public_file = filename.split('/')[-1]
+            elif file_type == 'File':
+                self.file_name = filename.split('/')[-1]
+
+    def encrypt_file(self):
+        secret_key = str(generate_secret_key(self.private_file, self.public_file))
+        encrypt_file(getKey(secret_key), self.file_name)
+
+    def decrypt_file(self):
+        secret_key = str(generate_secret_key(self.private_file, self.public_file))
+        decrypt_file(getKey(secret_key), self.file_name)
+
+    def generate_private_key(self):
+        filename = self.entry_private_key.get()
+        generate_private_key(filename)
+
+    def generate_public_key(self):
+        private_key_filename = self.entry_private_key.get()
+        public_key_filename = self.entry_public_key.get()
+        generate_public_key(private_key_filename, public_key_filename)
+
+root = Tk()
+app = EncryptorDecryptorApp(root)
+root.mainloop()

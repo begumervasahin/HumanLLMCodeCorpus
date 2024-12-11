@@ -1,0 +1,67 @@
+from pyspark import SparkConf, SparkContext
+
+# Initialize Spark
+conf = SparkConf().setMaster("local").setAppName("DegreesOfSeparation")
+sc = SparkContext(conf=conf)
+
+# The characters we wish to find the degree of separation between
+startCharacterID = 5306  # SpiderMan
+targetCharacterID = 14   # ADAM 3,031 (who?)
+
+# Accumulator to count hits
+hitCounter = sc.accumulator(0)
+
+# Step 1: Represent each line as a node with connections, distance, and color
+def convertToBFS(line):
+    fields = line.split()
+    heroID = int(fields[0])
+    connections = [int(connection) for connection in fields[1:]]
+    distance = 9999  # Infinity
+    color = "WHITE"
+    if heroID == startCharacterID:
+        color = "GRAY"
+        distance = 0
+    return (heroID, (connections, distance, color))
+
+# Step 2: Mapper function for BFS
+def bfsMap(node):
+    heroID, (connections, distance, color) = node
+    results = []
+    if color == "GRAY":
+        for connection in connections:
+            newDistance = distance + 1
+            if connection == targetCharacterID:
+                hitCounter.add(1)
+            results.append((connection, ([], newDistance, "GRAY")))
+        color = "BLACK"  # Color 'Black' the processed node
+    results.append((heroID, (connections, distance, color)))  # Emit the input node
+    return results
+
+# Step 3: Reducer function for BFS
+def bfsReduce(data1, data2):
+    (connections1, distance1, color1) = data1
+    (connections2, distance2, color2) = data2
+    edges = connections1 + connections2
+    distance = min(distance1, distance2)
+    color = "WHITE"
+    if color1 == "GRAY" or (color1 == "BLACK" and color2 != "WHITE"):
+        color = color1
+    if color2 == "GRAY" or (color2 == "BLACK" and color1 != "WHITE"):
+        color = color2
+    return (edges, distance, color)
+
+# Load the Marvel social graph data
+graph = sc.textFile("Data/Marvel-Graph.txt")
+
+# Convert each line to a node
+rdd = graph.map(convertToBFS)
+
+# Iterate BFS for a maximum of 10 times
+for iteration in range(10):
+    print("Running BFS iteration# " + str(iteration+1))
+    mapper = rdd.flatMap(bfsMap)
+    print("Processing " + str(mapper.count()) + " values")
+    if hitCounter.value > 0:
+        print("Hit the target character! From " + str(hitCounter.value) + " different directions.")
+        break
+    rdd = mapper.reduceByKey(bfsReduce)

@@ -1,0 +1,44 @@
+def initialize_distance_and_predecessor(graph, source):
+    """
+    Initialize the distance and predecessor dictionaries for the Bellman-Ford algorithm.
+    """
+    distance = {}  # Stores the shortest distance from the source to each node
+    predecessor = {}  # Stores the predecessor node for each node in the shortest path
+
+    # Initialize distances to infinity and predecessors to None
+    for node in graph:
+        distance[node] = float('inf')
+        predecessor[node] = None
+
+    # Set the distance from the source to the source itself as 0
+    distance[source] = 0
+    return distance, predecessor
+
+def relax_edge(node, neighbor, graph, distance, predecessor):
+    """
+    Relaxation step: Update the distance and predecessor if a shorter path is found.
+    """
+    if distance[neighbor] > distance[node] + graph[node][neighbor]:
+        distance[neighbor] = distance[node] + graph[node][neighbor]
+        predecessor[neighbor] = node
+
+def bellman_ford(graph, source):
+    """
+    Bellman-Ford algorithm to find the shortest paths in a graph.
+    """
+    distance, predecessor = initialize_distance_and_predecessor(graph, source)
+    num_nodes = len(graph)
+
+    # Perform relaxation |V| - 1 times
+    for _ in range(num_nodes - 1):
+        for u in graph:
+            for v in graph[u]:
+                relax_edge(u, v, graph, distance, predecessor)
+
+    # Check for negative cycles
+    for u in graph:
+        for v in graph[u]:
+            if distance[v] > distance[u] + graph[u][v]:
+                raise RuntimeError('Negative cycle detected, cannot find the shortest paths')
+
+    return distance, predecessor

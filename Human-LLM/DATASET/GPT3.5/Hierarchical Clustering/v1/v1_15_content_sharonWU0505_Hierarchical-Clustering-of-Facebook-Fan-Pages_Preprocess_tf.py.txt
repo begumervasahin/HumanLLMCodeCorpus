@@ -1,0 +1,55 @@
+import os
+import sys
+import csv
+import re
+import jieba
+from tqdm import tqdm
+
+# Get the path to the directory containing posts as a command-line argument
+posts_path = sys.argv[1]
+
+# List all directories in the posts directory
+dirs = os.listdir(posts_path)
+dir_count = len(dirs)
+
+# Iterate over each directory
+for idx, d in enumerate(dirs):
+    print('Progress: {}/{}'.format(idx + 1, dir_count))
+    pages_path = os.path.join(posts_path, d)
+    
+    # List all files in the current directory
+    pages = os.listdir(pages_path)
+    
+    # Create a directory for storing TF files if it doesn't exist
+    if not os.path.isdir('tfs'):
+        os.makedirs('tfs')
+    
+    # Iterate over each file in the directory
+    for i in tqdm(pages):
+        tfs = dict()  # Dictionary to store term frequencies
+        
+        # Read the contents of the file
+        with open(os.path.join(pages_path, i), 'r', encoding='utf-8') as file:
+            # Read the CSV content and remove null characters
+            r = list(csv.reader((line.replace('\0', '') for line in file)))
+            
+            # Check if there are at least two rows in the CSV
+            if len(r) >= 2:
+                page_name = r[1][0]  # Get the page name from the second row
+                r = r[1:]  # Exclude the first row (header)
+                # Tokenize and preprocess text using Jieba and regular expressions
+                r = [list(jieba.cut(re.sub(r'^https?:\/\/.*[\r\n]*', '', i[1], flags=re.MULTILINE)))
+                     for i in r if len(i) >= 2]
+                r = [j for i in r for j in i]  # Flatten the list of lists
+                
+                # Calculate term frequencies
+                for term in r:
+                    if term not in tfs:
+                        tfs[term] = 0
+                    tfs[term] += 1
+                
+                # Write term frequencies to a CSV file
+                with open('tfs/' + page_name.replace('/', '') + '.csv', 'w', encoding='utf-8') as w:      
+                    writer = csv.writer(w)
+                    for term in tfs:
+                        writer.writerow([term, tfs[term]])

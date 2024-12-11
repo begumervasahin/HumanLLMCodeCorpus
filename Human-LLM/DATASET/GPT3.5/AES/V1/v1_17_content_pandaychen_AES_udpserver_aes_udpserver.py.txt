@@ -1,0 +1,66 @@
+import socket
+import logging
+import select
+import sys
+import time
+import os
+import base64
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import signal
+
+# Configuration
+LOG_DIR = './logs/'
+LOG_FILE = 'udp_server.log'
+BIND_IP = '127.0.0.1'
+BIND_PORT = 8888
+MAX_UDP_BUFFER = 8192
+AES_KEY = b'1234567812345678'
+AES_IV = b'1234567812345678'
+
+# Packet count
+packet_count = 0
+
+# Setup logging
+os.makedirs(LOG_DIR, exist_ok=True)
+logging.basicConfig(filename=os.path.join(LOG_DIR, LOG_FILE),
+                    level=logging.INFO,
+                    format='[%(asctime)s] %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+def handle_exit(signum, frame):
+    global packet_count
+    logging.info(f"Received exit signal: {signum}; Total packet count: {packet_count}")
+    sys.exit(1)
+
+def decrypt_packet(data):
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(AES_IV), backend=backend)
+    decryptor = cipher.decryptor()
+    decrypted_data = decryptor.update(base64.b64decode(data)) + decryptor.finalize()
+    return decrypted_data
+
+def setup_udp_server(bind_ip, bind_port):
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((bind_ip, bind_port))
+        logging.info(f"UDP server listening on {bind_ip}:{bind_port}")
+        return server_socket
+    except socket.error as e:
+        logging.error(f"Socket error: {e}")
+        sys.exit(1)
+
+def server_loop(server_socket):
+    global packet_count
+    while True:
+        message, client_addr = server_socket.recvfrom(MAX_UDP_BUFFER)
+        if message:
+            packet_count += 1
+            decrypted_message = decrypt_packet(message)
+            logging.info(f"Received packet from {client_addr}. Decrypted message: {decrypted_message}")
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, handle_exit)
+    udp_server_socket = setup_udp_server(BIND_IP, BIND_PORT)
+    server_loop(udp_server_socket)

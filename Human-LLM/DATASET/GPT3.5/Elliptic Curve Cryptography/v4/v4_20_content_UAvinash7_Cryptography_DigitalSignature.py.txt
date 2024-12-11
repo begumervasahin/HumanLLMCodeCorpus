@@ -1,0 +1,95 @@
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto import Random
+
+def generate_rsa_key_pair(key_length=1024):
+    """
+    Generate an RSA key pair with the specified key length.
+
+    Args:
+        key_length (int): The length of the RSA key in bits.
+
+    Returns:
+        tuple: A tuple containing the private and public keys.
+    """
+    random_generator = Random.new().read
+    key_pair = RSA.generate(key_length, random_generator)
+    return key_pair
+
+def calculate_hash(message):
+    """
+    Calculate the SHA-256 hash of a message.
+
+    Args:
+        message (str): The message to be hashed.
+
+    Returns:
+        bytes: The SHA-256 hash of the message.
+    """
+    hash_object = SHA256.new(message.encode())
+    return hash_object.digest()
+
+def sign_message(private_key, message_hash):
+    """
+    Sign a message hash using an RSA private key.
+
+    Args:
+        private_key (RSA._RSAobj): The RSA private key.
+        message_hash (bytes): The hash of the message to be signed.
+
+    Returns:
+        bytes: The digital signature.
+    """
+    digital_signature = private_key.sign(message_hash, "")
+    return digital_signature
+
+def verify_signature(public_key, message_hash, digital_signature):
+    """
+    Verify a digital signature using an RSA public key.
+
+    Args:
+        public_key (RSA._RSAobj): The RSA public key.
+        message_hash (bytes): The hash of the original message.
+        digital_signature (tuple): The digital signature to be verified.
+
+    Returns:
+        bool: True if the signature is valid, False otherwise.
+    """
+    is_valid = public_key.verify(message_hash, digital_signature)
+    return is_valid
+
+def main():
+    # Generate an RSA key pair
+    key_pair = generate_rsa_key_pair()
+
+    # Extract the public key from the key pair
+    public_key = key_pair.publickey()
+
+    # Define the plaintext message
+    plain_text = "Hello World"
+
+    # Calculate the SHA-256 hash of the plaintext message
+    hash_a = calculate_hash(plain_text)
+
+    # Sign the hash using the private key
+    digital_signature = sign_message(key_pair, hash_a)
+
+    # Print the hash and digital signature
+    print("Hash A:", repr(hash_a))
+    print("Digital Signature:", repr(digital_signature))
+
+    # Recalculate the hash of the plaintext message
+    hash_b = calculate_hash(plain_text)
+
+    # Print the recalculated hash
+    print("Hash B:", repr(hash_b))
+
+    # Verify the signature using the public key
+    is_signature_valid = verify_signature(public_key, hash_b, digital_signature)
+    if is_signature_valid:
+        print("Match")
+    else:
+        print("No Match")
+
+if __name__ == "__main__":
+    main()

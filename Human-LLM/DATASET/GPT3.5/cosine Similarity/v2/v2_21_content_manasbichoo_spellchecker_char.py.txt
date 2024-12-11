@@ -1,0 +1,44 @@
+import chars2vec
+import sklearn.decomposition
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load words from file
+wordsarray = []
+with open('words.txt') as file:
+    wordsarray = [word.strip() for word in file.read().split()]
+
+print("List of words:")
+print(wordsarray)
+
+# Load chars2vec model
+c2v_model = chars2vec.load_model('eng_50')
+
+# Vectorize words
+word_embeddings = c2v_model.vectorize_words(wordsarray)
+
+# Get word from user and vectorize input
+user_input = input("Enter a word: ")
+word_embed1 = c2v_model.vectorize_words([user_input])
+
+# Calculate cosine similarity
+similarities = cosine_similarity(word_embeddings, word_embed1)
+max_similarity = max(similarities)
+max_index = similarities.tolist().index(max_similarity)
+result_word = wordsarray[max_index]
+
+print("Most similar word:")
+print(result_word)
+
+# Visualization (commented out to avoid execution)
+'''
+projection_2d = sklearn.decomposition.PCA(n_components=2).fit_transform(word_embeddings)
+plt.figure(figsize=(8, 6))
+for j in range(len(projection_2d)):
+    plt.scatter(projection_2d[j, 0], projection_2d[j, 1],
+                marker=('$' + wordsarray[j] + '$'),
+                s=500 * len(wordsarray[j]),
+                label=j,
+                facecolors='green' if wordsarray[j] in ['Natural', 'Language', 'Understanding'] else 'black')   
+plt.show()
+'''

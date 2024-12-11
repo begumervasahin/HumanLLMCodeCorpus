@@ -1,0 +1,100 @@
+import math
+
+def chinese_remainder(n, a):
+    """
+    Computes the Chinese Remainder Theorem for given residues and moduli.
+    
+    Args:
+        n (list of int): List of moduli.
+        a (list of int): List of residues.
+    
+    Returns:
+        int: Result of the Chinese Remainder Theorem.
+    """
+    prod = math.prod(n)
+    result = sum(a_i * mul_inv(prod // n_i, n_i) * (prod // n_i) for n_i, a_i in zip(n, a))
+    return result % prod
+
+def mul_inv(a, b):
+    """
+    Computes the multiplicative inverse of a modulo b.
+    
+    Args:
+        a (int): Value to compute the inverse of.
+        b (int): Modulus.
+    
+    Returns:
+        int: Multiplicative inverse of a modulo b.
+    """
+    b0 = b
+    x0, x1 = 0, 1
+    while a > 1:
+        q = a // b
+        a, b = b, a % b
+        x0, x1 = x1 - q * x0, x0
+    if x1 < 0:
+        x1 += b0
+    return x1
+
+def gcd(a, b):
+    """
+    Computes the greatest common divisor of two numbers.
+    
+    Args:
+        a (int): First number.
+        b (int): Second number.
+    
+    Returns:
+        int: Greatest common divisor of a and b.
+    """
+    a = abs(a)
+    b = abs(b)
+    while a:
+        a, b = b % a, a
+    return b
+
+def gcd_list(lst):
+    """
+    Computes the greatest common divisor of a list of numbers.
+    
+    Args:
+        lst (list of int): List of numbers.
+    
+    Returns:
+        int: Greatest common divisor of the numbers in the list.
+    """
+    return math.prod([abs(x) for x in lst])
+
+def attack_rsa_with_crt():
+    """
+    Performs an attack on RSA using the Chinese Remainder Theorem.
+    """
+    n_values = []
+    a_values = []
+    
+    print('Attack RSA with CRT')
+    for i in range(3):
+        n = int(input(f'Give the public key factor {i + 1}: '))
+        c = int(input(f'Give the encrypted message with the previous factor {i + 1}: '))
+        n_values.append(n)
+        a_values.append(c)
+
+    e = int(input('Give the exponent: '))
+    
+    g = gcd_list(n_values)
+    
+    print("Public key factors (N):", n_values)
+    print("Encrypted messages (Cipher):", a_values)
+    print("Exponent (e):", e)
+    
+    if g > 1:
+        print('Error: Common factors in public key factors')
+    else:
+        result = chinese_remainder(n_values, a_values)
+        for i, n_i in enumerate(n_values):
+            print(f"x mod {n_i} =", a_values[i])
+        print("Result (x) is:", result)
+        m = 10 ** (math.log10(result) / e)
+        print('Calculated value of m is', int(round(m)))
+
+attack_rsa_with_crt()

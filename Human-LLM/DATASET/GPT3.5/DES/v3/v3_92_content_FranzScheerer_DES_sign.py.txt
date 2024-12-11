@@ -1,0 +1,109 @@
+import sys
+
+# Constants
+NRABIN = 1275574687529707052360270181001777089671167672089082721378211835809946265943774704298829077228926639950048281145477004890301800135170057571586644210706829514984111130118296710578328836619124873204558928730791403673479088571255223740478384830455590280922940539854528127509
+A_FACTOR = 8
+B_FACTOR = 3
+
+# Spritz cipher
+class Spritz:
+    def __init__(self):
+        self.a = self.i = self.j = self.w = 0
+        self.s = []
+
+    def update(self):
+        self.i = (self.i + self.w) % 256
+        self.j = (self.j + self.s[self.i]) % 256
+        self.s[self.i], self.s[self.j] = self.s[self.j], self.s[self.i]
+
+    def output(self):
+        self.update()
+        return self.s[self.j]
+
+    def shuffle(self):
+        for _ in range(256):
+            self.update()
+        self.w = (self.w + 2) % 256
+        self.a = 0
+
+    def absorb_nibble(self, x):
+        if self.a == 240:
+            self.shuffle()
+        self.s[self.a], self.s[240 + x] = self.s[240 + x], self.s[self.a]
+        self.a += 1
+
+    def absorb_byte(self, b):
+        self.absorb_nibble(b % 16)
+        self.absorb_nibble(b // 16)
+
+    def squeeze(self, out, outlen):
+        if self.a != 0:
+            self.shuffle()
+        for _ in range(outlen):
+            out.append(self.output())
+
+# Rabin signature
+def h(x):
+    spritz = Spritz()
+    for c in x:
+        spritz.absorb_byte(ord(c))
+    res = []
+    spritz.squeeze(res, 128)
+    out = 0
+    for bx in res:
+        out = (out << 8) + bx
+    return out % NRABIN
+
+def num_to_code(x):
+    res = ''
+    while x > 0:
+        y = x % 64
+        if y < 10:
+            res = chr(y + 48) + res
+        elif y < 36:
+            res = chr(y + 55) + res
+        elif y < 62:
+            res = chr(y + 61) + res
+        elif y == 62:
+            res = '0' + res
+        elif y == 63:
+            res = '/' + res
+        x //= 64
+    return res
+
+def sign_rabin(m, p, q):
+    x = h(m)
+    a = A_FACTOR
+    b = B_FACTOR
+    if pow(x, (p - 1) // 2, p) > 1:
+        x *= a
+    if pow(x, (q - 1) // 2, q) > 1:
+        x *= b
+    if pow(x, (q - 1) // 2, q) != 1 or pow(x, (p - 1) // 2, p) != 1:
+        return "ERROR"
+    return (pow(p, q - 2, q) * p * pow(x, (q + 1) // 4, q) + pow(q, p - 2, p) * q * pow(x, (p + 1) // 4, p)) % NRABIN
+
+def read_number(fnam):
+    with open(fnam, 'rb') as f:
+        n = 0
+        snum = f.read()
+        for i in range(len(snum)):
+            n = (n << 8) ^ ord(snum[len(snum) - i - 1])
+    return n
+
+def hash_file(fnam):
+    with open(fnam, 'r') as f:
+        return h(f.read())
+
+def sign_file(fnam):
+    p = read_number("p")
+    q = read_number("q")
+    with open(fnam, 'r') as f:
+        print("Calculating signature of file", fnam)
+        s = sign_rabin(f.read(), p, q)
+    return s
+
+# Main program
+print("\n\n Rabin signature - copyright Scheerer Software 2019 - all rights reserved\n\n")
+if len(sys.argv) == 3 and sys.argv[1] == "S":
+    print("Digital signature:\n" + num_to_code(sign_file(sys.argv[2])))

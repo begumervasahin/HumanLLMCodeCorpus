@@ -1,0 +1,79 @@
+import sys
+
+class AVLNode:
+    """A single node in an AVL tree."""
+    def __init__(self, data, left=None, right=None, parent=None, height=0):
+        self.data = data
+        self.left = left
+        self.right = right
+        self.parent = parent
+        self.height = height
+
+class AVLTree:
+    """AVL Tree implementation."""
+    def __init__(self):
+        self.root = None
+
+    def height(self, node):
+        if node is None:
+            return -1
+        else:
+            return node.height
+
+    def rotate_LL(self, parent, start_node):
+        k2 = start_node
+        k1 = k2.left
+        Z = k2.right
+        X = k1.left
+        Y = k1.right
+
+        k2.left = Y
+        k1.right = k2
+        k1.parent = parent
+        k2.parent = k1
+
+        if Y is not None:
+            Y.parent = k2
+
+        k2.height = 1 + max(self.height(Y), self.height(Z))
+        k1.height = 1 + max(self.height(X), k2.height)
+
+        return k1
+
+    # Other rotation methods omitted for brevity...
+
+    def balance(self, parent, start_node):
+        this_node = start_node
+        left = this_node.left
+        right = this_node.right
+
+        if self.height(left) - self.height(right) > 1:
+            if self.height(left.left) >= self.height(left.right):
+                return self.rotate_LL(parent, start_node)
+            else:
+                return self.rotate_RL(parent, start_node)
+        elif self.height(right) - self.height(left) > 1:
+            if self.height(right.right) >= self.height(right.left):
+                return self.rotate_RR(parent, start_node)
+            else:
+                return self.rotate_LR(parent, start_node)
+
+        return start_node
+
+    # Other methods omitted for brevity...
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        sys.exit('Usage: %s <number>' % sys.argv[0])
+
+    data = [3, 2, 1, 4, 5, 6, 7, 16, 15, 14, 13, 12, 11, 10, 8, 9]
+    N = len(data)
+    avl_tree = AVLTree()
+    print("Data:", data)
+
+    for value in data:
+        avl_tree.root = avl_tree.insert(None, avl_tree.root, value)
+        # Printing tree structure
+        print_tree_structure(avl_tree.root)
+
+    # Other operations omitted for brevity...

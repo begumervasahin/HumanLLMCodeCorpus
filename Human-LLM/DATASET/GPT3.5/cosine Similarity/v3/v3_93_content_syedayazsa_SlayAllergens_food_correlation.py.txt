@@ -1,0 +1,51 @@
+import pandas as pd
+from pymongo import MongoClient
+
+# Connect to MongoDB
+client = MongoClient()
+db = client.project
+collection_filefood = db.filefood
+collection_newingredient = db.newingredient
+
+# Load data from MongoDB collections
+df_filefood = pd.DataFrame(list(collection_filefood.find()))
+df_newingredient = pd.DataFrame(list(collection_newingredient.find()))
+
+# Clean data and rename columns
+df_filefood.drop(columns='_id', inplace=True)
+df_newingredient.drop(columns='_id', inplace=True)
+df_filefood.columns = ['rating', 'item_id', 'user_id']
+
+# Merge dataframes on 'item_id'
+data = pd.merge(df_filefood, df_newingredient, on='item_id')
+
+# Convert data types
+data[['rating', 'item_id', 'user_id']] = data[['rating', 'item_id', 'user_id']].apply(pd.to_numeric)
+
+# Calculate mean rating and count of ratings for each food item
+ratings = data.groupby('title')['rating'].agg(['mean', 'count'])
+ratings.columns = ['mean_rating', 'num_ratings']
+
+# Create a pivot table for collaborative filtering
+foodmat = data.pivot_table(index='user_id', columns='title', values='rating')
+
+# Get input from user for the food item
+item = input("Enter the name of the food item: \n")
+
+# Filter foodmat for the selected item
+item_ratings = foodmat[item]
+
+# Calculate correlation with other items
+similar_to_item = foodmat.corrwith(item_ratings)
+
+# Create dataframe for item correlations
+corr_item = pd.DataFrame(similar_to_item, columns=['Correlation'])
+corr_item.dropna(inplace=True)
+
+# Merge with ratings dataframe and filter items with more than 100 ratings
+corr_item = corr_item.join(ratings['num_ratings'])
+corr_item = corr_item[corr_item['num_ratings'] > 100]
+
+# Sort items by correlation and print top recommendations
+top_recommendations = corr_item.sort_values('Correlation', ascending=False).head(25)
+print(top_recommendations.iloc[:, 0])

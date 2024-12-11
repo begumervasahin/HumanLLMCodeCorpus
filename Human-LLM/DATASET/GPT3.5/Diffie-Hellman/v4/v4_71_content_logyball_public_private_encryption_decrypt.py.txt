@@ -1,0 +1,33 @@
+def read_private_key_from_file(public_key_file):
+    """Reads the private key and prime modulus from a file."""
+    with open(public_key_file, 'r') as file:
+        lines = file.readlines()
+    prime_modulus = int(lines[0])
+    private_key = int(lines[2])
+    return private_key, prime_modulus
+
+def decrypt_block(private_key, c1, c2, prime_modulus):
+    """Decrypts a block using the private key and prime modulus."""
+    exponent = prime_modulus - 1 - private_key
+    return (pow(c1, exponent, prime_modulus) * (c2 % prime_modulus)) % prime_modulus
+
+def decrypt_file(input_file="test/testEncrypted.txt", output_file="test/testDecrypted.txt", private_key_file='test/testprikey.txt', debug=False):
+    """Decrypts a file using the provided private key."""
+    private_key, prime_modulus = read_private_key_from_file(private_key_file)
+    
+    with open(input_file, 'r') as read_file:
+        cipher_lines = read_file.readlines()
+    
+    decrypted_text = ''
+    for line in cipher_lines:
+        c1, c2 = map(int, line.split())
+        decrypted_text += chr(decrypt_block(private_key, c1, c2, prime_modulus))
+    
+    with open(output_file, 'w', encoding='utf-8') as write_file:
+        write_file.write(decrypted_text)
+    
+    if debug:
+        print("DEBUG decrypted output: \n%s\n" % decrypted_text)
+
+# Example usage:
+decrypt_file(input_file="test/testEncrypted.txt", output_file="test/testDecrypted.txt", private_key_file='test/testprikey.txt', debug=True)

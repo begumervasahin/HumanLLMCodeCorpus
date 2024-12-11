@@ -1,0 +1,175 @@
+import sys
+import time
+import csv
+from itertools import combinations
+
+def generate_candidate_sets(k):
+    """Join n-item set itself and generate (n+1)-item set."""
+    candidate_sets = {}
+    if not any(k):
+        return candidate_sets
+
+    keys = list(k.keys())
+    if len(keys) < 2:
+        return candidate_sets
+
+    length = len(keys[0])
+
+    for i in range(len(keys)):
+        for j in range(i + 1, len(keys)):
+            union = set(keys[i] + keys[j])
+            if len(union) > length + 1:
+                continue
+            new_key = tuple(sorted(union))
+            if new_key not in candidate_sets:
+                candidate_sets[new_key] = 0
+    return candidate_sets
+
+def prune_non_frequent_sets(k):
+    """
+    Join n-item set itself and generate (n+1)-item set.
+    Then prune all the sets that are not frequent.
+    """
+    frequent_sets = {}
+    if not any(k):
+        return frequent_sets
+
+    keys = list(k.keys())
+    if len(keys) < 2:
+        return frequent_sets
+
+    length = len(keys[0])
+
+    for i in range(len(keys)):
+        for j in range(i + 1, len(keys)):
+            union = set(keys[i] + keys[j])
+            if len(union) > length + 1:
+                continue
+            new_key = tuple(sorted(union))
+            if new_key not in frequent_sets:
+                is_prunable = all(new_key[:m] + new_key[m + 1:] in k for m in range(len(new_key)))
+                if is_prunable:
+                    frequent_sets[new_key] = 0
+    return frequent_sets
+
+def extract_data_from_file(data_file, row_size=0):
+    """Extracts data from the input file."""
+    transactions = []
+
+    with open(data_file) as file:
+        for idx, row in enumerate(file):
+            if row_size and idx >= row_size:
+                break
+            items = [int(item) for item in row.strip().split(' ') if item]
+            if len(items) >= 3:
+                transactions.append(items)
+
+    return transactions
+
+def apriori(data_file, result_file, sigma, row_size=0):
+    """Main function implementing the Apriori algorithm."""
+    transactions = extract_data_from_file(data_file, row_size)
+    avg_row_length = 1 + sum(len(row) for row in transactions) / len(transactions)
+
+    with open(result_file, 'w', newline='') as csvfile:
+        fieldnames = ['set_size', 'frequency', 'items']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+    # First scan and generate 1-item set
+    L1, C1 = {}, {}
+    start_time = time.time()
+    for transaction in transactions:
+        for item in transaction:
+            item_key = (item,)
+            C1[item_key] = C1.get(item_key, 0) + 1
+
+    for item, count in C1.items():
+        if count >= sigma:
+            L1[item] = count
+
+    print("Round 1")
+    print("1-item set length:", len(L1))
+    Lk = L1
+    Ck = {}
+    del L1, C1
+    k = 1
+    skip_transactions = {}
+
+    # Loop and generate all frequent item sets
+    while Lk:
+        k += 1
+        print(f"Round {k}")
+        if k <= 2:
+            Ck = generate_candidate_sets(Lk)
+        else:
+            Ck = prune_non_frequent_sets(Lk)
+        Lk = {}
+        if not Ck:
+            break
+
+        len_candidate = len(Ck)
+        possible_group = 1
+        for counter in range(k):
+            possible_group *= avg_row_length
+            avg_row_length -= 1
+
+        if possible_group > 2 * len_candidate:
+            for transaction_idx, transaction in enumerate(transactions):
+                if transaction_idx in skip_transactions:
+                    continue
+                transaction_set = set(transaction)
+                for one_candidate in Ck:
+                    if set(one_candidate).issubset(transaction_set):
+                        Ck[one_candidate] += 1
+            for candidate, count in Ck.items():
+                if count >= sigma:
+                    Lk[candidate] = count
+            del Ck
+        else:
+            for transaction_idx, transaction in enumerate(transactions):
+                if transaction_idx in skip_transactions:
+                    continue
+                for one_candidate in combinations(transaction, k):
+                    if one_candidate in Ck:
+                        Ck[one_candidate] += 1
+            for candidate, count in Ck.items():
+                if count >= sigma:
+                    Lk[candidate] = count
+            del Ck
+
+        for transaction_idx, transaction in enumerate(transactions):
+            if transaction_idx in skip_transactions:
+                continue
+            transaction_set = set(transaction)
+            if all(set(one_candidate).issubset(transaction_set) for one_candidate in Lk):
+                skip_transactions[transaction_idx] = 1
+
+        print(f"{k}-item frequent set length: {len(Lk)}")
+        if k > 2:
+            with open(result_file, 'a', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                for key, value in Lk.items():
+                    writer.writerow({'set_size': k,
+                                     'frequency': value,
+                                     'items': ' '.join(map(str, key))
+                                     })
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == '__main__':
+    result_file = 'result.csv'
+    sigma = 4
+    row_size = 0
+    data_file = 'input_file_example.dat'
+
+    if len(sys.argv) > 2:
+        try:
+            data_file = sys.argv[1]
+            result_file = sys.argv[2]
+            sigma = int(sys.argv[3])
+            row_size = int(sys.argv[4])
+        except IndexError:
+            pass
+
+    apriori(data_file, result_file, sigma, row_size)

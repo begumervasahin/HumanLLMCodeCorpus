@@ -1,0 +1,41 @@
+import pandas as pd
+import numpy as np
+import os
+import glob
+
+DATA = "DATA_001_House"
+DATA_DIR = "data1_filtered_wifis/" + DATA + "/"
+PART_DIR = "data2_divided_parts/" + DATA + "/part"
+
+def read_and_shuffle_data(data_path):
+    num_regions = 0
+    region_data = {}
+
+    for file_path in glob.glob(data_path + "*.csv"):
+        df_region = pd.read_csv(file_path, sep=" ")
+        num_APs = len(df_region.columns)
+        num_regions += 1
+        region_name = "R%.3d" % num_regions
+        region_data[region_name] = df_region.sample(frac=1)  # Shuffle the data
+        print("Reading and shuffling:", file_path)
+
+    return region_data
+
+def divide_and_save_parts(region_data):
+    for region_name, df_region in region_data.items():
+        num_rows = len(df_region)
+        num_intervals = int(0.1 * num_rows)
+        
+        for i in range(10):
+            start_idx = i * num_intervals
+            end_idx = (i + 1) * num_intervals
+            part_df = df_region.iloc[start_idx:end_idx].reset_index(drop=True)
+            part_path = PART_DIR + "%.2d/" % (i+1)
+            os.makedirs(part_path, exist_ok=True)
+            part_file = part_path + region_name + ".csv"
+            part_df.to_csv(part_file, sep=' ', index=False)
+            print("Saved part:", part_file)
+
+if __name__ == "__main__":
+    region_data = read_and_shuffle_data(DATA_DIR)
+    divide_and_save_parts(region_data)

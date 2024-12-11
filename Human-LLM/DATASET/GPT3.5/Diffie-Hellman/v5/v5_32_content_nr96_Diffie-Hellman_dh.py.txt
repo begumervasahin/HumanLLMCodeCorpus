@@ -1,0 +1,88 @@
+import socket
+import threading
+import sys
+import random
+import queue
+
+# Constants
+PRIME_NUMBER = 0x00cc81ea8157352a9e9a318aac4e33ffba80fc8da3373fb44895109e4c3ff6cedcc55c02228fccbd551a504feb4346d2aef47053311ceaba95f6c540b967b9409e9f0502e598cfc71327c5a455e2e807bede1e0b7d23fbea054b951ca964eaecae7ba842ba1fc6818c453bf19eb9c5c86e723e69a210d4b72561cab97b3fb3060b
+GENERATOR = 2
+PORT = 9999
+
+class Server:
+    def __init__(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.connections = []
+        self.sock.bind(('', PORT))
+        self.sock.listen(1)
+
+    def handle_client(self, client_socket, address, private_key):
+        while True:
+            data = client_socket.recv(1024)
+            if not data:
+                break
+            shared_key = pow(int(data), private_key, PRIME_NUMBER)
+            print("Shared key:", shared_key)
+            sys.exit()
+            if not data:
+                self.connections.remove(client_socket)
+                client_socket.close()
+                break
+
+    def run(self):
+        while True:
+            try:
+                client_socket, address = self.sock.accept()
+                private_key = random.randint(1, PRIME_NUMBER)
+                public_key = pow(GENERATOR, private_key, PRIME_NUMBER)
+                client_socket.send(str(public_key) + '\n')
+                thread = threading.Thread(target=self.handle_client, args=(client_socket, address, private_key))
+                thread.daemon = True
+                thread.start()
+                self.connections.append(client_socket)
+            except KeyboardInterrupt:
+                self.sock.close()
+                sys.exit(0)
+
+class Client:
+    def __init__(self, address):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.connect((address, PORT))
+        private_key = random.randint(1, PRIME_NUMBER)
+        public_key = pow(GENERATOR, private_key, PRIME_NUMBER)
+        self.sock.send(str(public_key) + '\n')
+        shared_key_queue = queue.Queue()
+        thread = threading.Thread(target=self.receive_shared_key, args=(private_key, shared_key_queue))
+        thread.daemon = True
+        thread.start()
+        thread.join()
+        shared_key = shared_key_queue.get()
+        print("Shared key:", shared_key)
+        while True:
+            data = self.sock.recv(1024)
+            if not data:
+                break
+
+    def receive_shared_key(self, private_key, shared_key_queue):
+        while True:
+            data = self.sock.recv(1024)
+            if not data:
+                break
+            shared_key = pow(int(data), private_key, PRIME_NUMBER)
+            shared_key_queue.put(shared_key)
+            sys.exit()
+
+if len(sys.argv) == 3:
+    try:
+        client = Client(sys.argv[2])
+    except KeyboardInterrupt:
+        sys.exit(0)
+else:
+    try:
+        server = Server()
+        server.run()
+    except KeyboardInterrupt:
+        server.sock.close()
+        sys.exit(0)

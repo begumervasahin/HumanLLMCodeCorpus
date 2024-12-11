@@ -1,0 +1,97 @@
+import os
+import math
+import re
+import glob
+from collections import Counter
+import pandas as pd
+
+# Regular expression to identify words
+WORD = re.compile(r'\w+')
+
+def get_cosine_similarity(vec1, vec2):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Args:
+    - vec1 (dict): First vector.
+    - vec2 (dict): Second vector.
+
+    Returns:
+    - float: Cosine similarity between the two vectors.
+    """
+    # Intersection of keys in both vectors
+    intersection = set(vec1.keys()) & set(vec2.keys())
+
+    # Numerator of cosine similarity formula
+    numerator = sum(vec1[x] * vec2[x] for x in intersection)
+
+    # Denominator of cosine similarity formula
+    sum1 = sum(vec1[x] ** 2 for x in vec1.keys())
+    sum2 = sum(vec2[x] ** 2 for x in vec2.keys())
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+    # Return 0.0 if denominator is zero to avoid division by zero
+    if not denominator:
+        return 0.0
+    else:
+        return float(numerator) / denominator
+
+def text_to_vector(text):
+    """
+    Convert text into a dictionary of word counts.
+
+    Args:
+    - text (str): Input text.
+
+    Returns:
+    - Counter: Dictionary of word counts.
+    """
+    words = WORD.findall(text)
+    return Counter(words)
+
+def main():
+    # Read the job description
+    with open("Data_Scientist_JD.txt", "r") as f:
+        job_description = f.read()
+    job_description_vector = text_to_vector(job_description)
+
+    # Lists to store results
+    people = []
+    scores = []
+
+    # Process each resume file
+    for file_path in glob.glob('resumes/*.txt'):
+        filename = os.path.basename(file_path).split('.')[0]
+
+        # Read the resume text
+        with open(file_path, "r") as f:
+            resume = f.read()
+
+        # Extract the skills section from the resume
+        try:
+            skills_section = resume.split('Skills:')[1]
+        except IndexError:
+            print(f"No 'Skills' section found in {filename}.")
+            continue
+
+        # Convert the skills section into a word count vector
+        resume_vector = text_to_vector(skills_section)
+
+        # Calculate the cosine similarity between resume and job description
+        similarity_score = get_cosine_similarity(resume_vector, job_description_vector)
+
+        # Append results to lists
+        people.append(filename)
+        scores.append(similarity_score)
+
+    # Create a DataFrame from the results
+    result_df = pd.DataFrame({'Person': people, 'Percentage_Match': [score * 100 for score in scores]})
+
+    # Save the results to a CSV file
+    result_df.to_csv('score.csv', index=False)
+
+    # Print the results
+    print(result_df)
+
+if __name__ == "__main__":
+    main()

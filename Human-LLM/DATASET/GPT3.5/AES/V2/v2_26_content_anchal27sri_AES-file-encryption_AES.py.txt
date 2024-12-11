@@ -1,0 +1,91 @@
+import os
+from Crypto.Cipher import AES
+from Crypto import Random
+from Crypto.Hash import SHA256
+
+def encrypt(key, filename):
+    # Set the chunk size for reading the file
+    chunk_size = 64 * 1024
+    
+    # Define the output file name
+    output_file = "(enc)" + filename
+    
+    # Get the size of the file and pad it to 16 bytes
+    file_size = str(os.path.getsize(filename)).zfill(16)
+    
+    # Generate a random initialization vector (IV)
+    IV = Random.new().read(16)
+    
+    # Create an AES cipher in CBC mode with the provided key and IV
+    encryptor = AES.new(key, AES.MODE_CBC, IV)
+
+    # Open the input file for reading in binary mode
+    with open(filename, 'rb') as infile:
+        # Open the output file for writing in binary mode
+        with open(output_file, 'wb') as outfile:
+            # Write the file size and IV to the output file
+            outfile.write(file_size.encode('utf-8'))
+            outfile.write(IV)
+            
+            # Read the file in chunks, encrypt each chunk, and write it to the output file
+            while True:
+                chunk = infile.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                elif len(chunk) % 16 != 0:
+                    chunk += b' ' * (16 - (len(chunk) % 16))    
+                outfile.write(encryptor.encrypt(chunk))
+
+def decrypt(key, filename):
+    # Set the chunk size for reading the file
+    chunk_size = 64 * 1024
+    
+    # Define the output file name
+    output_file = filename[6:]
+
+    # Open the input file for reading in binary mode
+    with open(filename, 'rb') as infile:
+        # Read the file size and IV from the input file
+        file_size = int(infile.read(16))
+        IV = infile.read(16)
+        
+        # Create an AES cipher in CBC mode with the provided key and IV
+        decryptor = AES.new(key, AES.MODE_CBC, IV)
+
+        # Open the output file for writing in binary mode
+        with open(output_file, 'wb') as outfile:
+            # Read the encrypted file in chunks, decrypt each chunk, and write it to the output file
+            while True:
+                chunk = infile.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                outfile.write(decryptor.decrypt(chunk))
+
+            # Truncate the output file to the original file size
+            outfile.truncate(file_size)
+
+def get_key(password):
+    # Hash the password using SHA256 and return the digest as the encryption key
+    hasher = SHA256.new(password.encode('utf-8'))
+    return hasher.digest()
+
+def main():
+    # Prompt the user to choose encryption or decryption
+    choice = input("Would you like to (E)encrypt or (D)decrypt: ").upper()
+    
+    # Encrypt or decrypt based on user choice
+    if choice == 'E':
+        filename = input("File to encrypt: ")
+        password = input("Password: ")
+        encrypt(get_key(password), filename)
+        print('Encryption done.')
+    elif choice == 'D':
+        filename = input("File to decrypt: ")
+        password = input("Password: ")
+        decrypt(get_key(password), filename)
+        print("Decryption done.")
+    else:
+        print("Invalid option selected. Exiting...")
+
+if __name__ == "__main__":
+    main()

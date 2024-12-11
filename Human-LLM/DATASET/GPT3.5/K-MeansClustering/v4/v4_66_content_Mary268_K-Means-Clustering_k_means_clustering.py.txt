@@ -1,0 +1,44 @@
+from __future__ import print_function
+from sklearn.cluster import KMeans
+from sklearn.datasets import load_digits
+from matplotlib import pyplot as plt
+from scipy.stats import mode
+from sklearn.metrics import accuracy_score
+import numpy as np
+import sklearn
+
+# Import train_test_split from appropriate module based on scikit-learn version
+if int((sklearn.__version__).split(".")[1]) < 18:
+    from sklearn.cross_validation import train_test_split
+else:
+    from sklearn.model_selection import train_test_split
+
+# Load the digits dataset
+data = load_digits()
+
+# Perform KMeans clustering
+kmeans = KMeans(n_clusters=10, random_state=0)
+clusters = kmeans.fit_predict(data.data)
+
+# Print the shape of the dataset
+print("Dataset Shape:", data.data.shape)
+
+# Print the shape of the cluster centers
+print("Cluster Centers Shape:", kmeans.cluster_centers_.shape)
+
+# Plot the cluster centers
+fig, ax = plt.subplots(2, 5, figsize=(8, 3))
+centers = kmeans.cluster_centers_.reshape(10, 8, 8)
+for axi, center in zip(ax.flat, centers):
+    axi.set(xticks=[], yticks=[])
+    axi.imshow(center, interpolation='nearest', cmap=plt.cm.binary)
+
+# Assign labels to each cluster based on the most common digit in that cluster
+labels = np.zeros_like(clusters)
+for i in range(10):
+    mask = (clusters == i)
+    labels[mask] = mode(data.target[mask])[0]
+
+# Calculate and print the accuracy score
+accuracy = accuracy_score(data.target, labels)
+print("Accuracy Score:", accuracy)

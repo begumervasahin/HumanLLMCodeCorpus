@@ -1,0 +1,46 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import AES
+
+class AESCipher:
+    def __init__(self, key):
+        # Initialize AESCipher object
+        self.block_size = 32  # Block size for AES encryption
+        self.key = hashlib.sha256(key.encode()).digest()  # Hash the key using SHA256 algorithm
+
+    def encrypt(self, message):
+        # Encrypt a message using AES encryption
+        # Encode the message using CP857 encoding and base64
+        encoded_message = base64.b64encode(message.encode("cp857"))
+        # Pad the message to make its length a multiple of the block size
+        padded_message = self._pad(encoded_message.decode("cp857"))
+        # Generate a random initialization vector
+        initialization_vector = Random.new().read(AES.block_size)
+        # Create a new AES cipher object with Cipher Block Chaining (CBC) mode
+        cipher = AES.new(self.key, AES.MODE_CBC, initialization_vector)
+        # Encrypt the message and concatenate it with the initialization vector
+        encrypted_message = base64.b64encode(initialization_vector + cipher.encrypt(padded_message)).decode("cp857")
+        return encrypted_message
+
+    def decrypt(self, encrypted_message):
+        # Decrypt an encrypted message using AES decryption
+        # Decode the encrypted message
+        decoded_message = base64.b64decode(encrypted_message)
+        # Retrieve the initialization vector from the encrypted message
+        initialization_vector = decoded_message[:AES.block_size]
+        # Create a new AES cipher object with Cipher Block Chaining (CBC) mode using the initialization vector
+        cipher = AES.new(self.key, AES.MODE_CBC, initialization_vector)
+        # Decrypt the message and remove padding
+        decrypted_message = base64.b64decode(self._unpad(cipher.decrypt(decoded_message[AES.block_size:]))).decode("cp857")
+        return decrypted_message
+
+    def _pad(self, s):
+        # Pad the message to make its length a multiple of the block size
+        padding_length = self.block_size - len(s) % self.block_size
+        return s + padding_length * chr(padding_length)
+
+    @staticmethod
+    def _unpad(s):
+        # Remove the padding from a message
+        return s[:-ord(s[-1])]

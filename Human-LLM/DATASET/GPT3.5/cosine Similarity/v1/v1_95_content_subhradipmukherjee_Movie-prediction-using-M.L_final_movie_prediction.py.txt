@@ -1,0 +1,58 @@
+from scipy import spatial
+from sklearn.feature_extraction.text import CountVectorizer
+import math
+import pandas as pd
+import numpy as np
+import operator
+
+# Load movie ratings data
+ratings = pd.read_csv("D:/roops_backup/projects/data mining project/movie_recommender/movie_dataset.csv")
+
+# Select relevant columns
+ratings = ratings[['id', 'title', 'vote_average', 'popularity', 'vote_count', 'genres']]
+
+# Normalize popularity and vote count
+normalized_popularity = (ratings['popularity'] - ratings['popularity'].min()) / (ratings['popularity'].max() - ratings['popularity'].min())
+normalized_votecount = (ratings['vote_count'] - ratings['vote_count'].min()) / (ratings['vote_count'].max() - ratings['vote_count'].min())
+
+# Extract genres and convert to count vectors
+genres = ratings['genres'].fillna('')
+cv = CountVectorizer()
+count = cv.fit_transform(genres)
+
+# Create a dictionary to store movie data
+moviedict = {}
+for i in range(len(ratings)):
+    moviedict[i] = (ratings.loc[i, 'id'], ratings.loc[i, 'title'], ratings.loc[i, 'vote_average'], 
+                    normalized_popularity.loc[i], normalized_votecount.loc[i], count.toarray()[i])
+
+def compute_distance(x, y):
+    y1 = x[4]
+    z1 = x[5]
+    y2 = y[4]
+    z2 = y[5]
+    genre_distance = spatial.distance.cosine(z1, z2)
+    d = (y2 - y1) * (y2 - y1) + genre_distance * genre_distance
+    srt = math.sqrt(d)
+    return srt
+
+def get_neighbors(movie_id, k):
+    distances = []
+    for movie in moviedict:
+        if movie != movie_id:
+            dist = compute_distance(moviedict[movie_id], moviedict[movie])
+            if dist <= 0.65:
+                distances.append((movie, dist))
+    distances.sort(key=operator.itemgetter(1))
+    neighbors = []
+    for x in range(k):
+        neighbors.append((moviedict[distances[x][0]][1], distances[x][1]))
+        print(moviedict[distances[x][0]][1])
+    return neighbors
+
+# Parameters
+K = 15
+movie_id = 94
+
+# Find K nearest neighbors
+get_neighbors(movie_id, K)

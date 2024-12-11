@@ -1,0 +1,129 @@
+import numpy as np
+from textwrap import wrap
+from Key_Calculations import hexstr_to_int, int_to_hexstr
+
+# AES polynomial constant
+POLY_CONSTANT = 0b100011011
+
+# Mix Columns matrix and its inverse
+MIX_COLUMNS_MATRIX = np.array([[2, 3, 1, 1],
+                               [1, 2, 3, 1],
+                               [1, 1, 2, 3],
+                               [3, 1, 1, 2]])
+
+INVERSE_MIX_COLUMNS_MATRIX = np.array([[14, 11, 13, 9],
+                                       [9, 14, 11, 13],
+                                       [13, 9, 14, 11],
+                                       [11, 13, 9, 14]])
+
+class Matrix:
+    """
+    Represents a 4x4 matrix for AES operations.
+    """
+    def __init__(self, data: str):
+        """
+        Initializes the matrix with the provided data.
+        """
+        self.matrix = np.empty([4, 4], dtype='U2')
+        i = 0
+        data = wrap(data, 2)
+        for byte in data:
+            self.matrix[i % 4][i // 4] = byte
+            i += 1
+
+    def shift_rows(self, inverse=False):
+        """
+        Shifts the rows of the matrix.
+        """
+        i = 0
+        for row in self.matrix:
+            if inverse:
+                self.matrix[i] = np.roll(row, i)
+            else:
+                self.matrix[i] = np.roll(row, -i)
+            i += 1
+
+    def mix_columns(self, inverse=False):
+        """
+        Mixes the columns of the matrix.
+        """
+        mix_arr = INVERSE_MIX_COLUMNS_MATRIX if inverse else MIX_COLUMNS_MATRIX
+        matrix_as_num = np.zeros([4, 4])
+        i = 0
+        for row in self.matrix:
+            matrix_as_num[i, :] = [hexstr_to_int(x) for x in row]
+            i += 1
+
+        temp_mat = np.zeros([4, 4])
+        for i in range(4):
+            col = matrix_as_num[:, i]
+            for j in range(4):
+                elem = col[j]
+                for k in range(4):
+                    temp_mat[k, j] = mult(elem, mix_arr[k, j])
+
+            result_vec = np.zeros(4)
+            result_vec_str = np.empty(4, dtype='U2')
+            for p in range(4):
+                row = temp_mat[p, :]
+                for elem in row:
+                    result_vec[p] = int(elem) ^ int(result_vec[p])
+                temp = mod_p(result_vec[p])
+                result_vec_str[p] = int_to_hexstr(temp)
+
+            self.matrix[:, i] = result_vec_str
+
+    def flatten_cols(self):
+        """
+        Flattens the matrix column-wise into a string.
+        """
+        return ''.join(self.matrix.flatten())
+
+    def flatten_rows(self):
+        """
+        Flattens the matrix row-wise into a string.
+        """
+        return ''.join(self.matrix.flatten(order='F'))
+
+    def __str__(self):
+        """
+        Returns a string representation of the matrix.
+        """
+        return np.array2string(self.matrix)
+
+def mult(a, b):
+    """
+    Multiplies two numbers in GF(2^8).
+    """
+    a = int(a)
+    b = int(b)
+    if b == 1:
+        result = a
+    elif b == 2:
+        result = a << 1
+    elif b == 3:
+        result = (a << 1) ^ a
+    elif b == 9:
+        result = (a << 3) ^ a
+    elif b == 11:
+        result = (a << 3) ^ ((a << 1) ^ a)
+    elif b == 13:
+        result = (a << 3) ^ (a << 2) ^ a
+    elif b == 14:
+        result = (a << 3) ^ (a << 2) ^ (a << 1)
+    else:
+        raise ValueError("Invalid multiplier")
+    return mod_p(result)
+
+def mod_p(number: int) -> int:
+    """
+    Computes the modulus of a number with the AES polynomial constant.
+    """
+    bit_rep = bin(int(number))
+    num_bits = len([c for c in bit_rep.split('0b')[1]])
+    while num_bits > 8:
+        modconstant = POLY_CONSTANT << (num_bits - 9)
+        number = int(number) ^ modconstant
+        bit_rep = bin(int(number))
+        num_bits = len([c for c in bit_rep.split('0b')[1]])
+    return int(number)

@@ -1,0 +1,99 @@
+import nltk
+import operator
+from nltk.stem.porter import PorterStemmer
+from utils import get_bow, get_sentences, stopwords, wn_story_dict, model
+
+def choose_sentence(question, story):
+    def get_best_wordnet_sent(question, story, use_sch=True):
+        stemmer = PorterStemmer()
+        best_sent = None
+        best_score = 0.0
+
+        if isinstance(story["sch"], str) and use_sch:
+            sentences = story["sch"]
+        else:
+            sentences = story["text"]
+
+        sentences = nltk.sent_tokenize(sentences)
+        qwords = nltk.word_tokenize(question['text'])
+        qwords = get_bow(get_sentences(question['text'])[0], stopwords)
+
+        for i, sent in enumerate(wn_story_dict[question['sid']]):
+            sent_score = 0.0
+            words_not_found = set(qwords)
+
+            for qword in qwords:
+                for word in sent:
+                    if str(qword) == word:
+                        sent_score += 1
+                        words_not_found.remove(qword)
+
+            for qword in words_not_found:
+                highest_sim = 0
+                for word in sent:
+                    if word in model.vocab and qword in model.vocab:
+                        sim = model.similarity(word, str(qword))
+                        if sim > highest_sim:
+                            highest_sim = sim
+
+                if highest_sim > 0.3:
+                    sent_score += highest_sim
+
+            if sent_score > best_score:
+                best_score = sent_score
+                best_sent = sentences[i]
+
+        if best_sent is None and use_sch:
+            return get_best_wordnet_sent(question, story, False)
+
+        return best_sent
+
+    diff = question['difficulty']
+    sentence = get_best_wordnet_sent(question, story)
+
+    if diff == 'Discourse':
+        print('Processing discourse question')
+        discourse_type = ''
+        qwords = nltk.word_tokenize(question['text'])
+
+        if 'after' in qwords:
+            discourse_type = 'after'
+        elif 'first' in qwords:
+            discourse_type = 'first'
+        elif 'before' in qwords:
+            discourse_type = 'before'
+
+        sent_ind = 0
+        sentences = nltk.sent_tokenize(story.get("sch", story["text"]))
+
+        for i, sent in enumerate(sentences):
+            if sent == sentence:
+                sent_ind = i
+                break
+
+        if discourse_type and discourse_type not in nltk.word_tokenize(sentence):
+            if discourse_type == 'after' and sent_ind < len(sentences):
+                return sentences[sent_ind:sent_ind+2]
+            elif (discourse_type == 'first' or discourse_type == 'before') and sent_ind > 0:
+                return sentences[sent_ind-1:sent_ind+1]
+            elif sent_ind > 0:
+                return sentences[sent_ind-1:sent_ind+1]
+
+    return sentence
+
+def baseline(qbow, sentences, stopwords):
+    answers = []
+
+    for sent in sentences:
+        sbow = get_bow(sent, stopwords)
+        overlap = len(qbow & sbow)
+        answers.append((overlap, sent))
+
+    answers.sort(key=operator.itemgetter(0), reverse=True)
+    best_answer = answers[0][1]
+
+    return best_answer
+
+if __name__ == '__main__':
+    # Add testing code here if needed
+    pass

@@ -1,0 +1,123 @@
+import re
+import random
+import math
+from collections import Counter, OrderedDict
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+class1file = "raw_data_sport.txt"
+class2file = "raw_data_politics.txt"
+importantWordsClass1 = {}
+importantWordsClass2 = {}
+
+def randomPartitioner(text, percent):
+    words = text.split()
+    partitionLength = len(words)
+    partitionIndex = int(partitionLength * percent)
+    partition1 = words[:partitionIndex]
+    partition2 = words[partitionIndex:]
+    return ' '.join(partition1), ' '.join(partition2)
+
+def cleanText(text):
+    text = text.lower()
+    text = re.sub(r'\d+', '', text)
+    text = text.replace("\n", " ")
+    text = text.replace("-", "")
+    stop_words = set(stopwords.words('english'))
+    for word in stop_words:
+        text = text.replace(" " + word + " ", " ")
+    return text
+
+def calculateP(text, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words):
+    text = cleanText(text)
+    words = text.split()
+    p_word_in_class1 = p_class1
+    p_word_in_class2 = p_class2
+    max_p_class1 = 0
+    max_p_class2 = 0
+    for word in words:
+        if len(word) < 3:
+            continue
+        p1 = pClassProbability(word, count_all_words1, count_dist_words1, class1_words)
+        if p1 > max_p_class1:
+            max_p_class1 = p1
+            importantWordsClass1[word] = p1
+        p2 = pClassProbability(word, count_all_words2, count_dist_words2, class2_words)
+        if p2 > max_p_class2:
+            max_p_class2 = p2
+            importantWordsClass2[word] = p2
+        p_word_in_class1 += p1
+        p_word_in_class2 += p2
+    if p_word_in_class1 > p_word_in_class2:
+        return 1
+    else:
+        return 2
+
+def pClassProbability(word, count_all_words, count_dist_words, class_words):
+    if word in class_words:
+        return math.log10((class_words[word] + 1) / (count_dist_words + count_all_words))
+    else:
+        return math.log10(1 / (count_dist_words + count_all_words))
+
+def countWords(train1, train2):
+    counter1 = Counter(train1.split())
+    counter2 = Counter(train2.split())
+    return counter1, counter2
+
+def stringifyEvery5Words(words):
+    chunk_size = 50
+    chunks = [words[i:i + chunk_size] for i in range(0, len(words), chunk_size)]
+    return [' '.join(chunk) for chunk in chunks]
+
+def classifier():
+    class1_text = open(class1file).read()
+    class2_text = open(class2file).read()
+    class1_text = class1_text.lower().replace("\n", " ")
+    class2_text = class2_text.lower().replace("\n", " ")
+    
+    train1, test1 = randomPartitioner(class1_text, 0.10)
+    train2, test2 = randomPartitioner(class2_text, 0.10)
+    
+    count_sentences1 = sum(Counter(re.split(r'[.!?]', train1)).values())
+    count_sentences2 = sum(Counter(re.split(r'[.!?]', train2)).values())
+    
+    class1_words, class2_words = countWords(train1, train2)
+    count_all_words1 = sum(class1_words.values())
+    count_all_words2 = sum(class2_words.values())
+    count_dist_words1 = len(class1_words)
+    count_dist_words2 = len(class2_words)
+    
+    p_class1 = count_sentences1 / (count_sentences1 + count_sentences2)
+    p_class2 = count_sentences2 / (count_sentences1 + count_sentences2)
+    
+    test_sentences1 = stringifyEvery5Words(test1.split())
+    test_sentences2 = stringifyEvery5Words(test2.split())
+    
+    true_positives = 0
+    false_negatives = 0
+    false_positives = 0
+    true_negatives = 0
+    
+    for sentence in test_sentences1:
+        c = calculateP(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words)
+        if c == 1:
+            true_positives += 1
+        else:
+            false_negatives += 1
+    
+    for sentence in test_sentences2:
+        c = calculateP(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words)
+        if c == 2:
+            true_negatives += 1
+        else:
+            false_positives += 1
+    
+    precision = true_positives / (true_positives + false_positives)
+    recall = true_positives / (true_positives + false_negatives)
+    
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("Important words in class 1:", OrderedDict(sorted(importantWordsClass1.items(), key=lambda x: x[1], reverse=True)))
+    print("Important words in class 2:", OrderedDict(sorted(importantWordsClass2.items(), key=lambda x: x[1], reverse=True)))
+
+classifier()

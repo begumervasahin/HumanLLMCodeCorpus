@@ -1,0 +1,55 @@
+from math import sqrt, factorial
+from numpy import dot
+from os import scandir
+from os.path import isfile, join
+from sklearn.feature_extraction.text import CountVectorizer
+
+def cosine_similarity(x, y):
+    dot_product = dot(x, y.T)[0, 0]
+    magnitude_x = dot(x, x.T)[0, 0]
+    magnitude_y = dot(y, y.T)[0, 0]
+    return dot_product / sqrt(magnitude_x * magnitude_y)
+
+def read_files_from_directory(directory_path):
+    files_list = [f for f in scandir(directory_path) if isfile(join(directory_path, f))]
+    if len(files_list) == 0:
+        print("Empty directory")
+        return []
+    for i, file in enumerate(files_list):
+        with open(files_list[i], 'r') as f:
+            files_list[i] = f.read()
+    return files_list
+
+def main():
+    directory_path = input("Enter a valid path to your files directory: ")
+    documents = read_files_from_directory(directory_path)
+    if not documents:
+        print("No valid documents found in the directory. Terminating.")
+        return
+
+    num_documents = len(documents)
+    count_vectorizer = CountVectorizer()
+    count_matrix = count_vectorizer.fit_transform(documents)
+
+    top_k = int(input("How many of the most similar texts do you want to print? "))
+    max_possible_pairs = factorial(num_documents) // (factorial(2) * factorial(num_documents - 2))
+
+    similarities = []
+    for i in range(num_documents):
+        for j in range(i + 1, num_documents):
+            similarity = cosine_similarity(count_matrix[i], count_matrix[j])
+            similarities.append((similarity, i, j))
+
+    similarities.sort(key=lambda x: x[0], reverse=True)
+
+    if top_k > len(similarities):
+        print("Not enough pairs for top", top_k, "similar texts.")
+        return
+
+    print("Top", top_k, "most similar documents:")
+    for i in range(top_k):
+        similarity, idx1, idx2 = similarities[i]
+        print(f"Similarity: {similarity:.4f}, Documents: {idx1 + 1}, {idx2 + 1}")
+
+if __name__ == "__main__":
+    main()

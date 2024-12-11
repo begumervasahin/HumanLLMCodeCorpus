@@ -1,0 +1,120 @@
+import os
+import base64
+from Crypto.Cipher import AES
+from Crypto import Random
+from Crypto.Random import get_random_bytes
+from Crypto.Util import Counter
+
+BLOCK_SIZE = 16
+
+def pad(s):
+    padding = BLOCK_SIZE - len(s) % BLOCK_SIZE
+    return s + bytes([padding]) * padding
+
+def unpad(s):
+    padding = s[-1]
+    return s[:-padding]
+
+class AESCipher:
+    def __init__(self, key):
+        self.key = key
+
+    def encrypt_cbc(self, plaintext, iv):
+        plaintext = pad(plaintext)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        encrypted = cipher.encrypt(plaintext)
+        return base64.b64encode(iv + encrypted)
+
+    def decrypt_cbc(self, ciphertext):
+        ciphertext = base64.b64decode(ciphertext)
+        iv = ciphertext[:BLOCK_SIZE]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted = cipher.decrypt(ciphertext[BLOCK_SIZE:])
+        return unpad(decrypted)
+
+    def encrypt_ecb(self, plaintext):
+        plaintext = pad(plaintext)
+        cipher = AES.new(self.key, AES.MODE_ECB)
+        encrypted = cipher.encrypt(plaintext)
+        return base64.b64encode(encrypted)
+
+    def decrypt_ecb(self, ciphertext):
+        ciphertext = base64.b64decode(ciphertext)
+        cipher = AES.new(self.key, AES.MODE_ECB)
+        decrypted = cipher.decrypt(ciphertext)
+        return unpad(decrypted)
+
+    def encrypt_ofb(self, plaintext, iv):
+        plaintext = pad(plaintext)
+        cipher = AES.new(self.key, AES.MODE_OFB, iv)
+        encrypted = cipher.encrypt(plaintext)
+        return base64.b64encode(iv + encrypted)
+
+    def decrypt_ofb(self, ciphertext):
+        ciphertext = base64.b64decode(ciphertext)
+        iv = ciphertext[:BLOCK_SIZE]
+        cipher = AES.new(self.key, AES.MODE_OFB, iv)
+        decrypted = cipher.decrypt(ciphertext[BLOCK_SIZE:])
+        return unpad(decrypted)
+
+    def encrypt_ctr(self, plaintext, iv):
+        plaintext = pad(plaintext)
+        ctr = Counter.new(128)
+        cipher = AES.new(self.key, AES.MODE_CTR, counter=ctr)
+        encrypted = cipher.encrypt(plaintext)
+        return base64.b64encode(iv + encrypted)
+
+    def decrypt_ctr(self, ciphertext):
+        ciphertext = base64.b64decode(ciphertext)
+        iv = ciphertext[:BLOCK_SIZE]
+        ctr = Counter.new(128)
+        cipher = AES.new(self.key, AES.MODE_CTR, counter=ctr)
+        decrypted = cipher.decrypt(ciphertext[BLOCK_SIZE:])
+        return unpad(decrypted)
+
+def generate_key():
+    return os.urandom(BLOCK_SIZE)
+
+def generate_iv():
+    return Random.new().read(BLOCK_SIZE)
+
+def generate_plaintext():
+    return get_random_bytes(BLOCK_SIZE)
+
+def generate_counter():
+    return Counter.new(128)
+
+def main():
+    plaintext = generate_plaintext().hex()
+    key = generate_key()
+    iv = generate_iv()
+
+    print('plaintext:', plaintext)
+    print('iv:', iv.hex())
+    print('key:', key.hex())
+
+    aes_cipher = AESCipher(key)
+    ciphertext = aes_cipher.encrypt_cbc(plaintext, iv)
+    print('encrypted in CBC:', ciphertext)
+    plaintext_decrypted = aes_cipher.decrypt_cbc(ciphertext)
+    print('decrypted in CBC:', plaintext_decrypted)
+
+    ciphertext = aes_cipher.encrypt_ecb(plaintext)
+    print('encrypted in ECB:', ciphertext)
+    plaintext_decrypted = aes_cipher.decrypt_ecb(ciphertext)
+    print('decrypted in ECB:', plaintext_decrypted)
+
+    ciphertext = aes_cipher.encrypt_ofb(plaintext, iv)
+    print('encrypted in OFB:', ciphertext)
+    plaintext_decrypted = aes_cipher.decrypt_ofb(ciphertext)
+    print('decrypted in OFB:', plaintext_decrypted)
+
+    ciphertext = aes_cipher.encrypt_ctr(plaintext, iv)
+    print('encrypted in CTR:', ciphertext)
+    plaintext_decrypted = aes_cipher.decrypt_ctr(ciphertext)
+    print('decrypted in CTR:', plaintext_decrypted)
+
+    print('CTR:', generate_counter())
+
+if __name__ == "__main__":
+    main()

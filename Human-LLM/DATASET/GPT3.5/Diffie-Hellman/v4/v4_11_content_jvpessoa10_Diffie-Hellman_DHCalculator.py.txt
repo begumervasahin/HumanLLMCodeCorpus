@@ -1,0 +1,57 @@
+from math import sqrt
+from itertools import count, islice
+import random
+
+class DHCalculator:
+    def __init__(self):
+        # Private key 'a', public key 'B', and shared prime 'P'
+        self.private_key_a = 0
+        self.public_key_B = 0
+        self.shared_prime_P = 0
+
+    def is_prime(self, n):
+        """Check if a number is prime."""
+        return n > 1 and all(n % i for i in islice(count(2), int(sqrt(n) - 1)))
+
+    def generate_shared_prime(self):
+        """Generate a shared prime number within a range."""
+        min_range = 1000
+        max_range = 10000
+        primes = [p for p in range(min_range, max_range) if self.is_prime(p)]
+        self.shared_prime_P = random.choice([p for p in primes if min_range < p < max_range])
+
+    def set_private_key(self, private_key):
+        """Set the private key 'a'."""
+        self.private_key_a = private_key
+
+    def calculate_A(self, G, P):
+        """Calculate public key 'A' based on generator 'G' and shared prime 'P'."""
+        self.public_key_B = G ** self.private_key_a % P
+
+    def calculate_shared_key(self, other_public_key_B):
+        """Calculate shared secret key based on other party's public key 'B' and shared prime 'P'."""
+        return other_public_key_B ** self.private_key_a % self.shared_prime_P
+
+
+# Example usage
+if __name__ == "__main__":
+    dh = DHCalculator()
+    
+    # Generate shared prime number 'P'
+    dh.generate_shared_prime()
+    print(f"Generated shared prime 'P': {dh.shared_prime_P}")
+    
+    # Set a random private key 'a'
+    private_key_a = random.randint(1, 100)
+    dh.set_private_key(private_key_a)
+    print(f"Set private key 'a': {private_key_a}")
+    
+    # Calculate public key 'A'
+    generator_G = dh.generateGP()
+    dh.calculate_A(generator_G, dh.shared_prime_P)
+    print(f"Calculated public key 'A' based on generator 'G' and shared prime 'P': {dh.public_key_B}")
+    
+    # Simulate key exchange and shared key calculation
+    other_public_key_B = random.randint(1, dh.shared_prime_P - 1)
+    shared_key = dh.calculate_shared_key(other_public_key_B)
+    print(f"Calculated shared secret key based on other party's public key 'B': {shared_key}")

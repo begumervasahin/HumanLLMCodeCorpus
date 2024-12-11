@@ -1,0 +1,99 @@
+import math
+from graph import Graph
+from fibheap import FibonacciHeap
+
+def initialize_single_source(graph, source):
+    """Initialize all vertices with infinite distance except for the source."""
+    for vertex in graph.vertices:
+        vertex.distance = math.inf
+        vertex.predecessor = None
+    source.distance = 0
+
+def relax(u, v, weight):
+    """Relax the edge (u, v) with weight if necessary."""
+    if v.distance > u.distance + weight:
+        v.distance = u.distance + weight
+        v.predecessor = u
+
+def extract_min(queue):
+    """Extract the vertex with the minimum distance from the queue."""
+    min_index = 0
+    for index in range(1, len(queue)):
+        if queue[index].distance < queue[min_index].distance:
+            min_index = index
+    return queue.pop(min_index)
+
+def bellman_ford(graph, source):
+    """Find the shortest paths from a single source vertex using Bellman-Ford algorithm."""
+    initialize_single_source(graph, source)
+    for _ in range(len(graph.vertices)):
+        for edge in graph.edges:
+            relax(edge.u, edge.v, edge.weight)
+    for edge in graph.edges:
+        if edge.v.distance > edge.u.distance + edge.weight:
+            return False
+    return True
+
+def dijkstra(graph, source):
+    """Find the shortest paths from a single source vertex using Dijkstra's algorithm."""
+    initialize_single_source(graph, source)
+    S = []
+    queue = graph.vertices[:]
+    while queue:
+        u = extract_min(queue)
+        S.append(u)
+        for edge in graph.get_adjacent_vertices(u):
+            relax(u, edge.v, edge.weight)
+    return S
+
+def yen_relax(u, v, weight, D):
+    """Relax the edge (u, v) with weight if necessary for Yen's algorithm."""
+    if v.distance > u.distance + weight:
+        v.distance = u.distance + weight
+        v.predecessor = u
+        D[v.value] = True
+
+def yen(graph, source):
+    """Find the shortest paths from a single source vertex using Yen's algorithm."""
+    initialize_single_source(graph, source)
+    C = [source]
+    D = [False] * len(graph.vertices)
+    while C:
+        for vertex in graph.vertices:
+            edges = graph.get_adjacent_vertices(vertex)
+            if vertex in C or D[vertex.value]:
+                for edge in edges:
+                    yen_relax(edge.u, edge.v, edge.weight, D)
+        for i in range(len(graph.vertices) - 1, -1, -1):
+            vertex = graph.vertices[i]
+            edges = graph.get_adjacent_vertices(vertex)
+            if vertex in C or D[vertex.value]:
+                for edge in edges:
+                    yen_relax(edge.u, edge.v, edge.weight, D)
+        C = [graph.vertices[i] for i in range(len(D) - 1) if D[i]]
+        D = [False] * len(graph.vertices)
+
+def fib_dijkstra(graph, source):
+    """Find the shortest paths from a single source vertex using Dijkstra's algorithm with Fibonacci Heap."""
+    n = len(graph.vertices)
+    visited = [False] * n
+    distance = [math.inf] * n
+    heap_nodes = [None] * (n + 1)
+    heap = FibonacciHeap()
+    for i in range(1, n + 1):
+        heap_nodes[i] = heap.insert(math.inf, i)
+    distance[source.value] = 0
+    heap.decrease_key(heap_nodes[source.value + 1], 0)
+    S = []
+    while heap.total_nodes:
+        current = heap.extract_min().value - 1
+        visited[current] = True
+        S.append(current)
+        for edge in graph.adjacency_list[current]:
+            neighbor = edge.v.value
+            cost = edge.weight
+            if not visited[neighbor]:
+                if distance[current] + cost < distance[neighbor]:
+                    distance[neighbor] = distance[current] + cost
+                    heap.decrease_key(heap_nodes[neighbor + 1], distance[neighbor])
+    return S

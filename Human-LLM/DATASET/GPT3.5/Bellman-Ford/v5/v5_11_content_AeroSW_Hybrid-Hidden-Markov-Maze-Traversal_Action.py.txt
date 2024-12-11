@@ -1,0 +1,98 @@
+import random
+
+class Action:
+    def __init__(self, action_key, result, result_chances=1.0, create_counter_table=False):
+        """
+        Initialize an Action object.
+
+        Args:
+            action_key (object): A key used to identify the action.
+            result (object or list): An object or a list storing possible results for performing this action.
+            result_chances (float or list, optional): Default is 1.0 (100% chance).
+                Specifies the probability of each result when the action is successful. 
+                If `result` is a list, `result_chances` should be a list of equal size. 
+            create_counter_table (bool, optional): Default is False.
+                Determines whether to create a counter table to track individual states reached by the action.
+
+        Raises:
+            ValueError: If the total number of result_chances does not match the total number of results.
+
+        Postconditions:
+            An Action object is created and returned.
+        """
+        self.action_key = action_key
+
+        if isinstance(result, list):
+            self.results = result
+            self.results_len = len(result)
+        else:
+            self.results = [result]
+            self.results_len = 1
+
+        if isinstance(result_chances, list):
+            if len(result_chances) == self.results_len:
+                self.result_chances = result_chances
+            else:
+                raise ValueError("Total number of result_chances must equal total number of results.")
+        else:
+            self.result_chances = [result_chances] * self.results_len
+
+        self.count_results = create_counter_table
+
+        if create_counter_table:
+            self.counter_list = {res.getKey(): 0 for res in self.results}
+
+    def test_action(self):
+        """
+        Perform the action and return a result based on probabilities.
+
+        Returns:
+            object or -1: The result of the action, or -1 if the action failed.
+        """
+        rand_num = random.randint(1, 100000) / 100000
+        prev_value = 0
+
+        for i in range(self.results_len):
+            curr_value = prev_value + self.result_chances[i]
+
+            if prev_value < rand_num < curr_value:
+                if self.count_results:
+                    self.counter_list[self.results[i].getKey()] += 1
+                return self.results[i]
+
+            prev_value = curr_value
+
+        return -1
+
+    def get_key(self):
+        """
+        Return the search key for this action.
+
+        Returns:
+            object: The search key associated with this action.
+        """
+        return self.action_key
+
+    def get_count(self):
+        """
+        Return the counting table for each state reached by performing this action.     
+
+        Returns:
+            dict: A dictionary containing the counts for each state reached.
+
+        Raises:
+            ValueError: If counting is not implemented for this action.
+        """
+        if self.count_results:
+            return self.counter_list
+        else:
+            raise ValueError("Counting is not implemented for this action.")
+
+    def get_num_results(self):
+        """
+        Return the number of possible results that this action could reach.
+
+        Returns:
+            int: The number of possible results.
+        """
+        return self.results_len

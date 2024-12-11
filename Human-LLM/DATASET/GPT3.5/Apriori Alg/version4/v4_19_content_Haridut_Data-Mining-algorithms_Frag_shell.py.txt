@@ -1,0 +1,67 @@
+import sys
+import math
+import itertools
+
+# Function to count occurrences of a subset in the list of transactions
+def count_occurrences(subset):
+    count = 0
+    for transaction in item_list:
+        if set(subset) < set(transaction):
+            count += 1
+    return count
+
+if __name__ == "__main__":
+    # Read input from standard input
+    var = sys.stdin.readlines()
+    a = [line.rstrip('\n') for line in var]
+
+    # Extract partitions and item lists
+    partitions = int(a[0])
+    item_list = [line.split() for line in a[1:]]
+
+    # Generate dimensional lists
+    dim1_list = [[item_list[j][i] for j in range(len(item_list))] for i in range(len(item_list[0]))]
+    dim_list = [sorted(set(dim)) for dim in dim1_list]
+
+    # Initialize list for partitions
+    lista = [[] for _ in range(partitions)]
+
+    # Partition the dimensional lists
+    for j in range(len(item_list[0])):
+        lista[j % partitions].append(j)
+
+    # Count the indices in each partition
+    ind_count = [len(partition) for partition in lista]
+
+    # Initialize list of fragmented lists
+    m = 0
+    list_fragmented = []
+    for i in range(partitions):
+        listc = []
+        for j in range(ind_count[i]):
+            listc.append(dim_list[m])
+            m += 1
+        list_fragmented.append(listc)
+
+    # Generate combinations and count occurrences
+    for i in range(len(list_fragmented)):
+        cf = []
+        for j in range(len(list_fragmented[i])):
+            for don in itertools.combinations(range(len(list_fragmented[i])), j + 1):
+                cf.append(list(don))
+
+        for k in cf:
+            list_comb = []
+            merger = []
+            for value in k:
+                merger += list_fragmented[i][value]
+            for h in itertools.combinations(merger, len(k)):
+                list_comb.append(list(h))
+
+            for p in list_comb:
+                count = count_occurrences(p)
+                if count != 0:
+                    print(' '.join(map(str, p)), end='')
+                    print(': ' + str(count))
+
+        print()

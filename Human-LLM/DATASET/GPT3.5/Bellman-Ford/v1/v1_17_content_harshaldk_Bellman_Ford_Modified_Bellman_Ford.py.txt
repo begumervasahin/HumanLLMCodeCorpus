@@ -1,0 +1,60 @@
+import csv
+from collections import deque
+
+def parse_input_file(filename):
+    adjacency_list = {}
+    weights = {}
+    vertices = 0
+
+    with open(filename + ".gr") as input_file:
+        for line in input_file:
+            parts = line.split()
+            if parts[0] == 'p':
+                vertices = int(parts[2])
+            elif parts[0] == 'a':
+                vertex1, vertex2, weight = map(int, parts[1:])
+                weights[vertex1, vertex2] = weight
+                adjacency_list.setdefault(vertex1, []).append(vertex2)
+
+        for vertex in range(1, vertices + 1):
+            adjacency_list.setdefault(vertex, [])
+
+    return adjacency_list, weights, vertices
+
+def fifo_bellman_ford(adjacency_list, weights, vertices, source):
+    distances = {}
+    predecessors = {}
+    distances[source] = 0
+    predecessors[source] = 0
+    remaining_vertices = list(range(1, vertices + 1))
+    remaining_vertices.remove(source)
+
+    max_weight = vertices * max(weights.values())
+    for vertex in remaining_vertices:
+        distances[vertex] = max_weight
+        predecessors[vertex] = -1
+
+    queue = deque([source])
+    while queue:
+        i = queue.popleft()
+        for j in adjacency_list[i]:
+            if distances[j] > distances[i] + weights[i, j]:
+                distances[j] = distances[i] + weights[i, j]
+                predecessors[j] = i
+                if j not in queue:
+                    queue.append(j)
+
+    return distances, predecessors
+
+files = ['matrix_100_1_3_1', 'matrix_100_1_3_2', 'rome99']
+for filename in files:
+    adjacency_list, weights, vertices = parse_input_file(filename)
+    source_vertex = 1
+    distances, predecessors = fifo_bellman_ford(adjacency_list, weights, vertices, source_vertex)
+    out_file = filename + ".csv"
+
+    with open(out_file, 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(['Vertex', 'Distance', 'Predecessor'])
+        for vertex in distances:
+            writer.writerow([str(vertex), str(distances[vertex]), str(predecessors[vertex])])

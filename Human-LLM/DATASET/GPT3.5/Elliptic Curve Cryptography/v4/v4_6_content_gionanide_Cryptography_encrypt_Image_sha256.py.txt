@@ -1,0 +1,102 @@
+from tkinter import *
+from tkinter.filedialog import *
+import tkMessageBox
+import os
+from PIL import Image
+import hashlib
+
+def xor(a, b):
+    """
+    Perform XOR operation between two integers.
+    """
+    return a ^ int(b, 16)
+
+def generate_key_schedule(password):
+    """
+    Generate a key schedule based on the given password using SHA-256 hashing.
+    """
+    first_pass = hashlib.sha256(password.encode()).hexdigest()
+    second_pass = hashlib.sha256(first_pass.encode()).hexdigest()
+
+    # Convert hexadecimal strings to bytes
+    first_pass_bytes = [int(first_pass[i:i+2], 16) for i in range(0, len(first_pass), 2)]
+    second_pass_bytes = [int(second_pass[i:i+2], 16) for i in range(0, len(second_pass), 2)]
+
+    # Combine bytes from both passes
+    return first_pass_bytes + second_pass_bytes
+
+def encrypt_image(name):
+    """
+    Encrypt the image using XOR-based encryption.
+    """
+    private_key = []
+    key = generate_key_schedule(get_password())
+    image = Image.open(name, mode='r')
+    width, height = image.size
+    print('Width:', width, 'Height:', height)
+
+    # Encrypt image and collect pixel values
+    for y in range(height):
+        for x in range(width):
+            cc = image.getpixel((x, y))
+            private_key.append(cc)
+            image.putpixel((x, y), (0, 0, 0))
+
+    # Display and save encrypted image
+    image.show()
+    image.save('encrypted.jpg')
+
+    # Save private key to a text file
+    with open('key.txt', 'w') as private_file:
+        for x in range(len(private_key)):
+            for y in range(3):
+                private_file.write(str(xor(private_key[x][y], key[x % len(key)])) + '\n')
+
+def decrypt_image(name, private_key_file):
+    """
+    Decrypt the image using XOR-based decryption.
+    """
+    key = generate_key_schedule(get_password())
+    private_key = []
+    image = Image.open(name, mode='r')
+
+    # Read private key from file
+    with open(private_key_file) as pk:
+        for f in pk.readlines():
+            private_key.append(xor(int(f), key[len(private_key) % len(key)]))
+
+    width, height = image.size
+    print('Width:', width, 'Height:', height)
+
+    # Decrypt image and replace pixel values
+    k = 0
+    for y in range(height):
+        for x in range(width):
+            image.putpixel((x, y), (int(private_key[k]), int(private_key[k+1]), int(private_key[k+2])))
+            k += 3
+
+    # Display and save decrypted image
+    image.show()
+    image.save('decrypted.jpg')
+
+def get_password():
+    """
+    Get password from user input.
+    """
+    password = input('Enter a password: ')
+    return password + '.jpg'
+
+def main():
+    name = input('Enter the name of the image: ')
+    choice = input('Enter "e" for encryption or "d" for decryption: ')
+
+    if choice == 'e':
+        encrypt_image(name + '.jpg')
+    elif choice == 'd':
+        private_key_file = input('Enter the name of the private key file: ')
+        decrypt_image(name + '.jpg', private_key_file + '.txt')
+    else:
+        print('Input Error')
+
+if __name__ == "__main__":
+    main()

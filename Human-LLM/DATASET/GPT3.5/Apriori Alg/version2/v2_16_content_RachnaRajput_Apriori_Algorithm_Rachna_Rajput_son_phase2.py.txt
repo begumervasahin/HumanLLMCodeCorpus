@@ -1,0 +1,70 @@
+import json
+import sys
+from collections import defaultdict
+
+class MapReduce:
+    def __init__(self):
+        self.intermediate = defaultdict(list)
+        self.result = []
+
+    def emit_intermediate(self, key, value):
+        self.intermediate[key].append(value)
+
+    def emit(self, value):
+        self.result.append(value)
+
+    def execute(self, data, mapper, reducer):
+        # Mapping phase
+        for line in data:
+            record = json.loads(line)
+            mapper(record)
+
+        # Reducing phase
+        for key in self.intermediate:
+            reducer(key, self.intermediate[key])
+
+        # Printing the results
+        for item in self.result:
+            print(item)
+
+mr = MapReduce()
+
+def mapper(record):
+    global mr
+    f = open(sys.argv[1])
+    mylist = []
+
+    # Iterating through the data and processing
+    for line in f:
+        chunkdata = json.loads(line)
+        count = 0
+        length = len(chunkdata)
+
+        # Counting occurrences
+        for chunkline in chunkdata:
+            if set(chunkline) >= set(record):
+                count += 1
+
+        mylist.append(count)
+        mylist.append(length)
+        recordtuple = tuple(record)
+        dict[recordtuple] = mylist
+
+    mr.emit_intermediate(recordtuple, mylist)
+
+def reducer(key, value):
+    global mr
+    count = 0
+    mylist = []
+
+    # Summing up the counts
+    for i in range(0, len(value[0]), 2):
+        count += value[0][i]
+
+    mylist.append(key)
+    mylist.append(count)
+    mr.emit(mylist)
+
+if __name__ == '__main__':
+    inputdata = open(sys.argv[2])
+    output = mr.execute(inputdata, mapper, reducer)

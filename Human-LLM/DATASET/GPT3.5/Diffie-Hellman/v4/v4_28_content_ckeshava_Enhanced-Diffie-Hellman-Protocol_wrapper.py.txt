@@ -1,0 +1,69 @@
+import paderson_commitment
+import os
+import random
+from datetime import datetime
+from threading import Thread
+
+class NodeA(Thread):
+    def run(self):
+        # Start node A process with a slight delay
+        os.system('sleep 0.1; python3 node-A.py')
+
+class NodeB(Thread):
+    def run(self):
+        # Start node B process
+        os.system('python3 node-B.py')
+
+def main():
+    # Define ranges for prime and random string lengths
+    prime_lengths = [100, 140, 160, 180, 320, 384, 512]
+    random_lengths = list(range(10, 100, 5))
+
+    # Open or create CSV file to store results
+    with open('funny1.csv', 'a') as csv_file:
+        # Iterate over each prime length
+        for prime_length in prime_lengths:
+            # Update prime length in constants.py
+            with open('constants.py', 'w') as constants_file:
+                constants_file.write("LENGTH_OF_PRIME = {}\n".format(prime_length))
+
+            # Generate p, g, q using Paderson's commitment
+            p, _, _ = paderson_commitment.generate_p_g_q()
+
+            # Iterate over each random string length
+            for random_length in random_lengths:
+                # Generate a random port number
+                port = random.randint(13000, 20000)
+
+                # Update constants.py with current configuration
+                with open('constants.py', 'w') as constants_file:
+                    constants_file.write('PORT = {}\n'.format(port))
+                    constants_file.write('SERVER_IP_ADDR = "127.0.0.1"\n')
+                    constants_file.write('SHARED_PRIME = {}\n'.format(p))
+                    constants_file.write('SHARED_BASE = 2\n')
+                    constants_file.write('RANDOM_STRING_LENGTH = {}\n'.format(random_length))
+                    constants_file.write('RAND_NUMBER_LOWER_BOUND = 100\n')
+                    constants_file.write('RAND_NUMBER_UPPER_BOUND = 1000\n')
+                    constants_file.write('LENGTH_OF_PRIME = {}\n'.format(prime_length))
+
+                # Sleep briefly to avoid race conditions
+                os.system('sleep 1')
+
+                # Create and start threads for node A and node B
+                node_b = NodeB()
+                node_a = NodeA()
+                start_time = datetime.now()
+                node_b.start()
+                node_a.start()
+                node_a.join()
+                node_b.join()
+                end_time = datetime.now()
+
+                # Calculate and store execution time
+                execution_time = (end_time - start_time).microseconds
+                csv_data = "{},{},{}\n".format(prime_length, random_length, execution_time)
+                csv_file.write(csv_data)
+                csv_file.flush()
+
+if __name__ == "__main__":
+    main()

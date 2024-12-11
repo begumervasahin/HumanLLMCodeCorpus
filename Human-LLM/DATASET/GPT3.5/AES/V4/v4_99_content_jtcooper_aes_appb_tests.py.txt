@@ -1,0 +1,70 @@
+import numpy as np
+
+# globals.py content
+Nb = 4  # AES block size in 32-bit words.
+
+# operations.py content
+def ffAdd(a, b):
+    """Performs finite field addition of two bytes."""
+    return a ^ b
+
+def xtime(byte):
+    """Multiplies by x (0x02) in GF(2^8)."""
+    return ((byte << 1) & 0xFF) ^ (0x1B if byte & 0x80 else 0)
+
+def ffMultiply(a, b):
+    """Finite field multiplication of two bytes."""
+    product = 0
+    for _ in range(8):
+        if b & 1: product ^= a
+        high_bit_set = a & 0x80
+        a = ((a << 1) & 0xFF) ^ (0x1B if high_bit_set else 0)
+        b >>= 1
+    return product
+
+# Placeholder functions assuming they are defined in their respective files
+def cipher(input_bytes, w, Nr):
+    # This function should perform the actual encryption
+    pass
+
+def inv_cipher(input_bytes, w, Nr):
+    # This function should perform the actual decryption
+    pass
+
+def key_expansion(cipher_key, w, Nk, Nr):
+    # This function should expand the cipher_key into the round key array w
+    pass
+
+def getw(Nb, Nr):
+    # Generates a placeholder for the round key array
+    return []
+
+# Test the operations
+assert ffAdd(0x57, 0x83) == 0xD4
+assert xtime(0x57) == 0xAE
+assert xtime(0xAE) == 0x47
+assert xtime(0x47) == 0x8E
+assert xtime(0x8E) == 0x07
+assert ffMultiply(0x57, 0x13) == 0xFE
+
+# Main AES encryption and decryption example
+Nk, Nr = 4, 10
+input_bytes = bytearray([0x32, 0x88, 0x31, 0xE0, 0x43, 0x5A, 0x31, 0x37,
+                         0xF6, 0x30, 0x98, 0x07, 0xA8, 0x8D, 0xA2, 0x34])
+cipher_key = bytearray([0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+                        0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C])
+w = getw(Nb, Nr)
+key_expansion(cipher_key, w, Nk, Nr)
+# Assuming cipher function returns the expected output for demonstration
+encrypted = cipher(input_bytes, w, Nr)  # Placeholder return value
+
+# Dynamic key length example (Nk = 6, Nr = 12)
+Nk, Nr = 6, 12
+input_bytes = bytearray(np.random.randint(256, size=16))
+cipher_key = bytearray(np.random.randint(256, size=24))
+w = getw(Nb, Nr)
+key_expansion(cipher_key, w, Nk, Nr)
+# Assuming cipher and inv_cipher functions return correct values for demonstration
+cipher_text = cipher(input_bytes, w, Nr)  # Placeholder return value
+decrypted = inv_cipher(cipher_text, w, Nr)  # Placeholder return value
+assert decrypted == input_bytes  # Placeholder assertion

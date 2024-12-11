@@ -1,0 +1,272 @@
+import pdb
+from tkinter import *
+import tkinter as tk
+import sys
+global numNodos
+global numAristas
+global vectorDeNodos
+global aristaEnCreacion
+global aristaAux
+global canvas
+global panelTexto
+numNodos=1
+numAristas=1
+vectorDeNodos=[]
+aristaEnCreacion=False
+def _create_circle(self, x, y, r, **kwargs):
+    return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+tk.Canvas.create_circle = _create_circle
+def _create_circle_arc(self, x, y, r, **kwargs):
+    if "start" in kwargs and "end" in kwargs:
+        kwargs["extent"] = kwargs["end"] - kwargs["start"]
+        del kwargs["end"]
+    return self.create_arc(x-r, y-r, x+r, y+r, **kwargs)
+tk.Canvas.create_circle_arc = _create_circle_arc
+def initialize(graph, source):
+    d = {}
+    p = {}
+    for node in graph:
+        d[node] = float('Inf')
+        p[node] = None
+    d[source] = 0
+    return d, p
+def relax(node, neighbour, graph, d, p):
+    if d[neighbour] > d[node] + graph[node][neighbour]:
+        d[neighbour]  = d[node] + graph[node][neighbour]
+        p[neighbour] = node
+def bellman_ford(graph, source):
+    global panelTexto
+    j = 0
+    d, p = initialize(graph, source)
+    for i in range(len(graph)-1):
+        for u in graph:
+            j+= 1
+            for v in graph[u]:
+                relax(u, v, graph, d, p)
+            panelTexto.insert(END,'Iteracion %d \n'%(j))
+            panelTexto.insert(END,'Arreglo destino \n')
+            panelTexto.insert(END,'%s \n'%(d))
+            panelTexto.insert(END,'Arreglo Salida \n')
+            panelTexto.insert(END,'%s \n'%(p))
+    for u in graph:
+        for v in graph[u]:
+            assert d[v] <= d[u] + graph[u][v]
+    return d, p
+def main():
+    graph = {
+         'a': {'b': -1, 'c':  4},
+         'b': {'c':  3, 'd':  2, 'e':  2},
+         'c': {},
+         'd': {'b':  1, 'c':  5},
+         'e': {'d': -3}
+        }
+    d,p = bellman_ford(graph,'a')
+    print (d)
+    print (p)
+    mainWindow()
+def mainWindow():
+    global canvas
+    root = tk.Tk()
+    root.title("Grafos Bellman-Ford")
+    bottomFrame= tk.Frame(root)
+    bottomFrame.pack(side=BOTTOM)
+    topFrame=tk.Frame(root)
+    topFrame.pack(side=TOP)
+    w=790
+    h=600
+    ws = root.winfo_screenwidth()
+    hs = root.winfo_screenheight()
+    x = (ws/2) - (w/2)
+    y = (hs/2) - (h/2)
+    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    panelSuperior(topFrame,w,h)
+    arial14= ('Arial',14,"bold")
+    botonCirculo= tk.Button(bottomFrame,text="Añadir Nodo",command= lambda: crearNodo(canvas),font=arial14)
+    botonEvaluar= tk.Button(bottomFrame,text="Evaluar Grafo",font=arial14,command=evaluateGraph)
+    botonBorrar= tk.Button(bottomFrame,text="Borrar Todo",font=arial14,command=resetAll)
+    botonCirculo.pack(side=tk.LEFT)
+    botonEvaluar.pack(side=tk.LEFT)
+    botonBorrar.pack(side=tk.LEFT)
+    root.mainloop()
+    sys.exit(0)
+def panelSuperior(topFrame,w,h):
+    global canvas
+    global panelTexto
+    canvas = tk.Canvas(topFrame, width=585, height=h-50, borderwidth=0, highlightthickness=0, bg="
+    panelTexto=tk.Text(topFrame, height=300, width=50)
+    scroll = Scrollbar(topFrame)
+    canvas.pack(side=tk.LEFT)
+    scroll.pack(side=RIGHT,fill=Y)
+    panelTexto.pack(side=LEFT)
+    scroll.config(command=panelTexto.yview)
+    panelTexto.config(yscrollcommand=scroll.set)
+def resetAll():
+    global canvas
+    global numNodos
+    global numAristas
+    global aristaEnCreacion
+    global aristaAux
+    global vectorDeNodos
+    canvas.delete("all")
+    numNodos=1
+    numAristas=1
+    vectorDeNodos=[]
+    aristaEnCreacion=False
+    aristaAux=None
+def evaluateGraph():
+    global vectorDeNodos
+    global panelTexto
+    grafo={}
+    auxArista={}
+    for i in range(len(vectorDeNodos)):
+        for j in range(len(vectorDeNodos[i].aristas)):
+            auxArista[vectorDeNodos[i].aristas[j].nodo2.id]=int(vectorDeNodos[i].aristas[j].peso)
+        grafo[vectorDeNodos[i].id]=auxArista
+        auxArista={}
+    d,p = bellman_ford(grafo,vectorDeNodos[0].id)
+    panelTexto.insert(END,'%s \n'%(d))
+    panelTexto.insert(END,'%s \n'%(p))
+def crearNodo(canvas):
+    global vectorDeNodos
+    nodo= Nodo(canvas,100,120,30)
+    vectorDeNodos.append(nodo)
+class Nodo:
+    def __init__(self, canvas,x,y,r):
+        self.aristas=[]
+        self.canvas = canvas
+        self.x=x
+        self.y=y
+        self.r=r
+        self.moving=True
+        self.dibujarNodo()
+        self.popupMenu()
+    def moveCircle(self,event):
+        if self.moving:
+            posX=event.x-self.x
+            posY=event.y-self.y
+            self.x=event.x
+            self.y=event.y
+            self.canvas.move(self.circle,posX,posY)
+            self.canvas.move(self.canvasNum,posX,posY)
+    def dibujarNodo(self):
+        global numNodos
+        self.id=numNodos
+        self.circle=self.canvas.create_circle(self.x, self.y, self.r, fill="
+        self.canvasNum=self.canvas.create_text(self.x,self.y,fill="
+        numNodos+=1
+        self.canvas.tag_bind(self.circle, '<B1-Motion>', self.moveCircle)
+        self.canvas.tag_bind(self.canvasNum, '<B1-Motion>', self.moveCircle)
+        self.canvas.tag_bind(self.circle, '<Button-3>', self.do_popup)
+        self.canvas.tag_bind(self.canvasNum, '<Button-3>', self.do_popup)
+    def popupMenu(self):
+        self.popupMenu=tk.Menu(self.canvas,tearoff=0)
+        self.popupMenu.add_command(label="Fijar Nodo",command=self.popupFijarNodo)
+        self.popupMenu.add_command(label="Mover Nodo",command=self.popupMoverNodo)
+        self.popupMenu.add_command(label="Inicio Arista",command=self.iniciarCreacionArista)
+        self.popupMenu.add_command(label="Fin Arista",command=self.finalizarCreacionArista)
+    def iniciarCreacionArista(self):
+        global aristaEnCreacion
+        global aristaAux
+        if not self.moving:
+            aristaEnCreacion=True
+            aristaAux=Arista(self.canvas,self)
+        else:
+            tk.messagebox.showinfo("Alerta", "Debes Fijar el Nodo antes \n de Poder Crear Una Arista")
+    def finalizarCreacionArista(self):
+        global aristaEnCreacion
+        global aristaAux
+        if aristaEnCreacion and not(self.moving):
+            aristaEnCreacion=False
+            aristaAux.recibirNodo2(self)
+        else:
+            tk.messagebox.showinfo("Alerta", "Debes Fijar el Nodo antes \n de Poder Crear Una Arista")
+    def popupMoverNodo(self):
+        self.moving=True
+        if self.aristas:
+            for i in range(len(self.aristas)):
+                aux=self.aristas[i]
+                self.aristas[i].selfDestroy()
+                self.aristas.remove(aux)
+    def popupFijarNodo(self):
+        self.moving=False
+    def do_popup(self,event):
+        try:
+            self.popupMenu.tk_popup(event.x_root+55, event.y_root+10, 0)
+        finally:
+            self.popupMenu.grab_release()
+class Arista:
+    def __init__(self, canvas,nodo1):
+        self.peso=0
+        self.canvas=canvas
+        self.nodo1=nodo1
+        self.x1=nodo1.x
+        self.y1=nodo1.y
+    def recibirNodo2(self,nodo2):
+        global numAristas
+        self.idArista=numAristas
+        numAristas+=1
+        self.x2=nodo2.x
+        self.y2=nodo2.y
+        self.nodo2=nodo2
+        self.nodo1.aristas.append(self)
+        self.dibujarArista()
+    def dibujarArista(self):
+        InputDialog(self.canvas,"Arista","Inserte el Peso de la Arista",self)
+        if not (self.nodo1 is self.nodo2):
+            pointX1=(self.x1+self.x2)/2
+            pointY1=(self.y1+self.y2)/2
+            pointX=pointX1
+            pointY=pointY1
+            for x in range(0, 3):
+                pointX=(pointX+self.x2)/2
+                pointY=(pointY+self.y2)/2
+                pointX1=(pointX1+self.x1)/2
+                pointY1=(pointY1+self.y1)/2
+            self.aristaDibujo=self.canvas.create_line(pointX1,pointY1,pointX, pointY, fill="
+        else:
+            self.aristaDibujo= self.canvas.create_circle_arc(self.x1+10,self.y1-10,50,fill="",outline="
+    def dibujarPeso(self):
+        if not (self.nodo1 is self.nodo2):
+            self.textPeso=self.canvas.create_text((self.x1+self.x2)/2,(self.y1+self.y2)/2,fill="
+        else:
+            self.textPeso=self.canvas.create_text(self.x1+40,self.y1-50,fill="
+        bbox = self.canvas.bbox(self.textPeso)
+        self.auxBorder = self.canvas.create_rectangle(bbox, fill="
+        self.canvas.tag_raise(self.textPeso,self.auxBorder)
+    def selfDestroy(self):
+        self.canvas.delete(self.aristaDibujo)
+        self.canvas.delete(self.textPeso)
+        self.canvas.delete(self.auxBorder)
+        self=None
+class InputDialog:
+    def __init__(self, parent,title,message,arista):
+        self.arista=arista
+        top = self.top = Toplevel(parent)
+        Label(top, text=message).pack()
+        top.title(title)
+        top.resizable(0,0)
+        self.input = Entry(top)
+        self.input.pack(padx=5)
+        w=150
+        h=80
+        ws = top.winfo_screenwidth()
+        hs = top.winfo_screenheight()
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        top.geometry('%dx%d+%d+%d' % (w, h, x, y))
+        button = Button(top, text="Aceptar", command=self.accept)
+        button2 = Button(top, text="Cancelar", command=self.cancel)
+        button.pack(side=tk.LEFT,anchor=CENTER)
+        button2.pack(side=tk.LEFT,anchor=CENTER)
+    def accept(self):
+        self.value=self.input.get()
+        if self.value==' ' or self.value=='':
+            self.arista.peso='1'
+        else:
+            self.arista.peso=self.input.get()
+        self.arista.dibujarPeso()
+        self.top.destroy()
+    def cancel(self):
+        self.top.destroy()
+if __name__ == '__main__':
+    mainWindow()

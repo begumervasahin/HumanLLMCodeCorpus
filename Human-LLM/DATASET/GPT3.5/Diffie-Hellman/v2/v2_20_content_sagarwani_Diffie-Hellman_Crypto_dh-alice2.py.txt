@@ -1,0 +1,60 @@
+import sys
+import re
+
+def modular_exponentiation(base, exponent, modulus):
+    """Computes modular exponentiation efficiently."""
+    result = 1
+    bits = "{0:b}".format(exponent)
+    for bit in bits:
+        if bit == '1':
+            result = (((result ** 2) * base) % modulus)
+        elif bit == '0':
+            result = ((result ** 2) % modulus)
+    return result % modulus
+
+def is_prime(n, k=128):
+    """Checks if a number is prime using the Miller-Rabin primality test."""
+    if n == 2 or n == 3:
+        return True
+    if n <= 1 or n % 2 == 0:
+        return False
+    s = 0
+    r = n - 1
+    while r & 1 == 0:
+        s += 1
+        r //= 2
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = modular_exponentiation(a, r, n)
+        if x != 1 and x != n - 1:
+            j = 1
+            while j < s and x != n - 1:
+                x = modular_exponentiation(x, 2, n)
+                if x == 1:
+                    return False
+                j += 1
+            if x != n - 1:
+                return False
+    return True
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <public_key_file> <private_key_file>")
+        sys.exit(1)
+
+    with open(sys.argv[1], 'r') as public_key_file:
+        content = public_key_file.readlines()
+        pattern = re.findall('\d+', content[0])
+        generator_base = int(pattern[0])
+
+    with open(sys.argv[2], 'r') as private_key_file:
+        secret = private_key_file.readlines()
+        secret_value = secret[0].split(',')[2]
+        pattern = re.findall('\d+', secret_value)
+        exponent_value = int(pattern[0])
+        public_key_x = secret[0].split(',')[0]
+        pattern = re.findall('\d+', public_key_x)
+        modulus_value = int(pattern[0])
+
+    shared_secret = modular_exponentiation(generator_base, exponent_value, modulus_value)
+    print(shared_secret)

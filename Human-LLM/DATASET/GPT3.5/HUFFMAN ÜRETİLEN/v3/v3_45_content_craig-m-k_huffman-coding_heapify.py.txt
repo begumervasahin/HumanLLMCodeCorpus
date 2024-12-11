@@ -1,0 +1,76 @@
+class Heap:
+    def __init__(self, heap_type):
+        if heap_type not in ('max', 'min'):
+            raise ValueError('Invalid heap type. Use "max" or "min".')
+        self.heap_type = heap_type
+        self.queue = []  # Initialize the heap as an empty list
+        self.heapsize = 0  # Initialize heap size
+
+    def __len__(self):
+        return len(self.queue)
+
+    def perc_up(self, index):
+        parent_index = (index + 1) // 2 - 1  # Calculate the index of the parent node
+        while index > 0 and ((self.heap_type == 'max' and self.queue[parent_index] < self.queue[index]) or
+                             (self.heap_type == 'min' and self.queue[parent_index] > self.queue[index])):
+            # Swap the child with its parent if the heap property is violated
+            self.queue[index], self.queue[parent_index] = self.queue[parent_index], self.queue[index]
+            index = parent_index  # Move up the tree
+            parent_index = (index + 1) // 2 - 1  # Update the index of the parent node
+
+    def insert(self, key):
+        self.queue.append(key)  # Add the new key to the end of the list
+        self.heapsize += 1  # Increment heap size
+        self.perc_up(self.heapsize - 1)  # Restore the heap property
+
+    def pop(self):
+        last_index = self.heapsize - 1  # Get the index of the last element
+        self.queue[last_index], self.queue[0] = self.queue[0], self.queue[last_index]  # Swap the root with the last element
+        popped_key = self.queue.pop()  # Remove and return the last element (former root)
+        self.heapsize -= 1  # Decrement heap size
+        self.heapify(0)  # Restore the heap property starting from the root
+        return popped_key
+
+    def heapify(self, index):
+        left_index = 2 * index + 1  # Calculate the index of the left child
+        right_index = 2 * index + 2  # Calculate the index of the right child
+        n = self.heapsize  # Get the current heap size
+
+        if self.heap_type == 'max':
+            largest_index = index
+            if left_index < n and self.queue[left_index] > self.queue[largest_index]:  # Compare with left child
+                largest_index = left_index
+            if right_index < n and self.queue[right_index] > self.queue[largest_index]:  # Compare with right child
+                largest_index = right_index
+            if largest_index != index:  # Swap if necessary
+                self.queue[index], self.queue[largest_index] = self.queue[largest_index], self.queue[index]
+                self.heapify(largest_index)  # Recursively heapify the subtree
+        else:
+            smallest_index = index
+            if left_index < n and self.queue[left_index] < self.queue[smallest_index]:  # Compare with left child
+                smallest_index = left_index
+            if right_index < n and self.queue[right_index] < self.queue[smallest_index]:  # Compare with right child
+                smallest_index = right_index
+            if smallest_index != index:  # Swap if necessary
+                self.queue[index], self.queue[smallest_index] = self.queue[smallest_index], self.queue[index]
+                self.heapify(smallest_index)  # Recursively heapify the subtree
+
+    def build_heap(self):
+        n = self.heapsize  # Get the current heap size
+        for i in range(n // 2, -1, -1):  # Iterate from the last parent node to the root
+            self.heapify(i)  # Heapify each subtree rooted at index i
+
+# Example usage:
+max_heap = Heap('max')
+max_heap.insert(4)
+max_heap.insert(1)
+max_heap.insert(7)
+max_heap.insert(3)
+print("Max Heap:", max_heap.queue)
+
+min_heap = Heap('min')
+min_heap.insert(4)
+min_heap.insert(1)
+min_heap.insert(7)
+min_heap.insert(3)
+print("Min Heap:", min_heap.queue)

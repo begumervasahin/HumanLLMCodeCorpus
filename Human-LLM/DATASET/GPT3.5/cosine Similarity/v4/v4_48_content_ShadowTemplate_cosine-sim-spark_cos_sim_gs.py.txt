@@ -1,0 +1,90 @@
+import glob
+import math
+import os
+import pyspark
+import sys
+import time
+
+class Mode:
+    LOCAL = 1
+    GFS = 2
+
+def build_users_pairs(ratings_by_movie):
+    users_ratings = ratings_by_movie[1]
+    output_values = []
+    num_users = len(users_ratings)
+    for i in range(num_users - 1):
+        for j in range(i + 1, num_users):
+            x = users_ratings[i][0]
+            y = users_ratings[j][0]
+            if x <= y:
+                output_values.append(((x, y), (users_ratings[i][1], users_ratings[j][1])))
+            else:
+                output_values.append(((y, x), (users_ratings[j][1], users_ratings[i][1])))
+    return output_values
+
+def cos_sim_and_duplication(ratings_by_users_pairs):
+    x, y = ratings_by_users_pairs[0]
+    numerator, norm1, norm2 = 0, 0, 0
+    if len(ratings_by_users_pairs[1]) < 2:
+        return iter(())
+    for ratings_pair in ratings_by_users_pairs[1]:
+        x_rating, y_rating = int(ratings_pair[0]), int(ratings_pair[1])
+        numerator += x_rating * y_rating
+        norm1 += x_rating ** 2
+        norm2 += y_rating ** 2
+    cos_sim = numerator / (math.sqrt(norm1) * math.sqrt(norm2)) if norm1 + norm2 > 0 else 0
+    return (x, (y, cos_sim)), (y, (x, cos_sim))
+
+def prettify(user_similarities):
+    x, similarities = user_similarities
+    return ''
+
+def get_files_list():
+    if mode == Mode.GFS:
+        res = os.popen("gsutil ls " + gfs_input_path).read()
+        return [f for f in res.split('\n') if f and f != gfs_input_path]
+    elif mode == Mode.LOCAL:
+        return glob.glob(local_input_path + '*.txt')
+
+def build_rdd(files_list):
+    rdd = sc.emptyRDD()
+    for rating_file in files_list:
+        print('Adding {}'.format(rating_file))
+        user_ratings = []
+        if mode == Mode.GFS:
+            file_content = os.popen("gsutil cat " + rating_file).read()
+            lines_iterator = (line for line in file_content.split('\n') if line)
+            user_ratings = [(pair[0], pair[1]) for pair in [line.rstrip().split(',') for line in lines_iterator]]
+        elif mode == Mode.LOCAL:
+            with open(rating_file, 'r') as rating_f:
+                user_ratings = [(pair[0], pair[1]) for pair in [line.rstrip().split(',') for line in rating_f]]
+        movie_number = ''.join(filter(str.isdigit, rating_file))
+        rdd = rdd.union(sc.parallelize([[movie_number, user_ratings]]))
+    return rdd
+
+def main():
+    start_time = time.time()
+    print('Python cluster version: {}'.format(sys.version))
+    print('Current cluster configuration:')
+    for key in ['spark.yarn.executor.memoryOverhead', 'spark.yarn.am.memoryOverhead', 'spark.driver.maxResultSize']:
+        print('{}={}'.format(key, sc._conf.get(key)))
+    files_list = get_files_list()
+    print('Found {} files...'.format(len(files_list)))
+    rdd = build_rdd(files_list)
+    output_folder = '/tmp/worker_out_' + time.ctime(int(start_time)).replace(' ', '_').replace(':', '-')
+    rdd = rdd.flatMap(build_users_pairs).groupByKey().flatMap(cos_sim_and_duplication).groupByKey().flatMap(prettify).saveAsTextFile(output_folder)
+    if mode == Mode.GFS:
+        print(os.popen('hadoop fs -copyToLocal ' + output_folder + ' ' + output_folder).read())
+        print(os.popen('gsutil cp -r ' + output_folder + ' ' + gfs_output_path).read()) 
+    end_time = time.time()
+    print("--- %s seconds ---" % (end_time - start_time))
+
+mode = Mode.GFS
+sc = pyspark.SparkContext()
+gfs_output_path = 'gs://scriba/results/'
+gfs_input_path = 'gs://scriba/ratings_by_movie_recent/'
+local_output_path = '/home/gianvito/Desktop/Spark/digging_small/out/'
+local_input_path = '/home/gianvito/Desktop/Spark/digging_small/'
+
+main()

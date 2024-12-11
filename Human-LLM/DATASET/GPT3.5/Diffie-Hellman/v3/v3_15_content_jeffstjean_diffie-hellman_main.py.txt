@@ -1,0 +1,47 @@
+import random
+import time
+
+class Device:
+    def __init__(self):
+        # Generate random values for n and calculate public key
+        self.n = random.randint(1000, 5000)
+        self.g = 15319
+        self.private_key = random.randint(1, self.n)
+        self.public_key = pow(self.g, self.private_key, self.n)
+        self.shared_key = None
+
+    @staticmethod
+    def perform_key_exchange(device1, device2):
+        # Perform key exchange using Diffie-Hellman algorithm
+        device1.shared_key = pow(device2.public_key, device1.private_key, device1.n)
+        device2.shared_key = pow(device1.public_key, device2.private_key, device2.n)
+
+    def encrypt_message(self, message):
+        # Encrypt the message using the shared key
+        encrypted = [ord(char) + self.shared_key for char in message]
+        return encrypted
+
+    def decrypt_message(self, encrypted):
+        # Decrypt the message using the shared key
+        decrypted = ''.join([chr(byte - self.shared_key) for byte in encrypted])
+        return decrypted
+
+def main():
+    device1 = Device()
+    device2 = Device()
+
+    print('\nPerforming key exchange...\n')
+    Device.perform_key_exchange(device1, device2)
+
+    message = 'Hello, how are you?'
+    print(f'[Device1] encrypting message: {message}')
+    encrypted_msg = device1.encrypt_message(message)
+    print('[Device1] sending message...\n')
+    time.sleep(0.5)
+
+    decrypted_msg = device2.decrypt_message(encrypted_msg)
+    print('[Device2] received message')
+    print(f'[Device2] decrypted message as: {decrypted_msg}\n')
+
+if __name__ == "__main__":
+    main()

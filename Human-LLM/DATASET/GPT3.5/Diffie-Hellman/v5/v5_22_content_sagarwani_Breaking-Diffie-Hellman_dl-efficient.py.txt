@@ -1,0 +1,57 @@
+import sys
+import re
+from math import ceil, sqrt
+
+def modular_exponentiation(base, exponent, modulus):
+    """
+    Perform modular exponentiation using binary exponentiation method.
+
+    Args:
+    - base (int): The base value.
+    - exponent (int): The exponent value.
+    - modulus (int): The modulus value.
+
+    Returns:
+    - int: The result of the modular exponentiation.
+    """
+    result = 1
+    binary_exponent = "{0:b}".format(exponent)
+    for bit in binary_exponent:
+        result = (result * result) % modulus
+        if bit == '1':
+            result = (result * base) % modulus
+    return result
+
+def baby_step_giant_step(p, g, h):
+    """
+    Perform the baby-step giant-step algorithm for solving the discrete logarithm problem.
+
+    Args:
+    - p (int): The modulus.
+    - g (int): The base of the exponentiation.
+    - h (int): The result of the exponentiation.
+
+    Returns:
+    - int or None: The exponent if found, otherwise None.
+    """
+    N = ceil(sqrt(p - 1))
+    baby_steps = {modular_exponentiation(g, i, p): i for i in range(N)}
+    giant_step = modular_exponentiation(g, N * (p - 2), p)
+    for j in range(N):
+        y = (h * modular_exponentiation(giant_step, j, p)) % p
+        if y in baby_steps:
+            return j * N + baby_steps[y]
+    return None
+
+if __name__ == '__main__':
+    with open(sys.argv[1], 'r') as file:
+        content = file.readlines()
+        p = int(re.findall('\d+', content[0].split(',')[0])[0])
+        g = int(re.findall('\d+', content[0].split(',')[1])[0])
+        ga = int(re.findall('\d+', content[0].split(',')[2])[0])
+
+    exponent = baby_step_giant_step(p, g, ga)
+    if exponent:
+        print(exponent)
+    else:
+        print("Exponent not found.")

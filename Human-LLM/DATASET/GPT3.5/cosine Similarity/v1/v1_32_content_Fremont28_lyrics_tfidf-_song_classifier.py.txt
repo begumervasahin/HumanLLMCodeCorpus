@@ -1,0 +1,68 @@
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.cluster import KMeans
+
+# Load the data from 'lyrics.csv'
+lyrics = pd.read_csv("lyrics.csv", encoding="latin-1")
+
+# Drop rows with missing values
+lyrics1 = lyrics.dropna()
+
+# Filter data for Hip-Hop genre
+rap_lyrics = lyrics1[lyrics1['genre'] == 'Hip-Hop']
+
+# Generate artist IDs based on the 'artist' column
+rap_lyrics['artist_id'] = rap_lyrics.groupby(['artist']).ngroup()
+
+# Create a TF-IDF vectorizer
+tfidf_vectorizer = TfidfVectorizer(sublinear_tf=True, norm='l2', encoding='latin-1', ngram_range=(1, 2), stop_words='english')
+
+# Fit and transform the lyrics data
+features = tfidf_vectorizer.fit_transform(rap_lyrics['lyrics']).toarray()
+labels = rap_lyrics['artist_id']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(rap_lyrics['lyrics'], rap_lyrics['artist_id'], random_state=0)
+
+# Create a CountVectorizer and fit_transform the training data
+count_vect = CountVectorizer()
+X_train_counts = count_vect.fit_transform(X_train)
+
+# Create a TF-IDF transformer and transform the count matrix
+tfidf_transformer = TfidfTransformer()
+X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+
+# Train a Multinomial Naive Bayes classifier
+clf_nb = MultinomialNB().fit(X_train_tfidf, y_train)
+
+# Example: Predict the artist ID for a new song
+song2 = "Your new song lyrics here"
+predicted_artist_id = clf_nb.predict(count_vect.transform([song2]))
+
+# Perform KMeans clustering
+tfidf_matrix = tfidf_vectorizer.fit_transform(rap_lyrics['lyrics'])
+num_clusters = 5
+k_means = KMeans(n_clusters=num_clusters)
+k_means.fit(tfidf_matrix)
+clusters = k_means.labels_.tolist()
+
+# Create a DataFrame to store clustering results
+cluster_results = pd.DataFrame(clusters)
+cluster_results.columns = ['cluster']
+final_cluster = pd.concat([cluster_results, rap_lyrics[['lyrics', 'artist']]], axis=1)
+
+# Display cluster information
+print(final_cluster.head(10))
+print(final_cluster.info())
+print(final_cluster['cluster'].value_counts())
+
+# Example: Get the counts of artists in cluster one
+cluster_one = final_cluster[final_cluster['cluster'] == 0]
+print(cluster_one['artist'].value_counts())
+
+# Example: Get the counts of artists in cluster two
+cluster_two = final_cluster[final_cluster['cluster'] == 1]
+print(cluster_two['artist'].value_counts())

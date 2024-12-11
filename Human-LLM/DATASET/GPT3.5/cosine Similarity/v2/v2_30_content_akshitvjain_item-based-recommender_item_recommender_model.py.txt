@@ -1,0 +1,70 @@
+import numpy as np
+from numpy import linalg as LA
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.recommendation import ALS
+from pyspark.sql import Row, SparkSession
+from pyspark.sql.functions import col
+from load_data import LoadDataset
+
+class ItemBasedRecommender:
+    def __init__(self):
+        # Initialize Spark session and load dataset
+        ld = LoadDataset()
+        self.spark = SparkSession.builder.appName("ItemBasedRecommender").getOrCreate()
+        self.ratings_df, self.meta_df = ld.load_files(self.spark)
+        self.transformed_ratings_df = ld.transform_data(self.ratings_df)
+        self.train_df, self.test_df = ld.split_data(self.transformed_ratings_df)
+
+    def train_model(self):
+        # Train the ALS model
+        als = ALS(maxIter=5, regParam=0.01, userCol='user_index', itemCol='item_index', ratingCol='rating',
+                  coldStartStrategy='drop', seed=5)
+        model = als.fit(self.train_df)
+        itemFactors = model.itemFactors
+        return model, itemFactors
+
+    def test_model(self, model):
+        # Evaluate the model
+        predictions = model.transform(self.test_df)
+        evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating", predictionCol="prediction")
+        rmse = evaluator.evaluate(predictions)
+        print("Root-mean-square error = " + str(rmse))
+
+    def compute_similarity(self, itemFactors, movie_id):
+        # Compute similarity between the given movie and all other movies
+        get_movie_id = movie_id
+        item = itemFactors.where(col('id') == get_movie_id).select(col('features'))
+        item_features = item.rdd.map(lambda x: x.features).first()
+        similar_items = []
+        for row in itemFactors.rdd.toLocalIterator():
+            _id = row.__getattr__('id')
+            features = row.__getattr__('features')
+            if _id != get_movie_id:
+                similarity_score = self._cosine_similarity(features, item_features)
+                similar_items.append((_id, similarity_score))
+        similar_items_df = self.spark.createDataFrame(similar_items, ["item_index", "similarity_score"])
+        return similar_items_df
+
+    def _cosine_similarity(self, vector_1, vector_2):
+        # Compute cosine similarity between two vectors
+        v1 = np.asarray(vector_1)
+        v2 = np.asarray(vector_2)
+        cs = v1.dot(v2) / (LA.norm(v1) * LA.norm(v2))
+        return cs
+
+    def get_recommendations(self, similar_items_df):
+        # Get top recommendations based on similarity scores
+        recommendations_df = self.train_df.join(similar_items_df, self.train_df.item_index == similar_items_df.item_index)
+        recommendations_df = recommendations_df.select('item', 'similarity_score').distinct()
+        recommendations_df = recommendations_df.orderBy(col('similarity_score').desc())
+        print(recommendations_df.show(5))
+
+if __name__ == "__main__":
+    # Main function to run the recommender system
+    movie_id = int(input('Enter item index (0-9723) to generate similar recommendations: '))
+    item_based_rec = ItemBasedRecommender()
+    model, itemFactors = item_based_rec.train_model()
+    similar_items_df = item_based_rec.compute_similarity(itemFactors, movie_id)
+    print('\n')
+    print('Showing Top 5 Recommendations for item at index {}'.format(movie_id))
+    item_based_rec.get_recommendations(similar_items_df)

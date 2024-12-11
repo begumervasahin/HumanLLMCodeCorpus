@@ -1,0 +1,93 @@
+from Crypto.Cipher import AES, DES3, DES, Blowfish, ChaCha20
+import hashlib
+import random
+import socket
+import pickle
+import argparse
+from ecc import getcurvebyname
+
+# Constants for host and port
+HOST = "127.0.0.1"
+PORT = 4446
+
+# Define command-line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("e", type=int, choices=[0, 1, 2, 3, 4],
+                    help="Symmetric encryption algorithm [0 - AES, 1 - DES, 2 - 3DES, 3 - Blowfish, 4 - ChaCha20]")
+parser.add_argument("-d", "--hash", type=int, choices=[0, 1, 2],
+                    help="Hash function [0 - md5, 1 - blake2s, 2 - SHA256]")
+args = parser.parse_args()
+
+def encrypt_data(cipher, plaintext):
+    """Encrypts the data using the specified cipher."""
+    if args.e == 4:
+        encrypted_value = cipher.nonce + cipher.encrypt(plaintext)
+    else:
+        encrypted_value = cipher.encrypt(plaintext)
+    return encrypted_value
+
+def get_cipher(key):
+    """Returns the cipher based on the chosen symmetric algorithm."""
+    if args.e == 0:
+        cipher = AES.new(key, AES.MODE_ECB)
+    elif args.e == 1:
+        cipher = DES.new(key, DES.MODE_ECB)
+    elif args.e == 2:
+        cipher = DES3.new(key, DES3.MODE_ECB)
+    elif args.e == 3:
+        cipher = Blowfish.new(key, Blowfish.MODE_ECB)
+    elif args.e == 4:
+        cipher = ChaCha20.new(key=key)
+    return cipher
+
+def generate_key(str_value):
+    """Generates a key based on the chosen hash function."""
+    if args.e == 0:
+        if args.hash == 0:
+            key = hashlib.md5()
+        elif args.hash == 1:
+            key = hashlib.blake2s(digest_size=16)
+        else:
+            key = hashlib.md5()
+    elif args.e == 1:
+        key = hashlib.blake2s(digest_size=8)
+    elif args.e == 2:
+        key = hashlib.blake2s(digest_size=16)
+    elif args.e == 3:
+        key = hashlib.blake2s()
+    elif args.e == 4:
+        key = hashlib.blake2s(digest_size=32)
+    key.update(str_value)
+    return key.digest()
+
+def establish_secure_communication():
+    """Establishes a secure communication with the server."""
+    # Establish a socket connection
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+
+    # Elliptic curve cryptography
+    curve = getcurvebyname("ed25519")
+    g = curve.G
+    a = random.randint(1, 2 ** 255 - 19)
+    alice = g.__mul__(a)
+
+    # Send Alice's data and receive Bob's data
+    s.send(pickle.dumps(alice, pickle.HIGHEST_PROTOCOL))
+    bob = pickle.loads(s.recv(4096))
+
+    # Encrypt and send messages
+    messages = ['Jived fox nymph grabs quick waltz.', 'Glib jocks quiz nymph to vex dwarf.']
+    for i in range(2):
+        var = messages[i].ljust(64)
+        k = generate_key(str((bob.__add__(alice.__neg__().__mul__(i))).__mul__(a)).encode())
+        cipher = get_cipher(k)
+        encrypted_message = encrypt_data(cipher, var.encode())
+        s.send(encrypted_message)
+
+    # Close the socket connection
+    s.close()
+
+# Loop to establish secure communication with the server
+for _ in range(10):
+    establish_secure_communication()

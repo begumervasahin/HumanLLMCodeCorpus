@@ -1,0 +1,75 @@
+import random
+from math import sqrt
+
+# Initialize variables and lists
+n = 10000
+values = list(range(n))
+pointers = []
+search_counts = {'A': [], 'B': [], 'C': [], 'D': []}
+
+# Shuffle the list of numbers
+random.shuffle(values)
+
+# Create pointers for linked list structure
+for i in range(n):
+    if i != n - 1:
+        pointers.append(values.index(i + 1))
+    else:
+        pointers.append(-1)
+
+# Set the head of the linked list
+head = values.index(0)
+
+# Function to search for an element in the linked list
+def search(x, i):
+    count = 0
+    while x > values[i]:
+        i = pointers[i]
+        count += 1
+    return i, count
+
+# Define search functions with meaningful names
+def search_type_a(x):
+    return search(x, head)
+
+def search_type_b(x):
+    i = head
+    max_val = values[i]
+    for j in range(int(sqrt(n))):
+        y = values[j]
+        if max_val < y <= x:
+            i = j
+            max_val = y
+    return search(x, i)
+
+def search_type_c(x):
+    i = head
+    max_val = values[i]
+    for _ in range(int(sqrt(n))):
+        jj = random.randint(0, n - 1)
+        y = values[jj]
+        if max_val < y <= x:
+            i = jj
+            max_val = y
+    return search(x, i)
+
+def search_type_d(x):
+    i = random.randint(0, n - 1)
+    y = values[i]
+    if x < y:
+        return search(x, head)
+    elif x > y:
+        return search(x, pointers[i])
+    else:
+        return i, 0
+
+# Perform 100 iterations of each search type and collect the counts
+for _ in range(100):
+    x = random.randint(0, n - 1)
+    for search_type in search_counts:
+        search_counts[search_type].append(globals()[f"search_type_{search_type.lower()}"](x)[1])
+
+# Calculate and print the average search counts for each type
+for search_type, counts in search_counts.items():
+    average_count = sum(counts) / len(counts)
+    print(f"Average Search Count Type {search_type}:", average_count)

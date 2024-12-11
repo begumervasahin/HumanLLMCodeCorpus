@@ -1,0 +1,128 @@
+from collections import defaultdict
+import itertools
+
+class FreqsTrieNode:
+    def __init__(self):
+        self.children = {}
+        self.count = 0
+
+    def hasNode(self, itemset):
+        node = self
+        for item in itemset:
+            if item in node.children:
+                node = node.children[item]
+            else:
+                return False
+        return True
+
+    def getCount(self, itemset):
+        node = self
+        for item in itemset:
+            node = node.children[item]
+        return node.count
+
+    def incrementCount(self, itemset):
+        node = self
+        for item in itemset:
+            if item not in node.children:
+                node.children[item] = FreqsTrieNode()
+            node = node.children[item]
+        node.count += 1
+
+    def getItemSets(self, prefix):
+        itemsets = []
+        if self.count > 0:
+            itemsets.append(prefix)
+        for item, child in self.children.items():
+            itemsets.extend(child.getItemSets(prefix + [item]))
+        return itemsets
+
+class AprioriAlgorithm:
+    def __init__(self):
+        self.freqs_trie_root = FreqsTrieNode()
+
+    def generate_next_size_list(self, current_size_list):
+        next_size_list = []
+        size = len(current_size_list)
+        for i in range(size):
+            for j in range(i + 1, size):
+                if current_size_list[i][:-1] == current_size_list[j][:-1]:
+                    new_itemset = current_size_list[i][:]
+                    new_itemset.append(current_size_list[j][-1])
+                    next_size_list.append(new_itemset)
+                else:
+                    break
+        return next_size_list
+
+    def one_less_subsets(self, itemset):
+        subsets = []
+        size = len(itemset)
+        for i in range(size):
+            subset = itemset[:i] + itemset[i+1:]
+            subsets.append(subset)
+        return subsets
+
+    def prune(self, current_list):
+        pruned_list = []
+        for itemset in current_list:
+            all_subsets = self.one_less_subsets(itemset)
+            flag = True
+            for subset in all_subsets:
+                if not self.freqs_trie_root.hasNode(subset):
+                    flag = False
+                    break
+            if flag:
+                pruned_list.append(itemset)
+        return pruned_list
+
+    def item_sets_count(self, input_file, current_list):
+        counts = [0] * len(current_list)
+        with open(input_file, 'r') as infile:
+            for line in infile:
+                line = line.strip()
+                transaction = set(line.split(","))
+                transaction_size = len(transaction)
+                for i, itemset in enumerate(current_list):
+                    if transaction_size < len(itemset):
+                        continue
+                    if transaction.issuperset(set(itemset)):
+                        counts[i] += 1
+        return counts
+
+    def print_associate_rules(self, mincon):
+        count = 0
+        for itemset in self.freqs_trie_root.getItemSets([]):
+            for j in range(1, len(itemset)):
+                for k in itertools.combinations(itemset, j):
+                    if float(self.freqs_trie_root.getCount(itemset)) / float(self.freqs_trie_root.getCount(list(k))) >= mincon:
+                        print(','.join(k) + "=>" + ','.join(set(itemset) - set(k)))
+                        count += 1
+        return count
+
+def main():
+    apriori = AprioriAlgorithm()
+    minsup = 0.1  # Minimum support
+    mincon = 0.5  # Minimum confidence
+
+    # Example usage:
+    # Generate frequent itemsets using Apriori algorithm
+    current_size_list = [['a'], ['b'], ['c'], ['d'], ['e']]
+    while current_size_list:
+        counts = apriori.item_sets_count('transactions.txt', current_size_list)
+        for itemset, count in zip(current_size_list, counts):
+            if count / float(len(transactions)) >= minsup:
+                apriori.freqs_trie_root.incrementCount(itemset)
+        current_size_list = apriori.generate_next_size_list(current_size_list)
+        current_size_list = apriori.prune(current_size_list)
+
+    # Print frequent itemsets and association rules
+    print("Frequent itemsets:")
+    for itemset in apriori.freqs_trie_root.getItemSets([]):
+        print(','.join(itemset))
+
+    print("\nAssociation rules:")
+    apriori.print_associate_rules(mincon)
+
+
+if __name__ == '__main__':
+    main()

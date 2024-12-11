@@ -1,0 +1,133 @@
+import random
+import math
+import getpass
+
+# Spritz PRNG Functions
+
+def update_spritz():
+    global a_spritz, i_spritz, j_spritz, w_spritz, s_spritz
+    i_spritz = (i_spritz + w_spritz) % 256
+    j_spritz = s_spritz[(j_spritz + s_spritz[i_spritz]) % 256]
+    s_spritz[i_spritz], s_spritz[j_spritz] = s_spritz[j_spritz], s_spritz[i_spritz]     
+
+def output_spritz():
+    global a_spritz, i_spritz, j_spritz, w_spritz, s_spritz
+    update_spritz()
+    return s_spritz[j_spritz]
+
+def shuffle_spritz():
+    global a_spritz, i_spritz, j_spritz, w_spritz, s_spritz
+    for _ in range(256):
+        update_spritz()
+    w_spritz = (w_spritz + 2) % 256
+    a_spritz = 0
+
+def absorb_nibble_spritz(x):
+    global a_spritz, s_spritz
+    if a_spritz == 241:
+        shuffle_spritz()
+    s_spritz[a_spritz], s_spritz[240 + x] = s_spritz[240 + x], s_spritz[a_spritz]       
+    a_spritz += 1
+
+def absorb_byte_spritz(b):
+    absorb_nibble_spritz(b % 16)
+    absorb_nibble_spritz(b >> 4)
+
+def squeeze_spritz(out, outlen):
+    shuffle_spritz()
+    for _ in range(outlen):
+        out.append(output_spritz())
+
+# Helper Functions
+
+def gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+def next_prime(p):
+    while p % 12 != 11:
+        p += 1
+    return next_prime_odd(p)
+
+def next_prime_odd(p):
+    m_ = 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29 * 31 * 37 * 41 * 43 * 47
+    while True:
+        while gcd(p, m_) != 1 or gcd((p + 1) // 12, m_) != 1:
+            p += 12
+        if pow(7, p - 1, p) != 1 or pow(7, (p + 1) // 12 - 1, (p + 1) // 12) != 1:      
+            p += 12
+            continue
+        return p
+
+def h(x):
+    global a_spritz, i_spritz, j_spritz, w_spritz, s_spritz
+    i_spritz = j_spritz = a_spritz = 0
+    w_spritz = 1
+    s_spritz = [ix for ix in range(256)]
+    for c in x:
+        absorb_byte_spritz(ord(c))
+    res = []
+    squeeze_spritz(res, 32)
+    out = 0
+    for bx in res:
+        out = (out << 8) + bx
+    return out % ((prime + 1) // 12)
+
+def addP(P, Q):
+    x1, x2 = P[0], Q[0]
+    y1, y2 = P[1], Q[1]
+    if x1 == x2:
+        s = (3 * x1 * x1 * pow(2 * y1, prime - 2, prime)) % prime
+    else:
+        if x1 < x2:
+            x1 += prime
+        s = ((y1 - y2) * pow(x1 - x2, prime - 2, prime)) % prime
+    xr = s ** 2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+def mulP(P, n):
+    resP = 'NONE'
+    PP = P
+    while n != 0:
+        if n % 2 != 0:
+            if resP == 'NONE':
+                resP = PP
+            else:
+                resP = addP(resP, PP)
+        PP = addP(PP, PP)
+        n >>= 1
+    return resP
+
+def signSchnorr(G, m, x):
+    k = h(m + 'key value')
+    R = mulP(G, k)
+    e = h(str(R[0]) + m)
+    return [(k - x * e) % ((prime + 1) // 12), e]
+
+# Main Code
+
+prime = next_prime(12 * 2 ** 131)
+print("A prime greater than 12 times 2^131 \np =", prime)
+
+x = 1234567
+while pow(x ** 3 + 1, (prime - 1) >> 1, prime) != 1:
+    x += 1
+y = pow(x ** 3 + 1, (prime + 1) >> 2, prime)
+P = [x % prime, y % prime]
+P = mulP(P, 12)
+
+fo = open('vFS.py', 'r')
+print("\n\nRead message to sign from file:", fo.name)
+message = fo.read()
+fo.close()
+
+privateKey = h(getpass.getpass())
+sig = signSchnorr(P, message, privateKey)
+print("The signature is:", sig)
+
+publicKey = mulP(P, privateKey)
+R = addP(mulP(P, sig[0]), mulP(publicKey, sig[1]))
+check = h(str(R[0]) + message) == sig[1]
+print("Result of verification:", check)

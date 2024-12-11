@@ -1,0 +1,30 @@
+from prf import *
+
+id_func = Proj(1, 0)
+one = C(S, zero)
+S3 = C(S, Proj(3, 0))
+
+# Addition
+addition = PR(id_func, S3)
+addition = accel(addition, lambda x, y: x + y, 2)
+
+# Predecessor
+predecessor = C(PR(id_func, Proj(3, 1)), Proj(1, 0), Proj(1, 0))
+predecessor = accel(predecessor, lambda x: x - 1 if x > 0 else 0, 1)
+pred3 = C(predecessor, Proj(3, 0))
+
+# Subtraction
+rsub = PR(id_func, pred3)
+subtraction = C(rsub, Proj(2, 1), Proj(2, 0))
+subtraction = accel(subtraction, lambda x, y: x - y if x >= y else 0, 2)
+
+# Multiplication
+mul_step = C(addition, Proj(3, 0), Proj(3, 2))
+multiplication = PR(zero, mul_step)
+multiplication = accel(multiplication, lambda x, y: x * y, 2)
+
+# Power
+pow_step = C(multiplication, Proj(3, 0), Proj(3, 2))
+rpow = PR(one, pow_step)
+power = C(rpow, Proj(2, 1), Proj(2, 0))
+power = accel(power, lambda x, y: x ** y, 2)

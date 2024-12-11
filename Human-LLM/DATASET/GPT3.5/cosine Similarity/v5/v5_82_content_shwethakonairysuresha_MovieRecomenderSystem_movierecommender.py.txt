@@ -1,0 +1,76 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load and display the user-item rating data from 'file.tsv'
+column_names = ['user_id', 'item_id', 'rating', 'timestamp']
+user_ratings = pd.read_csv('file.tsv', sep='\t', names=column_names)
+print('User-Item Ratings Data:')
+print(user_ratings.head())
+print()
+
+# Load and display the movie titles data from 'Movie_Id_Titles.csv'
+movie_titles = pd.read_csv('Movie_Id_Titles.csv')
+print('Movie Titles Data:')
+print(movie_titles.head())
+print()
+
+# Merge the user ratings and movie titles dataframes on 'item_id'
+merged_data = pd.merge(user_ratings, movie_titles, on='item_id')
+print('Merged Data:')
+print(merged_data.head())
+print()
+
+# Calculate mean ratings and number of ratings for each movie
+movie_ratings = pd.DataFrame(merged_data.groupby('title')['rating'].mean())
+movie_ratings['num_of_ratings'] = merged_data.groupby('title')['rating'].count()
+print('Dataframe with Rating Count Values:')
+print(movie_ratings.head())
+print()
+
+# Visualize the distribution of ratings count
+plt.figure(figsize=(10, 4))
+movie_ratings['num_of_ratings'].hist(bins=70)
+plt.xlabel('Number of Ratings')
+plt.ylabel('Frequency')
+plt.title('Distribution of Ratings Count')
+plt.show()
+
+# Visualize the distribution of ratings
+plt.figure(figsize=(10, 4))
+movie_ratings['rating'].hist(bins=70)
+plt.xlabel('Rating')
+plt.ylabel('Frequency')
+plt.title('Distribution of Ratings')
+plt.show()
+
+# Create a user-movie matrix for collaborative filtering
+user_movie_matrix = merged_data.pivot_table(index='user_id', columns='title', values='rating')
+print('User-Movie Matrix:')
+print(user_movie_matrix.head())
+print()
+
+# Compute correlations with specific movies
+star_wars_ratings = user_movie_matrix['Star Wars (1977)']
+liar_liar_ratings = user_movie_matrix['Liar Liar (1997)']
+corr_star_wars = user_movie_matrix.corrwith(star_wars_ratings)
+corr_liar_liar = user_movie_matrix.corrwith(liar_liar_ratings)
+
+# Create correlation dataframes and filter movies with more than 100 ratings
+corr_star_wars_df = pd.DataFrame(corr_star_wars, columns=['Correlation'])
+corr_star_wars_df.dropna(inplace=True)
+corr_star_wars_df = corr_star_wars_df.join(movie_ratings['num_of_ratings'])
+corr_star_wars_filtered = corr_star_wars_df[corr_star_wars_df['num_of_ratings'] > 100].sort_values('Correlation', ascending=False)
+
+corr_liar_liar_df = pd.DataFrame(corr_liar_liar, columns=['Correlation'])
+corr_liar_liar_df.dropna(inplace=True)
+corr_liar_liar_df = corr_liar_liar_df.join(movie_ratings['num_of_ratings'])
+corr_liar_liar_filtered = corr_liar_liar_df[corr_liar_liar_df['num_of_ratings'] > 100].sort_values('Correlation', ascending=False)
+
+# Print the recommended movies
+print('Movies recommended that are similar to Star Wars (1977):')
+print(corr_star_wars_filtered.head())
+print()
+
+print('Movies recommended that are similar to Liar Liar (1997):')
+print(corr_liar_liar_filtered.head())

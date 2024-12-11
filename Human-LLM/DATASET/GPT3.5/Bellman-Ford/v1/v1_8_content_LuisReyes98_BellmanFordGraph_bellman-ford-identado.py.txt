@@ -1,0 +1,172 @@
+import sys
+import tkinter as tk
+from tkinter import Toplevel, Label, Button, Entry, BOTTOM, TOP, RIGHT, LEFT, Scrollbar, END
+from tkinter import messagebox as tkMessageBox
+
+global numNodes
+global numEdges
+global nodeVector
+global creatingEdge
+global edgeAux
+global canvas
+global textPanel
+
+numNodes = 1
+numEdges = 1
+nodeVector = []
+creatingEdge = False
+
+def initialize(graph, source):
+    distances = {}
+    predecessors = {}
+    for node in graph:
+        distances[node] = float('inf')
+        predecessors[node] = None
+    distances[source] = 0
+    return distances, predecessors
+
+def relax(node, neighbor, graph, distances, predecessors):
+    if distances[neighbor] > distances[node] + graph[node][neighbor]:
+        distances[neighbor] = distances[node] + graph[node][neighbor]
+        predecessors[neighbor] = node
+
+def bellman_ford(graph, source):
+    global textPanel
+    iteration = 0
+    distances, predecessors = initialize(graph, source)
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            iteration += 1
+            for neighbor in graph[node]:
+                relax(node, neighbor, graph, distances, predecessors)
+            textPanel.insert(END, f'Iteration {iteration} \n')
+            textPanel.insert(END, 'Distance Array \n')
+            textPanel.insert(END, f'{distances} \n')
+            textPanel.insert(END, 'Predecessor Array \n')
+            textPanel.insert(END, f'{predecessors} \n')
+    for node in graph:
+        for neighbor in graph[node]:
+            assert distances[neighbor] <= distances[node] + graph[node][neighbor]
+    return distances, predecessors
+
+def main():
+    graph = {
+        'a': {'b': -1, 'c': 4},
+        'b': {'c': 3, 'd': 2, 'e': 2},
+        'c': {},
+        'd': {'b': 1, 'c': 5},
+        'e': {'d': -3}
+    }
+    distances, predecessors = bellman_ford(graph, 'a')
+    print(distances)
+    print(predecessors)
+    mainWindow()
+
+def mainWindow():
+    global canvas
+    root = tk.Tk()
+    root.title("Bellman-Ford Graphs")
+    bottomFrame = tk.Frame(root)
+    bottomFrame.pack(side=BOTTOM)
+    topFrame = tk.Frame(root)
+    topFrame.pack(side=TOP)
+    w = 790
+    h = 600
+    ws = root.winfo_screenwidth()
+    hs = root.winfo_screenheight()
+    x = (ws / 2) - (w / 2)
+    y = (hs / 2) - (h / 2)
+    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    topPanel(topFrame, w, h)
+    arial14 = ('Arial', 14, "bold")
+    circleButton = tk.Button(bottomFrame, text="Add Node", command=lambda: createNode(canvas), font=arial14)
+    evaluateButton = tk.Button(bottomFrame, text="Evaluate Graph", font=arial14, command=evaluateGraph)
+    deleteButton = tk.Button(bottomFrame, text="Delete All", font=arial14, command=resetAll)
+    circleButton.pack(side=tk.LEFT)
+    evaluateButton.pack(side=tk.LEFT)
+    deleteButton.pack(side=tk.LEFT)
+    root.mainloop()
+    sys.exit(0)
+
+def topPanel(topFrame, w, h):
+    global canvas
+    global textPanel
+    canvas = tk.Canvas(topFrame, width=585, height=h - 50, borderwidth=0, highlightthickness=0, bg="white")
+    textPanel = tk.Text(topFrame, height=300, width=50)
+    scroll = Scrollbar(topFrame)
+    canvas.pack(side=tk.LEFT)
+    scroll.pack(side=RIGHT, fill=tk.Y)
+    textPanel.pack(side=tk.LEFT)
+    scroll.config(command=textPanel.yview)
+    textPanel.config(yscrollcommand=scroll.set)
+
+def resetAll():
+    global canvas
+    global numNodes
+    global numEdges
+    global creatingEdge
+    global edgeAux
+    global nodeVector
+    canvas.delete("all")
+    numNodes = 1
+    numEdges = 1
+    nodeVector = []
+    creatingEdge = False
+    edgeAux = None
+
+def evaluateGraph():
+    global nodeVector
+    global textPanel
+    graph = {}
+    auxEdge = {}
+    for i in range(len(nodeVector)):
+        for j in range(len(nodeVector[i].edges)):
+            auxEdge[nodeVector[i].edges[j].node2.id] = int(nodeVector[i].edges[j].weight)
+        graph[nodeVector[i].id] = auxEdge
+        auxEdge = {}
+    distances, predecessors = bellman_ford(graph, nodeVector[0].id)
+    textPanel.insert(END, f'{distances} \n')
+    textPanel.insert(END, f'{predecessors} \n')
+
+def createNode(canvas):
+    global nodeVector
+    node = Node(canvas, 100, 120, 30)
+    nodeVector.append(node)
+
+class Node:
+    def __init__(self, canvas, x, y, r):
+        self.edges = []
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.r = r
+        self.moving = True
+        self.drawNode()
+        self.createPopupMenu()
+
+    def moveCircle(self, event):
+        if self.moving:
+            posX = event.x - self.x
+            posY = event.y - self.y
+            self.x = event.x
+            self.y = event.y
+            self.canvas.move(self.circle, posX, posY)
+            self.canvas.move(self.canvasNum, posX, posY)
+
+    def drawNode(self):
+        global numNodes
+        self.id = numNodes
+        self.circle = self.canvas.create_oval(self.x - self.r, self.y - self.r, self.x + self.r, self.y + self.r,
+                                              fill="blue")
+        self.canvasNum = self.canvas.create_text(self.x, self.y, fill="white", text=f'{self.id}')
+        numNodes += 1
+        self.canvas.tag_bind(self.circle, '<B1-Motion>', self.moveCircle)
+        self.canvas.tag_bind(self.canvasNum, '<B1-Motion>', self.moveCircle)
+        self.canvas.tag_bind(self.circle, '<Button-3>', self.do_popup)
+        self.canvas.tag_bind(self.canvasNum, '<Button-3>', self.do_popup)
+
+    def createPopupMenu(self):
+        self.popupMenu = tk.Menu(self.canvas, tearoff=0)
+        self.popupMenu.add_command(label="Fix Node", command=self.popupFixNode)
+        self.popupMenu.add_command(label="Move Node", command=self.popupMoveNode)
+        self.popupMenu.add_command

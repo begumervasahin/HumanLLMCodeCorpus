@@ -1,0 +1,53 @@
+import pdb
+
+def initialize(graph, source):
+    # Baþlangýçta tüm düðümlerin mesafesi sonsuz, önceki düðümleri ise yok olarak ayarlanýr
+    distances = {}
+    predecessors = {}
+    for node in graph:
+        distances[node] = float('inf')
+        predecessors[node] = None
+    # Kaynaktan kaynaða mesafe 0 olarak ayarlanýr
+    distances[source] = 0
+    return distances, predecessors
+
+def relax(node, neighbour, graph, distances, predecessors):
+    # Eðer bir komþunun mesafesi, mevcut düðümün mesafesinden daha uzaksa, güncellenir
+    if distances[neighbour] > distances[node] + graph[node][neighbour]:
+        distances[neighbour] = distances[node] + graph[node][neighbour]
+        predecessors[neighbour] = node
+
+def bellman_ford(graph, source):
+    # Ýlk olarak tüm mesafeleri ve önceki düðümleri baþlangýç deðerlerine ayarla
+    distances, predecessors = initialize(graph, source)
+    # Grafikteki düðümlerin sayýsýný (n-1) kez gezin
+    for i in range(len(graph) - 1):
+        for u in graph:
+            # Her düðümde komþularýný kontrol et
+            for v in graph[u]:
+                relax(u, v, graph, distances, predecessors)
+    # Negatif döngü kontrolü
+    for u in graph:
+        for v in graph[u]:
+            assert distances[v] <= distances[u] + graph[u][v]
+    return distances, predecessors
+
+def test():
+    graph = {
+        'a': {'b': -2, 'c': 1, 'd': 4},
+        'b': {'e': 3},
+        'c': {'b': -3, 'd': 2},
+        'd': {'e': -1},
+        'e': {'c': 5}
+    }
+    # Bellman-Ford algoritmasýný kullanarak grafikteki en kýsa yollarý bul
+    distances, predecessors = bellman_ford(graph, 'a')
+    print("Kaynaktan a'nýn tüm diðer düðümlere olan en kýsa mesafeleri:")
+    for u in graph:
+        print(u, "=", distances[u])
+    print("Kaynaktan a'ya olan tüm diðer düðümlerin yollarý (önceki düðümler):")
+    for u in graph:
+        print(u, "=", predecessors[u])
+
+if __name__ == '__main__':
+    test()

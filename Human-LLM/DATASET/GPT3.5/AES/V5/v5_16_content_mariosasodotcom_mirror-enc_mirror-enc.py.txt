@@ -1,0 +1,125 @@
+import sys
+import subprocess
+
+class MirrorEnc:
+    """A GPG frontend for AES & RSA encryption and hashing."""
+
+    def __init__(self):
+        self.banner = self._load_banner()
+        self.menu = self._load_menu()
+
+    def _load_banner(self):
+        """Loads the ASCII art banner."""
+        return """
+             ___________ @ @
+            /  v1.0.0  @\\   @                       _
+            \\___________/  _@              ___ __ _(_)__ _ __ _  ___ __ _
+                      @  _/@ \\_____       / _ ' _` | |__` |__` |/ _ \\__` |
+                       @/ \\__/-=-=^`     | | | | | | |  | |  | | (_) | | |
+                        \\_ /             |_| |_| |_|_|  |_|  |_|\___/  |_|-enc
+                         <|               .:   <github.com/M4R1OS4S0>    :.
+                         <|               .: <mariosaso@protonmail.com>  :.
+                         <|               .: <https://www.mariosaso.com> :.
+                A GPG Frontend that uses AES & RSA algorithms.
+        """
+
+    def _load_menu(self):
+        """Loads the main menu."""
+        return """
+                      .:: Encryption & Decryption ::.
+            1. AES-256 File Encryption       2. AES-256 File Decryption
+            3. Generate RSA Keypair          4. Generate RSA Default Keypair
+            5. Import RSA Key                6. Export RSA Key
+            7. List Public Keys              8. List Private Keys
+            9. Delete Public Key            10. Delete Private Key
+            11. RSA Encrypt File            12. RSA Decrypt File
+
+                          .:: Hashing ::.
+            13. MD5 Hash                     14. SHA-1 Hash
+            15. SHA-224 Hash                 16. SHA-256 Hash
+
+                             .:: Other ::.
+            0. Show Menu                     00. Exit
+        """
+
+    def clear_screen(self):
+        """Clears the terminal screen."""
+        subprocess.run(['clear'], check=True)
+
+    def normalize_path(self, file_path):
+        """Normalizes file path to handle drag & drop quirks."""
+        return file_path.strip('\'"')
+
+    def execute_command(self, command):
+        """Executes a subprocess command and handles output."""
+        try:
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            print("\n[+] Operation completed successfully")
+            print(result.stdout.decode('utf-8'))
+        except subprocess.CalledProcessError as e:
+            print("\n[-] An error occurred")
+            print(e.stderr.decode('utf-8'))
+
+    def prompt_for_input(self, prompt):
+        """Prompts the user for input, handling drag & drop quirks."""
+        return self.normalize_path(input(prompt))
+
+    def show_banner_and_menu(self):
+        """Displays the banner and the main menu."""
+        self.clear_screen()
+        print(self.banner)
+        print(self.menu)
+
+    def handle_option(self, option):
+        """Handles user's menu option."""
+        operations = {
+            '1': self.aes_encrypt,
+            '2': self.aes_decrypt,
+            '3': lambda: self.rsa_generate_keypair(False),
+            '4': lambda: self.rsa_generate_keypair(True),
+            '5': self.rsa_import_key,
+            '6': self.rsa_export_key,
+            '7': lambda: self.rsa_list_keys(False),
+            '8': lambda: self.rsa_list_keys(True),
+            '9': lambda: self.rsa_delete_key(False),
+            '10': lambda: self.rsa_delete_key(True),
+            '11': self.rsa_encrypt,
+            '12': self.rsa_decrypt,
+            '13': lambda: self.calculate_hash('md5'),
+            '14': lambda: self.calculate_hash('sha1'),
+            '15': lambda: self.calculate_hash('sha224'),
+            '16': lambda: self.calculate_hash('sha256'),
+            '0': self.show_banner_and_menu,
+        }
+
+        if option in operations:
+            operations[option]()
+        elif option == '00':
+            print('Exiting mirror-enc...')
+            sys.exit(0)
+        else:
+            print('Invalid option. Please try again.')
+
+    # Define encryption, decryption, key management, and hashing functions below
+    # Example:
+    def aes_encrypt(self):
+        file_path = self.prompt_for_input('Enter the file path: ')
+        self.execute_command(["gpg", "-a", "-o", f"{file_path}.aes", "--symmetric", "--cipher-algo", "AES256", file_path])
+
+    # Continue implementing other functions following the pattern above.
+
+def main():
+    app = MirrorEnc()
+    app.show_banner_and_menu()
+    options = [str(i) for i in range(17)] + ['00']
+
+    while True:
+        try:
+            option = app.prompt_for_input('Choose an option > ')
+            app.handle_option(option)
+        except KeyboardInterrupt:
+            print("\nOperation canceled by the user.")
+            break
+
+if __name__ == "__main__":
+    main()

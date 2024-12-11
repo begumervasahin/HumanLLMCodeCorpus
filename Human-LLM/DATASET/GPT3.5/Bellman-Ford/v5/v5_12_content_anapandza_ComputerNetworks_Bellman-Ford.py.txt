@@ -1,0 +1,53 @@
+# Initialize the distances and predecessors dictionaries for the graph
+def initialize(graph, source):
+    distances = {}  # Store the shortest distance from the source to each node
+    predecessors = {}  # Store the predecessor node on the shortest path to each node
+    for node in graph:
+        distances[node] = float('inf')  # Initialize all distances to infinity
+        predecessors[node] = None  # Initialize all predecessors to None
+    distances[source] = 0  # The distance from the source to itself is 0
+    return distances, predecessors
+
+# Update the distances and predecessors dictionaries if a shorter path is found
+def relax(node, neighbour, graph, distances, predecessors):
+    new_distance = distances[node] + graph[node][neighbour]
+    if distances[neighbour] > new_distance:
+        distances[neighbour] = new_distance
+        predecessors[neighbour] = node
+
+# Find the shortest paths from the source node to all other nodes using the Bellman-Ford algorithm
+def bellman_ford(graph, source):
+    distances, predecessors = initialize(graph, source)
+    # Iterate over all nodes (n-1) times to find the shortest paths
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            for neighbour in graph[node]:
+                relax(node, neighbour, graph, distances, predecessors)
+    # Check for negative cycles
+    for node in graph:
+        for neighbour in graph[node]:
+            assert distances[neighbour] <= distances[node] + graph[node][neighbour]
+    return distances, predecessors
+
+# Test the Bellman-Ford algorithm with a sample graph
+def test():
+    graph = {
+        'a': {'b': -2, 'c': 1, 'd': 4},
+        'b': {'e': 3},
+        'c': {'b': -3, 'd': 2},
+        'd': {'e': -1},
+        'e': {'c': 5}
+    }
+    # Find the shortest distances and predecessors for each node
+    distances, predecessors = bellman_ford(graph, 'a')
+    # Print the results
+    print("The shortest distance from source 'a' to all other nodes:")
+    for node, distance in distances.items():
+        print(node, "=", distance)
+    print("Paths from source 'a' to all other nodes (predecessors of nodes):")
+    for node, predecessor in predecessors.items():
+        print(node, "=", predecessor)
+
+# Execute the test function if the script is run directly       
+if __name__ == '__main__':
+    test()

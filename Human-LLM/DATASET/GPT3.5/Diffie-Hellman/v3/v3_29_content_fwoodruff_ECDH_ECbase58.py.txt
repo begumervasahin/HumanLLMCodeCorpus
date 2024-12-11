@@ -1,0 +1,48 @@
+import TypeConversion as TC
+import ModularOperations as mod
+import ECRing
+
+def point_to_base58(point, curve):
+    """
+    Convert a point to a base-58 string representation.
+    
+    Args:
+        point (ECRing.Point): The point to convert.
+        curve (ECRing.Curve): The elliptic curve parameters.
+
+    Returns:
+        str: The base-58 string representation of the point.
+    """
+    key58 = TC.int_to_base58(point.x)
+    prefix = '03' if point.y > curve.p / 2 else '02'
+    return prefix + key58
+
+def base58_to_point(base58_str, curve):
+    """
+    Convert a base-58 string representation to a point.
+    
+    Args:
+        base58_str (str): The base-58 string representation of the point.
+        curve (ECRing.Curve): The elliptic curve parameters.
+
+    Returns:
+        ECRing.Point: The point represented by the base-58 string.
+    """
+    a, b, p = curve.a, curve.b, curve.p
+    key_x = TC.base58_to_int(base58_str[2:])
+    key_y_sq = (key_x * key_x * key_x + a * key_x + b) % p
+    key_y = mod.modular_sqrt(key_y_sq, p)
+    prefix = base58_str[0:2]
+    if prefix == '03':
+        y = key_y if key_y > curve.p / 2 else p - key_y
+    else:
+        y = key_y if key_y <= curve.p / 2 else p - key_y
+    return ECRing.Point(key_x, y)
+
+# Example usage
+curve = ECRing.Curve(a, b, p)  # Define the curve parameters
+point = ECRing.Point(x, y)  # Define the point coordinates
+base58_string = point_to_base58(point, curve)
+result_point = base58_to_point(base58_string, curve)
+print("Base-58 String Representation:", base58_string)
+print("Resulting Point:", result_point)

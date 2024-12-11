@@ -1,0 +1,84 @@
+import pandas as pd
+import itertools
+
+# Function to read user input
+def read_user_input(prompt):
+    return int(input(prompt))
+
+# Function to read data from file
+def read_data_from_file(file_path, percentage):
+    num_lines = sum(1 for line in open(file_path))
+    records = int((percentage / 100) * num_lines)
+    data_set = pd.read_csv(file_path, sep=' ', header=None, nrows=records).values
+    return data_set
+
+# Function to count item occurrences
+def count_item_occurrences(data_set):
+    item_count = {}
+    for transaction in data_set:
+        for i in range(1, 5):
+            for comb in itertools.combinations(transaction, i):
+                item_count[comb] = item_count.get(comb, 0) + 1
+    return item_count
+
+# Function to filter out items with support below the minimum support threshold
+def filter_frequent_items(item_count, min_support):
+    frequent_items = {k: v for k, v in item_count.items() if v >= min_support}
+    return frequent_items
+
+# Function to extract keys for confidence calculation
+def extract_confidence_keys(frequent_items):
+    max_size = max(len(x) for x in frequent_items)
+    confidence_keys = [k for k in frequent_items if len(k) == max_size]
+    return confidence_keys
+
+# Function to generate combinations for confidence calculation
+def generate_combinations(confidence_keys):
+    combinations = []
+    for quad in confidence_keys:
+        for i in range(1, 3):
+            for a in itertools.combinations(quad, i):
+                combinations.append(a)
+    return combinations
+
+# Function to generate test combinations for confidence calculation
+def generate_test_combinations(confidence_subset):
+    test_combinations = []
+    for i in confidence_subset:
+        list_num = [i]
+        for j in confidence_subset:
+            if i != j:
+                list_num.append(j)
+        test_combinations.append(list_num)
+        test_combinations.append(list_num[::-1])
+    return test_combinations
+
+if __name__ == "__main__":
+    # Read user input for percentage, minimum support, and minimum confidence
+    percentage = read_user_input("How many % of records do you want to read? ")
+    min_support = read_user_input("What is the minimum support? ")
+    min_confidence = read_user_input("What is the % of the minimum confidence? ")
+
+    # Read data from file
+    file_path = "CarSales.txt"
+    data_set = read_data_from_file(file_path, percentage)
+
+    # Count item occurrences
+    item_count = count_item_occurrences(data_set)
+
+    # Filter out items with support below the minimum support threshold
+    frequent_items = filter_frequent_items(item_count, min_support)
+
+    # Extract keys for confidence calculation
+    confidence_keys = extract_confidence_keys(frequent_items)
+
+    # Filter out items from the confidence subset
+    confidence_subset = list(set(itertools.chain.from_iterable(confidence_keys)))
+
+    # Generate combinations for confidence calculation
+    combinations = generate_combinations(confidence_keys)
+
+    # Generate test combinations for confidence calculation
+    test_combinations = generate_test_combinations(confidence_subset)
+
+    print("Apriori algorithm completed successfully.")

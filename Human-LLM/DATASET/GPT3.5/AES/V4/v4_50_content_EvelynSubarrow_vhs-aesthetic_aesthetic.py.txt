@@ -1,0 +1,78 @@
+import argparse
+import decimal
+import numpy as np
+import re
+import sys
+import time
+import timeit
+from PIL import Image, ImageDraw, ImageFont
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description='Apply effects to an image.')
+    parser.add_argument('input_file', help='Input image file path.')
+    parser.add_argument('output_file', help='Output image file path.')
+    parser.add_argument('-t', '--text', help='Text to add to the image, formatted as "[x,y]Text".')
+    parser.add_argument('-s', '--text_size', type=int, default=50, help='Font size for the added text.')
+    parser.add_argument('--ghost-il', action='store_true', help='Use inline Python for ghosting (slower).')
+    parser.add_argument('--ghost-np', action='store_true', default=True, help='Use NumPy for ghosting (faster).')
+    parser.add_argument('-g', '--ghost_width', type=float, default=1.0, help='Width of the ghost effect as a percentage of the image width.')
+    parser.add_argument('-y', '--chrominance_static', type=int, default=7, help='Maximum +- variation for chrominance in YUV color space.')
+    parser.add_argument('-v', '--luminance_static', type=int, default=11, help='Maximum +- variation for luminance in YUV color space.')
+    parser.add_argument('-r', '--rescale', type=decimal.Decimal, help='Rescale the image (as a decimal fraction of the original size).')
+    return parser.parse_args()
+
+def load_image(file_path, rescale_factor=None):
+    """Load and optionally rescale an image."""
+    with PrintTimer('Loading and rescaling image'):
+        image = Image.open(file_path).convert('RGB')
+        if rescale_factor:
+            new_dimensions = (int(image.width * rescale_factor), int(image.height * rescale_factor))
+            image = image.resize(new_dimensions)
+    return image
+
+def add_text_to_image(image, text_instructions, font_size):
+    """Add text to an image based on instructions."""
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("arial.ttf", font_size)
+    for instruction in parse_text_instructions(text_instructions):
+        position, text = instruction['position'], instruction['text']
+        draw.text(position, text, font=font, fill=(255, 255, 255))
+
+def apply_ghost_effect(image, use_numpy=True, ghost_width=1.0, chrominance_static=7, luminance_static=11):
+    """Apply a ghost effect to the image."""
+    # This function would contain logic to apply the ghost effect using either NumPy or inline Python.
+    pass
+
+def save_image(image, file_path):
+    """Save the image to a file."""
+    with PrintTimer('Saving image'):
+        image.save(file_path)
+
+class PrintTimer:
+    """Context manager for timing operations."""
+    def __init__(self, description):
+        self.description = description
+
+    def __enter__(self):
+        self.start_time = timeit.default_timer()
+        return self
+
+    def __exit__(self, *args):
+        elapsed_time = timeit.default_timer() - self.start_time
+        print(f"{self.description} took {elapsed_time:.2f} seconds.")
+
+def main():
+    args = parse_arguments()
+    image = load_image(args.input_file, args.rescale)
+
+    if args.text:
+        add_text_to_image(image, args.text, args.text_size)
+
+    apply_ghost_effect(image, use_numpy=args.ghost_np, ghost_width=args.ghost_width,
+                       chrominance_static=args.chrominance_static, luminance_static=args.luminance_static)
+
+    save_image(image, args.output_file)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,108 @@
+import random
+
+def insertion_sort(arr):
+    """
+    Sorts the array using the Insertion Sort algorithm.
+
+    Args:
+        arr (list): The list to be sorted.
+
+    Returns:
+        list: The sorted list.
+    """
+    if not isinstance(arr, list):
+        raise TypeError('The input must be a list.')
+
+    n = len(arr)
+    if n < 2:
+        return arr
+
+    for i in range(1, n):
+        current_element = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > current_element:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = current_element
+
+    return arr
+
+def choose_pivot(arr, low, high, pivot_type):
+    """
+    Chooses the pivot element based on the chosen pivot type.
+
+    Args:
+        arr (list): The list from which the pivot will be chosen.
+        low (int): The lower index of the sublist.
+        high (int): The higher index of the sublist.
+        pivot_type (str): The type of pivot to choose: 'first', 'last', 'middle', or 'random'.
+
+    Returns:
+        tuple: The chosen pivot element and the updated list.
+    """
+    pivot_indices = {'first': low, 'last': high, 'middle': (low + high) // 2, 'random': random.randint(low, high)}
+    pivot = arr[pivot_indices[pivot_type]]
+    arr[pivot_indices[pivot_type]], arr[high] = arr[high], arr[pivot_indices[pivot_type]]
+    return pivot, arr
+
+def partition(arr, low, high, pivot_type):
+    """
+    Partitions the array around the pivot element.
+
+    Args:
+        arr (list): The list to be partitioned.
+        low (int): The lower index of the sublist.
+        high (int): The higher index of the sublist.
+        pivot_type (str): The type of pivot to choose: 'first', 'last', 'middle', or 'random'.
+
+    Returns:
+        int: The index of the pivot element after partitioning.
+    """
+    pivot, arr = choose_pivot(arr, low, high, pivot_type)
+    i = low - 1
+    for j in range(low, high):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+
+def quick_sort_recursive(arr, low, high, pivot_type, modify=False, modify_length=10):   
+    """
+    Sorts the array using the recursive version of the quicksort algorithm.
+
+    Args:
+        arr (list): The list to be sorted.
+        low (int): The lower index of the sublist.
+        high (int): The higher index of the sublist.
+        pivot_type (str): The type of pivot to choose: 'first', 'last', 'middle', or 'random'.
+        modify (bool): Whether to switch to insertion sort for small sublists.
+        modify_length (int): The threshold length for switching to insertion sort.      
+
+    Returns:
+        list: The sorted list.
+    """
+    if not isinstance(arr, list):
+        raise TypeError('Input must be a list.')
+
+    if len(arr) < 2:
+        return arr
+
+    try:
+        if low < high:
+            if modify and (high - low) < modify_length:
+                arr = insertion_sort(arr[low:high + 1])
+            else:
+                pivot_index = partition(arr, low, high, pivot_type)
+                if modify and (pivot_index - low) < modify_length:
+                    insertion_sort(arr[low:pivot_index])
+                else:
+                    quick_sort_recursive(arr, low, pivot_index - 1, pivot_type)
+                if modify and (high - pivot_index) < modify_length:
+                    insertion_sort(arr[pivot_index + 1: high + 1])
+                else:
+                    quick_sort_recursive(arr, pivot_index + 1, high, pivot_type)        
+        return arr
+    except TypeError:
+        print('List must contain only numbers.')
+        return None

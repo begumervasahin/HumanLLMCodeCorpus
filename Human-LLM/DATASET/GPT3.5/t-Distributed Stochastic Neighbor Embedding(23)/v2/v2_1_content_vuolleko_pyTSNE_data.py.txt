@@ -1,0 +1,57 @@
+import numpy as np
+import struct
+
+def read_MNIST(filename_images, filename_labels):
+    """
+    Reads the MNIST dataset from files in IDX format.
+
+    Args:
+        filename_images (str): File path for the images.
+        filename_labels (str): File path for the labels.
+
+    Returns:
+        list: A list containing the pixels (images) and labels.
+    """
+    pixels = _read_images(filename_images)
+    labels = _read_labels(filename_labels)
+    return [pixels, labels]
+
+def _read_images(filename):
+    """
+    Reads images in the MNIST dataset from a file in IDX format.
+
+    Args:
+        filename (str): File path for the images.
+
+    Returns:
+        numpy.ndarray: An array containing the image pixels.
+    """
+    with open(filename, 'rb') as fin:
+        fin.seek(4)  # Skip "magic number"
+        n_samples = struct.unpack('>i', fin.read(4))[0]
+        n_rows = struct.unpack('>i', fin.read(4))[0]
+        n_cols = struct.unpack('>i', fin.read(4))[0]
+        n_dim = n_cols * n_rows
+
+        # Data starts from byte 16
+        pixels = np.fromfile(fin, dtype=np.ubyte)
+
+    pixels = pixels.reshape(n_samples, n_dim)
+    return pixels
+
+def _read_labels(filename):
+    """
+    Reads labels in the MNIST dataset from a file in IDX format.
+
+    Args:
+        filename (str): File path for the labels.
+
+    Returns:
+        numpy.ndarray: An array containing the labels.
+    """
+    with open(filename, 'rb') as fin:
+        fin.seek(8)  # Skip "magic number" and number of labels
+        # Data starts from byte 8
+        labels = np.fromfile(fin, dtype=np.ubyte)
+
+    return labels

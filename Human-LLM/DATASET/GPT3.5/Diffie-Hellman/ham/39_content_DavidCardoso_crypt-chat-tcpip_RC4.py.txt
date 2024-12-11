@@ -1,0 +1,50 @@
+import sys
+class RC4(object):
+	global S
+	S = []
+	def __init__(self, PASS_RC4='160'):
+		self.key = PASS_RC4
+	def ksa(self):
+		j = 0
+		if (type(self.key) == str):
+			key_int = self.charToInt(self.key)
+		tamanho_chave = len(key_int)
+		global S
+		S = range(256)
+		for x in range(256):
+			j = (j + S[x] + key_int[x % tamanho_chave]) % 256
+			S[x], S[j] = S[j], S[x]
+	def prga(self, msg):
+		i = 0
+		j = 0
+		if (type(msg) == str):
+			msg = self.charToInt(msg)
+		tamanho_msg = len(msg)
+		result = []
+		for x in range(tamanho_msg):
+			i = (i + 1) % 256
+			j = (j + S[i]) % 256
+			S[i], S[j] = S[j], S[i]
+			result.append(S[(S[i] + S[j]) % 256] ^ msg[x])
+		return (result)
+	def charToInt(self, txt):
+		result = []
+		for index, value in enumerate(txt):
+			result.append(ord(value))
+		return (result)
+	def encrypt(self, msg):
+		x = self.ksa()
+		result = self.prga(msg)
+		text = []
+		for index, value in enumerate(result):
+			text += chr(value)
+		result = ''.join(text)
+		return (result)
+	def decrypt(self, msg):
+		x = self.ksa()
+		result = self.prga(msg)
+		text = []
+		for index, value in enumerate(result):
+			text += chr(value)
+		result = ''.join(text)
+		return (result)

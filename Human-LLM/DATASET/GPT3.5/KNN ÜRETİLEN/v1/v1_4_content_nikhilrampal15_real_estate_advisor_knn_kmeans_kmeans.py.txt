@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import random
+import math
+
+# Read CSV file
+def read_csvfile(filename):
+    return pd.read_csv(filename)
+
+"""
+Generating Centroids
+"""
+def centroids(house_data, k, column_name):
+    centroid = []
+    for x in range(k):
+        centroid.append(random.randint(1, house_data[column_name].max()))
+    return centroid
+
+city = "san-francisco-ca"
+filename = "data/propertyInfo/{}.csv".format(city)
+data = read_csvfile(filename)
+data["cluster"] = -1
+
+list_of_centroids = centroids(data, 5, 'zestimate')
+
+"""
+Use list of centroids to create clusters of homes
+"""
+def cluster(centroids, house_data, column_name):
+    houses = house_data[column_name]
+    for x in range(len(centroids)):
+        centroid = centroids[x]
+        for idx, y in enumerate(houses):
+            offset = len(houses) * x
+            home = houses[idx]
+            homee = np.asscalar(home.astype(int))
+            house_data.loc[idx + offset, 'cluster'] = centroid
+
+"""
+Here we create the convergence method
+"""
+def convergence(param1, param2):
+    func_1 = list(map(int, param1))
+    func_2 = list(map(int, param2))
+    for old in func_1:
+        for new in func_2:
+            if abs(func_1[old] - func_2[new]) > 1:
+                centroids(data, 5, 'zestimate')
+                cluster(list_of_centroids, data, 'zestimate')
+            else:
+                return param2
+
+"""
+Formatting
+"""
+pd.set_option('display.max_rows', len(data['zestimate']))
+x = data['zestimate']
+pd.set_option('display.float_format', lambda x: '%.0f' % x)
+
+# Run clustering
+cluster(list_of_centroids, data, 'zestimate')
+
+# Print convergence
+print(convergence(data['cluster'], list_of_centroids))

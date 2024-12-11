@@ -1,0 +1,65 @@
+from argparse import ArgumentParser
+
+def calculate_shared_key(A, B, p, g):
+    """
+    Calculate the private keys and shared secret key for Diffie-Hellman key exchange.
+    
+    Args:
+        A (int): Public key of party A.
+        B (int): Public key of party B.
+        p (int): Prime modulus value.
+        g (int): Base value.
+    
+    Returns:
+        tuple: Tuple containing private keys of A and B, and the shared secret key.
+    """
+    a, b = None, None
+    
+    # Iterate through possible values of private keys
+    for x in range(1, p):
+        # Check if the calculated value matches the public key of party A
+        if pow(g, x, p) == A:
+            a = x
+        # Check if the calculated value matches the public key of party B
+        if pow(g, x, p) == B:
+            b = x
+            
+    return a, b
+
+def main():
+    # Parse command line arguments
+    parser = ArgumentParser(description="Diffie-Hellman Key Exchange")
+    parser.add_argument("-A", "--A_public_key", required=True, help="Public key of party A")
+    parser.add_argument("-B", "--B_public_key", required=True, help="Public key of party B")
+    parser.add_argument("-g", "--base", required=True, help="Base value")
+    parser.add_argument("-p", "--prime", required=True, help="Prime modulus value")
+    args = parser.parse_args()
+    
+    # Extract values from command line arguments
+    A = int(args.A_public_key)
+    B = int(args.B_public_key)
+    g = int(args.base)
+    p = int(args.prime)
+    
+    # Calculate private keys and shared secret key
+    a, b = calculate_shared_key(A, B, p, g)
+    
+    # Print the private keys and shared secret key
+    if a is not None:
+        print('A private key is {}'.format(a))
+    else:
+        print("Could not find A's private key :(")
+        
+    if b is not None:
+        print('B private key is {}'.format(b))
+    else:
+        print("Could not find B's private key :(")
+        
+    if a is not None and b is not None:
+        shared_key = pow(B, a, p)
+        print('A and B shared secret key is {}'.format(shared_key))
+    else:
+        print('Could not find the shared key :(')
+
+if __name__ == '__main__':
+    main()

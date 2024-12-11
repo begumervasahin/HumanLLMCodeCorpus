@@ -1,0 +1,52 @@
+import secrets
+import random
+
+def generate_large_prime():
+    """
+    Generates a large prime number using the Miller-Rabin primality test.
+    """
+    lower_bound = 10 ** 1229
+    
+    # Generate a random number with 4096 bits
+    q = secrets.randbits(4096)
+    
+    # Ensure the generated number is greater than the lower bound and prime
+    while q < lower_bound or not is_prime(q):
+        q = secrets.randbits(4096)
+    
+    return q
+
+def is_prime(n, k=8):
+    """
+    Miller-Rabin primality test.
+    Returns True if n is very likely prime, False otherwise.
+    """
+    if n in {2, 3}:
+        return True
+    if n <= 1 or n % 2 == 0:
+        return False
+
+    # Write n as 2**r * d + 1
+    d, r = n - 1, 0
+    while d % 2 == 0:
+        d //= 2
+        r += 1
+
+    # Witness loop
+    for _ in range(k):
+        a = random.randint(2, n - 2)
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+
+if __name__ == '__main__':
+    # Generate a large prime number
+    p = generate_large_prime()
+    print("Generated large prime:", p)

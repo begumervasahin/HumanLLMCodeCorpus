@@ -1,0 +1,55 @@
+import socket
+from DiffieHellman import DiffieHellman
+import nacl.secret
+import nacl.utils
+from binascii import hexlify
+
+def establish_connection():
+    # Initialize Diffie-Hellman key exchange
+    client = DiffieHellman()
+
+    # Connect to the server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ('localhost', 5555)
+    sock.connect(server_address)
+    print(f"Connected to {server_address[0]} on port {server_address[1]}")
+
+    # Send the client's public key to the server
+    sock.sendall(str(client.public_key).encode())
+
+    # Receive the server's public key and generate the shared secret key
+    data = sock.recv(1024)
+    server_public_key = int(data.decode())
+    client.generate_shared_key(server_public_key)
+    print("Shared secret key:", hexlify(client.get_shared_key()))
+
+    return sock, client.get_shared_key()
+
+def start_communication(sock, shared_key):
+    # Initialize the encryption box
+    box = nacl.secret.SecretBox(shared_key)
+
+    # Start the communication loop
+    while True:
+        print('Enter a message or "exit" to close the program:')
+        message = input()
+        if message == 'exit':
+            print('Closing the socket.')
+            sock.close()
+            break
+
+        # Encrypt and send the message
+        encrypted_message = box.encrypt(message.encode())
+        sock.sendall(encrypted_message)
+        
+        # Receive and decrypt the response
+        data = sock.recv(1024)
+        decrypted_data = box.decrypt(data)
+        print(f'Received data: "{decrypted_data.decode()}"')
+
+def main():
+    sock, shared_key = establish_connection()
+    start_communication(sock, shared_key)
+
+if __name__ == "__main__":
+    main()

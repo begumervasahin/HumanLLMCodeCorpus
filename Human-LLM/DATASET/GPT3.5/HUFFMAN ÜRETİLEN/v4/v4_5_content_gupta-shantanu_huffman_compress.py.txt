@@ -1,0 +1,103 @@
+from HUFFMAN.components import *
+import struct
+import sys
+
+# Input and output file handling
+input_file = sys.argv[1]
+try:
+    output_file = sys.argv[2]
+except IndexError:
+    output_file = "compressed.huff"
+
+# Read input file
+file = open(input_file, 'rb')
+inp = file.read()
+original_size = len(inp)
+
+# Initialize array to store frequency of each byte
+arr = [huffnode(i, 0) for i in range(0, 256)]
+for ch in inp:
+    arr[ch].freq += 1
+
+# Sort array based on frequency
+arr.sort(key=lambda x: x.freq)
+
+# Build Huffman tree
+link = lists(arr[0])
+for a in arr[:0:-1]:
+    if a.freq != 0:
+        new = lists(a)
+        new.next = link
+        link = new
+    else:
+        break
+
+tree = 0
+while True:
+    a = link.top()
+    link = link.next
+    b = link.top()
+    link = link.next
+    n = huffnode(257, a.freq + b.freq)
+    n.right = a if a.freq > b.freq else b
+    n.left = b if a.freq > b.freq else a
+    new = lists(n)
+    if link != 0:
+        link = link.insert(new)
+    else:
+        tree = n
+        break
+
+# Open output file for writing compressed data
+comp = open(output_file, 'wb')
+
+# Function to combine string of bits
+def combine(st):
+    d = ""
+    for ch in st:
+        d += ch
+    return d
+
+# Function to generate address of characters corresponding to Huffman tree
+def generateaddress(tree):
+    dictionary = {0: 0}
+    huffmantree(tree, dictionary, "")
+    encodehufftree(tree, 16)
+    codedtree = combine(pt)
+    size = len(codedtree)
+    
+    # Write size of the coded tree to the output file
+    comp.write(struct.pack('B', int(size / 256)))
+    comp.write(struct.pack('B', size % 256))
+    
+    chunk = ""
+    for ch in codedtree:
+        chunk = chunk + ch
+        if len(chunk) > 8:
+            comp.write(struct.pack('B', int(chunk[0:8], 2)))
+            chunk = chunk[8:]
+    
+    df = ""
+    for ch in inp:
+        chunk += dictionary[ch]
+        df += dictionary[ch]
+        if len(chunk) > 8:
+            comp.write(struct.pack('B', int(chunk[0:8], 2)))
+            chunk = chunk[8:]
+    
+    chunk += "1"
+    while len(chunk) % 8 == 0:
+        chunk.__add__("0")
+    
+    while chunk != "":
+        comp.write(struct.pack('B', int("0b" + chunk[0:8], 2)))
+        chunk = chunk[8:]
+    
+    comp.flush()
+
+# Generate Huffman encoded data
+try:
+    generateaddress(tree)
+    print("Job completed!")
+except:
+    print("An error occurred!")

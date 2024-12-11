@@ -1,0 +1,133 @@
+import sys
+import os
+import logging
+from collections import deque
+
+# Custom logger configuration
+class CustomLogger:
+    def __init__(self, log_level=logging.INFO):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(log_level)
+        ch = logging.StreamHandler()
+        ch.setLevel(log_level)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
+
+    def debug(self, message):
+        self.logger.debug(message)
+
+    def info(self, message):
+        self.logger.info(message)
+
+    def warning(self, message):
+        self.logger.warning(message)
+
+    def error(self, message):
+        self.logger.error(message)
+
+    def exception(self, message):
+        self.logger.exception(message)
+
+# Tree Node class
+class TreeNode:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+
+# Function to create Tree 1
+def make_tree1():
+    tree = TreeNode(2)
+    log.debug('TREE: %s' % tree.data)
+    tree.left = TreeNode(8)
+    log.debug('TREE.LEFT: %s' % tree.left.data)
+    tree.left.left = TreeNode(1)
+    log.debug('TREE.LEFT.LEFT: %s' % tree.left.left.data)
+    tree.left.right = TreeNode(3)
+    log.debug('TREE.LEFT.RIGHT: %s' % tree.left.right.data)
+    tree.right = TreeNode(9)
+    log.debug('TREE.RIGHT: %s' % tree.right.data)
+    tree.right.left = TreeNode(4)
+    log.debug('TREE.RIGHT.LEFT: %s' % tree.right.left.data)
+    tree.right.right = TreeNode(5)
+    log.debug('TREE.RIGHT.RIGHT: %s' % tree.right.right.data)
+    return tree
+
+# Function to create Tree 2
+def make_tree2():
+    tree = TreeNode(1)
+    log.debug('TREE: %s' % tree.data)
+    tree.left = TreeNode(8)
+    log.debug('TREE.LEFT: %s' % tree.left.data)
+    tree.left.right = TreeNode(3)
+    log.debug('TREE.LEFT.RIGHT: %s' % tree.left.right.data)
+    tree.right = TreeNode(4)
+    log.debug('TREE.RIGHT: %s' % tree.right.data)
+    tree.right.right = TreeNode(5)
+    log.debug('TREE.RIGHT.RIGHT: %s' % tree.right.right.data)
+    tree.right.right.right = TreeNode(7)
+    log.debug('TREE.RIGHT.RIGHT.RIGHT: %s' % tree.right.right.right.data)
+    return tree
+
+# Function to get the depth of the tree
+def get_depth(tree):
+    if tree is None:
+        return 0
+    else:
+        left_depth = get_depth(tree.left)
+        right_depth = get_depth(tree.right)
+        return max(left_depth, right_depth) + 1
+
+# Function to return values and levels as tuples
+def return_tuple_value_level(tree):
+    if tree is None:
+        return []
+    result = []
+    queue = deque([(tree, 0)])
+    while queue:
+        node, level = queue.popleft()
+        result.append((node.data, level))
+        if node.left:
+            queue.append((node.left, level + 1))
+        if node.right:
+            queue.append((node.right, level + 1))
+    return result
+
+# Function to sort values based on levels
+def sort_by_level(tree):
+    tuples = return_tuple_value_level(tree)
+    tuples.sort(key=lambda x: x[1])
+    return [value for value, _ in tuples]
+
+# Main function
+def main():
+    if os.environ.get('GIO_LOG_LEVEL') is None:
+        log.warning("Set OS Variable GIO_LOG_LEVEL to 'debug' for more information.")
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Create tree1")
+    tree1 = make_tree1()
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 2 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Creating tree2")
+    tree2 = make_tree2()
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 3 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Max depth of Tree1 is %d" % get_depth(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 4 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Max depth of Tree2 is %d <<<<<<" % get_depth(tree2))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 5 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List of Tuple Value,Level for Tree1 = %s" % return_tuple_value_level(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 6 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List of Tuple Value,Level for Tree2 = %s" % return_tuple_value_level(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 7 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List with elements of Tree1 sorted by level = %s" % sort_by_level(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 8 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List with elements of Tree2 sorted by level = %s" % sort_by_level(tree2))
+
+if __name__ == "__main__":
+    log = CustomLogger(log_level=logging.DEBUG)
+    try:
+        main()
+    except Exception as e:
+        msg = '%s failed to finish executing successfully.' % __file__
+        log.exception(msg)
+        sys.exit(1)

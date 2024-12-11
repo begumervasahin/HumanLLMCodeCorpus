@@ -1,0 +1,53 @@
+import re
+import string
+import numpy as np
+from pathlib import Path
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+class SearchText:
+    def run(self, input_text):
+        similar_files = []
+        for file_path in self.get_files():
+            with open(file_path, "r") as file:
+                similarity = self.calculate_similarity(input_text, file.read())
+                if similarity >= 0.8:
+                    similar_files.append((str(file_path), similarity))
+        return similar_files
+
+    def calculate_similarity(self, primary_text, secondary_text):
+        corpus = [primary_text, secondary_text]
+        return self.compute_cosine_similarity(corpus)
+
+    def sanitize_text(self, text):
+        punctuation_pattern = "[{}]".format(string.punctuation)
+        text = [word.lower() for word in text.split()]
+        text = [[re.sub(punctuation_pattern, "", word) for word in sentence.split()]
+                for sentence in text]
+        text = [[word for word in sentence if len(word) > 1] for sentence in text]
+        text = [' '.join(sentence) for sentence in text]
+        return np.array(text)
+
+    def compute_cosine_similarity(self, corpus):
+        vectorizer = TfidfVectorizer()
+        cleaned_corpus = self.sanitize_text(corpus)
+        features = vectorizer.fit_transform(cleaned_corpus)
+        similarity_scores = cosine_similarity(features[0], features[1])
+        return round(similarity_scores[0, 0], 2)
+
+    def get_files(self):
+        file_list = []
+        directory_path = Path('repo_files')
+        for file_path in directory_path.glob('*'):
+            file_list.append(file_path)
+        return file_list
+
+if __name__ == "__main__":
+    search = SearchText()
+    user_input = input('Enter a text for search:')
+    search_results = search.run(user_input)
+    if search_results:
+        for file_path, similarity in search_results:
+            print("File: {:16s} with {:.1%} similarity.".format(file_path, similarity))
+    else:
+        print("No file found with 80% or more similarity.")

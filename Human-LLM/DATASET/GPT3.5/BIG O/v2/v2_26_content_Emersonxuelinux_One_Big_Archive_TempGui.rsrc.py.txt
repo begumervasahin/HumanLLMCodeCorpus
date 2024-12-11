@@ -1,0 +1,165 @@
+import tkinter as tk
+
+def exit_command():
+    root.destroy()
+
+def celsius_to_fahrenheit():
+    celsius = float(entry_celsius.get())
+    fahrenheit = (celsius * 9/5) + 32
+    entry_fahrenheit.delete(0, tk.END)
+    entry_fahrenheit.insert(0, fahrenheit)
+
+def fahrenheit_to_celsius():
+    fahrenheit = float(entry_fahrenheit.get())
+    celsius = (fahrenheit - 32) * 5/9
+    entry_celsius.delete(0, tk.END)
+    entry_celsius.insert(0, celsius)
+
+def create_menu(menu_data, parent):
+    menu = tk.Menu(parent)
+    for item_data in menu_data['items']:
+        if item_data['type'] == 'MenuItem':
+            command = None
+            if 'command' in item_data:
+                command = globals()[item_data['command']]
+            menu.add_command(label=item_data['label'], command=command)
+    return menu
+
+def create_widgets(components_data, parent):
+    widgets = {}
+    for component_data in components_data:
+        component_type = component_data['type']
+        if component_type == 'StaticText':
+            widget = tk.Label(parent, text=component_data['text'])
+        elif component_type == 'Spinner':
+            widget = tk.Spinbox(parent, from_=component_data['min'], to=component_data['max'])
+            widget.delete(0, tk.END)
+            widget.insert(0, component_data['value'])
+        elif component_type == 'TextField':
+            widget = tk.Entry(parent)
+            if 'text' in component_data:
+                widget.insert(0, component_data['text'])
+        elif component_type == 'Button':
+            widget = tk.Button(parent, text=component_data['label'], command=globals()[component_data['command']])
+        else:
+            continue
+
+        widget.place(x=component_data['position'][0], y=component_data['position'][1])
+        widgets[component_data['name']] = widget
+
+    return widgets
+
+def create_gui(data):
+    root = tk.Tk()
+    root.title(data['application']['name'])
+    root.geometry('{}x{}'.format(data['application']['backgrounds'][0]['size'][0], data['application']['backgrounds'][0]['size'][1]))
+
+    menubar = tk.Menu(root)
+    for menu_data in data['application']['backgrounds'][0]['menubar']['menus']:
+        menu = create_menu(menu_data, menubar)
+        menubar.add_cascade(label=menu_data['label'], menu=menu)
+    root.config(menu=menubar)
+
+    components_data = data['application']['backgrounds'][0]['components']
+    widgets = create_widgets(components_data, root)
+
+    return root, widgets
+
+if __name__ == "__main__":
+    gui_data = {
+        'application': {
+            'type': 'Application',
+            'name': 'Temperature Converter',
+            'backgrounds': [
+                {
+                    'type': 'Background',
+                    'name': 'bgTemplate',
+                    'title': 'Temperature Converter',
+                    'size': (450, 300),
+                    'style': ['resizeable'],
+                    'menubar': {
+                        'type': 'MenuBar',
+                        'menus': [
+                            {
+                                'type': 'Menu',
+                                'name': 'menuFile',
+                                'label': '&File',
+                                'items': [
+                                    {
+                                        'type': 'MenuItem',
+                                        'name': 'menuFileExit',
+                                        'label': 'E&xit',
+                                        'command': 'exit_command',
+                                    },
+                                ],
+                            },
+                            {
+                                'type': 'Menu',
+                                'name': 'menuConvert',
+                                'label': '&Convert',
+                                'items': [
+                                    {
+                                        'type': 'MenuItem',
+                                        'name': 'menuConvertCtoF',
+                                        'label': '&Celsius to Fahrenheit',
+                                        'command': 'celsius_to_fahrenheit',
+                                    },
+                                    {
+                                        'type': 'MenuItem',
+                                        'name': 'menuConvertFtoC',
+                                        'label': '&Fahrenheit to Celsius',
+                                        'command': 'fahrenheit_to_celsius',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                }
+            ],
+            'components': [
+                {
+                    'type': 'StaticText',
+                    'name': 'lblFahrenheit',
+                    'position': (284, 105),
+                    'text': 'Fahrenheit',
+                },
+                {
+                    'type': 'StaticText',
+                    'name': 'lblCelsius',
+                    'position': (31, 105),
+                    'text': 'Celsius',
+                },
+                {
+                    'type': 'Spinner',
+                    'name': 'entry_fahrenheit',
+                    'position': (292, 78),
+                    'max': 100,
+                    'min': 0,
+                    'value': 0,
+                },
+                {
+                    'type': 'TextField',
+                    'name': 'entry_celsius',
+                    'position': (14, 76),
+                    'size': (74, -1),
+                },
+                {
+                    'type': 'Button',
+                    'name': 'btn_fahrenheit_to_celsius',
+                    'position': (107, 104),
+                    'command': 'fahrenheit_to_celsius',
+                    'label': '<<< Fahrenheit to Celsius',
+                },
+                {
+                    'type': 'Button',
+                    'name': 'btn_celsius_to_fahrenheit',
+                    'position': (107, 70),
+                    'command': 'celsius_to_fahrenheit',
+                    'label': 'Celsius to Fahrenheit >>>',
+                },
+            ],
+        },
+    }
+
+    root, widgets = create_gui(gui_data)
+    root.mainloop()

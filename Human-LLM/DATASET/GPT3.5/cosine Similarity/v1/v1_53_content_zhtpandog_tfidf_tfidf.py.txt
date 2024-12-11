@@ -1,0 +1,106 @@
+import math
+import numpy as np
+
+class TFIDF:
+    def __init__(self):
+        self.documents = {}
+        self.corpus_dict = {}
+        self.idf = {}
+        self.num_docs = 0
+        self.prep_status = False
+
+    def add_document(self, doc_name, list_of_words):
+        """Add a document to the TFIDF model."""
+        doc_dict = {}
+        for word in list_of_words:
+            doc_dict[word] = doc_dict.get(word, 0.0) + 1.0
+
+        length = float(len(list_of_words))
+        for key in doc_dict:
+            doc_dict[key] = doc_dict[key] / length
+
+        self.documents[doc_name] = doc_dict
+
+        for word in set(list_of_words):
+            self.corpus_dict[word] = self.corpus_dict.get(word, 0.0) + 1.0
+
+    def prep(self):
+        """Prepare the TFIDF values for each document in the corpus."""
+        self.num_docs = len(self.documents)
+
+        for key, value in self.corpus_dict.items():
+            self.idf[key] = math.log(self.num_docs / self.corpus_dict[key])
+
+        for doc in self.documents:
+            for key in self.documents[doc]:
+                self.documents[doc][key] *= self.idf[key]
+
+        self.prep_status = True
+
+    def similarities_by_name(self, query_name):
+        """Calculate cosine TFIDF similarities with respect to each document in the corpus by document name."""
+        if not self.prep_status:
+            print("TFIDF model is not prepared. Please call prep() first.")
+            return
+
+        query_dict = self.documents[query_name]
+        similarities = {}
+
+        for doc in self.documents:
+            score = 0.0
+            doc_dict = self.documents[doc]
+
+            for key in query_dict:
+                if key in doc_dict:
+                    score += query_dict[key] * doc_dict[key]
+
+            score /= np.linalg.norm(np.array(list(query_dict.values()))) * np.linalg.norm(np.array(list(doc_dict.values())))
+            similarities[doc] = score
+
+        return similarities
+
+    def similarities_by_wordlist(self, list_of_words):
+        """Calculate cosine TFIDF similarities with respect to each document in the corpus by a new list of words."""
+        if not self.prep_status:
+            print("TFIDF model is not prepared. Please call prep() first.")
+            return
+
+        query_dict = {}
+
+        for word in list_of_words:
+            query_dict[word] = query_dict.get(word, 0.0) + 1.0
+
+        length = float(len(list_of_words))
+
+        for key in query_dict:
+            query_dict[key] = (query_dict[key] / length) * self.idf.get(key, 0.0)
+
+        similarities = {}
+
+        for doc in self.documents:
+            score = 0.0
+            doc_dict = self.documents[doc]
+
+            for key in query_dict:
+                if key in doc_dict:
+                    score += query_dict[key] * doc_dict[key]
+
+            score /= np.linalg.norm(np.array(list(query_dict.values()))) * np.linalg.norm(np.array(list(doc_dict.values())))
+            similarities[doc] = score
+
+        return similarities
+
+# Usage Example
+if __name__ == "__main__":
+    tfidf_model = TFIDF()
+    tfidf_model.add_document("doc1", ["apple", "banana", "apple"])
+    tfidf_model.add_document("doc2", ["apple", "orange", "orange"])
+    tfidf_model.prep()
+
+    # Query by document name
+    print("Similarities by name:")
+    print(tfidf_model.similarities_by_name("doc1"))
+
+    # Query by new list of words
+    print("\nSimilarities by wordlist:")
+    print(tfidf_model.similarities_by_wordlist(["banana", "orange"]))

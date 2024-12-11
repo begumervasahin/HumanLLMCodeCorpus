@@ -1,0 +1,50 @@
+import csv
+import copy
+
+# Open the output file for writing transactions
+output_file = open('dataCaixaAno2015-MesAgosto.dat', 'w')
+
+# Define paths to the CSV files
+transactions_file_path = 'caixa.csv'
+products_file_path = 'produtos.csv'
+
+# Lists to store data
+vendaProd = []
+listProd = []
+vendaProdMat = []
+
+# Function to load data from CSV files
+def load_data_from_csv(file_path):
+    data = []
+    with open(file_path, newline='') as file:
+        reader = csv.reader(file, delimiter=';')
+        next(reader)  # Skip the header row
+        for line in reader:
+            data.append(line)
+    return data
+
+# Load transactions and products data from CSV files
+vendaProd = load_data_from_csv(transactions_file_path)
+listProd = load_data_from_csv(products_file_path)
+
+# Create a deep copy of vendaProd to avoid modifying the original list
+vendaProdMat = copy.deepcopy(vendaProd)
+
+# Match product codes to their names
+for i, venda in enumerate(vendaProd):
+    for j in range(1, len(venda)):
+        for prod in listProd:
+            if venda[j] == prod[0]:
+                vendaProdMat[i].append(prod[1])
+
+# Write transactions to the output file
+for venda in vendaProdMat:
+    if len(venda) > 2:
+        transaction = ' '.join([prod.replace(" ", "_") for prod in venda[1:]]) + '\n'
+        output_file.write(transaction)
+
+# Close the output file
+output_file.close()
+
+# Print the transactions with products
+print(vendaProdMat)

@@ -1,0 +1,48 @@
+import db
+import itertools
+import time
+
+def wsieve(N):
+    # Initialize lists and variables
+    state = [-1, -1] + [0] * (N - 1)
+    primes = [2]
+    prime_i = 0
+    lcm = 1
+    p = 2
+
+    # Iterate until the square of the current prime is less than N
+    while p ** 2 < N:
+        # Extend primes list with newly discovered primes
+        primes.extend(i for i in range(state.index(0, primes[-1] + 1), p ** 2) if state[i] == 0)
+
+        # Generate a chain of numbers to mark as composite
+        if lcm < p ** 2:
+            composite_range = itertools.chain([1], (i for i in range(p, min(lcm, N // p) + 1) if state[i] == 0))
+        else:
+            composite_range = itertools.chain([1], primes[prime_i:], (i for i in range(p ** 2, min(lcm, N // p) + 1) if state[i] == 0))
+
+        # Calculate the next least common multiple
+        next_lcm = p * lcm
+
+        # Mark multiples as composite
+        for sortaprime in composite_range:
+            for i in range(p * sortaprime, N + 1, next_lcm):
+                state[i] = p
+
+        lcm = next_lcm  # Update the least common multiple
+        prime_i += 1
+        p = primes[prime_i]  # Move to the next prime number
+
+    return primes
+
+def go():
+    N = int(10 ** 6)
+    t0 = time.time()
+    r = wsieve(N)
+    t1 = time.time()
+    print(f"For N = {N}, the algorithm took {t1 - t0:.4f} seconds.")
+
+    # Ensure the prime numbers are stored in the database
+    db.ensure(r)
+
+go()

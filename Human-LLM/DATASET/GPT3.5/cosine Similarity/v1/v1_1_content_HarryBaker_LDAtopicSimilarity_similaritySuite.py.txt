@@ -1,0 +1,53 @@
+from topic2vec import topic2vec
+from LDATopicSimilarity import TopicSimilarity
+import cmd
+
+class SimilaritySuite(cmd.Cmd):
+    """Command-line interface for testing topic similarity."""
+
+    def __init__(self, topic2vec_similarity):
+        """Initialize the SimilaritySuite."""
+        cmd.Cmd.__init__(self)
+        self.sim_suite = topic2vec_similarity
+        self.topic2vec = self.sim_suite.topic2vec
+        self.LDA_model = self.sim_suite.model
+        self.topics = self.topic2vec.ldaTopics
+        self.topic2vec_topics = self.topic2vec.topicVecs
+        print("Topic2vec Testing Suite")
+        print("Commands are: ")
+        print("printTopic [topicID] ~~ if no topicID is given, will print all")
+        print("mostSimilar [topicID]")
+
+    def do_printTopic(self, topic_id=None):
+        """Print the topic details."""
+        if topic_id:
+            print("\n" + str(topic_id))
+            print(self.topics[int(topic_id)] + "\n")
+        else:
+            for i, topic in enumerate(self.topics):
+                print("\n" + str(i))
+                print(topic + "\n")
+
+    def do_mostSimilar(self, topic_id):
+        """Print the most similar topics."""
+        acceptable = list(range(50))
+        if int(topic_id) in acceptable:
+            output = self.sim_suite.find_similarity(int(topic_id))
+            print(output[0][0] + " | " + output[1][0] + " | " + output[2][0] + " | " + output[3][0])
+            print("----------------------------------")
+            for i in range(10):
+                print(" ".join(f"{output[j][1][i][1]:<6}" for j in range(4)))
+        else:
+            print("Please choose an acceptable Topic ID")
+        print("Enter new command")
+
+if __name__ == '__main__':
+    # Initialize topic2vec and LDA model
+    t2v = topic2vec()
+    ts = TopicSimilarity(t2v)
+    
+    # Initialize SimilaritySuite
+    similarity_suite = SimilaritySuite(ts)
+
+    # Start the command-line interface
+    similarity_suite.cmdloop()

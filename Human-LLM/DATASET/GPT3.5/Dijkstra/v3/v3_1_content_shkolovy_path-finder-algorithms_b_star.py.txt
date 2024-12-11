@@ -1,0 +1,67 @@
+from queue import PriorityQueue
+from pprint import pprint
+
+def generate_empty_grid(size=10):
+    """Generate an empty grid of specified size."""
+    return [[0 for _ in range(size)] for _ in range(size)]
+
+def heuristic_distance(current_pos, end, type="manhattan"):
+    """Calculate the heuristic distance between two points."""
+    if type == "manhattan":
+        return abs(end[0] - current_pos[0]) + abs(end[1] - current_pos[1])
+    elif type == "euclidean":
+        return ((end[0] - current_pos[0]) ** 2 + (end[1] - current_pos[1]) ** 2) ** 0.5 
+
+def get_valid_neighbors(grid, x, y):
+    """Get valid neighboring cells in the grid."""
+    neighbors = []
+    for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < len(grid) and 0 <= ny < len(grid[0]) and grid[nx][ny] == 0:        
+            neighbors.append((nx, ny))
+    return neighbors
+
+def reconstruct_path(start, end, came_from):
+    """Reconstruct the path from start to end based on the 'came_from' dictionary."""
+    path = []
+    current = end
+    while current != start:
+        path.append(current)
+        current = came_from[current]
+    path.append(start)
+    path.reverse()
+    return path
+
+def mark_path(path, grid):
+    """Mark the path on the grid."""
+    for x, y in path:
+        grid[x][y] = 1
+
+def greedy_best_first_search(grid, start, end):
+    """Implement the Best First Search algorithm using a priority queue."""
+    pq = PriorityQueue()
+    pq.put((0, start))
+    came_from = {start: None}
+    while not pq.empty():
+        current_pos = pq.get()[1]
+        if current_pos == end:
+            break
+        neighbors = get_valid_neighbors(grid, current_pos[0], current_pos[1])
+        for neighbor in neighbors:
+            if neighbor not in came_from:
+                priority = heuristic_distance(neighbor, end, type="manhattan")
+                pq.put((priority, neighbor))
+                came_from[neighbor] = current_pos
+    return came_from
+
+def initialize_and_run_search():
+    """Initialize the grid, start and end points, and run the greedy best-first search."""
+    initial_grid = generate_empty_grid()
+    start, end = (0, 0), (8, 8)
+    came_from = greedy_best_first_search(initial_grid, start, end)
+    path = reconstruct_path(start, end, came_from)
+    mark_path(path, initial_grid)
+    pprint(initial_grid)
+
+if __name__ == "__main__":
+    initialize_and_run_search()

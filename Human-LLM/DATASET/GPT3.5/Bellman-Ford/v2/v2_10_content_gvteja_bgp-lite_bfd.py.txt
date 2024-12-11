@@ -1,0 +1,152 @@
+import sys
+import json
+import socket
+import pickle
+from multiprocessing import Process
+from select import select
+from datetime import datetime
+
+# Get the current datetime
+now = datetime.now
+
+# Check if the required arguments are provided
+if len(sys.argv) < 3:
+    print('Please pass the 2 arguments: node name and periodic refresh value')
+    sys.exit()
+
+# Extract node name and periodic refresh value from command line arguments
+node_name = sys.argv[1]
+timeout = int(sys.argv[2])
+neighbour_wts_f = node_name
+
+# Initialize variables
+last_read_time = now()
+last_upd_time = now()
+
+# Function to read neighbors from file
+def get_neighbours(fn):
+    with open(fn, 'r') as f:
+        neighbours_txt = f.read().split('\n')
+
+    c = {}
+    ips = {}
+    links = {}
+
+    for neighbour in neighbours_txt:
+        src_ip, n, dst_ip, cost = neighbour.strip().split(':')
+        cost = int(cost)
+        c[n] = cost
+        ips[dst_ip] = n
+        links[src_ip] = dst_ip
+
+    global last_read_time
+    last_read_time = now()
+    return c, ips, links
+
+# Initialize neighbors and routing tables
+c, ips, links = get_neighbours(neighbour_wts_f)
+d = {neighbour: cost for neighbour, cost in c.items()}
+max_d = 100000
+p = {}
+dv = {}
+socks_connected = {}
+socks_accepted = {}
+port = 9999
+
+# Function to connect to neighbors
+def connect_to_neighbours(neighbours):
+    for ip, name in neighbours.items():
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, port))
+        socks_connected[name] = s
+
+# Function to listen for incoming connections from neighbors
+def listen_neighbour_on(ip, neighbour):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((ip, port))
+    s.listen(1)
+    sock, addr = s.accept()
+    socks_accepted[neighbour] = sock
+    print(f'Accepted connection from {addr}')
+
+# Create processes for listening and connecting to neighbors
+threads = []
+for src_ip, dst_ip in links.items():
+    neighbour = ips[dst_ip]
+    t = Process(target=listen_neighbour_on, args=(src_ip, neighbour,))
+    threads.append(t)
+
+threads.append(Process(target=connect_to_neighbours, args=(ips,)))
+
+# Start and join all threads
+for t in threads:
+    t.start()
+
+for t in threads:
+    t.join()
+
+# Prepare lists for socket operations
+read_socks = []
+read_names = []
+for name, sock in socks_accepted.items():
+    read_socks.append(sock)
+    read_names.append(name)
+
+write_socks = socks_connected.values()
+read_timeout = 0
+
+# Main loop for communication and routing updates
+while True:
+    ready_to_read, _, in_error = select(read_socks, [], read_socks, read_timeout)
+    update = False
+
+    # Process incoming data from neighbors
+    for sock in ready_to_read:
+        data = sock.recv(100000)
+        neighbour = read_names[read_socks.index(sock)]
+        nd = json.loads(data)
+        dv[neighbour] = nd
+        cost = c[neighbour]
+
+        for dst, est in nd.items():
+            if est + cost < d.get(dst, max_d):
+                d[dst] = est + cost
+                p[dst] = neighbour
+                update = True
+
+    # Check for periodic updates or changes in neighbor configuration
+    if (not update) and ((now() - last_upd_time).seconds >= timeout):
+        update = True
+
+    if (now() - last_read_time).seconds >= timeout:
+        c_new, ips, links = get_neighbours(neighbour_wts_f)
+
+        if c != c_new:
+            c = c_new
+            d_new = {neighbour: cost for neighbour, cost in c.items()}
+
+            for neighbour, ndv in dv.items():
+                cost = c[neighbour]
+
+                for dst, est in ndv.items():
+                    if cost + est < d_new.get(dst, max_d):
+                        d_new[dst] = cost + est
+                        p[dst] = neighbour
+
+            if d_new != d:
+                d = d_new
+                update = True
+
+    # Perform updates if needed
+    if update:
+        data = json.dumps(d)
+
+        for sock in write_socks:
+            sock.sendall(data)
+
+        last_upd_time = now()
+        pickle.dump(dv, open(f'{node_name}_dv.p', 'wb'))
+        pickle.dump(p, open(f'{node_name}_p.p', 'wb'))
+        pickle.dump(d, open(f'{node_name}_d.p', 'wb'))
+
+    read_timeout = timeout - (now() - max(last_upd_time, last_read_time)).seconds

@@ -1,0 +1,65 @@
+import os
+import sys
+import time
+import nltk
+import fstwrap as fst
+from nltk import pos_tag, word_tokenize
+import wvlib
+from wvlib import Vocabulary
+
+# Start time for measuring execution time
+start_time = time.time()
+
+# Constants and paths
+model_path = 'test_model.txt'
+DISTANCE_THRESHOLD = 0.80
+NEIGHBOR_LIMIT = 3
+CANDIDATE_LIMIT = 3
+open_pos_tags = {'NN', 'NNS', 'RB', 'RBR', 'RBS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'JJ', 'JJR', 'JJS'}
+
+def main():
+    # Load word vector model and normalize
+    wv = wvlib.load(model_path).normalize()
+
+    # Open text file for processing
+    with open('test.txt', 'r') as fp:
+        for line in fp:
+            # Tokenize the sentence
+            sent = word_tokenize(line)
+            sent.insert(0, '<s>')
+            sent.append('</s>')
+            prev = '<s>'
+            f = fst.new()
+
+            # Process each word in the sentence
+            for i in range(1, len(sent) - 1):
+                if sent[i] in wv.vocab:
+                    # Add arcs based on word similarity and part-of-speech
+                    f.add_arc(prev, sent[i], prev, sent[i], -1)
+                    for j in range(0, NEIGHBOR_LIMIT):
+                        nearest = wv.nearest(sent[i])[j]
+                        if nearest[1] >= DISTANCE_THRESHOLD:
+                            word_tag = nltk.pos_tag(nltk.word_tokenize(sent[i]))
+                            neighbor_tag = nltk.pos_tag(nltk.word_tokenize(nearest[0]))
+
+                            if word_tag[0][1] and neighbor_tag[0][1] in open_pos_tags:
+                                f.add_arc(prev, sent[i], prev, nearest[0], -nearest[1])
+
+                else:
+                    f.add_arc(prev, sent[i], prev, prev, -1)
+                prev = sent[i]
+
+            # Set final arc and print shortest paths
+            f.add_arc(prev, '</s>', '<epsilon>', '<epsilon>', 0)
+            f.set_start('<s>')
+            f.set_final('</s>')
+            f.printf()
+            sp = fst.shortest_path_list(f, CANDIDATE_LIMIT)
+            for path in sp:
+                print("%.2f\t%s" % (path[0], path[2]))
+
+if __name__ == "__main__":
+    main()
+
+# Print execution time
+print('\n--- Execution time: %.4s minutes ---' % ((time.time() - start_time) / 60))

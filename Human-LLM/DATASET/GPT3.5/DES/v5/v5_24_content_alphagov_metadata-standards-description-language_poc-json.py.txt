@@ -1,0 +1,38 @@
+import slang
+
+# Define file paths
+METADATA_FILE = "poc.slang"
+SPREADSHEETS = ["office-supplies-order.ods", "office-supplies-order.ods"]
+
+# Function to render the value of a cell based on its type
+def render_value(cell):
+    if isinstance(cell.type, slang.slang_String):
+        return f'"{cell.value()}"'
+    else:
+        return str(cell.value())
+
+# Function to render a row of data in JSON format
+def render_json(result, row):
+    print("  {")
+    for c in row:
+        print(f'    "{c.name}":\t{render_value(c)},')
+    print("  },")
+
+    return True
+
+# Read metadata from the specified file
+print(f"Reading metadata from {METADATA_FILE}...")
+with open(METADATA_FILE) as metadata_file:
+    metadata = slang.slang(metadata_file)
+    metadata.parse()
+
+# Validate each spreadsheet against the metadata and extract typed data
+for sheet in SPREADSHEETS:
+    print(f"Validating spreadsheet {sheet} against metadata...")
+    with open(sheet) as sheet_file:
+        instance = metadata.validate(sheet_file)
+
+    print("Extracting typed data from spreadsheet...")
+    print("[")
+    instance.extract(render_json)
+    print("]")

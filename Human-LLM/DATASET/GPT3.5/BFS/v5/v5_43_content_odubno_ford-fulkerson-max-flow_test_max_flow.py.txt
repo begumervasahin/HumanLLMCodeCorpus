@@ -1,0 +1,63 @@
+import pytest
+import networkx as nx
+from max_flow import flow_with_demands
+
+
+def compute_divergence(flow):
+    """
+    Compute the net flow into each node based on the given flow dictionary.
+
+    Args:
+        flow (dict): A dictionary representing flow between nodes.
+
+    Returns:
+        dict: A dictionary containing the net flow into each node.
+    """
+    divergence = {node: 0 for node in flow}
+
+    for node in flow:
+        forward_flow = sum(flow[node].values())
+        backward_flow = sum(flow[neighbor][node] for neighbor in flow[node])
+        divergence[node] = backward_flow - forward_flow
+
+    return divergence
+
+
+def test_max_flow():
+    # Create a graph representing the network
+    G = nx.Graph()
+    
+    # Read USA data from file and construct the graph
+    with open('contiguous-usa.dat') as usa_file:
+        for line in usa_file:
+            source, destination = line.strip().split()
+            G.add_edge(source, destination)
+    
+    # Set demands for each state except California
+    for state in G.nodes():
+        if state != 'CA':
+            G.nodes[state]['demand'] = 1
+    # Set demand for California
+    G.nodes['CA']['demand'] = -48
+    
+    # Convert the graph to a directed graph
+    G = nx.DiGraph(G)
+    
+    # Assign uniform capacity to all edges
+    uniform_capacity = 16
+    for source, destination in G.edges():
+        G.edges[source, destination]['capacity'] = uniform_capacity
+    
+    # Compute flow with demands using the function to be tested
+    flow = flow_with_demands(G)
+    
+    # Compute net flow into each node
+    divergence = compute_divergence(flow)
+    
+    # Assertion to check if the net flow satisfies the demands of each node
+    assert all(divergence[node] == G.nodes[node]['demand'] for node in G.nodes())
+
+
+# Allow the test function to be run if this script is executed directly
+if __name__ == '__main__':
+    test_max_flow()

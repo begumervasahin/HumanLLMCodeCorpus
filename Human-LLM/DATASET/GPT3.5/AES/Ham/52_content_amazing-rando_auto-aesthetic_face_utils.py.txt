@@ -1,0 +1,100 @@
+from PIL import Image
+import numpy as np
+from random import choice, randint
+from glob import glob
+import cv2, math
+def calcbounds(rect, off):
+    '''
+    Calculates upper left and lower right bounds for a given rect.
+    '''
+    ul = (rect[0] + off[0], rect[1] + off[1])
+    lr = (rect[0] + rect[2] + off[2] , rect[1] + rect[3] + off[3])
+    return ul, lr
+def getrect(clf, gray, size, offset, k = 10):
+    '''
+    Returns the rectangular coordinates of detected feature.
+    '''
+    feature = clf.detectMultiScale(gray, 1.5, k)
+    for f in feature:
+        ul, lr = calcbounds(f, offset)
+        if ul[0] < 0 or lr[0] < size // 2:
+            continue
+        elif lr[1] - ul[1] > 300:
+            continue
+        else:
+            break
+    if ul[0] < 0 or lr[1] < size // 2:
+        rect = None
+    else:
+        rect = [ul[0], ul[1], lr[0], lr[1]]
+    return rect
+def drag(im, rect):
+    '''
+    Corrupts a given image by pixel dragging within the specified rect.
+    Returns corrupted image.
+    '''
+    h, w, d = im.shape
+    orientation = choice(["horizontal", "vertical"])
+    if orientation == "vertical":
+        offset = -90
+        line = rect[1] + rect[3] // 2 + offset
+        im[0:line, rect[0]:rect[0] + rect[2] + offset] = \
+                im[line, rect[0]:rect[0] + rect[2] + offset]
+    else:
+        line = randint(rect[0] + 50, rect[0] + rect[2] - 160)
+        direction = choice(["left", "right"])
+        if direction == "left":
+            im[rect[1]:rect[1] + rect[3], 0:line] = \
+                    im[rect[1]:rect[1] + rect[3], line:line + 1]
+        else:
+            im[rect[1]:rect[1] + rect[3], line:w] = \
+                    im[rect[1]:rect[1] + rect[3], line:line + 1]
+    return im
+def stagger(im, rect):
+    '''
+    Corrupts a given image by pixel staggering to give a glitch effect around
+    a given rect.  Returns the corrupted image.
+    '''
+    h, w, d = im.shape
+    rect[0] -= 75
+    strip = rect[3] // randint(50, 90)
+    n = rect[3] // (strip * 3)
+    for i in range(n):
+        st_y = rect[1] + (i * strip)
+        end_y = rect[1] + strip * (i + 1)
+        k = randint(1, 50)
+        if rect[0] + rect[2] + k >= w:
+            diff = rect[0] + rect[2] - w
+            k = w - rect[0] + rect[2]
+        diff = len(im[st_y:end_y, (rect[0] + k):rect[0] + rect[2] + k][1]) - \
+                len(im[st_y:end_y, rect[0]:rect[0] + rect[2]][1])
+        im[st_y:end_y, (rect[0] + k):rect[0] + rect[2] + k - diff] = \
+            im[st_y:end_y, rect[0]:rect[0] + rect[2]]
+    return im
+def coverup(im, bar, rect):
+    '''
+    Places the provided censor bar image over the given rect.
+    Returns censored image.
+    '''
+    im = Image.fromarray(im).convert("RGBA")
+    imbar = Image.open(bar)
+    dim = (rect[2] - rect[0], rect[3] - rect[1])
+    imbar = imbar.resize(dim)
+    im.paste(imbar, (rect[0], rect[1]), imbar)
+    im = np.array(im)
+    return im
+def modim(im, rect, offset, size, mod, bardir = None):
+    '''
+    Performs specified modification to a given image within rect.
+    Returns modified image.
+    '''
+    if rect != None:
+        if bardir != None:
+            bar = glob("./images/" + bardir + "/*")
+            if mod == "cover" and bardir != None:
+                im = coverup(im, choice(bar), rect)
+            elif mod == "stagger":
+                im = stagger(im, rect)
+            elif mod == "drag":
+                im = drag(im, rect)
+    return im

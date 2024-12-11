@@ -1,0 +1,66 @@
+import os
+import sys
+import requests
+
+class Config:
+    """Configuration Object for Flask App"""
+
+    def __init__(self):
+        # Get the absolute path of the current directory
+        basedir = os.path.abspath(os.path.dirname(__file__))
+
+        # Set up database URI using environment variable or SQLite as fallback
+        self.SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+            'sqlite:///' + os.path.join(basedir, 'app/app.db')
+
+        # Disable modification tracking for SQLAlchemy
+        self.SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+        # Define environment variables for bot token and Firebase URL
+        self.BOT_TOKEN_ENV_VAR = "GP_TELEGRAM_BOT_TOKEN"
+        self.FIREBASE_URL_ENV_VAR = "GP_FIREBASE_URL"
+
+        # Attempt to get bot token from environment variable
+        try:
+            self.BOT_TOKEN = os.environ[self.BOT_TOKEN_ENV_VAR]
+        except KeyError:
+            print(f"You did not set {self.BOT_TOKEN_ENV_VAR}")
+            sys.exit()
+
+        # Attempt to get Firebase URL from environment variable
+        try:
+            self.FIREBASE_URL = os.environ[self.FIREBASE_URL_ENV_VAR]
+        except KeyError:
+            self.FIREBASE_URL = None
+            if not self.FIREBASE_URL:
+                print(f"You did not set {self.FIREBASE_URL_ENV_VAR}", file=sys.stderr)
+                print("Communication with the app will not work!", file=sys.stderr)
+
+        # Try to get bot name by making a request to Telegram API
+        try:
+            resp = requests.get(f"http://api.telegram.org/bot{self.BOT_TOKEN}/getMe")
+            resp.raise_for_status()
+            self.BOT_NAME = resp.json()["result"]["username"]
+        except requests.exceptions.ConnectionError:
+            print("No connection. Bot name will be set to default <AndyAbbot>")
+            self.BOT_NAME = "AndyAbbot"
+        except KeyError:
+            sys.exit("Bot Name could not be parsed from Telegram API. \
+                      Maybe the bot token is out of date?")
+
+        # Define paths for image upload folder and story file
+        self.IMAGE_UPLOAD_FOLDER = os.path.join(basedir, "app/image_upload")
+        self.STORY_FILE = os.path.join(basedir, "app/story/story.json")
+
+        # Define allowed image extensions
+        self.ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
+
+# Example usage:
+config = Config()
+print(config.SQLALCHEMY_DATABASE_URI)
+print(config.BOT_TOKEN)
+print(config.FIREBASE_URL)
+print(config.BOT_NAME)
+print(config.IMAGE_UPLOAD_FOLDER)
+print(config.ALLOWED_IMAGE_EXTENSIONS)
+print(config.STORY_FILE)

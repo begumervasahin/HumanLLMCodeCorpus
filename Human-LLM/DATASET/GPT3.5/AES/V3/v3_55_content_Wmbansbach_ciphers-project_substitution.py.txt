@@ -1,0 +1,150 @@
+class CaesarCipher:
+    def __init__(self):
+        pass
+
+    def process(self, mode, plaintext):
+        alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        data = ""
+
+        for char in plaintext:
+            for i, letter in enumerate(alphabet):
+                if char == letter:
+                    shift = 3 if mode == 1 else -3
+                    data += alphabet[(i + shift) % 26]
+                    break
+
+        return data
+
+
+class SimpleSubstitutionCipher:
+    def __init__(self):
+        self.alpha = {
+            0: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            1: "DEFGHIJKLMNOPQRSTUVWXYZABC",
+            2: "GHIJKLMNOPQRSTUVWXYZABCDEF",
+            3: "JKLMNOPQRSTUVWXYZABCDEFGHI",
+            4: "MNOPQRSTUVWXYZABCDEFGHIJKL"
+        }
+
+    def process(self, mode, message):
+        if mode == 1:
+            return self.encrypt(message)
+        else:
+            return self.decrypt(message)
+
+    def encrypt(self, plaintext):
+        data = ""
+        pos = 1
+
+        for char in plaintext:
+            if pos > 4:
+                pos = 1
+            for i, letter in enumerate(self.alpha[0]):
+                if char == letter:
+                    data += self.alpha[pos][i]
+                    pos += 1
+                    break
+
+        return data
+
+    def decrypt(self, ciphertext):
+        data = ""
+        pos = 1
+
+        for char in ciphertext:
+            if pos > 4:
+                pos = 1
+            for i, letter in enumerate(self.alpha[pos]):
+                if char == letter:
+                    data += self.alpha[0][i]
+                    pos += 1
+                    break
+
+        return data
+
+
+class PlayfairCipher:
+    def __init__(self):
+        self.square = {
+            0: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "A": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "B": "BCDEFGHIJKLMNOPQRSTUVWXYZA",
+            "C": "CDEFGHIJKLMNOPQRSTUVWXYZAB",
+            "D": "DEFGHIJKLMNOPQRSTUVWXYZABC",
+            "E": "EFGHIJKLMNOPQRSTUVWXYZABCD",
+            "F": "FGHIJKLMNOPQRSTUVWXYZABCDE",
+            "G": "GHIJKLMNOPQRSTUVWXYZABCDEF",
+            "H": "HIJKLMNOPQRSTUVWXYZABCDEFG",
+            "I": "IJKLMNOPQRSTUVWXYZABCDEFGH",
+            "J": "JKLMNOPQRSTUVWXYZABCDEFGHI",
+            "K": "KLMNOPQRSTUVWXYZABCDEFGHIJ",
+            "L": "LMNOPQRSTUVWXYZABCDEFGHIJK",
+            "M": "MNOPQRSTUVWXYZABCDEFGHIJKL",
+            "N": "NOPQRSTUVWXYZABCDEFGHIJKLM",
+            "O": "OPQRSTUVWXYZABCDEFGHIJKLMN",
+            "P": "PQRSTUVWXYZABCDEFGHIJKLMNO",
+            "Q": "QRSTUVWXYZABCDEFGHIJKLMNOP",
+            "R": "RSTUVWXYZABCDEFGHIJKLMNOPQ",
+            "S": "STUVWXYZABCDEFGHIJKLMNOPQR",
+            "T": "TUVWXYZABCDEFGHIJKLMNOPQRS",
+            "U": "UVWXYZABCDEFGHIJKLMNOPQRST",
+            "V": "VWXYZABCDEFGHIJKLMNOPQRSTU",
+            "W": "WXYZABCDEFGHIJKLMNOPQRSTUV",
+            "X": "XYZABCDEFGHIJKLMNOPQRSTUVW",
+            "Y": "YZABCDEFGHIJKLMNOPQRSTUVWX",
+            "Z": "ZABCDEFGHIJKLMNOPQRSTUVWXY"
+        }
+
+    def process(self, mode, message, key):
+        if mode == 1:
+            return self.encrypt(message, key)
+        else:
+            return self.decrypt(message, key)
+
+    def encrypt(self, plaintext, key):
+        data = ""
+        pos = 0
+
+        for char in plaintext:
+            if pos >= len(key):
+                pos = 0
+            for i, value in enumerate(self.square[0]):
+                if char == value:
+                    data += self.square[key[pos]][i]
+                    pos += 1
+                    break
+
+        return data
+
+    def decrypt(self, ciphertext, key):
+        data = ""
+        pos = 0
+
+        for char in ciphertext:
+            if pos >= len(key):
+                pos = 0
+            for i, value in enumerate(self.square[key[pos]]):
+                if char == value:
+                    data += self.square[0][i]
+                    pos += 1
+                    break
+
+        return data
+
+
+# Example usage:
+if __name__ == "__main__":
+    # TPSMC
+    caesar = CaesarCipher()
+    print(caesar.process(1, "ABCDEF"))  # Output: DEFGHI
+    print(caesar.process(2, "DEFGHI"))  # Output: ABCDEF
+
+    # TPSPC
+    substitution = SimpleSubstitutionCipher()
+    print(substitution.process(1, "ABCDEF"))  # Output: DEFGHI
+    print(substitution.process(2, "DEFGHI"))  # Output: ABCDEF
+
+    # PVSC
+    playfair = PlayfairCipher()
+    print(playfair.process(1, "HELLO", "BCDA"))  # Output: ITLLO
+    print(playfair.process(2, "ITLLO", "BCDA"))  # Output: HELLO

@@ -1,0 +1,70 @@
+import networkx as nx
+import argparse
+import numpy as np
+from measures import F1
+import sys
+
+# Set recursion limit to avoid potential stack overflow
+sys.setrecursionlimit(5500000)
+
+def dfs_visit_recursively(g, node, nodes_color, edges_to_be_removed):
+    '''
+    Depth-first search (DFS) to recursively visit nodes and remove back edges.
+    
+    nodes_color:
+    0: white, not visited
+    1: grey, being visited
+    2: black, already visited
+    '''
+    nodes_color[node] = 1  # Mark node as being visited
+    nodes_order = list(g.successors_iter(node))
+    nodes_order = np.random.permutation(nodes_order)
+    for child in nodes_order:
+        if nodes_color[child] == 0:
+            dfs_visit_recursively(g, child, nodes_color, edges_to_be_removed)
+        elif nodes_color[child] == 1:
+            edges_to_be_removed.append((node, child))  # Record back edges
+    nodes_color[node] = 2  # Mark node as already visited
+
+def dfs_remove_back_edges(graph_file, nodetype=int):
+    '''
+    Perform DFS to remove back edges in a directed graph.
+    '''
+    g = nx.read_edgelist(graph_file, create_using=nx.DiGraph(), nodetype=nodetype)
+    nodes_color = {}
+    edges_to_be_removed = []
+
+    # Initialize nodes' colors
+    for node in g.nodes_iter():
+        nodes_color[node] = 0  # Mark all nodes as not visited
+
+    nodes_order = list(g.nodes_iter())
+    nodes_order = np.random.permutation(nodes_order)
+    for node in nodes_order:
+        if nodes_color[node] == 0:
+            dfs_visit_recursively(g, node, nodes_color, edges_to_be_removed)
+
+    # Write removed edges to a file
+    edges_to_be_removed_file = graph_file[:len(graph_file) - 6] + "_removed_by_dfs.edges"
+    print("Edges to be removed, saved in file:", edges_to_be_removed_file)
+    from file_io import write_pairs_to_file
+    write_pairs_to_file(edges_to_be_removed, edges_to_be_removed_file)
+
+    return edges_to_be_removed
+
+def dfs_performance(graph_file, gt_edges_file):
+    '''
+    Evaluate DFS performance in removing back edges.
+    '''
+    edges_to_be_removed = dfs_remove_back_edges(graph_file)
+    from measures import report_performance
+    report_performance(gt_edges_file, edges_to_be_removed, "DFS")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-g", "--graph_file", default=" ", help="Input graph file name (edges list)")
+    parser.add_argument("-t", "--gt_edges_file", default=None, help="Ground truth edges file")
+    args = parser.parse_args()
+    graph_file = args.graph_file
+    print("Graph file:", graph_file)
+    dfs_performance(graph_file, args.gt_edges_file)

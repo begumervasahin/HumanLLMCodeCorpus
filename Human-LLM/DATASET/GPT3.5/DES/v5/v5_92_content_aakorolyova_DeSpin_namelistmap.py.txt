@@ -1,0 +1,115 @@
+def default_ambig_solver(lst):
+    """Default ambiguity resolver function."""
+    if not isinstance(lst, list):
+        raise ValueError("Input must be a list")
+    elif len(lst) == 0:
+        return None
+    else:
+        return lst[0]
+
+
+class NamelistMap:
+    def __init__(self, inverse_ambiguity_solver=default_ambig_solver):
+        """Initialize NamelistMap."""
+        self.name_to_items = {}  # Dictionary to store mappings from name to item list
+        self.item_to_names = {}  # Dictionary to store mappings from item to name list
+        self.resolve_ambiguity = inverse_ambiguity_solver  # Ambiguity resolver function for item-to-name mappings
+
+    def set(self, name, items):
+        """Set items for a name."""
+        unique_items = list(set(items))
+        self.name_to_items[name] = unique_items
+        for item in unique_items:
+            if item in self.item_to_names:
+                if name not in self.item_to_names[item]:
+                    self.item_to_names[item].append(name)
+            else:
+                self.item_to_names[item] = [name]
+
+    def add(self, name, item):
+        """Add an item to a name."""
+        if self.get(name) is None:
+            self.set(name, [item])
+        else:
+            self.set(name, self.name_to_items[name] + [item])
+
+    def empty(self):
+        """Check if NamelistMap is empty."""
+        return not bool(self.name_to_items)
+
+    def get(self, name):
+        """Get items for a name."""
+        return self.name_to_items.get(name)
+
+    def get_all_names(self):
+        """Get all names in NamelistMap."""
+        return self.name_to_items.keys()
+
+    def get_name_for_item(self, item):
+        """Get the name associated with an item."""
+        return self.resolve_ambiguity(self.item_to_names.get(item, []))
+
+    def get_names_for_item(self, item):
+        """Get all names associated with an item."""
+        return self.item_to_names.get(item, [])
+
+    def get_names_for_matching_items(self, matching_func=lambda x, *args: False, args_list=[]):
+        """Get names for items matching a given condition."""
+        matched_names = []
+        for name in self.get_all_names():
+            if matching_func(self.name_to_items[name], *args_list):
+                matched_names.append(name)
+        return matched_names
+
+    def remove(self, name=None, item=None):
+        """Remove a name or an item from NamelistMap."""
+        if name is not None:
+            assert item is None
+            for item in self.name_to_items[name]:
+                assert name in self.item_to_names[item]
+                self.item_to_names[item].remove(name)
+            self.name_to_items.pop(name)
+        elif item is not None:
+            if item in self.item_to_names.keys():
+                aux_name_list = []
+                for name in self.item_to_names[item]:
+                    self.name_to_items[name].remove(item)
+                    aux_name_list.append(name)
+                for n in aux_name_list:
+                    if not self.name_to_items[n]:
+                        self.name_to_items.pop(n)
+                self.item_to_names.pop(item)
+
+    def clear(self):
+        """Clear NamelistMap."""
+        self.name_to_items.clear()
+        self.item_to_names.clear()
+
+    def set_ambiguity_resolver(self, resolver):
+        """Set ambiguity resolver function."""
+        self.resolve_ambiguity = resolver
+
+    def __str__(self):
+        """String representation of NamelistMap."""
+        output = '=== Direct Map ===\n'
+        for name, items in self.name_to_items.items():
+            output += f'{name} --> {items}\n'
+        output += '=== Reverse Map ===\n'
+        all_items = set()
+        for items in self.name_to_items.values():
+            all_items.update(items)
+        for item in all_items:
+            output += f'{item} --> {self.item_to_names.get(item, [])}\n'
+        output += '====='
+        return output
+
+    def __repr__(self):
+        """Representation of NamelistMap."""
+        return f'<NamelistMap: resolver={self.resolve_ambiguity}, name_to_items={self.name_to_items}, item_to_names={self.item_to_names}>'
+
+    def names_for_item(self, item=None):
+        """Get names associated with an item."""
+        if item is not None:
+            return self.item_to_names.get(item, [])
+        else:
+            return []

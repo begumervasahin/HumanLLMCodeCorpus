@@ -1,0 +1,123 @@
+from extensions import connect_to_database
+from similarity import (
+    shot_percentage_similarity,
+    per_game_similarity,
+    adv_rate_similarity,
+    adv_percent_similarity,
+    adv_misc_similarity,
+)
+from misc import (
+    initialize_output_files,
+    initialize_unique_dicts,
+    remove_output_files,
+    determine_output_file,
+    write_per40_stats,
+    write_NBA_comp_per40,
+    write_NBA_player_VORPs,
+    write_adv_stats,
+    write_NBA_comp_adv,
+    intersect_similarities,
+    output_unique_seasons,
+    reset_unique_players,
+)
+
+def main():
+    # Connect to the database
+    db_connection = connect_to_database()
+
+    # Get data from database tables
+    (
+        prosp_szn_results,
+        prosp_per40_results,
+        prosp_adv_results,
+        comps_per40_results,
+        comps_adv_results,
+    ) = query_tables(db_connection)
+
+    # Initialize data structures
+    players_dict = {}
+    adv_players_dict = {}
+    unique_per40_dict = {}
+    unique_adv_dict = {}
+    unique_players_dict = {}
+
+    # Initialize output files
+    out_file = initialize_output_files()
+
+    # Process each prospect in per40 results
+    for prospect in prosp_per40_results:
+        unique_players_dict[prospect["Player"]] = []
+        output_file = determine_output_file(prospect, prosp_szn_results)
+        write_per40_stats(output_file, prospect)
+
+        per40_comparables = compare_per40_stats(prospect, comps_per40_results)
+        adv_comparables = compare_advanced_stats(prospect, comps_adv_results, prosp_adv_results)
+
+        per40_score, adv_score = write_comparisons(output_file, per40_comparables, adv_comparables)
+
+        write_NBA_player_VORPs(output_file, per40_score)
+        write_NBA_player_VORPs(output_file, adv_score)
+        intersect_similarities(output_file, per40_score, adv_score)
+
+    # Write unique seasons to output file
+    with open("unique.txt", "a") as out_file:
+        output_unique_seasons(unique_per40_dict, unique_players_dict, players_dict, out_file, True)
+        unique_players_dict = reset_unique_players(prosp_per40_results)
+        output_unique_seasons(unique_adv_dict, unique_players_dict, players_dict, out_file, False)
+
+def compare_per40_stats(prospect, comps_per40_results):
+    per40_comparables = {}
+    for nba_player in comps_per40_results:
+        comp_key = f"{nba_player['Player']}, {nba_player['Season']}, {nba_player['School']}"
+        players_dict[comp_key] = nba_player
+        per40_comparables[comp_key] = (
+            shot_percentage_similarity(prospect, nba_player)
+            * per_game_similarity(prospect, nba_player)
+        )
+    return sorted(per40_comparables.items(), key=lambda x: x[1], reverse=True)
+
+def compare_advanced_stats(prospect, comps_adv_results, prosp_adv_results):
+    adv_comparables = {}
+    for nba_player in comps_adv_results:
+        college_player = get_advanced_stats(prospect, prosp_adv_results)
+        comp_key = f"{nba_player['Player']}, {nba_player['Season']}, {nba_player['School']}"
+        adv_players_dict[comp_key] = nba_player
+        adv_comparables[comp_key] = (
+            adv_rate_similarity(college_player, nba_player)
+            * adv_percent_similarity(college_player, nba_player)
+            * adv_misc_similarity(college_player, nba_player)
+        )
+    return sorted(adv_comparables.items(), key=lambda x: x[1], reverse=True)
+
+def write_comparisons(output_file, per40_comparables, adv_comparables):
+    per40_score = {}
+    adv_score = {}
+    output_file.write("Per 40 minute comparisons:\n\n")
+    idx = 0
+    for comp in per40_comparables:
+        unique_per40_dict[comp[0]].append(prospect["Player"])
+        per40_score[comp[0]] = comp[1]
+        vorp_comps[comp[0]] = players_dict[comp[0]]["VORP"]
+        write_NBA_comp_per40(output_file, comp, players_dict)
+        idx += 1
+        if idx >= 30:
+            break
+    output_file.write("\nThe Top 30 per 40 minute NBA comps sorted in descending order based on their career VORPs:\n\n")
+    write_NBA_player_VORPs(output_file, per40_score)
+    write_adv_stats(output_file, college_player)
+    output_file.write("\nAdvanced stat comparisons:\n")
+    idx = 0
+    for comp in adv_comparables:
+        unique_adv_dict[comp[0]].append(prospect["Player"])
+        adv_score[comp[0]] = comp[1]
+        vorp_comps[comp[0]] = players_dict[comp[0]]["VORP"]
+        write_NBA_comp_adv(output_file, comp, adv_players_dict)
+        idx += 1
+        if idx >= 30:
+            break
+    output_file.write("\nThe Top 30 advanced stats NBA comps sorted in descending order based on their career VORPs:\n\n")
+    write_NBA_player_VORPs(output_file, adv_score)
+    return per40_score, adv_score
+
+if __name__ == "__main__":
+    main()

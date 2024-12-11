@@ -1,0 +1,70 @@
+import sys
+import nltk
+import re
+from string import punctuation
+from urllib.request import urlopen
+
+# Download NLTK data if not already downloaded
+nltk.download('punkt')
+
+def build_custom_stopwords():
+    # Fetch custom stopwords from the given URL and combine with punctuation
+    url = "https://www.csee.umbc.edu/courses/graduate/676/term%20project/stoplist.txt"  
+    httpfile = urlopen(url).read()
+    container = httpfile.decode("utf8")
+    punctuation_list = list(punctuation)
+    stop_words = container + ','.join(punctuation_list)
+    return stop_words
+
+def clean_text(text_soup_list, stop_words):
+    # Tokenize text, remove stopwords, and clean the words
+    text_soup_list_string = " ".join(text_soup_list)
+    words = nltk.word_tokenize(text_soup_list_string)
+    words = [word.lower() for word in words if len(word) > 1 and not word.isnumeric()]
+    words = [word for word in words if not re.search(r'^[0-9]+\.[0-9]+$', word)]
+    cleaned_words = [word for word in words if word not in stop_words]
+    return cleaned_words
+
+def main():
+    # Build custom stopwords and clean the input text
+    stop_words = build_custom_stopwords()
+    input_text = " ".join(sys.argv[1:])
+    word_tokens = nltk.word_tokenize(input_text)
+    cleaned_words = clean_text(word_tokens, stop_words)
+
+    # Create a dictionary to store document IDs and their corresponding weights
+    final_dict = {}
+
+    # Read the dictionary file to match words and their frequencies
+    with open("C:\\Users\divya\Desktop\Output\dictionaryFile.txt") as dict_file:
+        for line in dict_file:
+            line = line.strip()
+            if line in cleaned_words:
+                freq = int(next(dict_file).strip())  # Read frequency
+                pos = int(next(dict_file).strip()) - 1  # Read starting position in postings file
+                with open("C:\\Users\divya\Desktop\Output\\postingsFile.txt") as postings_file:
+                    lines = postings_file.readlines()
+                    # Loop through the postings file to calculate weights for each document
+                    for i in range(freq):
+                        doc_and_weight = lines[pos + i].strip().split(',')
+                        doc_id = doc_and_weight[0]
+                        weight = float(doc_and_weight[1])
+                        # Update the final dictionary with document IDs and their weights
+                        if doc_id in final_dict:
+                            final_dict[doc_id] += weight
+                        else:
+                            final_dict[doc_id] = weight
+
+    # Calculate total weights for each document and display the top 10 results
+    final_display = {}
+    for doc_id, weights in final_dict.items():
+        total_weight = sum(weights.values())
+        final_display[doc_id] = total_weight
+
+    # Sort the documents based on total weights and display the top 10 results
+    sorted_docs = sorted(final_display.items(), key=lambda x: x[1], reverse=True)[:10]
+    for doc_id, weight in sorted_docs:
+        print(f"{doc_id}.html {weight}")
+
+if __name__ == "__main__":
+    main()

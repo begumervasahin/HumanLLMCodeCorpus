@@ -1,0 +1,95 @@
+import math
+
+def chinese_remainder_theorem(n_values, a_values):
+    """
+    Apply the Chinese Remainder Theorem to solve the system of congruences.
+
+    Parameters:
+    - n_values (list): List of modulus values (public key factors)
+    - a_values (list): List of corresponding remainder values (encrypted messages)
+
+    Returns:
+    - int: The solution to the system of congruences
+    """
+    product = math.prod(n_values)
+    result = 0
+    for n_i, a_i in zip(n_values, a_values):
+        p = product // n_i
+        result += a_i * mul_inv(p, n_i) * p
+    return result % product
+
+def mul_inv(a, b):
+    """
+    Calculate the modular multiplicative inverse of 'a' modulo 'b'.
+
+    Parameters:
+    - a (int): The number whose inverse is to be calculated
+    - b (int): The modulus
+
+    Returns:
+    - int: The modular multiplicative inverse of 'a' modulo 'b'
+    """
+    x, y = 0, 1
+    original_b = b
+    while a > 1:
+        q = a // b
+        a, b = b, a % b
+        x, y = y - q * x, x
+    return y + original_b if y < 0 else y
+
+def greatest_common_divisor(a, b):
+    """
+    Calculate the greatest common divisor of two numbers 'a' and 'b'.
+
+    Parameters:
+    - a (int): The first number
+    - b (int): The second number
+
+    Returns:
+    - int: The greatest common divisor of 'a' and 'b'
+    """
+    a = abs(a)
+    b = abs(b)
+    while a:
+        a, b = b % a, a
+    return b
+
+def product_of_gcds(lst):
+    """
+    Calculate the product of the greatest common divisors of a list of numbers.
+
+    Parameters:
+    - lst (list): List of numbers
+
+    Returns:
+    - int: The product of the greatest common divisors
+    """
+    return math.prod([abs(x) for x in lst])
+
+def ex13():
+    n_values = []
+    a_values = []
+    print('Attack RSA with Chinese Remainder Theorem')
+    for i in range(3):
+        n = int(input(f'Give the public key factor {i+1}: '))
+        c = int(input(f'Give the encrypted message with the previous factor {i+1}: '))
+        n_values.append(n)
+        a_values.append(c)
+
+    exponent = int(input('Give the exponent: '))
+    
+    gcd = product_of_gcds(n_values)
+    
+    print("Public key factors (N):", n_values)
+    print("Encrypted messages (Cipher):", a_values)
+    print("Exponent (e):", exponent)
+    
+    if gcd > 1:
+        print('Error: Common factors in public key factors')
+    else:
+        result = chinese_remainder_theorem(n_values, a_values)
+        print("Result (x) is:", result)
+        m = 10 ** (math.log10(result) / exponent)
+        print('Calculated value of m is', int(round(m)))
+
+ex13()

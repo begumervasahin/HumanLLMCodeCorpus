@@ -1,0 +1,46 @@
+import re
+from CurrencyExchange import CurrencyExchange
+
+class CurrencyExchangeReader:
+    def __init__(self, file_name):
+        """Initialize CurrencyExchangeReader with the input file name."""
+        self.file_name = file_name
+
+    def parse_currency_name(self, name_line):
+        """Parse currency code and name from a line."""
+        currency_code, currency_name = name_line.split(" ", 1)
+        return currency_code, currency_name
+
+    def parse_currency_exchange_rate(self, rate_line):
+        """Parse currency exchange rate information from a line."""
+        source_currency, target_currency, exchange_rate = rate_line.split(" ")
+        return CurrencyExchange(source_currency, target_currency, float(exchange_rate))
+
+    def read_data(self):
+        """Read data from the input file and parse currency names and exchange rates."""
+        currency_name_regex = re.compile("[A-Z]{3} [A-Z\(\)\.& \-]+")
+        currency_exchange_rate_regex = re.compile("[A-Z]{3} [A-Z]{3} \d+(\.\d+)?")
+        currency_code_name_map = {}
+        currency_exchange_rate_list = []
+
+        try:
+            with open(self.file_name, 'r') as file_handle:
+                for line in file_handle.readlines():
+                    line = line.rstrip("\n\r")
+                    if re.match(currency_exchange_rate_regex, line):
+                        currency_exchange_rate_list.append(self.parse_currency_exchange_rate(line))
+                    elif re.match(currency_name_regex, line):
+                        currency_code, currency_name = self.parse_currency_name(line)
+                        currency_code_name_map[currency_code] = currency_name
+                    else:
+                        raise Exception(f"Invalid line in file {self.file_name}: {line}")
+        except IOError as exception:
+            print(f"Cannot open file {self.file_name}: {str(exception)}")
+
+        return currency_code_name_map, currency_exchange_rate_list
+
+# Example usage:
+reader = CurrencyExchangeReader("currency_data.txt")  # Provide the actual file name
+currency_names, exchange_rates = reader.read_data()
+print("Currency Names:", currency_names)
+print("Exchange Rates:", exchange_rates)

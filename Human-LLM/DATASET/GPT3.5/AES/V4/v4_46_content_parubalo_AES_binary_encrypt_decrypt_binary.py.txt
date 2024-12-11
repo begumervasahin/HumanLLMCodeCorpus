@@ -1,0 +1,82 @@
+import base64
+import os
+from cryptography.hazmat.backends import default_backend        
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.fernet import Fernet
+
+def generate_key(password):
+    """Generates a key from the provided password."""
+    password_bytes = password.encode()
+    salt = b'salt_'
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
+    return key
+
+def encrypt(key, input_file):
+    """Encrypts the input file using the provided key."""
+    output_file = 'encrypted_' + input_file
+    with open(input_file, 'rb') as file:
+        data = file.read()
+    fernet = Fernet(key)
+    encrypted = fernet.encrypt(data)
+    with open(output_file, 'wb') as file:
+        file.write(encrypted)
+
+def decrypt(key, input_file):
+    """Decrypts the input file using the provided key."""
+    output_file = 'decrypted_' + input_file
+    with open(input_file, 'rb') as file:
+        data = file.read()
+    fernet = Fernet(key)
+    decrypted = fernet.decrypt(data)
+    with open(output_file, 'wb') as file:
+        file.write(decrypted)
+
+def binary_encode(input_file):
+    """Encodes the input file to binary."""
+    output_file = 'binary_' + input_file
+    with open(input_file, 'r') as file:
+        data = file.read()
+    binary_data = ''.join([bin(ord(c))[2:].rjust(8, '0') for c in data])
+    with open(output_file, 'w') as file:
+        file.write(binary_data)
+
+def binary_decode(input_file):
+    """Decodes the input file from binary."""
+    output_file = 'debinary_' + input_file
+    with open(input_file, 'r') as file:
+        data = file.read()
+    n = int(data, 2)
+    debinary_data = n.to_bytes((n.bit_length() + 7) // 8, 'big').decode()
+    with open(output_file, 'w') as file:
+        file.write(debinary_data)
+
+def main():
+    """Main function to handle user input and execute corresponding operations."""
+    option = input("\n'1' Encrypt a file\n'2' Decrypt a file\n'3' Convert to binary\n'4' Convert from binary\n>> ")
+    if option == '1':
+        password = input("Enter password >> ")
+        name = input("\nEnter file name in current directory >> ")
+        encrypt(generate_key(password), name)
+    elif option == '2':
+        password = input("Enter password >> ")
+        name = input("\nEnter file name in current directory >> ")
+        decrypt(generate_key(password), name)
+    elif option == '3':
+        name = input("\nEnter file name in current directory >> ")
+        binary_encode(name)
+    elif option == '4':
+        name = input("\nEnter file name in current directory >> ")
+        binary_decode(name)
+    else:
+        print("Sorry...")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,38 @@
+import os
+import getpass
+
+# Prompt the user to enter a password
+password = getpass.getpass("Please enter a password: ")
+
+# Prompt the user to enter a file to encrypt
+file_to_encrypt = input("Enter a file to encrypt. (If blank, uses provided input.txt): ")
+if file_to_encrypt == "":
+    file_to_encrypt = 'input.txt'
+
+# Check for and install the required Python libraries
+print("Checking for required Python libraries...")
+os.system('pip install bitstring')
+os.system('pip install pycryptodomex')
+print('Libraries installed successfully, proceeding...')
+
+# Generate a keyfile with 3DES keys
+print("Generating keyfile with 3DES keys at keyfile.txt...")
+os.system(f'python 3Des.py genkey {password} keyfile.txt')
+
+# Proceed with encryption
+print("Proceeding with encryption:")
+encryption_modes = ['ECB', 'CBC', 'OFB']
+for mode in encryption_modes:
+    output_file = f'cipher_{mode.lower()}.txt'
+    print(f"Encrypting input with 3DES in {mode} Mode and outputting to {output_file}...")
+    os.system(f'python 3Des.py encrypt {file_to_encrypt} keyfile.txt {output_file} {mode}')
+
+# Encryption complete, proceeding to decryption
+print("Encryption complete, proceeding to decryption:")
+for mode in encryption_modes:
+    input_file = f'cipher_{mode.lower()}.txt'
+    output_file = f'clear_{mode.lower()}.txt'
+    print(f"Decrypting {input_file} and outputting to {output_file}...")
+    os.system(f'python 3Des.py decrypt {input_file} keyfile.txt {output_file} {mode}')
+
+print("Done!")

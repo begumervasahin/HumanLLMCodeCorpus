@@ -1,0 +1,195 @@
+import os
+import re
+
+class PorterStemmer:
+    def __init__(self):
+        self.word = ""
+        self.end_index = 0
+        self.start_index = 0
+        self.last_index = 0
+
+    def is_consonant(self, index):
+        vowels = 'aeiou'
+        if self.word[index] in vowels:
+            return False
+        if self.word[index] == 'y':
+            if index == self.start_index:
+                return True
+            else:
+                return not self.is_consonant(index - 1)
+        return True
+
+    def count_consonant_sequences(self):
+        count = 0
+        index = self.start_index
+        while True:
+            if index > self.last_index:
+                return count
+            if not self.is_consonant(index):
+                break
+            index += 1
+        index += 1
+        while True:
+            while True:
+                if index > self.last_index:
+                    return count
+                if self.is_consonant(index):
+                    break
+                index += 1
+            index += 1
+            count += 1
+            while True:
+                if index > self.last_index:
+                    return count
+                if not self.is_consonant(index):
+                    break
+                index += 1
+            index += 1
+
+    def has_vowel_in_stem(self):
+        for index in range(self.start_index, self.last_index + 1):
+            if not self.is_consonant(index):
+                return True
+        return False
+
+    def is_double_consonant(self, index):
+        if index < (self.start_index + 1):
+            return False
+        if self.word[index] != self.word[index - 1]:
+            return False
+        return self.is_consonant(index)
+
+    def is_cvc_sequence(self, index):
+        if index < (self.start_index + 2) or not self.is_consonant(index) or self.is_consonant(index - 1) or not self.is_consonant(index - 2):
+            return False
+        ch = self.word[index]
+        if ch in 'wx':
+            return False
+        return True
+
+    def ends_with(self, s):
+        length = len(s)
+        if s[length - 1] != self.word[self.end_index]:
+            return False
+        if length > (self.end_index - self.start_index + 1):
+            return False
+        if self.word[self.end_index - length + 1:self.end_index + 1] != s:
+            return False
+        self.last_index = self.end_index - length
+        return True
+
+    def replace_with(self, s):
+        length = len(s)
+        self.word = self.word[:self.last_index + 1] + s + self.word[self.last_index + length + 1:]
+        self.end_index = self.last_index + length
+
+    def replace(self, s):
+        if self.count_consonant_sequences() > 0:
+            self.replace_with(s)
+
+    def step1ab(self):
+        if self.word[self.end_index] == 's':
+            if self.ends_with("sses"):
+                self.end_index -= 2
+            elif self.ends_with("ies"):
+                self.replace_with("i")
+            elif self.word[self.end_index - 1] != 's':
+                self.end_index -= 1
+        if self.ends_with("eed"):
+            if self.count_consonant_sequences() > 0:
+                self.end_index -= 1
+        elif (self.ends_with("ed") or self.ends_with("ing")) and self.has_vowel_in_stem():
+            self.end_index = self.last_index
+            if self.ends_with("at"):
+                self.replace_with("ate")
+            elif self.ends_with("bl"):
+                self.replace_with("ble")
+            elif self.ends_with("iz"):
+                self.replace_with("ize")
+            elif self.is_double_consonant(self.end_index):
+                self.end_index -= 1
+                ch = self.word[self.end_index]
+                if ch in 'lsz':
+                    self.end_index += 1
+            elif (self.count_consonant_sequences() == 1 and self.is_cvc_sequence(self.end_index)):
+                self.replace_with("e")
+
+    def step1c(self):
+        if self.ends_with("y") and self.has_vowel_in_stem():
+            self.word = self.word[:self.end_index] + 'i' + self.word[self.end_index + 1:]
+
+    def step2(self):
+        if self.word[self.end_index - 1] == 'a':
+            if self.ends_with("ational"):
+                self.replace("ate")
+            elif self.ends_with("tional"):
+                self.replace("tion")
+        elif self.word[self.end_index - 1] == 'c':
+            if self.ends_with("enci"):
+                self.replace("ence")
+            elif self.ends_with("anci"):
+                self.replace("ance")
+
+    def step3(self):
+        if self.word[self.end_index] == 'e':
+            if self.ends_with("icate"):
+                self.replace("ic")
+            elif self.ends_with("ative"):
+                self.replace("")
+            elif self.ends_with("alize"):
+                self.replace("al")
+
+    def step4(self):
+        if self.word[self.end_index - 1] == 'a':
+            if self.ends_with("al"):
+                pass
+        elif self.word[self.end_index - 1] == 'c':
+            if self.ends_with("ance") or self.ends_with("ence"):
+                pass
+
+    def step5(self):
+        self.last_index = self.end_index
+        if self.word[self.end_index] == 'e':
+            count = self.count_consonant_sequences()
+            if count > 1 or (count == 1 and not self.is_cvc_sequence(self.end_index - 1)):
+                self.end_index -= 1
+        if self.word[self.end_index] == 'l' and self.is_double_consonant(self.end_index) and self.count_consonant_sequences() > 1:
+            self.end_index -= 1
+
+    def stem(self, word):
+        self.word = word
+        self.end_index = len(word) - 1
+        self.start_index = 0
+        if self.end_index <= self.start_index + 1:
+            return self.word
+        self.step1ab()
+        self.step1c()
+        self.step2()
+        self.step3()
+        self.step4()
+        self.step5()
+        return self.word[self.start_index:self.end_index + 1]
+
+
+class IRSystem:
+    def __init__(self):
+        self.document_titles = []
+        self.documents = []
+        self.vocabulary = []
+        self.alphanumeric_pattern = re.compile('[^a-zA-Z0-9]')
+        self.stemmer = PorterStemmer()
+
+    def get_unique_words(self):
+        unique_words = set()
+        for document in self.documents:
+            for word in document:
+                unique_words.add(word)
+        return unique_words
+
+    def read_raw_data(self, directory_path):
+        print("Stemming Documents...")
+        self.document_titles = []
+        self.documents = []
+        os.makedirs(f'{directory_path}/stemmed', exist_ok=True)
+        title_pattern = re.compile('(.*) \d+\.txt')
+        filenames = [filename

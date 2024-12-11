@@ -1,0 +1,66 @@
+import sys
+import os
+import subprocess
+import re
+import csv
+from multiprocessing import Pool
+
+# Define constants
+FILE = "zmap_results"
+WORKERS = 80
+
+# Open output file
+outfile = open('output.csv', 'w')
+wr = csv.writer(outfile)
+
+# Function to process each line in the input file
+def process_line(line):
+    # Split the line by comma
+    row = line.split(',')
+    # Extract server address
+    server = row[0].strip('\n')
+    try:
+        # Execute openssl-trace command to check for DHE cipher
+        cmd = subprocess.check_output([
+            os.path.dirname(sys.argv[0])+"/openssl-trace",
+            "s_client",
+            "-trace",
+            "-cipher",
+            "DHE",
+            "-connect",
+            server+":443"
+        ],
+        stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
+        # Iterate over each line in the command output
+        for line in cmd.decode("ISO-8859-1").splitlines():
+            # Check for the presence of 'dh_p' in the line
+            if 'dh_p' in line:
+                # Extract the prime number
+                prime = int(re.sub(".*: ", "", line), 16)
+                # Return server address and prime number
+                return '{} {}'.format(server, prime)
+    # Handle errors
+    except subprocess.CalledProcessError:
+        # Return server address with indication of no DHE support
+        return ('{} {}'.format(server, "No_DHE"))
+    except subprocess.TimeoutExpired:
+        # Return server address with indication of connection timeout
+        return ('{} {}'.format(server, "Can't_connect"))
+    except:
+        # Return server address with indication of error
+        return ('{} {}'.format(server, "Error"))
+
+# Main function
+if __name__ == "__main__":
+    # Create a pool of workers
+    pool = Pool(WORKERS)
+    # Open the input file
+    with open(FILE) as f:
+        # Map the process_line function to each line in the file using multiprocessing
+        result = pool.map(process_line, f)
+    # Write the results to the output CSV file
+    for item in result:
+        wr.writerow([item])
+
+# Close the output file
+outfile.close()

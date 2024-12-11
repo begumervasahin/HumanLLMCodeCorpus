@@ -1,0 +1,60 @@
+import numpy as np
+
+def dijkstra(graph, source):
+    num_nodes = len(graph)
+    infinity = float('inf')
+    distances = [infinity for _ in range(num_nodes)]
+    distances[source] = 0
+    visited_nodes = set()
+    visited_nodes_and_costs = []
+    node_costs = {source: distances[source]}
+    previous_nodes = {}
+
+    while node_costs:
+        current_node, cost = min(node_costs.items(), key=lambda x: x[1])
+        del node_costs[current_node]
+        visited_nodes.add(current_node)
+        visited_nodes_and_costs.append((current_node, cost))
+
+        for neighbor, weight in enumerate(graph[current_node]):
+            if weight != 0 and neighbor not in visited_nodes:
+                new_cost = distances[current_node] + weight
+                if new_cost < distances[neighbor]:
+                    distances[neighbor] = new_cost
+                    node_costs[neighbor] = new_cost
+                    previous_nodes[neighbor] = current_node
+
+    return visited_nodes_and_costs, previous_nodes
+
+def main():
+    filename = input('Enter the file name (without extension): ') + '.txt'
+    graph = np.loadtxt(filename)
+    num_nodes = len(graph)
+
+    start_node = int(input('Enter the starting node: '))
+    while not (0 <= start_node < num_nodes):
+        start_node = int(input('Invalid input. Please enter a valid starting node: '))  
+
+    end_node = int(input('Enter the end node: '))
+    while not (0 <= end_node < num_nodes):
+        end_node = int(input('Invalid input. Please enter a valid end node: '))
+
+    visited_nodes_and_costs, predecessors = dijkstra(graph, start_node)
+    print(f"The shortest paths from start node {start_node} to every other node are:")
+    for node, cost in visited_nodes_and_costs:
+        print(f"Node {node}: Cost = {cost}")
+
+    shortest_path = []
+    target_node = end_node
+    while target_node != start_node:
+        shortest_path.append(target_node)
+        target_node = predecessors[target_node]
+    shortest_path.append(start_node)
+    shortest_path.reverse()
+
+    print(f"\nThe shortest path from start node {start_node} to target node {end_node} is:")
+    print(shortest_path)
+    print(f"Total distance: {dict(visited_nodes_and_costs).get(end_node)}")
+
+if __name__ == "__main__":
+    main()

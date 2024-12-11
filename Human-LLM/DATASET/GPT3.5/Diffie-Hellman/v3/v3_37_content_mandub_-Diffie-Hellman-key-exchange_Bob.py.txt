@@ -1,0 +1,64 @@
+from time import sleep
+import random
+import socket
+
+def is_prime(n):
+    """Check if a number is prime."""
+    for i in range(2, n):
+        if n % i == 0:
+            return False
+    return True
+
+def generate_random_prime(limit=2000):
+    """Generate a random prime number."""
+    primes_list = [p for p in range(2, limit + 1) if is_prime(p)]
+    return random.choice(primes_list)
+
+def bob_send_message(num):
+    """Send a number to Alice and receive a message."""
+    from_alice = ""
+    host = "localhost"
+    port = 42428
+    backlog = 5
+    size = 1024
+
+    # Create a connection to send data to Alice
+    with socket.create_connection((host, port)) as c_bob:
+        snum = str(num)
+        buf = snum.encode("utf-8")
+        c_bob.sendall(buf)
+
+    sleep(0.1)  # Adding a short delay for synchronization
+    # Accept the connection from Alice
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_bob:
+        s_bob.bind((host, port))
+        s_bob.listen(backlog)
+
+        conn, client_address = s_bob.accept()
+        data = conn.recv(size)
+        if data:
+            data_string = data.decode("utf-8")
+            from_alice = data_string
+
+    return from_alice
+
+# Step 1: Alice sends the first part of the public key (g)
+alice_message_g = bob_send_message(0)
+g = int(alice_message_g)
+print("State: Alice sent the first part of the public key =", g)
+
+# Step 2: Alice sends the second part of the public key (p)
+alice_message_p = bob_send_message(0)
+p = int(alice_message_p)
+print("State: Alice sent the second part of the public key =", p)
+
+# Step 3: Bob generates his private key
+b_private_key = generate_random_prime()
+print("Bob's private key is", b_private_key)
+
+# Step 4: Bob calculates the message to send to Alice
+b_message = pow(g, b_private_key, p)
+alice_message_from_bob = bob_send_message(b_message)
+a_message = int(alice_message_from_bob)
+bob_shared_key = pow(a_message, b_private_key, p)
+print("Bob's shared key is", bob_shared_key)

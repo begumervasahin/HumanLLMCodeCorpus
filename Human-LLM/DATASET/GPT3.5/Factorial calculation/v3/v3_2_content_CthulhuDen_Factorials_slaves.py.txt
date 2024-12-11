@@ -1,0 +1,98 @@
+import multiprocessing
+
+def worker_function(function, operating, input_queue, output_queue, terminator, lock):  
+    """
+    Worker function executed by each process in the multiprocessing pool.
+    """
+    while not terminator.is_set():
+        operating.wait()
+        lock.acquire()
+        if not input_queue.empty():
+            item = input_queue.get()
+            lock.release()
+            result = function(item)
+            output_queue.put(result)
+        else:
+            lock.release()
+    output_queue.close()
+    return 0
+
+class MultiprocessingPool:
+    """
+    Manages a pool of worker processes using multiprocessing.
+    """
+    def __init__(self, function, num_processes=None):
+        if num_processes is None:
+            num_processes = multiprocessing.cpu_count()
+        
+        self.input_queue = multiprocessing.Queue()
+        self.output_queue = multiprocessing.Queue()
+        self.terminator = multiprocessing.Event()
+        self.operating = multiprocessing.Event()
+        self.lock = multiprocessing.Lock()
+        self.processes = []
+
+        for _ in range(num_processes):
+            process = multiprocessing.Process(target=worker_function, args=(function, self.operating, self.input_queue, self.output_queue, self.terminator, self.lock))
+            self.processes.append(process)
+
+    def start(self):
+        """
+        Start the worker processes.
+        """
+        self.operating.set()
+        for process in self.processes:
+            process.start()
+
+    def put(self, item):
+        """
+        Put an item into the input queue.
+        """
+        self.input_queue.put(item)
+
+    def get(self):
+        """
+        Get a result from the output queue.
+        """
+        return self.output_queue.get()
+
+    def terminate(self):
+        """
+        Terminate the worker processes.
+        """
+        self.operating.set()
+        self.terminator.set()
+        self.input_queue.close()
+
+    def pause(self):
+        """
+        Pause the worker processes.
+        """
+        self.operating.clear()
+
+    def resume(self):
+        """
+        Resume the worker processes.
+        """
+        self.operating.set()
+
+# Example usage:
+if __name__ == "__main__":
+    # Define the function to be executed by the processes
+    def square(x):
+        return x ** 2
+
+    # Create a MultiprocessingPool object with the square function and start the processes
+    pool = MultiprocessingPool(square)
+    pool.start()
+
+    # Put some data into the queue and retrieve the results
+    for i in range(10):
+        pool.put(i)
+
+    for _ in range(10):
+        result = pool.get()
+        print("Result:", result)
+
+    # Terminate the processes
+    pool.terminate()

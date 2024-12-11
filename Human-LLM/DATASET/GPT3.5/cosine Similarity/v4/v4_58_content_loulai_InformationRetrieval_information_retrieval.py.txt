@@ -1,0 +1,50 @@
+import re
+from stop_list import closed_class_stop_words
+
+# Read queries from the file
+queries = open("cran.qry", 'r').read()
+queries.replace("\s ", "")
+
+# Function to extract query numbers
+def get_query_nums(string):
+    query_nums = []
+    q1 = re.findall(r".I \d{3}", string)
+    for q in q1:
+        query_nums.append(q.replace(".I ", ""))
+    return query_nums
+
+# Function to extract query strings
+def get_query_strings(string):
+    query_strings = []
+    q1 = re.findall(r"([a-z ]+\n){1,3}[a-z ]+\.", string)
+    for q in q1:
+        query_strings.append(q)
+    return query_strings
+
+# Extract query strings
+get_query_strings(queries)
+
+# Function to trim a string and remove stop words
+def trim(string):
+    trimmed_words = filter(None, (re.sub(r"\n|\r", " ", string)).split(" "))
+    stop_words = closed_class_stop_words
+    for stop_word in stop_words:
+        while stop_word in trimmed_words:
+            trimmed_words.remove(stop_word)
+    return trimmed_words
+
+# Function to calculate term frequency
+def get_tf(array):
+    terms = list(set(array))
+    term_frequency = dict.fromkeys(terms, 0)
+    for word in array:
+        term_frequency[word] = term_frequency[word] + 1
+    return term_frequency
+
+# Function to print a dictionary
+def print_dict(dictionary):
+    for key, value in dictionary.items():
+        print(key, value)
+
+# Trim and print the content of "cran2.qry"
+print(trim(open("cran2.qry", 'r').read()))

@@ -1,0 +1,70 @@
+"""
+This module generates RSA keys vulnerable to the Wiener continued fraction attack.
+The RSA keys are obtained as follows:
+1. Choose two prime numbers p and q.
+2. Compute n = pq.
+3. Compute phi(n) = (p-1)(q-1).
+4. Choose e coprime to phi(n) such that gcd(e, n) = 1.
+5. Compute d = e^(-1) mod (phi(n)).
+6. e is the public key, n is made public (determines the block size), and d is the private key.
+
+Encryption:
+1. The size of data to be encrypted must be less than n.
+2. ciphertext = pow(plaintext, public key, n).
+
+Decryption:
+1. The size of data to be decrypted must be less than n.
+2. plaintext = pow(ciphertext, private key, n).
+
+RSA keys are Wiener-vulnerable if d < (n^(1/4))/sqrt(6).
+"""
+
+import random
+import MillerRabin
+import Arithmetic
+
+def generate_prime_pair(bits=512):
+    """
+    Generate a pair of prime numbers (p, q) such that:
+    - p has 'bits' number of bits.
+    - p < q < 2p.
+    """
+    assert bits % 4 == 0
+    p = MillerRabin.gen_prime(bits)
+    q = MillerRabin.gen_prime_range(p + 1, 2 * p)
+    return p, q
+
+def generate_keys(nbits=1024):
+    """
+    Generate a key pair (public, private) where:
+    - The modulus 'n' has 'nbits' length.
+    - The public key is (e, n).
+    - The private key is 'd'.
+    - The public key is vulnerable to the Wiener Continued Fraction Attack.
+    """
+    assert nbits % 4 == 0
+    p, q = generate_prime_pair(nbits // 2)
+    n = p * q
+    phi = Arithmetic.totient(p, q)
+    
+    # Generate a private key 'd' such that (e, n) is vulnerable to Wiener's attack.
+    good_d = False
+    while not good_d:
+        d = random.getrandbits(nbits // 4)
+        if Arithmetic.gcd(d, phi) == 1 and 36 * pow(d, 4) < n:
+            good_d = True
+    
+    e = Arithmetic.mod_inverse(d, phi)
+    return e, n, d
+
+if __name__ == "__main__":
+    print("Generating RSA keys vulnerable to Wiener's attack:")
+    print("-----------------------------------")
+    for i in range(5):
+        e, n, d = generate_keys()
+        print("Public Key:")
+        print("e =", e)
+        print("n =", n)
+        print("Private Key:")
+        print("d =", d)
+        print("-----------------------------------")

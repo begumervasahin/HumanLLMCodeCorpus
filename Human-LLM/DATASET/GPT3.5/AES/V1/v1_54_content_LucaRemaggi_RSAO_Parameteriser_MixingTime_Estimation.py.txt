@@ -1,0 +1,45 @@
+import numpy as np
+
+class EstimatePerceptualMixingTime:
+    def __init__(self, RoomDims):
+        self.RoomDims = RoomDims
+        self.mixing_time_estimate = {}
+    
+    def model_based(self):
+        print('----------------------------------')
+        print('MODEL-BASED MIXING TIME PREDICTION')
+        print('----------------------------------')
+        print('ROOM PROPERTIES:')
+        
+        x_d, y_d, z_d = self.RoomDims
+        
+        if x_d <= 0 or y_d <= 0 or z_d <= 0:
+            raise ValueError('RoomDims must contain positive, numeric values only.')
+        
+        print(f'Room dimensions: height = {x_d}m, length = {y_d}m, width = {z_d}m')
+        
+        print('Perceptual mixing times tmp50 and tmp95 (in ms) from model-based predictors:')
+        volume = x_d * y_d * z_d
+        surface = 2 * (x_d * y_d + x_d * z_d + y_d * z_d)
+        print('Volume: {}m3'.format(volume))
+        print('Surface area: {}m2'.format(surface))
+        
+        rootvol = np.sqrt(volume)
+        MFP = 47 * volume / surface
+        tmp50 = 20.08 * volume / surface + 12
+        tmp95 = 0.0117 * volume + 50.1
+        
+        print('tmp50: {}ms'.format(tmp50))
+        print('tmp95: {}ms'.format(tmp95))
+        
+        self.mixing_time_estimate.update({'model': {'tmp50': tmp50}})
+        self.mixing_time_estimate['model'].update({'tmp95': tmp95}) 
+        self.mixing_time_estimate['model'].update({'rootV': rootvol})
+        self.mixing_time_estimate['model'].update({'mfp_based': MFP})
+        
+        return self
+
+# Example usage:
+RoomDims = [5, 6, 7]  # Dimensions of the room (height, length, width)
+mixing_time_estimator = EstimatePerceptualMixingTime(RoomDims)
+mixing_time_estimator.model_based()

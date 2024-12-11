@@ -1,0 +1,44 @@
+import socket
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+import threading
+
+class Client:
+    def __init__(self, host='127.0.0.1', sport=5022):
+        self.host = host
+        self.sport = sport
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((self.host, self.sport))
+        self.cipher = None
+
+    def send_msg(self):
+        while True:
+            message = input("\nEnter a message: ")
+            self.sock.send(self.cipher.encrypt(message))
+
+    def receive_data(self):
+        f = open('mykey.pem', 'r')
+        key = RSA.importKey(f.read())
+        print("RSA key imported\n")
+        public_rsa_key = key.publickey().exportKey('DER')
+        self.sock.send(public_rsa_key)
+        print("Public RSA key sent\nMessage from server: " + self.sock.recv(1024).decode() + "\n")
+        aes_encrypted = self.sock.recv(1024)
+        aes_key = key.decrypt(aes_encrypted)
+        print("AES encrypted key received and decrypted")
+        self.cipher = AES.new(aes_key, AES.MODE_CFB, aes_key)
+        i_thread = threading.Thread(target=self.send_msg)
+        i_thread.daemon = True
+        i_thread.start()
+        while True:
+            data = self.sock.recv(1024)
+            if not data:
+                break
+            print(self.cipher.decrypt(data).decode())
+
+def main():
+    client = Client()
+    client.receive_data()
+
+if __name__ == "__main__":
+    main()

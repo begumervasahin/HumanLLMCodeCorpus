@@ -1,0 +1,105 @@
+from BuggySimulator import *
+import numpy as np
+from controller_fast import *
+from util import *
+import matplotlib.pyplot as plt
+from Evaluation import *
+
+# Load the reference trajectory
+trajectory = get_trajectory('buggyTrace.csv')
+
+# Initialize the vehicle
+initial_state = 0
+vehicle = initail(trajectory, initial_state)
+
+# Simulation parameters
+simulation_steps = 6000
+
+# Arrays to store simulation data
+simulation_data = {
+    'positions_X': [],
+    'positions_Y': [],
+    'steering_angles': [],
+    'velocities_X': [],
+    'velocities_Y': [],
+    'angular_velocities': [],
+    'vehicle_angles': [],
+    'desired_steering_angles': [],
+    'applied_forces': [],
+    'minimum_distances': []
+}
+
+# Flags for tracking goal achievement
+passed_middle_point = False
+near_goal = False
+
+# Main simulation loop
+for step in range(simulation_steps):
+    print("Step:", step)
+
+    # Obtain control command from the controller
+    control_command = controller(trajectory, vehicle.state)
+
+    # Update the vehicle state based on the control command
+    vehicle.update(command=control_command)
+
+    # Find the closest point on the trajectory to the current vehicle position
+    distance_error, nearest_index = closest_node(vehicle.state.X, vehicle.state.Y, trajectory)
+    distance_to_middle_point = nearest_index - len(trajectory) / 2.0
+
+    # Check if the vehicle has passed the middle point of the trajectory
+    if abs(distance_to_middle_point) < 100.0:
+        passed_middle_point = True
+        print('Middle point passed')
+
+    # Check if the vehicle is near the goal
+    near_goal = nearest_index >= len(trajectory) - 50
+    if near_goal and passed_middle_point:
+        print('Destination reached!')
+        break
+
+    # Store simulation data
+    simulation_data['positions_X'].append(vehicle.state.X)
+    simulation_data['positions_Y'].append(vehicle.state.Y)
+    simulation_data['steering_angles'].append(vehicle.state.delta)
+    simulation_data['velocities_X'].append(vehicle.state.xd)
+    simulation_data['velocities_Y'].append(vehicle.state.yd)
+    simulation_data['angular_velocities'].append(vehicle.state.phid)
+    simulation_data['vehicle_angles'].append(vehicle.state.phi)
+    simulation_data['desired_steering_angles'].append(control_command.deltad)
+    simulation_data['applied_forces'].append(control_command.F)
+    simulation_data['minimum_distances'].append(distance_error)
+
+    # Store the current state
+    current_state = vehicle.state
+    current_state_np = np.array([
+        [current_state.xd,
+         current_state.yd,
+         current_state.phid,
+         current_state.delta,
+         current_state.X,
+         current_state.Y,
+         current_state.phi]])
+
+    if step == 0:
+        saved_states = current_state_np.reshape((1, 7))
+    else:
+        saved_states = np.concatenate((saved_states, current_state_np.reshape((1, 7))), axis=0)
+
+# Display simulation results
+showResult(trajectory, **simulation_data)
+
+# Save the actual trajectory
+np.save('Actual_trajectory', saved_states)
+
+# Evaluate the simulation results
+evaluation(simulation_data['minimum_distances'], trajectory, simulation_data['positions_X'], simulation_data['positions_Y'], 4)
+
+# Plot the trajectory
+plt.title('Trajectory of the Vehicle')
+plt.plot(trajectory[:, 0], trajectory[:, 1], 'b', label="Reference trajectory")
+plt.plot(simulation_data['positions_X'], simulation_data['positions_Y'], 'r', label="Actual trajectory")
+plt.xlabel("X-position (m)")
+plt.ylabel("Y-position (m)")
+plt.legend()
+plt.show()

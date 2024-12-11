@@ -1,0 +1,42 @@
+# Import necessary modules and classes
+from forex_python.converter import CurrencyRates
+from math import log
+from Vert import Vertex
+from Edges import Edge
+from BellmanFord import BellmanFord
+
+if __name__ == "__main__":
+    # Initialize CurrencyRates object
+    c = CurrencyRates()
+
+    # Get user input for a list of currencies
+    input_string = input('Enter a list of currencies separated by spaces: ')
+    currency_list = input_string.split()
+
+    # Create Vertex objects for each currency in the list
+    vertex_list = [Vertex(currency) for currency in currency_list]
+
+    # Initialize an empty list to store Edge objects
+    edge_list = []
+
+    # Create Edge objects for all pairs of vertices (currencies)
+    for i in vertex_list:
+        for j in vertex_list:
+            if i != j:
+                # Get the currency conversion rate from i to j
+                rate = c.get_rate(i.name, j.name)
+
+                # Calculate the weight based on the conversion rate
+                weight = -1 * log(rate) if rate > 0 else float('inf')
+
+                # Create the Edge object and append it to the edge_list
+                edge_list.append(Edge(i, j, weight))
+
+    # Create BellmanFord object with the vertex and edge lists
+    bellman_ford_algo = BellmanFord(vertex_list, edge_list)
+
+    # Run Bellman-Ford algorithm with the first vertex as the source
+    bellman_ford_algo.bellman_ford(vertex_list[0])
+
+    # Print any detected cycle
+    bellman_ford_algo.print_cycle()

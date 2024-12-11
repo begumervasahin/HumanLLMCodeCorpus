@@ -1,0 +1,67 @@
+def xor_strings(s1, s2):
+    """Perform XOR operation on two strings."""
+    return ''.join(str(int(bit1) ^ int(bit2)) for bit1, bit2 in zip(s1, s2))
+
+def encode_text(text):
+    """Encode text using a predefined dictionary."""
+    encoding_dict = {
+        'a': '00000', 'b': '00001', 'c': '00010', 'd': '00011', 'e': '00100',
+        'f': '00101', 'g': '00110', 'h': '00111', 'i': '01000', 'j': '01001',
+        'k': '01010', 'l': '01011', 'm': '01100', 'n': '01101', 'o': '01110',
+        'p': '01111', 'q': '10000', 'r': '10001', 's': '10010', 't': '10011',
+        'u': '10100', 'v': '10101', 'w': '10110', 'x': '10111', 'y': '11000',
+        'z': '11001', '.': '11010', '!': '11011', '?': '11100', '(': '11101',
+        ')': '11110', '-': '11111',
+    }
+    reversed_text = text[::-1]
+    coded_text = ''.join(encoding_dict[char.lower()] for char in reversed_text)
+    return coded_text
+
+def decode_text(binary_string):
+    """Decode a binary string using a predefined dictionary."""
+    decoding_dict = {v: k for k, v in encode_text('').items()}
+    length = len(binary_string)
+    decoded_text = ''
+    for i in range(0, length, 5):
+        decoded_text = decoding_dict[binary_string[i:i + 5]] + decoded_text
+    decoded_text = decoded_text[::-1]
+    return decoded_text
+
+def encrypt_text():
+    """Encrypt text using a stream cipher."""
+    plaintext = 'WE ALL MAKE MISTAKES AND WE ALL PAY A PRICE'
+    key = 'HOUSE'
+    plaintext = plaintext.replace(" ", "")
+    print('Plaintext:', plaintext)
+    print('Key:', key)
+    key_bits = encode_text(key)
+    plaintext_bits = encode_text(plaintext)
+    print('Key in five-bit encoding:', key_bits)
+    print('Plaintext in five-bit encoding:', plaintext_bits)
+
+    key_length = len(key_bits)
+    plaintext_length = len(plaintext_bits)
+    S = list(range(256))
+    key_bytes = [int(char) for char in key_bits]
+    plaintext_bytes = [int(char) for char in plaintext_bits]
+    i = j = 0
+
+    keystream_list = []
+    cipher_list = []
+
+    for i in range(256):
+        j = (j + S[i] + key_bytes[i % key_length]) % 256
+        S[i], S[j] = S[j], S[i]
+
+    for m in range(plaintext_length):
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        k = S[(S[i] + S[j]) % 256]
+        keystream_list.append(k)
+        cipher_list.append(xor_strings(str(k), str(plaintext_bytes[m])))
+
+    decrypted_text = ''.join([str(xor_strings(str(c), str(k))) for c, k in zip(cipher_list, keystream_list)])
+    print('Decrypted text:', decode_text(decrypted_text))
+
+encrypt_text()

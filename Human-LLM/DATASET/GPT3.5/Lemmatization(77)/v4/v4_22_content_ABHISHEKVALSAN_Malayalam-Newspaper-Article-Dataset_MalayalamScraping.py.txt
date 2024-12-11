@@ -1,0 +1,53 @@
+import requests
+from bs4 import BeautifulSoup
+import os
+import constants as const
+
+def month_to_digit(month):
+    """Convert month name to its corresponding digit."""
+    month_dict = {
+        'January': '01', 'February': '02', 'March': '03', 'April': '04', 'May': '05',
+        'June': '06', 'July': '07', 'August': '08', 'September': '09', 'October': '10',
+        'November': '11', 'December': '12'
+    }
+    return month_dict.get(month, '00')
+
+def convert_to_filename(date_str):
+    """Convert date string to filename."""
+    flist = date_str.split()
+    month = month_to_digit(flist[2])
+    day = flist[1].zfill(2)
+    year = flist[3][2:]
+    if int(flist[1]) < 10:
+        filename = f"1{year}{month}0{day}"
+    else:
+        filename = f"1{year}{month}{day}"
+    return filename, flist[3]
+
+def get_data(i):
+    """Retrieve data from the website."""
+    url = const.URL_PREFIX + str(i)
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = soup.findAll("p", {"class": "text-center"})
+        if len(links) != 1:
+            title = soup.findAll("h1")[0].text
+            date = soup.findAll("div", {"class": "myd"})[1].text
+            content = soup.findAll("p", {"class": ""})[0].text
+            filename, year = convert_to_filename(date)
+            path = "DataSet/"
+            filename_with_path = os.path.join(path, f"{filename}{i}.utf8")
+            with open(filename_with_path, 'w+') as f:
+                f.write(f"<DOC>\n<DOCNO>{filename}</DOCNO>\n<TEXT>\n{title}\n{date}\n{content}\n</TEXT>\n</DOC>")
+            print(f"Writing file {filename} to {path}")
+        else:
+            print("File missing at " + url)
+    else:
+        print("Error")
+
+def main():
+    print('This program is obsolete since the website structure has changed')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,76 @@
+from random import randint, randrange
+
+def is_prime(number):
+    """
+    Check if a number is prime.
+    """
+    if number <= 3:
+        return number > 1
+    if not number % 2 or not number % 3:
+        return False
+    for i in range(5, int(number ** 0.5) + 1, 6):
+        if not number % i or not number % (i + 2):
+            return False
+    return True
+
+def generate_prime(n, m):
+    """
+    Generate a prime number in the range [n, m].
+    """
+    prime = 0
+    while not is_prime(prime):
+        prime = randint(n, m)
+    return prime
+
+def generate_rsa_keys():
+    """
+    Generate RSA public and private keys.
+    """
+    # Generate two prime numbers
+    p = generate_prime(100000000, 999999999)
+    q = generate_prime(100000000, 999999999)
+
+    # Calculate n and Euler's totient function phi(n)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+
+    # Choose public key 'e'
+    e = 2
+    while True:
+        if is_prime(e) and e < phi and gcd(phi, e) == 1:
+            break
+        e = randrange(2, phi)
+
+    # Calculate private key 'd'
+    d = modular_inverse(e, phi)
+
+    return (e, n), (d, n)
+
+def gcd(a, b):
+    """
+    Calculate the greatest common divisor (GCD) of two numbers.
+    """
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def modular_inverse(a, n):
+    """
+    Calculate the modular inverse of 'a' modulo 'n'.
+    """
+    u1, u2, u3 = 1, 0, a
+    v1, v2, v3 = 0, 1, n
+    while v3 != 0:
+        q = u3 // v3
+        v1, v2, v3, u1, u2, u3 = (u1 - q * v1), (u2 - q * v2), (u3 - q * v3), v1, v2, v3
+    return u1 % n
+
+if __name__ == "__main__":
+    print("---------------------------------")
+    print("----------ALGORITHME RSA---------")
+    print("---------------------------------\n")
+
+    public_key, private_key = generate_rsa_keys()
+
+    print("La clé publique est la paire des nombres (e, n) :", public_key)
+    print("La clé privée est la paire des nombres (d, n) :", private_key)

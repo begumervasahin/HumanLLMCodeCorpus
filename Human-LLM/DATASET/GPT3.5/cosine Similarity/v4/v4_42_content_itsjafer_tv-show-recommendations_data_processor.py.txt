@@ -1,0 +1,107 @@
+import pandas as pd
+import numpy as np
+import pickle
+import os
+from ast import literal_eval
+import nltk
+from nltk.corpus import wordnet
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import string
+from sklearn import preprocessing
+
+class DataProcessor:
+    def load_tv_shows(self, path):
+        # Load TV shows data from a CSV file
+        df = pd.read_csv(path)
+        return df
+    
+    def inspect_data(self, df):
+        # Inspect data types and count valid values
+        info = pd.DataFrame(df.dtypes).T.rename(index={0:'column_type'})
+        info = info.append(pd.DataFrame(df.astype(bool).sum()).T.rename(index={0:'valid values'}))
+        return info
+    
+    def create_soup(self, x):
+        """Compile all features of a row into a single column to find similarities."""
+        keywords = x['keywords'] * 15
+        details = x['details'] * 5
+        cast = x['cast'] * 10
+        return ' '.join(keywords) + ' ' + 'seasons:' + str(x['num_seasons']) + ' ' + x['runtime'] + ' ' + \
+               ' '.join(details) + ' ' + ' '.join(cast) + ' ' + x['user_rating_group'] + ' ' + \
+               ' '.join(x['plot']) + ' ' + ' '.join(x['synopsis'])
+    
+    def clean_data(self, x):
+        """Convert a column into lowercase without spaces and no punctuation."""
+        translator = str.maketrans('', '', string.punctuation)
+        if isinstance(x, list):
+            return [str.lower(i.replace(" ", "")).translate(translator) for i in x]     
+        elif isinstance(x, str):
+            return str.lower(x.replace(" ", "")).translate(translator)
+        else:
+            return ''
+    
+    def train_model(self, df_analysis):
+        """Find pairwise cosine similarities between all TV Shows and save it to a given DataFrame."""
+        print('Creating a vectorizer of all English words...')
+        count = CountVectorizer(stop_words='english')
+        df_analysis['soup'] = df_analysis.apply(self.create_soup, axis=1)
+        count_matrix = count.fit_transform(df_analysis['soup'])
+        cosine_sim = cosine_similarity(count_matrix, count_matrix)
+        df_analysis['cosine_score'] = [i for i in cosine_sim]
+        df_analysis = df_analysis.reset_index()
+        return df_analysis
+    
+    def get_similar(self, df_analysis, title):
+        """Find the most similar TV shows to a given TV show."""
+        indices = pd.Series(df_analysis.index, index=df_analysis['title'])
+        idx = indices[title]
+        sim_scores = list(enumerate(df_analysis['cosine_score'][idx]))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+        sim_scores = sim_scores[1:51]
+        show_indices = [i[0] for i in sim_scores]
+        return df_analysis.iloc[show_indices].copy(), sim_scores
+    
+    def predict_score(self, top_shows, sim_scores):
+        """Predict the recommendation score based on similarity and ratings."""
+        for i in sim_scores:
+            top_shows.loc[i[0], 'similarity'] = i[1]
+        min_max_scaler = preprocessing.MinMaxScaler()
+        top_shows['user_rating_normal'] = min_max_scaler.fit_transform(top_shows[['user_rating']])
+        top_shows['similarity_normal'] = min_max_scaler.fit_transform(top_shows[['similarity']])
+        top_shows['metascore_normal'] = min_max_scaler.fit_transform(top_shows[['metascore']])
+        top_shows['userscore_normal'] = min_max_scaler.fit_transform(top_shows[['userscore']])
+        top_shows['score'] = top_shows['similarity_normal'] * 0.3 + 0.45 * top_shows['user_rating_normal'] + \
+                             0.25 * top_shows['userscore_normal']
+        top_shows = top_shows.sort_values('score', ascending=False)
+        return top_shows.copy()
+    
+    def convert_rating_to_category(self, x):
+        """Convert rating levels to a category for easy use in soups."""
+        rating = x
+        if rating > 9:
+            return "masterpiece"
+        elif rating > 8:
+            return "great"
+        elif rating > 7:
+            return "good"
+        elif rating > 6:
+            return "mediocre"
+        else:
+            return "bad"
+    
+    def load_model(self):
+        """Load the model from a CSV file into a DataFrame and perform basic cleaning, analysis, and training."""
+        df = self.load_tv_shows('data/tv_shows_with_features.csv')
+        df_analysis = df
+        list_columns = ['cast', 'details', 'keywords']
+        for column in list_columns:
+            df_analysis[column] = df_analysis[column].apply(literal_eval)
+        df_analysis['synopsis'] = df_analysis['synopsis'].apply(lambda x: x.split(' ')) 
+        df_analysis['plot'] = df_analysis['plot'].apply(lambda x: x.split(' '))
+        df_analysis = df_analysis.replace({'0': np.nan, 0: np.nan})
+        df_analysis.fillna(df_analysis.median(), inplace=True)
+        print('Analysis of Data:')
+        print('\nShape:', df_analysis.shape)
+        print()
+        print

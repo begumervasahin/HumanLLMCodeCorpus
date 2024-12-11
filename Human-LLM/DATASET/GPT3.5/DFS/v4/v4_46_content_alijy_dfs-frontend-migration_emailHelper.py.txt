@@ -1,0 +1,57 @@
+from helpers import frontendUrl, digitalUrl, get_line_number
+
+def migrate_emails(formId, formRef, welshEnabled):
+    """
+    Migrates email messages from one form ID to another.
+
+    Args:
+        formId (str): The ID of the form whose messages are being migrated.
+        formRef (str): The reference ID of the form to which messages are migrated.
+        welshEnabled (str): Flag indicating whether Welsh language is enabled.
+
+    Returns:
+        str: A message indicating the success or failure of the migration process.
+    """
+    if welshEnabled == 'true':
+        migrate_messages(formId, formRef, 'cy')
+    return migrate_messages(formId, formRef)
+
+def migrate_messages(formId, formRef, lang='en'):
+    """
+    Migrates email messages from one form ID to another for a specific language.
+
+    Args:
+        formId (str): The ID of the form whose messages are being migrated.
+        formRef (str): The reference ID of the form to which messages are migrated.
+        lang (str): The language of the messages ('en' for English, 'cy' for Welsh).
+
+    Returns:
+        str: A message indicating the success or failure of the migration process.
+    """
+    # Define import and export URLs based on language
+    importUrl = frontendUrl + '/conf/messages.cy' if lang == 'cy' else frontendUrl + '/conf/messages'
+    exportUrl = digitalUrl + '/conf/messages.cy' if lang == 'cy' else digitalUrl + '/conf/messages'
+
+    # Get line number of the target email subject in the export file
+    lineNumber = get_line_number(exportUrl, f"email.subject.{formRef}=")
+    
+    if lineNumber == -1:
+        # Read messages from the import file
+        with open(importUrl, 'r') as import_file:
+            messages = import_file.readlines()
+
+        # Find the index of the form ID in the messages
+        for i, message in enumerate(messages):
+            if f"email.subject.{formId}" in message:
+                index = i
+
+        # Write migrated messages to the export file
+        with open(exportUrl, 'a') as export_file:
+            while messages[index] and not messages[index].strip().startswith(""):
+                email_message = messages[index].strip().replace(f"{formId}", f"{formRef}")
+                export_file.write(f"\n{email_message}")
+                index += 1
+
+        return 'SUCCESS - Email messages migrated'
+    else:
+        return 'Email messages already migrated'

@@ -1,0 +1,38 @@
+import pickle
+import numpy as np
+import scipy.spatial.distance
+from os.path import basename
+
+class Matcher:
+    def __init__(self, pickled_db_path="features.pkl"):
+        with open(pickled_db_path, 'rb') as file:
+            self.data = pickle.load(file)
+        self.names = list(self.data.keys())
+        self.matrix = np.array(list(self.data.values()))
+
+    def cosine_distance(self, vector):
+        vector = vector.reshape(1, -1)
+        return scipy.spatial.distance.cdist(self.matrix, vector, 'cosine').reshape(-1)       
+
+    def match(self, image_path, topn=5):
+        features = extract_features(image_path)
+        image_distances = self.cosine_distance(features)
+        nearest_indices = np.argsort(image_distances)[:topn].tolist()
+        nearest_image_paths = [self.names[index] for index in nearest_indices]
+        return nearest_image_paths, image_distances[nearest_indices].tolist()
+
+# Provide the path to the directory containing images
+images_directory = 'path/to/images'
+
+# Create a Matcher object
+matcher = Matcher()
+
+# Provide the path to the image to match
+image_to_match = 'path/to/image.jpg'
+
+# Perform matching
+nearest_images, distances = matcher.match(image_to_match)
+
+# Display the matched images and distances
+for image_path, distance in zip(nearest_images, distances):
+    print(f"Image: {basename(image_path)}, Distance: {distance}")

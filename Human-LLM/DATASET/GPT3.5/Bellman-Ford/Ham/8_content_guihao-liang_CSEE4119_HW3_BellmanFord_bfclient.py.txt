@@ -1,0 +1,326 @@
+import sys, json, socket, time
+from threading import Thread
+from copy import deepcopy
+MAG = 15
+class Neighbor():
+    def __init__(self, addr='127.0.0.1', port=4119, weight=5.0):
+        self._addr = addr
+        self._port = port
+        try:
+            weight = float(weight)
+            if weight < 0:
+                raise ValueError('weight less than 0')
+        except ValueError, e:
+            print str(e) + ' invalid weight.'
+            sys.exit(3)
+        self.weight = weight
+        self.origin = weight
+        self.link_status = True
+        self.link_down = False
+        self.name = ':'.join((self._addr, str(self._port)))
+        self.time = time.time()
+    def get_addr(self):
+        return self._addr
+    def get_port(self):
+        return self._port
+class DV():
+    def __init__(self, addr='127.0.0.1', port=4118, timeout=3.0, *args):
+        self.addr = addr
+        self.port = port
+        self.host_name = ':'.join((self.addr,str(self.port)))
+        self.timer = time.time()
+        self.neighbors = dict()
+        self.next_hop = dict()
+        self.timeout = timeout
+        self.neighbors.setdefault(self.host_name, Neighbor(self.addr, self.port, 0))
+        self.distance_vector = dict()
+        self.args = args
+        print args
+        self.timer_due = False
+        self.dv_update_flag = True
+        self.ceiling = 0
+        try:
+            self.conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.conn.bind((self.addr,self.port))
+        except socket.error, e:
+            print 'socket error[{0}]: {1}'.format(e[0], e[1])
+            sys.exit(5)
+    def init_neighbor(self, addr='127.0.0.1', port=4117, weight=6.0):
+        neighbor = Neighbor(addr, port, weight)
+        client = ':'.join((addr,str(port)))
+        self.neighbors[client] = neighbor
+        self.next_hop[client] = client
+    def init_dv_table(self):
+        neighborhood = list(self.neighbors.keys())
+        for name in neighborhood:
+            self.distance_vector[name] = dict()
+            if name == self.host_name:
+                for k,v in self.neighbors.items():
+                    self.distance_vector[name][k] = v.weight
+                self.distance_vector[name][name] = 0
+            else:
+                for k in neighborhood:
+                    if k != name:
+                        self.distance_vector[name][k] = float('inf')
+                    else:
+                        self.distance_vector[name][name] = 0
+    def is_neighbor_alive(self):
+        for k,v in self.neighbors.items():
+            if k!= self.host_name and v.link_status:
+                return True
+        return False
+    def show_rt(self):
+        if self.is_neighbor_alive():
+            dv = self.distance_vector[self.host_name]
+            for k, v in dv.items():
+                if v != float('inf') and k != self.host_name:
+                    print 'Destination={0}, Cost={1}, (next hop) link={2}'.format(k,v,self.next_hop[k])
+        else:
+            print 'No NEIGHBOR IS ALIVE.'
+    def close(self):
+        self.timer_due = False
+        self.dv_update_flag = False
+        print('Closing...')
+        self.conn.close()
+        sys.exit('Closed.')
+    def print_table(self):
+        print 'dv_table'.center(80, '-')
+        for name in self.distance_vector.keys():
+            print self.distance_vector[name]
+        print 'NEXT HOP: ' + str(self.next_hop)
+        print ''.center(80, '-') + '\n'
+    def bellman_ford(self):
+        distance_vector = deepcopy(self.distance_vector)
+        next_hopper = deepcopy(self.next_hop)
+        update = False
+        for dest, cost in distance_vector[self.host_name].items():
+            min = float('inf')
+            next_hop = None
+            if dest != self.host_name:
+                for mid,v in self.neighbors.items():
+                    if v.link_status and mid !=self.host_name:
+                        d = self.neighbors[mid].weight + distance_vector[mid][dest]
+                        if d <= min:
+                            min = d
+                            next_hop = mid
+                if min != cost:
+                    if min != float('inf') and min > self.ceiling:
+                        min = float('inf')
+                    distance_vector[self.host_name][dest] = min
+                    next_hopper[dest] = next_hop
+                    update = True
+        self.distance_vector = distance_vector
+        self.next_hop = next_hopper
+        return update
+    def update_dv(self, msg, addr, link=True):
+        client = ':'.join([addr[0], str(addr[1])])
+        if link:
+            if not self.neighbors[client].link_status and not self.neighbors[client].link_down:
+                self.neighbors[client].time = time.time()
+                self.neighbors[client].link_status = True
+                self.neighbors[client].weight = self.neighbors[client].origin
+            self.neighbors[client].time = time.time()
+            try:
+                tmp = json.loads(msg)
+            except Exception, e:
+                print str(e) + 'json loads exception'
+            else:
+                diff = set(tmp.keys())-set(self.distance_vector[client].keys())
+                if diff:
+                    new_node = list(diff)
+                    for name in new_node:
+                        self.next_hop[name] = name
+                        for neighbor in self.neighbors.keys():
+                            if neighbor != client:
+                                self.distance_vector[neighbor][name] = float('inf')
+                    for k,v in tmp.items():
+                        self.distance_vector[client][k] = v
+                else:
+                    for k,v in tmp.items():
+                        self.distance_vector[client][k] = v
+        else:
+            print 'linkdown ' + client
+            self.neighbors[client].link_status = False
+            self.neighbors[client].weight = float('inf')
+        self.dv_update_flag = self.bellman_ford()
+    def recv(self):
+        while True:
+            msg, addr = self.conn.recvfrom(1024)
+            if msg.startswith('ROUTE UPDATE'):
+                self.update_dv(msg[len('ROUTE UPDATE'):], addr)
+            elif msg.startswith('LINK DOWN'):
+                self.update_dv('',addr,False)
+            elif msg.startswith('LINK UP'):
+                self.update_dv(msg[len('LINK UP'):],addr)
+            else:
+                print'error >>> '+ msg
+    def send(self):
+        while True:
+            if self.dv_update_flag or self.timer_due:
+                self.timer = time.time()
+                msg = 'ROUTE UPDATE'
+                msg += json.dumps(self.distance_vector[self.host_name],separators=(',', ': '))
+                for k,v in self.neighbors.items():
+                    if k != self.host_name and v.link_status:
+                        addr = k.split(':')
+                        self.conn.sendto(msg, (addr[0], int(addr[1])))
+                if self.timer_due:
+                    self.timer_due = False
+                if self.dv_update_flag:
+                    self.dv_update_flag = False
+    def timer_(self):
+        while True:
+            current = time.time()
+            if (current - self.timer) > self.timeout:
+                if not self.dv_update_flag and self.is_neighbor_alive():
+                    self.timer_due = True
+                self.timer = current
+            for name in self.neighbors:
+                if self.neighbors[name].link_status and name != self.host_name:
+                    if (current - self.neighbors[name].time) > 3 * self.timeout:
+                        self.neighbors[name].link_status = False
+                        self.neighbors[name].weight = float('inf')
+                        self.dv_update_flag = self.bellman_ford()
+    def link_down(self, cmd):
+        if type(cmd) == str:
+            addr = cmd.split()
+        else:
+            addr = cmd
+        if len(addr) != 2:
+            print 'cmd format error'
+        else:
+            client = ':'.join(addr)
+            if client == self.host_name:
+                print 'CANT LINK DOWN YOURSELF'
+                return
+            if client in self.neighbors.keys():
+                if not self.neighbors[client].link_status:
+                        print 'LINK DOWN ALREADY.'
+                        return
+                msg = 'LINK DOWN'
+                try:
+                    self.conn.sendto(msg, (addr[0], int(addr[1])))
+                except ValueError, e:
+                    print e
+                    sys.exit('link_down value error')
+                except socket.error, e:
+                    print 'ERROR{0}: {1}'.format(e[0], e[1])
+                    sys.exit('link_down socket error')
+                print self.host_name + '>>> LINK DOWN ' + client + '\n'
+                self.neighbors[client].link_down = True
+                self.neighbors[client].link_status = False
+                self.neighbors[client].weight = float('inf')
+                self.dv_update_flag = self.bellman_ford()
+            else:
+                print 'NO SUCH NEIGHBOR, INPUT AGAIN.'
+    def link_up(self, cmd):
+        self.timer = time.time()
+        if type(cmd) == str:
+            addr = cmd.split()
+        else:
+            addr = cmd
+        if len(addr) != 2:
+            print 'cmd format error'
+        else:
+            client = ':'.join(addr)
+            if client == self.host_name:
+                print 'CANT LINK UP YOURSELF'
+                return
+            if client in self.neighbors.keys():
+                try:
+                    if self.neighbors[client].link_status:
+                        print 'LINK UP ALREADY.'
+                        return
+                    else:
+                        print self.host_name + '>>> LINK UP ' + client + '\n'
+                        cl = self.neighbors[client]
+                        cl.time = time.time()
+                        cl.link_down = True
+                        cl.link_status = True
+                        cl.weight = cl.origin
+                        self.next_hop[client] = client
+                        for k in self.distance_vector[client].keys():
+                            if k != client:
+                                self.distance_vector[client][k] = float('inf')
+                            else:
+                                self.distance_vector[client][k] = 0
+                        self.dv_update_flag = self.bellman_ford()
+                        try:
+                            if not self.dv_update_flag:
+                                self.conn.sendto('LINK UP' + json.dumps(self.distance_vector[self.host_name]),
+                                                (addr[0], int(addr[1])))
+                        except ValueError, e:
+                            print e
+                            sys.exit('link up exception.')
+                except KeyError, e:
+                    print e
+                    sys.exit('ERROR LINK UP')
+            else:
+                print 'NO SUCH NEIGHBOR, INPUT AGAIN.'
+    def df_client(self):
+        if len(self.args) % 3 != 0:
+            print 'ERROR: neighbor input syntax error'
+            sys.exit(4)
+        try:
+            for i in range(0, len(self.args), 3):
+                self.init_neighbor(self.args[i], int(self.args[i+1]), float(self.args[i+2]))
+        except Exception, e:
+            print(e)
+            sys.exit(0)
+        self.init_dv_table()
+        self.ceiling = MAG * max([v.weight for v in self.neighbors.values()])
+        print 'The ceiling is: ' + str(self.ceiling)
+        recv = Thread(target=self.recv)
+        recv.daemon = True
+        recv.start()
+        send = Thread(target=self.send)
+        send.daemon = True
+        send.start()
+        timer = Thread(target=self.timer_)
+        timer.daemon = True
+        timer.start()
+        while True:
+            cmd = raw_input(self.host_name+' >>>')
+            cmd = cmd.strip().split(' ', 1)
+            length = len(cmd)
+            if cmd[0] == 'SHOWRT' and length == 1:
+                self.show_rt()
+            elif cmd[0] == 'CLOSE' and length == 1:
+                self.close()
+            elif cmd[0] == 'LINKUP' and length == 2:
+                self.link_up(cmd[1])
+            elif cmd[0] == 'LINKDOWN' and length == 2:
+                self.link_down(cmd[1])
+            elif cmd[0] == 'ST' and length == 1:
+                print 'DV_update: {}, timer: {}\n'.format(self.dv_update_flag, self.timer_due)
+            elif cmd[0] == '':
+                continue
+            elif cmd[0].startswith('TA'):
+                self.print_table()
+            elif cmd[0] == 'MAG' and length == 2:
+                try:
+                    mag = float(cmd[1])
+                except TypeError:
+                    print 'MAG SHOULD BE FLOAT TYPE.\n'
+                except ValueError:
+                    print 'REDUNDANT INPUT VALUE.\n'
+                else:
+                    if mag <= 0:
+                        print 'mag SHOULD BE POSITIVE.\n'
+                    else:
+                        self.ceiling = mag * max([v.weight for v in self.neighbors.values()])
+                        print 'The ceiling is reset: ' + str(self.ceiling) + '\n'
+            else:
+                print 'cmd error, pls input again.'
+if __name__ == '__main__':
+    try:
+        dv = DV(sys.argv[1],int(sys.argv[2]), float(sys.argv[3]), *sys.argv[4:])
+    except ValueError, e:
+        print e
+        sys.exit(0)
+    else:
+        try:
+            dv.df_client()
+        except KeyboardInterrupt, e:
+            print e
+            sys.exit('Terminated by user.')

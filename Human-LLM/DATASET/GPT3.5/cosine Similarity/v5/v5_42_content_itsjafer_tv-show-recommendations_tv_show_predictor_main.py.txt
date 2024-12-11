@@ -1,0 +1,100 @@
+import os
+import pandas as pd
+from fuzzywuzzy import process
+import pickle
+from sys import stdin
+
+# Importing custom module for data processing
+from data_processor import DataProcessor
+
+# Initializing the DataProcessor class
+show_data_processor = DataProcessor()
+
+def scrape_data():
+    """
+    Function to scrape data from Metacritic and IMDb
+    """
+    # Removing existing files if present
+    for file_path in ["data/tv.csv", "logging/metacritic_scraper.log", "data/tv_shows_with_features.csv", "logging/imdb_scraper.log"]:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    # Scraping data from Metacritic
+    print('Scraping Metacritic')
+    import metacritic_scraper
+
+    # Scraping data from IMDb
+    print('Scraping IMDb')
+    get_info()
+
+def load_or_retrain_model():
+    """
+    Function to load or retrain the model based on user input
+    """
+    # Asking user if they want to scrape data
+    user_input = input("Enter 'Y' if you want to scrape data: ")
+    if user_input == 'Y':
+        scrape_data()
+
+    # Asking user if they want to retrain the model
+    user_input = input("Enter 'Y' if you want to retrain the model: ")
+    if user_input == 'Y':
+        # Removing existing model file if present
+        model_path = 'data/cosine_model.pkl'
+        if os.path.exists(model_path):
+            os.remove(model_path)
+    
+    # Loading trained model
+    df_trained = show_data_processor.load_model()
+
+    return df_trained
+
+def find_similar_title(user_input, df_trained):
+    """
+    Function to find the most similar title using fuzzy matching
+    """
+    titles = df_trained['title'].tolist()
+    similar_title = process.extractOne(user_input, titles)[0]
+    return similar_title
+
+def display_similar_shows(similar_title, df_trained, show_data_processor):
+    """
+    Function to display TV shows similar to the input title
+    """
+    print('Finding TV shows similar to', similar_title, '...\n')
+
+    # Getting similar TV shows and their similarity scores
+    top_shows, sim_scores = show_data_processor.get_similar(df_trained, similar_title)
+    
+    # Predicting scores for similar TV shows
+    top_shows = show_data_processor.predict_score(top_shows, sim_scores)
+    top_shows = top_shows.set_index('index')
+
+    # Displaying similar TV shows
+    print('Found the following TV Shows:\n')
+    print(top_shows[['title', 'score', 'user_rating', 'similarity', 'metascore', 'userscore']].head(15))
+
+def manual_loop():
+    """
+    Function to interactively process user input for TV show titles
+    """
+    # Load or retrain model based on user input
+    df_trained = load_or_retrain_model()
+
+    print('Please enter the title of a TV Show')
+
+    # Looping to accept user input for TV show titles
+    for user_input in stdin:
+        # Finding the most similar title using fuzzy matching
+        similar_title = find_similar_title(user_input, df_trained)
+        if similar_title != user_input:
+            print('Found "' + similar_title + '", which was the closest match\n')
+
+        display_similar_shows(similar_title, df_trained, show_data_processor)
+        print('\nPlease enter the title of a TV Show')
+
+if __name__ == "__main__":
+    # Initiating the manual loop for user interaction
+    manual_loop()
+    # Loading the trained model
+    df_trained = show_data_processor.load_model()

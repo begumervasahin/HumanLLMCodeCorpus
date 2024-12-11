@@ -1,0 +1,58 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+def fetch_data(url, columns):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        table = soup.find("table")
+        headings = [th.get_text().encode('utf-8')[-1:] for th in table.find('tr').find_all('th')]
+        datasets = [zip(headings, (td.get_text().encode('utf-8') for td in row.find_all("td"))) for row in table.find_all("tr")[1:]]
+        
+        valid_positions = ['RWR', 'LWR', 'TE', 'RB', 'QB', 'FB', 'KR', 'PR']
+        filtered_datasets = [data for data in datasets if data[0][1] in valid_positions]
+
+        head = soup.find('h1')
+        team_code, date = head.attrs['class'][0], head.text[-11:-1]
+
+        team_names = list(set([player[1] for data in filtered_datasets for player in data[1:]]))
+        team_names.remove('')
+        team_full_names = [f"{name.split()[0]} {name.split()[1]}" for name in team_names]
+
+        df = pd.DataFrame(columns=columns, index=team_full_names)
+        df['team'], df['week'] = team_code, date
+
+        for team_name in team_names:
+            for pos in filtered_datasets:
+                for player in pos[1:]:
+                    if team_name == player[1]:
+                        name = f"{team_name.split()[0]} {team_name.split()[1]}"
+                        df.loc[name, pos[0][1]] = player[0]
+
+        df.fillna(0, inplace=True)
+        df['offseason'] = df['week'].apply(lambda x: 1 if int(x[:2]) in range(2, 8) else 0)
+        df.index.name = 'name'
+        df = df[df['offseason'] != 1]
+
+        return df
+    except Exception as e:
+        print(f"Error fetching data from {url}: {e}")
+        return None
+
+if __name__ == '__main__':
+    columns = ['team', 'week', 'RWR', 'LWR', 'TE', 'RB', 'QB', 'FB', 'KR', 'PR']      
+    data_frames = []
+
+    teams = ['GB', 'BUF', 'MIA', 'NE', 'NYJ', 'BAL', 'CIN', 'CLE', 'PIT', 'HOU', 'IND', 'JAX', 'TEN', 'DEN', 'KC', 'LAC', 'OAK', 'DAL', 'NYG', 'PHI', 'WAS', 'CHI', 'DET', 'MIN', 'ATL', 'CAR', 'NO', 'TB', 'ARZ', 'SF', 'SEA', 'LAR']
+
+    for team_code in teams:
+        for week in range(139, 197):
+            url = f'http://www.ourlads.com/nfldepthcharts/archive/{week}/{team_code}'      
+            df = fetch_data(url, columns)
+            if df is not None:
+                data_frames.append(df)
+
+    final_df = pd.concat(data_frames)
+    print(final_df)

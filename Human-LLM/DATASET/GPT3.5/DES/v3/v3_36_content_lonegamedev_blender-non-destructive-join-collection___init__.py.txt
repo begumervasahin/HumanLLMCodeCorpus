@@ -1,0 +1,59 @@
+import bpy
+
+# Check if bpy module is already imported
+if "bpy" in locals():
+    import importlib
+    importlib.reload(utils)  # Reload utilities module if already imported
+else:
+    from . import utils  # Import utilities module
+
+# Define operators for joining collection objects
+class JoinCollectionObjectsOperator(bpy.types.Operator):
+    bl_idname = "collection.join_objects"
+    bl_label = "Join"
+
+    def execute(self, context):
+        utils.join_collection(context, False)  # Call utility function to join collection objects
+        return {'FINISHED'}
+
+class JoinCollectionObjectsRecursiveOperator(bpy.types.Operator):
+    bl_idname = "collection.join_objects_recursive"
+    bl_label = "Join Recursive"
+
+    def execute(self, context):
+        utils.join_collection(context, True)  # Call utility function to recursively join collection objects
+        return {'FINISHED'}
+
+# Function to draw the menu in the outliner
+def draw_menu(self, context):
+    layout = self.layout
+    layout.separator()
+    layout.operator(JoinCollectionObjectsOperator.bl_idname)
+    layout.operator(JoinCollectionObjectsRecursiveOperator.bl_idname)
+
+# Register the operators and add menu draw function to outliner
+def register():
+    bpy.utils.register_class(JoinCollectionObjectsOperator)
+    bpy.utils.register_class(JoinCollectionObjectsRecursiveOperator)
+    bpy.types.OUTLINER_MT_collection.append(draw_menu)
+
+# Unregister the operators and remove menu draw function from outliner
+def unregister():
+    bpy.utils.unregister_class(JoinCollectionObjectsOperator)
+    bpy.utils.unregister_class(JoinCollectionObjectsRecursiveOperator)
+    bpy.types.OUTLINER_MT_collection.remove(draw_menu)
+
+# Metadata for the Blender add-on
+bl_info = {
+    "name": "Collection Join",
+    "author": "lonegamedev",
+    "description": "Allows joining objects within a collection into a single mesh without deleting the originals.",
+    "category": "Object",
+    "version": (0, 0, 1),
+    "blender": (2, 80, 0),
+    "wiki_url": "https://lonegamedev.com/blender/object_collection_join"
+}
+
+# Entry point for registering the add-on
+if __name__ == "__main__":
+    register()

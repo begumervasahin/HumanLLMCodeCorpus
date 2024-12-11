@@ -1,0 +1,91 @@
+# Constants
+SENDER = 'Alice'
+RECEIVER = 'Bob'
+TEXT = 'secret message'
+MY_SECRET_KEY = 6
+SHARED_PRIME = 541
+SHARED_BASE = 10
+KEY = '00000:09000:90999:09009:00000'
+UNLOCKED = '00900:09090:09000:09990:09990'
+LOCKED = '00900:09090:09090:09990:09990'
+
+# Calculate the Diffie-Hellman shared key
+CALCULATED_KEY = pow(SHARED_BASE, MY_SECRET_KEY, SHARED_PRIME)
+
+# Function to create a message
+def create_message(sender, receiver, payload):
+    '''Create a message to be sent from sender to receiver.'''
+    return f"{sender}:{receiver}:{payload}"
+
+# Function to calculate the Diffie-Hellman shared secret
+def calculate_shared_secret(partner_key):
+    '''Calculate the Diffie-Hellman shared secret.'''
+    return pow(partner_key, MY_SECRET_KEY, SHARED_PRIME)
+
+# Function to rotate letters
+def rotate_letter(letter, key):
+    '''Rotate a lowercase or uppercase letter by the key.'''
+    if letter.islower():
+        return chr(((ord(letter) - ord('a') + key) % 26) + ord('a'))
+    elif letter.isupper():
+        return chr(((ord(letter) - ord('A') + key) % 26) + ord('A'))
+    return letter
+
+# Function to encrypt a message using a Caesar cipher
+def encrypt_message(plaintext, key):
+    '''Encrypt a message using a Caesar cipher.'''
+    return ''.join(rotate_letter(letter, key) for letter in plaintext)
+
+# Function to decrypt a message
+def decrypt_message(ciphertext, key):
+    '''Decrypt a message.'''
+    return encrypt_message(ciphertext, -key)
+
+# Function to show an image for a specified duration
+def show_image(image, delay):
+    '''Show an image for a specified duration.'''
+    display.show(image)
+    sleep(delay)
+    display.clear()
+
+# Configure radio settings
+radio.config(channel=8)
+radio.on()
+
+# Initialize variables
+encrypted = False
+key_sent = False
+
+# Main loop
+while True:
+    msg = radio.receive()
+    if msg:
+        source, destination, payload = msg.split(':')
+        if destination == SENDER:
+            if not encrypted:
+                shared_secret = calculate_shared_secret(int(payload))
+                offset = shared_secret % 26
+                encrypted = True
+                if not key_sent:
+                    message = create_message(RECEIVER, SENDER, CALCULATED_KEY)
+                    radio.send(message)
+                    key_sent = True
+                show_image(Image(KEY), 2000)
+            else:
+                decrypted = decrypt_message(payload, offset)
+                print('Encrypted:', payload, 'Decrypted:', decrypted)
+                display.scroll(decrypted)
+    if button_a.was_pressed():
+        message = create_message(RECEIVER, SENDER, CALCULATED_KEY)
+        radio.send(message)
+        key_sent = True
+        show_image(Image(KEY), 2000)
+    if button_b.was_pressed() and encrypted:
+        encrypted_text = encrypt_message(TEXT, offset)
+        message = create_message(RECEIVER, SENDER, encrypted_text)
+        radio.send(message)
+        show_image(Image.ARROW_E, 1000)
+    if encrypted:
+        show_image(Image(LOCKED), 0)
+    else:
+        show_image(Image(UNLOCKED), 0)

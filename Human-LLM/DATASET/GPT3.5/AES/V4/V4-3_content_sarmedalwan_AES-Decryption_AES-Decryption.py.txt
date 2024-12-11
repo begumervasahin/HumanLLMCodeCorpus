@@ -1,0 +1,146 @@
+import sys
+
+# Encrypted text and key
+text = [
+    132, 201, 141, 74, 140, 94, 141, 140, 141, 15, 31, 164, 90, 229, 201, 141,
+    78, 114, 241, 217, 141, 217, 140, 180, 141, 164, 51, 141, 188, 221, 31, 164,
+    241, 177, 141, 140, 51, 217, 141, 201, 229, 152, 141, 78, 241, 114, 78, 102,
+    94, 141, 74, 152, 31, 152, 141, 94, 201, 31, 164, 102, 164, 51, 90, 141, 201,
+    229, 164, 31, 201, 152, 152, 51, 115
+]
+key = 84
+
+# Function to decrypt the text
+def decrypt(int_list, int_key):
+    crypt_bytes = bytearray(int_list)
+    crypt_bytes_as_nibbles = convert_bytes_to_nibbles(crypt_bytes)
+    key_as_nibbles = byte_to_nibbles(int_key)
+    decrypt_bytes_as_nibbles = []
+
+    # Decrypt each byte
+    for nibbles in crypt_bytes_as_nibbles:
+        decrypt_bytes_as_nibbles.append(decrypt_byte_as_nibbles(nibbles, key_as_nibbles))
+
+    decrypt_bytes = convert_nibbles_to_bytes(decrypt_bytes_as_nibbles)
+    decrypt_string = convert_bytes_to_string(decrypt_bytes)
+
+    return decrypt_string
+
+# Convert bytes to nibbles
+def convert_bytes_to_nibbles(a_bytearray):
+    quadruple_list = []
+    for a_byte in a_bytearray:
+        quadruple = byte_to_nibbles(a_byte)
+        quadruple_list.append(quadruple)
+    return quadruple_list
+
+# Convert byte to nibbles
+def byte_to_nibbles(a_byte):
+    nibble4 = a_byte & 0b00000011
+    nibble3 = (a_byte >> 2) & 0b00000011
+    nibble2 = (a_byte >> 4) & 0b00000011
+    nibble1 = (a_byte >> 6) & 0b00000011
+    return bytearray([nibble1, nibble2, nibble3, nibble4])
+
+# Convert nibbles to bytes
+def convert_nibbles_to_bytes(bytes_as_nibbles):
+    byte_list = []
+    for nibble_quad in bytes_as_nibbles:
+        byte_list.append(convert_nibbles_to_byte(nibble_quad))
+    return byte_list
+
+# Convert nibbles to byte
+def convert_nibbles_to_byte(quadruple_bytearray):
+    a_byte = (
+        (quadruple_bytearray[0] << 6) |
+        (quadruple_bytearray[1] << 4) |
+        (quadruple_bytearray[2] << 2) |
+        (quadruple_bytearray[3])
+    )
+    return a_byte
+
+# Decrypt byte as nibbles
+def decrypt_byte_as_nibbles(nibble_quadruple, key_quadruple):
+    ans = xor(nibble_quadruple, key_quadruple)
+    ans = swap_last_two(ans)
+    ans = s_box(ans)
+    ans = xor(ans, key_quadruple)
+    ans = subtract_last_two_first_two(ans)
+    ans = swap_last_two(ans)
+    ans = s_box(ans)
+    ans = xor(ans, key_quadruple)
+    return ans
+
+# XOR operation
+def xor(nibbles, key):
+    ans = nibbles[:]
+    for i in range(4):
+        ans[i] ^= key[i]
+    return ans
+
+# Swap last two bits
+def swap_last_two(nibbles):
+    ans = nibbles[:]
+    temp = ans[-2]
+    ans[-2] = ans[-1]
+    ans[-1] = temp
+    return ans
+
+# S-box substitution
+def s_box(nibbles):
+    ans = nibbles[:]
+    for i in range(4):
+        if ans[i] == 0:
+            ans[i] = 2
+        elif ans[i] == 1:
+            ans[i] = 0
+        elif ans[i] == 2:
+            ans[i] = 3
+        elif ans[i] == 3:
+            ans[i] = 1
+    return ans
+
+# Subtract last two bits from first two bits
+def subtract_last_two_first_two(nibbles):
+    ans = nibbles[:]
+    ans[0] = (ans[0] - ans[2]) % 4
+    ans[1] = (ans[1] - ans[3]) % 4
+    return ans
+
+# Convert bytes to string
+def convert_bytes_to_string(byte_list):
+    ans = ''
+    for a_byte in byte_list:
+        ans += chr(a_byte)
+    return ans
+
+# Main function
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Must have another command-line argument")
+    elif sys.argv[1] == 'a':
+        print("dec_decrypt:")
+        print(dec_decrypt(text, key))
+    elif sys.argv[1] == 'b':
+        ans = xor(byte_to_nibbles(0b10101010),
+                  byte_to_nibbles(0b10001000))
+        ans_byte = convert_nibbles_to_byte(ans)
+        print("dec_xor \n10101010 with \n10001000:\n")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'c':
+        ans = swap_last_two(byte_to_nibbles(0b10001000))
+        ans_byte = convert_nibbles_to_byte(ans)
+        print("dec_swap_last_two of \n10001000:\n")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'd':
+        ans = s_box(byte_to_nibbles(0b00011011))
+        ans_byte = convert_nibbles_to_byte(ans)
+        print("dec_s_box of \n00011011:\n")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'e':
+        ans = subtract_last_two_first_two(byte_to_nibbles(0b00011011))
+        ans_byte = convert_nibbles_to_byte(ans)
+        print("dec_subtract_last_two_first_two of \n00011011:\n")
+        print(format(ans_byte, '08b'))
+    else:
+        print('Bad argument')

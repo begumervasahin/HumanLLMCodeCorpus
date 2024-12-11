@@ -1,0 +1,122 @@
+from PIL import Image
+import numpy as np
+import sys
+
+def load_image(infilename):
+    file = Image.open(infilename)
+    bw = file.convert('F')
+    data = np.asarray(bw, dtype="float32")
+    return data
+
+def add_block(array, blockx=(0,0), blocky=(0,0)):
+    array.setflags(write=1)
+    for i in range(*blocky):
+        for j in range(*blockx):
+            array[i, j] = 1e6
+    return array
+
+def energy(I, plot=False, block=False):
+    Irow, Icol = len(I), len(I[0])
+    C = np.zeros((Irow, Icol))
+
+    for i in range(1, Irow-1):
+        for j in range(1, Icol-1):
+            C[i][j] = abs(I[i-1][j] - I[i][j]) + abs(I[i+1][j] - I[i][j]) + \
+                       abs(I[i][j-1] - I[i][j]) + abs(I[i][j+1] - I[i][j])
+            C[0][j] = C[1][j]
+            C[-1][j] = C[-2][j]
+        C[i][0] = C[i][1]
+        C[i][-1] = C[i][-2]
+
+    for j in range(Icol):
+        C[0][j] = C[1][j]
+        C[-1][j] = C[-2][j]
+
+    if block:
+        C = add_block(C, blockx=(730, 1000), blocky=(100, 350))
+        C = add_block(C, blockx=(0, 370), blocky=(80, 350))
+
+    if plot:
+        img = Image.fromarray(C)
+        img.show()
+
+    E = np.zeros((Irow, Icol)) + C
+
+    for i in range(Irow-1):
+        for j in range(Icol):
+            if j == 0:
+                E[i+1][j] += min(E[i][j], E[i][j+1])
+            elif j == Icol-1:
+                E[i+1][j] += min(E[i][j], E[i][j-1])
+            else:
+                E[i+1][j] += min(E[i][j-1], E[i][j], E[i][j+1])
+
+    return E
+
+def seams(E, reverse=False):
+    if reverse:
+        col = len(E[0]) - np.argmin(E[0][::-1]) - 1
+    else:
+        col = np.argmin(E[0])
+
+    Ppath = [col]
+
+    for row in range(len(E)-1):
+        if col == 0:
+            l = min(E[row+1][col], E[row+1][col+1])
+            if l == E[row+1][col]:
+                Ppath.append(col)
+            else:
+                Ppath.append(col+1)
+                col += 1
+        elif col == len(E[0]) - 1:
+            l = min(E[row+1][col], E[row+1][col-1])
+            if l == E[row+1][col]:
+                Ppath.append(col)
+            else:
+                Ppath.append(col-1)
+                col -= 1
+        else:
+            l = min(E[row+1][col-1], E[row+1][col], E[row+1][col+1])
+            if l == E[row+1][col]:
+                Ppath.append(col)
+            elif l == E[row+1][col-1]:
+                Ppath.append(col-1)
+                col -= 1
+            else:
+                Ppath.append(col+1)
+                col += 1
+
+    return Ppath
+
+def delete(E, I, Ppath):
+    for row in range(len(E)):
+        del E[row][Ppath[row]]
+        del I[row][Ppath[row]]
+
+    return E, I
+
+if __name__ == '__main__':
+    input_arg = sys.argv[1]
+
+    if input_arg == '1' or input_arg == '2' or input_arg == '4':
+        I = load_image("penguins.png")
+
+        if input_arg == '4':
+            E = energy(I, plot=True)
+            E = add_block(E, blockx=(830, 1000), blocky=(599, 600))
+            E = add_block(E, blockx=(0, 250), blocky=(599, 600))
+        else:
+            E = energy(I)
+
+        I = I.tolist()
+        E = E.tolist()
+
+        for t in range(300):
+            if input_arg == '1' or input_arg == '2':
+                Ppath = seams(E, reverse=(input_arg == '2'))
+                E, I = delete(E, I, Ppath)
+
+        I = np.array(I, dtype='float32')
+        img = Image.fromarray(I)
+        img.show()

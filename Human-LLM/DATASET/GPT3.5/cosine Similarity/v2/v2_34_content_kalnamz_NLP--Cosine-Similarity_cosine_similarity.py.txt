@@ -1,0 +1,51 @@
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+def load_word_embeddings(filename):
+    word_embeddings = {}
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            values = line.split()
+            word = values[0]
+            embeddings = np.asarray(values[1:], dtype='float32')
+            word_embeddings[word] = embeddings
+    print(f"{len(word_embeddings)} vectors were loaded.")
+    return word_embeddings
+
+def calculate_cosine_similarity(word_list, word_embeddings):
+    cosine_similarities = []
+    for sublist in word_list:
+        embeddings_list = [word_embeddings[word] for word in sublist if word in word_embeddings]
+        cosine_similarities.append(embeddings_list)
+
+    for embeddings in cosine_similarities:
+        for i in range(len(embeddings)):
+            for j in range(i + 1, len(embeddings)):
+                similarity = cosine_similarity([embeddings[i]], [embeddings[j]])
+                print(f"{sublist[i]}, {sublist[j]} - {similarity}")
+
+noun_list = [['expert', 'specialist', 'authority', 'pundit', 'oracle'],
+             ['trade', 'craft', 'occupation', 'job', 'profession'],
+             ['number', 'numeral', 'integer', 'figure', 'digit'],
+             ['request', 'appeal', 'entreaty', 'plea', 'petition'],
+             ['color', 'hue', 'shade', 'tint', 'tone']]
+
+verb_list = [['describe', 'narrate', 'recount', 'relate', 'chronicle'],
+             ['unlock', 'unbolt', 'unlatch', 'unpick', 'unfasten'],
+             ['flash', 'shine', 'flare', 'blaze', 'glare'],
+             ['screw', 'fasten', 'secure', 'fix', 'attach'],
+             ['deliver', 'bring', 'take', 'convey', 'transport']]
+
+filenames = ['glove.6B.50d.txt', 'glove.6B.100d.txt', 'glove.6B.200d.txt', 'glove.6B.300d.txt']
+
+for filename in filenames:
+    print(f"Loading word embeddings from {filename}")
+    word_embeddings = load_word_embeddings(filename)
+
+    print("Calculating cosine similarities for the synonym list of verbs")
+    calculate_cosine_similarity(verb_list, word_embeddings)
+
+    print("Calculating cosine similarities for the synonym list of nouns")
+    calculate_cosine_similarity(noun_list, word_embeddings)
+
+print("Successfully calculated the cosine similarity for the synonym lists of nouns and verbs.")

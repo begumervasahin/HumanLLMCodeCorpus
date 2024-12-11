@@ -1,0 +1,121 @@
+import settings
+import preprocess
+import queue
+import requests
+from bs4 import BeautifulSoup
+from bs4.element import Comment
+import urllib.request
+
+my_list = []
+valid_url_set = set()
+
+def plot_web_graph(link, threshold):
+    settings.link_set.add(link)
+    my_list.append(link)
+    valid_url_set.add(link)
+    
+    with open("./data/all_url", 'a', encoding="utf-8") as file:
+        file.write(link + "\n")
+    
+    fetch_link_graph(threshold)
+
+def fetch_link_graph(threshold):
+    for index in range(threshold):
+        page = requests.get(my_list[index])
+        soup = BeautifulSoup(page.text, 'html.parser')
+        link_list = extract_links(my_list[index], soup)
+        
+        for link in link_list:
+            if link not in settings.link_set:
+                settings.link_set.add(link)
+                my_list.append(link)
+        
+        if len(my_list) > threshold:
+            break
+
+def web_spider(link, threshold, count):
+    q = queue.Queue()
+    q.put(link)
+    settings.link_set.add(link)
+    scrape(q, threshold, count)
+
+def scrape(q, threshold, count):
+    try:
+        if count > threshold:
+            return
+        
+        link = q.get()
+        page = requests.get(link)
+        soup = BeautifulSoup(page.text, 'html.parser')
+        visible_text = extract_visible_text(soup)
+        processed_data = preprocess_data(visible_text)
+        link_list = extract_links(link, soup)
+        
+        for l in link_list:
+            if l not in settings.link_set:
+                settings.link_set.add(l)
+                q.put(l)
+        
+        preprocess.export_spider_sequential(link, processed_data, count)
+        return scrape(q, threshold, count + 1)
+    except Exception as e:
+        return scrape(q, threshold, count)
+
+def extract_visible_text(soup):
+    text = filter(tag_visible, soup.findAll(text=True))
+    visible_text = " ".join(t.strip() for t in text)
+    return visible_text
+
+def preprocess_data(text):
+    text = preprocess.remove_punctuation(text)
+    text = preprocess.remove_digits(text)
+    tokens = preprocess.tokenize_data(text)
+    tokens = preprocess.remove_stop_words(tokens)
+    tokens = preprocess.perform_stemming(tokens)
+    tokens = preprocess.remove_stop_words(tokens)
+    return tokens
+
+def tag_visible(element):
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
+def extract_links(link, soup):
+    link_list = []
+    for l in soup.find_all('a', href=True):
+        url = l['href']
+        final_url = construct_final_url(link, url)
+        if final_url and is_valid_url(final_url):
+            link_list.append(final_url)
+    return link_list
+
+def construct_final_url(base_url, url):
+    final_url = ""
+    if "...":
+        url = url[:url.find("...")]
+    if url.endswith('/'):
+        url = url[:-1]
+    if url.endswith(('.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.png')):    
+        return final_url
+    
+    if len(url) > 1:
+        if url.startswith('/'):
+            final_url = base_url + url
+        elif url.startswith('http'):
+            final_url = url
+        else:
+            final_url = base_url + "/" + url
+    
+    return final_url if final_url and final_url.endswith('uic.edu') else ""
+
+def is_valid_url(url):
+    try:
+        if urllib.request.urlopen(url).getcode() == 200:
+            valid_url_set.add(url)
+            return True
+        else:
+            return False
+    except:
+        return False

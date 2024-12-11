@@ -1,0 +1,59 @@
+import queue
+from mymap import myMap, heuristic
+from modules import showResultWithAttr, showStep, aweSomeSort
+
+def AStar(start, goal):
+    # Initialize the open set with the starting city
+    open_set = queue.deque()
+    open_set.append(start)
+
+    # Initialize the 'previous' dictionary with initial values
+    previous = {city: {'from': None, 'total_cost': heuristic[city]} for city in myMap.keys()}
+
+    # Counter for tracking iterations
+    counter = 0
+    while True:
+        counter += 1
+        showStep(counter, open_set, previous)  # Visualize the current state
+
+        current_city = open_set.popleft()  # Get the next city to explore
+
+        # Check if the current city is the goal
+        if current_city == goal:
+            print('Success!')
+            showResultWithAttr(previous, start, goal)
+            return True
+
+        # Calculate the total cost to reach the current city
+        cur_city_total_cost = previous[current_city]['total_cost'] - heuristic[current_city]
+
+        # Explore neighbors of the current city
+        if current_city != goal:
+            for neighbor_city in myMap[current_city].keys():
+                neighbor_total_cost = previous[neighbor_city]['total_cost']
+                total_cost = (
+                    myMap[current_city][neighbor_city]['cost']
+                    + cur_city_total_cost
+                    + heuristic[neighbor_city]
+                )
+
+                # Update the path if a shorter path is found
+                if previous[neighbor_city]['from'] is None or total_cost < neighbor_total_cost:
+                    if neighbor_city in open_set:
+                        open_set.remove(neighbor_city)
+                    open_set.append(neighbor_city)
+                    previous[neighbor_city]['from'] = current_city
+                    previous[neighbor_city]['total_cost'] = total_cost
+
+        # If the open set is empty, no path exists
+        if len(open_set) == 0:
+            print('Fail!')
+            return False
+
+        # Sort the open set based on some heuristic
+        open_set = queue.deque(aweSomeSort(open_set, previous))
+
+# Example usage
+start_city = 'A'
+goal_city = 'G'
+AStar(start_city, goal_city)

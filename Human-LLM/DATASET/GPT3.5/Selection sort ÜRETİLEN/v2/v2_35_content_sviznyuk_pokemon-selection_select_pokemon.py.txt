@@ -1,0 +1,90 @@
+import requests
+import pandas as pd
+import json
+import time
+from prettytable import PrettyTable
+
+start_time = time.perf_counter()
+time0 = start_time
+
+# Function to retrieve data from API and store in DataFrame
+def fetch_data(url, key_name, value_name, dataframe, name_column):
+    print(f'Retrieving {key_name} in ', end='')
+    resp = requests.get(url=url, headers={'User-Agent': 'Chrome/77.0.3865.120', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'Keep-Alive'})
+    data_dict = json.loads(resp.text)
+    entries_list = data_dict['results']
+    i = 0
+    for entry in entries_list:
+        entry_name = entry["name"]
+        dataframe.loc[i] = entry_name
+        i += 1
+    dataframe.drop_duplicates(inplace=True)
+    end_time = time.perf_counter()
+    print(round(end_time - start_time, 3), 's')
+    return dataframe
+
+# Function to retrieve damage relations and store in DataFrame
+def fetch_damage_relations(url, dataframe1, dataframe2, dataframe3):
+    print('Retrieving damage relations in ', end="")
+    resp = requests.get(url=url, headers={'User-Agent': 'Chrome/77.0.3865.120', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'Keep-Alive'})
+    data_dict = json.loads(resp.text)
+    for type_entry in data_dict['results']:
+        type_name = type_entry["name"]
+        damage_relation_resp = requests.get(url=type_entry['url'], headers={'User-Agent': 'Chrome/77.0.3865.120', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'Keep-Alive'})
+        damage_relation_dict = json.loads(damage_relation_resp.text)
+        damage_relation = damage_relation_dict['damage_relations']
+        for key in damage_relation.keys():
+            damage_relation_names = damage_relation[key]
+            for other_name in damage_relation_names:
+                other_name_name = other_name['name']
+                if key in ['double_damage_from', 'double_damage_to', 'half_damage_from', 'half_damage_to', 'no_damage_from', 'no_damage_to']:
+                    dataframe1.loc[len(dataframe1)] = [2 if key.startswith('double') else 1 if key.startswith('half') else 0, other_name_name if key.endswith('from') else type_name, type_name if key.endswith('to') else other_name_name]
+        for pokemon_entry in damage_relation_dict['pokemon']:
+            pokemon_name = pokemon_entry['pokemon']['name']
+            ff = pokemon_name.find('-')
+            pokemon_short = pokemon_name if ff == -1 else pokemon_name[0:ff]
+            if dataframe2['pokemon_name'].str.contains(pokemon_short).any():
+                dataframe3.loc[len(dataframe3)] = [pokemon_name, type_name]
+    end_time = time.perf_counter()
+    print(round(end_time - start_time, 3), 's')
+    return dataframe1, dataframe2, dataframe3
+
+# Fetch eligible Pokemon and their types
+pokemon_df = pd.DataFrame(columns=['pokemon_name'])
+pokemon_df = fetch_data('https://pokeapi.co/api/v2/pokedex/1/', 'eligible pokemon', '', pokemon_df, 'pokemon_name')
+
+# Fetch types of Pokemon
+types_df = pd.DataFrame(columns=['type_name'])
+types_df = fetch_data('https://pokeapi.co/api/v2/type', 'pokemon types', '', types_df, 'type_name')
+
+# Initialize DataFrames for damage relations and Pokemon types
+damage_relations_df = pd.DataFrame(columns=['damage', 'from_type', 'to_type'])
+pokemon_type_df = pd.DataFrame(columns=['pokemon_name', 'pokemon_type'])
+
+# Fetch damage relations and Pokemon types
+damage_relations_df, pokemon_type_df, _ = fetch_damage_relations('https://pokeapi.co/api/v2/type', damage_relations_df, pokemon_type_df, pokemon_type_df.copy())
+
+# Write fetched data to CSV files
+damage_relations_df.drop_duplicates().to_csv('damage_relations.csv', index=False, header=True)
+pokemon_df.to_csv('eligible_pokemon.csv', index=False, header=True)
+pokemon_type_df.to_csv('pokemon_types.csv', index=False, header=True)
+
+# Merge DataFrames to get damage levels for Pokemon
+df1 = pokemon_type_df.merge(damage_relations_df, how='left', left_on='pokemon_type', right_on='from_type').drop(columns=['from_type']).rename(columns={'damage': 'damage_to'}).sort_values(by=['pokemon_name', 'pokemon_type', 'to_type']).drop_duplicates()
+df2 = pokemon_type_df.merge(damage_relations_df, how='left', left_on='pokemon_type', right_on='to_type').drop(columns=['to_type']).rename(columns={'damage': 'damage_from'}).sort_values(by=['pokemon_name', 'pokemon_type', 'from_type']).drop_duplicates()
+
+# Write damage levels to CSV files
+df1.to_csv('pokemon_damage_levels_to.csv', index=False, header=True)
+df2.to_csv('pokemon_damage_levels_from.csv', index=False, header=True)
+
+# Calculate and write Pokemon ranking based on damage
+df3 = df1.groupby('pokemon_name')['damage_to'].sum().reset_index()
+df4 = df2.groupby('pokemon_name')['damage_from'].sum().reset_index()
+df5 = df4.merge(df3, how='left', left_on='pokemon_name', right_on='pokemon_name')
+df5['damage_diff'] = df5['damage_from'] - df5['damage_to']
+df5.sort_values(by=['damage_diff', 'damage_to'], ascending=False).to_csv('pokemon_ranking.csv', index=False, header=True)
+
+# Calculate total runtime
+end_time = time.perf_counter()
+print(round(end_time - start_time, 3), 's')
+print('Total runtime', round(end_time - time0, 1), 's')

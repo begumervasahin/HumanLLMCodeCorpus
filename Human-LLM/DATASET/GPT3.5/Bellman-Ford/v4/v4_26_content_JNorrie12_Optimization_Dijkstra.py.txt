@@ -1,0 +1,90 @@
+import numpy as np
+import sys
+import csv
+import time
+import math
+
+def dijkstra(ist, isp, wei):
+    if ist == isp:
+        return [ist]
+
+    N = len(wei)
+    Inf = sys.maxsize
+    UnVisited = np.ones(N, int)
+    cost = np.ones(N) * 1.e6
+    par = -np.ones(N, int) * Inf
+    jj = ist
+    cost[jj] = 0
+    UnVisited[jj] = 0
+    tmp = UnVisited * wei[jj, :]
+    ineigh = np.nonzero(tmp)[0]
+    L = np.count_nonzero(UnVisited)
+
+    while L != 0:
+        for k in ineigh:
+            newcost = cost[jj] + wei[jj, k]
+            if newcost < cost[k]:
+                cost[k] = newcost
+                par[k] = jj
+
+        icnsdr = np.nonzero(UnVisited)[0]
+        cmin, icmin = cost[icnsdr].min(), cost[icnsdr].argmin()
+        jj = icnsdr[icmin]
+        UnVisited[jj] = 0
+        tmp = UnVisited * wei[jj, :]
+        ineigh = np.nonzero(tmp)[0]
+        L = np.count_nonzero(UnVisited)
+
+    shpath = [isp]
+    while par[isp] != ist:
+        shpath.append(par[isp])
+        isp = par[isp]
+    shpath.append(ist)
+    return shpath[::-1]
+
+def calculate_weights(RX, RY, RA, RB, RV):
+    n = len(RX)
+    wei = np.zeros((n, n), dtype=float)
+    m = len(RA)
+
+    for i in range(m):
+        xa = RX[RA[i]-1]
+        ya = RY[RA[i]-1]
+        xb = RX[RB[i]-1]
+        yb = RY[RB[i]-1]
+        dd = math.sqrt((xb-xa)**2 + (yb-ya)**2)
+        tt = dd / RV[i]
+        wei[RA[i]-1, RB[i]-1] = tt
+
+    return wei
+
+if __name__ == '__main__':
+    RomeX, RomeY = np.empty(0, dtype=float), np.empty(0, dtype=float)
+
+    with open('RomeVertices', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            RomeX = np.concatenate((RomeX, [float(row[1])]))
+            RomeY = np.concatenate((RomeY, [float(row[2])])))
+
+    RomeA, RomeB, RomeV = np.empty(0, dtype=int), np.empty(0, dtype=int), np.empty(0, dtype=float)
+
+    with open('RomeEdges', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            RomeA = np.concatenate((RomeA, [int(row[0])]))
+            RomeB = np.concatenate((RomeB, [int(row[1])]))
+            RomeV = np.concatenate((RomeV, [float(row[2])])))
+
+    wei = calculate_weights(RomeX, RomeY, RomeA, RomeB, RomeV)
+    ist, isp = 12, 51
+
+    t0 = time.time()
+    shpath = BellmanFord(12, 51, wei)
+    t1 = time.time()
+    print('Bellman-Ford:', ist + 1, '->', isp + 1, 'is', np.array(shpath) + 1, t1 - t0)
+
+    t0 = time.time()
+    shpath = dijkstra(12, 51, wei)
+    t1 = time.time()
+    print('Dijkstra:', ist + 1, '->', isp + 1, 'is', np.array(shpath) + 1, t1 - t0)

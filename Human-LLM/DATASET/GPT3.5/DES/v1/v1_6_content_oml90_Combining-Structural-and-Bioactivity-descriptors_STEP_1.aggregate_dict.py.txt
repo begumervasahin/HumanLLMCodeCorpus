@@ -1,0 +1,55 @@
+import time
+import sys
+import os
+
+if len(sys.argv) != 3:
+    print('Usage : python ' + sys.argv[0] + ' [ Raw hts data  ] [ output folder ]')
+    quit()
+
+output_folder = sys.argv[2]
+if not os.path.isdir(output_folder):
+    print('Usage : python ' + sys.argv[0] + ' [ Raw hts data  ] [ output folder ]')
+    sys.stderr.write("ERROR: can't find output folder at {}\n".format(output_folder))
+    sys.exit()
+
+if output_folder[-1] != '/':
+    output_folder += '/'
+
+header = "CID\tflag\n"
+assay_list = os.listdir(sys.argv[1])
+start = time.time()
+sys.stderr.write('assays:{}\n'.format(len(assay_list)))
+K = 0
+
+for assay in assay_list:
+    assay_path = os.path.join(sys.argv[1], assay)
+    f_type = assay.split('.')[-1]
+
+    if f_type != 'tsv':
+        print('file: {} ==> is not of type .tsv, moving to next file'.format(assay))
+        continue
+
+    K += 1
+    sys.stderr.write('{}\t({}/{})\t\r'.format(assay, K, len(assay_list)))
+
+    if not os.path.isfile(assay_path):
+        sys.stderr.write("ERROR: can't find file {}\n".format(assay_path))
+        continue
+
+    cmpd_data = {}
+    start_assay = time.time()
+
+    with open(assay_path, encoding='latin-1') as assay_file:
+        assay_content = assay_file.read().splitlines()
+
+    n_cmpd_total = len(assay_content)
+    n_cmpd_interest = 0
+    first_line = False
+    n_head_rows = 0
+
+    for line in assay_content:
+        if line[0] == '1':
+            first_line = True
+
+        if line[0] + line[1] == '1\t':
+            print('\nnumber of head rows: {}'.format(n_head_rows))

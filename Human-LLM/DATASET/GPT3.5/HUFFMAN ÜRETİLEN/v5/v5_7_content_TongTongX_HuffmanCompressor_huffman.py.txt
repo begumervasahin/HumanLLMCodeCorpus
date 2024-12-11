@@ -1,0 +1,72 @@
+from minheap import MinHeap
+from collections import Counter
+
+class TreeLeafEndMessage:
+    pass
+
+class TreeLeaf:
+    def __init__(self, value):
+        self.value = value
+
+class TreeBranch:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+def build_huffman_tree(freq_table):
+    heap = MinHeap()
+    heap.add(1, TreeLeafEndMessage())
+
+    for symbol, freq in freq_table.items():
+        heap.add(freq, TreeLeaf(symbol))
+
+    while len(heap) > 1:
+        right_freq, right_tree = heap.pop_min()
+        left_freq, left_tree = heap.pop_min()
+        heap.add(left_freq + right_freq, TreeBranch(left_tree, right_tree))
+
+    total_freq, tree = heap.pop_min()
+    return tree
+
+def decode(tree, bitreader):
+    while True:
+        if isinstance(tree, TreeLeafEndMessage):
+            return None
+        elif isinstance(tree, TreeLeaf):
+            return tree.value
+        elif isinstance(tree, TreeBranch):
+            if bitreader.readbit() == 0:
+                tree = tree.left
+            else:
+                tree = tree.right
+        else:
+            raise TypeError('{} is not a valid tree type'.format(type(tree)))
+
+def build_encoding_table(huffman_tree):
+    encoding_table = {}
+
+    def traverse(tree, path):
+        if isinstance(tree, TreeLeafEndMessage):
+            encoding_table[None] = path
+        elif isinstance(tree, TreeLeaf):
+            encoding_table[tree.value] = path
+        elif isinstance(tree, TreeBranch):
+            traverse(tree.left, path + (False,))
+            traverse(tree.right, path + (True,))
+        else:
+            raise TypeError('{} is not a valid tree type'.format(type(tree)))
+
+    traverse(huffman_tree, ())
+    return encoding_table
+
+def build_frequency_table(stream):
+    frequencies = Counter()
+    buffer = bytearray(512)
+
+    while True:
+        count = stream.readinto(buffer)
+        frequencies.update(buffer[:count])
+        if count < len(buffer):
+            break
+
+    return frequencies

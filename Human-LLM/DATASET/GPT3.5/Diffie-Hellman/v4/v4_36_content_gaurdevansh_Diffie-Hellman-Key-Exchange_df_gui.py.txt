@@ -1,0 +1,106 @@
+from tkinter import *
+from tkinter import filedialog
+from keygen import generate_private_key, generate_public_key, generate_secret_key
+from encrypt_decrypt import encrypt_file, decrypt_file
+
+# Initialize global variables
+private_file = ''
+public_file = ''
+file_name = ''
+
+# Function to handle file selection and update global variables
+def select_file(entry_widget, file_type):
+    filename = filedialog.askopenfilename(title=f"Select {file_type} File", filetypes=(("All files", "*.*"), ("Text files", "*.txt")))
+    if filename:
+        entry_widget.delete(0, END)
+        entry_widget.insert(0, filename.split('/')[-1])  # Extract file name and display in entry widget
+        # Update global variables based on the type of file
+        global private_file, public_file, file_name
+        if file_type == 'Private Key':
+            private_file = filename.split('/')[-1]
+        elif file_type == 'Public Key':
+            public_file = filename.split('/')[-1]
+        elif file_type == 'File':
+            file_name = filename.split('/')[-1]
+
+# Function to handle encryption
+def encrypt_file_func():
+    secret_key = str(generate_secret_key(private_file, public_file))
+    encrypt_file(getKey(secret_key), file_name)
+
+# Function to handle decryption
+def decrypt_file_func():
+    secret_key = str(generate_secret_key(private_file, public_file))
+    decrypt_file(getKey(secret_key), file_name)
+
+# Function to generate private key
+def generate_private_key_func():
+    filename = entry1.get()
+    generate_private_key(filename)
+
+# Function to generate public key
+def generate_public_key_func():
+    private_key_filename = entry1.get()
+    public_key_filename = entry2.get()
+    generate_public_key(private_key_filename, public_key_filename)
+
+# Create the main window
+root = Tk()
+root.title('Encryptor-Decryptor')
+root.geometry('600x400')
+root.resizable(False, False)
+
+# Create labels for key input fields
+label1 = Label(root, text='Private Key : ')
+label2 = Label(root, text='Public Key : ')
+label1.grid(row=0)
+label2.grid(row=1)
+
+# Create entry fields for key input
+entry1 = Entry(root)
+entry1.insert(END, 'Enter Private Key Name')
+entry2 = Entry(root)
+entry2.insert(END, 'Enter Public Key Name')
+entry1.grid(row=0, column=1)
+entry2.grid(row=1, column=1)
+
+# Create buttons to generate keys
+button1 = Button(root, text='Generate', command=generate_private_key_func)
+button2 = Button(root, text='Generate', command=generate_public_key_func)
+button1.grid(row=0, column=2)
+button2.grid(row=1, column=2)
+
+# Create labels for file input fields
+label3 = Label(root, text='Encryption/Decryption : ')
+label4 = Label(root, text='Private key : ')
+label5 = Label(root, text='Public key of other user : ')
+label6 = Label(root, text='File : ')
+label3.grid(row=2)
+label4.grid(row=3)
+label5.grid(row=4)
+label6.grid(row=5)
+
+# Create entry fields for file input
+entry3 = Entry(root)
+entry4 = Entry(root)
+entry5 = Entry(root)
+entry3.grid(row=3, column=1)
+entry4.grid(row=4, column=1)
+entry5.grid(row=5, column=1)
+
+# Create buttons to browse for files
+button3 = Button(root, text='Browse', command=lambda: select_file(entry3, 'Private Key'))
+button4 = Button(root, text='Browse', command=lambda: select_file(entry4, 'Public Key'))
+button5 = Button(root, text='Browse', command=lambda: select_file(entry5, 'File'))
+button3.grid(row=3, column=2)
+button4.grid(row=4, column=2)
+button5.grid(row=5, column=2)
+
+# Create buttons for encryption and decryption
+button6 = Button(root, text='Encrypt', command=encrypt_file_func)
+button7 = Button(root, text='Decrypt', command=decrypt_file_func)
+button6.grid(row=6, column=1)
+button7.grid(row=6, column=2)
+
+# Start the GUI event loop
+root.mainloop()

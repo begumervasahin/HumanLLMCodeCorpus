@@ -1,0 +1,121 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import wordfreq
+
+TITLE = 'Similarity Scores for JHU PMB Faculty\n'
+BASEPATH = wordfreq.OUTPATH
+LISTPATH = wordfreq.INPATH
+OUTPATH = wordfreq.OUTPATH + 'matrix.png'
+
+
+def get_list_of_authors(listpath):
+    """Get list of authors from text."""
+    with open(listpath) as authors_file:
+        authors = authors_file.read().split('\n')[:-1]
+    return authors
+
+
+def get_author_keywords(basepath, author):
+    """Get author keywords from text."""
+    authorpath = basepath + author + '.txt'
+    with open(authorpath) as keywords_file:
+        keywords = keywords_file.readlines()
+    return keywords
+
+
+def organize_keywords(keywords):
+    """Organize and split keyword input from txt."""
+    final = [entry.split() for entry in keywords]
+    return final
+
+
+def convert_to_float(v):
+    """Convert TFs to floats to enable cosine calculation."""
+    return [float(entry) if idx % 2 != 0 else entry for idx, entry in enumerate(v)]
+
+
+def clean_keywords(keywords):
+    """Clean and separate author/search term line."""
+    final = [[entry[0]] if idx == 0 else convert_to_float(entry) for idx, entry in enumerate(keywords)]
+    return final
+
+
+def get_keywords(datapath):
+    """Execute all keyword cleaning functions."""
+    with open(datapath) as keywords_file:
+        wordlist = keywords_file.readlines()
+    wordlist = organize_keywords(wordlist)
+    wordlist = clean_keywords(wordlist)
+    return wordlist
+
+
+def construct_vector_space(v1, v2):
+    """Construct vector space for one pair of authors."""
+    t1 = set()
+    for entry in v1 + v2:
+        t1.add(entry[0])
+    return list(t1)
+
+
+def populate_vector_space(v1, combined):
+    """Populate text vector space with TFs from each author."""
+    t1 = []
+    for entry in combined:
+        for item in v1:
+            if entry == item[0]:
+                t1.append(item)
+                break
+        else:
+            t1.append([entry, 0])
+    return t1
+
+
+def square(v):
+    """Square each element in list."""
+    return [entry[1] ** 2 for entry in v]
+
+
+def calc_cos(v1, v2):
+    """Calculate cosine similarity."""
+    prod = [v1[x][1] * v2[x][1] for x in range(len(v1))]
+    v1_sq = square(v1)
+    v2_sq = square(v2)
+    cos = sum(prod) / (np.sqrt(sum(v1_sq)) * np.sqrt(sum(v2_sq)))
+    return cos
+
+
+def plot_matrix(title, names, data, outpath):
+    """Plot using seaborn heatmap."""
+    ax = sns.heatmap(data, cmap='coolwarm', xticklabels=names, yticklabels=names)
+    ax.tick_params(direction='out', labelsize=8)
+    plt.title(title, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(outpath)
+    print('\nCorrelation Matrix Saved')
+
+
+def cos_calc(listpath, basepath, outpath, title):
+    """Execute everything."""
+    print('Calculating Similarity...')
+    names = []
+    scores = []
+    authors = get_list_of_authors(listpath)
+    for author in authors:
+        row = []
+        ref_author = get_author_keywords(basepath, author)
+        names.append(ref_author[0][0])
+        for compare in authors:
+            test_author = get_author_keywords(basepath, compare)
+            vector_space = construct_vector_space(ref_author[1:], test_author[1:])
+            vector1 = populate_vector_space(ref_author, vector_space)
+            vector2 = populate_vector_space(test_author, vector_space)
+            sim_score = calc_cos(vector1, vector2)
+            row.append(sim_score)
+        scores.append(row)
+    print('\nCalculation Completed For ' + str(len(names)) + ' PIs')
+    plot_matrix(title, names, scores, outpath)
+
+
+if __name__ == '__main__':
+    cos_calc(LISTPATH, BASEPATH, OUTPATH, TITLE)

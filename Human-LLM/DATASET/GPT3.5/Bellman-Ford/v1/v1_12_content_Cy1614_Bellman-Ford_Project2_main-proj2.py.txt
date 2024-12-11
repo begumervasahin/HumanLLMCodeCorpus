@@ -1,0 +1,166 @@
+import numpy as np
+
+def BellmanFord(start, end, weights):
+    n = len(weights)
+    dist = [float('inf')] * n
+    pred = [None] * n
+    dist[start] = 0
+
+    for _ in range(n - 1):
+        for u in range(n):
+            for v in range(n):
+                if weights[u][v] != 0 and dist[u] + weights[u][v] < dist[v]:
+                    dist[v] = dist[u] + weights[u][v]
+                    pred[v] = u
+
+    path = [end]
+    while pred[end] is not None:
+        path.append(pred[end])
+        end = pred[end]
+    return dist, path[::-1]
+
+def calcWei(N_str, N_fin, Dur):
+    nodes = max(max(N_str), max(N_fin)) + 1
+    wei = np.zeros((nodes, nodes))
+    for s, f, d in zip(N_str, N_fin, Dur):
+        wei[s][f] = d
+    return wei
+
+if __name__ == "__main__":
+    N_str = np.empty(0, dtype=float)
+    N_fin = np.empty(0, dtype=float)
+    Dur = np.empty(0, dtype=float)
+    with open('Edges', 'r') as file:
+        for row in file:
+            row_data = row.strip().split(',')
+            N_str = np.append(N_str, int(row_data[0]))
+            N_fin = np.append(N_fin, int(row_data[1]))
+            Dur = np.append(Dur, float(row_data[2]))
+
+    wei = calcWei(N_str, N_fin, Dur)
+    ist = 26
+    isp = 27
+    C1 = []
+    dic = {}
+
+    for i in range(13):
+        col = wei[:, i]
+        row = wei[i + 13, :]
+        c1 = 0
+        c3 = []
+        for j in range(28):
+            if row[j] != 0:
+                c1 += 1
+                c3.append(j)
+            else:
+                pass
+        c3 = c3[:-1]
+        if c1 > 2:
+            C1.append(i)
+            dic[i] = c3
+        else:
+            pass
+
+    lp = BellmanFord(ist, isp, -wei)
+    lp_new = lp[1:-1]
+    L = len(lp_new) - 1
+    time = 0
+
+    for i in range(0, L, 2):
+        p = N_str == lp_new[i]
+        q = N_fin == lp_new[i + 1]
+        time += int(Dur[p & q])
+
+    V = []
+    P = []
+    tp = []
+
+    while len(V) != 13:
+        T = np.zeros(13, dtype=int)
+        for i in range(13):
+            if i in V:
+                pass
+            else:
+                path = BellmanFord(i, isp, -wei)
+                l = len(path) - 1
+                t = 0
+                for j in range(0, l, 2):
+                    p = N_str == path[j]
+                    q = N_fin == path[j + 1]
+                    t += Dur[p & q]
+                T[i] = t
+
+        m = T.argmax()
+        tp.append(T[m])
+        path2 = BellmanFord(m, isp, -wei)
+        P.append(path2)
+
+        for k in range(0, len(path2) - 1, 2):
+            wei[int(path2[k]), int(path2[k + 1])] = 0
+            V.append(path2[k])
+
+    P = [P[i][:-1] for i in range(len(P))]
+    P_new = [np.zeros((1, 6))]
+
+    for i in range(len(P)):
+        p1 = P[i]
+        l = int(len(p1) / 2)
+        p2 = []
+        if l != 0:
+            for j in range(l):
+                p2 += [p1[2 * j]]
+        else:
+            p2 = [p1[0]]
+        P_new.append(p2)
+
+    P_new = P_new[1:]
+    dur = [41, 51, 50, 36, 38, 45, 21, 32, 32, 49, 30, 19, 26]
+    IS = np.zeros(13, dtype=int)
+
+    for i in range(len(C1)):
+        c = C1[i]
+        d = dic[c]
+        for j in range(len(P_new)):
+            p = P_new[j]
+            if c in p:
+                ind = p.index(c)
+                d.remove(p[ind + 1])
+
+    for c in C1:
+        if c != 1:
+            d = dic[c]
+            for i in range(len(d)):
+                IS[d[i]] += dur[c]
+        else:
+            IS[12] = 41 + dur[c]
+
+    P_new[4] = P_new[5] + P_new[4]
+    P_new = P_new[:-1]
+    P[4] = P[5] + P[4]
+    P = P[:-1]
+    tp[4] += tp[5]
+    tp = tp[:-1]
+    S = np.zeros(13, dtype=int)
+
+    for p in P_new:
+        S[p[0]] = 0
+        if len(p) == 2:
+            S[p[1]] = dur[p[0]]
+        elif len(p) == 3:
+            S[p[1]] = dur[p[0]]
+            S[p[2]] = S[p[1]] + dur[p[1]]
+        else:
+            pass
+
+    SS = [max(S[i], IS[i]) for i in range(13)]
+    SS[11] += 21
+    F = np.zeros(13, dtype=int)
+    F = [SS[i] + dur[i] for i in range(13)]
+
+    print('The longest path through this graph from the virtual start node to the virtual finish node is', lp, 'with duration', time)
+    print('The list of the longest path and the remaining shorted paths:')
+    for i in range(len(P)):
+        print('The path', [ist] + P[i], 'where expressed in the form of strings of jobs is:', P_new[i])
+    print('The number of processes in parallel is', len(tp))
+    for i in range(13):
+        print('The optimal start and finish time for job', i, 'are', SS[i], 'and', F[i], 'respectively.')

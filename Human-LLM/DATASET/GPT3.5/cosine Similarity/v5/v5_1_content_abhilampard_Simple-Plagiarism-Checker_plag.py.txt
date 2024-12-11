@@ -1,0 +1,46 @@
+from flask import Flask, request, render_template
+import re
+import math
+
+app = Flask(__name__)
+universal_set_of_unique_words = set()
+
+@app.route("/")
+def load_page():
+    return render_template('index.html', query="")
+
+@app.route("/", methods=['POST'])
+def cosine_similarity():
+    try:
+        global universal_set_of_unique_words
+        input_query = request.form['query']
+        lowercase_query = input_query.lower()
+        query_word_list = re.findall(r'\w+', lowercase_query)
+
+        universal_set_of_unique_words.update(query_word_list)
+
+        with open("database1.txt", "r") as file:
+            database_text = file.read().lower()
+            database_word_list = re.findall(r'\w+', database_text)
+
+            universal_set_of_unique_words.update(database_word_list)
+
+        query_tf = [query_word_list.count(word) for word in universal_set_of_unique_words]
+        database_tf = [database_word_list.count(word) for word in universal_set_of_unique_words]
+
+        dot_product = sum(query_tf[i] * database_tf[i] for i in range(len(query_tf)))
+
+        query_vector_magnitude = math.sqrt(sum(tf ** 2 for tf in query_tf))
+        database_vector_magnitude = math.sqrt(sum(tf ** 2 for tf in database_tf)))
+
+        match_percentage = (dot_product / (query_vector_magnitude * database_vector_magnitude)) * 100
+
+        output = f"Input query text matches {match_percentage:.02f}% with database."    
+        return render_template('index.html', query=input_query, output=output)
+
+    except Exception as e:
+        output = "Please Enter Valid Data"
+        return render_template('index.html', query=input_query, output=output)
+
+if __name__ == "__main__":
+    app.run()

@@ -1,0 +1,85 @@
+import os
+import pandas as pd
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+import pickle
+from sys import stdin
+import logging
+
+# Importing custom module for data processing
+from data_processor import DataProcessor
+
+# Initializing the DataProcessor class
+show_data_processor = DataProcessor()
+
+# Function to scrape data from Metacritic and IMDb
+def scrape_data():
+    # Removing existing files if present
+    if os.path.exists("data/tv.csv"):
+        os.remove("data/tv.csv")
+    if os.path.exists("logging/metacritic_scraper.log"):
+        os.remove("logging/metacritic_scraper.log")
+    
+    print('Scraping Metacritic')
+    # Scraping data from Metacritic
+    import metacritic_scraper
+    
+    # Removing existing files if present
+    if os.path.exists("data/tv_shows_with_features.csv"):
+        os.remove("data/tv_shows_with_features.csv")
+    if os.path.exists("logging/imdb_scraper.log"):
+        os.remove("logging/imdb_scraper.log")
+    
+    print('Scraping IMDb')
+    # Scraping data from IMDb
+    get_info()
+
+# Function to initiate scraping or retraining based on user input
+def manual_loop():
+    # Asking user if they want to scrape data
+    result = input("Enter 'Y' if you want to scrape data: ")
+    if result == 'Y':
+        scrape_data()
+        # Loading trained model after scraping
+        df_trained = show_data_processor.load_model()
+    else:
+        # Asking user if they want to retrain the model
+        result = input("Enter 'Y' if you want to retrain the model: ")
+        if result == 'Y':
+            # Removing existing model file if present
+            if os.path.exists('data/cosine_model.pkl'):
+                os.remove("data/cosine_model.pkl")
+            # Loading trained model after retraining
+            df_trained = show_data_processor.load_model()
+        else:
+            # Loading pre-trained model
+            df_trained = pickle.load(open('data/cosine_model.pkl', "rb"))
+    
+    print('Please enter the title of a TV Show')
+    
+    # Looping to accept user input for TV show titles
+    for title in stdin:
+        titles = df_trained['title'].tolist()
+        # Finding the most similar title using fuzzy matching
+        similar_title = process.extractOne(title, titles)[0]
+        if similar_title != title:
+            print('Found "' + similar_title + '", which was the closest match\n')        
+        
+        print('Finding TV shows similar to ' + similar_title + '...\n')
+        
+        # Getting similar TV shows and their similarity scores
+        top_shows, sim_scores = show_data_processor.get_similar(df_trained, similar_title)
+        # Predicting scores for similar TV shows
+        top_shows = show_data_processor.predict_score(top_shows, sim_scores)
+        top_shows = top_shows.set_index('index')
+        
+        # Displaying similar TV shows
+        print('Found the following TV Shows:\n')
+        print(top_shows[['title', 'score', 'user_rating', 'similarity', 'metascore', 'userscore']].head(15))
+        print('\nPlease enter the title of a TV Show')
+
+if __name__ == "__main__":
+    # Initiating the manual loop for user interaction
+    manual_loop()
+    # Loading the trained model
+    df_trained = show_data_processor.load_model()

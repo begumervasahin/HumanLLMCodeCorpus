@@ -1,0 +1,85 @@
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def preprocess(text):
+    """
+    Preprocesses the text by removing punctuation and converting to lowercase.
+
+    Parameters:
+    text : str
+        The input text to be preprocessed.
+
+    Returns:
+    str
+        Preprocessed text.
+    """
+    text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
+    text = text.lower()  # Convert to lowercase
+    return text
+
+def vectorize_sim_search(query, data, stop_words="english"):
+    """
+    Vectorizes the documents and calculates cosine similarity with the query.
+
+    Parameters:
+    query : str
+        The query document.
+    data : list of str
+        List of documents to compare against the query.
+    stop_words : str or list of str, default="english"
+        Stop words for the TfidfVectorizer.
+
+    Returns:
+    tuple
+        Tuple containing:
+        - cos_sim : numpy array
+            Cosine similarity array.
+        - tfidf_vectorizer : TfidfVectorizer object
+            The fitted TfidfVectorizer object.
+        - data : list of str
+            Updated data with the query added at position 0.
+    """
+    # Include the query in the data list
+    data = [query] + data
+
+    # Create TfidfVectorizer object
+    tfidf_vectorizer = TfidfVectorizer(stop_words=stop_words)
+
+    # Fit-transform the data and calculate cosine similarity
+    tfidf_matrix = tfidf_vectorizer.fit_transform(data)
+    cos_sim = cosine_similarity(tfidf_matrix[0], tfidf_matrix)
+
+    return cos_sim[0], tfidf_vectorizer, data
+
+def get_most_similar(data, cos_sim, n):
+    """
+    Gets the most similar documents based on cosine similarity.
+
+    Parameters:
+    data : list of str
+        List of documents.
+    cos_sim : numpy array
+        Cosine similarity array (first element from cosine_similarity).
+    n : int
+        Number of elements to return.
+
+    Returns:
+    list of tuple
+        List of tuples with n most similar documents arranged from most similar to less similar.
+        Each tuple contains one similarity value (float) and one document (str).        
+    """
+    # Ensure n is within the range of data length
+    if n > len(data):
+        n = len(data)
+
+    # Create a list of tuples with index and cosine similarity value
+    sorted_indexes = [(index, similarity) for index, similarity in enumerate(cos_sim)]
+
+    # Sort the list by cosine similarity in descending order
+    sorted_indexes = sorted(sorted_indexes, key=lambda x: x[1], reverse=True)
+
+    # Get the most similar documents based on sorted indexes
+    most_similar = [(sorted_indexes[i][1], data[sorted_indexes[i][0]]) for i in range(n)]
+
+    return most_similar

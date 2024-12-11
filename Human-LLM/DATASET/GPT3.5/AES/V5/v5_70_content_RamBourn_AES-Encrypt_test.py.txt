@@ -1,0 +1,79 @@
+from Crypto.Cipher import AES
+from binascii import b2a_hex, a2b_hex
+import tkinter as tk
+from tkinter import filedialog
+
+def open_file():
+    filename = filedialog.askopenfilename()
+    if filename:
+        file_in.delete('1.0', tk.END)
+        file_in.insert(tk.END, filename)
+        with open(filename, 'r') as file:
+            input_in.delete('1.0', tk.END)
+            input_in.insert(tk.END, file.read())
+
+def pad_to_multiple_of_16(text):
+    padding_length = 16 - (len(text.encode('utf-8')) % 16)
+    if padding_length != 16:
+        text += '\0' * padding_length
+    return text.encode('utf-8')
+
+def encrypt():
+    key = key_in.get().encode('utf-8')
+    key_file = open('key.txt', 'w+')
+    key_file.write(str(key))
+    key_file.close()
+    mode = AES.MODE_CBC
+    iv = b'qqqqqqqqqqqqqqqq'
+    text = input_in.get('0.0', tk.END).strip('\n')
+    text = pad_to_multiple_of_16(text)
+    cryptos = AES.new(key, mode, iv)
+    cipher_text = cryptos.encrypt(text)
+    
+    encrypted_text = b2a_hex(cipher_text).decode('utf-8')
+    encrypt_out.insert(tk.INSERT, encrypted_text)
+    
+    with open('encrypted.txt', 'w+') as encrypted_file:
+        encrypted_file.write(str(encrypted_text))
+
+def decrypt():
+    key = key_in.get().encode('utf-8')
+    iv = b'qqqqqqqqqqqqqqqq'
+    mode = AES.MODE_CBC
+    cryptos = AES.new(key, mode, iv)
+    text = encrypt_out.get('0.0', tk.END).strip('\n')
+    plain_text = cryptos.decrypt(a2b_hex(text))
+    
+    decrypted_text = bytes.decode(plain_text).rstrip('\0')
+    decrypt_out.insert(tk.INSERT, decrypted_text)
+
+win = tk.Tk()
+win.title('AES-Encrypt')
+
+key_label = tk.Label(win, text='Key')
+input_label = tk.Label(win, text='Input')
+encrypt_label = tk.Label(win, text='Encrypted')
+decrypt_label = tk.Label(win, text='Decrypted')
+
+file_button = tk.Button(win, text='Open', command=open_file)
+encrypt_button = tk.Button(win, text='Encrypt', command=encrypt)
+decrypt_button = tk.Button(win, text='Decrypt', command=decrypt)
+
+input_in = tk.Text(win, height=10)
+file_in = tk.Text(win, height=1)
+key_in = tk.Entry(win)
+encrypt_out = tk.Text(win, height=15)
+decrypt_out = tk.Text(win, height=15)
+
+file_button.grid(row=0, column=0)
+file_in.grid(row=0, column=1)
+key_label.grid(row=1, column=0)
+key_in.grid(row=1, column=1, sticky=tk.E+tk.W)
+input_label.grid(row=2, column=0, sticky=tk.N)
+input_in.grid(row=2, column=1)
+encrypt_button.grid(row=3, column=0, sticky=tk.N)
+encrypt_out.grid(row=3, column=1)
+decrypt_button.grid(row=4, column=0, sticky=tk.N)
+decrypt_out.grid(row=4, column=1)
+
+win.mainloop()

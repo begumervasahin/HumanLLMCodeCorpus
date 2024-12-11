@@ -1,0 +1,167 @@
+import re
+import math
+import os
+from collections import defaultdict
+
+class Graph:
+    def __init__(self):
+        self.vertices = []
+        self.edges = []
+
+    def get_ranked_vertices(self):
+        vertex_weights = defaultdict(float)
+        for edge in self.edges:
+            vertex_weights[edge.vertex1] += edge.weight
+        return sorted(vertex_weights.items(), key=lambda x: x[1], reverse=True)
+
+class Vertex:
+    def __init__(self):
+        self.sentence = None
+
+class Edge:
+    def __init__(self):
+        self.vertex1 = None
+        self.vertex2 = None
+        self.weight = 0
+
+class WordType:
+    Content = 0
+    Function = 1
+    ContentPunctuation = 2
+    FunctionPunctuation = 3
+
+class Word:
+    def __init__(self):
+        self.text = ''
+        self.type = ''
+
+class Sentence:
+    def __init__(self):
+        self.words = []
+
+    def get_full_sentence(self):
+        text = ''.join(word.text for word in self.words)
+        return text.strip()
+
+    def get_reduced_sentence(self):
+        sentence_text = ''
+        sentence_end = self.words[-1]
+        content_words = [word for word in self.words if word.type == WordType.Content]  
+        for i, word in enumerate(content_words):
+            if i == 0:
+                word.text = word.text[0].upper() + word.text[1:]
+            sentence_text += word.text
+            if i < len(content_words) - 1:
+                sentence_text += ' '
+            elif sentence_end.text != word.text:
+                sentence_text += sentence_end.text
+        return sentence_text
+
+class Paragraph:
+    def __init__(self):
+        self.sentences = []
+
+class Reduction:
+    function_punctuation = ' ,-'
+    content_punctuation = '.?!\n'
+    punctuation_characters = function_punctuation + content_punctuation
+    sentence_end_characters = '.?!'
+
+    def is_content_punctuation(self, text):
+        return text.lower() in self.content_punctuation
+
+    def is_function_punctuation(self, text):
+        return text.lower() in self.function_punctuation
+
+    def is_function(self, text, stop_words):
+        return text.lower() in map(str.lower, stop_words)
+
+    def tag_words(self, sample_words, stop_words):
+        tagged_words = []
+        for word in sample_words:
+            tagged_word = Word()
+            tagged_word.text = word
+            if self.is_content_punctuation(word):
+                tagged_word.type = WordType.ContentPunctuation
+            elif self.is_function_punctuation(word):
+                tagged_word.type = WordType.FunctionPunctuation
+            elif self.is_function(word, stop_words):
+                tagged_word.type = WordType.Function
+            else:
+                tagged_word.type = WordType.Content
+            tagged_words.append(tagged_word)
+        return tagged_words
+
+    def tokenize(self, text):
+        return filter(None, re.split('([{0}])'.format(self.punctuation_characters), text))
+
+    def get_words(self, sentence_text, stop_words):
+        return self.tag_words(self.tokenize(sentence_text), stop_words)
+
+    def get_sentences(self, line, stop_words):
+        sentences = []
+        sentence_texts = filter(None, re.split('[{0}]'.format(self.sentence_end_characters), line))
+        sentence_ends = re.findall('[{0}]'.format(self.sentence_end_characters), line)  
+        sentence_ends.reverse()
+        for text in sentence_texts:
+            if sentence_ends:
+                text += sentence_ends.pop()
+            sentence = Sentence()
+            sentence.words = self.get_words(text, stop_words)
+            sentences.append(sentence)
+        return sentences
+
+    def get_paragraphs(self, lines, stop_words):
+        paragraphs = []
+        for line in lines:
+            paragraph = Paragraph()
+            paragraph.sentences = self.get_sentences(line, stop_words)
+            paragraphs.append(paragraph)
+        return paragraphs
+
+    def calculate_weight(self, sentence1, sentence2):
+        words1 = [word for word in sentence1.words if word.type == WordType.Content]    
+        words2 = [word for word in sentence2.words if word.type == WordType.Content]    
+        length1, length2 = len(words1), len(words2)
+        if length1 < 4 or length2 < 4:
+            return 0
+        weight = sum(1 for word1 in words1 for word2 in words2 if word1.text.lower() == word2.text.lower())
+        normalized1 = math.log(length1) if length1 > 0 else 0
+        normalized2 = math.log(length2) if length2 > 0 else 0
+        norm = normalized1 + normalized2
+        return weight / float(norm) if norm != 0 else 0
+
+    def build_graph(self, sentences):
+        graph = Graph()
+        for sentence in sentences:
+            vertex = Vertex()
+            vertex.sentence = sentence
+            graph.vertices.append(vertex)
+        for i in graph.vertices:
+            for j in graph.vertices:
+                if i != j:
+                    weight = self.calculate_weight(i.sentence, j.sentence)
+                    edge = Edge()
+                    edge.vertex1 = i
+                    edge.vertex2 = j
+                    edge.weight = weight
+                    graph.edges.append(edge)
+        return graph
+
+    def rank_sentences(self, paragraphs):
+        sentences = [sentence for paragraph in paragraphs for sentence in paragraph.sentences]
+        graph = self.build_graph(sentences)
+        return graph.get_ranked_vertices()
+
+    def reduce_text(self, text, reduction_ratio):
+        dir_path = os.path.dirname(__file__)
+        stop_words_file = os.path.join(dir_path, 'stopWords.txt')
+        stop_words = open(stop_words_file).read().splitlines()
+        lines = text.splitlines()
+        content_lines = filter(lambda w: w.strip() != '', lines)
+        paragraphs = self.get_paragraphs(content_lines, stop_words)
+        ranked_sentences = self.rank_sentences(paragraphs)
+        ordered_sentences = [sentence for paragraph in paragraphs for sentence in paragraph.sentences]
+        reduced_sentences = [ranked_sentences[i][0].sentence for i in range(math.trunc(len(ranked_sentences) * reduction_ratio))]
+        reduced_text = [sentence.get_full_sentence() for sentence in sorted(reduced_sentences, key=lambda s: ordered_sentences.index(s))]
+        return reduced_text

@@ -1,0 +1,68 @@
+import os
+from invoke import task, run
+
+# Define directories
+docs_dir = 'docs'
+build_dir = os.path.join(docs_dir, '_build')
+
+
+@task
+def test():
+    """Run tests."""
+    run('python setup.py test', pty=True)
+
+
+@task
+def clean():
+    """Clean up build artifacts."""
+    run("rm -rf build")
+    run("rm -rf dist")
+    run("rm -rf dfs_parser.egg-info")
+    clean_docs()
+    print("Cleaned up.")
+
+
+@task
+def clean_docs():
+    """Clean up documentation artifacts."""
+    run(f"rm -rf {build_dir}")
+
+
+@task
+def browse_docs():
+    """Open documentation in browser."""
+    run(f"open {os.path.join(build_dir, 'index.html')}")
+
+
+@task
+def build_docs(clean=False, browse=False):
+    """Build documentation."""
+    if clean:
+        clean_docs()
+    run(f"sphinx-build {docs_dir} {build_dir}", pty=True)
+    if browse:
+        browse_docs()
+
+
+@task
+def readme():
+    """Generate HTML from README."""
+    run('rst2html.py README.rst > README.html')
+
+
+@task
+def publish(test=False):
+    """Publish to the cheeseshop."""
+    if test:
+        run('python setup.py register -r test sdist upload -r test')
+    else:
+        run("python setup.py register sdist upload")
+
+
+if __name__ == "__main__":
+    # Example usage
+    test()
+    clean()
+    build_docs(clean=True, browse=True)
+    readme()
+    publish(test=True)

@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import pickle
+import json
+
+def movies_watched(user_id):
+    with open("ratings.pickle", "rb") as input_file:
+        rat = pickle.load(input_file)
+    rat_mat = rat.values
+    with open("u_item.pickle", "rb") as input_file:
+        items_df = pickle.load(input_file)
+    select_user_id = user_id
+    mat = rat.pivot(index='user_id', columns='movie_id', values='rating').values.astype(np.float)
+    watched_df = pd.DataFrame(columns=['movie_id', 'movie_title'])
+    for ind in range(mat[select_user_id-1, :].shape[0]):
+        if mat[select_user_id-1][ind] == 1:
+            watched_df = watched_df.append({'movie_id': ind+1, 'movie_title': items_df.loc[ind, 'movie_title']}, ignore_index=True)
+    watched_json = watched_df.to_json(orient='records')
+    return watched_json
+
+def give_genre_freq(select_user_id, retrieve_top=20):
+    with open("ratings.pickle", "rb") as input_file:
+        rat = pickle.load(input_file)
+    genre_indices_for_mat = range(6, 24)
+    round_off_to = 2
+    mat = rat.pivot(index='user_id', columns='movie_id', values='rating').values.astype(np.float)
+    with open("u_item.pickle", "rb") as input_file:
+        items_df = pickle.load(input_file)
+    items_df_mat = items_df.values
+    with open("user_feat.pickle", "rb") as input_file:
+        user_feat = pickle.load(input_file)
+    with open("item_feat.pickle", "rb") as input_file:
+        item_feat = pickle.load(input_file)
+    answer_df = pd.DataFrame(columns=['movie_id', 'movie_title', 'pred_rating'])        
+    user_genre_freq = np.zeros(len(genre_indices_for_mat), dtype='float64')       
+    pred_genre_freq = np.zeros(len(genre_indices_for_mat), dtype='float64')       
+    for ind in range(mat[select_user_id-1, :].shape[0]):
+        if mat[select_user_id-1][ind] != 1:
+            pred_rat = user_feat[select_user_id-1, :].dot(item_feat[ind])
+            answer_df = answer_df.append({'movie_id': ind+1, 'movie_title': items_df.loc[ind, 'movie_title'], 'pred_rating': np.abs(1-pred_rat)}, ignore_index=True)
+        else:
+            if items_df_mat[ind][5] != 1:
+                user_genre_freq += np.asfarray(items_df_mat[ind, genre_indices_for_mat])
+    user_genre_freq /= user_genre_freq.sum()
+    user_genre_freq = np.round_(user_genre_freq, round_off_to)
+    return_this_df = pd.DataFrame(user_genre_freq, index=['Action', 'Adventure', 'Animation', "Children's", 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western'], columns=['user_genre_freq'])
+    answer_df.sort_values('pred_rating', ascending=True, inplace=True)
+    save_as_json = answer_df.iloc[0:retrieve_top, :]
+    for id in save_as_json['movie_id']:
+        pred_genre_freq += np.asfarray(items_df_mat[id-1, genre_indices_for_mat])        
+    pred_genre_freq /= pred_genre_freq.sum()
+    pred_genre_freq = np.round_(pred_genre_freq, round_off_to)
+    return_this_df['pred_genre_freq'] = pred_genre_freq
+    return_this_df = return_this_df.transpose()
+    return_this_df = return_this_df.to_json(orient='index')
+    json_file = "genre_frequencies.json"
+    json.dump(return_this_df, open(json_file, 'w'), separators=(',', ':'), sort_keys=True, indent=4)
+    return return_this_df
+
+if __name__ == "__main__":
+    user_id = 1
+    print("Movies watched by user", user_id, ":\n", movies_watched(user_id))
+    user_id = 1
+    print("Genre frequencies for user", user_id, ":\n", give_genre_freq(user_id))

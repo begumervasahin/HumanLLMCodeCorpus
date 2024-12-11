@@ -1,0 +1,53 @@
+import csv
+
+# Open a file to write transactions
+arq = open('dataCaixaAno2015-MesAgosto.dat', 'w')
+
+# Paths to CSV files
+path = 'caixa.csv'
+path2 = 'produtos.csv'
+
+# Lists to store data
+vendaProd = []
+listProd = []
+vendaProdMat = []
+
+# Function to load data from CSV files
+def loadCSV():
+    # Read data from 'caixa.csv'
+    with open(path, newline='') as file:
+        reader = csv.reader(file, delimiter=';')
+        lineNumber = 0
+        for line in reader:
+            if lineNumber > 0:
+                vendaProd.append([line[6]])  # Extract product codes
+            lineNumber += 1
+
+    # Read data from 'produtos.csv'
+    with open(path2, newline='') as file:
+        reader = csv.reader(file, delimiter=';')
+        next(reader)  # Skip header
+        for line in reader:
+            listProd.append((line[0], line[1]))  # Extract product codes and names
+
+    # Match product codes to their names
+    for i in range(len(vendaProd)):
+        for j in range(1, len(vendaProd[i])):
+            for k in range(len(listProd)):
+                if vendaProd[i][j] == listProd[k][0]:
+                    vendaProdMat[i].append(listProd[k][1])
+
+    return vendaProdMat
+
+# Load data and print transactions
+vendaProdMat = loadCSV()
+print(vendaProdMat)
+
+# Write transactions to file
+for i in range(len(vendaProdMat)):
+    if len(vendaProdMat[i]) > 2:
+        value = ' '.join([x.replace(" ", "_") for x in vendaProdMat[i][1:]]) + '\n'
+        arq.write(value)
+
+# Close the file
+arq.close()

@@ -1,0 +1,66 @@
+import numpy as np
+from chainer import cuda, optimizer, Variable
+from chainer.initializers import Uniform
+import chainer.functions as F
+import chainer.links as L
+
+class RMSpropAsync(optimizer.GradientMethod):
+    """
+    RMSprop optimizer for asynchronous methods.
+    The difference from chainer.optimizers.RMSprop is that epsilon is outside the square root.
+    """
+
+    def __init__(self, lr=0.01, alpha=0.99, eps=1e-8):
+        super(RMSpropAsync, self).__init__()
+        self.lr = lr
+        self.alpha = alpha
+        self.eps = eps
+
+    def init_state(self, param, state):
+        xp = cuda.get_array_module(param.data)
+        state['ms'] = xp.zeros_like(param.data)
+
+    def update_one_cpu(self, param, state):
+        ms = state['ms']
+        grad = param.grad
+        ms *= self.alpha
+        ms += (1 - self.alpha) * grad * grad
+        param.data -= self.lr * grad / np.sqrt(ms + self.eps)
+
+    def update_one_gpu(self, param, state):
+        cuda.elementwise(
+            'T grad, T lr, T alpha, T eps',
+            'T param, T ms',
+            '''ms = alpha * ms + (1 - alpha) * grad * grad;
+               param -= lr * grad / sqrt(ms + eps);''',
+            'rmsprop')(param.grad, self.lr, self.alpha, self.eps,
+                       param.data, state['ms'])
+
+def main():
+    # Generate random data
+    data = np.random.rand(3, 3).astype(np.float32)
+    target = np.random.rand(3, 3).astype(np.float32)
+
+    # Define a simple neural network model
+    class SimpleModel(chainer.Chain):
+        def __init__(self):
+            super(SimpleModel, self).__init__()
+            with self.init_scope():
+                self.fc = L.Linear(3, 3, initialW=Uniform(0.1))
+
+        def __call__(self, x):
+            return self.fc(x)
+
+    model = SimpleModel()
+    optimizer = RMSpropAsync()
+
+    # Perform a dummy optimization step
+    optimizer.setup(model)
+    x = Variable(data)
+    y = model(x)
+    loss = F.mean_squared_error(y, target)
+    loss.backward()
+    optimizer.update()
+
+if __name__ == '__main__':
+    main()

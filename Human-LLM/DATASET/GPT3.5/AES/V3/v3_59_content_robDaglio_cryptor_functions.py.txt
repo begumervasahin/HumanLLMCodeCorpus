@@ -1,0 +1,47 @@
+from sys import argv, exit
+from getpass import getpass
+import os
+
+def usage():
+    print(f'[!] Usage: python {argv[0]} <mode [-e or -d]> <FILE/DIR> <password (OPTIONAL) [-p]> <password>')
+
+def check_args():
+    if len(argv) != 5 and len(argv) != 3:
+        usage()
+        exit(0)
+    if argv[1] not in ["-d", "-e"] or not os.path.exists(argv[2]):  
+        usage()
+        exit(0)
+    if len(argv) == 3:
+        return getpass("[!] Password: ")
+    elif len(argv) == 5:
+        return get_pass()
+
+def get_target():
+    target_path = os.path.abspath(argv[2])
+    if os.path.isdir(target_path):
+        return get_files_in_directory(target_path)
+    else:
+        return [target_path]
+
+def get_files_in_directory(directory):
+    file_names = []
+    for root, dirs, files in os.walk(directory): 
+        for file in files:
+            file_names.append(os.path.join(root, file))
+    return file_names
+
+def get_pass():
+    if argv[3] == '-p':
+        return argv[4]
+    else:
+        print('[x] Invalid switch!')
+        usage()
+        exit(0)
+
+if __name__ == "__main__":
+    password = check_args()
+    target = get_target()
+    print("Mode:", argv[1])
+    print("Target:", target)
+    print("Password:", password)

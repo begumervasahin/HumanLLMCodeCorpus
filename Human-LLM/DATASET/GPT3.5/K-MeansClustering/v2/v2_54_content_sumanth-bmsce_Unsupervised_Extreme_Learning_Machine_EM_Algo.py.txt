@@ -1,0 +1,44 @@
+from sklearn import mixture
+import matplotlib.pyplot as plt
+import numpy as np
+from itertools import groupby
+
+def em(input_array, no_of_clusters):
+    # Initialize Gaussian Mixture Model
+    model = mixture.GaussianMixture(n_components=no_of_clusters, covariance_type='diag')
+
+    # Fit the model to the input data
+    model.fit(input_array)
+
+    # Predict the cluster labels
+    cluster_labels = model.predict(input_array)
+
+    # Print means and weights of the Gaussian components
+    print("Gaussian Means:", model.means_)
+    print("Gaussian Weights:", model.weights_)
+
+    # Separate cluster labels for different classes
+    classes = [
+        {'index': slice(0, 59), 'name': 'class 1'},
+        {'index': slice(59, 130), 'name': 'class 2'},
+        {'index': slice(130, 178), 'name': 'class 3'}
+    ]
+    for class_info in classes:
+        class_cluster_labels = cluster_labels[class_info['index']]
+        class_cluster_labels.sort()
+        print("Cluster labels for", class_info['name'], ":", class_cluster_labels)
+        cluster_lengths = [len(list(group)) for key, group in groupby(class_cluster_labels)]
+        print("Lengths of clusters for", class_info['name'], ":", cluster_lengths)
+
+try:
+    input_data = np.genfromtxt("C:\\Users\\SUMANTH C\\Desktop\\Deep Learning\\Datasets\\wine_sort.csv", delimiter=',')
+except:
+    print("Could not open file")
+
+# Select only the first 13 columns of the input data
+input_data = input_data[:, :13]
+print("Input data shape:", input_data.shape)
+
+# Call the em function
+em(input_data, 3)
+print("Completed")

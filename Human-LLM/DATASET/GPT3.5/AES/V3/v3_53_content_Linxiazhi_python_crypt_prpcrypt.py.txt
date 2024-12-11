@@ -1,0 +1,100 @@
+import json
+import base64
+from Crypto.Cipher import AES, PKCS1_v1_5
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+
+class AESCrypt:
+    def __init__(self, key):
+        self.key = key.encode('utf-8')
+        self.mode = AES.MODE_ECB
+        self.block_size = 16
+
+    def _pad(self, data):
+        padding_length = self.block_size - len(data) % self.block_size
+        padding = padding_length * chr(padding_length).encode()      
+        return data + padding
+
+    def _unpad(self, data):
+        return data[:-data[-1]]
+
+    def encrypt(self, data):
+        cipher = AES.new(self.key, self.mode)
+        padded_data = self._pad(data.encode('utf-8'))
+        encrypted_data = cipher.encrypt(padded_data)
+        return base64.b64encode(encrypted_data).decode()
+
+    def decrypt(self, encrypted_data):
+        cipher = AES.new(self.key, self.mode)
+        decrypted_data = cipher.decrypt(base64.b64decode(encrypted_data))
+        return self._unpad(decrypted_data).decode()
+
+class RSACrypt:
+    @staticmethod
+    def _serialize_data(data):
+        if isinstance(data, dict) or isinstance(data, list):
+            return json.dumps(data, sort_keys=True)
+        return str(data)
+
+class RSAPubCrypt(RSACrypt):
+    def __init__(self, key):
+        self.key = RSA.import_key(key)
+
+    def encrypt(self, data):
+        cipher = PKCS1_v1_5.new(self.key)
+        encrypted_data = cipher.encrypt(data.encode('utf-8'))        
+        return base64.b64encode(encrypted_data).decode()
+
+    def verify_signature(self, data, signature):
+        serialized_data = self._serialize_data(data)
+        hashed_data = SHA256.new(serialized_data.encode('utf-8'))    
+        try:
+            pkcs1_15.new(self.key).verify(hashed_data, base64.b64decode(signature))
+            return True
+        except (ValueError, TypeError):
+            return False
+
+class RSAPrvCrypt(RSACrypt):
+    def __init__(self, key):
+        self.key = RSA.import_key(key)
+
+    def decrypt(self, encrypted_data):
+        cipher = PKCS1_v1_5.new(self.key)
+        decrypted_data = cipher.decrypt(base64.b64decode(encrypted_data), None)
+        return decrypted_data.decode()
+
+    def sign(self, data):
+        serialized_data = self._serialize_data(data)
+        hashed_data = SHA256.new(serialized_data.encode('utf-8'))    
+        signature = pkcs1_15.new(self.key).sign(hashed_data)
+        return base64.b64encode(signature).decode()
+
+# Example usage:
+if __name__ == "__main__":
+    aes_key = "secretAESKey"
+    rsa_pub_key = "<RSA public key>"
+    rsa_prv_key = "<RSA private key>"
+
+    aes_cipher = AESCrypt(aes_key)
+    rsa_pub_cipher = RSAPubCrypt(rsa_pub_key)
+    rsa_prv_cipher = RSAPrvCrypt(rsa_prv_key)
+
+    # Encryption and Decryption using AES
+    encrypted_data = aes_cipher.encrypt("Hello, World!")
+    print("Encrypted Data:", encrypted_data)
+    decrypted_data = aes_cipher.decrypt(encrypted_data)
+    print("Decrypted Data:", decrypted_data)
+
+    # Encryption and Decryption using RSA (Public Key)
+    encrypted_data = rsa_pub_cipher.encrypt("Hello, World!")
+    print("Encrypted Data (RSA Public Key):", encrypted_data)        
+    decrypted_data = rsa_prv_cipher.decrypt(encrypted_data)
+    print("Decrypted Data (RSA Private Key):", decrypted_data)       
+
+    # Signing and Verification using RSA (Private Key)
+    data_to_sign = {"key": "value"}
+    signature = rsa_prv_cipher.sign(data_to_sign)
+    print("Signature:", signature)
+    verification_result = rsa_pub_cipher.verify_signature(data_to_sign, signature)
+    print("Signature Verification Result:", verification_result)

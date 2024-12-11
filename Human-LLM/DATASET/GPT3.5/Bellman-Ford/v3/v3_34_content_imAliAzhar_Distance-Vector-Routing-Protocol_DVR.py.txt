@@ -1,0 +1,127 @@
+import socket
+import json
+import time
+import threading
+import os
+import math
+
+# Constants
+TIMEOUT_VALUE = 3
+BROADCAST_TIME = 1
+
+class Node:
+    def __init__(self, name, port, neighbors):
+        self.name = name
+        self.port = int(port)
+        self.neighbors = neighbors
+        self.routing_table = {name: {'through': name, 'cost': 0, 'timeout': math.inf}}  
+        for node, info in neighbors.items():
+            self.routing_table[node] = {'through': node, 'cost': info['cost'], 'timeout': time.time() + TIMEOUT_VALUE}
+        self.queue = []
+        self.table_update_lock = threading.Lock()
+        self.broadcast_lock = threading.Lock()
+
+    def update_routing_table(self, dv, sending_node):
+        with self.table_update_lock:
+            if sending_node in self.routing_table:
+                self.routing_table[sending_node]['timeout'] = time.time() + TIMEOUT_VALUE
+            for node in self.routing_table:
+                if self.routing_table[self.routing_table[node]['through']]['cost'] == math.inf:
+                    self.routing_table[node]['through'] = self.name
+                    self.routing_table[node]['cost'] = math.inf
+            for node, cost in dv.items():
+                if node not in self.routing_table or (cost + self.neighbors[sending_node]['cost'] < self.routing_table[node]['cost']):
+                    self.routing_table[node] = {'through': sending_node, 'cost': cost + self.neighbors[sending_node]['cost'], 'timeout': time.time() + TIMEOUT_VALUE}
+                elif sending_node == self.routing_table[node]['through'] and self.routing_table[node]['cost'] != self.routing_table[sending_node]['cost'] + cost:
+                    self.routing_table[node]['cost'] = self.routing_table[sending_node]['cost'] + cost
+            for node, cost in dv.items():
+                if self.routing_table[node]['through'] == sending_node and cost == math.inf:
+                    self.routing_table[node]['through'] = self.name
+                    self.routing_table[node]['cost'] = math.inf
+
+    def broadcast(self):
+        while True:
+            self.display()
+            with self.broadcast_lock:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                for neighbor, info in self.neighbors.items():
+                    data = self.routing_table.copy()
+                    for node in data:
+                        if node != self.name and node != neighbor:
+                            if data[node]['through'] == neighbor:
+                                data[node]['cost'] = math.inf
+                    data['packettype'] = "DV"
+                    data['sendingNode'] = self.name
+                    data = json.dumps(data)
+                    sock.sendto(data.encode(), ('localhost', info['port']))
+            time.sleep(BROADCAST_TIME)
+
+    def listen(self):
+        while True:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.bind(('localhost', self.port))
+                data, _ = sock.recvfrom(2048)
+                data = json.loads(data.decode())
+                self.queue.append(data)
+
+    def process_queue(self):
+        while True:
+            if len(self.queue) != 0:
+                self.process_packet(self.queue[0])
+                del self.queue[0]
+
+    def process_packet(self, data):
+        packet_type = data['packettype']
+        sending_node = data['sendingNode']
+        del data['packettype']
+        del data['sendingNode']
+        if packet_type == "DV":
+            self.update_routing_table(data, sending_node)
+        elif packet_type == "change":
+            self.change(data)
+
+    def kill_dead_nodes(self):
+        while True:
+            with self.table_update_lock:
+                current_time = time.time()
+                for node, info in self.routing_table.items():
+                    if info['timeout'] < current_time:
+                        self.routing_table[node]['cost'] = math.inf
+                        self.neighbors[node]['cost'] = math.inf
+
+    def run(self):
+        listen_thread = threading.Thread(target=self.listen)
+        broadcast_thread = threading.Thread(target=self.broadcast)
+        process_thread = threading.Thread(target=self.process_queue)
+        kill_dead_nodes_thread = threading.Thread(target=self.kill_dead_nodes)
+        threads = [listen_thread, broadcast_thread, process_thread, kill_dead_nodes_thread]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+    def display(self):
+        with self.table_update_lock:
+            os.system("cls" if os.name == "nt" else "clear")
+            print("=" * 56)
+            print("\nI am Router " + self.name + '\n')
+            for node, info in self.routing_table.items():
+                if info['cost'] != math.inf and node != self.name:
+                    print(f"Least cost path to router {node}: through {info['through']} with cost {info['cost']:.1f}\n")
+            print("=" * 56)
+
+    def change(self, message):
+        node_name = message['node']
+        node_cost = float(message['cost'])
+        self.neighbors[node_name]['cost'] = node_cost
+        self.routing_table[node_name]['cost'] = node_cost
+        print(f"{node_name} set to {node_cost}")    
+
+if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print("Usage: python3 filename.py <name> <port> <neighbors_file>")
+        sys.exit(1)
+
+    node = Node(sys.argv[1], sys.argv[2], read_neighbors(sys.argv[3]))
+    node.run()
+    input()  # Keep the main thread alive

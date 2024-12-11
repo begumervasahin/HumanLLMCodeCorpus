@@ -1,0 +1,69 @@
+import re
+from stop_list import closed_class_stop_words
+
+# Function to read queries from file
+def read_queries(file_name):
+    with open(file_name, 'r') as file:
+        queries = file.read()
+    queries = queries.replace("\s ", "")
+    return queries
+
+# Function to extract query numbers
+def get_query_nums(string):
+    query_nums = []
+    q1 = re.findall(r".I \d{3}", string)
+    for q in q1:
+        query_nums.append(q.replace(".I ", ""))
+    return query_nums
+
+# Function to extract query strings
+def get_query_strings(string):
+    query_strings = []
+    q1 = re.findall(r"([a-z ]+\n){1,3}[a-z ]+\.", string)
+    for q in q1:
+        query_strings.append(q)
+    return query_strings
+
+# Function to trim query string
+def trim(string):
+    trimmed_words = filter(None, (re.sub(r"\n|\r", " ", string)).split(" "))
+    stop_words = closed_class_stop_words
+    for stop_word in stop_words:
+        while stop_word in trimmed_words:
+            trimmed_words.remove(stop_word)
+    return trimmed_words
+
+# Function to get term frequency from an array
+def get_tf(array):
+    terms = list(set(array))
+    term_frequency = dict.fromkeys(terms, 0)
+    for word in array:
+        term_frequency[word] = term_frequency[word] + 1
+    return term_frequency
+
+# Function to print dictionary
+def print_dict(dictionary):
+    for key, value in dictionary.items():
+        print(key, value)
+
+# Test the functions
+if __name__ == "__main__":
+    # Read queries from file
+    queries = read_queries("cran.qry")
+
+    # Extract query numbers
+    query_nums = get_query_nums(queries)
+    print("Query Numbers:", query_nums)
+
+    # Extract query strings
+    query_strings = get_query_strings(queries)
+    print("Query Strings:", query_strings)
+
+    # Trim query string
+    trimmed_query = trim(open("cran2.qry", 'r').read())
+    print("Trimmed Query:", trimmed_query)
+
+    # Calculate term frequency
+    term_frequency = get_tf(trimmed_query)
+    print("Term Frequency:")
+    print_dict(term_frequency)

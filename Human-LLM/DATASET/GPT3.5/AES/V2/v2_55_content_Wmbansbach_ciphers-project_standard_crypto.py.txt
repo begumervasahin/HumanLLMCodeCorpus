@@ -1,0 +1,58 @@
+import base64
+import os
+import hashlib
+import tkinter as tk
+from tkinter import messagebox
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+class Encryption:
+    def __init__(self):
+        pass
+
+    def aes_operation(self, mode, message, password):
+        """Performs AES encryption or decryption."""
+        salt = b'011358'
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+            backend=default_backend())
+        key = base64.urlsafe_b64encode(kdf.derive(password))
+        f = Fernet(key)
+        if mode:
+            token = f.encrypt(message)
+        else:
+            token = f.decrypt(message)
+        return token.decode('ascii')
+
+class Hashes:
+    def __init__(self):
+        pass
+
+    def generate_hash(self, message, algorithm):
+        """Generates a hash for the given message using the specified algorithm."""
+        hasher = getattr(hashlib, algorithm)()
+        hasher.update(message.encode('utf-8'))
+        messagebox.showinfo(algorithm, hasher.hexdigest())
+
+# Example usage:
+encryptor = Encryption()
+hasher = Hashes()
+
+# AES Encryption and Decryption
+message = b'Secret Message'
+password = b'password'
+encrypted_message = encryptor.aes_operation(True, message, password)      
+decrypted_message = encryptor.aes_operation(False, encrypted_message.encode('ascii'), password)
+
+print("Original message:", message)
+print("Encrypted message:", encrypted_message)
+print("Decrypted message:", decrypted_message)
+
+# Hashing
+message = "Hello, world!"
+hasher.generate_hash(message, "sha256")

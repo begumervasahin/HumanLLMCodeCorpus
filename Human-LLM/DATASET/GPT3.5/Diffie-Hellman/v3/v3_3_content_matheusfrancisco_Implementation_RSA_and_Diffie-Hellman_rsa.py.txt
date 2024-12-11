@@ -1,0 +1,58 @@
+import random
+from euclidean import gcd, euclidean_extended_gcd
+from numberPrime import is_prime, generate_prime_numbers
+from modular_arithmetic import modExp
+
+class RSA:
+    def __init__(self, key_size=100, debug=False):
+        self.public_key, self.private_key = self.generate_rsa_keys(key_size, debug)
+
+    def generate_rsa_keys(self, key_size, debug=False):
+        p, q = generate_prime_numbers(key_size)
+        n = p * q
+        phi_n = (p - 1) * (q - 1)
+        e, d = self.generate_key_pair(phi_n)
+        if debug:
+            self.print_key_info(p, q, n, phi_n, e, d)
+        return (e, n), (d, n)
+
+    def generate_key_pair(self, phi_n):
+        while True:
+            e = random.randint(2, phi_n - 1)
+            if gcd(e, phi_n) == 1:
+                _, d, _ = euclidean_extended_gcd(e, phi_n)
+                if d < 0:
+                    d += phi_n
+                return e, d
+
+    def encryption(self, msg, public_key):
+        """Encrypts the message using RSA."""
+        e, n = public_key
+        encrypted_msg = [modExp(char, e, n) for char in msg]
+        print('Encrypted Message:', encrypted_msg)
+        return encrypted_msg
+
+    def decryption(self, msg, private_key):
+        """Decrypts the message using RSA."""
+        d, n = private_key
+        decrypted_msg = [modExp(char, d, n) for char in msg]
+        print('Decrypted Message:', decrypted_msg)
+        return decrypted_msg
+
+    def print_key_info(self, p, q, n, phi_n, e, d):
+        """Prints generated RSA key information."""
+        print("Primes Generated:", p, q)
+        print("N:", n)
+        print("Phi(n):", phi_n)
+        print("Public Key (e, n):", e, n)
+        print("Private Key (d, n):", d, n)
+
+if __name__ == '__main__':
+    print("RSA Encryption and Decryption Test:")
+    rsa = RSA(key_size=128, debug=True)
+    msg = [65, 66, 67]  # Example message to encrypt
+    public_key, private_key = rsa.public_key, rsa.private_key
+    encrypted = rsa.encryption(msg, public_key)
+    decrypted = rsa.decryption(encrypted, private_key)
+    print("Original Message:", msg)
+    print("Decrypted Message Matches Original:", decrypted == msg)

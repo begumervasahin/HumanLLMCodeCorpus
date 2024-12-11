@@ -1,0 +1,42 @@
+import numpy as np
+import scipy as sp
+import sys
+def BellmanFord(ist,isp,wei):
+    V = wei.shape[1]
+    Inf    = sys.maxint
+    d      = np.ones((V),float)*np.inf
+    p      = np.zeros((V),int)*Inf
+    d[ist] = 0
+    for i in range(0,V-1):
+        for u in range(0,V):
+            for v in range(0,V):
+                w = wei[u,v]
+                if (w != 0):
+                    if (d[u]+w < d[v]):
+                        d[v] = d[u] + w
+                        p[v] = u
+    for u in range(0,V):
+        for v in range(0,V):
+            w = wei[u,v]
+            if (w != 0):
+                if (d[u]+w < d[v]):
+                    print('graph contains a negative-weight cycle')
+    shpath = [isp]
+    while p[isp] != ist:
+        shpath.append(p[isp])
+        isp = p[isp]
+    shpath.append(ist)
+    return shpath[::-1]
+if __name__ == '__main__':
+    ist = 4
+    isp = 3
+    wei = np.array([[ 0, 20,  0, 80, 0,  0, 90,  0],
+                    [ 0,  0,  0,  0, 0, 10,  0,  0],
+                    [ 0,  0,  0, 10, 0, 50,  0, 20],
+                    [ 0,  0, 10,  0, 0,  0, 20,  0],
+                    [ 0, 50,  0,  0, 0,  0, 30,  0],
+                    [ 0,  0, 10, 40, 0,  0,  0,  0],
+                    [20,  0,  0,  0, 0,  0,  0,  0],
+                    [ 0,  0,  0,  0, 0,  0,  0,  0]])
+    shpath = BellmanFord(ist,isp,wei)
+    print ist,' -> ',isp,' is ',shpath

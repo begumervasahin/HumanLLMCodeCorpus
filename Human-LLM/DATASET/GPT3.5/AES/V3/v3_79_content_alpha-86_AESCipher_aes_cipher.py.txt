@@ -1,0 +1,53 @@
+import sys
+from Crypto.Cipher import AES
+
+class AESCipher:
+    block_size = AES.block_size
+    zero_padding = 1
+    PKCS5Padding = 2
+    PKCS7Padding = 3
+
+    def __init__(self, key, mode=AES.MODE_ECB):
+        if isinstance(key, str):
+            key = key.encode('utf-8')
+        self.key = key
+        self.aes = AES.new(self.key, mode)
+
+    @classmethod
+    def _pkcs7_padding(cls, data):
+        pad_length = cls.block_size - len(data) % cls.block_size
+        padding = bytes([pad_length] * pad_length)
+        return data + padding
+
+    @classmethod
+    def _pkcs7_unpadding(cls, data):
+        pad_length = data[-1]
+        return data[:-pad_length]
+
+    def _hex_to_bytes(self, raw):
+        if isinstance(raw, str):
+            raw = bytes.fromhex(raw)
+        return raw
+
+    def encrypt(self, raw):
+        raw = self._pkcs7_padding(raw.encode('utf-8'))
+        encrypted_data = self.aes.encrypt(raw)
+        return encrypted_data.hex().upper()
+
+    def decrypt(self, enc):
+        enc = self._hex_to_bytes(enc)
+        decrypted_data = self.aes.decrypt(enc)
+        return self._pkcs7_unpadding(decrypted_data).decode('utf-8').strip()
+
+# Initialize AESCipher with the key
+key = '1234567890123456'
+aes = AESCipher(key)
+
+# Process input from stdin
+for line in sys.stdin:
+    line = line.strip()
+    if line:
+        encrypted_line = aes.encrypt(line)
+        print(encrypted_line)
+        decrypted_line = aes.decrypt(encrypted_line)
+        print(decrypted_line)

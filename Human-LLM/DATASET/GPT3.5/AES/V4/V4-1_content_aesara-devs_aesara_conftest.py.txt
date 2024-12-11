@@ -1,0 +1,46 @@
+import os
+import pytest
+
+# Set up environment variables before the test session starts
+def configure_aesara_and_numba_flags():
+    aesara_flags = os.environ.setdefault("AESARA_FLAGS", "")
+    aesara_flags += ",warn__ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,cmodule__warn_no_version=True"
+    os.environ["AESARA_FLAGS"] = aesara_flags
+    os.environ["NUMBA_BOUNDSCHECK"] = "1"
+
+# Add a command-line option to pytest for running slow tests
+def add_slow_test_option(parser):
+    parser.addoption(
+        "--runslow", 
+        action="store_true", 
+        default=False, 
+        help="Run tests marked as slow"
+    )
+
+# Configure pytest markers
+def configure_pytest_markers(config):
+    config.addinivalue_line("markers", "slow: Mark a test as slow to run")
+
+# Modify test collection items based on command-line options
+def skip_slow_tests_if_not_requested(config, items):
+    if config.getoption("--runslow"):
+        return
+    mark_slow_tests_to_skip(items)
+
+# Mark slow tests to be skipped if --runslow option is not provided
+def mark_slow_tests_to_skip(items):
+    for item in items:
+        if "slow" in item.keywords:
+            skip_slow_test(item)
+
+# Helper function to skip slow test
+def skip_slow_test(item):
+    skip_reason = "Need --runslow option to run this test"
+    item.add_marker(pytest.mark.skip(reason=skip_reason))
+
+if __name__ == "__main__":
+    configure_aesara_and_numba_flags()
+    add_slow_test_option(pytest)
+    configure_pytest_markers(pytest.config)
+    skip_slow_tests_if_not_requested(pytest.config, pytest.config.getoption("--runslow"))
+    pytest.main()

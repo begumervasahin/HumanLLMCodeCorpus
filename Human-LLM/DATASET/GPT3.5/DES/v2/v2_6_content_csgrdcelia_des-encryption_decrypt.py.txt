@@ -1,0 +1,63 @@
+from utils.data_manipulation import (
+    permutation,
+    get_subkey_array,
+    packet,
+    list_to_string,
+    decrypt_packet,
+    pse_xor_subkey,
+    xor,
+    cut_off,
+    initial_permutation,
+    inverse_initial_permutation,
+)
+from utils.alpha_binary_conversion import conv_bin, nib_vnoc
+
+def decrypt(message, key):
+    # Perform initial permutation on the key
+    key = permutation(key, des_constants["CP_1"][0], True)
+
+    # Generate subkeys
+    subkey_array = get_subkey_array(key, des_constants["CP_2"][0])
+
+    # Convert message to binary and divide into packets
+    binary_message = conv_bin(message)
+    packets = packet(binary_message)
+
+    # Decrypt each packet and concatenate the results
+    decrypted_message = ""
+    for pack in packets:
+        decrypted_message += list_to_string(decrypt_packet(pack, subkey_array))
+
+    # Convert decrypted message to ASCII
+    ascii_message = nib_vnoc(decrypted_message)
+    print(ascii_message)
+
+def remove_check_bits(key):
+    # Remove every 8th bit from the key
+    new_key = [number for index, number in enumerate(key, start=1) if index % 8 != 0]
+    return new_key
+
+def perform_single_inverse_round(left, right, subkey):
+    # Perform a single inverse round
+    pse = pse_xor_subkey(left, subkey)
+    return xor(pse, right), left
+
+def perform_inverse_round(message_part, subkey_array):
+    # Perform inverse rounds on a message part using subkeys
+    left, right = cut_off(message_part)
+    for index in range(15, -1, -1):
+        left, right = perform_single_inverse_round(left, right, subkey_array[index])    
+    return left + right
+
+def decrypt_packet(message_part, subkey_array):
+    # Decrypt a packet using subkeys
+    message_part = initial_permutation(message_part)
+    message_part = perform_inverse_round(message_part, subkey_array)
+    message_part = inverse_initial_permutation(message_part)
+    return message_part
+
+# Example usage:
+if __name__ == "__main__":
+    message = "Hello, World!"
+    key = [1, 0, 1, 0, 0, 1, 0, 1]  # Example key
+    decrypt(message, key)

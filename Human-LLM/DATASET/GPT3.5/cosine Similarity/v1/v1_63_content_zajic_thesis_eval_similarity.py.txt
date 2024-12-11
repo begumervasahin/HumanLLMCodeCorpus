@@ -1,0 +1,54 @@
+import numpy as np
+from scipy.spatial.distance import cosine
+import pickle
+
+class CosineSimilarity:
+    def __init__(self):
+        self.tfidf, self.terms, self.sigma, self.VT = self._load_matrices()
+
+    def calculate_term_similarity(self, term1, term2):
+        if (term1 in self.terms) and (term2 in self.terms):
+            index0 = self.terms.index(term1)
+            index1 = self.terms.index(term2)
+        else:
+            return 0
+
+        t0 = np.transpose(self.tfidf[index0])
+        t1 = np.transpose(self.tfidf[index1])
+        cos_dist = self._calculate_cosine_similarity(t0, t1)
+        similarity = 1 - cos_dist
+        print(f"{term1} and {term2} similarity:")
+        print(similarity)
+        return similarity
+
+    def _create_diagonal_matrix(self):
+        diag_matrix = np.zeros((len(self.sigma), len(self.sigma)), int)
+        np.fill_diagonal(diag_matrix, 1)
+        diag_matrix = diag_matrix * self.sigma
+        return diag_matrix
+
+    def _calculate_cosine_similarity(self, t0, t1):
+        sigma_diagonal = self._create_diagonal_matrix()
+        sigma_inv = np.linalg.inv(sigma_diagonal)
+        term_vector0 = np.matmul(np.matmul(sigma_inv, self.VT), t0)
+        term_vector1 = np.matmul(np.matmul(sigma_inv, self.VT), t1)
+        distance = cosine(term_vector0, term_vector1)
+        return distance
+
+    @staticmethod
+    def _load_matrices():
+        with open('./pickle_files/sigma', 'rb') as fp:
+            sigma = pickle.load(fp)
+        with open('./pickle_files/vt', 'rb') as fp:
+            VT = pickle.load(fp)
+        with open('./pickle_files/tfidf', 'rb') as fp:
+            tfidf = pickle.load(fp)
+        with open('./pickle_files/terms', 'rb') as fp:
+            terms = pickle.load(fp)
+        return tfidf, terms, sigma, VT
+
+if __name__ == "__main__":
+    cosine_similarity = CosineSimilarity()
+    term1 = input("Enter first term: ")
+    term2 = input("Enter second term: ")
+    cosine_similarity.calculate_term_similarity(term1, term2)

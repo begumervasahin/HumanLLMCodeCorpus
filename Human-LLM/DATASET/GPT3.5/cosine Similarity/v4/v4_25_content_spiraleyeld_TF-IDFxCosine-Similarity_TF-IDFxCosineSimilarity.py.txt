@@ -1,0 +1,74 @@
+import json
+import jieba
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def load_data(filename):
+    """Load data from a JSON file."""
+    with open(filename, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+def tokenize_text(content, stopwordset):
+    """Tokenize text using Jieba and remove stop words."""
+    tokens = jieba.cut(content, cut_all=False)
+    filtered_tokens = [token for token in tokens if token not in stopwordset and re.match(r'^[\u4E00-\u9FFFa-zA-Z]+$', token)]
+    return ' '.join(filtered_tokens)
+
+def load_stopwords(filename):
+    """Load stopwords from a file."""
+    with open(filename, 'r', encoding='utf-8') as file:
+        return {line.strip('\n') for line in file}
+
+def main():
+    all_data = []
+    for data_name in range(1, 2):
+        with open(f'news.json', 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            print(f'Deal with data{data_name}.json')
+            all_data += data
+    
+    jieba.set_dictionary('dict.txt-v2.big')
+    print('Input Stop Words')
+    stopwordset = load_stopwords('stopwords.txt')
+    print('Start Jieba Cut')
+    
+    total_content = []
+    for article_data in all_data[:50]:
+        article = ''
+        content = article_data['Content']
+        words = jieba.cut(content, cut_all=False)
+        for word in words:
+            if word not in stopwordset:
+                article += word
+                article += ' '
+        total_content.append(article)
+
+    text_weight_list = []
+    tag_list = []
+
+    print('Start Tf-Idf')
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(total_content)
+    feature_names = tfidf_vectorizer.get_feature_names_out()
+    tfidf_weight = tfidf_matrix.toarray()
+    
+    for i in range(len(tfidf_weight)):
+        text_mining = {feature_names[j]: tfidf_weight[i][j] for j in range(len(feature_names))}
+        text_weight_list.append(text_mining)
+
+    print('Sorted the Weight of KeyWords')
+    for one_article in text_weight_list:
+        sorted_keywords = sorted(one_article.items(), key=lambda x: x[1], reverse=True)
+        tag = [keyword[0] for keyword in sorted_keywords[:5]]
+        tag_list.append(tag)
+
+    for i in range(len(tag_list)):
+        all_data[i]['Tag'] = tag_list[i]
+
+    array = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    for row in array:
+        print(row)
+
+if __name__ == "__main__":
+    main()

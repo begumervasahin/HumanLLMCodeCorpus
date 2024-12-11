@@ -1,0 +1,92 @@
+from socket import AF_INET, socket, SOCK_STREAM
+from threading import Thread
+import AES  # Assuming AES module is available
+
+# Define the master encryption key
+MASTER_KEY = b'master key'
+
+def accept_incoming_connections():
+    """Accept incoming client connections."""
+    while True:
+        client, client_address = SERVER.accept()
+        print(f"Client {client_address[0]}:{client_address[1]} has connected.")
+
+        # Send a greeting message to the client
+        send_encrypted_message(client, "Greetings from the server! Please type your name and press enter.")
+
+        # Add client to the clients dictionary and start handling its messages
+        addresses[client] = client_address
+        Thread(target=handle_client, args=(client,)).start()    
+
+def handle_client(client):
+    """Handle a single client connection."""
+    # Receive and decrypt the client's name
+    name = decrypt_message(client.recv(BUFSIZ)).decode("utf-8")
+    welcome_msg = f"\nWelcome {name}! If you ever want to quit, type {{quit}} to exit."
+    send_encrypted_message(client, welcome_msg)
+
+    # Add client to the clients dictionary
+    clients[client] = name
+
+    while True:
+        # Receive and decrypt the client's message
+        message = decrypt_message(client.recv(BUFSIZ)).decode("utf-8")
+
+        # Check if the client wants to quit
+        if message != "{quit}":
+            # Broadcast the message to all clients
+            broadcast_message(message, name + ": ")
+        else:
+            # Close the client connection
+            close_client_connection(client)
+            break
+
+def broadcast_message(msg, prefix=""):
+    """Broadcast a message to all clients."""
+    encrypted_message = encrypt_message(prefix + msg)
+    for sock in clients:
+        sock.send(encrypted_message)
+
+def send_encrypted_message(client, msg):
+    """Encrypt and send a message to the client."""
+    encrypted_msg = encrypt_message(msg)
+    client.send(encrypted_msg)
+
+def encrypt_message(msg):
+    """Encrypt a message using AES."""
+    return AES.encrypt(MASTER_KEY, msg.encode('UTF-8'))
+
+def decrypt_message(msg):
+    """Decrypt a message using AES."""
+    return AES.decrypt(MASTER_KEY, msg)
+
+def close_client_connection(client):
+    """Close a client connection and remove it from the clients dictionary."""
+    client.close()
+    del clients[client]
+
+# Initialize dictionaries to keep track of clients and their addresses
+clients = {}
+addresses = {}
+
+# Define server constants
+HOST = ''
+PORT = 33000
+BUFSIZ = 1024
+ADDR = (HOST, PORT)
+
+# Create the server socket
+SERVER = socket(AF_INET, SOCK_STREAM)
+SERVER.bind(ADDR)
+
+if __name__ == "__main__":
+    SERVER.listen(5)
+    print("Waiting for connections...")
+
+    # Start accepting incoming connections in a separate thread 
+    ACCEPT_THREAD = Thread(target=accept_incoming_connections)  
+    ACCEPT_THREAD.start()
+    ACCEPT_THREAD.join()
+
+    # Close the server socket
+    SERVER.close()

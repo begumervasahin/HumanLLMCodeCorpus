@@ -1,0 +1,68 @@
+from __future__ import print_function
+import sys
+import pandora.utils
+from pandora.tagger import Tagger
+
+def main():
+    print('::: Training Started :::')
+
+    # Check if the configuration file path is provided
+    config_file_path = get_config_file_path()
+    if not config_file_path:
+        print("Usage: python script.py <config_file_path>")
+        return
+
+    # Load parameters from the configuration file
+    params = load_params(config_file_path)
+
+    # Load training and development data
+    train_data = load_data('data/medieval_latin/train', params)
+    dev_data = load_data('data/medieval_latin/test', params)
+
+    # Initialize and train the tagger
+    tagger = initialize_tagger(params, train_data, dev_data)
+    train_tagger(tagger, int(params['nb_epochs']))
+
+    # Save the final trained model
+    tagger.save()
+
+    print('::: Training Ended :::')
+
+def get_config_file_path():
+    """Get the configuration file path from command-line arguments."""
+    if len(sys.argv) < 2:
+        return None
+    return sys.argv[1]
+
+def load_params(config_file_path):
+    """Load parameters from the configuration file."""
+    params = pandora.utils.get_param_dict(config_file_path)
+    params['config_path'] = config_file_path
+    return params
+
+def load_data(directory, params):
+    """Load annotated data from the specified directory."""
+    return pandora.utils.load_annotated_dir(
+        directory,
+        format='tab',
+        extension='.tsv',
+        include_pos=params['include_pos'],
+        include_lemma=params['include_lemma'],
+        include_morph=params['include_morph'],
+        nb_instances=None
+    )
+
+def initialize_tagger(params, train_data, dev_data):
+    """Initialize the tagger with parameters and training data."""
+    tagger = Tagger(**params)
+    tagger.setup_to_train(train_data=train_data, dev_data=dev_data)
+    return tagger
+
+def train_tagger(tagger, nb_epochs):
+    """Train the tagger for the specified number of epochs."""
+    for epoch in range(nb_epochs):
+        tagger.epoch()
+        tagger.save()
+
+if __name__ == '__main__':
+    main()

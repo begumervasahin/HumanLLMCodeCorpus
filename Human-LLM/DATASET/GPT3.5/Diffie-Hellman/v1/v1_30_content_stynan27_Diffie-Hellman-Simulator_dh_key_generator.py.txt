@@ -1,0 +1,65 @@
+from math import floor
+
+class Client:
+    """
+    Temporary Client class to simulate clients.
+    """
+    def __init__(self):
+        self.private_key = None
+        self.shared_secret = None
+    
+    def calculate_key(self, generator, large_prime):
+        # Simulate key calculation
+        self.shared_secret = generator % large_prime
+        return generator * self.shared_secret
+
+def split_length(list_length):
+    return floor(list_length / 2)
+
+def secret_comparison(clients):
+    prev = clients[0]
+    for client in clients:
+        if client.shared_secret != prev.shared_secret:
+            return False
+        prev = client
+    return True
+
+class KeyGen:
+    """
+    KeyGen class to generate new keys upon entry of a new client to the server.
+    """
+    def __init__(self, large_prime):
+        self.p = large_prime
+    
+    def generate_keys(self, current_list, list_length, generator):
+        if list_length == 1:
+            current_list[0].calculate_key(generator, self.p)
+            return
+        else:
+            left_length = split_length(list_length)
+            right_length = list_length - left_length
+            left = current_list[:left_length]
+            right = current_list[left_length:]
+            left_key = generator
+            right_key = generator
+            for client in left:
+                left_key = client.calculate_key(left_key, self.p)
+            for client in right:
+                right_key = client.calculate_key(right_key, self.p)
+            self.generate_keys(left, left_length, right_key)
+            self.generate_keys(right, right_length, left_key)
+
+if __name__ == '__main__':
+    """
+    For testing purposes
+    """
+    connected = []
+    for i in range(2):
+        connected.append(Client())
+    print(connected[0].private_key)
+    k = KeyGen(71)
+    k.generate_keys(connected, len(connected), 3)
+    if secret_comparison(connected):
+        print("Secret key {}, was correctly calculated for all clients!".format(connected[0].shared_secret))
+    else:
+        print("Secret key wasn't correctly calculated")

@@ -1,0 +1,69 @@
+from scipy import spatial
+import numpy as np
+import pandas as pd
+
+def cosine_similarity(arr1, arr2):
+    """
+    Calculate the cosine similarity between two arrays.
+    """
+    return 1 - spatial.distance.cosine(arr1, arr2)
+
+# Read data from files
+padpick = pd.read_json("padpick.json", "r")
+dvs = open("description_vectors.txt", "r")
+description_vectors = []
+for line in dvs:
+    description_vectors.append(line.strip().split(' '))
+index_file = open("indices.txt", "r")
+indices = []
+for line in index_file:
+    indices.append(int(float(line.strip())))
+weights = open("recommender_weights.txt", "r")
+weight_values = []
+for line in weights:
+    weight_values.append(float(line.strip()))
+
+# Preprocess description vectors
+new_description_vectors = []
+for i, j in enumerate(description_vectors):
+    cur = np.asarray(map(float, description_vectors[i]))
+    cur2 = []
+    for k, l in enumerate(cur):
+        cur2.append(cur[k] * l)
+    new_description_vectors.append(np.array(cur2))
+new_description_vectors = np.asarray(new_description_vectors)
+
+# Read user input and calculate cosine distances
+file = open("recommender_input.txt", "r")
+entries_liked = []
+for line in file:
+    entries_liked.append(int(line.strip(' ').strip('\n')))
+file.close()
+x = int(raw_input("Enter a number between 0 and 3128\n"))
+user_input = new_description_vectors[x]
+cosine_distances = []
+for j, i in enumerate(new_description_vectors):
+    cosine_distances.append(cosine_similarity(map(float, user_input), map(float, i)))
+cosine_distances = np.asarray(cosine_distances)
+order = cosine_distances.argsort()
+results = []
+
+# Get top recommended entries
+print("\n\n")
+results.append(np.asarray(padpick)[int(indices[int(x)])])
+for i in order[-11:][::-1][1:]:
+    results.append(np.asarray(padpick)[int(indices[int(i)])])
+
+# Write results to a TSV file
+file = open(str(x)+ ".tsv", "w")
+file.write("Address\tBathrooms\tBedrooms\tBrokerage\tBuilder\tDetailedCharacteristics\tDisclaimer\tDiscloseAddress\tExpenses\tForeclosureStatus\tFullBathrooms\tHalfBathrooms\tLeadRoutingEmail\tListPrice\tListPriceLow\tListingCategory\tListingDate\tListingDescription\tListingKey\tListingParticipants\tListingStatus\tListingTitle\tListingURL\tLivingArea\tLocation\tLotSize\tMarketingInformation\tMlsId\tMlsName\tMlsNumber\tModificationTimestamp\tOffices\tOneQuarterBathrooms\tOpenHouses\tPartialBathrooms\tPhotos\tPropertySubType\tPropertyType\tProviderCategory\tProviderName\tProviderURL\tTaxes\tThreeQuarterBathrooms\tVirtualTours\tYearBuilt\n")
+for i in results:
+    cur = []
+    for j in i:
+        if type(j) == type(u'dd'):
+            cur.append(j.encode('utf-8'))
+        else:
+            cur.append(str(j).encode('utf-8'))
+    file.write ('\t'.join(cur))
+    file.write('\n')
+file.close()

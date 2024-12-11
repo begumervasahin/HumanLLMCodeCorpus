@@ -1,0 +1,40 @@
+import random
+from Crypto.Util import number
+
+# Generate a 9-digit prime number
+prime = number.getPrime(9, None)
+base = random.randint(5, 200)
+secret_alice = random.randint(0, prime - 1)
+secret_bob = random.randint(0, prime - 1)
+
+# Calculate public keys
+alice_public_key = pow(base, secret_alice, prime)
+bob_public_key = pow(base, secret_bob, prime)
+
+# Display parameters and public keys
+print("Base (g):", base)
+print("Prime (p):", prime)
+print("Alice's public key:", alice_public_key)
+print("Bob's public key:", bob_public_key)
+
+# Calculate shared secrets
+shared_secret_alice = pow(bob_public_key, secret_alice, prime)
+shared_secret_bob = pow(alice_public_key, secret_bob, prime)
+
+# Check if shared secrets match
+if shared_secret_alice != shared_secret_bob:
+    print("Error: Shared secrets don't match.")
+else:
+    print("Shared secret:", shared_secret_alice)
+
+# Brute force to find shared secret (for demonstration purposes)
+print("\n---Brute force---")
+trial_secret = 0
+while True:
+    trial_public_key = pow(base, trial_secret, prime)
+    if trial_public_key == alice_public_key:
+        break
+    trial_secret += 1
+
+shared_secret_brute_force = pow(bob_public_key, trial_secret, prime)
+print("Found shared secret using brute force:", shared_secret_brute_force)

@@ -1,0 +1,160 @@
+import sys
+import re
+import time
+
+# Regular expressions for parsing input file
+GRAPH_RE = re.compile(r"(\d+)\s(\d+)")
+EDGE_RE = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+# Global variables
+vertices = []
+edges = []
+E = []
+path_pairs = []
+
+def bellman_ford(G):
+    """
+    Bellman-Ford algorithm implementation.
+    """
+    print("\nOriginal:")
+
+    # Initialize E matrix and print original matrix
+    for i in range(len(vertices)):
+        E[i][i] = 0
+        print(E[i])
+
+    print("\nResult:")
+
+    # Apply Bellman-Ford algorithm for each vertex
+    for i in range(len(vertices)):
+        x = bellman_ford_single_source(G, i)
+        E[i] = x[0]
+
+    # Check for negative cycles
+    for u in range(len(vertices)):
+        for v in range(len(vertices)):
+            if x[0][v] > x[0][u] + float(E[u][v]):
+                return False
+            else:
+                path_pairs.append(((u, v), E[u][v]))
+
+    print("\npathPairs:")
+    for i in path_pairs:
+        print(i)
+    return path_pairs
+
+def bellman_ford_single_source(G, s):
+    """
+    Bellman-Ford single source algorithm implementation.
+    """
+    d = [float("inf")] * len(vertices)
+    d[s] = 0
+
+    # Relax edges repeatedly
+    for _ in range(len(vertices) - 1):
+        for u in range(len(vertices)):
+            for v in range(len(vertices)):
+                if d[v] > d[u] + float(E[u][v]):
+                    d[v] = d[u] + int(E[u][v])
+
+    print(d)
+    return d, path_pairs
+
+def floyd_warshall(G):
+    """
+    Floyd-Warshall algorithm implementation.
+    """
+    path_pairs = []
+    print("\nOriginal:")
+
+    # Initialize edges matrix and print original matrix
+    for i in range(len(vertices)):
+        edges[i][i] = 0
+        print(edges[i])
+
+    # Apply Floyd-Warshall algorithm
+    for k in range(len(vertices)):
+        for i in range(len(vertices)):
+            for j in range(len(vertices)):
+                if edges[i][k] == float("inf") or edges[k][j] == float("inf"):
+                    continue
+                if edges[i][j] > float(edges[i][k]) + float(edges[k][j]):
+                    edges[i][j] = int(edges[i][k]) + int(edges[k][j])
+
+    print("\nResult:")
+    for i in range(len(vertices)):
+        print(edges[i])
+
+    # Store shortest path pairs
+    for i in range(len(vertices)):
+        for j in range(len(vertices)):
+            path_pairs.append(((i, j), edges[i][j]))
+
+    print("\npathPairs:")
+    for i in path_pairs:
+        print(i)
+    return path_pairs
+
+def read_file(filename):
+    """
+    Read graph data from file.
+    """
+    global vertices, edges, E
+    with open(filename, 'r') as inFile:
+        line1 = inFile.readline()
+        graph_match = GRAPH_RE.match(line1)
+
+        if not graph_match:
+            print(f"{line1} not properly formatted")
+            quit(1)
+
+        vertices = list(range(int(graph_match.group(1))))
+        edges = [[float("inf")] * len(vertices) for _ in range(len(vertices))]
+        E = [[float("inf")] * len(vertices) for _ in range(len(vertices))]
+
+        # Parse edges data
+        for line in inFile.readlines():
+            line = line.strip()
+            edge_match = EDGE_RE.match(line)
+
+            if edge_match:
+                source, sink, weight = map(int, edge_match.groups())
+
+                if source >= len(vertices) or sink >= len(vertices):
+                    print(f"Attempting to insert an edge between {source} and {sink} in a graph with {len(vertices)} vertices")
+                    quit(1)
+
+                edges[source][sink] = weight
+                E[source][sink] = weight
+
+    return vertices, edges
+
+def main(filename, algorithm):
+    """
+    Main function to run the specified algorithm on the input file.
+    """
+    algorithm = algorithm[1:]
+    G = read_file(filename)
+
+    if algorithm == 'b' or algorithm == 'B':
+        bellman_ford(G)
+    elif algorithm == 'f' or algorithm == 'F':
+        floyd_warshall(G)
+    elif algorithm == "both":
+        start = time.clock()
+        bellman_ford(G)
+        end = time.clock()
+        BF_time = end - start
+        floyd_warshall(G)
+        start = time.clock()
+        end = time.clock()
+        FW_time = end - start
+        print("Bellman-Ford timing:", BF_time)
+        print("Floyd-Warshall timing:", FW_time)
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python bellman_ford.py -<f|b> <input_file>")
+        quit(1)
+
+    main(sys.argv[2], sys.argv[1])

@@ -1,0 +1,112 @@
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from scipy import spatial
+import math
+import operator
+
+def load_movie_ratings_data(file_path):
+    """
+    Load movie ratings data from a CSV file.
+    """
+    ratings = pd.read_csv(file_path)
+    return ratings
+
+def select_relevant_columns(data):
+    """
+    Select relevant columns from the movie ratings data.
+    """
+    selected_columns = ['id', 'title', 'vote_average', 'popularity', 'vote_count', 'genres']
+    data = data[selected_columns]
+    return data
+
+def normalize_feature(feature):
+    """
+    Normalize a given feature using min-max normalization.
+    """
+    min_val = feature.min()
+    max_val = feature.max()
+    normalized_feature = (feature - min_val) / (max_val - min_val)
+    return normalized_feature
+
+def extract_genres(data):
+    """
+    Extract genres from the movie ratings data and convert them into count vectors.
+    """
+    genres = data['genres'].fillna('')
+    cv = CountVectorizer()
+    genre_count = cv.fit_transform(genres)
+    return genre_count
+
+def create_movie_dictionary(data, genres):
+    """
+    Create a dictionary to store movie data.
+    """
+    moviedict = {}
+    for i in range(len(data)):
+        movie_id = data.loc[i, 'id']
+        title = data.loc[i, 'title']
+        vote_average = data.loc[i, 'vote_average']
+        popularity = normalized_popularity.loc[i]
+        vote_count = normalized_vote_count.loc[i]
+        genre_vector = genres.toarray()[i]
+        moviedict[i] = (movie_id, title, vote_average, popularity, vote_count, genre_vector)
+    return moviedict
+
+def compute_distance(movie1, movie2):
+    """
+    Compute the distance between two movies based on their features.
+    """
+    popularity1, genre_vector1 = movie1[3], movie1[5]
+    popularity2, genre_vector2 = movie2[3], movie2[5]
+
+    genre_distance = spatial.distance.cosine(genre_vector1, genre_vector2)
+    popularity_distance = (popularity2 - popularity1) ** 2
+    total_distance = math.sqrt(popularity_distance + genre_distance ** 2)
+    return total_distance
+
+def get_neighbors(movie_id, k, moviedict):
+    """
+    Find the K nearest neighbors of a given movie.
+    """
+    distances = []
+    for neighbor_id, neighbor_movie in moviedict.items():
+        if neighbor_id != movie_id:
+            distance = compute_distance(moviedict[movie_id], neighbor_movie)
+            if distance <= 0.65:
+                distances.append((neighbor_id, distance))
+
+    distances.sort(key=operator.itemgetter(1))
+
+    neighbors = []
+    for i in range(k):
+        neighbor_id = distances[i][0]
+        neighbor_title = moviedict[neighbor_id][1]
+        neighbor_distance = distances[i][1]
+        neighbors.append((neighbor_title, neighbor_distance))
+        print(neighbor_title)
+
+    return neighbors
+
+# Load movie ratings data
+ratings = load_movie_ratings_data("D:/roops_backup/projects/data mining project/movie_recommender/movie_dataset.csv")
+
+# Select relevant columns
+ratings = select_relevant_columns(ratings)
+
+# Normalize popularity and vote count
+normalized_popularity = normalize_feature(ratings['popularity'])
+normalized_vote_count = normalize_feature(ratings['vote_count'])
+
+# Extract genres and convert to count vectors
+genres = extract_genres(ratings)
+
+# Create a dictionary to store movie data
+moviedict = create_movie_dictionary(ratings, genres)
+
+# Parameters
+K = 15
+movie_id = 94
+
+# Find K nearest neighbors
+get_neighbors(movie_id, K, moviedict)

@@ -1,0 +1,67 @@
+import socket
+from threading import Thread
+import random
+from aes import decrypt, encrypt
+from ec import generate_curve, gen_curve
+
+# Initialize socket and related variables
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connected_clients = []
+client_keys = {}
+
+# Bind the socket to an address and start listening
+server_socket.bind(('0.0.0.0', 12345))
+server_socket.listen(10)
+
+def accept_connections():
+    """Accept incoming connections and handle them in separate threads."""
+    while True:
+        client_socket, client_address = server_socket.accept()
+        connected_clients.append(client_socket)
+        Thread(target=handle_client, args=(client_socket, client_address)).start()
+
+def handle_client(client_socket, client_address):
+    """Handle messages from a specific client."""
+    # Exchange public keys
+    public_key = client_socket.recv(1024).decode("utf-8")
+    E, G = generate_curve()
+    n_server = random.random() * 100000
+    p_server = n_server * G
+    Px = p_server.x()
+    Py = p_server.y()
+    key_server = f"{Px} {Py}"
+    client_socket.send(bytes(key_server, "utf-8"))
+
+    # Receive exchanged key and derive AES key
+    exchanged_key = client_socket.recv(1024).decode("utf-8").split(" ")
+    F, P = gen_curve(int(exchanged_key[0]), int(exchanged_key[1]))
+    key = n_server * P
+    aes_key = str(key.x() * key.y())
+    ex_key = bytes(aes_key[-16:], "utf-8")  # Ensure AES key length is 16 bytes
+
+    print(ex_key)
+    print(f"Welcome {client_address} to the chat\n")
+    client_keys[client_socket] = ex_key
+
+    while True:
+        data = decrypt(client_socket.recv(1024).decode("utf-8"), ex_key)
+        if not data:
+            break
+        if data == b"quit":
+            connected_clients.remove(client_socket)
+            del client_keys[client_socket]
+        print(data)
+        try:
+            broadcast_message(bytes(data, "utf-8"))
+        except Exception as e:
+            print(f"Error: {e}")
+
+def broadcast_message(msg):
+    """Broadcast a message to all connected clients."""
+    for client_socket in connected_clients:
+        enc_msg = encrypt(msg, client_keys[client_socket])
+        client_socket.send(bytes(enc_msg, "utf-8"))
+
+# Start accepting connections
+accept_connections()
+server_socket.close()

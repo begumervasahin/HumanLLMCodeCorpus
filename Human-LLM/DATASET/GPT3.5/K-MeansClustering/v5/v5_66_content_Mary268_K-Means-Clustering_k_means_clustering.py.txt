@@ -1,0 +1,67 @@
+from __future__ import print_function
+from sklearn.cluster import KMeans
+from sklearn.datasets import load_digits
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import mode
+from sklearn.metrics import accuracy_score
+import sklearn
+
+# Import train_test_split from appropriate module based on scikit-learn version
+if int(sklearn.__version__.split(".")[1]) < 18:
+    from sklearn.cross_validation import train_test_split
+else:
+    from sklearn.model_selection import train_test_split
+
+def load_digits_dataset():
+    """Load the digits dataset."""
+    return load_digits()
+
+def perform_kmeans_clustering(data, num_clusters=10, random_state=0):
+    """Perform KMeans clustering on the dataset."""
+    kmeans = KMeans(n_clusters=num_clusters, random_state=random_state)
+    clusters = kmeans.fit_predict(data.data)
+    return kmeans, clusters
+
+def plot_cluster_centers(kmeans, figsize=(8, 3)):
+    """Plot the cluster centers."""
+    fig, ax = plt.subplots(2, 5, figsize=figsize)
+    centers = kmeans.cluster_centers_.reshape(10, 8, 8)
+    for axi, center in zip(ax.flat, centers):
+        axi.set(xticks=[], yticks=[])
+        axi.imshow(center, interpolation='nearest', cmap=plt.cm.binary)
+
+def assign_labels_to_clusters(clusters, target):
+    """Assign labels to each cluster based on the most common digit in that cluster."""
+    labels = np.zeros_like(clusters)
+    for i in range(10):
+        mask = (clusters == i)
+        labels[mask] = mode(target[mask])[0]
+    return labels
+
+def calculate_accuracy_score(true_labels, predicted_labels):
+    """Calculate the accuracy score."""
+    return accuracy_score(true_labels, predicted_labels)
+
+if __name__ == "__main__":
+    # Load the dataset
+    data = load_digits_dataset()
+
+    # Perform KMeans clustering
+    kmeans, clusters = perform_kmeans_clustering(data)
+
+    # Print the shape of the dataset
+    print("Dataset Shape:", data.data.shape)
+
+    # Print the shape of the cluster centers
+    print("Cluster Centers Shape:", kmeans.cluster_centers_.shape)
+
+    # Plot the cluster centers
+    plot_cluster_centers(kmeans)
+
+    # Assign labels to each cluster
+    labels = assign_labels_to_clusters(clusters, data.target)
+
+    # Calculate and print the accuracy score
+    accuracy = calculate_accuracy_score(data.target, labels)
+    print("Accuracy Score:", accuracy)

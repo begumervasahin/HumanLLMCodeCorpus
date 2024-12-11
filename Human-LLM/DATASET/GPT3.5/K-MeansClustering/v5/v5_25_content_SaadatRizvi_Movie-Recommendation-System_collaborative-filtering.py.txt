@@ -1,0 +1,59 @@
+import pandas as pd
+
+def load_data():
+    # Read ratings data
+    ratings_cols = ['user_id', 'movie_id', 'rating']
+    ratings = pd.read_csv('u.data', sep='\t', names=ratings_cols, usecols=range(3))
+
+    # Read movies data
+    movies_cols = ['movie_id', 'title']
+    movies = pd.read_csv('u.item', sep='|', names=movies_cols, usecols=range(2))
+
+    # Merge ratings and movies data
+    return pd.merge(movies, ratings)
+
+def calculate_similarity_matrix(user_ratings):
+    # Create user-ratings pivot table
+    user_ratings_pivot = user_ratings.pivot_table(index='user_id', columns='title', values='rating')
+
+    # Calculate correlation matrix
+    return user_ratings_pivot.corr(method='pearson', min_periods=100)
+
+def find_similar_movies(user_id, user_ratings, corr_matrix):
+    # Retrieve user's ratings
+    my_ratings = user_ratings.loc[user_id].dropna()
+
+    # Find similar candidates based on ratings
+    sim_candidates = pd.Series()
+    for movie, rating in my_ratings.items():
+        similar_movies = corr_matrix[movie].dropna()
+        similar_movies = similar_movies.map(lambda x: x * rating)
+        sim_candidates = sim_candidates.append(similar_movies)
+
+    # Aggregate similar candidates
+    sim_candidates.sort_values(inplace=True, ascending=False)
+    sim_candidates = sim_candidates.groupby(sim_candidates.index).sum()
+    sim_candidates.sort_values(inplace=True, ascending=False)
+
+    # Filter out already rated movies
+    return sim_candidates.drop(my_ratings.index, errors='ignore')
+
+def main():
+    # Load data
+    ratings = load_data()
+
+    # Calculate similarity matrix
+    corr_matrix = calculate_similarity_matrix(ratings)
+
+    # Define user ID
+    user_id = 2
+
+    # Find similar movies for the user
+    similar_movies = find_similar_movies(user_id, ratings, corr_matrix)
+
+    # Print and save the filtered similarities
+    print(similar_movies.head())
+    similar_movies.to_csv("filteredSims.csv")
+
+if __name__ == "__main__":
+    main()

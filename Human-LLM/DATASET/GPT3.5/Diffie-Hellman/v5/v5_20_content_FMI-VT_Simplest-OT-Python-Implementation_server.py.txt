@@ -1,0 +1,120 @@
+from Crypto.Cipher import AES, DES, DES3, Blowfish, ChaCha20
+import hashlib
+import pickle
+import random
+import socket
+import time
+import argparse
+from ecc import getcurvebyname
+
+# Constants for host and port
+HOST = "127.0.0.1"
+PORT = 4446
+
+# Define command-line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "e",
+    type=int,
+    choices=[0, 1, 2, 3, 4],
+    help="Symmetric encryption algorithm [0 - AES, 1 - DES, 2 - 3DES, 3 - Blowfish, 4 - ChaCha20]",
+)
+parser.add_argument(
+    "-d",
+    "--hash",
+    type=int,
+    choices=[0, 1, 2],
+    help="Hash function [0 - md5, 1 - blake2s, 2 - SHA256]",
+)
+args = parser.parse_args()
+
+
+def decrypt_data(secret, msg):
+    """Decrypts the data using the specified cipher"""
+    msg_nonce = msg[:8]
+    ciphertext = msg[8:]
+    cipher = ChaCha20.new(key=secret, nonce=msg_nonce)
+    decrypted_data = cipher.decrypt(ciphertext)
+    return decrypted_data
+
+
+def get_cipher(key):
+    """Returns the cipher based on the chosen algorithm"""
+    if args.e == 0:
+        cipher = AES.new(key, AES.MODE_ECB)
+    elif args.e == 1:
+        cipher = DES.new(key, DES.MODE_ECB)
+    elif args.e == 2:
+        cipher = DES3.new(key, DES3.MODE_ECB)
+    elif args.e == 3:
+        cipher = Blowfish.new(key, Blowfish.MODE_ECB)
+    elif args.e == 4:
+        cipher = ChaCha20.new(key=key)
+    return cipher
+
+
+def get_key(str_value):
+    """Generates a key based on the chosen symmetric function"""
+    if args.e == 0:
+        temp_key = hashlib.md5()
+    elif args.e == 1:
+        temp_key = hashlib.blake2s(digest_size=8)
+    elif args.e == 2:
+        temp_key = hashlib.blake2s(digest_size=16)
+    elif args.e == 3:
+        temp_key = hashlib.blake2s()
+    elif args.e == 4:
+        temp_key = hashlib.blake2s(digest_size=32)
+    temp_key.update(str_value)
+    return temp_key.digest()
+
+
+def read_from_client():
+    """Reads and processes data from the client"""
+    random_choice = random.randint(0, 1)
+    curve = getcurvebyname("ed25519")
+    g = curve.G
+    b = random.randint(1, 2 ** 255 - 19)
+    alice_data = pickle.loads(q.recv(4096))
+
+    if random_choice == 0:
+        bob_data = g.__mul__(b)
+    else:
+        bob_data = (alice_data.__mul__(random_choice)).__add__(g.__mul__(b))
+
+    q.send(pickle.dumps(bob_data, pickle.HIGHEST_PROTOCOL))
+    secret_key = get_key(str(alice_data.__mul__(b)).encode())
+    cipher1 = get_cipher(secret_key)
+    messages = []
+
+    for _ in range(2):
+        encrypted_msg = q.recv(1024)
+        if args.e == 4:
+            decrypted_msg = decrypt_data(secret_key, encrypted_msg)
+        else:
+            decrypted_msg = cipher1.decrypt(encrypted_msg)
+        messages.append(decrypted_msg.decode("iso-8859-15"))
+
+    for idx, msg in enumerate(messages):
+        print(f"Message [{idx}]: {msg}")
+
+
+# Set up socket and listen for connections
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
+print("Listening for connections...")
+
+# Print encryption algorithm
+encryption_algorithms = ["AES", "DES", "3DES", "Blowfish", "ChaCha20"]
+print(f"Using {encryption_algorithms[args.e]} encryption.")
+
+q, addr = server_socket.accept()
+start_time = time.time()
+
+for _ in range(10):
+    start_time = time.time()
+    read_from_client()
+    print(f"----- {time.time() - start_time} seconds -----")
+
+server_socket.close()

@@ -1,0 +1,62 @@
+from math import log, sqrt
+from collections import Counter
+from operator import itemgetter
+
+def idf(term, all_documents):
+    num_documents_with_term = sum(1 for doc in all_documents if term in doc)
+    if num_documents_with_term > 0:
+        return round(log(len(all_documents) / num_documents_with_term, 2), 3)
+    else:
+        return 0
+
+def tf(term, document):
+    return document.count(term)
+
+def cal_tfidf(term, doc):
+    return tf(term, doc) * idf(term, terms)
+
+def cosine_similarity(doc, q, d):
+    a = sum(cal_tfidf(x, doc) * cal_tfidf(x, q) for x in d)
+    b = length_of(doc, d) * length_of(q, d)
+    return round(a / b, 3) if b else 0
+
+def length_of(doc, d):
+    val = sum(pow(cal_tfidf(x, doc), 2) for x in d)
+    return sqrt(val)
+
+# Initialize lists and dataset
+doc_files = ['doc1.txt', 'doc2.txt', 'doc3.txt', 'doc4.txt', 'doc5.txt', 'doc6.txt']
+dataset = [['doc1.txt', 'science'], ['doc2.txt', 'science'], ['doc3.txt', 'science'],
+           ['doc4.txt', 'entertainment'], ['doc5.txt', 'entertainment'], ['doc6.txt', 'entertainment']]
+
+# Read documents into a list
+documents = [open(file_name, 'r').read() for file_name in doc_files]
+
+# Get input test file and preprocess the query
+test_file = input('Enter test file name: ')
+query = open(test_file, 'r').readline().lower().strip()
+
+# Tokenize terms from the documents
+terms = [doc.lower().rstrip('\n').split() for doc in documents]
+fin_terms = set(sum(terms, []))
+fin_terms = list(fin_terms)
+
+print('\nCosine Similarity Values')
+
+# Calculate cosine similarity for each document and query
+for i, doc_terms in enumerate(terms):
+    dataset[i] = dataset[i] + [cosine_similarity(query, doc_terms, fin_terms)]
+
+# Select top-k documents with non-zero similarity
+k = 3
+sorted_dataset = sorted(dataset, key=itemgetter(2), reverse=True)
+top_k = [entry for entry in sorted_dataset[:k] if entry[2] != 0]
+
+# Print classification result
+if len(top_k) == 0:
+    print('No matches found.')
+else:
+    class_counts = Counter(category for (_, category, _) in top_k)
+    print('Class counts:', class_counts)
+    classification = max(class_counts, key=lambda cls: class_counts[cls])
+    print('Class of the test file is:', classification)

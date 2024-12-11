@@ -1,0 +1,82 @@
+import numpy as np
+
+def get_cv_idxs(idxs, kcv, n_shuffles):
+    """
+    Get K-fold cross validation indices.
+    """
+    N_cv = len(idxs)
+    fold_bounds = np.arange(0, N_cv, int(N_cv / kcv))
+    fold_bounds = list(fold_bounds[0:kcv])
+    fold_bounds.append(N_cv-1)
+    fold_bounds = np.int64(fold_bounds)
+    fold_cv_test = list(np.zeros(kcv * n_shuffles))
+    fold_cv_train = list(np.zeros(kcv * n_shuffles))
+    idx_shuffles = list(np.zeros(n_shuffles))
+    for shuff in range(n_shuffles):
+        np.random.shuffle(idxs)
+        idx_shuffles[shuff] = idxs.copy()
+    for S in range(n_shuffles):
+        ThisIdxList = idx_shuffles[S]
+        for k in range(kcv):
+            fold_cv_test[S * kcv + k] = list(ThisIdxList[fold_bounds[k] : fold_bounds[k+1]])
+            fold_cv_train[S * kcv + k] = [j for j in ThisIdxList if j not in fold_cv_test[S * kcv + k]]
+    return fold_cv_train, fold_cv_test
+
+def cv_with_shuffling(N, kcv=5, n_shuffles=6, valid_ratio=0.25):
+    """
+    Get cross validation indices with shuffles. The result is three non-overlapping set indices
+    for training, validation, and testing.
+    """
+    idxs = np.arange(N)
+    np.random.shuffle(idxs)
+    train, test = get_cv_idxs(idxs=idxs, kcv=kcv, n_shuffles=n_shuffles)
+    lim = int(valid_ratio * len(train[0]))
+    valid = [j[0:lim] for j in train]
+    train = [j[lim:] for j in train]
+    splitIdxs = {'test': test, 'train': train, 'valid': valid}
+    return splitIdxs
+
+def get_balanced_SplitIdxs(categories, K=3, SHUFFLES=10, USE_OPTIM=True, K_OPTIM=2):
+    """
+    Get split indices with a balanced representation of the various categories in different folds.
+    """
+    idx = np.arange(len(categories))
+    categories = np.concatenate((idx[:, None], categories[:, None]), axis=1)
+    categories = categories[categories[:, 1].argsort()]
+
+    def _get_category_SplitIdx(categories, category_identifier):
+        category = categories[:, 1] == category_identifier
+        offset = list(np.cumsum(category)).index(1)
+        N_categ = np.sum(category)
+        SplitIdxs_thiscateg = getSplitIdxs(N_categ, OFFSET=offset, K=K, SHUFFLES=SHUFFLES, USE_OPTIM=USE_OPTIM, K_OPTIM=K_OPTIM)
+        return SplitIdxs_thiscateg
+
+    unique_categories = np.unique(categories[:, 1])
+    category_identifier = unique_categories[0]
+    SplitIdxs = _get_category_SplitIdx(categories, category_identifier)
+
+    for c in range(1, len(unique_categories)):
+        category_identifier = unique_categories[c]
+        SplitIdxs_thiscateg = _get_category_SplitIdx(categories, category_identifier)
+        n_folds = len(SplitIdxs_thiscateg['fold_cv_train'])
+
+        for fold in range(n_folds):
+            if USE_OPTIM > 0:
+                SplitIdxs['idx_optim'][fold] += SplitIdxs_thiscateg['idx_optim'][fold]
+            for k in range(K * SHUFFLES):
+                SplitIdxs['fold_cv_train'][fold][k] += SplitIdxs_thiscateg['fold_cv_train'][fold][k]
+                SplitIdxs['fold_cv_test'][fold][k] += SplitIdxs_thiscateg['fold_cv_test'][fold][k]
+    return SplitIdxs
+
+def get_balanced_batches(categories, BATCH_SIZE):
+    """
+    Get indices for various batches in a balanced fashion.
+    """
+    K = int(categories.shape[0] / BATCH_SIZE)
+    batchIdxs = get_balanced_SplitIdxs(categories, USE_OPTIM=False, K=K, SHUFFLES=1)
+    batchIdxs = batchIdxs['fold_cv_test'][0][0:K]
+    return batchIdxs
+
+if __name__ == '__main__':
+    N = 1000
+    splitIdxs = cv_with_shuffling(N)

@@ -1,0 +1,42 @@
+from des_utils import generateKeys, get_bits, add_pads_if_necessary, encryptBlock, bin_to_hex
+from data_utils import joinNumbers
+
+def encrypt(message: str, key: str) -> str:
+    keys = generateKeys(key)
+    bits = get_bits(message)
+    padded_bits = add_pads_if_necessary(bits)
+
+    encrypted_blocks = []
+    for i in range(0, len(padded_bits), 64):
+        encrypted_blocks.extend(encryptBlock(padded_bits[i:i+64], keys))
+
+    hex_cipher = ''
+    for i in range(0, len(encrypted_blocks), 4):
+        hex_cipher += bin_to_hex(joinNumbers(encrypted_blocks[i:i+4]))
+
+    return hex_cipher
+
+def decrypt(cipher: str, key: str) -> str:
+    keys = generateKeys(key)
+    keys.reverse()
+
+    bits = get_bits(cipher)
+
+    decrypted_blocks = []
+    for i in range(0, len(bits), 64):
+        decrypted_blocks.extend(encryptBlock(bits[i:i+64], keys))
+
+    hex_msg = ''
+    for i in range(0, len(decrypted_blocks), 4):
+        hex_msg += bin_to_hex(joinNumbers(decrypted_blocks[i:i+4]))
+
+    return hex_msg.rstrip('0')
+
+# Testing the encryption and decryption functions
+message = "Hello, World!"
+encryption_key = "mysecretkey"
+encrypted_text = encrypt(message, encryption_key)
+print("Encrypted:", encrypted_text)
+
+decrypted_text = decrypt(encrypted_text, encryption_key)
+print("Decrypted:", decrypted_text)

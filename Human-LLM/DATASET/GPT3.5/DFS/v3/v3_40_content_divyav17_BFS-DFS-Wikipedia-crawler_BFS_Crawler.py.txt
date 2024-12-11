@@ -1,0 +1,62 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+
+# Function to crawl and save URLs
+def my_crawler(seed_url):
+    # Initialize parent URLs list with the seed URL
+    parent_urls = [seed_url]
+    child_urls = []
+    MAX_PARENTS = 1000
+    MAX_DEPTH = 7
+    current_depth = 1
+
+    # Crawl URLs until reaching the maximum allowed or depth
+    while len(parent_urls) < MAX_PARENTS and current_depth <= MAX_DEPTH:
+        # Crawl child links for each parent URL
+        for parent_url in parent_urls:
+            child_urls.extend(crawl_child_links(parent_url))
+            # Stop if enough child URLs have been collected
+            if len(child_urls) >= MAX_PARENTS:
+                break
+        
+        # Remove duplicates and update parent URLs
+        parent_urls.extend([child_url for child_url in child_urls if child_url not in parent_urls])
+        current_depth += 1
+
+    # Save crawled URLs to a file
+    save_urls_to_file(parent_urls)
+
+# Function to crawl child links from a given URL
+def crawl_child_links(url):
+    time.sleep(1)
+    BASE_URL = "https://en.wikipedia.org"
+    child_links = []
+
+    page = requests.get(url)
+    soup = BeautifulSoup(page.text, 'html.parser')
+    content_div = soup.find('div', {'id': 'mw-content-text'})
+
+    # Remove unwanted elements from the content
+    for element in soup(['div', 'table', 'ol']):
+        element.extract()
+
+    # Extract valid child links
+    for link in content_div.find_all('a', {'href': re.compile("^/wiki")}):
+        if ':' not in link.get('href'):
+            link_text = BASE_URL + link.get('href')
+            refined_link = link_text.split('#')[0]
+            if len(refined_link) > 1 and refined_link not in child_links:
+                child_links.append(refined_link)
+
+    return child_links
+
+# Function to save URLs to a file
+def save_urls_to_file(urls):
+    with open('Task-1-E-URLs.txt', 'w') as file:
+        for index, url in enumerate(urls, start=1):
+            file.write(f"{index} {url}\n")
+
+# Starting point: Seed URL
+my_crawler('https://en.wikipedia.org/wiki/Tropical_cyclone')

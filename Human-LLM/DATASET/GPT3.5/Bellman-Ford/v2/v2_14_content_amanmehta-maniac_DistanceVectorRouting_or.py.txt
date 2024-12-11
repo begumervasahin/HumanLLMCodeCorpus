@@ -1,0 +1,52 @@
+from collections import defaultdict
+
+def read_graph(filename):
+    """Reads a graph and a source node from a specified file."""
+    graph = defaultdict(dict)
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        source = int(lines[0].strip())
+
+        for line in lines[1:]:
+            u, *rest = map(int, line.split())
+            for v, w in zip(rest[::2], rest[1::2]):
+                graph[u][v] = w
+
+    return graph, source
+
+def initialize_distances(graph, source):
+    """Initializes the distance from the source to all nodes in the graph."""
+    return {node: float('inf') if node != source else 0 for node in graph}
+
+def bellman_ford(graph, source):
+    """Computes the shortest paths from a source to all other nodes using the Bellman-Ford algorithm."""
+    distances = initialize_distances(graph, source)
+
+    for _ in range(len(graph) - 1):
+        for u in graph:
+            for v, weight in graph[u].items():
+                if distances[u] + weight < distances[v]:
+                    distances[v] = distances[u] + weight
+
+    # Check for negative-weight cycles
+    for u in graph:
+        for v, weight in graph[u].items():
+            if distances[u] + weight < distances[v]:
+                raise ValueError("Graph contains a negative-weight cycle.")
+
+    return distances
+
+def display_shortest_paths(distances):
+    """Displays the shortest path distances from the source to all nodes."""
+    print("Shortest path distances from source:")
+    for node, distance in distances.items():
+        print(f"Node {node}: Distance = {distance}")
+
+if __name__ == "__main__":
+    graph_file = 'graph_input.txt'
+    graph, source = read_graph(graph_file)
+    try:
+        shortest_paths = bellman_ford(graph, source)
+        display_shortest_paths(shortest_paths)
+    except ValueError as e:
+        print(e)

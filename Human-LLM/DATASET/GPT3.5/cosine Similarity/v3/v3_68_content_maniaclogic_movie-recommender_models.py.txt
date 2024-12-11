@@ -1,0 +1,39 @@
+import pandas as pd
+import numpy as np
+import pickle
+from sklearn.decomposition import NMF
+
+# Load datasets
+movies = pd.read_csv('movies.csv')
+ratings = pd.read_csv('ratings.csv')
+tags = pd.read_csv('tags.csv')
+links = pd.read_csv('links.csv')
+
+# Select relevant columns
+ratings = ratings[['userId', 'movieId', 'rating']]
+tags = tags[['userId', 'movieId', 'tag']]
+links = links[['movieId', 'imdbId']]
+
+# Concatenate dataframes
+combined_data = pd.concat([movies, tags, links, ratings], join='outer', sort=True)
+
+# Function to convert dataframe to matrix
+def convert_to_matrix(df):
+    pre_data = df[['movieId', 'userId', 'rating']]
+    data_matrix = pre_data.pivot_table(index='userId', columns='movieId', values='rating')
+    data_matrix.fillna(3.0, inplace=True)
+    return data_matrix, pre_data
+
+# Convert dataframe to matrix
+R, PRE = convert_to_matrix(combined_data)
+
+# Load or create NMF model
+nmf_model_path = 'nmf_model.bin'
+try:
+    with open(nmf_model_path, 'rb') as f:
+        nmf_model = pickle.load(f)
+except FileNotFoundError:
+    nmf_model = NMF(n_components=100, init='random', solver='cd', max_iter=300)   
+    nmf_model.fit(R)
+    with open(nmf_model_path, 'wb') as f:
+        pickle.dump(nmf_model, f)

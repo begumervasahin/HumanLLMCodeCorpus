@@ -1,0 +1,58 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+
+# Set headers for the request
+headers = {'Access-Control-Allow-Origin': '*'}
+
+# Define the URL to scrape
+url = 'https://www.automobile.tn/fr/neuf/recherche'
+
+# Send a GET request to the URL and parse the HTML content
+response = requests.get(url, headers=headers)
+page = BeautifulSoup(response.text, 'html.parser')
+
+# Extract total number of cars
+total_element = page.select('.total')[0]
+total_count = int(total_element.get_text(strip=True).split()[0])
+
+# Calculate the number of cars per page
+limit = len(page.select(''))  # Assuming each car has this selector
+
+# Calculate the number of pages based on the limit
+pager = total_count // limit + (1 if total_count % limit != 0 else 0)
+
+# Initialize an empty list to store car information
+cars_info = []
+
+# Loop through each page
+for page_number in range(1, pager + 1):
+    # Construct the URL for the current page
+    page_url = f'https://www.automobile.tn/fr/neuf/recherche/s=sort%21price?sort=price&page={page_number}'
+
+    # Send a GET request to the current page and parse the HTML content
+    response = requests.get(page_url, headers=headers)
+    html = BeautifulSoup(response.text, 'html.parser')
+
+    # Loop through each car on the page
+    for car_element in html.select(''):
+        car_id = car_element['data-key'].strip() if car_element else ''
+        car_name = car_element.get_text(strip=True) if car_element else ''
+        car_price = car_element.get_text(strip=True) if car_element else ''
+        car_link = 'https://www.automobile.tn' + car_element['href'].strip() if car_element else ''
+        car_image = car_element['src'].strip() if car_element else ''
+
+        # Append car information to the list
+        cars_info.append({
+            'ID': car_id,
+            'Voiture': car_name,
+            'Image': car_image,
+            'Prix': car_price,
+            'Lien': car_link
+        })
+
+# Truncate the list to match the total count
+cars_info = cars_info[:total_count]
+
+# Print the list of car information in JSON format
+print(json.dumps(cars_info, ensure_ascii=False))

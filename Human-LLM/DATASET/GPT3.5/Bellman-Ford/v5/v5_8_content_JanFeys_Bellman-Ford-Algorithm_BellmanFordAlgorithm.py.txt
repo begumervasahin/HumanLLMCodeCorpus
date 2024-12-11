@@ -1,0 +1,83 @@
+import time
+from collections import defaultdict
+import sys
+
+class WeightedDirectedGraph:
+    def __init__(self, num_vertices):
+        """Initialize a WeightedDirectedGraph with the given number of vertices."""
+        self.num_vertices = num_vertices
+        self.edges = defaultdict(set)
+        self.weights = {}
+
+    def get_num_vertices(self):
+        """Get the number of vertices in the graph."""
+        return self.num_vertices
+
+    def add_edge(self, tail, head, weight):
+        """Add a weighted directed edge from 'tail' to 'head' with the given weight."""
+        self.edges[tail].add(head)
+        self.weights[(tail, head)] = weight
+
+    def get_edges(self, tail):
+        """Get the set of edges outgoing from the specified vertex 'tail'."""
+        return self.edges[tail]
+
+    def get_weight(self, tail, head):
+        """Get the weight of the edge from 'tail' to 'head'."""
+        return self.weights[(tail, head)]
+
+    def remove_edge(self, tail, head):
+        """Remove the edge from 'tail' to 'head'."""
+        self.edges[tail].remove(head)
+        del self.weights[(tail, head)]
+
+    def display(self):
+        """Display all edges in the graph along with their weights."""
+        num_edges_present = 0
+        for tail in self.edges:
+            for head in self.edges[tail]:
+                print(f"Edge from {tail} to {head} with weight {self.weights[(tail, head)]}")
+                num_edges_present += 1
+        print(f"There are {num_edges_present} edges in total")
+
+    def run_bellman_ford(self, source):
+        """Run the Bellman-Ford algorithm to compute shortest paths from the given source vertex."""
+        distances = [sys.maxsize] * self.num_vertices
+        distances[source] = 0
+
+        for _ in range(self.num_vertices - 1):
+            for tail in range(self.num_vertices):
+                for head in self.edges[tail]:
+                    distance = distances[tail] + self.weights[(tail, head)]
+                    if distances[head] > distance:
+                        distances[head] = distance
+
+        # Check for negative cycles
+        for tail in range(self.num_vertices):
+            for head in self.edges[tail]:
+                distance = distances[tail] + self.weights[(tail, head)]
+                if distances[head] > distance:
+                    return None
+
+        return distances
+
+if __name__ == "__main__":
+    file_name = 'BellmanFordsimpletest1.txt'
+    start_time = time.time()
+    with open(file_name, 'r') as f:
+        num_vertices, _ = map(int, f.readline().strip().split())
+        graph = WeightedDirectedGraph(num_vertices)
+        for line in f:
+            tail, head, weight = map(int, line.strip().split())
+            graph.add_edge(tail - 1, head - 1, weight)
+
+    source_vertex = 0
+    shortest_paths = graph.run_bellman_ford(source_vertex)
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
+
+    if shortest_paths is None:
+        print('Negative cycle detected')
+    else:
+        for vertex in range(num_vertices):
+            print(f"Shortest path from {source_vertex} to {vertex}: {shortest_paths[vertex]}")

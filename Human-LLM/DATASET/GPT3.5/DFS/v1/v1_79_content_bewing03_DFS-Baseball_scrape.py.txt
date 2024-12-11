@@ -1,0 +1,29 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+# Scrape MLB probable pitchers data
+mlb_res = requests.get("http://mlb.mlb.com/news/probable_pitchers/index.jsp?c_id=mlb")      
+mlb_soup = BeautifulSoup(mlb_res.content, 'lxml')
+pitchers = mlb_soup.find_all('a')
+del pitchers[:243]  # Remove unwanted elements
+
+stopwords = ['x', '\n\n', '', 'Facebook', 'Twitter', 'Google Plus', 'Terms of Use', 'Career stats', 
+             'Privacy Policy (updated January 20, 2016)', 'MLB.TV', 'About Our Ads', 'At Bat with Audio', 
+             'Legal Notices', 'Back To Top', 'Contact Us', 'View MLB.com in English', 'En Español']
+
+# Filter out stopwords
+filtered_pitchers = [pitcher.text for pitcher in pitchers if pitcher.text not in stopwords]
+
+print("Today's Starting Pitchers:")
+for pitcher in filtered_pitchers:
+    print(pitcher)
+
+# Scrape Fangraphs data
+fangraphs_res = requests.get("https://www.fangraphs.com/leaders.aspx?pos=all&stats=bat&lg=all&qual=y&type=8&season=2017&month=0&season1=2017&ind=0&team=0&rost=0&age=0&filter=&players=0&page=1_50")
+fangraphs_soup = BeautifulSoup(fangraphs_res.content, 'lxml')
+table = fangraphs_soup.find_all('table', id="LeaderBoard1_dg1_ctl00")
+df = pd.read_html(str(table))[0]
+
+# Drop the last row
+df.drop(df.tail(1).index, inplace=True)

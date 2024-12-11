@@ -1,0 +1,59 @@
+import socket
+import threading
+import sys
+import DES_algo
+
+# Initialize socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_port = 1234
+
+# Input username, IP address, and key
+username = input("Enter your username: ")
+server_ip = input("Enter the server's IP Address: ")
+client_key = input("Enter your key: ")
+
+# Connect to the server
+client_socket.connect((server_ip, server_port))
+client_socket.sendall(str.encode('\n'.join([str(username), str(client_key)])))
+
+# Global variables
+client_running = True
+session_key = "        "
+
+# Function to receive messages from the server
+def receive_message(sock):
+    server_down = False
+    while client_running and (not server_down):
+        try:
+            global session_key
+            message = sock.recv(1024).decode('ascii')
+            if '>>' in message:
+                print(message, end='')
+            elif ' ' in message:
+                message = message.replace(' ', '')
+                message = DES_algo.to_decrypt(message, session_key)
+                print(message)
+            elif '!!' in message:
+                message = message.replace('!!', '')
+                message = DES_algo.to_decrypt(message, client_key)
+                session_key = message
+                print('Session Key:', message)
+            else:
+                print(message)
+        except:
+            print('Cannot access the server. Press enter to exit...')
+            server_down = True
+
+# Start thread for receiving messages from the server
+threading.Thread(target=receive_message, args=(client_socket,)).start()
+
+# Main loop for sending messages to the server
+while client_running:
+    temp_message = input()
+    if '**quit' in temp_message:
+        client_running = False
+        client_socket.send('**quit'.encode('ascii'))
+    else:
+        temp_message = DES_algo.to_encrypt(temp_message, session_key)
+        message = username + '>>' + temp_message
+        client_socket.send(message.encode('ascii'))

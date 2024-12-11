@@ -1,0 +1,53 @@
+import time
+import pandas as pd
+from sklearn import metrics
+
+def calculate_metrics(assay, fp, index):
+    df = pd.read_csv(file_path.format(assay, assay, fp), sep='\t').sort_values('PredProb(A)', ascending=False).reset_index(drop=True)
+    
+    # Calculate ROC AUC
+    fpr, tpr, thresholds = metrics.roc_curve(df['label'], df['PredProb(A)'], pos_label='A')
+    roc_auc = metrics.auc(fpr, tpr)
+    roc_auc = round(roc_auc, 3)
+    
+    # Calculate precision, recall, F1 score, support
+    precision, recall, f1_score, support = metrics.precision_recall_fscore_support(df['label'], df['pred'])
+    
+    # Calculate confusion matrix
+    confusion_matrix = metrics.confusion_matrix(df['label'], df['pred'])
+    
+    # Calculate Cohen's Kappa
+    kappa = metrics.cohen_kappa_score(df['label'], df['pred'])
+    
+    # Calculate Matthews correlation coefficient
+    mcc = metrics.matthews_corrcoef(df['label'], df['pred'])
+    
+    # Extract individual values from precision, recall, and F1 score
+    tp, fn, fp, tn = confusion_matrix.flatten()
+    tp, fn, fp, tn = int(tp), int(fn), int(fp), int(tn)
+    
+    # Write metrics to the output file
+    measures = [fp, assay, roc_auc, mcc, kappa, precision[0], recall[0], f1_score[0], support[0], support[1], tp, fn, fp, tn]
+    with open(outdir, 'a') as outf:
+        outf.write('{}'.format(index))
+        for val in measures:
+            outf.write('\t{}'.format(val))
+        outf.write('\n')
+
+start_time = time.time()
+file_path = 'C:/CESFP_project/CrossValidation/Assay_{}/{}_{}_full_predictions.txt'   
+selected_assays = ['522', '527', '555', '560', '746', '798', '1006', '1273', '1515', '2129', '2280', '2540', '2544', '2553',
+                   '2606', '463104', '504406', '504454', '504812', '588497', '602363', '623901', '624414', '686964', '720700']
+outdir = 'CrossValidation/CM.csv'
+fp_types = ['htsfp', 'ecfp', 'cesfp']
+index = 0
+headers = ['idx', 'fptype', 'assay', 'roc_auc', 'MCC', 'kappa', 'Precision', 'Recall', 'F1', 'A_count', 'N_count', 'tp', 'fn', 'fp', 'tn']
+with open(outdir, 'w') as outf:
+    outf.write('{}\n'.format('\t'.join(headers)))
+
+for fp in fp_types:
+    print('Calculating metrics for FP type: {}'.format(fp))
+    for assay_id in selected_assays:
+        print('Processing Assay: {}'.format(assay_id))
+        calculate_metrics(assay_id, fp, index)  
+        index += 1

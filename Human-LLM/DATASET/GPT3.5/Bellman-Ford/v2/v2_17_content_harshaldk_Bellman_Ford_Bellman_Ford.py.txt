@@ -1,0 +1,67 @@
+import csv
+
+# Function to parse the graph file and extract adjacency list, weights, and number of vertices
+def parse_graph_file(input_file):
+    Adjacency_List = {}
+    W = {}
+    vertices = 0
+    with open(input_file + ".gr") as inputfile:
+        for line in inputfile:
+            l = line.split()
+            if l[0] == 'p':
+                vertices = int(l[2])  # Extract the number of vertices from the header line
+            elif l[0] == 'a':
+                # Extract edge information and weight, and populate the adjacency list and weight dictionary
+                W[int(l[1]), int(l[2])] = int(l[3])
+                T = int(l[1])
+                H = int(l[2])
+                if T not in Adjacency_List:
+                    Adjacency_List[T] = []
+                Adjacency_List[T].append(H)
+        # Ensure all vertices have an entry in the adjacency list
+        for v in range(1, vertices + 1):
+            if v not in Adjacency_List:
+                Adjacency_List[v] = []
+    return Adjacency_List, W, vertices
+
+# Function to perform the Bellman-Ford algorithm
+def Bellman_Ford(G, W, vertices, s):
+    dist = {}  # Dictionary to store distances
+    pred = {}  # Dictionary to store predecessors
+    dist[s] = 0  # Initialize distance from source vertex to itself as 0
+    pred[s] = 0  # Initialize predecessor of source vertex as itself
+    N = list(range(1, vertices + 1))  # List of vertices
+    N.remove(s)  # Remove source vertex from the list
+    # Initialize distances and predecessors for all vertices except source
+    for i in N:
+        dist[i] = int(vertices * max(W.values()))  # Initialize distance to maximum possible value
+        pred[i] = -1  # Initialize predecessor to -1
+    # Iterate through vertices and edges to update distances and predecessors
+    for i in range(1, vertices + 1):
+        for j in G[i]:
+            if dist[j] > dist[i] + W[i, j]:
+                dist[j] = dist[i] + W[i, j]
+                pred[j] = i
+    return dist, pred
+
+# Function to write the results (distances and predecessors) to a CSV file
+def write_csv(distances, predecessors, output_file):
+    with open(output_file, 'w', newline='') as csvfile:
+        fieldnames = ['Vertex', 'Distance', 'Predecessor']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        # Write each vertex along with its distance and predecessor to the CSV file
+        for key in distances:
+            writer.writerow({'Vertex': key, 'Distance': distances[key], 'Predecessor': predecessors[key]})
+
+# List of input files
+files = ['matrix_100_1_3_1', 'matrix_100_1_3_2']
+for f in files:
+    # Parse the graph file to get adjacency list, weights, and number of vertices
+    Adjacency_List, W, vertices = parse_graph_file(f)
+    s = 1  # Source vertex
+    # Perform Bellman-Ford algorithm to get distances and predecessors
+    D, P = Bellman_Ford(Adjacency_List, W, vertices, s)
+    out_file = f + ".csv"  # Output CSV file name
+    # Write distances and predecessors to the CSV file
+    write_csv(D, P, out_file)

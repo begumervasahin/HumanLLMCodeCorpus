@@ -1,0 +1,98 @@
+import knn
+import time
+import gc
+import numpy as np
+
+if __name__ == '__main__':
+    # Start timing the experiment
+    experiment_start_time = time.time()
+
+    # Directory paths
+    train_dir = './digits/trainingDigits'
+    test_dir = './digits/testDigits'
+
+    # Open result file for writing
+    with open('result.txt', 'w') as result_file:
+        # Load training and testing samples
+        train_samples, train_labels = knn.load_sample_set(train_dir)
+        test_samples, ground_labels = knn.load_sample_set(test_dir)
+
+        # Parameters for the experiment
+        ks = [3, 5, 7, 9]
+        knn_functions = [knn.get_knn_e_dist, knn.get_knn_e_dist_with_kdtree, knn.get_knn_m_dist]
+        knn_functions_names = ['get_knn_e_dist', 'get_knn_e_dist_with_kdtree', 'get_knn_m_dist']
+        label_functions = [knn.get_label_by_knn, knn.get_label_by_wknn]
+        label_functions_names = ['get_label_by_knn', 'get_label_by_wknn']
+        pca_parameters = [0, 4, 8, 16, 32, 64, 128, 256]
+
+        # Results container
+        results = [['k', 'knn_function', 'label_function', 'pca_parameters', 'accuracy', 'macro_precision',
+                    'macro_recall', 'macro_F1', 'execution_time', 'dimension']]
+
+        # Experiment loop
+        for k in ks:
+            for knn_func, knn_func_name in zip(knn_functions, knn_functions_names):
+                for label_func, label_func_name in zip(label_functions, label_functions_names):
+                    for pca_parameter in pca_parameters:
+                        single_result = []
+
+                        # Printing conditions for this iteration
+                        print('\n******** Conditions ******', file=result_file)
+                        print(f'k = {k}', file=result_file)
+                        single_result.append(k)
+                        print(f'knn_function = {knn_func_name}', file=result_file)
+                        single_result.append(knn_func_name)
+                        print(f'label_function = {label_func_name}', file=result_file)
+                        single_result.append(label_func_name)
+                        print(f'pca_parameters = {pca_parameter}', file=result_file)
+                        single_result.append(pca_parameter)
+                        print('**************************', file=result_file)
+
+                        # Create copies of data for processing
+                        train_set = np.copy(train_samples)
+                        test_set = np.copy(test_samples)
+                        train_labels_copy = np.copy(train_labels)
+                        ground_labels_copy = np.copy(ground_labels)
+
+                        # Timing the execution
+                        start_time = time.time()
+                        result_labels, dimension = knn.get_test_samples_labels(k, train_set, train_labels_copy,
+                                                                                test_set, knn_func, label_func,
+                                                                                pca_parameter)
+                        end_time = time.time()
+                        elapsed_time = end_time - start_time
+
+                        # Evaluate results
+                        accuracy, macro_precision, macro_recall, macro_F1 = knn.result_evaluate(ground_labels_copy, result_labels)
+
+                        # Store results
+                        single_result.extend([accuracy, macro_precision, macro_recall, macro_F1, elapsed_time, dimension])
+
+                        # Printing results
+                        print(f'accuracy = {accuracy}', file=result_file)
+                        print(f'macro_precision = {macro_precision}', file=result_file)
+                        print(f'macro_recall = {macro_recall}', file=result_file)
+                        print(f'macro_F1 = {macro_F1}', file=result_file)
+                        print(f'execution_time = {elapsed_time}', file=result_file)
+                        print(f'dimension = {dimension}', file=result_file)
+
+                        # Append single result to results list
+                        results.append(single_result)
+                        gc.collect()  # Perform garbage collection to free up memory
+
+        # End of experiment
+        experiment_end_time = time.time()
+
+        # Print total time taken for the experiment
+        print('\n***********************', file=result_file)
+        print(f'Total Time = {experiment_end_time - experiment_start_time}', file=result_file)
+        print('***********************', file=result_file)
+
+    # Close result file
+    result_file.close()
+
+    # Write results to a CSV file
+    with open('result_table.csv', 'w') as outf:
+        for record in results:
+            record_str = ', '.join(map(str, record))
+            print(record_str, file=outf)

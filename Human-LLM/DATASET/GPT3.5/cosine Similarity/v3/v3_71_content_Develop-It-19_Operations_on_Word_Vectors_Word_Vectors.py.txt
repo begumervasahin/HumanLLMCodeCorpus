@@ -1,0 +1,72 @@
+import numpy as np
+from w2v_utils import read_glove_vecs
+
+# Load word vectors
+words, word_to_vec_map = read_glove_vecs('data/glove.6B.50d.txt')
+
+def cosine_similarity(u, v):
+    """Compute cosine similarity between vectors u and v."""
+    dot_product = np.dot(u, v)
+    norm_u = np.linalg.norm(u)
+    norm_v = np.linalg.norm(v)
+    cosine_similarity = dot_product / (norm_u * norm_v)
+    return cosine_similarity
+
+def complete_analogy(word_a, word_b, word_c, word_to_vec_map):
+    """Complete analogy: word_a is to word_b as word_c is to __."""
+    word_a, word_b, word_c = word_a.lower(), word_b.lower(), word_c.lower()
+    e_a, e_b, e_c = word_to_vec_map[word_a], word_to_vec_map[word_b], word_to_vec_map[word_c]
+    max_cosine_sim = -np.inf
+    best_word = None
+    for w, e in word_to_vec_map.items():
+        if w in (word_a, word_b, word_c):
+            continue
+        cosine_sim = cosine_similarity(e_b - e_a, e - e_c)
+        if cosine_sim > max_cosine_sim:
+            max_cosine_sim = cosine_sim
+            best_word = w
+    return best_word
+
+def neutralize(word, g, word_to_vec_map):
+    """Neutralize bias in word vectors."""
+    e = word_to_vec_map[word]
+    e_bias_component = np.dot(e, g) / np.linalg.norm(g) ** 2 * g
+    e_debiased = e - e_bias_component
+    return e_debiased
+
+def equalize(pair, bias_axis, word_to_vec_map):
+    """Equalize gender bias in word pairs."""
+    w1, w2 = pair
+    e_w1, e_w2 = word_to_vec_map[w1], word_to_vec_map[w2]
+    mu = (e_w1 + e_w2) / 2
+    mu_B = np.dot(mu, bias_axis) / np.linalg.norm(bias_axis) ** 2 * bias_axis
+    mu_orth = mu - mu_B
+    e_w1B = np.dot(e_w1, bias_axis) / np.linalg.norm(bias_axis) ** 2 * bias_axis
+    e_w2B = np.dot(e_w2, bias_axis) / np.linalg.norm(bias_axis) ** 2 * bias_axis
+    corrected_e_w1B = np.sqrt(np.abs(1 - np.sum(mu_orth ** 2))) * (e_w1B - mu_B) / np.abs(e_w1 - mu_orth - mu_B)
+    corrected_e_w2B = np.sqrt(np.abs(1 - np.sum(mu_orth ** 2))) * (e_w2B - mu_B) / np.abs(e_w2 - mu_orth - mu_B)
+    e1 = mu_orth + corrected_e_w1B
+    e2 = mu_orth + corrected_e_w2B
+    return e1, e2
+
+# Example usage
+print("cosine_similarity(father, mother) =", cosine_similarity(word_to_vec_map["father"], word_to_vec_map["mother"]))
+print("cosine_similarity(ball, crocodile) =", cosine_similarity(word_to_vec_map["ball"], word_to_vec_map["crocodile"]))
+print("cosine_similarity(france - paris, rome - italy) =", cosine_similarity(word_to_vec_map["france"] - word_to_vec_map["paris"], word_to_vec_map["rome"] - word_to_vec_map["italy"]))
+print("complete_analogy(italy, italian, spain) =", complete_analogy('italy', 'italian', 'spain', word_to_vec_map))
+
+# Gender bias correction
+g1 = word_to_vec_map['woman'] - word_to_vec_map['man']
+g2 = word_to_vec_map['mother'] - word_to_vec_map['father']
+g3 = word_to_vec_map['girl'] - word_to_vec_map['boy']
+g4 = word_to_vec_map['king'] - word_to_vec_map['queen']
+g = (g1 + g2 + g3 + g4) / 4
+
+# Neutralize bias in word vectors
+e_debiased = neutralize("receptionist", g, word_to_vec_map)
+print("cosine similarity between receptionist and g, after neutralizing:", cosine_similarity(e_debiased, g))
+
+# Equalize gender bias in word pairs
+e1, e2 = equalize(("man", "woman"), g, word_to_vec_map)
+print("cosine_similarity(e1, gender) =", cosine_similarity(e1, g))
+print("cosine_similarity(e2, gender) =", cosine_similarity(e2, g))

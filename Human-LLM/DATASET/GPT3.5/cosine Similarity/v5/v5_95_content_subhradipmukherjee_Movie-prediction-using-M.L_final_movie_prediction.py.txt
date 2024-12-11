@@ -1,0 +1,153 @@
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from scipy import spatial
+import math
+import operator
+
+def load_movie_ratings(file_path):
+    """
+    Load movie ratings data from a CSV file.
+
+    Parameters:
+    - file_path (str): Path to the CSV file containing movie ratings data.
+
+    Returns:
+    - pandas.DataFrame: DataFrame containing movie ratings data.
+    """
+    return pd.read_csv(file_path)
+
+def select_columns(data, columns):
+    """
+    Select relevant columns from the ratings DataFrame.
+
+    Parameters:
+    - data (pandas.DataFrame): DataFrame containing movie ratings data.
+    - columns (list): List of column names to be selected.
+
+    Returns:
+    - pandas.DataFrame: DataFrame with selected columns.
+    """
+    return data[columns]
+
+def normalize_column(column):
+    """
+    Normalize a column of numerical values to the range [0, 1].
+
+    Parameters:
+    - column (pandas.Series): Column of numerical values to be normalized.
+
+    Returns:
+    - pandas.Series: Normalized column.
+    """
+    return (column - column.min()) / (column.max() - column.min())
+
+def vectorize_genres(genres):
+    """
+    Vectorize movie genres using CountVectorizer.
+
+    Parameters:
+    - genres (pandas.Series): Series containing movie genres.
+
+    Returns:
+    - scipy.sparse.csr_matrix: Sparse matrix representing vectorized genres.
+    """
+    vectorizer = CountVectorizer()
+    return vectorizer.fit_transform(genres.fillna(''))
+
+def create_movie_dict(ratings_subset, normalized_popularity, normalized_vote_count, genre_counts):
+    """
+    Create a dictionary to store movie information.
+
+    Parameters:
+    - ratings_subset (pandas.DataFrame): DataFrame containing selected movie ratings data.
+    - normalized_popularity (pandas.Series): Series containing normalized popularity values.
+    - normalized_vote_count (pandas.Series): Series containing normalized vote count values.
+    - genre_counts (scipy.sparse.csr_matrix): Sparse matrix representing vectorized genres.
+
+    Returns:
+    - dict: Dictionary with movie information.
+    """
+    movie_dict = {}
+    for i in range(len(ratings_subset)):
+        movie_id = ratings_subset.loc[i, 'id']
+        title = ratings_subset.loc[i, 'title']
+        vote_average = ratings_subset.loc[i, 'vote_average']
+        popularity = normalized_popularity.loc[i]
+        vote_count = normalized_vote_count.loc[i]
+        genre_vector = genre_counts.toarray()[i]
+        movie_dict[i] = (movie_id, title, vote_average, popularity, vote_count, genre_vector)
+    return movie_dict
+
+def calculate_distance(movie1, movie2):
+    """
+    Calculate the distance between two movies based on popularity and genre vectors.
+
+    Parameters:
+    - movie1 (tuple): Tuple containing information about the first movie.
+    - movie2 (tuple): Tuple containing information about the second movie.
+
+    Returns:
+    - float: Distance between the two movies.
+    """
+    popularity1, genre_vector1 = movie1[3], movie1[5]
+    popularity2, genre_vector2 = movie2[3], movie2[5]
+
+    genre_distance = spatial.distance.cosine(genre_vector1, genre_vector2)
+    popularity_distance = (popularity2 - popularity1) ** 2
+    total_distance = math.sqrt(popularity_distance + genre_distance ** 2)
+    return total_distance
+
+def find_neighbors(movie_dict, movie_id, K):
+    """
+    Find K nearest neighbors for a given movie.
+
+    Parameters:
+    - movie_dict (dict): Dictionary containing movie information.
+    - movie_id (int): ID of the movie for which neighbors are to be found.
+    - K (int): Number of neighbors to find.
+
+    Returns:
+    - list: List of K nearest neighbors.
+    """
+    distances = []
+    for neighbor_id, neighbor_movie in movie_dict.items():
+        if neighbor_id != movie_id:
+            distance = calculate_distance(movie_dict[movie_id], neighbor_movie)
+            if distance <= 0.65:
+                distances.append((neighbor_id, distance))
+
+    distances.sort(key=operator.itemgetter(1))
+
+    neighbors = []
+    for i in range(K):
+        neighbor_id = distances[i][0]
+        neighbor_title = movie_dict[neighbor_id][1]
+        neighbor_distance = distances[i][1]
+        neighbors.append((neighbor_title, neighbor_distance))
+        print(neighbor_title)
+
+    return neighbors
+
+# Load movie ratings data
+ratings = load_movie_ratings("D:/roops_backup/projects/data mining project/movie_recommender/movie_dataset.csv")
+
+# Select relevant columns
+ratings_subset = select_columns(ratings, ['id', 'title', 'vote_average', 'popularity', 'vote_count', 'genres'])
+
+# Normalize popularity and vote count columns
+normalized_popularity = normalize_column(ratings_subset['popularity'])
+normalized_vote_count = normalize_column(ratings_subset['vote_count'])
+
+# Vectorize genres
+genre_counts = vectorize_genres(ratings_subset['genres'])
+
+# Create movie dictionary
+movie_dict = create_movie_dict(ratings_subset, normalized_popularity, normalized_vote_count, genre_counts)
+
+# Parameters
+K = 15
+movie_id = 94
+
+# Find K nearest neighbors for the given movie
+find_neighbors(movie_dict, movie_id, K)

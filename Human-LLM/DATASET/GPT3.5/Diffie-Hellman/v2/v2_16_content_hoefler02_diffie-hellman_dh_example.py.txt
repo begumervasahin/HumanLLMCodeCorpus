@@ -1,0 +1,30 @@
+from Crypto.Util.number import getStrongPrime
+from random import randint
+from dh_client import DH_Client
+from faker import Faker
+
+# Generate a strong prime number and a random generator
+prime = getStrongPrime(512)
+generator = randint(2, prime - 2)
+
+# Create two DH clients
+alice = DH_Client('Alice', generator, prime)
+bob = DH_Client('Bob', generator, prime)
+
+print('Secure communication established between %s and %s!\n' % (alice.name, bob.name))
+print('Prime (p) = %d\nGenerator (g) = %d\n' % (prime, generator))
+
+# Exchange public keys and establish shared secrets
+print('%s -> %s : Public Key Exchange ~ %d' % (bob.name, alice.name, bob.public_key))
+alice.establish_shared_secret(bob.public_key)
+print('%s -> %s : Public Key Exchange ~ %d\n' % (alice.name, bob.name, alice.public_key))
+bob.establish_shared_secret(alice.public_key)
+print('Shared secret established!\n')
+
+# Encrypt and exchange messages
+msg_bob = 'The weather is nice today.'
+print('%s -> %s : Encrypted Message ~ %d' % (bob.name, alice.name, bob.aes_ecb_encrypt(msg_bob)))
+msg_alice = 'It is indeed.'
+print('%s -> %s : Encrypted Message ~ %d\n' % (alice.name, bob.name, alice.aes_ecb_encrypt(msg_alice)))
+
+print('Secure communication ended.')

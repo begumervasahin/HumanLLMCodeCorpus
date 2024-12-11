@@ -1,0 +1,63 @@
+import numpy as np
+
+# Define the graph edges
+edges = {
+    "v_start": {"1_start": 0, "2_start": 0},
+    "1_start": {"1_finish": 40},
+    "2_start": {"2_finish": 36},
+    "1_finish": {"v_finish": 0},
+    "2_finish": {"v_finish": 0, "1_start": 0}
+}
+
+def get_connections(vertex):
+    """
+    Get the connections for a given vertex.
+    """
+    return edges.get(vertex)
+
+def get_edge_weight(start, finish):
+    """
+    Get the weight of the edge from start to finish.
+    """
+    return edges.get(start, {}).get(finish)
+
+def find_longest_path(graph, paths):
+    """
+    Find the longest path in the graph.
+    """
+    for path in paths:
+        for vertex in get_connections(path):
+            paths.append([vertex])
+    print(paths)
+
+def find_shortest_path(graph):
+    """
+    Find the shortest path in the graph.
+    """
+    shortest_paths = []
+    shortest_weights = []
+    for vertex in graph['v_start'].keys():
+        shortest_paths.append([vertex])
+        shortest_weights.append(graph['v_start'].get(vertex))
+    
+    for path in shortest_paths:
+        end_vertex = path[-1]
+        if len(graph[end_vertex]) == 1:
+            path.extend(graph[end_vertex].keys())
+            shortest_weights.extend(graph[end_vertex].values())
+        elif len(graph[end_vertex]) > 1:
+            for next_vertex in graph[end_vertex].keys():        
+                shortest_paths.append(list(path) + [next_vertex])
+                
+        for vertex in graph[end_vertex]:
+            shortest_paths.append([])
+
+    return shortest_paths, shortest_weights
+
+if __name__ == '__main__':
+    starting_vertex = 'v_start'
+    paths = [starting_vertex]
+    find_longest_path(edges, paths)
+    
+    shortest_paths, shortest_weights = find_shortest_path(edges)
+    print(shortest_paths, shortest_weights)

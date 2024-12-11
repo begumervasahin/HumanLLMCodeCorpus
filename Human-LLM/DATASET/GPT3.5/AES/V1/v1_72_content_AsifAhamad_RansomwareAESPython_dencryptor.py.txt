@@ -1,0 +1,57 @@
+import os
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+
+def encrypt_file(password, filename):
+    chunksize = 65536
+    direx, ext = os.path.splitext(filename)
+    ext += ' ' * (16 - (len(ext) % 16))
+    enc_outputfile = direx + ".txt"
+    file_size = str(os.path.getsize(filename)).zfill(16)
+    init_vector = ''
+    for i in range(16):
+        init_vector += chr(7)
+    encryptor = AES.new(password, AES.MODE_CBC, init_vector)
+    with open(filename, 'rb') as file_handler:
+        with open(enc_outputfile, 'wb') as outputfile_handler:
+            while True:
+                chunk_read = file_handler.read(chunksize)
+                if len(chunk_read) == 0:
+                    break
+                elif len(chunk_read) % 16 != 0:
+                    chunk_read += ' ' * (16 - (len(chunk_read) % 16))
+                outputfile_handler.write(encryptor.encrypt(chunk_read))
+
+def decrypt_file(password, filename):
+    chunksize = 65536
+    direx, ext = os.path.splitext(filename)
+    dec_outputfile = direx + "_decrypted" + ext
+    init_vector = ''
+    for i in range(16):
+        init_vector += chr(7)
+    decryptor = AES.new(password, AES.MODE_CBC, init_vector)
+    with open(filename, 'rb') as file_handler:
+        with open(dec_outputfile, 'wb') as outputfile_handler:
+            while True:
+                chunk_read = file_handler.read(chunksize)
+                if len(chunk_read) == 0:
+                    break
+                outputfile_handler.write(decryptor.decrypt(chunk_read))
+
+def encrypt_files_in_directory(directory, password):
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            encrypt_file(password, os.path.join(root, filename))
+
+def decrypt_files_in_directory(directory, password):
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            decrypt_file(password, os.path.join(root, filename))
+
+# Example usage:
+password = SHA256.new("this_is_the_seed").digest()
+directory_to_encrypt = os.path.join(os.getenv('HOME'), "Desktop", "Important")
+encrypt_files_in_directory(directory_to_encrypt, password)
+
+# To decrypt files, uncomment the following line:
+# decrypt_files_in_directory(directory_to_encrypt, password)

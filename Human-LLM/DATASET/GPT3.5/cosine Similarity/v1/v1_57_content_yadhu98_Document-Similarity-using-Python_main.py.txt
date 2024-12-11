@@ -1,0 +1,78 @@
+import matplotlib.pyplot as plt
+from nltk import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from collections import Counter
+import math
+
+input_text = open("model.txt", "r")
+input_text1 = open("ans1.txt", "r")
+text = input_text.read()
+text1 = input_text1.read()
+input_text.close()
+input_text1.close()
+
+sentences = sent_tokenize(text)
+sentences1 = sent_tokenize(text1)
+N = len(sentences)
+N1 = len(sentences1)
+
+ps = PorterStemmer()
+stop_words = set(stopwords.words('english'))
+special = ['.', ',', '\'', '"', '-', '/', '*', '+', '=', '!', '@', '$', '%', '^', '&', '``', '\'\'', 'We', 'The', 'This']
+
+def normalize(word):
+    word = word.lower()
+    word = ps.stem(word)
+    return word
+
+def get_cosine(vec1, vec2):
+    intersection = set(vec1) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+    sum1 = sum([vec1[x] ** 2 for x in vec1.keys()])
+    sum2 = sum([vec2[x] ** 2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    if not denominator:
+        return 0.0
+    else:
+        return numerator / denominator
+
+def text_to_vector(text):
+    words = word_tokenize(text)
+    vec = [normalize(word) for word in words if word not in stop_words and word not in special]
+    return Counter(vec)
+
+def document_to_vector(sent):
+    vec = []
+    for text in sent:
+        words = word_tokenize(text)
+        vec.extend(normalize(word) for word in words if word not in stop_words and word not in special)
+    return Counter(vec)
+
+def sentence_to_sentence_similarity(sent):
+    cosine_mat = []
+    for text in sentences:
+        vector1 = text_to_vector(text)
+        max_cosine = 0
+        for text1 in sent:
+            vector2 = text_to_vector(text1)
+            cosine = get_cosine(vector1, vector2)
+            max_cosine = max(max_cosine, cosine)
+        cosine_mat.append(max_cosine)
+    return cosine_mat
+
+def main():
+    similarity_matrix = sentence_to_sentence_similarity(sentences1)
+    print(similarity_matrix)
+    
+    total_similarity = sum(similarity_matrix)
+    print(total_similarity)
+    
+    plt.plot(similarity_matrix, range(len(similarity_matrix)))
+    plt.xlabel('Points')
+    plt.ylabel('Line')
+    plt.title('Document Similarity Graph')
+    plt.show()
+
+if __name__ == '__main__':
+    main()

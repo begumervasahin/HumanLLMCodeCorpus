@@ -1,0 +1,196 @@
+import sys
+import math
+import hashlib
+import random
+import time
+
+# Helper Functions
+
+def write_number_to_file(number, filename):
+    """Write a number to a file."""
+    with open(filename, 'wb') as file:
+        while number > 0:
+            byte = number % 256
+            number //= 256
+            file.write(chr(byte))
+
+def binary_to_number(binary):
+    """Convert binary to a number."""
+    result = 0
+    for char in binary:
+        result = (result << 8) ^ ord(char)
+    return result
+
+def number_to_binary(number):
+    """Convert a number to binary."""
+    result = ''
+    while number > 0:
+        result = chr(number % 256) + result
+        number //= 256
+    return result
+
+def gcd(a, b):
+    """Calculate the greatest common divisor."""
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+def next_prime(p):
+    """Find the next prime number."""
+    while p % 3 != 2 or p % 2 != 1:
+        p += 1
+    return next_prime_odd(p)
+
+def next_prime_odd(p):
+    """Find the next odd prime number."""
+    m_ = 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while True:
+        while gcd(p, m_) != 1:
+            p += 6
+        q = (p + 1) // 4
+        if (pow(2, p - 1, p) != 1 or pow(2, q - 1, q) != 1) or \
+           (pow(3, p - 1, p) != 1 or pow(3, q - 1, q) != 1) or \
+           (pow(5, p - 1, p) != 1 or pow(5, q - 1, q) != 1) or \
+           (pow(17, p - 1, p) != 1 or pow(17, q - 1, q) != 1):
+            p += 6
+            continue
+        break
+    return p
+
+def modular_inverse(b, m):
+    """Calculate the modular inverse."""
+    s, t = 0, 1
+    a = m
+    while b != 1:
+        q = a // b
+        a, b = b, a % b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t += m
+    return t
+
+def calculate_hash(x):
+    """Calculate the hash value."""
+    dx1 = hashlib.sha256(x).digest()
+    result = 0
+    for char in dx1:
+        result = (result << 8) ^ ord(char)
+    return result
+
+def random_256(m):
+    """Generate a random 256-bit number."""
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+def random_x(m):
+    """Generate a random number."""
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    md.update(str(time.gmtime().tm_year + time.gmtime().tm_mday))
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+def generate_point(y, b):
+    """Generate a point on the elliptic curve."""
+    yy = (y * y - b) % prime
+    x = pow(yy, modular_inverse(3, prime - 1), prime)
+    return [x % prime, y % prime]
+
+def add_points(P, Q):
+    """Add two points on the elliptic curve."""
+    x1, x2 = P[0], Q[0]
+    y1, y2 = P[1], Q[1]
+    if x2 > x1:
+        x2 -= prime
+    if x1 == x2:
+        s = ((3 * (x1 ** 2) + a) * modular_inverse(2 * y1, prime)) % prime
+    else:
+        s = ((y1 - y2) * modular_inverse(x1 - x2, prime)) % prime
+    xr = s ** 2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+def multiply_point(P, n):
+    """Multiply a point on the elliptic curve by a scalar."""
+    is_first = True
+    res_P = P[:]
+    if n < 0:
+        res_P[1] = prime - res_P[1]
+        n = (-1) * n
+    PP = res_P[:]
+    while n > 0:
+        if n & 1:
+            if is_first:
+                res_P = PP[:]
+                is_first = False
+            else:
+                res_P = add_points(res_P, PP)
+        PP = add_points(PP, PP)
+        n >>= 1
+    return res_P
+
+def sign_schnorr(G, m, x):
+    """Sign a message using Schnorr signature."""
+    k = random_x(m)
+    R = multiply_point(G, k)
+    e = calculate_hash(str(R[0]) + m)
+    return [(k - x * e) % n4, e]
+
+def ecdsa(G, m, x):
+    """Perform ECDSA (Elliptic Curve Digital Signature Algorithm)."""
+    k = random_x(m)
+    R = multiply_point(G, k)
+    hh = calculate_hash(m + str(R[0]))
+    s = (modular_inverse(k, n4) * (hh + R[0] * x)) % n4
+    return [s, R[0]]
+
+def ecdsa_v(G, m, S, Y):
+    """Verify ECDSA signature."""
+    si = modular_inverse(S[0], n4)
+    hh = calculate_hash(m + str(S[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * S[1]) % n4
+    return add_points(multiply_point(G, u1), multiply_point(Y, u2))[0] == S[1]
+
+# Main Code
+
+prime = 1496577676626844588240573268701473812127674924030189
+a = 0
+b = 7
+P = generate_point(17, b)
+n4 = (prime + 1) // 4
+P = multiply_point(P, 90)
+
+print(multiply_point(P, prime + 2))
+print(P)
+print("Prime number:", prime)
+
+with open(sys.argv[1], 'r') as file:
+    message = file.read()
+
+x = 2 * random_256(sys.argv[1]) + 1
+y = multiply_point(P, x)
+
+write_number_to_file(y[0], 'y0')
+write_number_to_file(y[1], 'y1')
+
+sig = ecdsa(P, message, x)
+print("Verify:", ecdsa_v(P, message, sig, y))
+write_number_to_file(sig[0], 's0')
+write_number_to_file(sig[1], 's1')
+print("Test Schnorr:", calculate_hash(str(add_points(multiply_point(P, sig[0]), multiply_point(y, sig[1]))[0]) + message) == sig[1])

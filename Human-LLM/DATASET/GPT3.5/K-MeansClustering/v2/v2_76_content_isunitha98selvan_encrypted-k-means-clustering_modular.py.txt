@@ -1,0 +1,99 @@
+from random import randint
+
+def iterative_egcd(a, b):
+    """
+    Calculate the greatest common divisor (gcd) of two integers 'a' and 'b' using the Iterative Extended Euclidean Algorithm.
+    Returns a triple (g, x, y), such that ax + by = g = gcd(a, b).
+
+    Args:
+        a (int): The first integer.
+        b (int): The second integer.
+
+    Returns:
+        tuple: A tuple (g, x, y), where g is the gcd of 'a' and 'b', and x, y are integers such that ax + by = g.
+    """
+    x, y, u, v = 0, 1, 1, 0
+    while a != 0:
+        q, r = b // a, b % a
+        m, n = x - u * q, y - v * q
+        b, a, x, y, u, v = a, r, u, v, m, n
+    return b, x, y
+
+def recursive_egcd(a, b):
+    """
+    Calculate the greatest common divisor (gcd) of two integers 'a' and 'b' using the Recursive Extended Euclidean Algorithm.
+    Returns a triple (g, x, y), such that ax + by = g = gcd(a, b).
+
+    Args:
+        a (int): The first integer.
+        b (int): The second integer.
+
+    Returns:
+        tuple: A tuple (g, x, y), where g is the gcd of 'a' and 'b', and x, y are integers such that ax + by = g.
+    """
+    if a == 0:
+        return b, 0, 1
+    else:
+        g, y, x = recursive_egcd(b % a, a)
+        return g, x - (b // a) * y, y
+
+egcd = iterative_egcd  # Use iterative EGCD by default
+
+def mod_inv(a, m):
+    """
+    Calculate the modular multiplicative inverse of 'a' modulo 'm'.
+
+    Args:
+        a (int): The number.
+        m (int): The modulus.
+
+    Returns:
+        int: The modular inverse of 'a' modulo 'm', or None if it does not exist.
+    """
+    g, x, y = egcd(a, m)
+    if g != 1:
+        return None
+    else:
+        return x % m
+
+def mod_exp(a, b, c):
+    """
+    Calculate (a^b) % c efficiently using modular exponentiation.
+
+    Args:
+        a (int): The base.
+        b (int): The exponent.
+        c (int): The modulus.
+
+    Returns:
+        int: The result of (a^b) % c.
+    """
+    x = 1
+    while b > 0:
+        if b & 1 == 1:
+            x = (x * a) % c
+        a = (a * a) % c
+        b >>= 1
+    return x
+
+def generate_share(n):
+    """
+    Generate a random number 'ret' such that 1 < ret < n and gcd(ret, n) = 1.
+
+    Args:
+        n (int): The upper limit for generating 'ret'.
+
+    Returns:
+        int: A random number 'ret' satisfying the conditions.
+    """
+    ret = 0
+    while egcd(ret, n)[0] != 1:
+        ret = randint(1, n - 1)
+    return ret
+
+class prettyfloat(float):
+    """
+    Subclass of float that formats the float value to two decimal places.
+    """
+    def __repr__(self):
+        return "%0.2f" % self

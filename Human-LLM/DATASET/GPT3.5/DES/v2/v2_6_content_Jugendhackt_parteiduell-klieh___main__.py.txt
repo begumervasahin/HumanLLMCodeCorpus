@@ -1,0 +1,54 @@
+import requests  # Importing the requests library for making HTTP requests
+import click  # Importing the click library for command-line interface support
+import textwrap  # Importing the textwrap library for text formatting
+
+# Function to print wrapped text with optional indentation
+def wrap_print(content, indent=0):
+    global width  # Using global variable for terminal width
+    print(
+        textwrap.indent(
+            textwrap.fill(content, (width if width else 80) - indent), " " * indent
+        )
+    )
+
+# Command-line interface setup using Click
+@click.command()
+def main():
+    global width  # Using global variable for terminal width
+    width = click.get_terminal_size()[0]  # Getting terminal width
+    while True:
+        click.clear()  # Clearing the terminal screen
+        print("Welcome to ParteiDuell \033[31mK\033[0m\033[33ml\033[0m\033[93m\033[32mi\033[0m\033[34me\033[0m\033[35mh\033[0m")  # Printing a colorful welcome message
+        print("")
+        # Making an HTTP GET request to fetch data from a server
+        r = requests.get("https://solver.cloud:440/list")
+        json_data = r.json()  # Parsing the JSON response
+        wrap_print(json_data[0]["these"])  # Printing formatted text
+        print()
+        wrap_print(json_data[0]["statement"])  # Printing formatted text
+        print()
+        keys = list(json_data[0]["possibleAnswers"])  # Extracting keys from JSON data
+        # Displaying options for the user to choose from
+        print(", ".join(f"{i}: {answer}" for i, answer in enumerate(keys)))
+        party = input("> ")  # Accepting user input
+        try:
+            party = int(party)  # Converting input to integer
+            party = keys[party]  # Fetching corresponding party from keys list
+        except ValueError as error:
+            print(error)  # Handling value error
+        print()
+        print()
+        # Checking if user's answer is correct
+        if json_data[0]["answer"] == party:
+            print("Correct!")  # Printing a message for correct answer
+        else:
+            print(f"Wrong, this statement was from {json_data[0]['answer']}")  # Printing correct answer
+            print()
+            print(f"The party {party} made the following statement:\n")
+            wrap_print(json_data[0]["possibleAnswers"][party], indent=4)  # Printing formatted text
+        print()
+        click.pause()  # Pausing execution until user input
+
+# Running the main function if the script is executed directly
+if __name__ == "__main__":
+    main()

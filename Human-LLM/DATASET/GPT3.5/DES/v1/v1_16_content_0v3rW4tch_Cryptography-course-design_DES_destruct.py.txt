@@ -1,0 +1,60 @@
+def apply_permutation(table, data):
+    return [data[i - 1] for i in table]
+
+def left_shift(arr, n):
+    return arr[n:] + arr[:n]
+
+def key_schedule(key):
+    key = apply_permutation(PC_1, key)
+    keys = []
+    for shift in SHIFT:
+        key_left, key_right = key[:28], key[28:]
+        key_left = left_shift(key_left, shift)
+        key_right = left_shift(key_right, shift)
+        key = key_left + key_right
+        keys.append(apply_permutation(PC_2, key))
+    return keys
+
+def initial_permutation(data):
+    return apply_permutation(IP_table, data)
+
+def inverse_initial_permutation(data):
+    return apply_permutation(IP_re_table, data)
+
+def expansion(data):
+    return apply_permutation(E, data)
+
+def permutation(data):
+    return apply_permutation(P, data)
+
+def substitution(data):
+    result = []
+    for i in range(0, len(data), 6):
+        chunk = data[i:i+6]
+        row = int(chunk[0] + chunk[-1], 2)
+        col = int(chunk[1:-1], 2)
+        value = bin(S[i//6][row * 16 + col])[2:].zfill(4)
+        result.extend(value)
+    return result
+
+def feistel_round(data, key):
+    expanded_data = expansion(data)
+    xor_result = [str(int(a) ^ int(b)) for a, b in zip(expanded_data, key)]
+    sub_result = substitution(''.join(xor_result))
+    permuted_result = permutation(sub_result)
+    return permuted_result
+
+def encrypt(data, keys):
+    data = initial_permutation(data)
+    left, right = data[:32], data[32:]
+    for key in keys:
+        left, right = right, feistel_round(right, key)
+    encrypted_data = inverse_initial_permutation(right + left)
+    return encrypted_data
+
+# Example usage
+key = '0001001100110100010101110111100110011011101111001101111111110001'
+keys = key_schedule(key)
+plaintext = '0000000100100011010001010110011110001001101010111100110111101111'
+ciphertext = encrypt(plaintext, keys)
+print('Ciphertext:', ''.join(ciphertext))

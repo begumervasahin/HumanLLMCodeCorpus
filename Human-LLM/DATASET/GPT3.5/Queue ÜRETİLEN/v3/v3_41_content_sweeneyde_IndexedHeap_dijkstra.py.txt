@@ -1,0 +1,60 @@
+from collections import defaultdict
+from math import inf
+from indexedheap import IndexedHeap
+
+class Graph:
+    """A non-negative weighted, directed multigraph."""
+    def __init__(self):
+        self.vertices = set()
+        self.edges = defaultdict(list)
+
+    def add_edge(self, source, destination, weight):
+        """Add a weighted edge from source to destination."""
+        if weight < 0:
+            raise ValueError("Edge weights cannot be negative.")
+        self.vertices |= {destination, source}
+        self.edges[source].append((destination, weight))
+
+    def distance_and_shortest_path(self, source, destination):
+        """Find the lightest-weighted path from source to destination using Dijkstra's algorithm.
+
+        Args:
+            source: The source vertex.
+            destination: The destination vertex.
+
+        Returns:
+            A tuple (distance, path) where distance is the lightest-weighted
+            path from source to destination, and path is the list of vertices
+            representing the shortest path.
+        """
+        if not {source, destination} <= self.vertices:
+            return inf, None
+
+        distance = {v: inf for v in self.vertices}
+        distance[source] = 0
+        predecessor = {}
+        heap = IndexedHeap((distance[v], v) for v in self.vertices)
+
+        while heap.peek() != destination:
+            current_vertex = heap.pop()
+            current_distance = distance[current_vertex]
+            for neighbor, edge_weight in self.edges[current_vertex]:
+                alternative_distance = current_distance + edge_weight
+                if alternative_distance < distance[neighbor]:
+                    distance[neighbor] = alternative_distance
+                    predecessor[neighbor] = current_vertex
+                    heap.change_weight(neighbor, alternative_distance)
+
+        if distance[destination] == inf:
+            return inf, None
+
+        path = [destination]
+        while path[-1] != source:
+            path.append(predecessor[path[-1]])
+        path.reverse()
+
+        return distance[destination], path
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

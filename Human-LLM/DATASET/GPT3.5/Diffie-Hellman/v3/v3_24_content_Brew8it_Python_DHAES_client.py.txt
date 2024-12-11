@@ -1,0 +1,59 @@
+import socket
+from nacl.secret import SecretBox
+from nacl.utils import random
+from binascii import hexlify
+import hashlib
+
+class DiffieHellman:
+    def __init__(self):
+        self.prime = 23
+        self.generator = 5
+        self.private_key = random(32)
+
+    def generate_shared_key(self, server_public_key):
+        self.shared_key = pow(server_public_key, self.private_key, self.prime)
+
+    @property
+    def public_key(self):
+        return pow(self.generator, self.private_key, self.prime)
+
+    def get_shared_key_hash(self):
+        return hashlib.sha256(str(self.shared_key).encode()).digest()
+
+# Initialize Diffie-Hellman key exchange
+client_dh = DiffieHellman()
+server_address = ('localhost', 5555)
+
+# Connect to the server
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect(server_address)
+print("Connected to the server at %s:%s" % server_address)
+
+# Send the client's public key to the server
+client_socket.sendall(str(client_dh.public_key).encode())
+
+# Receive the server's public key and generate the shared secret key
+server_public_key = int(client_socket.recv(1024).decode())
+client_dh.generate_shared_key(server_public_key)
+print("Shared secret key generated:", hexlify(client_dh.get_shared_key_hash()))
+
+# Initialize the encryption box
+encryption_box = SecretBox(client_dh.get_shared_key_hash())
+
+# Start the communication loop
+while True:
+    print('Enter a message or "exit" to close the program:')
+    message = input()
+    if message.lower() != 'exit':
+        # Encrypt and send the message
+        encrypted_message = encryption_box.encrypt(message.encode())
+        client_socket.sendall(encrypted_message)
+        
+        # Receive and decrypt the response
+        data = client_socket.recv(1024)
+        decrypted_data = encryption_box.decrypt(data)
+        print('Received data:', decrypted_data.decode())
+    else:
+        print('Closing the connection.')
+        client_socket.close()
+        break

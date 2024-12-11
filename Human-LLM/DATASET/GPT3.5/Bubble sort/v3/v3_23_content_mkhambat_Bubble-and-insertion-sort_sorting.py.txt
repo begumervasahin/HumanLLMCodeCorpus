@@ -1,0 +1,85 @@
+import random
+import pickle
+import time
+import matplotlib.pyplot as plt
+
+# Sorting Algorithms
+def bubble_sort(arr):
+    """Sorts the array using the bubble sort algorithm."""
+    n = len(arr)
+    for i in range(n):
+        for j in range(n - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+
+def insertion_sort(arr):
+    """Sorts the array using the insertion sort algorithm."""
+    n = len(arr)
+    for j in range(1, n):
+        key = arr[j]
+        i = j - 1
+        while i >= 0 and arr[i] > key:
+            arr[i + 1] = arr[i]
+            i -= 1
+        arr[i + 1] = key
+
+# Data Handling
+def generate_input_data():
+    """Generates input data and stores it in a file."""
+    data = random.sample(range(1, 300000), 200000)
+    with open("data.txt", 'wb') as file:
+        pickle.dump(data, file)
+
+def load_input_data():
+    """Loads input data from the file."""
+    with open("data.txt", 'rb') as file:
+        return pickle.load(file)
+
+# Sorting Time Measurement
+def measure_sorting_time(data, sorting_func):
+    """Measures the average sorting time for a given sorting function."""
+    total_time = 0.0
+    for _ in range(10):
+        arr = random.sample(data, len(data))
+        start_time = time.time()
+        sorting_func(arr)
+        end_time = time.time()
+        total_time += end_time - start_time
+    return total_time / 10
+
+# Data Processing and Plotting
+def process_data():
+    """Processes the input data and measures sorting time for bubble sort and insertion sort."""
+    data = load_input_data()
+    avg_time_bubble_sort = []
+    avg_time_insertion_sort = []
+    input_sizes = []
+
+    increment = 2000
+    for _ in range(25):
+        avg_time_bubble_sort.append(measure_sorting_time(data[:increment], bubble_sort))
+        avg_time_insertion_sort.append(measure_sorting_time(data[:increment], insertion_sort))
+        input_sizes.append(increment)
+        increment += 2000
+
+    plot_results(input_sizes, avg_time_bubble_sort, avg_time_insertion_sort)
+
+def plot_results(input_sizes, bubble_sort_times, insertion_sort_times):
+    """Plots the sorting time comparison."""
+    plt.plot(input_sizes, bubble_sort_times, 'r--', label='Bubble Sort')
+    plt.plot(input_sizes, insertion_sort_times, 'b--', label='Insertion Sort')
+    plt.xlabel('Input Size')
+    plt.ylabel('Average Time (seconds)')
+    plt.title('Bubble Sort vs Insertion Sort')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+# Main Function
+def main():
+    """Main function to generate input data and process it."""
+    generate_input_data()
+    process_data()
+
+if __name__ == "__main__":
+    main()

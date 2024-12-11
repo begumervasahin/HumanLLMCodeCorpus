@@ -1,0 +1,233 @@
+import sys
+import math
+import hashlib
+import random
+import time
+
+def write_number(number, filename):
+    with open(filename, 'wb') as f:
+        while number > 0:
+            byte = number % 256
+            number //= 256
+            f.write(chr(byte))
+
+def bin_to_num(binary_string):
+    result = 0
+    for char in binary_string:
+        result = (result << 8) ^ ord(char)
+    return result
+
+def num_to_bin(number):
+    binary_string = ''
+    while number > 0:
+        binary_string = chr(number % 256) + binary_string
+        number //= 256
+    return binary_string
+
+def gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+def next_prime(p):
+    while p % 8 != 3:
+        p += 1
+    return next_prime_odd(p)
+
+def next_prime_odd(p):
+    mod_product = 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while True:
+        while gcd(p, mod_product) != 1:
+            p += 8
+        q = (p + 1) // 4
+        if (pow(2, p - 1, p) != 1 or pow(2, q - 1, q) != 1 or
+            pow(3, p - 1, p) != 1 or pow(3, q - 1, q) != 1 or
+            pow(5, p - 1, p) != 1 or pow(5, q - 1, q) != 1 or
+            pow(17, p - 1, p) != 1 or pow(17, q - 1, q) != 1):
+            p += 8
+            continue
+        break
+    return p
+
+prime = 2**160 * 115 + 86427
+n4 = (prime + 1) // 4
+a = prime - 31
+c = 17
+
+def inv(b, m):
+    s, t = 0, 1
+    while b != 1:
+        q = a // b
+        a, b = b, a % b
+        s, t = t, s - q * t
+    if t < 0:
+        t += m
+    return t
+
+def E(m, key, prime):
+    return pow(m, key, prime)
+
+def D(c, key, prime):
+    key = inv(key, prime - 1)
+    return pow(c, key, prime)
+
+def hex_text_to_num(hex_text):
+    result = 0
+    for char in hex_text:
+        if ord(char) < 58 and ord(char) >= 48:
+            result = (result << 4) + ord(char) - 48
+        elif ord(char) <= ord('f') and ord(char) >= ord('a'):
+            result = (result << 4) + ord(char) - 87
+    return result
+
+b_hex = "5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b"
+b = hex_text_to_num(b_hex)
+b = 0
+
+def code_to_num(code):
+    result = 0
+    for char in code:
+        if ord(char) >= 48 and ord(char) < 58:
+            result = (result << 6) + ord(char) - 48
+        if ord(char) >= 65 and ord(char) < 91:
+            result = (result << 6) + ord(char) - 55
+        if ord(char) >= 97 and ord(char) < 123:
+            result = (result << 6) + ord(char) - 61
+        if char == "'":
+            result = (result << 6) + 62
+        if char == '/':
+            result = (result << 6) + 63
+    return result
+
+def num_to_code(number):
+    code = ''
+    while number > 0:
+        remainder = number % 64
+        if remainder < 10:
+            code = chr(remainder + 48) + code
+        elif remainder < 36:
+            code = chr(remainder + 55) + code
+        elif remainder < 62:
+            code = chr(remainder + 61) + code
+        elif remainder == 62:
+            code = "'" + code
+        elif remainder == 63:
+            code = '/' + code
+        number //= 64
+    return code
+
+def h(x):
+    digest = hashlib.sha256(x.encode()).digest()
+    result = 0
+    for byte in digest:
+        result = (result << 8) ^ byte
+    return result % n4
+
+def random_256(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***".encode())
+    md.update('large key value for generation of random number'.encode())
+    md.update(m.encode())
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+def random_X(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***".encode())
+    md.update('large key value for generation of random number'.encode())
+    md.update(m.encode())
+    md.update(str(time.gmtime().tm_year + time.gmtime().tm_mday).encode())
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+def gen_P(x, a, b):
+    if (4 * a**3 + 27 * b**2) % prime == 0:
+        b += 1
+    while pow(c * x**3 + a * x + b, (prime - 1) / 2, prime) != 1:
+        x += 1
+    y = pow(c * x**3 + a * x + b, (prime + 1) / 4, prime)
+    return [x % prime, y % prime]
+
+def d_point(P):
+    x, y = P
+    s = ((3 * c * (x**2) + a) * inv(2 * y, prime)) % prime
+    xr = (cinv * s**2 - 2 * x) % prime
+    yr = (-y + s * (x - xr)) % prime
+    return [xr, yr]
+
+def add_P(P, Q):
+    if P == Q:
+        return d_point(P)
+    x1, x2 = P[0], Q[0]
+    y1, y2 = P[1], Q[1]
+    while x1 < x2:
+        x1 += prime
+    while y1 < y2:
+        y1 += prime
+    s = ((y1 - y2) * inv(x1 - x2, prime)) % prime
+    xr = (cinv * s**2 - x1 - x2) % prime
+    yr = (s * (x1 - xr) - y1) % prime
+    return [xr % prime, yr % prime]
+
+def mul_P(P, n):
+    is_first = True
+    res_P = P
+    if n < 0:
+        res_P[1] = prime - res_P[1]
+        n = (-1) * n
+    bit_size = 20
+    while 2**bit_size < n:
+        bit_size += 1
+    PP = res_P
+    for bit in range(bit_size + 1):
+        if (n & (1 << bit) != 0):
+            if is_first:
+                res_P = PP
+                is_first = False
+            else:
+                res_P = add_P(res_P, PP)
+        PP = d_point(PP)
+    return res_P
+
+def sign_schnorr(G, m, x):
+    k = random_X(m)
+    R = mul_P(G, k)
+    e = h(str(R[0]) + m)
+    return [(k - x * e) % n4, e]
+
+def ecdsa(G, m, x):
+    hh = h(m)
+    k = 2 * random_X(m) + 1
+    R = mul_P(G, k)
+    s = (inv(k, n4) * (hh + R[0] * x)) % n4
+    return [s, R[0]]
+
+def ecdsa_verify(G, m, S, Y):
+    si = inv(S[0], n4)
+    hh = h(m)
+    u1 = (si * h(m)) % n4
+    u2 = (si * S[1]) % n4
+    return add_P(mul_P(G, u1), mul_P(Y, u2))[0] == S[1]
+
+x = a + 17
+cinv = inv(c, prime)
+P = gen_P(x, a, b)
+P = mul_P(P, 4)
+
+with open(sys.argv[1], 'r') as f:
+    message = f.read()
+
+x = 2 * random_256(sys.argv[1]) + 1
+y = mul_P(P, x)
+write_number(y[0], 'y0')
+write_number(y[1], 'y1')
+
+sig = sign_schnorr(P, message, x)
+write_number(sig[0], 's0')
+write_number(sig[1], 's1')
+
+print("Test Schnoor ", h(str(add_P(mul_P(P, sig[0]), mul_P(y, sig[1]))[0]) + message) == sig[1])

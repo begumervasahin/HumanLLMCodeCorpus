@@ -1,0 +1,66 @@
+import nltk
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import AffinityPropagation
+
+# Download NLTK components
+nltk.download('punkt')
+
+# Initialize NLTK stemmer and punctuation map
+stemmer = nltk.stem.snowball.SpanishStemmer()
+punctuation_map = dict((ord(char), None) for char in string.punctuation)
+
+# Define function to stem tokens
+def stem_tokens(tokens):
+    return [stemmer.stem(item) for item in tokens]
+
+# Define function to normalize text
+def normalize(text):
+    # Tokenize text, convert to lowercase, and stem tokens
+    return stem_tokens(nltk.word_tokenize(text.lower().translate(punctuation_map)))
+
+# Initialize TF-IDF Vectorizer with custom tokenizer
+vectorizer = TfidfVectorizer(tokenizer=normalize)
+
+# Define function to perform clustering using Affinity Propagation
+def get_clusters(sentences):
+    # Convert sentences to TF-IDF matrix
+    tf_idf_matrix = vectorizer.fit_transform(sentences)
+
+    # Compute similarity matrix
+    similarity_matrix = (tf_idf_matrix * tf_idf_matrix.T).A
+
+    # Apply Affinity Propagation clustering
+    affinity_propagation = AffinityPropagation(affinity="precomputed", damping=0.5)
+    affinity_propagation.fit(similarity_matrix)
+
+    # Get cluster labels and centers
+    labels = affinity_propagation.labels_
+    cluster_centers = affinity_propagation.cluster_centers_indices_
+
+    # Group sentences into clusters
+    clusters = {}
+    for sentence, cluster_id in zip(sentences, labels):
+        cluster_center = sentences[cluster_centers[cluster_id]]
+        clusters.setdefault(cluster_center, []).append(sentence)
+
+    return clusters
+
+# Input sentences
+sentences = [
+    'Messi es el mejor jugador de Football.',
+    'Neymar juega al football con Messi en el Barcelona.',
+    'Los Pumas son la seleccion nacional de Rugby.',
+    'Los Pumas ganaron contra Japon.',
+    'Las Leonas ganaron una medalla de Oro en las olimpiadas.',
+    'Carla Rebecchi es la capitana de las Leonas.'
+]
+
+# Get clusters
+clusters = get_clusters(sentences)
+
+# Print clusters
+for cluster_center, cluster_elements in clusters.items():
+    print(cluster_center, ':')
+    for element in cluster_elements:
+        print('  -', element)

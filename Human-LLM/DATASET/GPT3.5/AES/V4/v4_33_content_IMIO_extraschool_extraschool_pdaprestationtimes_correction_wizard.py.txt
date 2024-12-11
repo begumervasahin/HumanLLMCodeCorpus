@@ -1,0 +1,34 @@
+from odoo import models, fields, api
+
+class ExtraschoolPrestationTimesCorrectionWizard(models.TransientModel):
+    _name = 'extraschool.pdaprestationtimes_correction_wizard'
+    
+    prestation_type = fields.Selection(
+        [('E', 'In'), ('S', 'Out')],
+        string='Prestation Type',
+        required=True
+    )
+    
+    prestation_time = fields.Float(
+        string='Prestation Time',
+        required=True
+    )
+
+    @api.multi
+    def apply_correction(self):
+        active_ids = self._context.get('active_ids')
+        
+        if active_ids:
+            prestations_to_correct = self.env['extraschool.pdaprestationtimes'].browse(active_ids)
+            
+            prestations_to_correct.write({
+                'es': self.prestation_type,
+                'prestation_time': self.prestation_time
+            })
+            
+            for prestation in prestations_to_correct:
+                day_aggregate = prestation.prestation_times_of_the_day_id
+                day_aggregate.reset()
+                day_aggregate.check()
+
+        return True

@@ -1,0 +1,40 @@
+import pypyodbc
+from DFSFootball_Lib import TeamReformat
+
+# Set pypyodbc to not lowercase column names
+pypyodbc.lowercase = False
+
+# Connect to the database
+connection_string = r"Driver={Microsoft Access Driver (*.mdb, *.accdb)};" + \
+                    r"Dbq=C:\Users\mille\OneDrive\Documents\DFSFootball.accdb;"
+conn = pypyodbc.connect(connection_string)
+
+# Create cursors for querying matchups and defensive stats
+matchups_cursor = conn.cursor()
+matchups_cursor.execute("SELECT ID, AwayTeam, HomeTeam FROM Matchups")
+
+def_cursor = conn.cursor()
+def_cursor.execute("SELECT Team, DefDVOA FROM DefensiveStats")
+
+# Iterate through matchup rows
+for matchup_row in iter(matchups_cursor.fetchone, None):
+    # Reformat team names
+    away_team = TeamReformat(matchup_row.get("AwayTeam"))
+    home_team = TeamReformat(matchup_row.get("HomeTeam"))
+    
+    # Iterate through defensive stats
+    for def_row in iter(def_cursor.fetchone, None):
+        # Check if team in defensive stats matches the away team
+        if def_row.get("Team") == away_team:
+            away_dvoa = def_row.get("DefDVOA")
+            break
+    else:
+        print(away_team + " error")
+        continue
+    
+    print(f"{away_team}'s DVOA = {away_dvoa}")
+
+# Close cursors and connection
+matchups_cursor.close()
+def_cursor.close()
+conn.close()

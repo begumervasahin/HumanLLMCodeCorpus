@@ -1,0 +1,93 @@
+from bs4 import BeautifulSoup, Comment
+import re
+import urllib.request
+
+def scrape_baseball_reference(resource, table_ids=None, server_url="http://www.baseball-reference.com/"):
+    """
+    Scrape data from Baseball Reference.
+
+    Args:
+    - resource (str): The path to the resource to scrape.
+    - table_ids (list): A list of table IDs to scrape data from.
+    - server_url (str): The base URL of the website.
+
+    Returns:
+    - list: A list containing dictionaries of scraped data and their corresponding table IDs.
+    """
+    data = {}
+    all_data = []
+
+    # Print the URL being scraped
+    print("Scraping URL:", server_url + resource)
+
+    # Open the URL and read the HTML content
+    with urllib.request.urlopen(server_url + resource) as response:
+        html_content = response.read()
+
+    # Parse HTML using BeautifulSoup
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Find all HTML comments in the soup
+    comments = soup.find_all(text=lambda text: isinstance(text, Comment))
+
+    # Iterate through comments to find tables of interest
+    for comment in comments:
+        for table_id in table_ids:
+            if f'table class="row_summable sortable stats_table" id="{table_id}"' in comment:
+                # Initialize an empty list for table data
+                data[table_id] = []
+
+                # Split the comment content into rows based on "</tr>"
+                rows = comment.string.split("</tr>")
+
+                # Initialize flag to indicate the start of table data
+                table_found = False
+
+                # Iterate through rows to extract data
+                for row in rows:
+                    # Initialize an empty list for row statistics
+                    stats = []
+
+                    # Check if the row contains the table of interest
+                    if f'table class="row_summable sortable stats_table" id="{table_id}"' in row:
+                        # Extract column headers from the row
+                        headers = re.findall(r'<th.*>([^<]*)</th>', row)
+
+                        # Set flag to indicate the start of table data
+                        table_found = True
+                        continue
+
+                    # If table data is found, extract statistics from the row
+                    if table_found:
+                        # Split the row content based on ">"
+                        entries = row.split(">")
+
+                        # Iterate through entries to extract data
+                        for entry in entries:
+                            # Extract data enclosed in "<th>" tags as column headers
+                            if "</th" in entry and "</thead" not in entry:
+                                stat = re.findall(r'(.*)<', entry)
+                                stats.extend(stat)
+
+                            # Extract data enclosed in "<td>" tags as row statistics
+                            if "</td" in entry:
+                                stat = re.findall(r'(.*)<', entry)
+                                stats.extend(stat)
+
+                        # If statistics are extracted, append them to the table data
+                        if stats:
+                            data[table_id].append(dict(zip(headers, stats)))
+
+                # Append the table data to the list of all data
+                all_data.append([data, table_id])
+
+    # Return the scraped data
+    return all_data
+
+if __name__ == '__main__':
+    # Example usage:
+    resource = "path_to_resource"  # Replace with the actual resource path
+    table_ids = ["table_id1", "table_id2"]  # Replace with the actual table IDs
+    server_url = "http://www.baseball-reference.com/"  # Replace with the actual server URL
+    scraped_data = scrape_baseball_reference(resource, table_ids, server_url)
+    print(scraped_data)

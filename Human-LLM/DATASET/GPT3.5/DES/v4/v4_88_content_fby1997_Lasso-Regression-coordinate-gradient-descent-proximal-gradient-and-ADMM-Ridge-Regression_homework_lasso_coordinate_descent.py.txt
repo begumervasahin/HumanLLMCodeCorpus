@@ -1,0 +1,53 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Lasso, LassoCV
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+# Function to calculate standard error
+def calculate_standard_error(sample):
+    std_deviation = np.std(sample, ddof=0)
+    standard_error = std_deviation / np.sqrt(len(sample))
+    return standard_error
+
+# Read the dataset
+data = pd.read_table(r'D:\360MoveData\Users\HP\Desktop\prostate.data.txt')
+
+# Define features and target variable
+features = ['lcavol', 'lweight', 'age', 'lbph', 'svi', 'lcp', 'gleason', 'pgg45']       
+X = data[features]
+y = data['lpsa']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+# Define the range of alpha values for LassoCV
+alphas = np.logspace(-5, 5, 200)
+
+# Perform Lasso cross-validation to select the optimal alpha
+lasso_cv = LassoCV(alphas=alphas, normalize=True, cv=10)
+lasso_cv.fit(X_train, y_train)
+optimal_alpha = round(lasso_cv.alpha_, 4)
+
+# Fit Lasso regression model with the optimal alpha
+lasso_model = Lasso(alpha=optimal_alpha)
+lasso_model.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred_test = lasso_model.predict(X_test)
+
+# Calculate evaluation metrics
+mse = round(mean_squared_error(y_test, y_pred_test), 4)
+mae = round(mean_absolute_error(y_test, y_pred_test), 4)
+std_err = round(calculate_standard_error(y_pred_test), 4)
+
+# Print the results
+intercept = round(lasso_model.intercept_, 4)
+coefficients = [(features[i], round(lasso_model.coef_[i], 4)) for i in range(len(features))]
+
+print('Optimal Alpha:', optimal_alpha)
+print('Intercept:', intercept)
+print('Estimated Coefficients:', coefficients)
+print('Standard Error:', std_err)
+print('Mean Squared Error:', mse)
+print('Mean Absolute Error:', mae)

@@ -1,0 +1,72 @@
+from state import State
+from collections import deque
+
+class PriorityQueue:
+    def __init__(self):
+        self.elements = []
+
+    def empty(self):
+        return len(self.elements) == 0
+
+    def put(self, item, priority):
+        self.elements.append((priority, item))
+        self.elements.sort(key=lambda elem: elem[0], reverse=True)
+
+    def get(self):
+        return self.elements.pop(0)[1]
+
+goal = State(red=0, green=46, blue=0)
+
+def heuristic_to_goal(node):
+    return abs(goal.red_count - node.red_count) \
+         + abs(goal.blue_count - node.blue_count) \
+         + abs(goal.green_count - node.green_count)
+
+def reconstruct_path(came_from, start, goal):
+    current = goal
+    path = []
+    while current != start and current is not None:
+        path.append(current)
+        current = came_from[str(current)]
+    path.reverse()
+    return path
+
+def a_star(start_state):
+    queue = PriorityQueue()
+    queue.put(start_state, 0)
+    came_from = {}
+    cost_so_far = {}
+    came_from[str(start_state)] = None
+    cost_so_far[str(start_state)] = 0
+    full_path = []
+    neighbors = deque()
+
+    while not queue.empty():
+        current = queue.get()
+        full_path.append(str(current))
+
+        if current.has_only_one_color():
+            break
+
+        neighbors.clear()
+
+        if current.has_red_ones() and current.has_green_ones():
+            neighbors.append(current.red_met_green())
+        if current.has_blue_ones() and current.has_red_ones():
+            neighbors.append(current.blue_met_red())
+        if current.has_blue_ones() and current.has_green_ones():
+            neighbors.append(current.green_met_blue())
+
+        for next_state in neighbors:
+            new_cost = cost_so_far[str(current)] + 1
+            if str(next_state) not in cost_so_far or new_cost < cost_so_far[str(next_state)]:
+                cost_so_far[str(next_state)] = new_cost
+                priority = new_cost + heuristic_to_goal(next_state)
+                queue.put(next_state, priority)
+                came_from[str(next_state)] = str(current)
+
+    return {
+        'final_state': current,
+        'full_path': full_path,
+        'path': reconstruct_path(came_from, start_state, goal)
+    }

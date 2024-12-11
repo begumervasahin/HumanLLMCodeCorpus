@@ -1,0 +1,50 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+
+def crawl_web(seed_url, max_parents=1000, max_depth=7):
+    parent_urls = [seed_url]
+    visited_urls = set()
+    BASE_URL = "https://en.wikipedia.org"
+
+    def crawl_child_links(url):
+        time.sleep(1)
+        child_links = []
+
+        try:
+            page = requests.get(url)
+            soup = BeautifulSoup(page.text, 'html.parser')
+            content_div = soup.find('div', {'id': 'mw-content-text'})
+
+            for link in content_div.find_all('a', {'href': re.compile("^/wiki")}):
+                href = link.get('href')
+                if href and ':' not in href:
+                    link_text = BASE_URL + href.split('#')[0]
+                    if len(link_text) > 1 and link_text not in child_links:
+                        child_links.append(link_text)
+
+        except Exception as e:
+            print(f"Error crawling {url}: {e}")
+
+        return child_links
+
+    while len(parent_urls) < max_parents and max_depth > 0:
+        new_urls = []
+        for parent_url in parent_urls:
+            if parent_url not in visited_urls:
+                new_urls.extend(crawl_child_links(parent_url))
+                visited_urls.add(parent_url)
+
+        parent_urls.extend(new_urls)
+        parent_urls = parent_urls[:max_parents]  # Limit to max_parents
+        max_depth -= 1
+
+    save_urls_to_file(parent_urls)
+
+def save_urls_to_file(urls, filename='Task-1-E-URLs.txt'):
+    with open(filename, 'w') as file:
+        for index, url in enumerate(urls, start=1):
+            file.write(f"{index} {url}\n")
+
+crawl_web('https://en.wikipedia.org/wiki/Tropical_cyclone')

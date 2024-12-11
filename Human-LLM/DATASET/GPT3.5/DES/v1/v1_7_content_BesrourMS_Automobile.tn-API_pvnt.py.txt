@@ -1,0 +1,50 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+
+def scrape_cars_info():
+    headers = {'Access-Control-Allow-Origin': '*'}
+    url = 'https://www.automobile.tn/fr/neuf/recherche'
+    response = requests.get(url, headers=headers)
+    page = BeautifulSoup(response.text, 'html.parser')
+    
+    # Get the total number of cars
+    total = page.select('.total')[0].get_text(strip=True)
+    count = total.split(" ")
+    limit = 15  # Number of cars per page
+    
+    # Calculate the number of pages
+    pager = (int(count[1]) // limit) + 1 if int(count[1]) % limit != 0 else int(count[1]) // limit
+    
+    arrayclassement = []
+
+    # Iterate through each page
+    for j in range(1, pager + 1):
+        url = f'https://www.automobile.tn/fr/neuf/recherche/s=sort%21price?sort=price&page={j}'
+        response = requests.get(url, headers=headers)
+        html = BeautifulSoup(response.text, 'html.parser')
+
+        # Iterate through each car on the page
+        cars = html.select('.vehicle')
+        for car in cars:
+            id = car['data-key'].strip()
+            voiture = car.select_one('.title').get_text(strip=True)
+            prix = car.select_one('.price').get_text(strip=True)
+            lien = car.select_one('a')['href'].strip()
+            img = car.select_one('img')['src'].strip()
+
+            arrayclassement.append({
+                'ID': id,
+                'Voiture': voiture,
+                'Image': img,
+                'Prix': prix,
+                'Lien': f'https://www.automobile.tn{lien}',
+            })
+
+    # Truncate the list to match the total count
+    arrayclassement = arrayclassement[:int(count[1])]
+    return arrayclassement
+
+if __name__ == "__main__":
+    cars_info = scrape_cars_info()
+    print(json.dumps(cars_info, ensure_ascii=False, indent=2))

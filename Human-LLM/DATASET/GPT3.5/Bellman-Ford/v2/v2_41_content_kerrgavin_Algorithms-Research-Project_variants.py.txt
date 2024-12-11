@@ -1,0 +1,183 @@
+import math
+
+class Vertex:
+    """A class representing a vertex in a graph."""
+
+    def __init__(self, value=None, distance=math.inf, predecessor=None):
+        """Initialize the vertex."""
+        self.value = value
+        self.distance = distance
+        self.predecessor = predecessor
+
+
+class Edge:
+    """A class representing an edge in a graph."""
+
+    def __init__(self, u=None, v=None, weight=None):
+        """Initialize the edge."""
+        self.u = u
+        self.v = v
+        self.weight = weight
+
+
+class Graph:
+    """A class representing a graph."""
+
+    def __init__(self, vertices=None, edges=None, directed=False):
+        """Initialize the graph."""
+        self.vertices = vertices or []
+        self.edges = edges or []
+        self.directed = directed
+        self.adjacency_list = {}
+
+    def get_adjacent_vertices(self, vertex):
+        """Return adjacent vertices of a given vertex."""       
+        return self.adjacency_list.get(vertex.value, [])        
+
+    def add_vertex(self, value):
+        """Add a vertex to the graph."""
+        new_vertex = Vertex(value=value)
+        self.vertices.append(new_vertex)
+        self.adjacency_list[new_vertex.value] = []
+
+    def add_edge(self, u, v, weight):
+        """Add an edge between two vertices."""
+        new_edge = Edge(u, v, weight)
+        self.adjacency_list.setdefault(u.value, []).append(new_edge)
+        self.edges.append(new_edge)
+        if not self.directed:
+            reverse_edge = Edge(v, u, weight)
+            self.adjacency_list.setdefault(v.value, []).append(reverse_edge)
+
+
+class FibonacciHeap:
+    # Assume FibonacciHeap implementation is available
+    pass
+
+
+def initSingleSource(G, s):
+    """Initialize all vertices with infinite distance except for the source."""
+    for v in G.vertices:
+        v.distance = math.inf
+        v.predecessor = None
+    s.distance = 0
+
+
+def relax(u, v, w):
+    """Relax the edge (u, v) with weight w if necessary."""
+    if v.distance > u.distance + w:
+        v.distance = u.distance + w
+        v.predecessor = u
+
+
+def extractMin(Q):
+    """Extract the vertex with the minimum distance from the list."""
+    min_index = 0
+    for index in range(len(Q)):
+        if Q[min_index].distance > Q[index].distance:
+            min_index = index
+    return Q.pop(min_index)
+
+
+def bellmanFord(G, s):
+    """Find the shortest paths from a single source vertex using Bellman-Ford algorithm."""
+    initSingleSource(G, s)
+    for _ in range(len(G.vertices)):
+        for e in G.edges:
+            relax(e.u, e.v, e.weight)
+    for e in G.edges:
+        if e.v.distance > e.u.distance + e.weight:
+            return False
+    return True
+
+
+def dijkstra(G, s):
+    """Find the shortest paths from a single source vertex using Dijkstra's algorithm."""
+    initSingleSource(G, s)
+    S = []
+    Q = G.vertices[:]
+    while Q:
+        u = extractMin(Q)
+        S.append(u)
+        for e in G.get_adjacent_vertices(u):
+            relax(u, e.v, e.weight)
+    return S
+
+
+def yenRelax(u, v, w, D):
+    """Relax the edge (u, v) with weight w if necessary for Yen's algorithm."""
+    if v.distance > u.distance + w:
+        v.distance = u.distance + w
+        v.predecessor = u
+        D[v.value] = True
+
+
+def Yen(G, s):
+    """Find the shortest paths from a single source vertex using Yen's algorithm."""
+    initSingleSource(G, s)
+    C = [s]
+    D = [False] * len(G.vertices)
+    while C:
+        for u in G.vertices:
+            edges = G.get_adjacent_vertices(u)
+            if u in C or D[u.value]:
+                for uv in edges:
+                    yenRelax(uv.u, uv.v, uv.weight, D)
+        for i in range(len(G.vertices) - 1, -1, -1):
+            u = G.vertices[i]
+            edges = G.get_adjacent_vertices(u)
+            if u in C or D[u.value]:
+                for uv in edges:
+                    yenRelax(uv.u, uv.v, uv.weight, D)
+        C = [G.vertices[i] for i in range(len(D) - 1) if D[i]]  
+        D = [False] * len(G.vertices)
+
+
+def fibDijkstra(G, s):
+    """Find the shortest paths from a single source vertex using Dijkstra's algorithm with Fibonacci Heap."""
+    n = len(G.vertices)
+    visited = [False] * n
+    distance = [math.inf] * n
+    heapNodes = [None] * (n + 1)
+    heap = FibonacciHeap()
+    for i in range(1, n + 1):
+        heapNodes[i] = heap.insert(math.inf, i)
+    distance[s.value] = 0
+    heap.decrease_key(heapNodes[s.value + 1], 0)
+    S = []
+    while heap.total_nodes:
+        current = heap.extract_min().value - 1
+        visited[current] = True
+        S.append(current)
+        for e in G.adjacency_list[current]:
+            neighbor = e.v.value
+            cost = e.weight
+            if not visited[neighbor]:
+                if distance[current] + cost < distance[neighbor]:
+                    distance[neighbor] = distance[current] + cost
+                    heap.decrease_key(heapNodes[neighbor + 1], distance[neighbor])
+    return S
+
+
+# Example usage:
+# Create a graph
+G = Graph()
+
+# Add vertices
+v1 = Vertex(value=1)
+v2 = Vertex(value=2)
+v3 = Vertex(value=3)
+G.add_vertex(v1)
+G.add_vertex(v2)
+G.add_vertex(v3)
+
+# Add edges
+G.add_edge(v1, v2, 5)
+G.add_edge(v2, v3, 10)
+# Add more edges as needed
+
+# Call functions as needed
+# bellmanFord_result = bellmanFord(G, v1)
+# dijkstra_result = dijkstra(G, v1)
+# yen_result = Yen(G, v1)
+# fibDijkstra_result = fibDijkstra(G, v1)

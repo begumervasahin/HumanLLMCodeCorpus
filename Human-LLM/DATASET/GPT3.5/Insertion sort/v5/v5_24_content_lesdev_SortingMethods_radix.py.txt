@@ -1,0 +1,84 @@
+import sys
+from tkinter import *
+import tkinter.simpledialog as tkSimpleDialog
+
+# Function to perform Radix Sort
+def radix_sort(vector):
+    # Function to perform Counting Sort
+    def counting_sort(vector, exp):
+        n = len(vector)
+        output = [0] * n
+        count = [0] * 10
+
+        # Count the occurrences of each digit at the current digit position
+        for i in range(n):
+            index = int(vector[i] / exp) % 10
+            count[index] += 1
+
+        # Adjust the count array to determine the position of each digit in the output
+        for i in range(1, 10):
+            count[i] += count[i - 1]
+
+        # Build the output array using the count array
+        i = n - 1
+        while i >= 0:
+            index = int(vector[i] / exp) % 10
+            output[count[index] - 1] = vector[i]
+            count[index] -= 1
+            i -= 1
+
+        # Copy the sorted elements back to the original array
+        for i in range(n):
+            vector[i] = output[i]
+
+    # Calculate the maximum element in the array
+    max_num = max(vector)
+    exp = 1
+    while max_num / exp > 0:
+        # Perform counting sort for each digit position
+        counting_sort(vector, exp)
+        exp *= 10
+
+# Function triggered by button click for sorting
+def sorting():
+    num_elements = int(entry_num.get())
+    vector = []
+
+    # Get user input for the numbers
+    for _ in range(num_elements):
+        number = tkSimpleDialog.askinteger("", "Ingresa el numero")
+        vector.append(number)
+
+    # Display the unsorted list
+    unsorted_str = str(vector)
+    label_unsorted.config(text=unsorted_str)
+
+    # Perform Radix Sort
+    radix_sort(vector)
+
+    # Display the sorted list
+    sorted_str = str(vector)
+    label_sorted.config(text=sorted_str)
+
+# GUI setup
+app = Tk()
+app.title("Radix Sort")
+app.geometry('250x200')
+app.configure(bg='SkyBlue2')
+
+label_num = Label(app, text="Cuantos numeros vas a ingresar?", font='Helvetica 12', bg='SkyBlue2')
+label_num.pack()
+
+entry_num = Entry(app, width=8)
+entry_num.pack()
+
+button_sort = Button(app, text="Ok!", command=sorting)
+button_sort.pack(pady=(10, 0))
+
+label_unsorted = Label(app, text="", bg='SkyBlue2')
+label_unsorted.pack(pady=(10, 0))
+
+label_sorted = Label(app, text="", bg='SkyBlue2')
+label_sorted.pack(pady=(10, 0))
+
+app.mainloop()

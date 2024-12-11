@@ -1,0 +1,106 @@
+# Import necessary modules and functions from utils and other files
+import utils
+from utils import nltk, stopwords, get_sentences, get_bow, generate_collocations, generate_wn_list
+from answer_sentences import baseline, choose_sentence
+from answer_phrases import find_answer
+from qa_engine.base import QABase
+from qa_engine.score_answers import main as score_answers
+
+# Function to get the answer to a question based on the provided story
+def get_answer(question, story):
+    """
+    Get the answer to a question based on the provided story.
+    
+    Parameters:
+    - question: dict containing question details
+    - story: dict containing story details
+    
+    Returns:
+    - str: the answer to the question
+    """
+    # Generate collocations and WordNet lists for the story
+    generate_collocations()
+    generate_wn_list(story)
+    
+    # Determine whether to use the sch version or story version
+    if isinstance(story["sch"], str):
+        sentences = get_sentences(story["sch"])
+    else:
+        sentences = get_sentences(story["text"])
+    
+    # Print question details for debugging
+    print(question['qid'])
+    print('difficulty: ' + question['difficulty'])
+    
+    # Get bag-of-words representation for the question
+    qbow = get_bow(get_sentences(question["text"])[0], stopwords)
+    print("qbow:" + str(qbow))
+    
+    # Use baseline method to get initial answer candidates
+    b = baseline(qbow, sentences, stopwords)
+    print("Baseline output: " + str(b))
+    base = " ".join([t[0] for t in b])
+    answer = base
+    
+    # Choose the best sentence to answer the question
+    sentence = choose_sentence(question, story)
+    
+    # Process the chosen sentence to form the final answer
+    if isinstance(story["sch"], str):
+        sentences = nltk.sent_tokenize(story["sch"])
+        s_dep = story['sch_dep']
+        s_con = story['sch_par']
+    else:
+        sentences = nltk.sent_tokenize(story["text"])
+        s_dep = story['story_dep']
+        s_con = story['story_par']
+    
+    # If multiple sentences are chosen, combine answers from each sentence
+    if sentence != None:
+        answer = sentence
+        if isinstance(sentence, list):
+            full_answer = ''
+            for chosen_sent in sentence:
+                i = 0
+                for sent in sentences:
+                    if sent == chosen_sent:
+                        full_answer += find_answer(question, s_dep[i], s_con[i])        
+                        full_answer += ' '
+                    i += 1
+            answer = full_answer
+        else:
+            i = 0
+            for sent in sentences:
+                print("sentence iterating over: " + sent)
+                print("sentence from choose_sentence: " + sentence)
+                if sent == sentence:
+                    answer = find_answer(question, s_dep[i], s_con[i])
+                i += 1
+    
+    # Print and return the final answer
+    print("answer:")
+    print(answer)
+    print()
+    return answer
+
+# Class to handle the QA engine based on QABase
+class QAEngine(QABase):
+    @staticmethod
+    def answer_question(question, story):
+        answer = get_answer(question, story)
+        return answer
+
+# Function to run the QA engine and score answers
+def run_qa():
+    QA = QAEngine()
+    QA.run()
+    QA.save_answers()
+    score_answers()
+
+# Main function to run the QA system
+def main():
+    run_qa()
+
+# Entry point of the program
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,37 @@
+import Encryption
+import os
+
+def convert_to_int(key):
+    """Converts a random key to an integer."""
+    return int.from_bytes(key, byteorder='big')
+
+# Generate random keys
+random_key1 = os.urandom(32)
+random_key2 = os.urandom(32)
+
+random_key1_int = convert_to_int(random_key1)
+random_key2_int = convert_to_int(random_key2)
+
+print("Generated Keys:")
+print("Key 1:", random_key1_int)
+print("Key 2:", random_key2_int)
+
+# Initialize AESCipher instances with the random keys
+alice_cipher = Encryption.AESCipher(random_key1_int)
+bob_cipher = Encryption.AESCipher(random_key2_int)
+
+print("\nPublic Keys:")
+print("Alice's Public Key:", alice_cipher.getPubKey())
+print("Bob's Public Key:", bob_cipher.getPubKey())
+
+# Perform Diffie-Hellman key exchange
+alice_cipher.DHEC(bob_cipher.getPubKey())
+bob_cipher.DHEC(alice_cipher.getPubKey())
+
+print("\nTest Rounds:")
+# Encrypt and decrypt test messages
+encrypted_msg1 = alice_cipher.encrypt("howdy" + " " + 128 * ",")
+print("Decrypted Message 1:", bob_cipher.decrypt(encrypted_msg1))
+
+encrypted_msg2 = bob_cipher.encrypt("howdy2")
+print("Decrypted Message 2:", alice_cipher.decrypt(encrypted_msg2))

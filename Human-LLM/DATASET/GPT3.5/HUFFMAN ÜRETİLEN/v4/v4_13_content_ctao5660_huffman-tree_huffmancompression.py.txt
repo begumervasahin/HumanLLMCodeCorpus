@@ -1,0 +1,128 @@
+class Node:
+    def __init__(self, frequency, char):
+        self.left = None
+        self.right = None
+        self.frequency = frequency
+        self.char = char
+
+    def printTree(self):
+        if self.char is not None:
+            print(self.char, end=" ")
+        else:
+            self.left.printTree()
+            self.right.printTree()
+
+class BinaryTree:
+    def __init__(self, freqList):
+        self.sortedList = sorted(freqList, key=freqList.get, reverse=True)
+        self.listLength = len(self.sortedList)
+        self.freqList = freqList
+        self.codeDict = {}
+        self.reverseDict = {}
+        self.nodeList = []
+
+    def createTree(self):
+        for char in self.sortedList:
+            self.nodeList.append(Node(self.freqList[char], char))
+        while True:
+            self.nodeList.sort(key=lambda node: node.frequency)
+            node1 = self.nodeList.pop(0)
+            node2 = self.nodeList.pop(0)
+            newNode = Node(node1.frequency + node2.frequency, None)
+            if node1.frequency >= node2.frequency:
+                newNode.left = node1
+                newNode.right = node2
+            else:
+                newNode.left = node2
+                newNode.right = node1
+            self.nodeList.append(newNode)
+            self.nodeList.sort(key=lambda node: node.frequency)
+            if len(self.nodeList) == 1:
+                break
+        return self.nodeList.pop(0)
+
+    def SearchAndCode2(self, rNode, encoded):
+        if rNode is None:
+            return
+        if rNode.char is not None:
+            self.codeDict[rNode.char] = encoded
+            self.reverseDict[encoded] = rNode.char
+            print('Character is {} and Code is {}'.format(rNode.char, encoded))
+            return
+        lEncoded = encoded + "1"
+        rEncoded = encoded + "0"
+        self.SearchAndCode2(rNode.left, lEncoded)
+        self.SearchAndCode2(rNode.right, rEncoded)
+
+    def isNode(self, stringList, node):
+        s = stringList
+        if node.char is not None:
+            return True
+        if not s:
+            return False
+        if s[0] == '1':
+            s.pop(0)
+            return self.isNode(s, node.left)
+        elif s[0] == '0':
+            s.pop(0)
+            return self.isNode(s, node.right)
+        return False
+
+    def decodeMessage(self, fileLocation, node):
+        fileTest = open(fileLocation, 'r+')
+        encoded = list(fileTest.read())
+        index = 0
+        string = ''
+        while index < len(encoded):
+            indexRange = 0
+            while self.isNode(encoded[index:index + indexRange], node) is False:
+                indexRange += 1
+                try:
+                    fileTest.write(self.reverseDict[''.join(encoded[index:index + indexRange])])
+                    string += (self.reverseDict[''.join(encoded[index:index + indexRange])])
+                    print(self.reverseDict[''.join(encoded[index:index + indexRange])])
+                except KeyError:
+                    continue
+            index += indexRange
+        print(string)
+
+def countChars(fileLocation):
+    fileTest = open(fileLocation, 'r')
+    listOfChar = {}
+    charCount = 0
+    while True:
+        print('Hello')
+        char = fileTest.read(1)
+        if not char:
+            break
+        if char not in listOfChar:
+            listOfChar[char] = 1
+        else:
+            listOfChar[char] += 1
+        charCount += 1
+    return listOfChar
+
+def encodeMessage(fileLocation, newFileLocation, tree):
+    fileTest = open(fileLocation, 'r+')
+    fileOutput = open(newFileLocation, 'w+')
+    numCount = 0
+    for k, v in tree.reverseDict.items():
+        if v == '\n':
+            fileOutput.write('{}.-.{}\n'.format(k, '\\n'))
+        else:
+            fileOutput.write('{}.-.{}\n'.format(k, v))
+    fileOutput.write('```\n')
+    while True:
+        char = fileTest.read(1)
+        if not char:
+            break
+        numCount += 1
+        fileOutput.write(tree.codeDict[char])
+    print('Number of bits is {}'.format(numCount / 8))
+
+aList = countChars('/Users/christao/downloads/freshprince.txt')
+tree = BinaryTree(aList)
+aNode = tree.createTree()
+tree.SearchAndCode2(aNode, '')
+encodeMessage('/Users/christao/downloads/freshprince.txt', '/Users/christao/downloads/testparagraph.txt', tree)
+print(tree.reverseDict)

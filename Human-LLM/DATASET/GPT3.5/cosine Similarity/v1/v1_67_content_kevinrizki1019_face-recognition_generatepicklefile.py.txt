@@ -1,0 +1,73 @@
+import os
+import pickle
+import sys
+from extract import extractFeatures
+
+def generatePickleFromBatch(pckPath, imgsPath):
+    files = [os.path.join(imgsPath, p) for p in sorted(os.listdir(imgsPath))]
+    db = {}
+    count = len(files)
+    extracted = 0
+    
+    for f in files:
+        extracted += 1
+        print('-> [Entry {}/{}] Extracting {}               \r'.format(extracted, count, f), end='')
+        db[f] = extractFeatures(f)
+    
+    with open(pckPath, 'wb') as dbfile:
+        pickle.dump(db, dbfile)
+    
+    print('\nDone.')
+
+def generateDB(dbPath, pinsPath):
+    if not os.path.exists(dbPath):
+        os.makedirs(dbPath)
+    
+    if os.path.exists(pinsPath):
+        count = 0
+        generated = 0
+        persons = [os.path.join(pinsPath, p) for p in sorted(os.listdir(pinsPath))]     
+        count = len(persons)
+        print('Found {} directories on {}'.format(count, pinsPath))
+        
+        for person in persons:
+            generated += 1
+            db = os.path.join(dbPath, os.path.basename(person))
+            print('[{}/{}] Generating {}.db'.format(generated, count, db))
+            generatePickleFromBatch(db + '.db', person)
+        
+        print('Extracted {} entries.'.format(count))
+    else:
+        print('Directory not found')
+
+def joinDB(dirPath, dbPath):
+    db = {}
+    print('Joining databases from {} to {}'.format(dirPath, dbPath))
+    
+    if os.path.exists(dirPath):
+        files = [os.path.join(dirPath, p) for p in sorted(os.listdir(dirPath))]
+        
+        for f in files:
+            a = {}
+            print('->', f)
+            with open(f, 'rb') as tempdb:
+                a = pickle.load(tempdb)
+                db.update(a)
+        
+        with open(dbPath, 'wb') as dbfile:
+            pickle.dump(db, dbfile)
+        
+        print('Done.')
+    else:
+        print('Directory not found')
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if os.path.exists(sys.argv[1]):
+            generateDB('db', sys.argv[1])
+            joinDB('db', 'pins.db')
+        else:
+            print('Fatal: not a directory')
+    else:
+        print('Please specify a file. It must contain folders which contain pictures.')
+        print('Usage: python3 generate-pickle-file.py <folder-name>')

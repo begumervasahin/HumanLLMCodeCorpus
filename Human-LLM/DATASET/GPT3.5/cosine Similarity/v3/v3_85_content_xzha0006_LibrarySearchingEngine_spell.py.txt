@@ -1,0 +1,60 @@
+import re
+from collections import Counter
+
+# Read the text file and generate a list of words
+def read_word_list(file_path):
+    """Read a text file and generate a list of words."""
+    with open(file_path, 'r') as file:
+        text = file.read().lower()
+        word_list = re.findall(r'\w+', text)
+        return word_list
+
+# Create a dictionary to store word frequencies
+def create_word_frequency_dict(word_list):
+    """Create a dictionary to store word frequencies."""
+    return Counter(word_list)
+
+# Calculate the probability of a word
+def calculate_probability(word, word_dict):
+    """Calculate the probability of a word."""
+    total = sum(word_dict.values())
+    return word_dict[word] / total if total else 0
+
+# Correct a misspelled word
+def correct_word(word, word_dict):
+    """Correct a misspelled word."""
+    return max(generate_candidates(word, word_dict), key=lambda w: calculate_probability(w, word_dict))
+
+# Generate possible corrections for a misspelled word
+def generate_candidates(word, word_dict):
+    """Generate possible corrections for a misspelled word."""
+    if word in word_dict:
+        return [word]
+    else:
+        edits = generate_edits(word)
+        candidates = [w for w in edits if w in word_dict]
+        return candidates if candidates else [word]
+
+# Generate edits with one edit distance from the input word
+def generate_edits(word):
+    """Generate edits with one edit distance from the input word."""
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+    deletion = [left + right[1:] for left, right in splits if right]
+    transposition = [left + right[1] + right[0] + right[2:] for left, right in splits if len(right) > 1]
+    replacement = [left + char + right[1:] for left, right in splits if right for char in alphabet]
+    insertion = [left + char + right for left, right in splits for char in alphabet]
+    return set(deletion + transposition + replacement + insertion)
+
+# Example usage
+def main():
+    file_path = 'LargeTextFile.txt'
+    word_list = read_word_list(file_path)
+    word_dict = create_word_frequency_dict(word_list)
+    
+    input_word = input("Enter a word to correct: ")
+    corrected_word = correct_word(input_word.lower(), word_dict)
+    print("Corrected word:", corrected_word)
+
+if __name__ == "__main__":
+    main()

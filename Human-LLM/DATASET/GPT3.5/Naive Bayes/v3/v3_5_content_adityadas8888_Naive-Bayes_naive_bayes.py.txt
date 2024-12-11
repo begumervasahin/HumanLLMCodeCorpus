@@ -1,0 +1,80 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.stats import norm
+
+def generate_data(tsize0, tsize1):
+    """Generate synthetic data."""
+    mean1 = [1, 0]
+    mean2 = [0, 1]
+    Sigma1 = [[1, 0.75], [0.75, 1]]
+    Sigma2 = [[1, 0.75], [0.75, 1]]
+
+    x1, y1 = np.random.multivariate_normal(mean1, Sigma1, tsize0).T
+    x2, y2 = np.random.multivariate_normal(mean2, Sigma2, tsize1).T
+    x3, y3 = np.random.multivariate_normal(mean1, Sigma1, 100).T
+    x4, y4 = np.random.multivariate_normal(mean2, Sigma2, 100).T
+
+    data_train = pd.DataFrame({'x': np.concatenate([x1, x2]),
+                               'y': np.concatenate([y1, y2]),
+                               'label': np.concatenate([np.zeros(tsize0), np.ones(tsize1)])})
+
+    data_test = pd.DataFrame({'x': np.concatenate([x3, x4]),
+                              'y': np.concatenate([y3, y4]),
+                              'actual': np.concatenate([np.zeros(100), np.ones(100)])})
+
+    return data_train, data_test
+
+def calculate_statistics(data_train):
+    """Calculate mean and standard deviation for each class."""
+    mean_std = {}
+    for label in data_train['label'].unique():
+        data = data_train[data_train['label'] == label][['x', 'y']]
+        mean_std[label] = (data.mean(), data.std())
+    return mean_std
+
+def classify_data(data_test, mean_std):
+    """Classify test data using Naive Bayes."""
+    prob0 = len(data_train[data_train['label'] == 0]) / len(data_train)
+    prob1 = len(data_train[data_train['label'] == 1]) / len(data_train)
+
+    for label in mean_std:
+        mean, std = mean_std[label]
+        data_test[f'post{label}'] = norm.pdf(data_test['x'], loc=mean[0], scale=std[0]) * \
+                                    norm.pdf(data_test['y'], loc=mean[1], scale=std[1]) * \
+                                    (prob0 if label == 0 else prob1)
+
+    data_test['predicted'] = np.where(data_test['post0'] > data_test['post1'], 0, 1)
+    data_test['color'] = np.where(data_test['predicted'] == 0, 'r', 'b')
+
+    return data_test
+
+def evaluate_classification(data_test):
+    """Evaluate classification performance."""
+    confusion_matrix = pd.crosstab(data_test['predicted'], data_test['actual'])
+    accuracy = np.mean(data_test['predicted'] == data_test['actual'])
+    recall = confusion_matrix.iloc[1, 1] / (confusion_matrix.iloc[1, 1] + confusion_matrix.iloc[1, 0])
+    precision = confusion_matrix.iloc[1, 1] / (confusion_matrix.iloc[1, 1] + confusion_matrix.iloc[0, 1])
+
+    print("Accuracy:", accuracy)
+    print("Recall:", recall)
+    print("Precision:", precision)
+
+    return accuracy
+
+def plot_data(data_test):
+    """Plot the test data."""
+    plt.figure(figsize=(10, 10))
+    plt.scatter(data_test['x'], data_test['y'], color=data_test['color'], alpha=0.5, edgecolor='k', marker="x")
+    plt.show()
+
+def main():
+    """Main function."""
+    data_train, data_test = generate_data(500, 500)
+    mean_std = calculate_statistics(data_train)
+    data_test = classify_data(data_test, mean_std)
+    evaluate_classification(data_test)
+    plot_data(data_test)
+
+if __name__ == "__main__":
+    main()

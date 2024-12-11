@@ -1,0 +1,61 @@
+import pygame
+import random
+
+class Node:
+    def __init__(self, window, color, pos=(0, 0), text='', data=0, display=False):
+        self.window = window
+        self.color = color
+        self.pos = pos
+        self.text = text
+        self.data = data
+        self.display = display
+
+    def draw(self, outline_color=(0, 0, 0)):
+        if self.display:
+            self._draw_outline(outline_color)
+            self._draw_circle()
+
+    def _draw_outline(self, outline_color):
+        pygame.draw.circle(self.window, outline_color, self.pos, 22, 3)
+
+    def _draw_circle(self):
+        pygame.draw.circle(self.window, self.color, self.pos, 20)
+        if self.text != '':
+            self._draw_text()
+
+    def _draw_text(self):
+        font = pygame.font.SysFont('Times New Roman', 15)
+        text_surface = font.render(self.text, True, (0, 0, 0))
+        text_rect = text_surface.get_rect(center=self.pos)
+        self.window.blit(text_surface, text_rect)
+
+    def is_over(self, pos):
+        return self.pos[0] - 45 < pos[0] < self.pos[0] + 45 and \
+               self.pos[1] - 45 < pos[1] < self.pos[1] + 45 and \
+               self._calculate_distance(pos) <= 45
+
+    def _calculate_distance(self, pos):
+        return ((pos[0] - self.pos[0]) ** 2 + (pos[1] - self.pos[1]) ** 2) ** 0.5
+
+# Example Usage:
+pygame.init()
+window = pygame.display.set_mode((800, 600))
+node = Node(window, (255, 0, 0), (400, 300), 'Example', 42, True)
+
+running = True
+clock = pygame.time.Clock()
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if node.is_over(pygame.mouse.get_pos()):
+                node.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+    window.fill((255, 255, 255))
+    node.draw()
+    pygame.display.flip()
+    clock.tick(60)  # Limit frame rate to 60 FPS
+
+pygame.quit()
+sys.exit()

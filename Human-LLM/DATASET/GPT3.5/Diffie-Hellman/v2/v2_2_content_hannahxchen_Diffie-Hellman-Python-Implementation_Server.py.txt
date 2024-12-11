@@ -1,0 +1,114 @@
+import socket
+import random
+from Crypto import Random
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+import hashlib
+
+def generate_session_key(A, b, p):
+    return str((int(A) ** b) % int(p))
+
+def encrypt_message(message, key, IV):
+    session_key = hashlib.sha256(key).digest()
+    encryptor = AES.new(session_key, AES.MODE_CFB, IV)
+    return encryptor.encrypt(message)
+
+def decrypt_message(ciphertext, key, IV):
+    session_key = hashlib.sha256(key).digest()
+    decryptor = AES.new(session_key, AES.MODE_CFB, IV)
+    return decryptor.decrypt(ciphertext)
+
+def receive_message(connection):
+    return connection.recv(1024)
+
+def send_message(connection, message):
+    connection.sendall(message)
+
+def main():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Socket created")
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('localhost', 8080))
+    print("Socket bind complete")
+    server.listen(5)
+    print("Server is now listening...")
+
+    while True:
+        connection, address = server.accept()
+        print("Connected with", address[0])
+        
+        # Receive ID from client
+        data = receive_message(connection)
+        print("Received ID:", data)
+        
+        # Send challenge to client
+        challenge = Random.new().read(16)
+        send_message(connection, challenge)
+        
+        # Receive response from client
+        response = receive_message(connection)
+        
+        # Decrypt response and check if it matches the challenge
+        password = "Abc1234"
+        key = hashlib.sha256(password.encode()).digest()
+        IV = 16 * b'\x00'
+        decryptor = AES.new(key, AES.MODE_CFB, IV)
+        plain = decryptor.decrypt(response)
+        if plain == challenge:
+            send_message(connection, "Welcome!")
+            print("Client logged in")
+        else:
+            send_message(connection, "Incorrect password!")
+            break
+        
+        # Receive g, p, g^a mod(p), sign(A) from client
+        g = receive_message(connection)
+        p = receive_message(connection)
+        A = receive_message(connection)
+        signA = receive_message(connection)
+        print("Received g, p, g^a mod(p), sign(A) from Client")
+        print("g:", g)
+        print("p:", p)
+        print("A:", A)
+        print("signA:", signA)
+        
+        # Verify the signature
+        RSAkey1 = RSA.import_key(open("privatekey1.txt").read())
+        checkHash = RSAkey1.decrypt(signA)
+        hashA = hashlib.sha256(A.encode()).digest()
+        
+        RSAkey2 = RSA.import_key(open("publickey2.txt").read())
+        if hashA == checkHash:
+            print("CheckHash Success!")
+            b = 15
+            B = (int(g) ** b) % int(p)
+            print("Secret value b:", b)
+            hashB = hashlib.sha256(str(B).encode()).digest()
+            signB = RSAkey2.encrypt(hashB, 32)
+            send_message(connection, str(B))
+            send_message(connection, signB[0])
+            print("B:", B)
+            print("signB:", signB[0])
+            print("Send g^b mod(p), sign(B) to Client")
+            
+            # Generate session key
+            session_key = generate_session_key(A, b, p)
+            print("Generated session key:", session_key)
+        else:
+            print("CheckHash failed!")
+            break
+        
+        # Send encrypted EMR to client
+        with open("EMR.txt", "r") as file:
+            EMRfile = file.read()
+        encryptedEMR = encrypt_message(EMRfile, session_key, IV)
+        send_message(connection, encryptedEMR)
+        print("Send encrypted EMR to Client")
+        print("Encrypted file:", encryptedEMR)
+        
+        connection.close()
+        server.close()
+        break
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,58 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, classification_report
+from sklearn.feature_extraction.text import CountVectorizer
+
+# Load the dataset
+df = pd.read_csv("/path/to/your/dataset.csv")
+df['label_num'] = df.label.map({'ham': 0, 'spam': 1})
+
+# Visualize the distribution of labels
+sns.countplot(df["label"])
+plt.show()
+
+# Split the dataset into training and testing sets
+features = df["text"]
+labels = df["label_num"]
+f_train, f_test, l_train, l_test = train_test_split(features, labels, test_size=0.1, random_state=42)
+
+# Convert text data into numerical features using CountVectorizer
+vect = CountVectorizer()
+f_train_count = vect.fit_transform(f_train)
+f_test_count = vect.transform(f_test)
+
+# Train the Multinomial Naive Bayes model
+nb_model = MultinomialNB()
+nb_model.fit(f_train_count, l_train)
+
+# Evaluate the model
+train_score = nb_model.score(f_train_count, l_train)
+test_score = nb_model.score(f_test_count, l_test)
+y_pred = nb_model.predict(f_test_count)
+accuracy = accuracy_score(l_test, y_pred)
+precision = precision_score(l_test, y_pred)
+recall = recall_score(l_test, y_pred)
+f1 = f1_score(l_test, y_pred)
+classification_rep = classification_report(y_pred, l_test)
+
+print("\n\nTrain score:", train_score)
+print("\n\nTest score:", test_score)
+print("\n\nAccuracy score:", accuracy)
+print("\n\nPrecision score:", precision)
+print("\n\nRecall score:", recall)
+print("\n\nF1 score:", f1)
+print("\n\nClassification report:\n", classification_rep)
+
+# Test with custom input
+input_text = input("[+] Enter a text message to test: ")
+custom_data = np.array([input_text])
+custom_data = vect.transform(custom_data)
+prediction = nb_model.predict(custom_data)
+if prediction == 0:
+    print("HAM!")
+else:
+    print("SPAM!")

@@ -1,0 +1,154 @@
+import socket
+import threading
+import time
+import distanceVec_pb2
+from collections import defaultdict as dd
+
+MAX_NETWORK_SIZE = 16
+TIMEOUT_PERIOD = 30
+
+class TimeOut(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.Timers = {}
+        self.isActive = {}
+        self.down = {}
+
+    def SetRouterDown(self, ID):
+        global MAX_NETWORK_SIZE
+        global table
+        print()
+        print(ID, 'HAS TIMED OUT')
+        for id, val in table.items():
+            if ID in table[id]:
+                table[id][ID] = MAX_NETWORK_SIZE
+        bellman.linkCostChanged = True
+
+    def run(self):
+        global TIMEOUT_PERIOD
+        while True:
+            for ID, timer in self.Timers.items():
+                if self.isActive[ID]:
+                    self.Timers[ID] = time.time()
+                    self.isActive[ID] = False
+                    self.down[ID] = False
+                elif not self.down[ID] and time.time() - timer >= TIMEOUT_PERIOD and not self.isActive[ID]:
+                    self.Timers[ID] = time.time()
+                    self.down[ID] = True
+                    self.SetRouterDown(ID)
+
+class IO(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def printMat(self):
+        global table
+        print("TO | [NEXT HOP-COST]")
+        for key, val in table.items():
+            print(key, ' | ', end='')
+            for key1, val1 in val.items():
+                print(key1, "-", "%.2f" % val1, '  ', end='')
+            print()
+
+    def takeInput(self):
+        global table
+        global bellman
+        task = int(input('Enter 0 to view Reachability Matrix, 1 to change the cost: '))
+        if task == 0:
+            self.printMat()
+        if task == 1:
+            link = input('Enter the ID of link to change: ')
+            through = input('Enter the hop to change: ')
+            cost = input('Enter the new cost:')
+            table[link][through] = float(cost)
+            bellman.linkCostChanged = True
+
+    def run(self):
+        while True:
+            self.takeInput()
+
+class Server(threading.Thread):
+    def __init__(self, PORT):
+        threading.Thread.__init__(self)
+        self.port = PORT
+        self.distanceVec = distanceVec_pb2.Vector()
+        self.changed = False
+
+    def run(self):
+        global timeOut
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('', self.port))
+        while True:
+            self.message, self.adr = self.sock.recvfrom(4096)
+            self.distanceVec.ParseFromString(self.message)
+            if self.distanceVec != distanceVec:
+                self.changed = True
+            timeOut.isActive[self.distanceVec.source] = True
+
+class BellmanFord(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.linkCostChanged = False
+
+    def printRoutes(self):
+        global distanceVec
+        global MAX_NETWORK_SIZE
+        print()
+        print("I am Router ", distanceVec.source)
+        for vec in distanceVec.neighbours:
+            if vec.cost < MAX_NETWORK_SIZE:
+                print("Least cost to", vec.ID, "is", "%.2f" % vec.cost, "through", nextHop[vec.ID])
+            else:
+                print(vec.ID, "is unreachable")
+
+    def constructDV(self):
+        global distanceVec
+        self.newDistVec = distanceVec_pb2.Vector()
+        self.newDistVec.source = distanceVec.source
+        for key, val in table.items():
+            min_cost = float('inf')
+            min_hop = ''
+            for key1, val1 in val.items():
+                if val1 < min_cost:
+                    min_cost = val1
+                    min_hop = key1
+            vec = self.newDistVec.neighbours.add()
+            vec.ID = key
+            vec.cost = min_cost
+            nextHop[key] = min_hop
+        if self.newDistVec.neighbours != distanceVec.neighbours:
+            distanceVec = self.newDistVec
+            sendDV(distanceVec)
+            self.printRoutes()
+
+    def run(self):
+        global MAX_NETWORK_SIZE
+        while True:
+            if serv.changed:
+                serv.changed = False
+                for vec in serv.distanceVec.neighbours:
+                    source_cost = table[serv.distanceVec.source][serv.distanceVec.source]
+                    if vec.ID == routerID and table[serv.distanceVec.source][serv.distanceVec.source] >= MAX_NETWORK_SIZE:
+                        if vec.cost != table[serv.distanceVec.source][serv.distanceVec.source]:
+                            table[serv.distanceVec.source][serv.distanceVec.source] = vec.cost
+                            self.linkCostChanged = True
+                    elif vec.ID != routerID:
+                        if vec.cost >= MAX_NETWORK_SIZE:
+                            new_val = MAX_NETWORK_SIZE
+                        elif source_cost >= MAX_NETWORK_SIZE and vec.cost < MAX_NETWORK_SIZE:
+                            for vec1 in serv.distanceVec.neighbours:
+                                if vec1.ID == routerID:
+                                    source_cost = vec1.cost
+                            table[serv.distanceVec.source][serv.distanceVec.source] = source_cost
+                            new_val = source_cost + vec.cost
+                        else:
+                            new_val = vec.cost + source_cost
+                        if vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == new_val:
+                            table[vec.ID][serv.distanceVec.source] = new_val
+                            self.linkCostChanged = True
+            if self.linkCostChanged:
+                self.linkCostChanged = False
+                self.constructDV()
+
+def readInput(vec):
+    global time

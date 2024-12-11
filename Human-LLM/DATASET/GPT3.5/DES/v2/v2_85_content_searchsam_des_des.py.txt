@@ -1,0 +1,86 @@
+import os
+import sys
+import subprocess
+
+class Des:
+    def __init__(self):
+        self.holding_names = ["laravel", "vue", "composer"]
+        self.file = os.path.realpath(__file__)
+        self.dir = os.getcwd()
+
+    def check_params(self):
+        """Check if there are enough command-line arguments."""
+        return len(sys.argv) <= 1
+
+    def call(self, argument, num_arg=None):
+        """Call the specified method."""
+        return getattr(self, "make_" + str(argument))(num_arg)
+
+    def make_laravel(self, num_arg=None):
+        """Create a Laravel project."""
+        if num_arg is None:
+            num_arg = 1
+        os.chdir(self.dir)
+        print("Laravel")
+        self.exec_cmd([self.holding_names[0], "new", "api.{}".format(sys.argv[num_arg])])
+        os.chdir(self.dir + "/api.{}".format(sys.argv[num_arg]))
+        print("Composer")
+        self.exec_cmd([self.holding_names[2], "require", "nuwave/lighthouse", "mll-lab/laravel-graphql-playground"])
+        print("Lighthouse")
+        self.exec_cmd(["php", "artisan", "vendor:publish", '--provider="Nuwave\\Lighthouse\\LighthouseServiceProvider"'])
+        print("Playground")
+        self.exec_cmd(["php", "artisan", "vendor:publish", '--provider="MLL\\GraphQLPlayground\\GraphQLPlaygroundServiceProvider"'])
+
+    def make_vue(self, num_arg=None):
+        """Create a Vue project."""
+        if num_arg is None:
+            num_arg = -1
+        os.chdir(self.dir)
+        print("Vue")
+        os.system("{0} create {1}".format(self.holding_names[1], sys.argv[num_arg]))    
+        os.chdir(self.dir + "/{}".format(sys.argv[num_arg]))
+        print("Apollo")
+        os.system("{} add apollo".format(self.holding_names[1]))
+
+    def exec_cmd(self, command):
+        """Execute a shell command."""
+        stdout, stderr = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+        if stderr is not None:
+            print("El comando {} no existe o fue mal ejecutado.".format(command[0]))    
+            sys.exit(1)
+        return True
+
+    def scaffold(self):
+        """Create scaffold projects based on command-line arguments."""
+        if self.check_params():
+            print("Argumentos no validos o faltantes.")
+            sys.exit(1)
+        if len(sys.argv) == 3 and sys.argv[2] not in self.holding_names:
+            self.call(self.holding_names[0])
+            self.call(self.holding_names[1])
+            return True
+        if len(sys.argv) >= 4 and sys.argv[-1] not in self.holding_names:
+            if self.holding_names[0] in sys.argv:
+                index = sys.argv.index(self.holding_names[0]) + 1
+                if sys.argv[index] not in self.holding_names:
+                    self.call(self.holding_names[0], index)
+                else:
+                    self.call(self.holding_names[0])
+            if self.holding_names[1] in sys.argv:
+                index = sys.argv.index(self.holding_names[1]) + 1
+                if sys.argv[index] not in self.holding_names:
+                    self.call(self.holding_names[1], index)
+                else:
+                    self.call(self.holding_names[1])
+
+    def docker(self):
+        """Run Docker."""
+        print("Docker")
+
+    def podman(self):
+        """Run Podman."""
+        print("Podman")
+
+if __name__ == "__main__":
+    des = Des()
+    {"scaffold": des.scaffold, "docker": des.docker, "podman": des.podman}[sys.argv[1]]()

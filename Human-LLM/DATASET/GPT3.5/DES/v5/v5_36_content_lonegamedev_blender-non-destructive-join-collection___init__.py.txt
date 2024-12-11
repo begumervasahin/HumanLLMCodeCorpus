@@ -1,0 +1,45 @@
+import bpy
+
+# Check if bpy module is already imported
+if "bpy" in locals():
+    import importlib
+    importlib.reload(utils)  # Reload utilities module if already imported
+else:
+    from . import utils  # Import utilities module
+
+# Define operator to join objects in a collection
+class JoinObjectsOperator(bpy.types.Operator):
+    bl_idname = "collection.join_objects"
+    bl_label = "Join"
+
+    def execute(self, context):
+        utils.join_collection(context, False)  # Join collection objects without recursion
+        return {'FINISHED'}
+
+# Define operator to recursively join objects in a collection
+class JoinObjectsRecursiveOperator(bpy.types.Operator):
+    bl_idname = "collection.join_objects_recursive"
+    bl_label = "Join Recursive"
+
+    def execute(self, context):
+        utils.join_collection(context, True)  # Recursively join collection objects
+        return {'FINISHED'}
+
+# Function to draw the menu in the outliner
+def draw_menu(self, context):
+    layout = self.layout
+    layout.separator()
+    layout.operator(JoinObjectsOperator.bl_idname)
+    layout.operator(JoinObjectsRecursiveOperator.bl_idname)
+
+# Register the operators and add menu draw function to the outliner
+def register():
+    bpy.utils.register_class(JoinObjectsOperator)
+    bpy.utils.register_class(JoinObjectsRecursiveOperator)
+    bpy.types.OUTLINER_MT_collection.append(draw_menu)
+
+# Unregister the operators and remove menu draw function from the outliner
+def unregister():
+    bpy.utils.unregister_class(JoinObjectsOperator)
+    bpy.utils.unregister_class(JoinObjectsRecursiveOperator)
+    bpy.types.OUTLINER_MT_collection.remove(draw_menu)

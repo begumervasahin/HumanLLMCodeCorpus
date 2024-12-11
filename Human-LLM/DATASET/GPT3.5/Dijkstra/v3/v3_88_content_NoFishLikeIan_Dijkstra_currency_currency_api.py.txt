@@ -1,0 +1,52 @@
+import time
+import numpy as np
+import networkx as nx
+from forex_python.converter import CurrencyRates
+
+# List of currency codes to consider
+CURRENCY_CODES = ['EUR', 'USD', 'GBP', 'JPY', 'CNY', 'INR', 'AUD']
+
+def currency_nxgraph(list_codes, sleeping=0.5, adjmatrix=False):
+    """
+    Create a graph of currency exchange rates using real-time data.
+
+    Parameters:
+        list_codes (list): List of currency codes to include in the graph.
+        sleeping (float): Time to sleep between rate checks (default: 0.5 seconds).
+        adjmatrix (bool): Whether to return an adjacency matrix (default: False).
+
+    Returns:
+        G (networkx.Graph): Currency exchange rate graph.
+    """
+    print('Lazy-search for real-time rates')
+    currency_rates = CurrencyRates()
+    exchange_rates = {}
+
+    # Iterate over each currency code
+    for currency in list_codes:
+        print(f'Checking for {currency}')
+        exchange_rates[currency] = {}
+
+        # Check exchange rates with other currencies
+        for other_currency in list_codes:
+            if currency != other_currency:
+                rate = np.log(currency_rates.get_rate(currency, other_currency))
+                exchange_rates[currency][other_currency] = {'weight': rate}
+                time.sleep(sleeping)
+
+    # Create a graph from the dictionary of dictionaries
+    G = nx.from_dict_of_dicts(exchange_rates)
+
+    return G
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    # Generate the currency exchange rate graph
+    graph = currency_nxgraph(CURRENCY_CODES)
+
+    # Visualize and save the graph
+    plt.plot()
+    nx.draw_networkx(graph, pos=nx.spring_layout(graph))
+    plt.savefig('currency_graph.png')
+    plt.close()

@@ -1,0 +1,88 @@
+import pandas as pd
+import re
+import string
+from nltk.corpus import stopwords
+import json
+import numpy as np
+
+class Preprocessing:
+    def __init__(self):
+        print("Initializing preprocessing...")
+
+    def clean_text(self, text):
+        """
+        Clean text data by removing specific patterns such as email addresses, URLs, and placeholders.
+        """
+        words = text.split()
+        for word in words:
+            if '@' in word:
+                text = text.replace(word, '')
+            if 'http' in word:
+                text = text.replace(word, '')
+            if "your_condition_here" in word:  # Replace "your_condition_here" with your desired condition
+                text = text.replace(word, '')
+        text = text.strip()
+        if len(text) != 0:
+            return text
+        return ''
+
+    def clean_csv(self, csv_file):
+        """
+        Clean CSV file by removing NaN values and applying text cleaning to the 'text' column.
+        """
+        data = pd.read_csv(csv_file)
+        data = data.dropna(axis=0, how='any')
+        data['text'] = data['text'].apply(self.clean_text)
+        data_cleaned = pd.DataFrame(data={'text': data['text']})
+        data_cleaned.to_csv("data_cleaned.csv", header=False, index=True, encoding="utf-8")
+
+    def process_tweet(self, tweet):
+        """
+        Process tweet text by removing specific patterns such as mentions, URLs, symbols, and punctuation.
+        """
+        tweet = re.sub(r'\&\w*;', '', tweet)
+        tweet = re.sub('@[^\s]+', '', tweet)
+        tweet = re.sub(r'\$\w*', '', tweet)
+        tweet = tweet.lower()
+        tweet = re.sub(r'https?:\/\/.*\/\w*', '', tweet)
+        tweet = re.sub(r'your_condition_here', '', tweet)  # Replace "your_condition_here" with your desired condition
+        tweet = re.sub(r'[' + string.punctuation.replace('@', '') + ']+', ' ', tweet)
+        tweet = re.sub(r'\b\w{1,2}\b', '', tweet)
+        tweet = re.sub(r'\s\s+', ' ', tweet)
+        tweet = tweet.lstrip(' ')
+        tweet = ''.join(c for c in tweet if c <= '\uFFFF')
+        return tweet
+
+    def text_process(self, raw_text):
+        """
+        Tokenize and process raw text by removing punctuation and stopwords.
+        """
+        nopunc = [char for char in list(raw_text) if char not in string.punctuation]
+        nopunc = ''.join(nopunc)
+        return [word for word in nopunc.lower().split() if word.lower() not in stopwords.words('english')]
+
+    def geo_mean(self, x):
+        """
+        Calculate the geometric mean of a set of coordinates.
+        """
+        y = json.loads(x)
+        y = np.asarray(y)
+        mean_geoloc = np.mean(np.mean(y[:, [0, 1]], axis=1) + np.mean(y[:, [2, 3]], axis=1)) / 2
+        print("HASIL GEOMEAN "+ str(mean_geoloc))
+        return np.around(mean_geoloc, decimals=6)
+
+    def find_centroid(self, row):
+        """
+        Find the centroid of a set of coordinates.
+        """
+        try:
+            row_ = eval(row)
+            lst_of_coords = [item for sublist in row_ for item in sublist]
+            longitude = [p[0] for p in lst_of_coords]
+            latitude = [p[1] for p in lst_of_coords]
+            centroid = (sum(latitude) / len(latitude), sum(longitude) / len(longitude))
+            print(centroid)
+            return centroid
+        except Exception as e:
+            print(e)
+            return None

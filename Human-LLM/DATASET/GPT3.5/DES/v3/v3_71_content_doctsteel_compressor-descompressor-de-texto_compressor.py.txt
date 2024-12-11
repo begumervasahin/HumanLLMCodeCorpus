@@ -1,0 +1,100 @@
+import sys
+from collections import OrderedDict
+
+def create_header_and_wordset(text):
+    """
+    Create a header and unique word set from a string.
+    Returns header_bytes and unique_words.
+    """
+    words = [word.strip('.,?!') for word in text.split()]
+    unique_words = list(OrderedDict.fromkeys(filter(lambda w: len(w) > 3, words)))
+    header_bytes = len(unique_words).to_bytes(2, byteorder='big')
+    return header_bytes, unique_words
+
+def words_to_bytes(unique_words):
+    """
+    Convert a set of words into bytes, separated by commas.
+    """
+    if not unique_words:
+        return b','
+
+    word_bytes = ','.join(unique_words).encode()
+    return word_bytes
+
+def create_word_dict(unique_words):
+    """
+    Create a dictionary with word addresses based on their positions.
+    """
+    word_dict = {}
+    address_bytes = [(255, second, first) for second in range(256) for first in range(256)]
+    for word, address in zip(unique_words, address_bytes):
+        word_dict[word] = bytes(address)
+    return word_dict
+
+def compress_text(word_dict, text):
+    """
+    Compress a text using a dictionary.
+    """
+    compressed_text = bytearray()
+    word_buffer = ""
+
+    for char in text:
+        if char.isalnum():
+            word_buffer += char
+        else:
+            if word_buffer:
+                compressed_text += word_dict.get(word_buffer, word_buffer.encode())
+                word_buffer = ""
+            compressed_text += char.encode()
+
+    return bytes(compressed_text)
+
+if len(sys.argv) != 3:
+    print("Usage: python compressor.py -c/-d/-h input_file")
+    sys.exit(1)
+
+mode = sys.argv[1]
+filename = sys.argv[2]
+
+if mode == '-c':
+    with open(filename, 'r') as file:
+        input_text = file.read()
+        header, unique_word_set = create_header_and_wordset(input_text)
+        word_bytes = words_to_bytes(unique_word_set)
+        word_dict = create_word_dict(unique_word_set)
+        compressed_data = compress_text(word_dict, input_text)
+        compressed_output = header + word_bytes + compressed_data
+
+        with open(f"{filename}.cmp", 'wb') as compressed_file:
+            compressed_file.write(compressed_output)
+
+        print(f"Successfully compressed text into {filename}.cmp.")
+
+elif mode == '-d':
+    with open(filename, 'rb') as file:
+        header_bytes = int.from_bytes(file.read(2), byteorder='big')
+        compressed_data = file.read()
+        word_map = []
+
+        while header_bytes > 0:
+            reference = compressed_data.find(b',')
+            word_map.append(compressed_data[:reference])
+            compressed_data = compressed_data[reference + 1:]
+            header_bytes -= 1
+
+        decompressed_text = compressed_data
+        for index, word in enumerate(word_map):
+            decompressed_text = decompressed_text.replace(bytes([255, index // 256, index % 256]), word)
+
+        output_filename = filename[:-4]
+        with open(f"{output_filename}", 'w') as decompressed_file:
+            decompressed_file.write(decompressed_text.decode('utf-8'))
+
+        print(f"Decompressed data saved to {output_filename}")
+
+elif mode == '-h':
+    with open(filename, 'rb') as file:
+        print(file.read())
+        print("End of text")
+else:
+    print("Usage: python compressor.py -c/-d/-h input_file")

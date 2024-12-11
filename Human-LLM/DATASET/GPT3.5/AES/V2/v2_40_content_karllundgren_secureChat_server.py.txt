@@ -1,0 +1,54 @@
+import socket
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+import threading
+
+class Client:
+    def __init__(self, host='127.0.0.1', port=5022):
+        self.host = host
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.host, self.port))
+        self.cipher = None
+
+    def send_message(self):
+        while True:
+            message = input("\nEnter a message: ")
+            encrypted_message = self.cipher.encrypt(message.encode())
+            self.socket.send(encrypted_message)        
+
+    def receive_data(self):
+        key_file = open('mykey.pem', 'r')
+        key_data = key_file.read()
+        key_file.close()
+
+        rsa_key = RSA.importKey(key_data)
+        print("RSA key imported.\n")
+        
+        public_rsa_key = rsa_key.publickey().exportKey('DER')       
+        self.socket.send(public_rsa_key)
+        print("Public RSA key sent.\nMessage from server: " + self.socket.recv(1024).decode() + "\n")
+        
+        aes_encrypted_key = self.socket.recv(1024)
+        aes_key = rsa_key.decrypt(aes_encrypted_key)
+        print("AES encrypted key received and decrypted.")       
+
+        self.cipher = AES.new(aes_key, AES.MODE_CFB, aes_key)   
+        
+        input_thread = threading.Thread(target=self.send_message)       
+        input_thread.daemon = True
+        input_thread.start()
+        
+        while True:
+            data = self.socket.recv(1024)
+            if not data:
+                break
+            decrypted_data = self.cipher.decrypt(data).decode()
+            print(decrypted_data)
+
+def main():
+    client = Client()
+    client.receive_data()
+
+if __name__ == "__main__":
+    main()

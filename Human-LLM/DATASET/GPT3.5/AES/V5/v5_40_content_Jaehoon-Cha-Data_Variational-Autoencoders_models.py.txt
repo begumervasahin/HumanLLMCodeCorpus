@@ -1,0 +1,89 @@
+import tensorflow as tf
+from tensorflow.contrib import slim
+import numpy as np
+import networks
+
+# Define TensorFlow distributions
+tfd = tf.contrib.distributions
+tfb = tfd.bijectors
+
+def xavier_init(fan_in, fan_out, constant=1):
+    """Xavier initialization of weights."""
+    low = -constant * np.sqrt(6.0 / (fan_in + fan_out))
+    high = constant * np.sqrt(6.0 / (fan_in + fan_out))
+    return tf.random_uniform((fan_in, fan_out), minval=low, maxval=high, dtype=tf.float32)
+
+class AE(object):
+    """Autoencoder class."""
+    def __init__(self, n_input, n_output, archi):
+        self.n_input = n_input
+        self.n_output = n_output
+        self.archi = archi
+        self.x = tf.placeholder(tf.float32, shape=(None, 784), name="input")
+
+    def Encoder(self, inputs, name):
+        """Encoder network."""
+        with tf.name_scope(name):
+            net = slim.layers.linear(inputs, num_outputs=self.archi['h1'], activation_fn=tf.nn.softplus, scope='encoder1')
+            net = slim.layers.linear(net, num_outputs=self.archi['h2'], activation_fn=tf.nn.softplus, scope='encoder2')
+            return net
+
+    def To_latent(self, inputs, name):
+        """Transforms inputs to latent space."""
+        with tf.name_scope(name):
+            net = slim.layers.linear(inputs, num_outputs=self.archi['latent'])
+            return net
+
+    def Decoder(self, inputs, name):
+        """Decoder network."""
+        with tf.name_scope(name):
+            net = slim.layers.linear(inputs, num_outputs=self.archi['h2'], activation_fn=tf.nn.softplus, scope='decoder1')
+            net = slim.layers.linear(net, num_outputs=self.archi['h1'], activation_fn=tf.nn.softplus, scope='decoder2')
+            net = slim.layers.linear(net, num_outputs=self.n_output, activation_fn=tf.nn.sigmoid, scope='decoder_out')
+            return net
+
+    def Forward(self):
+        """Forward pass of the autoencoder."""
+        encoder_out = self.Encoder(self.x, 'encoder')      
+        z = self.To_latent(encoder_out, 'latent')     
+        reconstr = self.Decoder(z, 'decoder')
+        with tf.name_scope('loss'):
+            loss = tf.reduce_mean(-tf.reduce_sum(
+                self.x * tf.math.log(tf.clip_by_value(reconstr, 1e-10, 1.0))
+                + (1 - self.x) * tf.math.log(tf.clip_by_value(1 - reconstr, 1e-10, 1.0)), axis=1))
+        tf.summary.scalar('loss', loss)
+        return z, reconstr, loss
+
+class VAE(AE):
+    """Variational Autoencoder class."""
+    def __init__(self, n_input, n_output, archi):
+        super().__init__(n_input, n_output, archi)
+        # Prior distribution for VAE
+        self.prior = networks.DiagonalGaussian(mu=tf.zeros(1, 1), logvar=tf.zeros(1, 1))
+
+    def To_latent(self, inputs, name):
+        """Transforms inputs to latent space for VAE."""        
+        with tf.name_scope(name):
+            mu = slim.layers.linear(inputs, num_outputs=self.archi['latent'], scope='mean')
+            logvar = slim.layers.linear(inputs, num_outputs=self.archi['latent'], scope='logvar')
+            return networks.DiagonalGaussian(mu, logvar)        
+
+    def Forward(self):
+        """Forward pass of the VAE."""
+        encoder_out = self.Encoder(self.x, 'encoder')      
+        encode_dist = self.To_latent(encoder_out, 'encoder_dist')
+        with tf.name_scope('latent'):
+            z = encode_dist.sample()
+        reconstr = self.Decoder(z, 'decoder')
+        with tf.name_scope('loss'):
+            reconst_loss = tf.reduce_mean(-tf.reduce_sum(  
+                self.x * tf.math.log(tf.clip_by_value(reconstr, 1e-10, 1.0))
+                + (1 - self.x) * tf.math.log(tf.clip_by_value(1 - reconstr, 1e-10, 1.0)), axis=1))
+            kl_loss = tf.reduce_mean(-self.prior.log_probability(z))
+            lat_loss = tf.reduce_mean(encode_dist.log_probability(z))
+            loss = tf.reduce_mean(reconst_loss + kl_loss + lat_loss)
+        tf.summary.scalar('reconst_loss', reconst_loss)    
+        tf.summary.scalar('kl_loss', kl_loss)
+        tf.summary.scalar('lat_loss', lat_loss)
+        tf.summary.scalar('loss', loss)
+        return z, reconstr, loss

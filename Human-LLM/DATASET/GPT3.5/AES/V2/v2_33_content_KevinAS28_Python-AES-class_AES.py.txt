@@ -1,0 +1,52 @@
+from Crypto.Cipher import AES
+
+# Function to pad data to ensure its length is a multiple of 16 bytes
+def Padding(data, padder=b"\0"):
+    if not isinstance(data, bytes):
+        try:
+            data = data.encode("utf-8")
+        except:
+            pass
+    while len(data) % 16 != 0:
+        data += padder
+    return data
+
+# Function to remove padding from data
+def Depadding(data, depadder=b"\0"):
+    return data.rstrip(depadder)
+
+# AES encryption key and IV (Initialization Vector)
+AES_PASSWORD = b"F<{Z[C?AY)L7!Yc@"
+AES_IV = b"nrB27PNZTnn-N^dR"
+
+# Function to encrypt data using AES CBC mode
+def Encrypt_AES(data):
+    aes = AES.new(AES_PASSWORD, AES.MODE_CBC, AES_IV)
+    return aes.encrypt(Padding(data))
+
+# Function to decrypt data using AES CBC mode
+def Decrypt_AES(data):
+    aes = AES.new(AES_PASSWORD, AES.MODE_CBC, AES_IV)
+    return Depadding(aes.decrypt(data))
+
+# Function to decrypt a file using AES and write the decrypted content to the result file
+def AFD(file, result=""):
+    if not result:
+        result = file.rstrip(Enc_Extension)
+    Check_File_Internal(result)
+    with open(file, "rb") as baca:
+        with open(result, "wb") as tulis:
+            tulis.write(Decrypt_AES(baca.read()))
+
+# Function to encrypt a file using AES and write the encrypted content to the result file
+def AFE(file, result=""):
+    if not result:
+        result = file + Enc_Extension
+    Check_File_Internal(result)
+    with open(file, "rb") as baca:
+        with open(result, "wb") as tulis:
+            tulis.write(Encrypt_AES(baca.read()))
+
+# Example usage
+if __name__ == "__main__":
+    print(Decrypt_AES(Encrypt_AES("Encryption and Decryption Works!")))

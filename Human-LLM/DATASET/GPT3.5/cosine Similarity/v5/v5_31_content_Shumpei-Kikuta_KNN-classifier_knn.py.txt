@@ -1,0 +1,57 @@
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+
+def calculate_similar_vector(vector, train_X, train_Y, K):
+    # Calculate norms of training data vectors
+    norms = np.linalg.norm(train_X.iloc[:, 1:], ord=2, axis=1)
+
+    # Calculate inner product and create a DataFrame
+    inner_product_df = pd.DataFrame({
+        "inner_product": np.dot(train_X.iloc[:, 1:], vector) / (norms * np.linalg.norm(vector, ord=2)),
+        "snode": train_X["index"],
+        "label": train_Y
+    })
+
+    # Sort DataFrame by inner product in descending order
+    sorted_df = inner_product_df.sort_values(by="inner_product", ascending=False)
+
+    # Get the top K labels
+    top_labels = sorted_df["label"].values[:K]
+    return top_labels
+
+def main(train_X, test_X, train_Y, K):
+    # Reset indices of dataframes
+    train_X = train_X.reset_index()
+    test_X = test_X.reset_index()
+
+    # Initialize empty list for predicted labels
+    pred_Y = []
+
+    # Iterate over test data points
+    for i in range(test_X.shape[0]):
+        node = test_X["index"].iloc[i]
+        vector = test_X[test_X["index"] == node].values[0, 1:]
+
+        # Calculate similar vectors and get the most frequent label
+        count_arrays = calculate_similar_vector(vector, train_X, train_Y, K)
+        unique_labels, label_counts = np.unique(count_arrays, return_counts=True)
+        max_label = unique_labels[np.argmax(label_counts)]
+        pred_Y.append(max_label)
+
+    return np.array(pred_Y)
+
+if __name__ == '__main__':
+    # Load Iris dataset and split into training and testing sets
+    iris = load_iris()
+    X = pd.DataFrame(iris.data, columns=["a", "b", "c", "d"])
+    Y = iris.target
+    train_X, test_X, train_Y, test_Y = train_test_split(X, Y, test_size=0.3, random_state=0)
+
+    # Set value of K for KNN algorithm
+    k = 1
+
+    # Perform KNN classification and print predicted labels
+    predicted_Y = main(train_X, test_X, train_Y, k)
+    print(predicted_Y)

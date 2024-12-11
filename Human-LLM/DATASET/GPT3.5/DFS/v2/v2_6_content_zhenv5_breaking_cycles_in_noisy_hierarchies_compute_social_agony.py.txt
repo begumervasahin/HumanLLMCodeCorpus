@@ -1,0 +1,53 @@
+from datetime import datetime
+import os.path
+from helper_funs import dir_tail_name, run_command
+from file_io import read_dict_from_file
+
+def compute_social_agony_script(graph_file, output, agony_path="agony/agony "):
+    # Construct the command to compute social agony
+    command = agony_path + graph_file + " " + output
+    
+    # Print the command being executed
+    print("Running command:", command)
+    
+    # Record the start time
+    start_time = datetime.now()
+    
+    # Execute the command
+    run_command(command)
+    
+    # Record the end time
+    end_time = datetime.now()
+    
+    # Calculate and print the time taken for computation
+    time_used = end_time - start_time
+    print("Time used in computing social agony: %0.4f seconds" % (time_used.seconds))
+    print("==== Compute agony done ====")
+
+def compute_social_agony(graph_file, agony_path="agony/agony "):
+    # Extract directory name and file name from the graph file path
+    dir_name, file_name = dir_tail_name(graph_file)
+    
+    # Construct the output file path for storing the computed social agony
+    output = os.path.join(dir_name, file_name.split(".")[0] + "_socialagony.txt")
+    
+    # Compute social agony and write to output file
+    compute_social_agony_script(graph_file, output, agony_path=agony_path)
+    
+    # Read and return the computed social agony scores from the output file
+    agony_score = read_dict_from_file(output)
+    return agony_score
+
+import argparse
+
+if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-g", "--graph_file", default=" ", help="Input graph file name (edges list)")
+    args = parser.parse_args()
+    
+    # Extract graph file name from command-line arguments
+    graph_file = args.graph_file
+    
+    # Compute social agony using the provided graph file
+    compute_social_agony(graph_file)

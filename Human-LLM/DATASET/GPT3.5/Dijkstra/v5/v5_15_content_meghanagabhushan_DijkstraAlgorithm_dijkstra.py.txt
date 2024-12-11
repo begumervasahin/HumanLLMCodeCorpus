@@ -1,0 +1,100 @@
+from collections import deque, namedtuple
+
+# Define infinity value
+INFINITY = float('inf')
+
+# Define the Edge namedtuple to represent edges in the graph
+Edge = namedtuple('Edge', 'start, end, cost')
+
+# Function to create an Edge namedtuple
+def make_edge(start, end, cost=1):
+    return Edge(start, end, cost)
+
+# Define the Graph class
+class Graph:
+    def __init__(self, edges):
+        self.edges = [make_edge(*edge) for edge in edges]
+        self.validate_edges()
+
+    def validate_edges(self):
+        invalid_edges = [edge for edge in self.edges if len(edge) not in [2, 3]]
+        if invalid_edges:
+            raise ValueError('Invalid edge data: {}'.format(invalid_edges))
+
+    @property
+    def vertices(self):
+        return set(sum(([edge.start, edge.end] for edge in self.edges), []))
+
+    def get_node_pairs(self, node1, node2, both_ends=True):
+        if both_ends:
+            node_pairs = [[node1, node2], [node2, node1]]
+        else:
+            node_pairs = [[node1, node2]]
+        return node_pairs
+
+    def remove_edge(self, node1, node2, both_ends=True):
+        node_pairs = self.get_node_pairs(node1, node2, both_ends)
+        self.edges = [edge for edge in self.edges if [edge.start, edge.end] not in node_pairs]
+
+    def add_edge(self, node1, node2, cost=1, both_ends=True):
+        node_pairs = self.get_node_pairs(node1, node2, both_ends)
+        if any([edge for edge in self.edges if [edge.start, edge.end] in node_pairs]):
+            raise ValueError('Edge {} {} already exists'.format(node1, node2))
+        self.edges.append(Edge(start=node1, end=node2, cost=cost))
+        if both_ends:
+            self.edges.append(Edge(start=node2, end=node1, cost=cost))
+
+    @property
+    def neighbours(self):
+        neighbours_dict = {vertex: set() for vertex in self.vertices}
+        for edge in self.edges:
+            neighbours_dict[edge.start].add((edge.end, edge.cost))
+        return neighbours_dict
+
+    def dijkstra(self, source, destination):
+        assert source in self.vertices, 'Source node does not exist in the graph'
+        distances = {vertex: INFINITY for vertex in self.vertices}
+        previous_vertices = {vertex: None for vertex in self.vertices}
+        distances[source] = 0
+        remaining_vertices = self.vertices.copy()
+
+        while remaining_vertices:
+            current_vertex = min(remaining_vertices, key=lambda vertex: distances[vertex])
+            remaining_vertices.remove(current_vertex)
+            if distances[current_vertex] == INFINITY:
+                break
+            for neighbour, cost in self.neighbours[current_vertex]:
+                alternative_route = distances[current_vertex] + cost
+                if alternative_route < distances[neighbour]:
+                    distances[neighbour] = alternative_route
+                    previous_vertices[neighbour] = current_vertex
+
+        shortest_path, current_vertex = deque(), destination
+        while previous_vertices[current_vertex] is not None:
+            shortest_path.appendleft(current_vertex)
+            current_vertex = previous_vertices[current_vertex]
+        if shortest_path:
+            shortest_path.appendleft(current_vertex)
+        return shortest_path
+
+def read_input_file(filename):
+    input_data = []
+    with open(filename, "r") as file:
+        for line in file:
+            parts = line.strip().split(",")
+            try:
+                input_data.append((parts[0], parts[1], int(parts[2])))
+            except ValueError:
+                pass
+    return input_data
+
+# Create an instance of the Graph class with the input data from the file
+input_data = read_input_file('graph.txt')
+graph = Graph(input_data)
+
+# Test Dijkstra's algorithm with example operations
+print(graph.dijkstra("a", "d"))  # Find shortest path from "a" to "d"
+graph.remove_edge("a", "c")      # Remove edge between "a" and "c"
+print(graph.dijkstra("a", "d"))  # Find shortest path again after edge removal
+graph.add_edge("a", "d", 2)      # Add edge between "a" and "d" with cost 2
+print(graph.dijkstra("a", "d"))  # Find shortest path again after edge addition

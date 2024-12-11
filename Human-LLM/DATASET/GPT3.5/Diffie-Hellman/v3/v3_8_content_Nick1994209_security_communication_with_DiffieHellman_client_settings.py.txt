@@ -1,0 +1,96 @@
+import sys
+import random
+from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QLabel, QPushButton, QSizePolicy
+from PyQt5.QtCore import QCoreApplication
+
+class ClientSetSocketSettingsMixin:
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        self.window = QWidget()
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.window.setWindowTitle('Client')
+        self.window.setGeometry(600, 300, 400, 200)
+
+        self.setup_input_fields()
+        self.setup_buttons()
+        self.setup_objects_to_hide()
+
+        self.show_current_objects()
+
+    def setup_input_fields(self):
+        self.input_port_client = QLineEdit(self.window)
+        self.input_ip_client = QLineEdit(self.window)
+        self.input_ip_client.setText('localhost')
+        self.input_secret_key_client = QLineEdit(self.window)
+
+        self.setup_label("port", self.label_port)
+        self.setup_label("ip", self.label_ip)
+        self.setup_label("key", self.label_secret_key)
+
+        self.move_input_fields()
+
+    def setup_label(self, text, label):
+        label = QLabel(text, self.window)
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        label.setStyleSheet("QLabel {color: white;}")
+
+    def move_input_fields(self):
+        self.move_widget(self.input_port_client, 40, 10)
+        self.move_widget(self.input_ip_client, 200, 10)
+        self.move_widget(self.input_secret_key_client, 40, 50)
+
+    def move_widget(self, widget, x, y):
+        widget.move(x, y)
+
+    def setup_buttons(self):
+        self.setup_button("random_secret_key", self.btn_random_secret_key, self.random_secret_key, 200, 50)
+        self.setup_button("next", self.btn_next, self.next_client_window, 180, 170)
+        self.setup_button("Quit", self.btn_exit, QCoreApplication.instance().quit, 300, 170)
+        self.setup_button("ago", self.btn_widget_choice, self.gui_choice_server_client, 30, 170)
+
+    def setup_button(self, text, button, action, x, y):
+        button = QPushButton(text, self.window)
+        button.clicked.connect(action)
+        button.resize(button.sizeHint())
+        self.move_widget(button, x, y)
+
+    def setup_objects_to_hide(self):
+        self.objects_to_hide = [
+            self.btn_exit, self.btn_widget_choice, self.btn_next, self.btn_random_secret_key,
+            self.label_port, self.label_ip, self.label_secret_key,
+            self.input_port_client, self.input_ip_client, self.input_secret_key_client
+        ]
+
+    def show_current_objects(self):
+        for obj in self.objects_to_hide:
+            obj.show()
+
+    def hide_last_objects(self):
+        for obj in self.objects_to_hide:
+            obj.hide()
+
+    def random_secret_key(self):
+        self.input_secret_key_client.setText(str(random.randint(0, 10000)))
+
+    def next_client_window(self):
+        if self.input_port_client.text() and self.input_ip_client.text() and self.input_secret_key_client.text():
+            if self.input_port_client.text().isdigit():
+                self.client_communication()
+
+    def client_communication(self):
+        # Your client communication logic goes here
+        pass
+
+    def gui_choice_server_client(self):
+        # Your GUI choice logic goes here
+        pass
+
+    def run(self):
+        self.window.show()
+        sys.exit(self.app.exec_())
+
+if __name__ == '__main__':
+    client = ClientSetSocketSettingsMixin()
+    client.run()

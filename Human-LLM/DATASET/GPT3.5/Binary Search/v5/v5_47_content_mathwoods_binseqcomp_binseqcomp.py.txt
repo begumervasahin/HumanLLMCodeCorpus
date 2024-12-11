@@ -1,0 +1,104 @@
+from __future__ import print_function
+import random
+import timeit
+import matplotlib.pyplot as plt
+
+def sequential_search(arr, x):
+    """
+    Perform sequential search to find the index of an element in the array.
+
+    Args:
+        arr (list): The input array.
+        x (int): The element to search for.
+
+    Returns:
+        int: The index of the element if found, otherwise -1.
+    """
+    for i, val in enumerate(arr):
+        if val == x:
+            return i
+    return -1
+
+def binary_search(arr, x):
+    """
+    Perform binary search to find the index of an element in the array.
+
+    Args:
+        arr (list): The input array.
+        x (int): The element to search for.
+
+    Returns:
+        int: The index of the element if found, otherwise -1.
+    """
+    l, r = 0, len(arr)-1
+    while l <= r:
+        m = (l + r) // 2
+        if x > arr[m]:
+            l = m + 1
+        elif x < arr[m]:
+            r = m - 1
+        else:
+            return m
+    return -1
+
+def wrapper(func, *args, **kwargs):
+    """
+    Function to create a wrapped function for timeit.
+
+    Args:
+        func (function): The function to be wrapped.
+        *args: Variable length argument list for the function.
+        **kwargs: Arbitrary keyword arguments for the function.
+
+    Returns:
+        function: The wrapped function.
+    """
+    def wrapped():
+        return func(*args, **kwargs)
+    return wrapped
+
+print("\n" + '\x1B[1;7m'+ "SEQUENTIAL SEARCH VS BINARY SEARCH" + '\x1B[0m')
+list_results = []
+timeit_loops = 10
+
+for i in range(2, 7):
+    n = 10 ** i
+    tup_num = tuple(range(0, n))
+    print("\n" + '\x1B[4m'+ f"ARRAY SIZE = {n} (10^i where i = {i})" + '\x1B[0m')
+
+    for trial in range(1, 4):
+        r = random.randint(0, n-1)
+        print("TRIAL", trial)
+        print("Random generated value:", r)
+
+        wrapped_seq = wrapper(sequential_search, tup_num, r)
+        seq_time = timeit.timeit(wrapped_seq, number=timeit_loops)
+        print("Running SEQ SEARCH... DONE!")
+        print("Total time for", timeit_loops, "searches:", seq_time, "seconds.")
+
+        wrapped_bin = wrapper(binary_search, tup_num, r)
+        bin_time = timeit.timeit(wrapped_bin, number=timeit_loops)
+        print("Running BIN SEARCH... DONE!")
+        print("Total time for", timeit_loops, "searches:", bin_time, "seconds.")
+
+        list_results.append({'power': i, 'trial': trial, 'tup_size': n, 'rand': r,
+                             'seq_time': seq_time, 'bin_time': bin_time, 'timeit_loops': timeit_loops})
+
+print("\n" + '\x1B[1;7m' + "To end program close graph window." + '\x1B[0m' + "\n")
+
+lst_xcoordseq = [entry['power'] for entry in list_results]
+lst_xcoordbin = lst_xcoordseq
+lst_ycoordseq = [entry['seq_time'] for entry in list_results]
+lst_ycoordbin = [entry['bin_time'] for entry in list_results]
+
+plt.plot(lst_xcoordseq, lst_ycoordseq, 'rD', label='Seq Search')
+plt.plot(lst_xcoordbin, lst_ycoordbin, 'bo', label='Bin Search')
+
+ymax = max(lst_ycoordseq)
+plt.axis([0, 7, -0.1, ymax + 0.1])
+plt.xlabel('Size of array (powers of 10)')
+plt.ylabel('Search time (sec)')
+plt.grid(True)
+plt.legend(loc='upper left', numpoints=1)
+plt.title('Math Woods - Sequential vs. Binary Search')
+plt.show()

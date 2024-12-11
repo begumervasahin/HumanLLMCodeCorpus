@@ -1,0 +1,82 @@
+from stemming import PorterStemmer
+import numpy as np
+import re
+from os import listdir
+from os.path import isfile, join
+
+def tokenize_file_content(file_content, stopwords=[]):
+    stemmer = PorterStemmer()
+    term_list = []
+
+    # Preprocess file content
+    file_content = re.sub(r"\n\ {1,}", r"\n", file_content)
+    file_content = re.sub(r"\n{2,}", r"\n", file_content)
+    file_content = file_content.replace("\xa0", " ")
+    file_content = file_content.replace("-\n", "").replace("\n", " ")
+
+    # Extract emails and URLs
+    email_list = re.findall(r"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)", file_content, flags=0)
+    term_list.extend([i[0] for i in email_list])
+    file_content = re.sub(r"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)", r"", file_content)
+    url_list = re.findall(r"(((ht|f)tp(s?)\:\/\/)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+)", file_content, flags=0)
+    term_list.extend([i[0] for i in url_list])
+    file_content = re.sub(r"(((ht|f)tp(s?)\:\/\/)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+)", r"", file_content)
+
+    # Extract other terms
+    rest_terms = []
+    single_comma_content = re.findall(r"( '\w+( \w+){1,6}')", file_content)
+    rest_terms.extend([i[0][2:-1] for i in single_comma_content])
+    file_content = re.sub(r"( '\w+( \w+){1,6}')", r" ", file_content)
+    capital_lower_terms = re.findall(r"([A-Z][a-z]+\ ([A-Z][a-z]+[\ \.]{1})+)", file_content)
+    rest_terms.extend([i[0][:-1] for i in capital_lower_terms])
+    file_content = re.sub(r"([A-Z][a-z]+\ ([A-Z][a-z]+[\ \.]{1})+)", r" ", file_content)
+    full_capital_terms = re.findall(r"([A-Z]+\ ([A-Z]+[\ \.]{1})+)", file_content)      
+    rest_terms.extend([i[0][:-1] for i in full_capital_terms])
+    file_content = re.sub(r"([A-Z]+\ ([A-Z]+[\ \.]{1})+)", r" ", file_content)
+    file_content = re.sub(r"[\-]{2,}", r"", file_content)
+    file_content = file_content.lower()
+    rest_terms.extend(re.findall(r"[^\[\]{,:;\"()?!}\ |*]", file_content))
+
+    # Stemming and adding to term_list
+    for term in rest_terms:
+        if term not in stopwords:
+            term = stemmer.stem(term, 0, len(term) - 1)
+            term_list.append(term)
+
+    return term_list
+
+def calculate_tf(term_list):
+    tf_dict = {}
+    for term in term_list:
+        if term in tf_dict:
+            tf_dict[term] += 1
+        else:
+            tf_dict[term] = 1
+
+    # Calculate tf using log normalization
+    for key in tf_dict.keys():
+        tf_dict[key] = 1 + np.log(tf_dict[key])
+
+    return tf_dict
+
+def load_files_and_tokenize(file_path):
+    file_contents = []
+    file_names = [file_path + f for f in listdir(file_path) if isfile(join(file_path, f)) and f != '.DS_Store']
+
+    for filename in file_names:
+        with open(filename, 'r') as f:
+            data = f.read()
+            file_contents.append(data)
+
+    return file_contents, [i.split('/')[-1].replace(",", " ") for i in file_names]  
+
+# Example usage
+file_path = '/path/to/your/files/'
+file_contents, file_names = load_files_and_tokenize(file_path)
+
+# Tokenize each file content and calculate TF
+stop_words = []  # Add your stopwords here if needed
+for content in file_contents:
+    terms = tokenize_file_content(content, stop_words)
+    tf_dict = calculate_tf(terms)
+    print(tf_dict)  # Print TF for each file content

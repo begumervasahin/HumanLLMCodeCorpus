@@ -1,0 +1,90 @@
+import math
+
+def is_prime(num):
+    """
+    Checks if a number is prime.
+    :param num: int
+    :return: bool
+    """
+    if num < 2:
+        return False
+    for i in range(2, int(math.sqrt(num)) + 1):
+        if num % i == 0:
+            return False
+    return True
+
+def prompt_prime():
+    """
+    Prompts the user to enter a prime number.
+    :return: int
+    """
+    user_input = 0
+    while True:
+        user_input = int(input("Please enter a prime number: "))
+        if is_prime(user_input):
+            return user_input
+        print("Invalid input. Please enter a prime number.")
+
+def gcd(a, b):
+    """
+    Finds the greatest common divisor of two numbers.
+    :param a: int
+    :param b: int
+    :return: int
+    """
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def prompt_primitive(factor1):
+    """
+    Prompts the user to enter a primitive root of a given prime number.
+    :param factor1: int
+    :return: int
+    """
+    user_input = 0
+    while True:
+        user_input = int(input("Please enter a primitive root of {}: ".format(factor1)))
+        if gcd(factor1, user_input) == 1:
+            return user_input
+        print("Invalid input. Please enter a primitive root.")
+
+def prompt_private_key():
+    """
+    Prompts the user to enter a private key.
+    :return: int
+    """
+    return int(input("Please enter a private key: "))
+
+def calculate_key(private_key, p, r):
+    """
+    Calculates the public key.
+    :param private_key: int
+    :param p: int
+    :param r: int
+    :return: int
+    """
+    return (r ** private_key) % p
+
+def run():
+    """
+    Main function.
+    """
+    p = prompt_prime()
+    r = prompt_primitive(factor1=p)
+    alice_private_key = prompt_private_key()
+    bob_private_key = prompt_private_key()
+    alice_public_key = calculate_key(alice_private_key, p, r)
+    bob_public_key = calculate_key(bob_private_key, p, r)
+    alice_shared_private_key = calculate_key(alice_private_key, p, bob_public_key)
+    bob_shared_private_key = calculate_key(bob_private_key, p, alice_public_key)
+    print("Alice's Shared Private Key: {}".format(alice_shared_private_key))
+    print("Bob's Shared Private Key: {}".format(bob_shared_private_key))
+    print("Are the keys equal? {}".format(bob_shared_private_key == alice_shared_private_key))
+    if bob_shared_private_key == alice_shared_private_key:
+        print("Shared secret: {}".format(alice_shared_private_key))
+    else:
+        print("Alice slaps Bob for not getting the right key")
+
+if __name__ == '__main__':
+    run()

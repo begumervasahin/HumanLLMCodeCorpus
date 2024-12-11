@@ -1,0 +1,119 @@
+import time
+import threading
+
+# Global variables
+exitThread = False
+currMode = '1'  # Default mode
+
+def main():
+    try:
+        start_time = time.time()  # Record start time
+        sequence = '111000'  # Example sequence of modes
+        print('Mode sequence:', sequence)
+        
+        # Example path data
+        path_data = {'ackWait': 1, 'slotTime': 2}
+        
+        # Start handshake and servo threads
+        handshake_thread = threading.Thread(target=handshake, args=(path_data, sequence))
+        servo_thread = threading.Thread(target=servoPath, args=(path_data, sequence))
+        
+        handshake_thread.start()
+        servo_thread.start()
+        
+        handshake_thread.join()
+        servo_thread.join()
+        
+        end_time = time.time()  # Record end time
+        
+        # Print timing information
+        print("Start time:", start_time)
+        print("End time:", end_time)
+        print("Elapsed time:", end_time - start_time)
+    except KeyboardInterrupt:
+        raise
+
+def handshake(path_data, sequence):
+    try:
+        global currMode
+        
+        # Calculate acknowledgement and slot times
+        ack_wait_time = 2 * path_data['ackWait']
+        slot_time = path_data['slotTime']
+        
+        i = 0
+        while i < len(sequence) and not exitThread:
+            mode = sequence[0]
+            print('Current mode:', mode)
+            
+            slot_end_time = slot_time + time.time()
+            currMode = mode
+            
+            if currMode == '1':
+                send_syn()
+                listen_for_ack(ack_wait_time, slot_end_time)
+            elif currMode == '0':
+                listen_for_syn(slot_end_time, ack_wait_time)
+            
+            i += 1
+    except KeyboardInterrupt:
+        raise
+
+def send_syn():
+    print('Sending SYN')
+
+def listen_for_ack(ack_wait_time, slot_end_time):
+    global exitThread
+    
+    end_time = ack_wait_time + time.time()
+    while end_time > time.time() and not exitThread:
+        data = 'ack'  # Simulating received data
+        if data == 'ack':
+            exitThread = True
+            print('Aligned!')
+            return
+
+def listen_for_syn(slot_end_time, ack_wait_time):
+    global exitThread
+    
+    while time.time() < slot_end_time:
+        data = 'hello'  # Simulating received data
+        if data == 'hello':
+            for _ in range(100):
+                send_ack()
+            exitThread = True
+            print('Aligned!')
+            return
+
+def send_ack():
+    print('Sending ACK')
+
+def servoPath(path_data, sequence):
+    # Get servo path data
+    phi_values, theta_values, tran_wait_times, rec_wait_times = getPath(path_data)
+    
+    # Print servo path details
+    print("Phi:", phi_values)
+    print("Theta:", theta_values)
+    print("Transmission Wait:", tran_wait_times)
+    print("Reception Wait:", rec_wait_times)
+    
+    # Simulate servo movement and timing
+    for i in range(len(phi_values)):
+        print("Setting Servo positions")
+        print("Sleeping for transmission wait:", tran_wait_times[i])
+        print("Sleeping for reception wait:", rec_wait_times[i])
+        time.sleep(tran_wait_times[i])
+        time.sleep(rec_wait_times[i])
+
+def getPath(path_data):
+    # Example servo angles and timings
+    phi_values = [45, 90, 135]
+    theta_values = [30, 60, 90]
+    tran_wait_times = [1, 2, 3]
+    rec_wait_times = [1, 2, 3]
+    
+    return phi_values, theta_values, tran_wait_times, rec_wait_times
+
+if __name__ == "__main__":
+    main()

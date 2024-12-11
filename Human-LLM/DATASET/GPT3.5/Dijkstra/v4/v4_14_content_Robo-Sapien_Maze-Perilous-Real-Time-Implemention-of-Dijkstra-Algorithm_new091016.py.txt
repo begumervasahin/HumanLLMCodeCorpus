@@ -1,0 +1,60 @@
+import numpy as np
+import cv2
+
+def calculate_distance(point1, point2):
+    """Calculate the Euclidean distance between two points."""
+    return ((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
+
+def next_position(image, bot_position, goal_position):
+    """Determine the next position of the bot."""
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    cv2.imshow('Gray', gray_image)
+    
+    _, threshold_image = cv2.threshold(gray_image, 75, 255, cv2.THRESH_BINARY_INV)
+    height, width, _ = image.shape
+    cv2.imshow('Threshold', threshold_image)
+    cv2.waitKey(1)
+
+    bot_x, bot_y = bot_position
+    goal_x, goal_y = goal_position
+    
+    feasible_squares = [(bot_x + 20, bot_y), (bot_x - 20, bot_y), (bot_x, bot_y + 20), (bot_x, bot_y - 20)]
+    allowed_positions = []
+    
+    for square in feasible_squares:
+        x, y = square
+        if 0 <= x < height and 0 <= y < width:
+            if threshold_image[y, x] == 255:
+                allowed_positions.append(square)
+
+    min_distance = float('inf')
+    next_bot_position = bot_position
+    
+    for position in allowed_positions:
+        d = calculate_distance(position, goal_position)
+        if d < min_distance:
+            min_distance = d
+            next_bot_position = position
+
+    return next_bot_position, next_bot_position[0] - bot_position[0], next_bot_position[1] - bot_position[1]
+
+if __name__ == '__main__':
+    image = cv2.imread('newa4.jpg')
+    goal_positions = {'a': (125, 110), 'c': (246, 24), 'b': (140, 285), 'e': (247, 180),
+                      'd': (247, 110), 'g': (293, 371), 'f': (247, 269), 'i': (402, 109), 'h': (394, 287)}
+    
+    bot_position = goal_positions['a']
+    goal_position = goal_positions['e']
+
+    print("Goal position:", goal_position)
+
+    cv2.imshow('Image', image)
+    cv2.waitKey(0)
+
+    goto = bot_position
+    pos_threshold = 30
+
+    cv2.imshow('Image', image)
+    cv2.waitKey(100)
+    cv2.imshow('Final', image)
+    cv2.waitKey(0)

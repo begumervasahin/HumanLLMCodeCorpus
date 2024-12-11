@@ -1,0 +1,58 @@
+class GridNode:
+    def __init__(self, x, y, grid_size=9):
+        self.x = x  # X-coordinate of the node
+        self.y = y  # Y-coordinate of the node
+        self.data = None  # Data associated with the node
+        self.grid_size = grid_size  # Size of the grid
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
+    def set_f_value(self, f):
+        self.f = f  # Set the 'f' value of the node
+
+    def get_f_value(self):
+        return self.f  # Get the 'f' value of the node
+
+    def get_x(self):
+        return self.x  # Get the x-coordinate of the node
+
+    def get_y(self):
+        return self.y  # Get the y-coordinate of the node
+
+    def get_xy(self):
+        return self.x, self.y  # Get the coordinates (x, y) of the node
+
+    def set_data(self, data):
+        self.data = data  # Set the data associated with the node
+
+    def get_data(self):
+        return self.data  # Get the data associated with the node
+
+    def get_neighbors(self, grid):
+        neighbors = []
+        for a in range(self.x - 1, self.x + 2):
+            for b in range(self.y - 1, self.y + 2):
+                if (a, b) != (self.x, self.y) and self.is_valid(a, b):
+                    node = GridNode(a, b)
+                    node.set_data(grid[a][b])
+                    neighbors.append(node)
+        return neighbors
+
+    def is_valid(self, x, y):
+        return 0 <= x < self.grid_size and 0 <= y < self.grid_size
+
+    def closed_neighbors_to_open(self, grid):
+        neighbors = self.get_neighbors(grid)
+        return [cell for cell in neighbors if cell.get_data() == ' ']
+
+    def check_cell(self, grid):
+        if self.data == 'F' or self.data == ' ':
+            return 0
+        bombs = sum(1 for cell in self.get_neighbors(grid) if cell.get_data() == 'F')
+        closed = self.closed_neighbors_to_open(grid)
+        closed_count = len(closed)
+        if closed_count != 0 and grid[self.x][self.y] != ' ':
+            return (int(grid[self.x][self.y]) - bombs) / closed_count
+        else:
+            return 0

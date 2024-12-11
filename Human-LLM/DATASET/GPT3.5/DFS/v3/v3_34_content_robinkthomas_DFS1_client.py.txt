@@ -1,0 +1,77 @@
+import requests
+import shelve
+from requests.auth import HTTPBasicAuth
+
+# Define URLs for different endpoints
+data_url = "http://localhost:8005/"
+lock_url = "http://localhost:8082/"
+base_url = "http://localhost:"
+unlock_url = "http://localhost:8082/unlock/"
+login_auth_url = "http://localhost:8083/"
+
+def authenticate_user():
+    username = input("Enter Username: ")
+    password = input("Enter Password: ")
+
+    # Authenticate user using HTTP Basic Auth
+    return requests.get(login_auth_url, auth=HTTPBasicAuth(username, password))
+
+def read_file(file_url):
+    response = requests.get(file_url)
+    print("Text Data:")
+    print(response.text)
+
+def write_file(file_url):
+    response = requests.get(file_url)
+    print(response.text)
+    lock_response = requests.get(lock_url)
+    print("Lock Status: " + lock_response.text)
+    unlock_url = unlock_url + filename
+
+    if lock_response.text == "0":
+        lock_request = requests.post(lock_url)
+        input_data = input("Input Data: ")
+        write_response = requests.post(file_url, data=input_data)
+        print(write_response.text)
+        unlock_request = requests.post(unlock_url)
+        print("Lock Status: " + unlock_request.text)
+    else:
+        print("The file is currently locked by another user")
+
+def login():
+    auth_response = authenticate_user()
+    if auth_response.text == "Not Authorized!":
+        print("Sorry, " + auth_response.text)
+    else:
+        print(auth_response.text)
+        file_operation = input("1. Read File / 2. Write File: ")
+
+        if file_operation == '1':
+            filename = input("Enter File Name: ")
+            data_url = data_url + filename
+            file_url = base_url + response.text[0:4] + "/" + response.text[4:]
+            read_file(file_url)
+        else:
+            filename = input("Enter File Name: ")
+            data_url = data_url + filename
+            file_url = base_url + response.text[0:4] + "/" + response.text[4:]
+            write_file(file_url)
+
+def signup():
+    new_username = input("Enter Username:")
+    new_password = input("Enter Password:")
+    try:
+        shelve_db = shelve.open("login.dat")
+        shelve_db[new_username] = new_password
+        shelve_db.close()
+    except Exception as e:
+        print("Error:", e)
+
+# Prompt user for login or signup choice
+print("a. Login / b. Signup:")
+choice = input("Enter choice (a/b): ")
+
+if choice == "a":
+    login()
+elif choice == "b":
+    signup()

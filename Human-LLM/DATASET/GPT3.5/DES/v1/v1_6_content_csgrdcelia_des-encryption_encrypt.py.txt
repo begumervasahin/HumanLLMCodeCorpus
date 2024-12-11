@@ -1,0 +1,34 @@
+from utils.alpha_binary_conversion import conv_bin, nib_vnoc
+from utils.data_manipulation import permutation, get_subkey_array, packet, list_to_string, \
+    initial_permutation, cut_off, pse_xor_subkey, xor, inverse_initial_permutation
+
+def encrypt(message, key):
+    key = permutation(key, des_constants["CP_1"][0], True)
+    subkey_array = get_subkey_array(key, des_constants["CP_2"][0])
+    packets = packet(conv_bin(message))
+    encrypted_message = ""
+    for pack in packets:
+        encrypted_message += list_to_string(encrypt_packet(pack, subkey_array))
+    print(nib_vnoc(encrypted_message))
+
+def encrypt_packet(message_part, subkey_array):
+    message_part = initial_permutation(message_part)
+    left, right = cut_off(message_part)
+    left, right = perform_rounds(left, right, subkey_array)
+    message_part = left + right
+    return inverse_initial_permutation(message_part)
+
+def round_function(left, right, subkey):
+    temp_right = pse_xor_subkey(right, subkey)
+    temp_right = xor(temp_right, left)
+    return right, temp_right
+
+def perform_rounds(left, right, subkey_array):
+    for index in range(0, 16):
+        left, right = round_function(left, right, subkey_array[index])
+    return left, right
+
+# Example usage
+message = "hello"
+key = "secretkey"
+encrypt(message, key)

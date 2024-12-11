@@ -1,0 +1,51 @@
+import distsim
+
+# Function to validate and format digits
+def validate_digit(num):
+    num_str = str(num)
+    decimal_mark = num_str.find('.')
+    if decimal_mark != -1:
+        num_str = num_str[:decimal_mark+3]  # Keep 2 decimal places
+    return num_str
+
+# Load word vectors
+word_to_vec_dict = distsim.load_word2vec("nyt_word2vec.4k")
+
+# Read and process the input file
+with open("word-test.v3.txt") as file:
+    lines = file.readlines()
+
+for line in lines[1:]:
+    parts = line.strip().split(":")
+    title = parts[0]
+    word_pairs = parts[1].split("\n")
+
+    best1, best5, best10 = 0, 0, 0
+    total_words = len(word_pairs) - 1
+
+    for word_pair in word_pairs[1:]:
+        words = word_pair.strip().split()
+        if len(words) == 1:
+            continue
+
+        w1 = word_to_vec_dict[words[0]]
+        w2 = word_to_vec_dict[words[1]]
+        w4 = word_to_vec_dict[words[3]]
+
+        ret = distsim.show_nearest(word_to_vec_dict, w1 - w2 + w4,
+                                   set([words[0], words[1], words[3]]),
+                                   distsim.cossim_dense)
+
+        if words[2] == ret[0][0]:
+            best1 += 1
+        for r in range(5):
+            if words[2] == ret[r][0]:
+                best5 += 1
+        for r in range(10):
+            if words[2] == ret[r][0]:
+                best10 += 1
+
+    accuracy1 = validate_digit(float(best1) / total_words)
+    accuracy5 = validate_digit(float(best5) / total_words)
+    accuracy10 = validate_digit(float(best10) / total_words)
+    print(f"{title}: acc1: {accuracy1}, acc5: {accuracy5}, acc10: {accuracy10}")

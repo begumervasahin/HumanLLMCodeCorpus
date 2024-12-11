@@ -1,0 +1,35 @@
+import currency
+from test import num_threads
+from currency import CurrencyThread
+from math import log
+from BellmanFord import BellmanFord
+
+def set_edges(rates, currencies=currency.CURRENCIES):
+    edges = {}
+    for currency_id in currencies:
+        edges[currency_id] = {}
+    
+    for rate in rates:
+        source_currency, target_currency = rate["id"][:3], rate["id"][3:]
+        print(source_currency + " " + target_currency + " " + rate["Rate"])
+        weight = log(round(float(rate["Rate"]) ** -1, 4))
+        edges[source_currency][target_currency] = weight
+    
+    return edges
+
+if __name__ == "__main__":
+    threads_len = num_threads()
+    threads = currency.make_threads(threads_len)
+    CurrencyThread.run_all_threads(threads)
+    
+    currency_rates = []
+    for thread in threads:
+        for rate in thread.data:
+            currency_rates.append(rate)
+    
+    edges = set_edges(currency_rates)
+    
+    for source_currency in edges:
+        print(edges[source_currency])
+    
+    bellman_ford = BellmanFord(currency.CURRENCIES, edges, currency.CURRENCIES[0])

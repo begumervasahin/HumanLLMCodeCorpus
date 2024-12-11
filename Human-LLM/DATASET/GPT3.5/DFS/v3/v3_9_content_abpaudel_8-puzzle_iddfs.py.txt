@@ -1,0 +1,46 @@
+import itertools
+from solver import Solver
+
+class IDDFS(Solver):
+    def __init__(self, initial_state):
+        super().__init__(initial_state)
+        self.frontier = []
+
+    def depth_limited_search(self, limit):
+        self.frontier.append(self.initial_state)
+        while self.frontier:
+            current_board = self.frontier.pop()
+            self.explored_nodes.add(tuple(current_board.state))
+            if current_board.goal_test():
+                self.set_solution(current_board)
+                return self.solution
+            if current_board.depth < limit:
+                self.expand_frontier(current_board, limit)
+        return None
+
+    def expand_frontier(self, current_board, limit):
+        for neighbor in current_board.neighbors()[::-1]:
+            if tuple(neighbor.state) not in self.explored_nodes:
+                self.frontier.append(neighbor)
+                self.explored_nodes.add(tuple(neighbor.state))
+                self.max_depth = max(self.max_depth, neighbor.depth)
+
+    def solve(self):
+        for depth_limit in itertools.count():
+            self.reset_search_parameters()
+            self.frontier.append(self.initial_state)
+            solution = self.depth_limited_search(depth_limit)
+            if solution is not None:
+                break
+        return solution
+
+    def reset_search_parameters(self):
+        self.frontier = []
+        self.explored_nodes = set()
+        self.max_depth = 0
+
+# Example usage:
+# Assuming Solver class and initial_state are defined elsewhere
+initial_state = ...
+iddfs_solver = IDDFS(initial_state)
+solution = iddfs_solver.solve()

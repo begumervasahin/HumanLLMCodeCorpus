@@ -1,0 +1,41 @@
+import binascii
+import math
+
+def string_to_ascii_list(input_str):
+    """Converts a string to a list of ASCII values."""
+    return [ord(char) for char in input_str]
+
+def ascii_list_to_string(input_list):
+    """Converts a list of ASCII values to a string."""
+    return ''.join([chr(num) for num in input_list])
+
+def list_to_blocks(input_list, block_size):
+    """Converts a list of integers to blocks of a specified size."""
+    num_blocks = math.ceil(len(input_list) / block_size)
+    padded_list = input_list + [0] * (num_blocks * block_size - len(input_list))
+    blocks = [padded_list[i:i+block_size] for i in range(0, len(padded_list), block_size)]
+    return [int(binascii.hexlify(bytes(block)), 16) for block in blocks]
+
+def blocks_to_list(blocks, block_size):
+    """Converts blocks to a list of integers."""
+    num_list = []
+    for block in blocks:
+        hex_num = hex(block)[2:]
+        if len(hex_num) % 2 != 0:
+            hex_num = '0' + hex_num
+        num_list += [num for num in bytes.fromhex(hex_num)]
+    return num_list
+
+if __name__ == '__main__':
+    print('======================Test================= ')
+    block_size = 15
+    with open("original_msg", "r") as msg_file:
+        original_message = msg_file.read()
+        print(original_message)
+        print('-----------------')
+        ascii_list = string_to_ascii_list(original_message)
+        print(ascii_list)
+        blocks = list_to_blocks(ascii_list, block_size)
+        ascii_list = blocks_to_list(blocks, block_size)
+        message = ascii_list_to_string(ascii_list)
+        print(message)

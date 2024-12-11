@@ -1,0 +1,60 @@
+import socket
+import threading
+import sys
+import DES_algo
+
+# Initialize socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_port = 1234
+
+# Input username, IP address, and key
+username = input("Enter your username: ")
+server_ip = '10.198.9.8'  # Example IP address
+print("Enter IP Address:", server_ip)
+client_key = input("Enter your key: ")
+
+# Connect to the server
+client_socket.connect((server_ip, server_port))
+client_socket.sendall(str.encode('\n'.join([str(username), str(client_key)])))
+
+# Global variables
+client_running = True
+session_key = "        "
+
+# Function to receive messages from the server
+def receive_message(sock):
+    server_down = False
+    while client_running and (not server_down):
+        try:
+            global session_key
+            msg = sock.recv(1024).decode('ascii')
+            if '>>' in msg:
+                print(msg, end='')
+            elif ' ' in msg:
+                msg = msg.replace(' ', '')
+                msg = DES_algo.to_decrypt(msg, session_key)
+                print(msg)
+            elif '!!' in msg:
+                msg = msg.replace('!!', '')
+                msg = DES_algo.to_decrypt(msg, client_key)
+                session_key = msg
+                print('Session Key:', msg)
+            else:
+                print(msg)
+        except:
+            print('Server cannot be accessed. Press enter to exit...')
+            server_down = True
+
+# Start thread for receiving messages from the server
+threading.Thread(target=receive_message, args=(client_socket,)).start()
+
+# Main loop for sending messages to the server
+while client_running:
+    temp_msg = input()
+    if '**quit' in temp_msg:
+        client_running = False
+        client_socket.send('**quit'.encode('ascii'))
+    else:
+        temp_msg = DES_algo.to_encrypt(temp_msg, session_key)
+        msg = username + '>>' + temp_msg
+        client_socket.send(msg.encode('ascii'))

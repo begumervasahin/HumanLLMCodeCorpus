@@ -1,0 +1,67 @@
+import argparse
+import sys
+from allPairsShortestPath import graphRE, edgeRE
+
+def read_graph_from_file(filename):
+    """
+    Read graph data from a file and construct the graph.
+    """
+    with open(filename, 'r') as file:
+        # Read the first line to determine the number of vertices
+        num_vertices = read_num_vertices(file)
+        vertices = list(range(num_vertices))
+
+        # Initialize the adjacency matrix with infinity for all edges
+        edges = initialize_edges(num_vertices)
+
+        # Process the remaining lines to populate the adjacency matrix
+        for line in file.readlines():
+            process_edge_line(line, edges, num_vertices)
+
+    return vertices, edges
+
+def read_num_vertices(file):
+    """
+    Read the number of vertices from the first line of the file.
+    """
+    line1 = file.readline().strip()
+    graph_match = graphRE.match(line1)
+    if not graph_match:
+        print(f"Error: First line '{line1}' is not properly formatted.")
+        sys.exit(1)
+    return int(graph_match.group(1))
+
+def initialize_edges(num_vertices):
+    """
+    Initialize the adjacency matrix with infinity for all edges.
+    """
+    return [[float("inf")] * num_vertices for _ in range(num_vertices)]
+
+def process_edge_line(line, edges, num_vertices):
+    """
+    Process a line containing edge information and update the adjacency matrix.
+    """
+    line = line.strip()
+    edge_match = edgeRE.match(line)
+    if edge_match:
+        source = int(edge_match.group(1)) - 1
+        sink = int(edge_match.group(2)) - 1
+        if source >= num_vertices or sink >= num_vertices:
+            print(f"Error: Attempting to insert an edge between {source} and {sink} "
+                  f"in a graph with {num_vertices} vertices.")
+            sys.exit(1)
+        weight = float(edge_match.group(3))
+        edges[source][sink] = weight
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Read graph data from a file.")
+    parser.add_argument("filename", type=str, help="Path to the input file")
+    args = parser.parse_args()
+
+    # Read graph data from the file
+    vertices, edges = read_graph_from_file(args.filename)
+
+    # Print the vertices and edges of the graph
+    print("Vertices:", vertices)
+    print("Edges:", edges)

@@ -1,0 +1,102 @@
+import random
+from Crypto.Cipher import AES
+import socket
+from time import time
+
+# Server configuration
+HOST = '127.0.0.1'
+PORT = 56739
+BUFFER_SIZE = 4096
+X_BOB = 253
+
+# Initialize the server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind((HOST, PORT))
+
+# Function to receive a message from the client
+def receive_message():
+    data, addr = server_socket.recvfrom(BUFFER_SIZE)
+    print("Received message:", data)
+    return data, addr
+
+# Function to perform Diffie-Hellman key exchange
+def perform_dh_key_exchange(sec_bob, q, a):
+    y_bob = pow(a, sec_bob, q)
+    return y_bob
+
+# Function to derive the shared key
+def derive_shared_key(sec_bob, q, y_alice):
+    k = pow(y_alice, sec_bob, q)
+    return bin(k)[2:].zfill(24)
+
+# Class for AES encryption and decryption
+class AESCipher:
+    def __init__(self, key):
+        self.key = key
+
+    def encrypt(self, message):
+        plaintext = message.encode('utf-8')
+        cipher = AES.new(self.key, AES.MODE_ECB)
+        msg = cipher.encrypt(plaintext)
+        return msg
+
+    def decrypt(self, msg):
+        decipher = AES.new(self.key, AES.MODE_ECB)
+        plaintext = decipher.decrypt(msg)
+        plaintext = plaintext.decode('utf-8').rstrip('0')
+        return plaintext
+
+# Function to generate a random nonce
+def generate_nonce():
+    return random.getrandbits(32)
+
+# Main server logic
+while True:
+    # Receive message from the client
+    data, addr = receive_message()
+
+    # Send acknowledgment to the client
+    message = "Hey! Got your Message"
+    server_socket.sendto(message.encode(), addr)
+
+    # Receive alpha, q, and Y_a from the client
+    data, addr = receive_message()
+    a, q, y_alice = map(int, data.decode().split(','))
+
+    # Perform Diffie-Hellman key exchange
+    sec_bob = random.randint(1, q - 1)
+    y_bob = perform_dh_key_exchange(sec_bob, q, a)
+    server_socket.sendto(str(y_bob).encode(), addr)
+
+    # Derive shared key
+    shared_key = derive_shared_key(sec_bob, q, y_alice)
+
+    # Receive initial challenge from Alice
+    data, addr = receive_message()
+    initial_challenge = int(AESCipher(shared_key).decrypt(data))
+
+    # Generate and send response challenge
+    nonce = generate_nonce()
+    response_challenge = nonce - 1
+    response_message = f"{nonce},{response_challenge}"
+    cipher_bob = AESCipher(shared_key).encrypt(response_message)
+    server_socket.sendto(cipher_bob, addr)
+
+    # Receive final challenge from Alice
+    data, addr = receive_message()
+    final_challenge = int(AESCipher(shared_key).decrypt(data))
+
+    # Check authentication
+    if final_challenge == (nonce - 1):
+        message = "Authentication successful" * 6
+        cipher_bob = AESCipher(shared_key).encrypt(message)
+        end = time()
+        print("The duration of AES 192 encryption:", end - start)
+        server_socket.sendto(cipher_bob, addr)
+    else:
+        message = "Authentication failure"
+        server_socket.sendto(message.encode(), addr)
+        break
+
+# Close the server socket
+server_socket.close()

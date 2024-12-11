@@ -1,0 +1,82 @@
+# Define a dictionary for encoding and decoding characters
+encoding_dict = dict(zip(
+    'abcdefghijklmnopqrstuvwxyz.!?()-ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    ['00000', '00001', '00010', '00011', '00100',
+     '00101', '00110', '00111', '01000', '01001',
+     '01010', '01011', '01100', '01101', '01110', '01111',
+     '10000', '10001', '10010', '10011',
+     '10100', '10101', '10110', '10111',
+     '11000', '11001',
+     '11010', '11011', '11100', '11101', '11110', '11111',
+     '00000', '00001', '00010', '00011', '00100',
+     '00101', '00110', '00111', '01000',
+     '01001', '01010', '01011', '01100', '01101', '01110', '01111',
+     '10000', '10001', '10010', '10011',
+     '10100', '10101', '10110', '10111',
+     '11000', '11001']
+))
+
+def xor_bits(s1, s2):
+    """Perform XOR operation on two binary strings."""
+    return ''.join(str(int(bit1) ^ int(bit2)) for bit1, bit2 in zip(s1, s2))
+
+def text_encode(text):
+    """Encode text using the encoding dictionary."""
+    text = text[::-1]  # Reverse the text
+    return ''.join(encoding_dict[char] for char in text).lower()
+
+def text_decode(binary_string):
+    """Decode a binary string using the encoding dictionary."""
+    inv_map = {v: k for k, v in encoding_dict.items()}
+    length = len(binary_string)
+    decoded_text = ''
+    for i in range(0, length, 5):
+        decoded_text = inv_map[binary_string[i:i + 5]] + decoded_text
+    return decoded_text[::-1].lower()
+
+def ex2():
+    """Encrypt text using a stream cipher."""
+    plaintext = 'WE ALL MAKE MISTAKES AND WE ALL PAY A PRICE'
+    key = 'HOUSE'
+    text = plaintext.replace(" ", "")  # Remove spaces from text
+    print('Text:', text)
+    print('Key:', key)
+
+    # Encode key and text
+    key_byte = text_encode(key)
+    text_byte = text_encode(text)
+    print('Key in five-bit encoding:', key_byte)
+    print('Message in five-bit encoding:', text_byte)
+
+    # Initialize variables and lists
+    keystream_list = []
+    cipher_list = []
+    key_length = len(key_byte)
+    text_length = len(text_byte)
+    S = list(range(256))
+    key_bytes = [int(char) for char in key_byte]
+    text_bytes = [int(char) for char in text_byte]
+    i = j = 0
+
+    # Key-scheduling algorithm (KSA)
+    for i in range(256):
+        j = (j + S[i] + key_bytes[i % key_length]) % 256
+        S[i], S[j] = S[j], S[i]
+
+    # Generate keystream and encrypt message
+    for m in range(text_length):
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        k = S[(S[i] + S[j]) % 256]
+        keystream_list.append(k)
+        cipher_list.append(pow(k, text_bytes[m]))
+
+    # XOR the ciphertext and keystream to get the final encrypted text
+    final_array = [int(xor_bits(str(c), str(k)), 2) for c, k in zip(cipher_list, keystream_list)]
+    final_text = ''.join(chr(byte) for byte in final_array)
+    print('Final Encrypted text:')
+    print(final_text)
+
+# Run the encryption process
+ex2()

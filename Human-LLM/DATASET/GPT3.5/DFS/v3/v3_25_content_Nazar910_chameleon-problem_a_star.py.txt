@@ -1,0 +1,104 @@
+class State:
+    def __init__(self, red=0, green=0, blue=0):
+        self.red_count = red
+        self.green_count = green
+        self.blue_count = blue
+
+    def has_only_one_color(self):
+        return self.red_count == 0 and self.green_count == 0 and self.blue_count > 0 \
+               or self.red_count == 0 and self.green_count > 0 and self.blue_count == 0 \
+               or self.red_count > 0 and self.green_count == 0 and self.blue_count == 0
+
+    def has_red_ones(self):
+        return self.red_count > 0
+
+    def has_green_ones(self):
+        return self.green_count > 0
+
+    def has_blue_ones(self):
+        return self.blue_count > 0
+
+    def red_met_green(self):
+        return State(red=self.red_count - 1, green=self.green_count - 1, blue=self.blue_count + 1)
+
+    def blue_met_red(self):
+        return State(red=self.red_count - 1, green=self.green_count + 1, blue=self.blue_count - 1)
+
+    def green_met_blue(self):
+        return State(red=self.red_count + 1, green=self.green_count - 1, blue=self.blue_count - 1)
+
+
+class PriorityQueue:
+    def __init__(self):
+        self.elements = []
+
+    def empty(self):
+        return not self.elements
+
+    def put(self, item, priority):
+        self.elements.append((priority, item))
+        self.elements.sort(key=lambda elem: elem[0], reverse=True)
+
+    def get(self):
+        return self.elements.pop(0)[1]
+
+
+def heuristic_to_goal(node, goal):
+    return abs(goal.red_count - node.red_count) + abs(goal.blue_count - node.blue_count) + abs(
+        goal.green_count - node.green_count)
+
+
+def reconstruct_path(came_from, start, goal):
+    current = goal
+    path = []
+    while current != start and current is not None:
+        path.append(current)
+        current = came_from.get(str(current))
+    path.reverse()
+    return path
+
+
+from collections import deque
+
+
+def a_star(initial_state, goal):
+    queue = PriorityQueue()
+    queue.put(initial_state, 0)
+    came_from = {}
+    cost_so_far = {}
+    came_from[str(initial_state)] = None
+    cost_so_far[str(initial_state)] = 0
+    full_path = []
+    neighbors = deque()
+    while not queue.empty():
+        current = queue.get()
+        full_path.append(str(current))
+        if current.has_only_one_color():
+            break
+        neighbors.clear()
+        if current.has_red_ones() and current.has_green_ones():
+            neighbors.append(current.red_met_green())
+        if current.has_blue_ones() and current.has_red_ones():
+            neighbors.append(current.blue_met_red())
+        if current.has_blue_ones() and current.has_green_ones():
+            neighbors.append(current.green_met_blue())
+        for next_state in neighbors:
+            new_cost = cost_so_far[str(current)] + 1
+            if str(next_state) not in cost_so_far or new_cost < cost_so_far[str(next_state)]:
+                cost_so_far[str(next_state)] = new_cost
+                priority = new_cost + heuristic_to_goal(next_state, goal)
+                queue.put(next_state, priority)
+                came_from[str(next_state)] = str(current)
+    return {
+        'final_state': current,
+        'full_path': full_path,
+        'path': reconstruct_path(came_from, initial_state, goal)
+    }
+
+
+goal_state = State(red=0, green=46, blue=0)
+initial_state = State(red=1, green=1, blue=46)
+result = a_star(initial_state, goal_state)
+print("Final State:", result['final_state'].__dict__)
+print("Full Path:", result['full_path'])
+print("Shortest Path:", [state.__dict__ for state in result['path']])

@@ -1,0 +1,187 @@
+import sys
+import json
+import socket
+import time
+from threading import Thread
+from copy import deepcopy
+
+MAG = 15
+
+class Neighbor:
+    def __init__(self, addr='127.0.0.1', port=4119, weight=5.0):
+        self._addr = addr
+        self._port = port
+        try:
+            weight = float(weight)
+            if weight < 0:
+                raise ValueError('weight less than 0')
+        except ValueError as e:
+            print(str(e) + ' invalid weight.')
+            sys.exit(3)
+        self.weight = weight
+        self.origin = weight
+        self.link_status = True
+        self.link_down = False
+        self.name = ':'.join((self._addr, str(self._port)))
+        self.time = time.time()
+
+    def get_addr(self):
+        return self._addr
+
+    def get_port(self):
+        return self._port
+
+
+class DV:
+    def __init__(self, addr='127.0.0.1', port=4118, timeout=3.0, *args):
+        self.addr = addr
+        self.port = port
+        self.host_name = ':'.join((self.addr, str(self.port)))
+        self.timer = time.time()
+        self.neighbors = dict()
+        self.next_hop = dict()
+        self.timeout = timeout
+        self.neighbors.setdefault(self.host_name, Neighbor(self.addr, self.port, 0))
+        self.distance_vector = dict()
+        self.args = args
+        self.timer_due = False
+        self.dv_update_flag = True
+        self.ceiling = 0
+
+        try:
+            self.conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.conn.bind((self.addr, self.port))
+        except socket.error as e:
+            print('socket error[{0}]: {1}'.format(e.errno, e.strerror))
+            sys.exit(5)
+
+    def init_neighbor(self, addr='127.0.0.1', port=4117, weight=6.0):
+        neighbor = Neighbor(addr, port, weight)
+        client = ':'.join((addr, str(port)))
+        self.neighbors[client] = neighbor
+        self.next_hop[client] = client
+
+    def init_dv_table(self):
+        neighborhood = list(self.neighbors.keys())
+        for name in neighborhood:
+            self.distance_vector[name] = dict()
+            if name == self.host_name:
+                for k, v in self.neighbors.items():
+                    self.distance_vector[name][k] = v.weight
+                self.distance_vector[name][name] = 0
+            else:
+                for k in neighborhood:
+                    if k != name:
+                        self.distance_vector[name][k] = float('inf')
+                    else:
+                        self.distance_vector[name][name] = 0
+
+    def is_neighbor_alive(self):
+        for k, v in self.neighbors.items():
+            if k != self.host_name and v.link_status:
+                return True
+        return False
+
+    def show_rt(self):
+        if self.is_neighbor_alive():
+            dv = self.distance_vector[self.host_name]
+            for k, v in dv.items():
+                if v != float('inf') and k != self.host_name:
+                    print('Destination={0}, Cost={1}, (next hop) link={2}'.format(k, v, self.next_hop[k]))
+        else:
+            print('No NEIGHBOR IS ALIVE.')
+
+    def close(self):
+        self.timer_due = False
+        self.dv_update_flag = False
+        print('Closing...')
+        self.conn.close()
+        sys.exit('Closed.')
+
+    def print_table(self):
+        print('dv_table'.center(80, '-'))
+        for name in self.distance_vector.keys():
+            print(self.distance_vector[name])
+        print('NEXT HOP: ' + str(self.next_hop))
+        print(''.center(80, '-') + '\n')
+
+    def bellman_ford(self):
+        distance_vector = deepcopy(self.distance_vector)
+        next_hopper = deepcopy(self.next_hop)
+        update = False
+        for dest, cost in distance_vector[self.host_name].items():
+            min_cost = float('inf')
+            next_hop = None
+            if dest != self.host_name:
+                for mid, v in self.neighbors.items():
+                    if v.link_status and mid != self.host_name:
+                        d = self.neighbors[mid].weight + distance_vector[mid][dest]
+                        if d <= min_cost:
+                            min_cost = d
+                            next_hop = mid
+                if min_cost != cost:
+                    if min_cost != float('inf') and min_cost > self.ceiling:
+                        min_cost = float('inf')
+                    distance_vector[self.host_name][dest] = min_cost
+                    next_hopper[dest] = next_hop
+                    update = True
+        self.distance_vector = distance_vector
+        self.next_hop = next_hopper
+        return update
+
+    def update_dv(self, msg, addr, link=True):
+        client = ':'.join([addr[0], str(addr[1])])
+        if link:
+            if not self.neighbors[client].link_status and not self.neighbors[client].link_down:
+                self.neighbors[client].time = time.time()
+                self.neighbors[client].link_status = True
+                self.neighbors[client].weight = self.neighbors[client].origin
+            self.neighbors[client].time = time.time()
+            try:
+                tmp = json.loads(msg)
+            except Exception as e:
+                print(str(e) + 'json loads exception')
+            else:
+                diff = set(tmp.keys()) - set(self.distance_vector[client].keys())
+                if diff:
+                    new_node = list(diff)
+                    for name in new_node:
+                        self.next_hop[name] = name
+                        for neighbor in self.neighbors.keys():
+                            if neighbor != client:
+                                self.distance_vector[neighbor][name] = float('inf')
+                    for k, v in tmp.items():
+                        self.distance_vector[client][k] = v
+                else:
+                    for k, v in tmp.items():
+                        self.distance_vector[client][k] = v
+        else:
+            print('linkdown ' + client)
+            self.neighbors[client].link_status = False
+            self.neighbors[client].weight = float('inf')
+        self.dv_update_flag = self.bellman_ford()
+
+    def recv(self):
+        while True:
+            msg, addr = self.conn.recvfrom(1024)
+            if msg.startswith('ROUTE UPDATE'):
+                self.update_dv(msg[len('ROUTE UPDATE'):], addr)
+            elif msg.startswith('LINK DOWN'):
+                self.update_dv('', addr, False)
+            elif msg.startswith('LINK UP'):
+                self.update_dv(msg[len('LINK UP'):], addr)
+            else:
+                print('error >>> ' + msg)
+
+    def send(self):
+        while True:
+            if self.dv_update_flag or self.timer_due:
+                self.timer = time.time()
+                msg = 'ROUTE UPDATE'
+                msg += json.dumps(self.distance_vector[self.host_name], separators=(',', ': '))
+                for k, v in self.neighbors.items():
+                    if k != self.host_name and v.link_status:
+                        addr = k.split(':')
+                        self.conn.sendto(msg, (addr[0], int(addr[1])))
+                if self.timer_due:
+                    self

@@ -1,0 +1,80 @@
+from time import sleep
+import random
+import socket
+
+def is_prime(n):
+    for i in range(2, n):
+        if n % i == 0:
+            return False
+    return True
+
+def generate_random_prime(limit=2000):
+    primes_list = [p for p in range(2, limit + 1) if is_prime(p)]
+    return random.choice(primes_list)
+
+def alice_send_message(num, host, port):
+    from_bob = ""
+    backlog = 5
+    size = 1024
+
+    # Establish a socket for Alice to communicate with Bob
+    s_alice = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s_alice.bind((host, port))
+    s_alice.listen(backlog)
+
+    # Accept the connection from Bob
+    conn, client_address = s_alice.accept()
+    data = conn.recv(size)
+    if data:
+        data_string = data.decode("utf-8")
+        from_bob = data_string
+    conn.close()
+    s_alice.close()
+    sleep(0.1)
+
+    # Create a new socket to send data to Bob
+    c_alice = socket.create_connection((host, port))
+    num_str = str(num)
+    buf = num_str.encode("utf-8")
+    c_alice.sendall(buf)
+    c_alice.close()
+
+    return from_bob
+
+def generate_and_send_prime(host, port):
+    prime = 0
+    while prime < 1000:
+        prime = generate_random_prime()
+
+    bob_message = alice_send_message(prime, host, port)
+
+    if bob_message == "0":
+        bob_message = f"Bob receives the message {prime} as the second part of the public key"
+    return bob_message
+
+def generate_and_send_private_key(host, port):
+    private_key = generate_random_prime()
+    print(f"Alice's private key is {private_key}")
+
+    g = generate_random_prime()
+    bob_message_g = alice_send_message(g, host, port)
+
+    if bob_message_g == "0":
+        bob_message_g = f"Bob receives the message {g} as the first part of the public key"
+    print(f"State = {bob_message_g}")
+
+    p_message = generate_and_send_prime(host, port)
+    print(f"State = {p_message}")
+
+    alice_message = pow(g, private_key, int(p_message))
+    bob_message_from_alice = alice_send_message(alice_message, host, port)
+    bob_message_int = int(bob_message_from_alice)
+    alice_shared_key = pow(bob_message_int, private_key, int(p_message))
+
+    print(f"Alice's shared key is {alice_shared_key}")
+
+# Server configuration
+HOST = "localhost"
+PORT = 42428
+
+generate_and_send_private_key(HOST, PORT)

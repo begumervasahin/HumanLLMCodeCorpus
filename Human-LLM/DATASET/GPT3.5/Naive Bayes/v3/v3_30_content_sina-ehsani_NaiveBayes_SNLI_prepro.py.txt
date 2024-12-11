@@ -1,0 +1,56 @@
+import json
+import re
+import numpy as np
+from nltk.stem import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+from data_utils import savedata
+
+# Initialize stemmer and lemmatizer
+lemmatizer = WordNetLemmatizer()
+ps = PorterStemmer()
+
+def extract_tokens_from_binary_parse(parse):
+    """Extract tokens from a binary parse."""
+    return re.findall(r'\b\w+\b', parse)
+
+def yield_examples(file_path, skip_no_majority=True, limit=None):
+    """Yields examples from a JSON file."""
+    with open(file_path, 'r') as file:
+        for i, line in enumerate(file):
+            if limit and i >= limit:
+                break
+            data = json.loads(line)
+            label = data['gold_label']
+            s1 = ' '.join(extract_tokens_from_binary_parse(data['sentence1_binary_parse']))
+            s2 = ' '.join(extract_tokens_from_binary_parse(data['sentence2_binary_parse']))
+            if skip_no_majority and label == '-':
+                continue
+            yield (label, s1, s2)
+
+def clean_sentence(sentence):
+    """Clean and preprocess a sentence."""
+    sentence = re.sub(r"[^a-zA-Z]", " ", sentence)
+    words = sentence.lower().split()
+    stemmed_words = [ps.stem(word) for word in words]
+    return " ".join(stemmed_words)
+
+def preprocess_data(file_path, limit=None):
+    """Preprocess data from a JSON file."""
+    raw_data = list(yield_examples(file_path, limit=limit))
+    left = [clean_sentence(s1) for _, s1, _ in raw_data]
+    right = [clean_sentence(s2) for _, _, s2 in raw_data]
+    labels = {'contradiction': 0, 'neutral': 1, 'entailment': 2}
+    y = np.array([labels[label] for label, _, _ in raw_data])
+    return left, right, y
+
+def main():
+    """Main function to preprocess the data."""
+    train_data = preprocess_data('snli_1.0/snli_1.0_train.jsonl')
+    test_data = preprocess_data('snli_1.0/snli_1.0_test.jsonl')
+    dev_data = preprocess_data('snli_1.0/snli_1.0_dev.jsonl')
+    savedata(test_data, "test_stem")
+    savedata(train_data, "train_stem")
+    savedata(dev_data, "dev_stem")
+
+if __name__ == '__main__':
+    main()

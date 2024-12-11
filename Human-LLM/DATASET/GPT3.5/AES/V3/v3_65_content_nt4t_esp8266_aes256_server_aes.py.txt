@@ -1,0 +1,121 @@
+import os
+import sys
+import base64
+from Crypto.Cipher import AES
+from Crypto import Random
+from twisted.internet import reactor
+from twisted.python import log
+from twisted.web.server import Site
+from twisted.web.static import File
+from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol
+from autobahn.twisted.resource import WebSocketResource
+
+# Define the secret key and block size
+SECRET_KEY = "Secretkey"
+SECRET_KEY += '.' * (16 - (len(SECRET_KEY) % 16))
+BLOCK_SIZE = 32
+
+class AESCipher:
+    """
+    AES encryption and decryption class.
+    """
+    def __init__(self, key, block_size):
+        self.key = key
+        self.block_size = block_size
+
+    def encrypt(self, iv, raw):
+        """
+        Encrypt the given plaintext.
+        """
+        if not raw:
+            raise ValueError("No value given to encrypt")
+
+        # Pad the plaintext
+        raw = raw.ljust(self.block_size, '\0')
+
+        # Encrypt the plaintext
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        encrypted = cipher.encrypt(raw)
+        return base64.b64encode(encrypted).decode('utf-8')
+
+    def decrypt(self, iv, enc):
+        """
+        Decrypt the given ciphertext.
+        """
+        if not enc:
+            raise ValueError("No value given to decrypt")
+
+        # Decode IV and ciphertext from base64
+        iv = base64.b64decode(iv)
+        enc = base64.b64decode(enc)
+
+        # Decrypt the ciphertext
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted = cipher.decrypt(enc)
+        return decrypted.rstrip(b'\0').decode('utf-8')
+
+    @staticmethod
+    def generate_iv():
+        """
+        Generate a random initialization vector (IV).
+        """
+        iv = Random.new().read(16)
+        return base64.b64encode(iv).decode('utf-8')
+
+class EchoServerProtocol(WebSocketServerProtocol):
+    """
+    WebSocket server protocol for echoing messages.
+    """
+    def onConnect(self, request):
+        print("WebSocket connection request: {}".format(request))
+
+    def onMessage(self, payload, isBinary):
+        print("Received message:", payload)
+
+        # Split the payload into IV and encrypted message
+        iv, enc_msg = payload.split(" ")
+
+        # Decrypt the message
+        aes = AESCipher(SECRET_KEY, BLOCK_SIZE)
+        dec_msg = aes.decrypt(iv, enc_msg)
+        print("Decrypted message:", dec_msg)
+
+        # Generate a new IV
+        new_iv = AESCipher.generate_iv()
+
+        # Encrypt a response message
+        aes = AESCipher(SECRET_KEY, BLOCK_SIZE)
+        response = aes.encrypt(new_iv, 'Hello from server')
+        uname = os.uname()
+        message = '{sysname} {release} {civ} {cmsg}'.format(
+            sysname=uname[0],
+            release=uname[1],
+            civ=new_iv,
+            cmsg=response,
+        )
+        print("Sending message:", message)
+        self.sendMessage(message, isBinary)
+
+if __name__ == '__main__':
+    # Start logging
+    log.startLogging(sys.stdout)
+
+    # Create WebSocket server factory
+    factory = WebSocketServerFactory(u"ws://127.0.0.1:8080")
+    factory.protocol = EchoServerProtocol
+
+    # Create WebSocket resource
+    resource = WebSocketResource(factory)
+
+    # Set up root resource
+    root = File(".")
+    root.putChild(b"ws", resource)
+
+    # Create Twisted web server site
+    site = Site(root)
+
+    # Listen on port 8080
+    reactor.listenTCP(8080, site)
+
+    # Start the Twisted reactor
+    reactor.run()

@@ -1,0 +1,65 @@
+import requests
+import click
+import textwrap
+
+terminal_width = 0
+
+# Function to print wrapped text with optional indentation
+def wrap_print(content, indent=0):
+    global terminal_width
+    print(
+        textwrap.indent(
+            textwrap.fill(content, (terminal_width if terminal_width else 80) - indent), " " * indent
+        )
+    )
+
+@click.command()
+def main():
+    global terminal_width
+    terminal_width = click.get_terminal_size()[0]
+
+    while True:
+        click.clear()
+        print("Willkommen zum ParteiDuell \033[31mK\033[0m\033[33ml\033[0m\033[93m\033[32mi\033[0m\033[34me\033[0m\033[35mh\033[0m")
+        print("")
+        try:
+            response = requests.get("https://solver.cloud:440/list")
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            data = response.json()
+        except requests.RequestException as e:
+            print(f"Fehler beim Abrufen der Daten: {e}")
+            continue
+
+        wrap_print(data[0]["these"])
+        print()
+        wrap_print(data[0]["statement"])
+        print()
+
+        possible_answers = list(data[0]["possibleAnswers"])
+        options = ", ".join(f"{i}: {answer}" for i, answer in enumerate(possible_answers))
+        print(options)
+
+        party = input("> ")
+
+        try:
+            party = int(party)
+            party = possible_answers[party]
+        except (ValueError, IndexError):
+            print("Ungültige Eingabe. Bitte geben Sie eine gültige Option ein.")
+            continue
+
+        print()
+
+        if data[0]["answer"] == party:
+            print("Richtig!")
+        else:
+            print(f"Falsch, diese Aussage war von {data[0]['answer']}")
+            print()
+            print(f"Die Partei {party} hat folgendes Statement abgegeben:\n")
+            wrap_print(data[0]["possibleAnswers"][party], indent=4)
+
+        print()
+        click.pause()
+
+if __name__ == "__main__":
+    main()

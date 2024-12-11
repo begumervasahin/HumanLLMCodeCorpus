@@ -1,0 +1,133 @@
+from State import State
+from Action import Action
+
+class State_Controller:
+    def __init__(self, initial_state=None, state_list=None):
+        """
+        Initialize a State_Controller object.
+
+        Parameters:
+            initial_state (State, optional): The possible initial state for the controller. Defaults to None.
+            state_list (list[State], optional): The list of all states that this controller should have access to. Defaults to None.
+        """
+        self.state_list = state_list if state_list is not None else []
+        self.curr_state = initial_state
+        self.state_list_size = len(self.state_list)
+
+    def add_state(self, state):
+        """
+        Add a state object to the controller's state list.
+
+        Parameters:
+            state (State): The state object to add.
+
+        Returns:
+            bool: True if the state was successfully added, False otherwise.
+
+        Raises:
+            TypeError: If the state parameter is not of type State.
+            NameError: If the state already exists in the list, preventing duplicates.
+        """
+        if not isinstance(state, State):
+            raise TypeError("The state must be an instance of the State class.")
+
+        state_key = state.get_key()
+        if state_key in [existing_state.get_key() for existing_state in self.state_list]:
+            raise NameError("State already exists in the list.")
+
+        self.state_list.append(state)
+        self.state_list_size += 1
+        if self.state_list_size == 1:
+            self.curr_state = state
+        return True
+
+    def add_action(self, action):
+        """
+        Add an action to the current state's action list.
+
+        Parameters:
+            action (Action): The action object to add.
+
+        Returns:
+            bool: True if the action was successfully added to the current state's action list.
+
+        Raises:
+            TypeError: If the action parameter is not of type Action.
+        """
+        if not isinstance(action, Action):
+            raise TypeError("The action must be an instance of the Action class.")
+
+        return self.curr_state.add_action(action)
+
+    def switch_state(self, state_key):
+        """
+        Switch the current state to the state with the specified key.
+
+        Parameters:
+            state_key (object): The search key for the state to switch to.
+
+        Returns:
+            bool: True if the current state was switched successfully to the new state, False otherwise.
+        """
+        for state in self.state_list:
+            if state.get_key() == state_key:
+                self.curr_state = state
+                return True
+        return False
+
+    def try_action(self, action_key):
+        """
+        Try to perform an action in the current state.
+
+        Parameters:
+            action_key (object): The search key for the action to attempt.
+
+        Returns:
+            float or int: The result of the action if successful, -1 if the action failed.
+        """
+        return self.curr_state.try_action(action_key)
+
+    def get_current_state(self):
+        """
+        Get the current state.
+
+        Returns:
+            State: The current state object.
+        """
+        return self.curr_state
+
+    def get_num_states(self):
+        """
+        Get the number of states in the controller's state list.
+
+        Returns:
+            int: The number of states.
+        """
+        return self.state_list_size
+
+    def get_action_count(self):
+        """
+        Get the count of actions performed and their results in the current state.
+
+        Returns:
+            dict: A dictionary containing the action counter and action information.
+        """
+        return self.curr_state.get_count()
+
+    def is_terminal_state(self):
+        """
+        Check if the current state is terminal.
+
+        Returns:
+            bool: True if the current state is terminal, False otherwise.
+        """
+        return self.curr_state.is_terminal()
+
+    def get_current_reward(self):
+        """
+        Get the reward for being in the current state.
+
+        Returns:
+            float: The reward for being in the current state.
+        """
+        return self.curr_state.get_reward()

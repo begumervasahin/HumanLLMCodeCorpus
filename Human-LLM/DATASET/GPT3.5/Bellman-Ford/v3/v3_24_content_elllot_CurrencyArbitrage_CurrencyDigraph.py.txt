@@ -1,0 +1,69 @@
+from collections import defaultdict
+from math import log
+
+class Scraper:
+    def __init__(self):
+        # Placeholder for currency exchange rates data
+        self.rates = {
+            ('USD', 'EUR'): 0.85,
+            ('USD', 'GBP'): 0.76,
+            ('EUR', 'USD'): 1.18,
+            ('EUR', 'GBP'): 0.89,
+            ('GBP', 'USD'): 1.32,
+            ('GBP', 'EUR'): 1.12,
+        }
+
+class CurrencyDigraph:
+    def __init__(self, src=None):
+        self.graph = defaultdict(list)  # Stores the graph structure
+        self.weights = {}  # Stores the weights of edges in the graph
+        self.scraper = Scraper()  # Instantiate the Scraper class to get currency rates
+        self.parents = {}  # Stores parent vertices in a cycle
+        self.distances = {vertex: float("inf") for vertex in self.graph}  # Initialize distances to infinity
+        if src:
+            self.set_source(src)  # Set the source currency if provided
+        self.currency_list = self.get_currency_list()  # Generate a sorted list of currencies
+        self.print_cache = []  # Cache for printing currency list
+        self.items_per_line = 4  # Number of items to display per line in the currency list
+
+    def set_source(self, src):
+        # Set the source currency and initialize its distance to 0
+        self.distances[src] = 0.0
+
+    def generate_graph(self):
+        # Populate the graph and weights based on currency exchange rates
+        for rate_pair, rate_value in self.scraper.rates.items():
+            source, target = rate_pair
+            self.graph[source].append(target)  # Add target currency to the adjacency list of source currency
+            self.weights[rate_pair] = -log(rate_value)  # Calculate and store the weight
+
+    def find_cycle(self, v):
+        # Find a cycle in the parent map using Depth-First Search (DFS) starting from vertex v
+        visited, cycle = set(), []
+        while v not in visited:
+            visited.add(v)
+            cycle.append(v)
+            v = self.parents[v]
+        return cycle[cycle.index(v):][::-1]  # Return the cycle in reverse order
+
+    def get_currency_list(self):
+        # Convert currency rates dictionary to a sorted list for printing
+        return sorted(self.scraper.rates.items(), key=lambda x: x[1])
+
+    def print_currency_list(self):
+        # Print the currency list with a specified number of items per line
+        print('Currency List:')
+        if self.print_cache:
+            for line in self.print_cache:
+                print(line, '\n')
+        else:
+            i = 0
+            while i < len(self.currency_list):
+                end = i + self.items_per_line
+                self.print_cache.append(self.currency_list[i:end])
+                print(self.print_cache[-1], '\n')
+                i = end
+
+# Example usage
+currency_digraph = CurrencyDigraph()
+currency_digraph.print_currency_list()

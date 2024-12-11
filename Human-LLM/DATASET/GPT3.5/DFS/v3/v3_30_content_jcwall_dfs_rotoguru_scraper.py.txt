@@ -1,0 +1,25 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup as bsoup
+
+def fetch_data(years, weeks):
+    for year in years:
+        for week in weeks:
+            url = f'http://rotoguru1.com/cgi-bin/fyday.pl?week={week}&year={year}&game=fd&scsv=1'
+            response = requests.get(url)
+            soup = bsoup(response.content, 'html.parser')
+            pre_tags = soup.find_all('pre')
+            yield pre_tags[0].text
+
+def save_to_csv(data, filename='test.csv'):
+    with open(filename, 'a+') as csv_file:
+        csv_file.write(data)
+
+def grab_data_and_save_csv():
+    years = [2016, 2015, 2014, 2013]
+    weeks = range(1, 17)
+    for data in fetch_data(years, weeks):
+        save_to_csv(data)
+
+if __name__ == '__main__':
+    grab_data_and_save_csv()

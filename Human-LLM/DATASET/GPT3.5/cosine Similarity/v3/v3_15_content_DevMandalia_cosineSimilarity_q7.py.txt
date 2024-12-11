@@ -1,0 +1,57 @@
+import distsim
+from collections import defaultdict
+
+def load_word_vectors():
+    """Load word vectors from file."""
+    return distsim.load_word2vec("nyt_word2vec.4k")
+
+def process_word_test_file(word_to_vec_dict):
+    """Process the word-test file and calculate task accuracies."""
+    task_accuracies = defaultdict(list)
+    
+    with open("word-test.v3.txt", "r") as file:
+        for line in file:
+            line = line.strip('\n')
+            if line.startswith('//'):
+                continue
+            if line.startswith(":"):
+                category = line[2:]
+            else:
+                words = line.split()
+                w1_vec = word_to_vec_dict[words[0]]
+                w2_vec = word_to_vec_dict[words[1]]
+                w4_vec = word_to_vec_dict[words[3]]
+                fourth_word_vec = w1_vec - w2_vec + w4_vec
+                result = distsim.show_nearest(word_to_vec_dict, fourth_word_vec, set([words[0], words[1], words[3]]), distsim.cossim_dense)
+                match = False
+                for i, (word, _) in enumerate(result, 1):
+                    if word == words[2]:
+                        match = True
+                        task_accuracies[category].append(i)
+                        break
+                if not match:
+                    task_accuracies[category].append(0)
+                    
+    return task_accuracies
+
+def calculate_accuracies(task_accuracies):
+    """Calculate and print task accuracies."""
+    for category, positions in task_accuracies.items():
+        total = len(positions)
+        top1 = sum(1 for pos in positions if pos == 1)
+        top5 = sum(1 for pos in positions if pos <= 5)
+        top10 = sum(1 for pos in positions if pos <= 10)
+        print(f"{category}:     {top1 / total:.2f}    {top5 / total:.2f}    {top10 / total:.2f}")
+
+def main():
+    # Load word vectors
+    word_to_vec_dict = load_word_vectors()
+
+    # Process word-test file and calculate accuracies
+    task_accuracies = process_word_test_file(word_to_vec_dict)
+
+    # Calculate and print accuracies
+    calculate_accuracies(task_accuracies)
+
+if __name__ == "__main__":
+    main()

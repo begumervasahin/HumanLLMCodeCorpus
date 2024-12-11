@@ -1,0 +1,55 @@
+import pandas as pd
+import math
+
+def playerFeat1(player, game):
+    returnData = initialize_features()
+    data = pd.read_csv('data/LakersPlayerData.csv')
+    prevGame = game - 1
+
+    for index, row in data.iterrows():
+        if row['Players'] == player and row['Game'] == prevGame:
+            returnData['Home'] = float(row['Home'])
+            returnData['MP'] = calculate_time(row['MP'])
+            if returnData['MP'] == 0:
+                continue
+            update_features(returnData, row)
+            break
+
+    return returnData
+
+def initialize_features():
+    features = [
+        'Home', 'MP', 'FG', 'FGA', 'FG%', '3P', '3PA', '3P%', 'FT', 'FTA',
+        'FT%', 'ORB', 'DRB', 'TRB', 'AST', 'STL', 'BLK', 'TOV', 'PF', 'PTS',
+        '+/-', 'TS%', 'eFG%', '3PAr', 'FTr', 'ORB%', 'DRB%', 'TRB%', 'AST%',
+        'STL%', 'BLK%', 'TOV%', 'USG%', 'ORtg', 'DRtg'
+    ]
+    return {feature: 0 for feature in features}
+
+def calculate_time(time_str):
+    if not time_str:
+        return 0
+    minutes, seconds = map(int, time_str.split(':'))
+    return minutes * 10 + seconds / 60
+
+def update_features(returnData, row):
+    for feature in returnData.keys():
+        if feature in row:
+            returnData[feature] = check_nan(float(row[feature]))
+
+def check_nan(val):
+    return val if not math.isnan(val) else 0
+
+def createTest(player, game, var, features):
+    trainData = pd.read_csv(f'testData/{var}/{player}.csv')
+    newDataSheet = []
+
+    for index, row in trainData.iterrows():
+        if row['Game'] == game:
+            newDataSheet.append(row)
+            break
+
+    with open(f'test/{var}/{player}_{game}.csv', mode='w', newline='') as playerFile:
+        playerWriter = csv.writer(playerFile)
+        playerWriter.writerow(features)
+        playerWriter.writerow(newDataSheet)

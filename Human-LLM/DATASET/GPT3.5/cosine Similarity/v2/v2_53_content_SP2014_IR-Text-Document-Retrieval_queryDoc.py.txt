@@ -1,0 +1,158 @@
+import sys
+import re
+from collections import defaultdict
+import copy
+from functools import reduce
+from stemmer.PorterStemmer import PorterStemmer
+
+porter = PorterStemmer()
+
+class QueryIndex:
+    def __init__(self):
+        self.index = {}
+        self.tf = {}
+        self.idf = {}
+        self.stopwordsFile = ''
+        self.indexFile = ''
+        self.indexScore = ''
+        self.numDocuments = 0
+        self.stopwords = {}
+
+    def intersect_lists(self, lists):
+        if not lists:
+            return []
+        lists.sort(key=len)
+        return list(reduce(lambda x, y: set(x) & set(y), lists))
+
+    def get_stopwords(self):
+        with open(self.stopwordsFile, 'r') as f:
+            self.stopwords = {line.strip() for line in f}
+
+    def get_terms(self, line):
+        line = line.lower()
+        line = re.sub(r'[^a-z0-9 ]', ' ', line)
+        line = line.split()
+        line = [word for word in line if word not in self.stopwords]
+        line = [porter.stem(word, 0, len(word) - 1) for word in line]
+        return line
+
+    def get_postings(self, terms):
+        return [self.index[term] for term in terms if term in self.index]
+
+    def get_docs_from_postings(self, postings):
+        return [[x[0] for x in p] for p in postings]
+
+    def read_index(self):
+        with open(self.indexFile, 'r') as f1, open(self.indexScore, 'r') as f2:
+            self.numDocuments = int(f2.readline().strip())
+            for line in f1:
+                score = f2.readline()[1:-2]
+                line = line.strip()[1:-1]
+                term, postings = line.split('|')
+                _term, tf, idf = score.split('|')
+                postings = postings.split(';')
+                postings = [x.split(':') for x in postings]
+                postings = [[x[0], list(map(int, x[1].split(',')))] for x in postings]
+                self.index[term] = postings
+                tf = tf.split(',')
+                self.tf[term] = list(map(float, tf))
+                self.idf[term] = float(idf.strip()[:-1])
+
+    def dot_product(self, vec1, vec2):
+        if len(vec1) != len(vec2):
+            return 0
+        return sum(x * y for x, y in zip(vec1, vec2))
+
+    def rank_documents(self, terms, docs):
+        doc_vectors = defaultdict(lambda: [0] * len(terms))
+        query_vector = [0] * len(terms)
+        for term_index, term in enumerate(terms):
+            if term not in self.index:
+                continue
+            query_vector[term_index] = self.idf[term]
+            for doc_index, (doc, postings) in enumerate(self.index[term]):
+                if doc in docs:
+                    doc_vectors[doc][term_index] = self.tf[term][doc_index]
+        doc_scores = [[self.dot_product(cur_doc_vec, query_vector), doc] for doc, cur_doc_vec in doc_vectors.items()]
+        doc_scores.sort(reverse=True)
+        result_docs = [x[1] for x in doc_scores][:10]
+        print('\n'.join(result_docs), '\n')
+
+    def ftq(self, q):
+        q = self.get_terms(q)
+        if not q:
+            print('')
+            return
+        doc_ids = set()
+        for term in q:
+            try:
+                postings = self.index[term]
+                docs = [x[0] for x in postings]
+                doc_ids |= set(docs)
+            except KeyError:
+                pass
+        doc_ids = list(doc_ids)
+        self.rank_documents(q, doc_ids)
+
+    def pq(self, q):
+        original_query = q
+        q = self.get_terms(q)
+        if not q:
+            print('')
+            return
+        phrase_docs = self.pq_docs(q)
+        self.rank_documents(q, phrase_docs)
+
+    def pq_docs(self, q):
+        phrase_docs = []
+        for term in q:
+            if term not in self.index:
+                return []
+        postings = self.get_postings(q)
+        docs = self.get_docs_from_postings(postings)
+        docs = self.intersect_lists(docs)
+        for i in range(len(postings)):
+            postings[i] = [x for x in postings[i] if x[0] in docs]
+        postings = copy.deepcopy(postings)
+        for i in range(len(postings)):
+            for j in range(len(postings[i])):
+                postings[i][j][1] = [x - i for x in postings[i][j][1]]
+        result = []
+        for i in range(len(postings[0])):
+            li = self.intersect_lists([x[i][1] for x in postings])
+            if li:
+                result.append(postings[0][i][0])
+        return result
+
+    def get_params(self):
+        param = sys.argv
+        self.stopwordsFile = param[1]
+        self.indexFile = param[2]
+        self.indexScore = param[3]
+
+    def test_params(self):
+        '''for testing purpose'''
+        self.stopwordsFile = './stopwords/english_stopwords.txt'
+        self.indexFile = './index_db.json'
+        self.indexScore = './index_score_db.json'
+
+    def query_index(self):
+        self.test_params()
+        self.read_index()
+        self.get_stopwords()
+        qt = sys.argv[1]
+        while True:
+            q = sys.stdin.readline()
+            if qt == '':
+                print('type some query: Error!')
+                break
+            if qt == 'ftq':
+                self.ftq(q)
+            if qt == 'pq':
+                self.pq(q)
+        print("program end")
+
+if __name__ == '__main__':
+    q = QueryIndex()
+    q.query_index()
+    print(q.index['alek'])

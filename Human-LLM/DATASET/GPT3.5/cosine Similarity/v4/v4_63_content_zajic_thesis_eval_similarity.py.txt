@@ -1,0 +1,72 @@
+import numpy as np
+from scipy.spatial.distance import cosine
+import pickle
+
+class CosineSimilarity:
+    def __init__(self):
+        # Load matrices needed for calculating similarity
+        self.tfidf, self.terms, self.sigma, self.VT = self._load_matrices()
+
+    def calculate_term_similarity(self, term1, term2):
+        # Check if both terms are present in the corpus
+        if (term1 in self.terms) and (term2 in self.terms):
+            # Get the indices of the terms
+            index0 = self.terms.index(term1)
+            index1 = self.terms.index(term2)
+        else:
+            # If one or both terms are not found, return 0 similarity
+            print("One or both terms not found in the corpus.")
+            return 0
+
+        # Get the term vectors for the given terms
+        t0 = np.transpose(self.tfidf[index0])
+        t1 = np.transpose(self.tfidf[index1])
+
+        # Calculate the cosine similarity between the term vectors
+        cos_dist = self._calculate_cosine_similarity(t0, t1)
+        similarity = 1 - cos_dist
+
+        # Print similarity score
+        print(f"Similarity between '{term1}' and '{term2}': {similarity}")
+
+        return similarity
+
+    def _create_diagonal_matrix(self):
+        # Create a diagonal matrix using sigma values
+        diagMatrix = np.zeros((len(self.sigma), len(self.sigma)), int)
+        np.fill_diagonal(diagMatrix, 1)
+        diagMatrix = diagMatrix * self.sigma
+        return diagMatrix
+
+    def _calculate_cosine_similarity(self, t0, t1):
+        # Create diagonal matrix using sigma
+        sigma_diagonal = self._create_diagonal_matrix()
+        sigma_inv = np.linalg.inv(sigma_diagonal)
+        # Transform term vectors
+        term_vector0 = np.mat(sigma_inv) * np.mat(self.VT) * t0
+        term_vector1 = np.mat(sigma_inv) * np.mat(self.VT) * t1
+        # Calculate cosine distance
+        distance = cosine(term_vector0, term_vector1)
+        return distance
+
+    @staticmethod
+    def _load_matrices():
+        # Load matrices from pickle files
+        with open('./pickle_files/sigma', 'rb') as fp:
+            sigma = pickle.load(fp)
+        with open('./pickle_files/vt', 'rb') as fp:
+            VT = pickle.load(fp)
+        with open('./pickle_files/tfidf', 'rb') as fp:
+            tfidf = pickle.load(fp)
+        with open('./pickle_files/terms', 'rb') as fp:
+            terms = pickle.load(fp)
+        return tfidf, terms, sigma, VT
+
+if __name__ == "__main__":
+    # Create an instance of CosineSimilarity class
+    cosine_similarity = CosineSimilarity()
+    # Take user input for two terms
+    term1 = input("Enter the first term: ")
+    term2 = input("Enter the second term: ")
+    # Calculate and print similarity between the terms
+    cosine_similarity.calculate_term_similarity(term1, term2)

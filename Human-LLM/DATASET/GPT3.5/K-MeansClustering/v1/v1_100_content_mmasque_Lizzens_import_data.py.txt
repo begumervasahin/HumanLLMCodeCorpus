@@ -1,0 +1,58 @@
+import sys
+import spotipy
+import spotipy.util as util
+
+def startup(scope):
+    """Take username from args and get Spotify token to access Spotify account.
+    
+    Arguments:
+    - scope: str that determines scope of access to Spotify account
+    
+    Returns:
+    - username: str, username of Spotify account to access
+    - token: str, for use in call to spotipy.Spotify() to access Spotify account.
+    """
+    if len(sys.argv) > 1:
+        username = sys.argv[1]
+    else:
+        print("Usage: " + sys.argv[0] + " username")
+        sys.exit()
+    token = util.prompt_for_user_token(username, scope)
+    return username, token
+
+def get_liked_songs(sp):
+    """Get list of liked songs from account instance sp.
+    
+    Arguments:
+    - sp: Spotify instance
+    
+    Returns:
+    - tracks: list of track dictionaries.
+    """
+    results = sp.current_user_saved_tracks(limit=50)
+    tracks = results['items']
+    while results['next']:
+        results = sp.next(results)
+        tracks.extend(results['items'])
+    return tracks
+
+if __name__ == "__main__":
+    # Set the scope for accessing Spotify. For example, 'user-library-read' for reading user's library.
+    scope = 'user-library-read'
+    
+    # Initialize Spotify client
+    username, token = startup(scope)
+    
+    if token:
+        sp = spotipy.Spotify(auth=token)
+        
+        # Get liked songs
+        liked_songs = get_liked_songs(sp)
+        
+        # Print liked songs
+        print("Liked songs:")
+        for idx, song in enumerate(liked_songs, 1):
+            track_info = song['track']
+            print(f"{idx}. {track_info['name']} by {', '.join(artist['name'] for artist in track_info['artists'])}")
+    else:
+        print("Can't get token for", username)

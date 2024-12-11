@@ -1,0 +1,51 @@
+import os
+import time
+import string
+import operator
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Function to clean up text
+def clean_text(text):
+    # Remove punctuation
+    text_without_punctuation = ''.join([char for char in text if char not in string.punctuation])
+    # Remove stopwords
+    stopwords_set = set(stopwords.words('english'))
+    text_without_stopwords = ' '.join([word for word in text_without_punctuation.split() if word.lower() not in stopwords_set])
+    # Lemmatize words
+    lemmatizer = WordNetLemmatizer()
+    cleaned_text = [lemmatizer.lemmatize(word.lower()) for word in text_without_stopwords.split() if not word.isdigit() and len(word) > 2]
+    return cleaned_text
+
+start_time = time.time()
+
+# Initialize word count dictionary
+word_count = {}
+
+# Directory containing emails
+directory_path = "emails/"
+
+# Iterate over files in the directory
+for filename in os.listdir(directory_path):
+    # Decode file name if necessary
+    filename = filename.decode("utf-8") if isinstance(filename, bytes) else filename
+    file_path = os.path.join(directory_path, filename)
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+        words = clean_text(file.read())  # Clean up text
+        # Count occurrences of words
+        for word in words:
+            word_count[word] = word_count.get(word, 0) + 1
+
+# Sort word count dictionary by values in descending order
+sorted_word_count = dict(sorted(word_count.items(), key=operator.itemgetter(1), reverse=True))
+
+# Write top words to CSV file
+with open("wordslist.csv", "w+") as csv_file:
+    csv_file.write("word,count\n")
+    for word, count in sorted_word_count.items():
+        if count < 100:
+            break
+        csv_file.write(f"{word},{count}\n")
+
+# Print execution time
+print("Time taken to preprocess the emails:", round(time.time() - start_time, 2), "seconds")

@@ -1,0 +1,49 @@
+from DatumBox import DatumBox
+datum_box = DatumBox("2a13913dda346761765020c1f66e34f8")
+import urllib2
+import re
+import nltk, string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem.snowball import SnowballStemmer
+from nltk.corpus import stopwords
+TAG_RE = re.compile(r"<[^>]+>")
+nltk.download('punkt')
+stemmer = nltk.stem.porter.PorterStemmer()
+remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
+def fetch_page(siteURL):
+    site= siteURL
+    hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
+           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+           'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+           'Accept-Encoding': 'none',
+           'Accept-Language': 'en-US,en;q=0.8',
+           'Connection': 'keep-alive'}
+    req = urllib2.Request(site, headers=hdr)
+    try:
+        page = urllib2.urlopen(req)
+    except urllib2.HTTPError, e:
+        print e.fp.read()
+    content = page.read()
+    return content
+def remove_tags(text):
+    return TAG_RE.sub('', text)
+def stem_tokens(tokens):
+    return [stemmer.stem(item) for item in tokens]
+'''remove punctuation, lowercase, stem'''
+def normalize(text):
+    return stem_tokens(nltk.word_tokenize(text.lower().translate(remove_punctuation_map)))
+vectorizer = TfidfVectorizer(tokenizer=normalize, stop_words='english')
+def cosine_sim(text1, text2):
+    tfidf = vectorizer.fit_transform([text1, text2])
+    return ((tfidf * tfidf.T).A)[0,1]
+stemmer = nltk.stem.porter.PorterStemmer()
+remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
+print "crawling first page"
+page1 = fetch_page("http://www.geeksforgeeks.org/fundamentals-of-algorithms/")
+page2 = fetch_page("http://www.geeksforgeeks.org/data-structures/")
+print "extracting data from page1"
+str1 = datum_box.text_extract(page1)
+print "extracting data from page2"
+str2 = datum_box.text_extract(page2)
+print cosine_sim(str1,str2)
+print "hello world"

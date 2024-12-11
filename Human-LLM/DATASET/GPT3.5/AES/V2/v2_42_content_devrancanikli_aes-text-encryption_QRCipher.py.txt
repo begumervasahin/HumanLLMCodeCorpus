@@ -1,0 +1,60 @@
+from AESCipher import AESCipher
+from PIL import Image
+from pyzbar.pyzbar import decode
+import pyqrcode
+
+class QRCipher:
+    def __init__(self, key, file_name):
+        self.key = key
+        self.file_name = file_name
+        self.cipher = AESCipher(bytes(self.key, encoding='utf8'))
+
+    def set_key(self, key):
+        self.key = key
+        self.cipher = AESCipher(bytes(self.key, encoding='utf8'))
+
+    @staticmethod
+    def create_qr(text, qr_name):
+        """
+        Create a QR code from the given text and save it with the specified name.
+        """
+        qr_code = pyqrcode.create(text)
+        qr_code.png(qr_name, scale=6)
+        return qr_code
+
+    @staticmethod
+    def decode_qr_image(image_name):
+        """
+        Decode the text from the given QR code image.
+        """
+        data = decode(Image.open(image_name))
+        text = data[0].data
+        return text
+
+    def encrypt(self, plain_text):
+        """
+        Encrypt the given plain text using AES and save the encrypted text as a QR code.
+        """
+        encrypted_text = self.cipher.encrypt(plain_text)        
+        qr_image_name = 'encrypted_' + self.file_name + '.png'
+        return self.create_qr(encrypted_text, qr_image_name)
+
+    def decrypt(self, encrypted_text):
+        """
+        Decrypt the given encrypted text using AES and save the decrypted text as a QR code.
+        """
+        decrypted_text = self.cipher.decrypt(encrypted_text)    
+        qr_image_name = 'decrypted_' + self.file_name + '.png'
+        return self.create_qr(decrypted_text, qr_image_name)
+
+# Example usage:
+key = "my_secret_key"
+file_name = "example"
+qrc = QRCipher(key, file_name)
+
+# Encrypting and saving encrypted text as QR code
+encrypted_qr = qrc.encrypt("Hello, World!")
+
+# Decoding and decrypting the encrypted QR code
+decrypted_text = qrc.decode_qr_image(encrypted_qr)
+decrypted_qr = qrc.decrypt(decrypted_text)

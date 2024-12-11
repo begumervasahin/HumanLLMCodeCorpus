@@ -1,0 +1,111 @@
+import json
+import sys
+
+class AprioriAlgorithm:
+
+    def __init__(self):
+        self.MIN_SUPPORT_THRESHOLD = 0.3
+
+    def apriori(self, transaction_data, show_output=True):
+        frequent_itemsets = []
+
+        unique_items = self.get_unique_items(transaction_data)
+        c1 = [[item] for item in unique_items]
+
+        if show_output:
+            print("C1:", c1)
+
+        item_counts = self.count_occurrences(transaction_data)
+        l1 = [[item] for item in unique_items if item_counts[item] >= self.get_support_threshold(transaction_data)]
+
+        if show_output:
+            print("L1:", l1)
+        else:
+            frequent_itemsets.extend(l1)
+
+        c2 = self.generate_candidates(l1)
+
+        if show_output:
+            print("C2:", c2)
+
+        l2 = self.get_frequent_itemsets(c2, transaction_data)
+
+        if show_output:
+            print("L2:", l2)
+        else:
+            frequent_itemsets.extend(l2)
+
+        y = 3
+        while l2:
+            c3 = self.generate_next_candidates(l2)
+
+            if show_output:
+                print(f"C{y}:", c3)
+
+            l3 = self.get_frequent_itemsets(c3, transaction_data)
+
+            if show_output:
+                print(f"L{y}:", l3)
+            else:
+                frequent_itemsets.extend(l3)
+
+            l2 = l3
+            y += 1
+
+        return frequent_itemsets
+
+    def get_unique_items(self, transaction_data):
+        unique_items = set()
+        for transaction in transaction_data:
+            unique_items.update(transaction)
+        return unique_items
+
+    def count_occurrences(self, transaction_data):
+        item_counts = {}
+        for transaction in transaction_data:
+            for item in transaction:
+                item_counts[item] = item_counts.get(item, 0) + 1
+        return item_counts
+
+    def get_support_threshold(self, transaction_data):
+        return self.MIN_SUPPORT_THRESHOLD * len(transaction_data)
+
+    def generate_candidates(self, prev_frequent_itemsets):
+        candidates = []
+        for i in range(len(prev_frequent_itemsets)):
+            for j in range(i + 1, len(prev_frequent_itemsets)):
+                pair = [prev_frequent_itemsets[i][0], prev_frequent_itemsets[j][0]]
+                candidates.append(pair)
+        return candidates
+
+    def get_frequent_itemsets(self, candidates, transaction_data):
+        frequent_itemsets = []
+        item_counts = self.count_occurrences(transaction_data)
+        threshold = self.get_support_threshold(transaction_data)
+        for candidate in candidates:
+            count = sum(1 for transaction in transaction_data if set(candidate) <= set(transaction))
+            if count >= threshold:
+                frequent_itemsets.append(candidate)
+        return frequent_itemsets
+
+    def generate_next_candidates(self, prev_frequent_itemsets):
+        next_candidates = []
+        for i in range(len(prev_frequent_itemsets) // 2):
+            for j in range(i + 1, len(prev_frequent_itemsets) // 2):
+                if prev_frequent_itemsets[i][0] == prev_frequent_itemsets[j][0]:
+                    item_set = sorted(set(prev_frequent_itemsets[i] + prev_frequent_itemsets[j]))
+                    next_candidates.append(item_set)
+        return next_candidates
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python script_name.py <json_file_path>")
+        sys.exit(1)
+
+    apriori_instance = AprioriAlgorithm()
+
+    with open(sys.argv[1]) as json_file:
+        transaction_data = json.load(json_file)
+
+    checker = True
+    apriori_instance.apriori(transaction_data, checker)

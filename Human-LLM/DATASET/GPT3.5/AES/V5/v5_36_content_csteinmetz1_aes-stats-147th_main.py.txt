@@ -1,0 +1,39 @@
+import argparse
+import analyze
+import readme
+import parse
+import clean
+import plot
+
+def create_parser():
+    """Create and configure the argument parser."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--presenters', help='Path to HTML file containing the presenter list.', required=False)
+    parser.add_argument('--papers', help='Path to HTML file containing papers list.', required=False)
+    return parser
+
+def process_presenters(args):
+    if args.presenters:
+        presenters_data = parse.parse_presenters_list(args.presenters)
+        clean_presenters = clean.clean_presenters_list(presenters_data)
+        analyze.generate_csv(clean_presenters, "data/presenters.csv")
+        presenter_stats = analyze.analyze_presenters(clean_presenters)
+        plot.plot_presenter_data(presenter_stats, top_limit=15)
+        readme.format_presenter_data(presenter_stats)
+
+def process_papers(args):
+    if args.papers:
+        papers_data = parse.parse_papers_list(args.papers)
+        analyze.generate_csv(papers_data, "data/papers.csv")
+        paper_stats = analyze.analyze_papers(papers_data)
+        plot.plot_paper_data(paper_stats, top_limit=15)
+        readme.format_paper_data(paper_stats)
+
+def compile_readme():
+    readme.compile_readme()
+
+if __name__ == '__main__':
+    args = create_parser().parse_args()
+    process_presenters(args)
+    process_papers(args)
+    compile_readme()

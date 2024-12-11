@@ -1,0 +1,75 @@
+import numpy as np
+from numba import cuda, float64
+import time
+import heapq
+import csv
+
+# Thread per block
+TPB = 32
+
+# CUDA kernel function for matrix multiplication
+@cuda.jit
+def fast_matmul(a, b, c):
+    sa = cuda.shared.array(shape=(TPB, TPB), dtype=float64)
+    sb = cuda.shared.array(shape=(TPB, TPB), dtype=float64)
+    x, y = cuda.grid(2)
+    tx = cuda.threadIdx.x
+    ty = cuda.threadIdx.y
+    if x >= c.shape[0] and y >= c.shape[1]:
+        return
+    tmp = 0
+    for i in range(hid):
+        sa[tx, ty] = a[x, ty + i * TPB]
+        sb[tx, ty] = b[tx + i * TPB, y]
+        cuda.syncthreads()
+        for j in range(TPB):
+            tmp += sa[tx, j] * sb[j, ty]
+        cuda.syncthreads()
+    c[x, y] = tmp
+
+# Matrix dimensions
+m_ = 640
+n_ = 9760
+k = 128
+
+# Initialize arrays and parameters
+multiple = np.zeros([m_, n_])
+hid = int((k - 1) / TPB) + 1
+blockdim = (TPB, TPB)
+griddim1 = (20, 305)
+
+# Load data from files
+Q = np.load("Q.npy")
+P = np.load("P.npy")
+
+# Perform matrix multiplication using numpy.dot
+time_start = time.time()
+Movie_predict = np.dot(Q, P)
+time_end = time.time()
+print("np.dot elapsed time: %ss" % (time_end - time_start))
+
+# Perform matrix multiplication using CUDA kernel
+time_start = time.time()
+fast_matmul[griddim1, blockdim](Q, P, multiple)
+time_end = time.time()
+print("CUDA elapsed time: %ss" % (time_end - time_start))
+
+# Read movie data from CSV file
+with open("movies.csv", encoding='utf-8') as csvMovie:
+    reader = csv.reader(csvMovie)
+    data = [item for index, item in enumerate(reader) if index != 0]
+
+# Find top 100 predicted movies
+a = list(Movie_predict[1, :])
+re2 = heapq.nlargest(100, a)
+re1 = [a.index(val) for val in re2]
+predict = [data[val] for val in re1]
+
+# Write top 100 predicted movies to a new CSV file
+with open('2.csv', 'w', newline='', encoding='utf-8') as csvFile:
+    writer = csv.writer(csvFile)
+    for item in predict:
+        writer.writerow(item)
+
+print(predict)
+print(re2)

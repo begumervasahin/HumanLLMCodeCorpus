@@ -1,0 +1,70 @@
+import argparse
+import sys
+from autobahn.twisted.component import Component, run
+from autobahn.wamp.auth import AuthCryptoSign
+import pyqrcode
+
+class DummyDB:
+    def get_local_principle(self):
+        return DummyPrinciple()
+
+class DummyPrinciple:
+    authid = "user"
+    authrole = "user"
+    privkey = "private_key"
+    realm = "realm"
+
+def _print_qr_code(text):
+    qr = pyqrcode.create(text, mode='numeric')
+    print(qr.terminal(quiet_zone=1))
+
+def generate_otp():
+    @component.on_join
+    async def joined(session, _details):
+        res = await session.call("org.deskconn.generate_otp")
+        _print_qr_code(res)
+        print(f"Scan the QR Code or manually pair with: {res}\n")
+        session.leave()
+    run([component], None)
+
+def toggle_discovery(enable):
+    @component.on_join
+    async def joined(session, _details):
+        procedure = "org.deskconn.enable_discovery" if enable else "org.deskconn.disable_discovery"
+        await session.call(procedure)
+        session.leave()
+    run([component], None)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='DeskConn command line utility')
+    subparsers = parser.add_subparsers(title='Available commands', dest='command')
+
+    discovery_parser = subparsers.add_parser("discovery")
+    discovery_parser.add_argument('status', type=str, choices=('enable', 'disable'))
+
+    subparsers.add_parser('pair')
+
+    args = parser.parse_args()
+
+    if args.command == 'pair':
+        dummy_db = DummyDB()
+        principle = dummy_db.get_local_principle()
+        if principle is None:
+            print("The backend is likely not running. Please ensure it's up.")
+            sys.exit(1)
+        authid, authrole, privkey, realm = principle.authid, principle.authrole, principle.privkey, principle.realm
+        component = Component(transports="ws://127.0.0.1:5020/ws", realm=realm,
+                              authentication={"cryptosign": AuthCryptoSign(authid=authid, authrole=authrole, privkey=privkey)})
+        generate_otp()
+    elif args.command == 'discovery':
+        dummy_db = DummyDB()
+        principle = dummy_db.get_local_principle()
+        if principle is None:
+            print("The backend is likely not running. Please ensure it's up.")
+            sys.exit(1)
+        authid, authrole, privkey, realm = principle.authid, principle.authrole, principle.privkey, principle.realm
+        component = Component(transports="ws://127.0.0.1:5020/ws", realm=realm,
+                              authentication={"cryptosign": AuthCryptoSign(authid=authid, authrole=authrole, privkey=privkey)})
+        toggle_discovery(args.status == 'enable')
+    else:
+        parser.print_help()

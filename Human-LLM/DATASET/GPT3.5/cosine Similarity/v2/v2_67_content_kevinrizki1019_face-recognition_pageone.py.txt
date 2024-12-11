@@ -1,0 +1,126 @@
+from tkinter import *
+from tkinter import ttk, filedialog
+from PIL import ImageTk, Image
+from threading import Thread
+import os
+import recog
+
+# Global variables
+LARGE_FONT = ('Verdana', 16)
+image_path = None
+db_path = 'pins.db'
+db = None
+t_compare = 10
+
+class PageOne(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.setup_ui(parent)
+
+    def setup_ui(self, parent):
+        global image_path
+
+        # Widgets initialization
+        self.msg = StringVar()
+        self.buttons = Frame(self)
+        self.mainframe = Frame(self)
+        self.lcanvas = Canvas(self.mainframe, borderwidth=4, relief=GROOVE, height=400, width=360)
+        self.rcanvas = Canvas(self.mainframe, borderwidth=4, relief=GROOVE)
+        self.button0 = ttk.Button(self.buttons, text="Open Image", command=self.select_image)
+        self.button1 = ttk.Button(self.buttons, text="Match (CS)", command=lambda: Thread(target=recog.matchs, args=(image_path, db, t_compare, True, self)).start())
+        self.button2 = ttk.Button(self.buttons, text="Match (ED)", command=lambda: Thread(target=recog.matchs, args=(image_path, db, t_compare, False, self)).start())
+
+        # Layout
+        self.layout_ui()
+
+    def layout_ui(self):
+        label = ttk.Label(self, text="Ketok Magic Halal", font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+        ttk.Label(self, textvariable=self.msg).pack(side=BOTTOM)
+        self.msg.set('Welcome')
+        self.buttons.pack(side=BOTTOM, pady=20)
+        self.mainframe.pack(side=TOP, expand=True, fill=BOTH)
+        button_up = ttk.Button(self.mainframe, text="Up", command=self.scroll_up)
+        button_up.pack(side=TOP)
+        button_down = ttk.Button(self.mainframe, text="Down", command=self.scroll_down)
+        button_down.pack(side=BOTTOM)
+        self.lcanvas.pack(side=LEFT)
+        self.rcanvas.pack(side=RIGHT, expand=True, fill=BOTH)
+        self.show_buttons()
+
+    def show_buttons(self):
+        self.button0.grid(row=2, column=0, padx=(20, 20), sticky="E")
+        self.button1.grid(row=2, column=1, padx=(20, 20), sticky="W")
+        self.button2.grid(row=2, column=2, padx=(20, 20), sticky="W")
+
+    def hide_buttons(self):
+        self.button0.grid_forget()
+        self.button1.grid_forget()
+        self.button2.grid_forget()
+
+    def draw_image(self):
+        global image_path
+        sub1 = ImageTk.PhotoImage(Image.open(image_path).resize((360, 360), Image.ANTIALIAS))
+        fig1 = self.lcanvas.create_image(0, 0, anchor=NW, image=sub1)
+        text1 = self.lcanvas.create_text(10, 370, anchor=NW, text=image_path.split('/')[-1])
+
+    def draw_matches(self):
+        global t_compare
+        self.reset_scroll()
+        for i, matched_image in enumerate(self.matched_images):
+            if i >= len(self.disp_images):
+                self.disp_images.append({})
+            self.disp_images[i]['img'] = ImageTk.PhotoImage(Image.open(matched_image['path']).resize((100, 100), Image.ANTIALIAS))
+            if 'fig' not in self.disp_images[i]:
+                self.disp_images[i]['fig'] = self.rcanvas.create_image(20, 20 + 120 * i, anchor=NW, image=self.disp_images[i]['img'])
+                self.disp_images[i]['str'] = ''
+                self.disp_images[i]['text'] = self.rcanvas.create_text(140, 20 + 120 * i, anchor=NW, text=self.disp_images[i]['str'])
+            else:
+                self.rcanvas.itemconfig(self.disp_images[i]['fig'], image=self.disp_images[i]['img'])
+                self.disp_images[i]['str'] = ''
+                self.rcanvas.itemconfig(self.disp_images[i]['text'], text=self.disp_images[i]['str'])
+
+    def update_scroll(self, ds):
+        self.scroll += ds
+        for disp_image in self.disp_images:
+            self.rcanvas.move(disp_image['fig'], 0, -120 * ds)
+            self.rcanvas.move(disp_image['text'], 0, -120 * ds)
+
+    def reset_scroll(self):
+        self.update_scroll(-self.scroll)
+
+    def scroll_up(self):
+        if self.scroll > 0:
+            self.update_scroll(-1)
+
+    def scroll_down(self):
+        if self.scroll < len(self.disp_images) - 1:
+            self.update_scroll(1)
+
+    def select_image(self):
+        global image_path
+        upload_img = filedialog.askopenfilename(initialdir="./", title="Select file", filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
+        if type(upload_img) == str and len(upload_img) > 0:
+            image_path = upload_img
+            self.draw_image()
+            self.msg.set('Opened %s.' % image_path.split('/')[-1])
+
+    def load_db(self, path):
+        global db
+        if os.path.exists(path):
+            with open('pins.db', 'rb') as dbfile:
+                db = pickle.load(dbfile)
+        else:
+            self.hide_buttons()
+            self.msg.set('pins.db not found. Please run generate-pickle-file.py to generate it.')
+
+# Create the main application
+app = Tk()
+app.geometry('800x600')
+app.title('Ketok Magic Halal')
+
+# Create the page instance
+page_one = PageOne(app, None)
+page_one.pack(fill="both", expand=True)
+
+#

@@ -1,0 +1,48 @@
+import networkx as nx
+from helper import (
+    mark_trail_between_cities_and_print_report,
+    mark_starting_point,
+    show_return_to_city,
+    execute_instructions_related_to_visited_city,
+    show_verify_neighbours,
+    begin_note,
+    end_note,
+)
+
+def dfs(G, cities, v):
+    def dfs_node(G, v, pre, visited):
+        visited[v] = True
+        if pre != v:
+            mark_trail_between_cities_and_print_report(G, v, pre, cities.get(v), G.pos)
+        else:
+            mark_starting_point(G, v)
+        for u in G.neighbors(v):
+            if not visited[u]:
+                dfs_node(G, u, v, visited)
+                show_return_to_city(G, v, cities.get(v))
+            else:
+                execute_instructions_related_to_visited_city(G, v, pre, u, cities.get(u), G.pos)
+        show_verify_neighbours(G, v, cities.get(v))
+
+    visited = [False] * len(cities)
+    begin_note(G, cities.get(v))
+    dfs_node(G, v, v, visited)
+    end_note(G)
+
+# Create a directed graph
+H = nx.DiGraph()
+H.add_edges_from([(0,1), (1,0), (0,2), (2,0), (1,2), (2,1), (2,3), (3,2),
+                  (2,4), (4,2), (3,4), (4,3), (3,5), (5,3), (4,5), (5,4), (4,6), (6,4),
+                  (4,7), (7,4), (5,6), (6,5), (5,8), (8,5), (6,7), (7,6), (6,8), (8,6),
+                  (6,9), (9,6), (6,10), (10,6), (7,9), (9,7), (9,10), (10,9), (10,11), (11,10)])
+
+# Define cities mapping
+cities = {0: "Lisboa", 1: "Cadiz", 2: "Madrid", 3: "Barcelona", 4: "Pamplona",
+          5: "Marseille", 6: "Paris", 7: "Brest", 8: "Zurich", 9: "Dieppe",
+          10: "Bruxelles", 11: "Amsterdam"}
+
+# Initialize the graph
+initGraph(H, cities)
+
+# Perform DFS starting from vertex 0
+dfs(H, cities, 0)

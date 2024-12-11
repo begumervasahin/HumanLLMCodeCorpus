@@ -1,0 +1,88 @@
+from State_Controller import State_Controller
+import random
+import math
+
+class Reinforcement_Maze:
+    def __init__(self, gamma, state_controller):
+        self.state_list = state_controller
+        self.state_list_size = self.state_list.getNumStates()
+        self.gamma = gamma
+        self.utility_list = {}
+        self.policy_list = {}
+        for i in range(1, self.state_list_size + 1):
+            self.utility_list[i] = 0
+            self.policy_list[i] = 0
+
+    def create_adjusted_utility_list(self, value=1.0):
+        other_utility_list = {}
+        for key in self.utility_list:
+            other_utility_list[key] = self.utility_list[key] + value
+        return other_utility_list
+
+    def create_copy_utility_list(self):
+        copied_utility_list = {}
+        for key in self.utility_list:
+            copied_utility_list[key] = self.utility_list[key]
+        return copied_utility_list
+
+    def create_utilities(self, tolerance, averages):
+        adjusted_utilities = self.create_adjusted_utility_list(1)
+        for key in range(1, self.state_list_size + 1):
+            last_utility = self.utility_list[key]
+            current_utility = adjusted_utilities[key]
+            utility_diff = abs(current_utility - last_utility)
+            while utility_diff > tolerance:
+                last_utility = current_utility
+                temp_result = self.value_iteration(key, averages, self.utility_list)
+                self.utility_list[key] = temp_result[0]
+                self.policy_list[key] = temp_result[1]
+                current_utility = self.utility_list[key]
+                utility_diff = abs(current_utility - last_utility)
+        return self.utility_list.copy(), self.policy_list.copy()
+
+    def value_iteration(self, curr_state_key, averages, u_list):
+        self.state_list.switchState(curr_state_key)
+        if self.state_list.isTerminal():
+            return self.state_list.getReward(), 0
+        action_dictionaries = averages[curr_state_key]
+        up_dict = action_dictionaries[1]
+        left_dict = action_dictionaries[2]
+        down_dict = action_dictionaries[3]
+        right_dict = action_dictionaries[4]
+        up_sum = sum(u_list[i] * up_dict[i] for i in up_dict)
+        left_sum = sum(u_list[i] * left_dict[i] for i in left_dict)
+        down_sum = sum(u_list[i] * down_dict[i] for i in down_dict)
+        right_sum = sum(u_list[i] * right_dict[i] for i in right_dict)
+        random_value = random.randint(1, 10000)
+        highest_utility = None
+        policy = None
+        if random_value > 1500:
+            highest_utility = up_sum
+            policy = 1
+            if left_sum > highest_utility:
+                highest_utility = left_sum
+                policy = 2
+            if down_sum > highest_utility:
+                highest_utility = down_sum
+                policy = 3
+            if right_sum > highest_utility:
+                highest_utility = right_sum
+                policy = 4
+        else:
+            if random_value <= 375:
+                highest_utility = up_sum
+                policy = 1
+            elif 375 < random_value <= 750:
+                highest_utility = left_sum
+                policy = 2
+            elif 750 < random_value <= 1125:
+                highest_utility = down_sum
+                policy = 3
+            else:
+                highest_utility = right_sum
+                policy = 4
+        cost = self.gamma * highest_utility
+        reward = self.state_list.getReward()
+        return reward + cost, policy
+
+    # Other methods (countedAverages, createUtilitiesAdjusted, createListUtilities, createListUtilitiesAdjusted) remain unchanged

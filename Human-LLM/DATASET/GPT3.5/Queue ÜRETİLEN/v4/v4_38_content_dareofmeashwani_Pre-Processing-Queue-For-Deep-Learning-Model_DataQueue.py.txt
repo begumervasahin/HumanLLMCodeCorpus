@@ -1,0 +1,109 @@
+import os
+import signal
+from multiprocessing import Process, Lock, Semaphore, Value, Queue, cpu_count
+from inspect import signature
+
+class DataQueue:
+    def __init__(self, generator, size=16, childCount=6):
+        self.size = size
+        self.childCount = childCount
+        self.status = Value('b', False)
+        self.generator = generator
+
+        if not (hasattr(self.generator, 'batchGenerator') and hasattr(self.generator, 'batchProcessor')):
+            raise Exception('batchGenerator and batchProcessor in Generator object are mandatory')
+
+    def loadBatch(self, status, inputSM, batchSM):
+        while status.value:
+            inputSM['emptySemaphore'].acquire()
+            inputSM['mutex'].acquire()
+            data = inputSM['q'].get()
+            inputSM['mutex'].release()
+            inputSM['fullSemaphore'].release()
+
+            sig = signature(self.generator.batchProcessor)
+            if len(sig.parameters) == 1:
+                data = self.generator.batchProcessor(list(data))
+            else:
+                data = self.generator.batchProcessor(*data)
+
+            batchSM['fullSemaphore'].acquire()
+            batchSM['mutex'].acquire()
+            batchSM['q'].put(data)
+            batchSM['mutex'].release()
+            batchSM['emptySemaphore'].release()
+
+    def getBatch(self):
+        if self.status.value and self.batchSM['q'].qsize() != 0 and self.inputSM['q'].qsize() != 0:
+            self.batchSM['emptySemaphore'].acquire()
+            self.batchSM['mutex'].acquire()
+            batch = self.batchSM['q'].get()
+            self.batchSM['mutex'].release()
+            self.batchSM['fullSemaphore'].release()
+            return batch
+
+    def monitor(self, status, inputSM):
+        while status.value:
+            data = tuple(self.generator.batchGenerator())
+            inputSM['fullSemaphore'].acquire()
+            inputSM['mutex'].acquire()
+            inputSM['q'].put(data)
+            inputSM['mutex'].release()
+            inputSM['emptySemaphore'].release()
+
+    def start(self):
+        if hasattr(self.generator, 'init'):
+            self.generator.init()
+
+        self.status.value = True
+        self.inputSM = {
+            "q": Queue(),
+            "emptySemaphore": Semaphore(value=0),
+            "fullSemaphore": Semaphore(value=self.size),
+            "mutex": Lock()
+        }
+        self.batchSM = {
+            "q": Queue(),
+            "emptySemaphore": Semaphore(value=0),
+            "fullSemaphore": Semaphore(value=self.size),
+            "mutex": Lock()
+        }
+
+        childCount = self.childCount if self.childCount != -1 else cpu_count()
+        self.childProcess = []
+        self.monitorProcess = Process(target=self.monitor, args=(self.status, self.inputSM))
+        self.monitorProcess.start()
+
+        for i in range(childCount):
+            p = Process(target=self.loadBatch, args=(self.status, self.inputSM, self.batchSM))
+            p.start()
+            self.childProcess.append(p)
+
+    def stop(self):
+        self.status.value = False
+
+        for cProcess in self.childProcess:
+            if cProcess.pid != 0:
+                try:
+                    os.kill(cProcess.pid, signal.SIGTERM)
+                    print("Successfully killed child process", cProcess.pid)
+                except:
+                    print("Access Denied: Can't kill child process", cProcess.pid)
+
+        try:
+            os.kill(self.monitorProcess.pid, signal.SIGTERM)
+            print("Successfully killed monitor process", self.monitorProcess.pid)
+        except:
+            print("Access Denied: Can't kill monitor process", self.monitorProcess.pid)
+
+        print("Job Queue size at stop:", self.inputSM['q'].qsize())
+        print("Batch Queue size at stop:", self.batchSM['q'].qsize())
+
+        self.inputSM['q'].close()
+        self.batchSM['q'].close()
+
+    def getSize(self):
+        return self.batchSM['q'].qsize()
+
+    def isEmpty(self):
+        return self.batchSM['q'].qsize() == 0

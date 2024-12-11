@@ -1,0 +1,56 @@
+import random
+from Crypto.Cipher import AES
+import hashlib
+
+class User:
+    def __init__(self, name, a, q):
+        self.name = name
+        self.a = a
+        self.q = q
+        self.generate_private_key()
+        self.generate_public_key()
+
+    def generate_private_key(self):
+        self.__X = random.randint(1, self.q - 1)
+
+    def generate_public_key(self):
+        self.Y = pow(self.a, self.__X, self.q)
+
+    def establish_common_key(self, other_user, other_user_public_key):
+        key = pow(other_user_public_key, self.__X, self.q)
+        key_bytes = int(key).to_bytes((key.bit_length() + 7) // 8, byteorder='big')
+        self.__key = hashlib.sha256(key_bytes).digest()
+
+    def encrypt_message(self, recipient, message):
+        data = message.encode('utf-8')
+        padding = 16 - len(data) % 16
+        if padding == 0:
+            padding = 16
+        data += bytes([padding]) * padding
+        cryptor = AES.new(self.__key, AES.MODE_CBC, 16 * b'\x00')
+        cipher_text = cryptor.encrypt(data)
+        return cipher_text
+
+    def decrypt_message(self, sender, cipher_text):
+        cryptor = AES.new(self.__key, AES.MODE_CBC, 16 * b'\x00')
+        plain_text = cryptor.decrypt(cipher_text)
+        padding_length = plain_text[-1]
+        return plain_text[:-padding_length].decode('utf-8')
+
+# Example usage
+a_value = 11
+q_value = 1040699159
+print('a:', a_value, ', q:', q_value)
+data = 'I love ncyucsie 噗嘻~~(≧Ꙫ≦)'
+print('Plain:', data, '\n')
+
+Alice = User('Alice', a_value, q_value)
+Bob = User('Bob', a_value, q_value)
+
+Alice.establish_common_key(Bob, Bob.Y)
+Bob.establish_common_key(Alice, Alice.Y)
+
+cip = Alice.encrypt_message(Bob, data)
+plain = Bob.decrypt_message(Alice, cip)
+
+print('Decrypted message from Bob:', plain)

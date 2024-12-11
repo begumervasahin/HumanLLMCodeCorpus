@@ -1,0 +1,145 @@
+from bs4 import BeautifulSoup
+import requests
+import re
+import os
+import pymongo
+
+class FilmList:
+    def __init__(self, year):
+        self.year = year
+
+    def download_html(self):
+        """
+        Download HTML pages for each month of the given year.
+        """
+        for month in range(1, 13):
+            url = f'https://www.imdb.com/movies-coming-soon/{self.year:04d}-{month:02d}'
+            response = requests.get(url)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                file_path = f'data/film_lists/{self.year:04d}-{month:02d}.html'
+                with open(file_path, 'w') as file:
+                    file.write(str(soup))
+
+    def get_films_ids(self):
+        """
+        Extract IMDb IDs of films from downloaded HTML pages.
+        """
+        film_ids = []
+        for month in range(1, 13):
+            file_path = f'data/film_lists/{self.year:04d}-{month:02d}.html'
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as file:
+                    soup = BeautifulSoup(file, 'html.parser')
+                    for elem in soup.find_all('td', class_="overview-top"):
+                        href = elem.h4.a.get('href')
+                        id = href.split('/')[2]
+                        film_ids.append(id)
+        return film_ids
+
+class Film:
+    def __init__(self, id):
+        self.url = 'https://www.imdb.com/title/' + id
+        self.id = id
+
+    def download_html(self):
+        """
+        Download HTML page of the film from IMDb.
+        """
+        response = requests.get(self.url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            file_path = f'data/films/{self.id}.html'
+            with open(file_path, 'w') as file:
+                file.write(str(soup))
+
+    def download_actors_html(self):
+        """
+        Download HTML page containing full credits (including actors) of the film from IMDb.
+        """
+        response = requests.get(self.get_actors_url())
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            file_path = f'data/actors/{self.id}.html'
+            with open(file_path, 'w') as file:
+                file.write(str(soup))
+
+    def get_actors_url(self):
+        """
+        Get the URL to the full credits page of the film.
+        """
+        return f'{self.url}/fullcredits'
+
+    def scrap(self):
+        """
+        Extract film details and actors from the downloaded HTML pages.
+        """
+        file_path = f'data/films/{self.id}.html'
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                soup = BeautifulSoup(file, 'html.parser')
+                self.title = soup.find('h1').text
+                self.grossUSA = self.get_amount(soup, 'Gross USA')
+                self.grossWW = self.get_amount(soup, 'Cumulative Worldwide Gross')
+                self.actors = self.get_actors()
+
+    def get_actors(self):
+        """
+        Extract the list of actors from the full credits page.
+        """
+        actors = []
+        file_path = f'data/actors/{self.id}.html'
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                soup = BeautifulSoup(file, 'html.parser')
+                table = soup.find('table', class_="cast_list")
+                if table:
+                    for tr in table.find_all('tr', class_=re.compile(r'odd|even')):
+                        td = tr.find_all('td')[1]
+                        actors.append(td.a.text)
+        return actors
+
+    def get_amount(self, soup, amount_type):
+        """
+        Extract gross amounts from film details.
+        """
+        for div in soup.find_all('div', class_="txt-block"):
+            h4 = div.find('h4', class_="inline")
+            if h4 and h4.text == f'{amount_type}:':
+                amount = div.text.split('\n')[1]
+                match = re.match(fr'^{amount_type}: \${((\d+,?)+)(,.+?)?}$', amount)    
+                if match:
+                    return match.group(1)
+        return None
+
+    def load(self, db):
+        """
+        Load film details and actors into the MongoDB database.
+        """
+        film_dict = {"title": self.title, "url": self.url, "imdb_id": self.id,
+                     "grossUSA": self.grossUSA, "grossWW": self.grossWW, "actors": self.actors}
+        film_coll = db.films
+        film_coll.insert_one(film_dict)
+
+    def visu(self):
+        """
+        Visualize film data (not implemented).
+        """
+        pass
+
+# Example usage
+if __name__ == "__main__":
+    year = 2022
+    film_list = FilmList(year)
+    film_list.download_html()
+    film_ids = film_list.get_films_ids()
+
+    client = pymongo.MongoClient("mongodb://localhost:27017/")
+    db = client["imdb_database"]
+
+    for film_id in film_ids:
+        film = Film(film_id)
+        film.download_html()
+        film.download_actors_html()
+        film.scrap()
+        film.load(db)

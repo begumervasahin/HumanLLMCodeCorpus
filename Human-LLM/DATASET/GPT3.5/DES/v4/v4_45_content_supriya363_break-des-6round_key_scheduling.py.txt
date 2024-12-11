@@ -1,0 +1,65 @@
+import os
+
+# Define the permutation tables and missing bits
+PC1 = [
+    57, 49, 41, 33, 25, 17, 9, 1,
+    58, 50, 42, 34, 26, 18, 10, 2,
+    59, 51, 43, 35, 27, 19, 11, 3,
+    60, 52, 44, 36, 63, 55, 47, 39,
+    31, 23, 15, 7, 62, 54, 46, 38,
+    30, 22, 14, 6, 61, 53, 45, 37,
+    29, 21, 13, 5, 28, 20, 12, 4
+]
+
+PC2 = [
+    14, 17, 11, 24, 1, 5, 3, 28,
+    15, 6, 21, 10, 23, 19, 12, 4,
+    26, 8, 16, 7, 27, 20, 13, 2,
+    41, 52, 31, 37, 47, 55, 30, 40,
+    51, 45, 33, 48, 44, 49, 39, 56,
+    34, 53, 46, 42, 50, 36, 29, 32
+]
+
+missing_bit = [9, 18, 22, 25, 35, 38, 43, 54]
+
+# Function to rotate a list by n positions
+def rotate_list(lst, n):
+    return lst[n:] + lst[:n]
+
+# Function to generate all possible 8-bit binary values
+def generate_bruteforce_values():
+    possible_values = []
+    for i in range(256):
+        binary_value = bin(i)[2:]
+        binary_value = binary_value.zfill(8)  # Ensure 8-bit representation
+        possible_values.append(list(binary_value))
+    return possible_values
+
+# Function to undo all rounds for a 56-bit key
+def undo_all_rounds(key56):
+    key56_left = key56[:28]
+    key56_right = key56[28:]
+    rotate_list(key56_left, 18)
+    rotate_list(key56_right, 18)
+    return key56_left + key56_right
+
+# Function to find the 56-bit key based on the provided 48-bit key
+def find_key56(key):
+    key56 = [0] * 56
+    k = 0
+    for i in PC2:
+        key56[i - 1] = key[k]
+        k += 1
+    if os.path.isfile('possible_key.txt'):
+        os.remove('possible_key.txt')
+    with open('possible_key.txt', 'a+') as f:
+        possible_values = generate_bruteforce_values()
+        for value in possible_values:
+            for j in range(len(value)):
+                key56[missing_bit[j] - 1] = int(value[j])
+            f.write(str(undo_all_rounds(key56)))
+            f.write("\n")
+
+# Example usage
+initial_key = [1] * 48
+find_key56(initial_key)

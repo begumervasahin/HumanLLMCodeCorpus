@@ -1,0 +1,47 @@
+import getpass
+import subprocess
+
+# Function to install Python libraries using pip
+def install_library(library_name):
+    try:
+        subprocess.check_call(["pip", "install", library_name])
+        print(f"{library_name} installed successfully!")
+    except subprocess.CalledProcessError:
+        print(f"Failed to install {library_name}")
+
+# Function to handle encryption and decryption
+def handle_encryption_decryption(file_to_encrypt, password, mode):
+    input_file = f'cipher_{mode.lower()}.txt'
+    output_file = f'clear_{mode.lower()}.txt'
+    operation = 'encrypt' if mode else 'decrypt'
+    print(f"{operation.capitalize()}ing input with 3DES in {mode} Mode and outputting to {input_file}...")
+    subprocess.run(['python', '3Des.py', operation, file_to_encrypt, 'keyfile.txt', output_file, mode])
+
+# Ask for user input for password and file to encrypt
+password = getpass.getpass("Please enter a password: ")
+file_to_encrypt = input("Enter a file to encrypt. (If blank, uses provided input.txt): ")
+if not file_to_encrypt:
+    file_to_encrypt = 'input.txt'
+
+# Check for and install necessary Python libraries
+print("Checking for required Python libraries...")
+install_library("bitstring")
+install_library("pycryptodomex")
+print('Libraries installed successfully, proceeding...')
+
+# Generate keyfile with 3DES keys
+print("Generating keyfile with 3DES keys...")
+subprocess.run(['python', '3Des.py', 'genkey', password, 'keyfile.txt'])
+
+# Encrypting input files with different modes of 3DES
+print("Encrypting input files...")
+encryption_modes = ['ECB', 'CBC', 'OFB']
+for mode in encryption_modes:
+    handle_encryption_decryption(file_to_encrypt, password, mode)
+
+# Decrypting encrypted files
+print("Decryption process initiated...")
+for mode in encryption_modes:
+    handle_encryption_decryption(file_to_encrypt, password, mode)
+
+print("Encryption and decryption process completed successfully!")

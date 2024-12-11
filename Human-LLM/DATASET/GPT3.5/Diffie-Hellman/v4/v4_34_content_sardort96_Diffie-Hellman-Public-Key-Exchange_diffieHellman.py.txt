@@ -1,0 +1,60 @@
+import string
+
+# Get the message from the user
+plaintext = input('Enter the message you want to encrypt: ')
+plaintext = plaintext.replace(' ', '')  # Remove spaces
+plaintext = plaintext.upper()  # Convert to uppercase
+
+# Get a large prime number from the user
+sharedPrime = int(input('Enter a large prime number to share: '))
+if sharedPrime > 1:
+    for i in range(2, sharedPrime):
+        if (sharedPrime % i) == 0:
+            print(sharedPrime, 'is not a prime number')
+            exit()
+    print('Publicly shared prime is', sharedPrime)
+else:
+    print(sharedPrime, 'is not a prime number')
+    exit()
+
+# Get a shared generator from the user
+sharedGenerator = int(input('Enter a shared generator less than ' + str(sharedPrime) + ': '))
+if sharedGenerator < sharedPrime:
+    print('Publicly shared generator is', sharedGenerator)
+else:
+    print(sharedGenerator, 'is larger than', sharedPrime)
+    exit()
+
+# Get secret keys for person A and person B
+secretA = int(input('Enter a secret key for person A: '))
+secretB = int(input('Enter a secret key for person B: '))
+
+# Calculate values to be sent over the public channel
+A = (sharedGenerator ** secretA) % sharedPrime
+B = (sharedGenerator ** secretB) % sharedPrime
+print('Person A sends over public channel:', A)
+print('Person B sends over public channel:', B)
+
+# Calculate the shared secret for each person
+sharedSecretA = (B ** secretA) % sharedPrime
+sharedSecretB = (A ** secretB) % sharedPrime
+print('Person A\'s Shared Secret:', sharedSecretA)
+print('Person B\'s Shared Secret:', sharedSecretB)
+
+print('\n``````````The Key has been chosen```````````\n')
+
+# Create dictionaries for mapping letters to numbers and vice versa
+letters = list(string.ascii_uppercase)
+numbers = list(range(26))
+dictionary = dict(zip(letters, numbers))
+
+# Encrypt the message using the shared secret
+ciphertext = ''
+for char in plaintext:
+    if char in dictionary:
+        char_index = dictionary[char]
+        encrypted_index = (char_index + sharedSecretA) % 26
+        ciphertext += letters[encrypted_index]
+
+# Output the encrypted message
+print('Ciphertext:', ciphertext)

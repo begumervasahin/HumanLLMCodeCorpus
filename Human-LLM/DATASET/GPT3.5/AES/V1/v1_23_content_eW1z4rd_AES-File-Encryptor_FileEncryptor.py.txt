@@ -1,0 +1,110 @@
+import os
+import sys
+import getopt
+from Crypto import Random
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+import time
+
+class FileEncryptor:
+    def __init__(self):
+        self.key = None
+
+    def set_key_from_password(self, password):
+        """Generate a 256-bit key using SHA256 hash on the password."""
+        self.key = SHA256.new(password.encode()).digest()
+
+    @staticmethod
+    def encrypt(data, key):
+        """Encrypt data using AES (CBC mode) with the provided key."""
+        def pad(s):
+            return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
+
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        return iv + cipher.encrypt(pad(data))
+
+    @staticmethod
+    def decrypt(data, key):
+        """Decrypt data using AES (CBC mode) with the provided key."""
+        iv = data[:AES.block_size]
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        padded_data = cipher.decrypt(data[AES.block_size:])
+        return padded_data.rstrip(b"\0")
+
+    def encrypt_file(self, filename):
+        """Encrypt a single file."""
+        with open(filename, 'rb') as f:
+            plaintext = f.read()
+        ciphertext = self.encrypt(plaintext, self.key)
+        with open(filename + ".enc", 'wb') as f:
+            f.write(ciphertext)
+        os.remove(filename)
+        print(f"[+] Encrypted {filename} --> {filename}.enc successfully.")
+
+    def decrypt_file(self, filename):
+        """Decrypt a single file."""
+        with open(filename, 'rb') as f:
+            ciphertext = f.read()
+        plaintext = self.decrypt(ciphertext, self.key)
+        original_filename = filename[:-4]
+        with open(original_filename, 'wb') as f:
+            f.write(plaintext)
+        os.remove(filename)
+        print(f"[+] Decrypted {filename} --> {original_filename} successfully.")
+
+    def encrypt_all_files(self, directory):
+        """Encrypt all files in the specified directory and subdirectories."""
+        for root, _, files in os.walk(directory):
+            for file in files:
+                filepath = os.path.join(root, file)
+                if filepath != sys.argv[0]:  # Avoid encrypting this script
+                    self.encrypt_file(filepath)
+        print("[+] All files encrypted successfully.")
+
+    def decrypt_all_files(self, directory):
+        """Decrypt all .enc files in the specified directory and subdirectories."""
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file.endswith(".enc"):
+                    filepath = os.path.join(root, file)
+                    self.decrypt_file(filepath)
+        print("[+] All files decrypted successfully.")
+
+    @staticmethod
+    def usage():
+        print("Usage: python FileEncryptor.py -p <password> [-e <filename> | -d <filename> | -E | -D]")
+        print("-p, --password <password> : Specify the encryption/decryption password.")
+        print("-e, --encrypt <filename>  : Encrypt the specified file.")
+        print("-d, --decrypt <filename>  : Decrypt the specified file.")
+        print("-E                        : Encrypt all files in the current directory and subdirectories.")
+        print("-D                        : Decrypt all .enc files in the current directory and subdirectories.")
+        sys.exit()
+
+    def run(self):
+        try:
+            opts, args = getopt.getopt(sys.argv[1:], "hp:e:d:ED", ["help", "password=", "encrypt=", "decrypt="])
+        except getopt.GetoptError as err:
+            print(err)
+            self.usage()
+
+        if not opts:
+            self.usage()
+
+        for opt, arg in opts:
+            if opt in ("-h", "--help"):
+                self.usage()
+            elif opt in ("-p", "--password"):
+                self.set_key_from_password(arg)
+            elif opt in ("-e", "--encrypt") and self.key:
+                self.encrypt_file(arg)
+            elif opt in ("-d", "--decrypt") and self.key:
+                self.decrypt_file(arg)
+            elif opt == "-E" and self.key:
+                self.encrypt_all_files(".")
+            elif opt == "-D" and self.key:
+                self.decrypt_all_files(".")
+
+if __name__ == "__main__":
+    encryptor = FileEncryptor()
+    encryptor.run()

@@ -1,0 +1,127 @@
+import itertools
+
+class Board:
+    GOAL_STATE = [[0, 1, 2],
+                  [3, 4, 5],
+                  [6, 7, 8]]
+
+    def __init__(self, state, parent=None):
+        self.state = state
+        self.parent = parent
+        self.depth = 0 if parent is None else parent.depth + 1
+
+    def goal_test(self):
+        return self.state == self.GOAL_STATE
+
+    def neighbors(self):
+        neighbors = []
+        # Find the position of the empty cell (0)
+        i, j = next((i, j) for i, row in enumerate(self.state) for j, val in enumerate(row) if val == 0)
+        moves = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Possible moves: right, down, left, up
+        for move in moves:
+            x, y = i + move[0], j + move[1]
+            if 0 <= x < 3 and 0 <= y < 3:  # Check if the move is within the board boundaries
+                neighbor_state = [row.copy() for row in self.state]  # Copy the current state
+                neighbor_state[i][j], neighbor_state[x][y] = neighbor_state[x][y], neighbor_state[i][j]  # Swap empty cell with the adjacent cell
+                neighbors.append(Board(neighbor_state, self))  # Add the neighbor to the list
+        return neighbors
+
+
+class Solver:
+    def __init__(self, initial_state):
+        self.initial_state = Board(initial_state)
+        self.solution = None
+        self.explored_nodes = set()
+
+    def set_solution(self, node):
+        path = []
+        # Reconstruct the path from the goal node to the initial state
+        while node:
+            path.append(node.state)
+            node = node.parent
+        self.solution = path[::-1]  # Reverse the path
+
+    def solve(self):
+        raise NotImplementedError("Solver class must implement solve() method")
+
+
+class IDDFS(Solver):
+    def __init__(self, initial_state):
+        super().__init__(initial_state)
+        self.frontier = []
+
+    def dls(self, limit):
+        self.frontier.append(self.initial_state)
+        while self.frontier:
+            board = self.frontier.pop()  # Get the last board from the frontier
+            self.explored_nodes.add(tuple(board.state))  # Add the board state to explored nodes
+            if board.goal_test():  # Check if the goal state is reached
+                self.set_solution(board)  # Set the solution path
+                return self.solution
+            if board.depth < limit:  # Check if the depth limit is reached
+                for neighbor in board.neighbors()[::-1]:  # Explore neighbors in reverse order
+                    if tuple(neighbor.state) not in self.explored_nodes:  # Check if the neighbor state is not explored
+                        self.frontier.append(neighbor)  # Add the neighbor to the frontier
+                        self.explored_nodes.add(tuple(neighbor.state))  # Mark the neighbor state as explored
+        return None
+
+    def solve(self):
+        # Iterative deepening depth-first search
+        for i in itertools.count():  # Iterate over increasing depth limits
+            self.frontier = []  # Clear the frontier
+            self.explored_nodes = set()  # Clear the explored nodes
+            self.frontier.append(self.initial_state)  # Add the initial state to the frontier
+            sol = self.dls(i)  # Perform depth-limited search
+            if sol is not None:
+                break  # Stop if solution is found
+        return sol
+
+
+def parse_input(initial_state_str):
+    # Parse the initial state from the input string
+    initial_state = [[int(num) for num in row.split(',')] for row in initial_state_str.split()]
+    return initial_state
+
+
+def write_output(output_file, solution):
+    with open(output_file, 'w') as file:
+        # Write each state in the solution path to the output file
+        for state in solution:
+            for row in state:
+                file.write(','.join(map(str, row)) + '\n')
+            file.write('\n')
+
+
+def main(algorithm, initial_state_str):
+    # Parse command-line arguments
+    algorithm = algorithm
+    initial_state_str = initial_state_str
+
+    # Parse the initial state
+    initial_state = parse_input(initial_state_str)
+
+    # Initialize and solve the puzzle
+    solver = IDDFS(initial_state)
+    solution = solver.solve()
+
+    # Write the solution to the output file
+    if solution:
+        write_output(f"{algorithm}_output.txt", solution)
+        print("Solution found and written to output file.")
+    else:
+        print("No solution found for the given initial state.")
+
+
+if __name__ == "__main__":
+    import sys
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != 3:
+        print("Usage: python script.py algorithm initial_state")
+        sys.exit(1)
+    
+    # Extract algorithm and initial state from command-line arguments
+    algorithm = sys.argv[1]
+    initial_state_str = sys.argv[2]
+    
+    # Execute the main function
+    main(algorithm, initial_state_str)

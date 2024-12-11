@@ -1,0 +1,52 @@
+import json
+from cli.display.message import show_error
+
+SETTINGS_FILE = "settings.ini"
+DEFAULT_SETTINGS = {
+    "graphviz_file_type": "pdf",
+    "graphviz_auto_vis": True
+}
+settings = None
+
+def initialize():
+    """Initialize the program's settings."""
+    global settings
+    settings = load_settings()
+
+def load_settings():
+    """Load settings from file, or use defaults if file not found."""
+    try:
+        with open(SETTINGS_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        save_default_settings()
+        return DEFAULT_SETTINGS
+    except Exception as e:
+        show_error("Error reading/writing settings file.\nReverting to defaults...")
+        return DEFAULT_SETTINGS
+
+def save_default_settings():
+    """Save default settings to file."""
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(DEFAULT_SETTINGS, f)
+
+def update_setting(setting, value):
+    """Update the setting with a new value."""
+    settings[setting] = value
+    save_settings()
+
+def save_settings():
+    """Save current settings to file."""
+    try:
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f)
+    except FileNotFoundError:
+        show_error("Error writing settings file.\nChanges are only saved for this session.")
+
+# Test the functionality
+initialize()
+print("Initial settings:", settings)
+
+# Update a setting
+update_setting("graphviz_auto_vis", False)
+print("Updated settings:", settings)

@@ -1,0 +1,97 @@
+import socket
+from threading import Thread
+import sys
+import random
+import tkinter
+from aes import encrypt, decrypt
+from ec import generate_curve, gen_curve
+
+# Function to send a message
+def send_message(event=None):
+    message = my_msg.get()
+    my_msg.set("")
+    if message == "quit":
+        sock.close()
+        top.quit()
+    else:
+        enc_msg = encrypt(bytes(message, "utf-8"), ex_key)
+        sock.send(enc_msg)
+
+# Function to receive messages
+def receive_message():
+    while True:
+        try:
+            msg = sock.recv(1024)
+            dec_msg = decrypt(msg, keys[0])
+            if not msg:
+                break
+            msg_list.insert(tkinter.END, dec_msg.decode("utf-8"))
+        except ConnectionResetError:
+            break
+
+# Check if the server IP is provided
+if len(sys.argv) == 1:
+    print("Usage: python script.py <server_ip>")
+    exit()
+
+# Connect to the server
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((sys.argv[1], 12345))
+
+keys = []
+
+# Generate elliptic curve parameters
+E, G = generate_curve()
+p, a, b = E.p(), E.a(), E.b()
+Gx, Gy = G.x(), G.y()
+
+# Send public key to the server
+public_key = f"{p} {a} {b} {Gx} {Gy}"
+sock.send(bytes(public_key, "utf-8"))
+
+# Receive exchanged key from the server
+exchanged_key = sock.recv(1024).decode("utf-8").split(" ")
+F, Q = gen_curve(int(exchanged_key[0]), int(exchanged_key[1]))
+
+# Calculate session key
+nClient = random.random() * 100000
+key = nClient * Q
+pClient = nClient * G
+Qx, Qy = pClient.x(), pClient.y()
+key_client = f"{Qx} {Qy}"
+sock.send(bytes(key_client, "utf-8"))
+
+# Generate AES key
+aes_key = str(key.x() * key.y())
+ex_key = aes_key[:16].encode("utf-8")
+keys.append(ex_key)
+
+# Create GUI window
+top = tkinter.Tk()
+top.title("Chatter")
+
+messages_frame = tkinter.Frame(top)
+my_msg = tkinter.StringVar()
+my_msg.set("Type your messages here.")
+
+scrollbar = tkinter.Scrollbar(messages_frame)
+msg_list = tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
+scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
+msg_list.pack()
+
+messages_frame.pack()
+
+entry_field = tkinter.Entry(top, textvariable=my_msg)
+entry_field.bind("<Return>", send_message)
+entry_field.pack()
+
+send_button = tkinter.Button(top, text="Send", command=send_message)
+send_button.pack()
+
+receive_thread = Thread(target=receive_message)
+receive_thread.start()
+
+tkinter.mainloop()
+
+sock.close()

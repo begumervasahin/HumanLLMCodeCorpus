@@ -1,0 +1,26 @@
+from pytorch_pretrained_bert import BertModel,BertTokenizer
+import torch
+import os
+from models.bert_multilayer import Layer_Att
+bert_path='/data/bert-pretrained-models/bert-base-uncased'
+tokenizer = BertTokenizer.from_pretrained(os.path.join(bert_path, 'bert-base-uncased-vocab.txt'))
+model = BertModel.from_pretrained(bert_path)
+text = "[CLS] Who was Jim Henson ? [SEP] Jim Henson was a puppeteer [SEP]"
+tokenized_text = tokenizer.tokenize(text)
+indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
+segments_ids = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+tokens_tensor = torch.tensor([indexed_tokens])
+segments_tensors = torch.tensor([segments_ids])
+model.eval()
+tokens_tensor = tokens_tensor.to('cuda:1')
+segments_tensors = segments_tensors.to('cuda:1')
+model.to('cuda:1')
+with torch.no_grad():
+    encoded_layers, label_layer = model(tokens_tensor, segments_tensors,output_all_encoded_layers=True)
+print(label_layer.shape)
+att=Layer_Att()
+att.to('cuda:1')
+att.eval()
+with torch.no_grad():
+    output2=att(encoded_layers)
+print(output2.shape)

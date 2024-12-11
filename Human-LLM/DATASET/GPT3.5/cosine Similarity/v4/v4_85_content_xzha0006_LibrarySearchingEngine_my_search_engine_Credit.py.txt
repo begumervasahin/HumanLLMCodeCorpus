@@ -1,0 +1,123 @@
+import sys
+import re
+import time
+from os import listdir
+from os.path import isfile
+import numpy as np
+from stemming import PorterStemmer
+import math
+
+def parse_command():
+    if len(sys.argv) >= 4 and (sys.argv[1] == "search" or sys.argv[1] == "index"):
+        if sys.argv[1] == "search":
+            command_search(sys.argv[2], sys.argv[3], sys.argv[4:])
+        elif sys.argv[1] == "index":
+            command_index(sys.argv[2], sys.argv[3], sys.argv[4])
+    else:
+        print("Please enter a valid command.")
+        print("Example:")
+        print("python my_search_engine search index_dir num_docs keyword_list")
+        print("python my_search_engine index collection_dir index_dir stopwords.txt")
+
+def command_index(file_path, index_dir, stopwords_path):
+    stopwords = load_stopwords(stopwords_path)
+    file_content_list, file_names = load_files(file_path)
+    file_size = len(file_content_list)
+    tf_dict_list = []
+    for content in file_content_list:
+        term_list = tokenization(content, stopwords)
+        tf_dict = cal_tf(term_list)
+        tf_dict_list.append(tf_dict)
+    df_dict = {}
+    for tf_dict in tf_dict_list:
+        for term in tf_dict.keys():
+            if term in df_dict:
+                df_dict[term] += 1
+            else:
+                df_dict[term] = 1
+    with open(join(index_dir, "index.txt"), 'w') as f:
+        idf_dict = {}
+        tf_vector_list = [[] for _ in range(file_size)]
+        for term in df_dict.keys():
+            idf = math.log(len(tf_dict_list)/df_dict[term])
+            idf_dict[term] = idf
+            tf_record = ""
+            for i, tf_dict in enumerate(tf_dict_list):
+                tf = tf_dict[term] if term in tf_dict else 0
+                if tf != 0:
+                    tf_vector_list[i].append(tf * idf)
+                    tf_record += f",{file_names[i]},{tf}"
+            record = term + tf_record + f",{idf:.3f}\n"
+            f.write(record)
+    print("Indexing finished!")
+
+def command_search(index_dir, top_n, keywords, feedback=True):
+    keywords_text = " ".join(keywords)
+    keyword_list = tokenization(keywords_text)
+    keyword_tf_dict = cal_tf(keyword_list)
+    keyword_tfidf = []
+    query_doc_tfidf_dict = {}
+    vector_lengths = {}
+    with open(join(index_dir, "index.txt"), 'r') as f1:
+        for line in f1.readlines():
+            one_line_list = line.split(",")
+            term = one_line_list[0]
+            doc_tf = one_line_list[1:-1]
+            idf = one_line_list[-1]
+            for i in range(0, len(doc_tf), 2):
+                if doc_tf[i] in vector_lengths:
+                    vector_lengths[doc_tf[i]] += (int(doc_tf[i+1]) * float(idf)) ** 2
+                else:
+                    vector_lengths[doc_tf[i]] = (int(doc_tf[i+1]) * float(idf)) ** 2
+            if term in keyword_tf_dict:
+                keyword_tfidf.append(float(idf) * keyword_tf_dict[term])
+                for i in range(0, len(doc_tf), 2):
+                    if doc_tf[i] in query_doc_tfidf_dict:
+                        query_doc_tfidf_dict[doc_tf[i]] += int(doc_tf[i+1]) * float(idf) * keyword_tf_dict[term] * float(idf)
+                    else:
+                        query_doc_tfidf_dict[doc_tf[i]] = int(doc_tf[i+1]) * float(idf) * keyword_tf_dict[term] * float(idf)
+    query_length = np.sqrt(np.sum(np.array(keyword_tfidf) ** 2))
+    score_dict = {}
+    for key in query_doc_tfidf_dict.keys():
+        if query_length == 0:
+            break
+        else:
+            score = query_doc_tfidf_dict[key] / (query_length * np.sqrt(vector_lengths[key]))
+            score_dict[key] = score
+    i = 1
+    top_n = int(top_n)
+    for key in sorted(score_dict, key=score_dict.get, reverse=True):
+        print("%d. %s, %.3lf" % (i, key, score_dict[key]))
+        i += 1
+        if i > top_n:
+            break
+    f1.close()
+
+def load_files(file_path):
+    file_content_list = []
+    file_names = [join(file_path, f) for f in listdir(file_path) if isfile(join(file_path, f)) and f != '.DS_Store']
+    for filename in file_names:
+        with open(filename, 'r') as f:
+            data = f.read()
+            file_content_list.append(data)
+    return file_content_list, [i.split('/')[-1].replace(",", " ") for i in file_names]
+
+def tokenization(file_content, stopwords=[]):
+    stemmer = PorterStemmer()
+    term_list = []
+    file_content = re.sub(r"\n\ {1,}", r"\n", file_content)
+    file_content = re.sub(r"\n{2,}", r"\n", file_content)
+    file_content = file_content.replace("\xa0", " ")
+    file_content = file_content.replace("-\n", "").replace("\n", " ")
+    email_list = re.findall(r"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)", file_content, flags=0)
+    term_list.extend([i[0] for i in email_list])
+    file_content = re.sub(r"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)", r"", file_content)
+    url_list = re.findall(r"(((ht|f)tp(s?)\:\/\/)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+)", file_content, flags=0)
+    term_list.extend([i[0] for i in url_list])
+    file_content = re.sub(r"(((ht|f)tp(s?)\:\/\/)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+)", r"", file_content)
+    rest_terms = []
+    single_comma_content = re.findall(r"( '\w+( \w+){1,6}')", file_content)
+    rest_terms.extend([i[0][2:-1] for i in single_comma_content])
+    file_content = re.sub(r"( '\w+( \w+){1,6}')", r" ", file_content)
+    capital_lower_terms = re.findall(r"([A-Z][a-z]+\ ([A-Z][a-z]+[\ \.]{1})+)", file_content)
+    rest_terms.extend([i[0][:-1]

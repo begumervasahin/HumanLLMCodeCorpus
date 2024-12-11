@@ -1,0 +1,55 @@
+import re
+import text2num
+
+# Define translations for textual representations of numbers
+Translations = {
+    'a': 'one',
+    'dozen': 'twelve',
+    'and': '',  # Ignore 'and' when converting to numeric representation
+}
+
+# Initialize valid tokens set with 'hundred'
+valid_tokens = set(["hundred"])
+
+# Update valid tokens set with keys from text2num dictionaries and Translations
+for d in [text2num.Small, text2num.Magnitude, Translations]:
+    valid_tokens = valid_tokens.union(set(d.keys()))
+
+# Tokenize the text
+def tokenize_text(text):
+    # Use regular expression to split text into words and punctuation
+    tokens = re.findall(r"[\w']+|[.,!?;]", text)
+    
+    # Apply translations to replace words with their numeric equivalents
+    for i, token in enumerate(tokens):
+        translation = Translations.get(token)
+        if translation:
+            tokens[i] = translation  # Replace token with its translation
+    return tokens
+
+# Extract the numeric value from the text
+def extract_numeric_value(text):
+    tokens = tokenize_text(text)
+    # Start from the end of the token list and find the index of the first valid token
+    first_valid_index = len(tokens)
+    for i in range(len(tokens))[::-1]:
+        if tokens[i] in valid_tokens:
+            first_valid_index = i
+        else:
+            break
+    # Convert the tokens from the first valid index to numeric value
+    return text2num.text2num(tokens[first_valid_index:])
+
+# Convert the text to integer
+def text_to_integer(text):
+    tokens = tokenize_text(text)
+    numeric_value = text2num.text2num(tokens)  # Use text2num library to convert text to number
+    return numeric_value
+
+# Test the functions
+text = "a dozen apples and two hundred oranges"
+extracted_number = extract_numeric_value(text)
+converted_integer = text_to_integer(text)
+
+print("Extracted number:", extracted_number)
+print("Converted to integer:", converted_integer)

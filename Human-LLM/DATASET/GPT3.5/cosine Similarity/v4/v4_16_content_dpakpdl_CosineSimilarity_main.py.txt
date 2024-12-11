@@ -1,0 +1,98 @@
+# Import necessary libraries
+import csv
+import os
+import re
+from collections import Counter
+import nltk
+import pandas as pd
+from scipy import spatial
+
+# Download NLTK data if not already downloaded
+nltk.download('punkt')
+
+# Set the attachment path where files are located
+ATTACHMENT_PATH = "Attachments"
+
+# Function to read a CSV file and return the dataset
+def read_csv_file(filepath, usecols):
+    dataset = pd.read_csv(filepath, usecols=usecols)
+    return dataset
+
+# Function to get matched summaries from CSV files
+def get_matched_summaries():
+    # Read summaries CSV file
+    summaries_path = os.path.join(ATTACHMENT_PATH, "Summaries.csv")
+    summaries = read_csv_file(summaries_path,
+                              usecols=["adsh", "full_summary", "full_summary_len", "expense_summary", "expense_len"])
+    total_summaries = summaries.adsh.tolist()
+
+    # Get non-summaries file list
+    non_summaries_path = os.path.join(ATTACHMENT_PATH, "Non-Summaries")
+    non_summaries_file_list = os.listdir(non_summaries_path)
+    non_summaries_file_list = [os.path.splitext(os.path.basename(file_path))[0] for file_path in non_summaries_file_list]
+
+    # Read mapping CSV file
+    mapping_path = os.path.join(ATTACHMENT_PATH, "Mapping.csv")
+    mapping = read_csv_file(mapping_path, usecols=["accession_xbrl", "accession_not_xbrl"])
+
+    # Filter mapping to get matched summaries
+    new_mapping = mapping[(mapping['accession_not_xbrl'].isin(non_summaries_file_list)) &
+                          (mapping['accession_xbrl'].isin(total_summaries))]
+    return new_mapping, mapping, summaries
+
+# Function to tokenize a paragraph into words and lines
+def get_lines_from_paragraph(paragraph):
+    words_output = []  # Store tokenized words
+    lines = []  # Store tokenized lines
+    splitted_sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', paragraph)
+    for line in splitted_sentences:
+        words_output.append(remove_articles_preposition(line.strip()))  # Tokenize words and remove articles/prepositions
+        lines.append(line.strip())  # Store tokenized lines
+    return words_output, lines
+
+# Function to remove articles and prepositions from a sentence
+def remove_articles_preposition(sentence):
+    tokens = nltk.word_tokenize(sentence)
+    tokens = list(filter(lambda x: x, map(lambda x: re.sub(r'[^A-Za-z0-9]+', '', x), tokens)))
+    tokens = [token for token in tokens if token.lower() not in ['a', 'an', 'the']]  # Exclude articles/prepositions
+    tagged = nltk.pos_tag(tokens)
+    stemmer = nltk.stem.SnowballStemmer('english')
+    clean_word_list = [stemmer.stem(x) for (x, y) in tagged if y != 'IN']  # Stem words
+    return clean_word_list
+
+# Function to read a text file and tokenize sentences
+def read_file(filepath):
+    with open(filepath, "r", encoding="utf8", errors='ignore') as input_file:
+        content = input_file.read()
+    sentences = nltk.sent_tokenize(content)
+    sentences = [re.sub('\s+', ' ', sentence) for sentence in sentences if sentence[-1] in ['.', '?']]  # Clean sentences
+    return sentences
+
+# Function to calculate cosine similarity between word vectors
+def calculate_word_vector_count(summary_word_vector, non_summary_wordvector):
+    total_score = []  # Store cosine similarity scores
+    for line in summary_word_vector:
+        cosine = []  # Store cosine similarity scores for each line
+        for line2 in non_summary_wordvector:
+            combine_word_vector = list(set(line + line2))
+            summary_count_vector = get_word_count(line, combine_word_vector)
+            non_summary_count_vector = get_word_count(line2, combine_word_vector)       
+            cosine.append(get_cosine_similarity(summary_count_vector, non_summary_count_vector))
+        total_score.append(max(cosine))  # Store maximum cosine similarity for each summary line
+    total = get_average_similarity(total_score)  # Calculate average cosine similarity
+    return total, total_score
+
+# Function to calculate average similarity
+def get_average_similarity(total):
+    return sum(total) / len(total)
+
+# Function to calculate cosine similarity between two vectors
+def get_cosine_similarity(summary_count_vector, non_summary_count_vector):
+    cosine_value = 1 - spatial.distance.cosine(summary_count_vector, non_summary_count_vector)
+    if cosine_value >= 0.90:
+        result = 1  # Similarity threshold
+    else:
+        result = 0
+    return result
+
+# Function to count word occurrences in a list

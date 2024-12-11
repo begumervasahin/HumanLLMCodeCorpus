@@ -1,0 +1,51 @@
+from numpy import asarray
+from sklearn.metrics.pairwise import cosine_similarity
+
+def glove_load(fname):
+    word_embeddings = {}
+    with open(fname, 'r', encoding='utf-8') as fin_file:
+        for line in fin_file:
+            values = line.split()
+            word = values[0]
+            embeddings = asarray(values[1:], dtype='float32')
+            word_embeddings[word] = embeddings
+    print('%s vectors were loaded.' % len(word_embeddings))
+    return word_embeddings
+
+def cosine_func(nv_list, word_vec):
+    cos_vec = []
+    for sublist in nv_list:
+        temp = [word_vec[word] for word in sublist if word in word_vec]
+        cos_vec.append(temp)
+
+    for sublist in cos_vec:
+        for i in range(len(sublist)):
+            for j in range(i+1, len(sublist)):
+                similarity = cosine_similarity([sublist[i]], [sublist[j]])
+                print(sublist[i], ',', sublist[j], '-', similarity)
+
+noun = [['expert', 'specialist', 'authority', 'pundit', 'oracle'],
+        ['trade', 'craft', 'occupation', 'job', 'profession'],
+        ['number', 'numeral', 'integer', 'figure', 'digit'],
+        ['request', 'appeal', 'entreaty', 'plea', 'petition'],
+        ['color', 'hue', 'shade', 'tint', 'tone']]
+
+verb = [['describe', 'narrate', 'recount', 'relate', 'chronicle'],
+        ['unlock', 'unbolt', 'unlatch', 'unpick', 'unfasten'],
+        ['flash', 'shine', 'flare', 'blaze', 'glare'],
+        ['screw', 'fasten', 'secure', 'fix', 'attach'],
+        ['deliver', 'bring', 'take', 'convey', 'transport']]
+
+filenames = ['glove.6B.50d.txt', 'glove.6B.100d.txt', 'glove.6B.200d.txt', 'glove.6B.300d.txt']
+
+for filename in filenames:
+    print('Loading the word embeddings from', filename)
+    word_vec = glove_load(filename)
+    
+    print('Calculating the cosine similarities for the synonym list of verbs')
+    cosine_func(verb, word_vec)
+    
+    print('Calculating cosine similarities for the synonym list of nouns')
+    cosine_func(noun, word_vec)
+
+print('Successfully calculated the cosine similarity for the synonym lists of nouns and verbs.')

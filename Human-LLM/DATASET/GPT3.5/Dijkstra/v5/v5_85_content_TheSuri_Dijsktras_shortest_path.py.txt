@@ -1,0 +1,56 @@
+import heapq
+
+def shortest_path(graph, source, target):
+    """
+    Find the shortest path in a graph from a source node to a target node using Dijkstra's algorithm.
+
+    Args:
+    - graph (Graph): The graph object representing the graph structure.
+    - source (int): The source node.
+    - target (int): The target node.
+
+    Returns:
+    - tuple or None: A tuple containing the shortest path and its total weight, or None if no path exists.
+    """
+    priority_queue = []
+    heapq.heappush(priority_queue, (0, source))
+    visited = set()
+    path = {source: None}
+    remaining = {}
+
+    while priority_queue:
+        curr_path_weight, curr_node = heapq.heappop(priority_queue)
+
+        if curr_node in visited:
+            continue
+        elif curr_node == target:
+            return _reconstruct_path(source, curr_node, path), curr_path_weight
+
+        for neighbor, edge_weight in graph.get_neighbors(curr_node):
+            if neighbor not in visited and (neighbor not in remaining or remaining[neighbor] > curr_path_weight + edge_weight):
+                remaining[neighbor] = curr_path_weight + edge_weight
+                path[neighbor] = curr_node
+                heapq.heappush(priority_queue, (remaining[neighbor], neighbor))
+
+        visited.add(curr_node)
+
+    return None
+
+def _reconstruct_path(source, target, path_dict):
+    """
+    Reconstruct the shortest path from the source node to the target node using the path dictionary.
+
+    Args:
+    - source (int): The source node.
+    - target (int): The target node.
+    - path_dict (dict): A dictionary containing the shortest path information.
+
+    Returns:
+    - list: The shortest path from the source to the target.
+    """
+    result = []
+    node = target
+    while node is not None:
+        result.append(node)
+        node = path_dict[node]
+    return result

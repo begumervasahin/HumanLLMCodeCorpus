@@ -1,0 +1,129 @@
+import os
+import random
+from functools import reduce
+from game import Grid
+from util import manhattanDistance
+
+class Layout:
+    """
+    A Layout manages the static information about the game board.
+    """
+
+    def __init__(self, layout_text):
+        self.width = len(layout_text[0])
+        self.height = len(layout_text)
+        self.walls = Grid(self.width, self.height, False)
+        self.food = Grid(self.width, self.height, False)
+        self.capsules = []
+        self.agent_positions = []
+        self.num_ghosts = 0
+        self._process_layout_text(layout_text)
+        self.layout_text = layout_text
+        self.total_food = len(self.food.asList())
+        self.visibility_matrix_cache = {}
+
+    def get_num_ghosts(self):
+        return self.num_ghosts
+
+    def initialize_visibility_matrix(self):
+        layout_str = reduce(str.__add__, self.layout_text)
+        if layout_str not in self.visibility_matrix_cache:
+            self._compute_visibility_matrix(layout_str)
+        self.visibility = self.visibility_matrix_cache[layout_str]
+
+    def is_wall(self, pos):
+        x, y = pos
+        return self.walls[x][y]
+
+    def get_random_legal_position(self):
+        while True:
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            if not self.is_wall((x, y)):
+                return x, y
+
+    def get_random_corner(self):
+        corners = [(1, 1), (1, self.height - 2), (self.width - 2, 1), (self.width - 2, self.height - 2)]
+        return random.choice(corners)
+
+    def get_furthest_corner(self, pac_pos):
+        corners = [(1, 1), (1, self.height - 2), (self.width - 2, 1), (self.width - 2, self.height - 2)]
+        dist, pos = max([(manhattanDistance(p, pac_pos), p) for p in corners])
+        return pos
+
+    def is_visible_from(self, ghost_pos, pac_pos, pac_direction):
+        row, col = map(int, pac_pos)
+        return ghost_pos in self.visibility[row][col][pac_direction]
+
+    def __str__(self):
+        return "\n".join(self.layout_text)
+
+    def deep_copy(self):
+        return Layout(self.layout_text[:])
+
+    def _process_layout_text(self, layout_text):
+        max_y = self.height - 1
+        for y in range(self.height):
+            for x in range(self.width):
+                layout_char = layout_text[max_y - y][x]
+                self._process_layout_char(x, y, layout_char)
+        self.agent_positions.sort()
+        self.agent_positions = [(i == 0, pos) for i, pos in self.agent_positions]
+
+    def _process_layout_char(self, x, y, layout_char):
+        if layout_char == '%':
+            self.walls[x][y] = True
+        elif layout_char == '.':
+            self.food[x][y] = True
+        elif layout_char == 'o':
+            self.capsules.append((x, y))
+        elif layout_char == 'P':
+            self.agent_positions.append((0, (x, y)))
+        elif layout_char in ['G']:
+            self.agent_positions.append((1, (x, y)))
+            self.num_ghosts += 1
+        elif layout_char in ['1', '2', '3', '4']:
+            self.agent_positions.append((int(layout_char), (x, y)))
+            self.num_ghosts += 1
+
+    def _compute_visibility_matrix(self, layout_str):
+        from game import Directions
+        vecs = [(-0.5, 0), (0.5, 0), (0, -0.5), (0, 0.5)]
+        dirs = [Directions.NORTH, Directions.SOUTH, Directions.WEST, Directions.EAST]
+        vis = Grid(self.width, self.height, {Directions.NORTH: set(), Directions.SOUTH: set(), Directions.EAST: set(), Directions.WEST: set(), Directions.STOP: set()})
+        for x in range(self.width):
+            for y in range(self.height):
+                if not self.walls[x][y]:
+                    for vec, direction in zip(vecs, dirs):
+                        dx, dy = vec
+                        next_x, next_y = x + dx, y + dy
+                        while (next_x + next_y) != int(next_x) + int(next_y) or not self.walls[int(next_x)][int(next_y)]:
+                            vis[x][y][direction].add((next_x, next_y))
+                            next_x, next_y = x + dx, y + dy
+        self.visibility_matrix_cache[layout_str] = vis
+
+def get_layout(name, back=2):
+    if name.endswith('.lay'):
+        layout = _try_to_load('layouts/' + name)
+        if layout is None:
+            layout = _try_to_load(name)
+    else:
+        layout = _try_to_load('layouts/' + name + '.lay')
+        if layout is None:
+            layout = _try_to_load(name + '.lay')
+    if layout is None and back >= 0:
+        cur_dir = os.path.abspath('.')
+        os.chdir('..')
+        layout = get_layout(name, back - 1)
+        os.chdir(cur_dir)
+    return layout
+
+def _try_to_load(fullname):
+    if not os.path.exists(fullname):
+        return None
+    with open(fullname) as f:
+        return Layout([line.strip() for line in f])
+
+# Example usage:
+layout = get_layout("smallClassic")
+print(layout)

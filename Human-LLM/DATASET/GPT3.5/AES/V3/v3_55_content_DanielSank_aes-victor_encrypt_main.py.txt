@@ -1,0 +1,40 @@
+from constants import Nr
+from encrypt_functions import get_key, get_pt_data, out_ct_data, print_hex
+from encrypt_functions import key_expansion, add_round_key, sub_bytes, shift_rows, mix_columns
+
+def main():
+    # Retrieve the encryption key and perform key expansion
+    encryption_key = get_key()
+    expanded_key = key_expansion(encryption_key)
+
+    # Retrieve the plain text data
+    plain_text = get_pt_data()
+    print('Main: Finished retrieving plain text data. State:')
+    print_hex(plain_text)
+
+    # Initial encryption round
+    current_round = 0
+    print('Main: Current round =', current_round)
+    add_round_key(plain_text, expanded_key, current_round)
+
+    # Perform AES encryption rounds
+    for current_round in range(1, Nr):
+        print('Main: Current round =', current_round)
+        sub_bytes(plain_text)
+        shift_rows(plain_text)
+        mix_columns(plain_text)
+        add_round_key(plain_text, expanded_key, current_round)      
+
+    # Final encryption round
+    current_round = Nr - 1
+    print('Main: Current round =', current_round)
+    sub_bytes(plain_text)
+    shift_rows(plain_text)
+    add_round_key(plain_text, expanded_key, current_round)
+
+    # Write the encrypted data to CTData.txt
+    out_ct_data(plain_text)
+    print('Encrypted data has been written to CTData.txt')
+
+if __name__ == "__main__":
+    main()

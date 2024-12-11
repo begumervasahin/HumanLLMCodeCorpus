@@ -1,0 +1,151 @@
+from flask import Flask, render_template, request
+from Crypto_Examples.DES import run_des
+from Crypto_Examples.AES import AES
+from Crypto_Examples.RSA import RSA
+from Crypto_Examples.MD5 import MD5
+
+app = Flask(__name__, template_folder='templates', static_folder='static')
+
+def is_hex(string):
+    """Check if the given string is in hexadecimal format."""
+    try:
+        int(string, 16)
+        return True
+    except ValueError:
+        return False
+
+def convert_to_hex(text):
+    """Convert the given text to its hexadecimal representation."""
+    text_byte_array = bytearray(text, encoding='utf-8')
+    binary_strings = map(bin, text_byte_array)
+    binary_concatenated = ''.join([binary[2:] for binary in binary_strings])
+    return str(hex(int(binary_concatenated, 2))[2:].upper())
+
+def hex_to_byte_array(hex_string):
+    """Convert a hexadecimal string to a byte array."""
+    return [int(hex_string[i:i + 2], 16) for i in range(0, len(hex_string), 2)]
+
+def pad_hex_string(hex_string):
+    """Pad a hexadecimal string to ensure a fixed length."""
+    return '{0:0{1}X}'.format(int(hex_string, 16), len(hex_string))
+
+@app.route('/')
+def load_home_page():
+    """Display the home page."""
+    return render_template('index.html')
+
+@app.route('/des/', methods=['POST', 'GET'])
+def des_page():
+    """Display data from DES calculations."""
+    if request.method == 'POST':
+        message = request.form['message']
+        key = request.form['key']
+        if message or key is not None:
+            if not is_hex(key):
+                return render_template('page_des.html', error_no='2')
+            else:
+                errors = []
+                if not is_hex(message):
+                    message = convert_to_hex(message)
+                    errors.append('Message was not in hexadecimal format and was converted: {}'.format(message))
+                if len(key) > 16:
+                    key = key[:16]
+                    errors.append('Key was longer than 16 characters, it was shortened to: {}'.format(key))
+                errors = None if len(errors) == 0 else errors   
+                action = request.form['action_options']
+                if action == 'encrypt':
+                    encryption_values = run_des(message, key, action)
+                    return render_template('page_des.html',     
+                                           print_action=action, 
+                                           message=message,     
+                                           key=key,
+                                           encryption_values=encryption_values,
+                                           errors=errors)       
+                elif action == 'decrypt':
+                    decryption_values = run_des(message, key, action)
+                    return render_template('page_des.html',     
+                                           print_action=action, 
+                                           message=message,     
+                                           key=key,
+                                           decryption_values=decryption_values,
+                                           errors=errors)       
+                else:
+                    encryption_values = run_des(message, key, 'encrypt')
+                    decryption_values = run_des(encryption_values['Cipher'], key, 'decrypt')
+                    return render_template('page_des.html',     
+                                           print_action='both', 
+                                           message=message,     
+                                           key=key,
+                                           encryption_values=encryption_values,
+                                           decryption_values=decryption_values,
+                                           errors=errors)       
+        else:
+            return render_template('page_des.html', error_no='1')
+    else:
+        return render_template('page_des.html')
+
+@app.route('/aes/', methods=['POST', 'GET'])
+def aes_page():
+    """Display data from AES calculations."""
+    if request.method == 'POST':
+        message = request.form['message']
+        key = request.form['key']
+        if message or key is not None:
+            if not is_hex(key):
+                return render_template('page_aes.html', error_no='2')
+            elif not is_hex(message):
+                return render_template('page_aes.html', error_no='3')
+            else:
+                message = pad_hex_string(message)
+                key = pad_hex_string(key)
+                aes = AES()
+                aes_data = aes.do_rounds(message=hex_to_byte_array(message), key=hex_to_byte_array(key))
+                return render_template('page_aes.html', message=message, key=key, data=aes_data)
+        else:
+            return render_template('page_aes.html', error_no='1')
+    else:
+        return render_template('page_aes.html')
+
+@app.route('/rsa/', methods=['POST', 'GET'])
+def rsa_page():
+    """Display data from RSA calculations."""
+    if request.method == 'POST':
+        message = int(request.form['message'])
+        e = int(request.form['e'])
+        p = int(request.form['p'])
+        q = int(request.form['q'])
+        if message and e and p and q is not None:
+            rsa = RSA()
+            if not rsa.is_prime(p):
+                return render_template('page_rsa.html', error_no='2', number=p)
+            elif not rsa.is_prime(q):
+                return render_template('page_rsa.html', error_no='2', number=q)
+            else:
+                if not rsa.is_relatively_prime(e, (p - 1) * (q - 1)):
+                    return render_template('page_rsa.html', error_no='3', number=e)
+                else:
+                    action = request.form['action_options']     
+                    return render_template('page_rsa.html', message=message, p=p, q=q, e=e,
+                                           rsa=rsa.do_rsa(message, p, q, e, action))
+        else:
+            return render_template('page_rsa.html', error_no='1')
+    else:
+        return render_template('page_rsa.html')
+
+@app.route('/md5/', methods=['POST', 'GET'])
+def md5_page():
+    """Display MD5 hash."""
+    if request.method == 'POST':
+        message = request.form['message']
+        action = request.form['action_options']
+        hash = MD5().get_md5_hash(message)
+        if action == 'all_steps':
+            return render_template('page_md5.html', message=message, hash=hash['hash'], show_all=True,
+                                   operations_data=hash)        
+        else:
+            return render_template('page_md5.html', message=message, hash=hash['hash'])
+    else:
+        return render_template('page_md5.html')
+
+if __name__ == '__main__':
+    app.run()

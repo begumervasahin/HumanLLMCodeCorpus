@@ -1,0 +1,125 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import wordfreq
+
+# Constants
+TITLE = 'Similarity Scores for JHU PMB Faculty\n'
+BASEPATH = wordfreq.OUTPATH
+LISTPATH = wordfreq.INPATH
+OUTPATH = wordfreq.OUTPATH + 'matrix.png'
+
+
+def get_list_of_authors(listpath):
+    """Get a list of authors from a text file."""
+    with open(listpath) as authors_file:
+        authors = authors_file.read().splitlines()
+    return authors
+
+
+def get_author_keywords(basepath, authors):
+    """Get author keywords from text files."""
+    author_keywords = []
+    for author in authors:
+        authorpath = f"{basepath}{author}.txt"
+        with open(authorpath) as keywords_file:
+            keywords = keywords_file.readlines()
+        author_keywords.append(keywords)
+    return author_keywords
+
+
+def clean_keyword_entry(entry):
+    """Clean keyword entry and convert TFs to floats."""
+    cleaned_entry = [entry[0]]  # Author/search term line
+    for idx, val in enumerate(entry[1:]):
+        if idx % 2 == 1:
+            val = float(val)
+        cleaned_entry.append(val)
+    return cleaned_entry
+
+
+def clean_keywords(keywords):
+    """Clean keyword entries for each author."""
+    cleaned_keywords = [clean_keyword_entry(entry.split()) for entry in keywords]
+    return cleaned_keywords
+
+
+def get_keywords(datapath):
+    """Read and clean keywords from a file."""
+    with open(datapath) as keywords_file:
+        keywords = keywords_file.readlines()
+    organized_keywords = [entry.split() for entry in keywords]
+    cleaned_keywords = clean_keywords(organized_keywords)
+    return cleaned_keywords
+
+
+def construct_vector_space(v1, v2):
+    """Construct a combined vector space for two authors."""
+    vector_space = set()
+    for entry in v1 + v2:
+        vector_space.add(entry[0])
+    return list(vector_space)
+
+
+def populate_vector_space(v1, combined):
+    """Populate the vector space with TFs from each author."""
+    vector_space = []
+    for entry in combined:
+        found = False
+        for item in v1:
+            if entry == item[0]:
+                vector_space.append(item)
+                found = True
+                break
+        if not found:
+            vector_space.append([entry, 0])
+    return vector_space
+
+
+def square(v):
+    """Square each element in a vector."""
+    return [entry[1] ** 2 for entry in v]
+
+
+def calculate_cosine_similarity(v1, v2):
+    """Calculate cosine similarity between two vectors."""
+    prod = [v1[x][1] * v2[x][1] for x in range(len(v1))]
+    v1_squared = square(v1)
+    v2_squared = square(v2)
+    cosine_sim = sum(prod) / (np.sqrt(sum(v1_squared)) * np.sqrt(sum(v2_squared)))
+    return cosine_sim
+
+
+def plot_similarity_matrix(title, names, data, outpath):
+    """Plot the similarity matrix using seaborn heatmap."""
+    ax = sns.heatmap(data, cmap='coolwarm', xticklabels=names, yticklabels=names)
+    ax.tick_params(direction='out', labelsize=8)
+    plt.title(title, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(outpath)
+    print('\nCorrelation Matrix Saved')
+
+
+def calculate_similarity_scores(listpath, basepath, outpath, title):
+    """Calculate and plot similarity scores for JHU PMB Faculty."""
+    print('Calculating Similarity...')
+    names = get_list_of_authors(listpath)
+    authors_keywords = get_author_keywords(basepath, names)
+
+    scores = []
+    for ref_author, ref_keywords in zip(names, authors_keywords):
+        row = []
+        for compare_author, compare_keywords in zip(names, authors_keywords):
+            vector_space = construct_vector_space(ref_keywords[1:], compare_keywords[1:])
+            ref_vector = populate_vector_space(ref_keywords, vector_space)
+            compare_vector = populate_vector_space(compare_keywords, vector_space)
+            sim_score = calculate_cosine_similarity(ref_vector, compare_vector)
+            row.append(sim_score)
+        scores.append(row)
+
+    print(f'\nCalculation Completed For {len(names)} PIs')
+    plot_similarity_matrix(title, names, scores, outpath)
+
+
+if __name__ == '__main__':
+    calculate_similarity_scores(LISTPATH, BASEPATH, OUTPATH, TITLE)

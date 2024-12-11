@@ -1,0 +1,191 @@
+class AVLTreeNode:
+    def __init__(self, keyData):
+        self.keyData = keyData
+        self.count = 1
+        self.depth = 0
+        self.height = 0
+        self.order = -1
+        self.parent = None
+        self.left = None
+        self.right = None
+
+    def isLeftChild(self):
+        return self.parent is not None and self.parent.left == self
+
+    def isRightChild(self):
+        return self.parent is not None and self.parent.right == self
+
+    def isLeaf(self):
+        return self.left is None and self.right is None
+
+    def isRoot(self):
+        return self.parent is None
+
+    def hasGrandParent(self):
+        return self.parent is not None and self.parent.parent is not None
+
+    def leftSubTreeHeight(self):
+        return self.left.height if self.left else -1
+
+    def rightSubTreeHeight(self):
+        return self.right.height if self.right else -1
+
+    def maxSubTreeHeight(self):
+        return max(self.leftSubTreeHeight(), self.rightSubTreeHeight())
+
+    def isBalanced(self):
+        return abs(self.rightSubTreeHeight() - self.leftSubTreeHeight()) <= 1
+
+    def rightMostNodeInLeftSubtree(self):
+        c = self
+        if c.left:
+            c = c.left
+            while c.right:
+                c = c.right
+            return c
+        else:
+            return None
+
+    def leftMostNodeInRightSubtree(self):
+        c = self
+        if c.right:
+            c = c.right
+            while c.left:
+                c = c.left
+            return c
+        else:
+            return None
+
+    def parentOfNearestAncestorThatIsLeftChild(self):
+        c = self
+        if c.isRightChild():
+            while c.isRightChild():
+                c = c.parent
+            if c.isLeftChild():
+                return c.parent
+            else:
+                return None
+        else:
+            return None
+
+    def parentOfNearestAncestorThatIsRightChild(self):
+        c = self
+        if c.isLeftChild():
+            while c.isLeftChild():
+                c = c.parent
+            if c.isRightChild():
+                return c.parent
+            else:
+                return None
+        else:
+            return None
+
+    def next(self):
+        if self.isRoot():
+            if self.right:
+                return self.leftMostNodeInRightSubtree()
+            else:
+                return None
+        elif self.isLeftChild():
+            if self.right:
+                return self.leftMostNodeInRightSubtree()
+            else:
+                return self.parent
+        else:
+            if self.right:
+                return self.leftMostNodeInRightSubtree()
+            else:
+                return self.parentOfNearestAncestorThatIsLeftChild()
+
+    def prev(self):
+        if self.isRoot():
+            if self.left:
+                return self.rightMostNodeInLeftSubtree()
+            else:
+                return None
+        elif self.isLeftChild():
+            if self.left:
+                return self.rightMostNodeInLeftSubtree()
+            else:
+                return self.parentOfNearestAncestorThatIsRightChild()
+        else:
+            if self.left:
+                return self.rightMostNodeInLeftSubtree()
+            else:
+                return self.parent
+
+
+class AVLTree:
+    def __init__(self):
+        self.rootNode = None
+        self.numNodes = 0
+        self.currentNode = None
+
+    def find(self, keyData):
+        c = self.rootNode
+        while c:
+            if c.keyData == keyData:
+                return c
+            elif c.keyData > keyData:
+                c = c.left
+            else:
+                c = c.right
+        return c
+
+    def insert(self, keyData):
+        if not self.rootNode:
+            self.rootNode = AVLTreeNode(keyData)
+            self.rootNode.height = 0
+            self.rootNode.depth = 0
+            self.numNodes = 1
+        else:
+            newNode = self.rootNode.insert(self, keyData)
+            if newNode:
+                newNode.bubbleUp(self)
+
+    def remove(self, keyData):
+        removedNode = self.find(keyData)
+        if removedNode:
+            removedNode.remove(self)
+            self.numNodes -= 1
+        return removedNode
+
+    def printTree(self):
+        if self.rootNode:
+            c = self.rootNode
+            while c.left:
+                c = c.left
+            while c:
+                print(c.keyData)
+                c = c.next()
+
+    def getFirst(self):
+        if self.rootNode:
+            c = self.rootNode
+            while c.left:
+                c = c.left
+            return c
+        else:
+            return None
+
+    def markOrder(self):
+        if self.rootNode:
+            c = self.getFirst()
+            n = 0
+            while c:
+                c.order = n
+                n += 1
+                c = c.next()
+
+
+# Example usage:
+if __name__ == "__main__":
+    tree = AVLTree()
+    tree.insert(5)
+    tree.insert(3)
+    tree.insert(7)
+    tree.insert(4)
+    tree.insert(6)
+    tree.insert(8)
+
+    tree.printTree()

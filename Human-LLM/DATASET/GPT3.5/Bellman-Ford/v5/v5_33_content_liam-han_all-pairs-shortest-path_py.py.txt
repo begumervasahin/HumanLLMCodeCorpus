@@ -1,0 +1,159 @@
+import sys
+import re
+import time
+import math
+
+# Regular expressions for parsing input
+GRAPH_REGEX = re.compile(r"(\d+)\s(\d+)")
+EDGE_REGEX = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+# Global variables for vertices and edges
+vertices = []
+edges = []
+
+# Class definition for representing edges
+class EdgeNode:
+    def __init__(self, u, v, w):
+        self.u = u
+        self.v = v
+        self.w = w
+
+    def __repr__(self):
+        return f"Edge: ({self.u}, {self.v}), Weight: {self.w}"
+
+# Function to check for negative cycles using Floyd-Warshall algorithm
+def has_negative_cycle_floyd_warshall(graph, vertices):
+    n = len(vertices)
+    dist = [[0 for _ in range(n)] for _ in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            dist[i][j] = graph[i][j]
+
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                if dist[i][k] + dist[k][j] < dist[i][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+
+    for i in range(n):
+        if dist[i][i] < 0:
+            return True
+
+    return False
+
+# Function to perform Bellman-Ford algorithm
+def bellman_ford(graph, vertices):
+    path_pairs = []
+    edge_list = []
+
+    for i in range(len(vertices)):
+        for j in range(len(vertices)):
+            if not math.isinf(float(graph[1][i][j])):
+                e = EdgeNode(int(i), int(j), float(graph[1][i][j]))
+                edge_list.append(e)
+
+    for k in range(len(vertices)):
+        dist = [float("inf")] * len(vertices)
+        dist[k] = 0
+
+        for _ in range(len(vertices) - 1):
+            for edge in edge_list:
+                if dist[edge.v] > dist[edge.u] + edge.w:
+                    dist[edge.v] = dist[edge.u] + edge.w
+
+        for edge in edge_list:
+            if dist[edge.v] > dist[edge.u] + edge.w:
+                print("There is a negative cycle")
+                return 0
+
+        for i in range(len(graph[0])):
+            e = EdgeNode(k, i, dist[i])
+            path_pairs.append(e)
+
+    return path_pairs
+
+# Function to perform Floyd-Warshall algorithm
+def floyd_warshall(graph):
+    path_pairs = []
+    dist = []
+
+    for i in range(len(graph[0])):
+        new = []
+        for j in range(len(graph[0])):
+            new.append(float(edges[i][j]))
+        dist.append(new)
+        dist[i][i] = 0
+
+    for k in range(len(graph[0])):
+        for i in range(len(graph[0])):
+            for j in range(len(graph[0])):
+                if dist[i][j] > dist[i][k] + dist[k][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+
+    for i in range(len(graph[0])):
+        for j in range(len(graph[0])):
+            e = EdgeNode(i, j, dist[i][j])
+            path_pairs.append(e)
+
+    return path_pairs
+
+# Function to read graph from file
+def read_graph(filename):
+    global vertices, edges
+    with open(filename, 'r') as infile:
+        line1 = infile.readline()
+        graph_match = GRAPH_REGEX.match(line1)
+        if not graph_match:
+            print(f"Error: First line '{line1}' is not properly formatted.")
+            sys.exit(1)
+
+        num_vertices = int(graph_match.group(1))
+        vertices = list(range(num_vertices))
+        edges = [[float("inf")] * num_vertices for _ in range(num_vertices)]
+
+        for line in infile.readlines():
+            line = line.strip()
+            edge_match = EDGE_REGEX.match(line)
+            if edge_match:
+                source = int(edge_match.group(1))
+                sink = int(edge_match.group(2))
+                if source > num_vertices or sink > num_vertices:
+                    print(f"Error: Attempting to insert an edge between {source} and {sink} in a graph with {num_vertices} vertices.")
+                    sys.exit(1)
+                weight = int(edge_match.group(3))
+                edges[source - 1][sink - 1] = weight
+
+    return vertices, edges
+
+# Main function to execute the algorithm based on command-line arguments
+def main(filename, algorithm):
+    global vertices, edges
+    algorithm = algorithm[1:]
+    graph = read_graph(filename)
+    vertices, edges = graph
+
+    if algorithm == 'b' or algorithm == 'B':
+        bellman_ford(graph, vertices)
+
+    if algorithm == 'f' or algorithm == 'F':
+        floyd_warshall(graph)
+
+    if algorithm == "both":
+        start = time.clock()
+        bellman_ford(graph, vertices)
+        end = time.clock()
+        bf_time = end - start
+        floyd_warshall(graph)
+        start = time.clock()
+        end = time.clock()
+        fw_time = end - start
+        print("Bellman-Ford timing:", bf_time)
+        print("Floyd-Warshall timing:", fw_time)
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python bellman_ford.py -<f|b> <input_file>")
+        sys.exit(1)
+
+    main(sys.argv[2], sys.argv[1])

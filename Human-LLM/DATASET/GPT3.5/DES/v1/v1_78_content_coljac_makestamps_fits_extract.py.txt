@@ -1,0 +1,100 @@
+import os
+import sys
+import h5py as h5
+import astropy.io.fits as pyfits
+
+def fal(filename, skip_comments=True):
+    with open(filename, "r") as f:
+        lines = f.readlines()
+    if skip_comments:
+        return [l.strip() for l in lines if not l.startswith("#")]
+    else:
+        return [l.strip() for l in lines]
+
+def progbar(current, to, width=40, show=True, message=None, stderr=False):
+    percent = float(current) / float(to)
+    length = int(width * percent)
+    if show:
+        count = " (%d/%d)    " % (current, to)
+    else:
+        count = ""
+    if message:
+        count += message
+    outstream = sys.stderr if stderr else sys.stdout
+    outstream.write(("\r[" + ("#" * length) + (" " * (width - length)) + "] %0d" % (percent * 100)) + "%" + count)
+    outstream.flush()
+
+def extract_objects(datastore, objids, outdir):
+    if objids is None:
+        extract_all(datastore, outdir)
+    else:
+        extract_some(objids, datastore, outdir)
+
+def extract_some(ids, datastore, outdir):
+    todo = len(ids)
+    done = 0
+    progbar(done, todo)
+    with h5.File(datastore, "r") as f:
+        ds = f['/stamps/']
+        for tile in ds:
+            data = ds[tile + "/data"]
+            headers = ds[tile + "/header"]
+            objids = ds[tile + "/catalog"]
+            N = data.shape[0]
+            for i in range(N):
+                objid = objids[i].strip()
+                if objid in ids:
+                    done += 1
+                    progbar(done, todo)
+                    heads = headers[i]
+                    for b in range(5):
+                        band_name = "grizY"[b]
+                        d = data[i, :, :, b]
+                        head = pyfits.Header.fromstring(heads[b].strip())
+                        filename = os.path.join(outdir, "{}_{}.fits".format(objid, band_name))
+                        outfits = pyfits.PrimaryHDU(data=d, header=head)
+                        outfits.writeto(filename, overwrite=True)
+
+def make_rgb(datastore, outdir):
+    pass
+
+def extract_all(datastore, outdir):
+    with h5.File(datastore, "r") as f:
+        ds = f['/stamps/']
+        for tile in ds:
+            data = ds[tile + "/data"]
+            headers = ds[tile + "/header"]
+            objids = ds[tile + "/catalog"]
+            N = data.shape[0]
+            for i in range(N):
+                objid = objids[i].strip()
+                heads = headers[i]
+                for b in range(5):
+                    band_name = "grizY"[b]
+                    d = data[i, :, :, b]
+                    head = pyfits.Header.fromstring(heads[b].strip())
+                    filename = os.path.join(outdir, "{}_{}.fits".format(objid, band_name))
+                    outfits = pyfits.PrimaryHDU(data=d, header=head)
+                    outfits.writeto(filename, overwrite=True)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: python script.py <datastore> <dest_dir> [objids]")
+        sys.exit(0)
+
+    datastore = sys.argv[1]
+    outdir = sys.argv[2]
+    inputs = sys.argv[3] if len(sys.argv) == 4 else None
+
+    if not os.path.exists(outdir):
+        print("Output directory doesn't exist.")
+        sys.exit(0)
+
+    if inputs and os.path.exists(inputs):
+        objids = fal(inputs)
+    elif inputs:
+        objids = inputs.split(",")
+    else:
+        objids = None
+
+    extract_objects(datastore, objids, outdir)

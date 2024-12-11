@@ -1,0 +1,108 @@
+import json
+from graph import Graph
+from os import listdir
+from os.path import isfile, join
+
+# Default configuration file
+CONFIG_DEFAULT = "graph1.json"
+
+def run_project():
+    # Initialize with the default configuration
+    config = CONFIG_DEFAULT
+    print_menu(config)
+
+    while True:
+        user_input = input().strip()
+
+        # Iterate over each character in user input
+        for char in user_input:
+            if char == "c":
+                # Choose a new configuration
+                config = choose_configuration()
+            elif char in ("t", "n"):
+                # Load the graph based on the selected configuration and start the algorithm
+                graph = Graph(load_config(config))
+                start_algorithm(graph, char)
+            elif char == "h":
+                # Display help information
+                print_help()
+            elif char == "m":
+                # Display the menu again
+                print_menu(config)
+            elif char == "q":
+                # Quit the program
+                return
+
+def print_menu(config):
+    # Print the main menu with the current configuration
+    print("py_graphpath")
+    print("-----------------------------------------------------")
+    print(f"c : Choisir la configuration (Actuel : {config})")
+    print("t : Lancer l'algorithme Point de rendez-vous optimal par le temps")
+    print("n : Lancer l'algorithme Point de rendez-vous optimal par les déplacements")  
+    print("h : pour accéder à l'aide")
+    print("m : pour afficher le menu")
+    print("q : pour arrêter le programme.")
+
+def choose_configuration():
+    # Display available configurations and allow the user to choose one
+    print("Configurations disponibles :")
+    available_configs = get_available_configurations()
+
+    for config in available_configs:
+        print(config)
+
+    while True:
+        selected_config = input("").strip()
+
+        if selected_config in available_configs:
+            print("Configuration changée avec succès.")
+            return selected_config
+        else:
+            print("Cette configuration n'existe pas.")
+
+def get_available_configurations():
+    # Get a list of available configuration files
+    return [f for f in listdir('./cfg') if isfile(join('./cfg', f))]
+
+def print_help():
+    # Display help information about the program and algorithms
+    print("Aide")
+    print("Pour un exemple de la syntaxe de configuration, voir graph_sujet.json")      
+    print("Le premier algorithme calcule le point de rendez-vous le plus optimal")      
+    print("pour que les deux personnes se rencontrent sur ce point en temps minimum.")  
+    print("Le second algorithme calcule le point de rendez-vous le plus optimal")       
+    print("pour que les deux personnes se rencontrent sur ce point en un nombre")       
+    print("de déplacements minimum.")
+    print("Il est possible de saisir plusieurs caractères à la suite dans le menu du programme.")
+
+def start_algorithm(graph, choice):
+    # Start the selected algorithm with the loaded graph
+    if graph.error != 0:
+        if graph.error == 1:
+            print("Erreur dans le fichier configuration (nbNoeuds/nomSommets)")
+        elif graph.error == 2:
+            print("Erreur dans le fichier configuration (nbLieuxRdv/nomRdv)")
+
+    if choice == "t":
+        result = graph.rdv_optimal()
+        print_rdv_result(result, "par le temps")
+    elif choice == "n":
+        result = graph.rdv_optimal2()
+        print_rdv_result(result, "par les déplacements")
+
+def print_rdv_result(result, criteria):
+    # Print the result of the rendezvous algorithm
+    if result:
+        print(f"Le point de rendez-vous le plus optimal {criteria} est : {result}")
+    else:
+        print("Pas de point de rendez-vous compatible")
+
+def load_config(config):
+    # Load the configuration from the selected file
+    with open('./cfg/' + config, 'r') as fichier:
+        return json.load(fichier)
+
+if __name__ == '__main__':
+    # Start the main project
+    run_project()

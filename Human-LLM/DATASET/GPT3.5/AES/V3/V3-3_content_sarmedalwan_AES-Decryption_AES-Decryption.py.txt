@@ -1,0 +1,136 @@
+import sys
+
+def decrypt(int_list, int_key):
+    crypt_bytes = bytearray(int_list)
+    crypt_bytes_as_nibbles = bytes_to_nibbles(crypt_bytes)
+    key_as_nibbles = byte_to_nibbles(int_key)
+    decrypt_bytes_as_nibbles = []
+
+    for nibbles in crypt_bytes_as_nibbles:
+        decrypt_bytes_as_nibbles.append(decrypt_byte(nibbles, key_as_nibbles))
+
+    decrypt_bytes = nibbles_to_bytes(decrypt_bytes_as_nibbles)
+    decrypt_string = bytes_to_string(decrypt_bytes)
+
+    return decrypt_string
+
+def bytes_to_nibbles(a_bytearray):
+    nibble_list = []
+
+    for a_byte in a_bytearray:
+        nibble = byte_to_nibbles(a_byte)
+        nibble_list.append(nibble)
+
+    return nibble_list
+
+def byte_to_nibbles(a_byte):
+    nibble4 = a_byte & 0b00000011
+    nibble3 = (a_byte >> 2) & 0b00000011
+    nibble2 = (a_byte >> 4) & 0b00000011
+    nibble1 = (a_byte >> 6) & 0b00000011
+
+    return bytearray([nibble1, nibble2, nibble3, nibble4])
+
+def nibbles_to_bytes(nibbles_list):
+    byte_list = []
+
+    for nibble_quad in nibbles_list:
+        byte_list.append(nibbles_to_byte(nibble_quad))
+
+    return byte_list
+
+def nibbles_to_byte(quadruple_bytearray):
+    a_byte = (quadruple_bytearray[0] << 6) | \
+             (quadruple_bytearray[1] << 4) | \
+             (quadruple_bytearray[2] << 2) | \
+             (quadruple_bytearray[3])
+
+    return a_byte
+
+def decrypt_byte(nibble_quadruple, key_quadruple):
+    ans = xor(nibble_quadruple, key_quadruple)
+    ans = swap_last_two(ans)
+    ans = s_box(ans)
+    ans = xor(ans, key_quadruple)
+    ans = subtract_last_two_first_two(ans)
+    ans = swap_last_two(ans)
+    ans = s_box(ans)
+    ans = xor(ans, key_quadruple)
+
+    return ans
+
+def xor(nibbles, key):
+    result = nibbles[:]
+
+    for i in range(4):
+        result[i] ^= key[i]
+
+    return result
+
+def swap_last_two(nibbles):
+    result = nibbles[:]
+    temp = result[-2]
+    result[-2] = result[-1]
+    result[-1] = temp
+
+    return result
+
+def s_box(nibbles):
+    result = nibbles[:]
+
+    for i in range(4):
+        if result[i] == 0:
+            result[i] = 2
+        elif result[i] == 1:
+            result[i] = 0
+        elif result[i] == 2:
+            result[i] = 3
+        elif result[i] == 3:
+            result[i] = 1
+
+    return result
+
+def subtract_last_two_first_two(nibbles):
+    result = nibbles[:]
+    result[0] = (result[0] - result[2]) % 4
+    result[1] = (result[1] - result[3]) % 4
+
+    return result
+
+def bytes_to_string(byte_list):
+    result = ''
+
+    for a_byte in byte_list:
+        result += chr(a_byte)
+
+    return result
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python script_name.py [option]")
+    elif sys.argv[1] == 'a':
+        print("Decrypted Text:")
+        print(decrypt(text, key))
+    elif sys.argv[1] == 'b':
+        ans = xor(byte_to_nibbles(0b10101010),
+                  byte_to_nibbles(0b10001000))
+        ans_byte = nibbles_to_byte(ans)
+        print("XOR operation between 10101010 and 10001000:")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'c':
+        ans = swap_last_two(byte_to_nibbles(0b10001000))
+        ans_byte = nibbles_to_byte(ans)
+        print("Swapping last two bits of 10001000:")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'd':
+        ans = s_box(byte_to_nibbles(0b00011011))
+        ans_byte = nibbles_to_byte(ans)
+        print("S-box operation on 00011011:")
+        print(format(ans_byte, '08b'))
+    elif sys.argv[1] == 'e':
+        ans = subtract_last_two_first_two(byte_to_nibbles(0b00011011))
+        ans_byte = nibbles_to_byte(ans)
+        print("Subtracting last two bits from first two bits of 00011011:")
+        print(format(ans_byte, '08b'))
+    else:
+        print('Invalid argument. Please provide a valid option.')  

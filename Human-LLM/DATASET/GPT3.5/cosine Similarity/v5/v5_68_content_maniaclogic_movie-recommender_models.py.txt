@@ -1,0 +1,33 @@
+import pandas as pd
+import numpy as np
+import pickle
+from sklearn.decomposition import NMF
+
+# Read datasets
+movies = pd.read_csv('movies.csv')
+ratings = pd.read_csv('ratings.csv')
+tags = pd.read_csv('tags.csv')
+links = pd.read_csv('links.csv')
+
+# Select relevant columns
+ratings = ratings[['userId', 'movieId', 'rating']]
+tags = tags[['userId', 'movieId', 'tag']]
+links = links[['movieId', 'imdbId']]
+
+# Combine dataframes
+data_frames = [movies, tags, links, ratings]
+combined_df = pd.concat(data_frames, join='outer', sort=True)
+
+# Function to convert dataframe to matrix
+def convert_df_to_matrix(df):
+    pre_data = df[['movieId', 'userId', 'rating']]
+    data_matrix = pre_data.pivot_table(index='userId', columns='movieId', values='rating')
+    data_matrix.fillna(3.0, inplace=True)
+    return data_matrix, pre_data
+
+# Convert dataframe to matrix
+R, PRE = convert_df_to_matrix(combined_df)
+
+# Load NMF model from binary file
+with open('nmf_model.bin', 'rb') as f:
+    nmf_model = pickle.load(f)

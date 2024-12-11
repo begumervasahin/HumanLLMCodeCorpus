@@ -1,0 +1,113 @@
+import numpy as np
+from numpy.polynomial import polynomial as poly
+from math import floor, sqrt, pi
+import sys
+
+# Function definitions
+def cross_round(x, q):
+    return np.floor((4 * x) / q) % 2
+
+def mod_round(x, q):
+    return np.around((2 * x) / q) % 2
+
+def dbl(x, n, q):
+    dist = [-1, 0, 1]
+    prob = [0.25, 0.5, 0.25]
+    e = np.random.choice(dist, n, p=prob)
+    dbl_x = (2 * x) % (2 * q)
+    dbl_x = poly.polysub(dbl_x, e) % (2 * q)
+    return dbl_x
+
+def rec(w, b, q):
+    n = len(w)
+    r = np.zeros(n)
+    E_left = -q / 4
+    E_right = q / 4
+    for i in range(n):
+        if b[i] == 0:
+            r[i] = rec_I_0(w[i], q, E_left, E_right)
+        else:
+            r[i] = rec_I_1(w[i], q, E_left, E_right)
+    return r
+
+def rec_I_0(w, q, E_left, E_right):
+    I_start = 0
+    I_end = round(q / 2) - 1
+    bound_left = (I_start + E_left) % (2 * q)
+    bound_right = (I_end + E_right) % (2 * q)
+    if bound_right < bound_left:
+        bound_left, bound_right = bound_right, bound_left
+    return 0 if bound_left <= w < bound_right else 1
+
+def rec_I_1(w, q, E_left, E_right):
+    I_start = -floor(q/2)
+    I_end = -1
+    bound_left = (I_start + E_left) % (2 * q)
+    bound_right = (I_end + E_right) % (2 * q)
+    if bound_right < bound_left:
+        bound_left, bound_right = bound_right, bound_left
+    return 0 if bound_left <= w < bound_right else 1
+
+def invert(k):
+    return [1 - val for val in k]
+
+# Parameters and random data generation
+n = 1024
+q = 2**32 - 1
+sigma = 8 / sqrt(2 * pi)
+A = np.floor(np.random.random(size=(n)) * q) % q
+sA = np.floor(np.random.normal(0, scale=sigma, size=(n)))
+eA = np.floor(np.random.normal(0, scale=sigma, size=(n)))
+bA = poly.polymul(A, sA) % q
+bA = poly.polyadd(bA, eA) % q
+
+sB = np.floor(np.random.normal(0, scale=sigma, size=(n)))
+eB = np.floor(np.random.normal(0, scale=sigma, size=(n)))
+bB = poly.polymul(A, sB) % q
+bB = poly.polyadd(bB, eB) % q
+
+eeB = np.floor(np.random.normal(0, scale=sigma, size=(n)))
+v = poly.polymul(bA, sB) % q
+v = poly.polyadd(v, eeB) % q
+
+# Key generation and processing
+dbl_v = dbl(v, n, q)
+c = cross_round(dbl_v, 2*q)
+kB = mod_round(dbl_v, 2*q)
+recA = (2 * bB) % (2 * q)
+recA = poly.polymul(recA, sA) % (2 * q)
+kA = rec(recA, c, q)
+kA = invert(kA)
+
+# Output and comparison
+print("\n-Params---")
+print(" n:", n)
+print(" q:", q)
+print(" A:", len(A), "|", A)
+
+print("\n-Alice---")
+print(" s:", len(sA), "|", sA)
+print(" e:", len(eA), "|", eA)
+print(" b:", len(bA), "|", bA)
+
+print("\n-Bob---")
+print(" s':", len(sB), "|", sB)
+print(" e':", len(eB), "|", eB)
+print(" b':", len(bB), "|", bB)
+print(" e'':", len(eeB), "|", eeB)
+
+print("\n-Computed data---")
+print(" v:", len(v), "|", v)
+print(" dbl_v:", len(dbl_v), "|", dbl_v)
+print(" c:", len(c), "|", c)
+print(" recA:", len(recA), "|", recA)
+
+print("\n-Generated Keys---")
+print(" Ka:", len(kA), "|", kA)
+print(" Kb:", len(kB), "|", kB)
+
+# Compare keys and calculate equality percentage
+result = sum(kA[i] == kB[i] for i in range(len(kA))) * 100 / len(kA)
+print(" Equals:", result, "%")
+
+sys.exit(0)

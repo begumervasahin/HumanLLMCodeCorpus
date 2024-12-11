@@ -1,0 +1,53 @@
+import numpy as np
+import math
+
+MAX_ITERATIONS = 100
+
+def run_k_means(data_set, k):
+    iterations = 0
+    centroids = initialize_centroids(data_set, k)
+
+    while iterations < MAX_ITERATIONS:
+        old_centroids = centroids.copy()
+        clusters = assign_to_clusters(data_set, centroids)
+        centroids = update_centroids(clusters, data_set)
+        if old_centroids == centroids:
+            break
+        iterations += 1
+
+    return centroids, clusters, iterations
+
+def initialize_centroids(data_set, k):
+    centroids = []
+    random_indices = np.random.choice(len(data_set), size=k, replace=False)
+    for idx in random_indices:
+        centroids.append(data_set[idx])
+    return centroids
+
+def assign_to_clusters(data_set, centroids):
+    clusters = [[] for _ in range(len(centroids))]
+    for x in data_set:
+        best_cluster_idx = np.argmin([euclidean_distance(x, c) for c in centroids])
+        clusters[best_cluster_idx].append(x)
+    return clusters
+
+def update_centroids(clusters, data_set):
+    new_centroids = []
+    for cluster in clusters:
+        if cluster:
+            new_centroid = np.mean(cluster, axis=0)
+        else:
+            new_centroid = data_set[np.random.randint(len(data_set))]
+        new_centroids.append(new_centroid)
+    return new_centroids
+
+def euclidean_distance(x, y):
+    return math.sqrt(np.sum(np.square(x - y)))
+
+# Example usage:
+data_set = np.random.rand(100, 2)
+k = 3
+centroids, clusters, iterations = run_k_means(data_set, k)
+print('Centroids:', centroids)
+print('Clusters:', clusters)
+print('Number of iterations:', iterations)

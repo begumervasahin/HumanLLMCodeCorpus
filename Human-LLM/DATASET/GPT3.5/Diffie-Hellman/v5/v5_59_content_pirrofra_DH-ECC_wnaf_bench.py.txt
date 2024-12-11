@@ -1,0 +1,40 @@
+import timeit
+
+def test_key_generation(dh):
+    try:
+        private_key1, public_key1 = dh.key_pair_generator()
+        private_key2, public_key2 = dh.key_pair_generator()
+        shared_key1 = dh.shared_key_generator(private_key1, public_key2)
+        shared_key2 = dh.shared_key_generator(private_key2, public_key1)
+    except Exception as e:
+        print("*** An error occurred during key generation:", e, "***")
+        raise ValueError("Error during key generation")
+    
+    if shared_key1 == shared_key2:
+        pass
+    else:
+        print("*** Two different secret keys were generated ***")
+        raise ValueError("Two different secret keys were generated")
+
+def benchmark_curve(curve, num_iterations):
+    print("Curve Type:", curve)
+    for w in range(2, 7):
+        setup_code = f'''
+from __main__ import test_key_generation
+from dh import ECC_CDH
+dh = ECC_CDH("{curve}", wNAF=1, w={w})'''
+        test_code = '''test_key_generation(dh)'''
+        time_taken = timeit.timeit(setup=setup_code, stmt=test_code, number=num_iterations)
+        print(f"{num_iterations} keys generated using wNAF with w={w} in {time_taken} seconds")
+
+def perform_multiple_benchmarks(curve, num_iterations_per_benchmark, num_benchmarks):
+    for _ in range(num_benchmarks):
+        benchmark_curve(curve, num_iterations_per_benchmark)
+    print("----------------------------------------------------")
+
+# Perform benchmarking for different curves
+perform_multiple_benchmarks("curves/p192.xml", 1000, 5)
+perform_multiple_benchmarks("curves/p224.xml", 800, 5)
+perform_multiple_benchmarks("curves/p256.xml", 600, 5)
+perform_multiple_benchmarks("curves/p384.xml", 400, 5)
+perform_multiple_benchmarks("curves/p521.xml", 200, 5)

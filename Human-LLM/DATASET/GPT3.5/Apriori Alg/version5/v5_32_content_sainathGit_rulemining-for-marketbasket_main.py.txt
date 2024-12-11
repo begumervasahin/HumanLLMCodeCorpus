@@ -1,0 +1,94 @@
+import sys
+
+def read_transactions(file_path):
+    transactions = []
+    with open(file_path, "r") as file:
+        for line in file:
+            transactions.append([int(x) for x in line.split()])
+    return transactions
+
+def clear_infrequent_items(table, min_support_count):
+    return {k: v for k, v in table.items() if v >= min_support_count}
+
+def combine_itemsets(l1, l2):
+    return tuple(list(l1)[:-1] + [l1[-1], l2[-1]])
+
+def can_combine(l1, l2):
+    return all(l1[i] == l2[i] for i in range(len(l1) - 1)) and l1[-1] < l2[-1]
+
+def apriori_gen(table):
+    new_table = {}
+    for l1 in table.keys():
+        for l2 in table.keys():
+            if can_combine(l1, l2):
+                new_table[combine_itemsets(l1, l2)] = 0
+    return new_table
+
+def count_itemset_occurrences(table, transactions):
+    for k in table.keys():
+        for t in transactions:
+            if set(k).issubset(set(t)):
+                table[k] += 1
+
+def powerset(seq):
+    if len(seq) <= 1:
+        yield seq
+        yield []
+    else:
+        for item in powerset(seq[1:]):
+            yield [seq[0]] + item
+            yield item
+
+def print_rule(s, l_s, conf):
+    print(f"{s} ==> {l_s}              {conf}")
+
+def print_confs(item, L, min_confidence):
+    global count
+    for s in powerset(list(item)):
+        if s == [] or s == list(item):
+            continue
+        l_s = [x for x in item if x not in s]
+        conf = L[item] / L[tuple(s)]
+        if conf > min_confidence:
+            print_rule(s, l_s, conf)
+            count += 1
+
+def mine_association_rules(transactions, min_support, min_confidence):
+    min_support_count = min_support * len(transactions)
+
+    itemsets = {}
+    for t in transactions:
+        for x in t:
+            if (x,) not in itemsets:
+                itemsets[(x,)] = 1
+            else:
+                itemsets[(x,)] += 1
+
+    itemsets = clear_infrequent_items(itemsets, min_support_count)
+
+    k = 1
+    while len(itemsets) != 0:
+        candidate_itemsets = apriori_gen(itemsets)
+        count_itemset_occurrences(candidate_itemsets, transactions)
+        itemsets = clear_infrequent_items(candidate_itemsets, min_support_count)
+        k += 1
+
+    itemsets.pop()  # Remove the empty set
+
+    L = {}
+    for k in range(1, k):
+        L.update(itemsets)
+
+    count = 0
+    for item in L.keys():
+        if len(item) > 1:
+            print_confs(item, L, min_confidence)
+    print(f"Mined file: {sys.argv[5]}")
+    print(f"Total association rules found: {count}")
+
+if __name__ == "__main__":
+    min_support = float(sys.argv[2])
+    min_confidence = float(sys.argv[4])
+    transactions = read_transactions(sys.argv[5])
+    count = 0  # Global count
+    mine_association_rules(transactions, min_support, min_confidence)

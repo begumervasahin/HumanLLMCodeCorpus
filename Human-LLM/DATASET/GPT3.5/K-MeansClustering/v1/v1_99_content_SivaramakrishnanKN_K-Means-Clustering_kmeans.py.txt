@@ -1,0 +1,43 @@
+import numpy as np
+from Bio import SeqIO
+from Bio import pairwise2 as pw
+import random
+
+# Load DNA sequences from a FASTA file
+lists = []
+for record in SeqIO.parse("DNASequences.fasta", "fasta"):
+    lists.append(record)
+
+# Define two DNA sequences for pairwise alignment
+X = "xy"
+Y = "abdf"
+
+# Define alignment parameters
+penalty = -1
+reward = 1
+
+# Define a function to calculate the score for pairwise alignment
+def score(n1, n2):
+    if n1 == n2:
+        return reward
+    else:
+        return penalty
+
+# Choose k random sequences as cluster representatives
+k = 4
+cluster_indices = random.sample(range(len(lists)), k)
+clusters = np.full(shape=len(lists), fill_value=-1, dtype=int)
+for i, idx in enumerate(cluster_indices):
+    clusters[idx] = i
+
+# Perform pairwise alignment between all pairs of sequences and calculate distances
+distances = np.zeros(shape=(len(lists), len(lists)))
+for i in range(len(lists)):
+    for j in range(i + 1, len(lists)):
+        alignment = pw.align.globalxx(lists[i].seq, lists[j].seq)
+        distances[i, j] = alignment[0][2]
+        distances[j, i] = alignment[0][2]
+
+# Save distances matrix to a binary file
+with open("temp.bin", 'wb') as f:
+    np.save(f, distances)

@@ -1,0 +1,62 @@
+import re
+import pandas as pd
+
+def preprocessing_frame(frame):
+    """
+    Preprocesses the skills data frame by cleaning and filtering the skills.
+
+    Args:
+    - frame: pandas DataFrame representing the skills data frame
+
+    Returns:
+    - preprocessed_data: list of lists containing preprocessed skills
+    """
+    # List of specific skills to include
+    specific_skills = ['c#', '.net', 'asp.net', 'c++']
+    preprocessed_data = []
+
+    # Compile regular expression patterns for filtering
+    pattern1 = re.compile(r'([a-z].*[0-9])')
+    pattern2 = re.compile(r'([a-z].*[a-z])')
+
+    # Loop through each column in the DataFrame
+    for _, column in frame.iteritems():
+        # Initialize a list to store preprocessed skills for each column
+        column_skills = []
+
+        # Remove unwanted characters and split the column into individual skills
+        cleaned_column = column.str.replace(r'[><.]+', '').str.replace('...', '').str.lower().str.strip()
+        skills_split = cleaned_column.str.split(',')
+
+        # Iterate over each skill in the column
+        for skill_list in skills_split:
+            # Initialize a list to store preprocessed individual skills
+            processed_skills = []
+
+            # Iterate over each skill in the skill list
+            for skill in skill_list:
+                # Only include skills with less than or equal to 4 words
+                if len(skill.split()) <= 4:
+                    # Filter out certain patterns and specific skills
+                    if (pattern1.match(skill) or pattern2.match(skill) or skill in specific_skills):
+                        # Clean up the skill text
+                        cleaned_skill = re.sub(r'[?&]', '', skill)
+
+                        # Remove trailing periods
+                        cleaned_skill = cleaned_skill.rstrip('.')
+
+                        # Remove leading periods if it's not part of '.net'
+                        if cleaned_skill.startswith('.') and not cleaned_skill.startswith('.net'):
+                            cleaned_skill = cleaned_skill[1:]
+
+                        # Add the skill to the list if it's not already present
+                        if cleaned_skill not in processed_skills:
+                            processed_skills.append(cleaned_skill)
+
+            # Append the list of preprocessed skills to the column skills list
+            column_skills.append(processed_skills)
+
+        # Append the column skills list to the preprocessed data
+        preprocessed_data.append(column_skills)
+
+    return preprocessed_data

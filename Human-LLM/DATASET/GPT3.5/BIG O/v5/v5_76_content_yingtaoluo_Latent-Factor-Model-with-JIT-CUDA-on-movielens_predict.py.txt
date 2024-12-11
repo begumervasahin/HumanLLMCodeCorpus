@@ -1,0 +1,114 @@
+import numpy as np
+from numba import cuda, float64
+import time
+import heapq
+import csv
+
+# Constants
+THREADS_PER_BLOCK = 32
+
+# CUDA kernel for matrix multiplication
+@cuda.jit
+def cuda_matmul(a, b, c):
+    """
+    CUDA kernel for matrix multiplication.
+    """
+    shared_a = cuda.shared.array(shape=(THREADS_PER_BLOCK, THREADS_PER_BLOCK), dtype=float64)
+    shared_b = cuda.shared.array(shape=(THREADS_PER_BLOCK, THREADS_PER_BLOCK), dtype=float64)
+    x, y = cuda.grid(2)
+    tx = cuda.threadIdx.x
+    ty = cuda.threadIdx.y
+    if x >= c.shape[0] and y >= c.shape[1]:
+        return
+    tmp = 0
+    for i in range(blocks_per_row):
+        shared_a[tx, ty] = a[x, ty + i * THREADS_PER_BLOCK]
+        shared_b[tx, ty] = b[tx + i * THREADS_PER_BLOCK, y]
+        cuda.syncthreads()
+        for j in range(THREADS_PER_BLOCK):
+            tmp += shared_a[tx, j] * shared_b[j, ty]
+        cuda.syncthreads()
+    c[x, y] = tmp
+
+def load_matrices(Q_file, P_file):
+    """
+    Load matrices Q and P from numpy files.
+    """
+    Q = np.load(Q_file)
+    P = np.load(P_file)
+    return Q, P
+
+def perform_matrix_multiplication_numpy(Q, P):
+    """
+    Perform matrix multiplication using numpy.dot.
+    """
+    start_time = time.time()
+    Movie_predict = np.dot(Q, P)
+    end_time = time.time()
+    print("Time taken for np.dot: %ss" % (end_time - start_time))
+    return Movie_predict
+
+def perform_matrix_multiplication_cuda(Q, P, m, n, k):
+    """
+    Perform matrix multiplication using CUDA.
+    """
+    multiple = np.zeros([m, n])
+    blocks_per_row = int((k - 1) / THREADS_PER_BLOCK) + 1
+    block_dim = (THREADS_PER_BLOCK, THREADS_PER_BLOCK)
+    grid_dim = (m // THREADS_PER_BLOCK + 1, n // THREADS_PER_BLOCK + 1)
+    start_time = time.time()
+    cuda_matmul[grid_dim, block_dim](Q, P, multiple)
+    end_time = time.time()
+    print("Time taken for CUDA: %ss" % (end_time - start_time))
+    return multiple
+
+def read_movie_data(csv_file):
+    """
+    Read movie data from a CSV file.
+    """
+    with open(csv_file, encoding='utf-8') as file:
+        reader = csv.reader(file)
+        data = [item for index, item in enumerate(reader) if index != 0]
+    return data
+
+def get_top_predictions(Movie_predict, data, num_predictions=100):
+    """
+    Retrieve top predictions and corresponding movies.
+    """
+    scores = list(Movie_predict[1, :])
+    top_scores_indices = heapq.nlargest(num_predictions, scores)
+    top_movies_indices = list(map(scores.index, top_scores_indices))
+    top_movies = [data[index] for index in top_movies_indices]
+    return top_movies, top_scores_indices
+
+def write_predictions_to_csv(predictions, csv_file):
+    """
+    Write predictions to a CSV file.
+    """
+    with open(csv_file, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerows(predictions)
+
+def main():
+    # Load matrices
+    Q, P = load_matrices("Q.npy", "P.npy")
+
+    # Perform matrix multiplication
+    Movie_predict_np = perform_matrix_multiplication_numpy(Q, P)
+    Movie_predict_cuda = perform_matrix_multiplication_cuda(Q, P, m_, n_, k)
+
+    # Read movie data
+    data = read_movie_data("movies.csv")
+
+    # Retrieve top predictions and corresponding movies
+    top_predictions, top_scores = get_top_predictions(Movie_predict_np, data)
+
+    # Write predictions to CSV file
+    write_predictions_to_csv(top_predictions, '2.csv')
+
+    # Print predictions and corresponding scores
+    print(top_predictions)
+    print(top_scores)
+
+if __name__ == "__main__":
+    main()

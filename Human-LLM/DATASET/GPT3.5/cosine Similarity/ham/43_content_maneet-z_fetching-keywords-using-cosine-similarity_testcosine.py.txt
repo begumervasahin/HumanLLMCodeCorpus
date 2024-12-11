@@ -1,0 +1,191 @@
+import math
+import os
+def get_file_data(f_name):
+    test_exist = os.path.exists(f_name)
+    if test_exist == False:
+        print('File is not present in the directory')
+        return None
+    else:
+        file = open(f_name, 'r')
+        data = file.readlines()
+        file.close()
+        str_data = ''
+        for x in data:
+            str_data += x
+        str_check_file = str_data.split('\n')
+        temp_line = str_check_file[0].split(' ')
+        lenght_of_data = len(temp_line)
+        if lenght_of_data < 1:
+            print('Please check the file you have uploaded')
+            return None
+        else:
+            str_data = str_data.replace('?', '.')
+            str_data = str_data.replace('!', '.')
+            split_data_fullsop = []
+            split_data_fullsop = str_data.split('.')
+            return split_data_fullsop
+def get_test_words(test_word_file):
+    test_exist = os.path.exists(test_word_file)
+    if test_exist == False:
+        print('File is not present in the directory')
+        return None
+    else:
+        test_words = []
+        file = open(test_word_file, 'r')
+        data = file.readlines()
+        temp2 = ''
+        for temp in data:
+            temp2 += temp
+        str_check_file = temp2.split('\n')
+        temp_line = str_check_file[0].split(' ')
+        lenght_of_data = len(temp_line)
+        if lenght_of_data > 1:
+            print('Please check the file you have uploaded')
+            return None
+        else:
+            for data2 in data:
+                data2 = data2.rstrip()
+                test_words.append(data2)
+            file.close()
+            return test_words
+def get_common_words(common_word_file):
+    common_words = {}
+    file = open(common_word_file, 'r')
+    data = file.readlines()
+    for words in data:
+        words = words.rstrip()
+        common_words[words] = 0
+    return common_words
+def get_word_frequency(string_data_clean, test_words, common_words):
+    string_data_clean = string_data_clean.lower()
+    string_full_stops = []
+    string_full_stops = string_data_clean.split('.')
+    words_in_one_line = []
+    word_count = {'': {'': 0}}
+    len_of_strings = len(string_full_stops)
+    count = 0
+    for x in range(
+            len(test_words)):
+        count_profile = 0
+        word_count[test_words[x]] = {}
+        for i in range(len_of_strings):
+            words = test_words[x]
+            words_in_one_line = string_full_stops[i].split(' ')
+            lst_line_word = []
+            if words in words_in_one_line:
+                count_profile += 1
+                for diff_word in words_in_one_line:
+                    if diff_word in common_words:
+                        flag = 0
+                    else:
+                        if diff_word == '':
+                            flag = 0
+                        else:
+                            if diff_word == test_words[x]:
+                                flag = 0
+                            else:
+                                if diff_word in word_count[test_words[
+                                    x]] and diff_word not in lst_line_word:
+                                    count = word_count[test_words[x]][diff_word]
+                                    count = count + 1
+                                    word_count[test_words[x]][diff_word] = count
+                                else:
+                                    lst_line_word.append(
+                                        diff_word)
+                                    count += 1
+                                    word_count[test_words[x]].update({diff_word: count})
+                                count = 0
+    file = open('testingfile.txt','w',encoding='UTF8')
+    tempwords = []
+    for data in word_count:
+        for words in word_count[data]:
+            if words in tempwords:
+                flag=1
+            else:
+                tempwords.append(words)
+    for words in tempwords:
+        file.write(str(words) + '\n')
+    file.close()
+    return word_count
+def clean_data(split_data_fullstop):
+    punctuation = [',', '\'', '\"', ':', ';', '(', ')', '[', ']', '\n', '_']
+    temporary_string = ''
+    for x in range(len(split_data_fullstop) - 1):
+        length = len(split_data_fullstop[x])
+        for y in range(length):
+            if split_data_fullstop[x][y] == '-':
+                if split_data_fullstop[x][y - 1] == '-':
+                    temporary_string += ' '
+                else:
+                    if split_data_fullstop[x][y + 1] == '-':
+                        temporary_string += ' '
+                    else:
+                        temporary_string += split_data_fullstop[x][y]
+            else:
+                if split_data_fullstop[x][y] in punctuation:
+                    temporary_string += ' '
+                else:
+                    temporary_string += split_data_fullstop[x][y]
+        temporary_string += '.'
+    while '  ' in temporary_string:
+        temporary_string = temporary_string.replace('  ', ' ')
+    file = open('temporary_file', 'w')
+    file.write(temporary_string)
+    file.close()
+    return temporary_string
+def profile_calculation(profile_count, test_words):
+    final_data_profile = []
+    length_of_test_words = len(test_words)
+    pq = 0
+    count_denom_p = 0
+    count_denom_q = 0
+    for cnt in range(1, length_of_test_words):
+        for word in profile_count[test_words[0]]:
+            if word in profile_count[test_words[cnt]]:
+                pq += (int(profile_count[test_words[cnt]][word]) * int(
+                    profile_count[test_words[0]][word]))
+        for countwords in profile_count[test_words[0]]:
+            count_denom_p += (int(profile_count[test_words[0]][countwords]) ** 2)
+        for countwords in profile_count[test_words[cnt]]:
+            count_denom_q += (int(profile_count[test_words[cnt]][countwords]) ** 2)
+        final_denom = math.sqrt((count_denom_p * count_denom_q))
+        if final_denom != 0:
+            final_data_profile.append(
+                [test_words[cnt], round(pq / final_denom, 3)])
+        else:
+            final_data_profile.append([test_words[cnt], 0])
+        count_denom_p = 0
+        count_denom_q = 0
+        pq = 0
+        final_denom = 0
+    return sorted(final_data_profile, key=lambda l: l[1], reverse=True)
+def main(f_name, test_word_file, common_word_file=None):
+    if f_name == '' or test_word_file == '':
+        print('Please insert the File to read data from ')
+    else:
+        start_time = os.times()
+        split_data_fullstop = get_file_data(f_name)
+        if split_data_fullstop == None:
+            print(
+                'File cannot be proccessed because of the incorrect file upload')
+        else:
+            test_words = get_test_words(test_word_file)
+            if test_words == None:
+                print(
+                    'File cannot be proccessed because of the incorrect file upload')
+            else:
+                string_data_clean = clean_data(split_data_fullstop)
+                if common_word_file == None:
+                    print('No common words file submitted')
+                    profile_count = get_word_frequency(string_data_clean, test_words, '')
+                else:
+                    common_words = get_common_words(common_word_file)
+                    profile_count = get_word_frequency(string_data_clean, test_words, common_words)
+                final_data = profile_calculation(profile_count, test_words)
+                for data in final_data:
+                    print(data)
+                finish_time = os.times()
+                print("\nExecution Times - User: {0:0.2f} Sys: {1:0.2f}".format(finish_time[0] - start_time[0],
+                                                                                finish_time[1] - start_time[
+                                                                                    1]))
+main('TCGA-XC-AA0X.B22BD117-8DF0-47FF-BE25-9FE2DA916DB6.txt','profile.txt','common.txt')

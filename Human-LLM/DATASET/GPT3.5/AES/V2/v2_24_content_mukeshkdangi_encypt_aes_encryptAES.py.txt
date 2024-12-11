@@ -1,0 +1,89 @@
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+import base64
+import hashlib
+import sys
+import os
+
+class AESCipher:
+    def __init__(self, key):
+        # AES block size for padding
+        self.bs = AES.block_size
+        # Create an AES key from the provided key using SHA-256
+        self.key = hashlib.sha256(key.encode()).digest()
+
+    def encrypt(self, raw):
+        # Pad the plaintext to ensure it's a multiple of the block size
+        raw_padded = self._pad(raw)
+        # Generate a random Initialization Vector (IV)
+        iv = get_random_bytes(AES.block_size)
+        # Create an AES cipher in CBC mode with the generated IV
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        # Encrypt the padded text and concatenate it with the IV for later decryption
+        encrypted = base64.b64encode(iv + cipher.encrypt(raw_padded.encode())).decode('utf-8')
+        return encrypted
+
+    def decrypt(self, enc):
+        # Decode the base64 encoded string
+        enc = base64.b64decode(enc)
+        # Extract the IV which is the first 16 bytes
+        iv = enc[:AES.block_size]
+        # Create an AES cipher in CBC mode with the extracted IV
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        # Decrypt the ciphertext and unpad the resulting plaintext
+        decrypted = self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
+        return decrypted
+
+    def _pad(self, s):
+        # Calculate the required padding length
+        padding_length = self.bs - len(s) % self.bs
+        # Pad with the padding length character
+        return s + padding_length * chr(padding_length)
+
+    @staticmethod
+    def _unpad(s):
+        # Remove the padding based on the last character which represents the padding length
+        return s[:-ord(s[-1])]
+
+def encrypt_file(file_path, output_path, key):
+    # Read the plaintext from the file
+    with open(file_path, 'r') as file:
+        plaintext = file.read()
+    # Create an AESCipher instance with the provided key
+    cipher = AESCipher(key)
+    # Encrypt the plaintext
+    encrypted = cipher.encrypt(plaintext)
+    # Write the encrypted text to the output file
+    with open(output_path, 'w') as file:
+        file.write(encrypted)
+    print("File encrypted successfully.")
+
+def decrypt_file(file_path, output_path, key):
+    # Read the ciphertext from the file
+    with open(file_path, 'r') as file:
+        ciphertext = file.read()
+    # Create an AESCipher instance with the provided key
+    cipher = AESCipher(key)
+    # Decrypt the ciphertext
+    decrypted = cipher.decrypt(ciphertext)
+    # Write the decrypted text to the output file
+    with open(output_path, 'w') as file:
+        file.write(decrypted)
+    print("File decrypted successfully.")
+
+if __name__ == "__main__":
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != 5:
+        print("Usage: script.py -e|-d input_file output_file key")
+        sys.exit(1)
+
+    # Parse command line arguments
+    mode, input_file, output_file, key = sys.argv[1:5]
+
+    # Encrypt or decrypt based on the provided mode
+    if mode == '-e':
+        encrypt_file(input_file, output_file, key)
+    elif mode == '-d':
+        decrypt_file(input_file, output_file, key)
+    else:
+        print("Invalid mode, use -e for encryption or -d for decryption.")

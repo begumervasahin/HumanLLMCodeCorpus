@@ -1,0 +1,90 @@
+from PIL import Image
+import hashlib
+
+def get_secret_message():
+    """
+    Prompt the user to input the message to be hidden and convert it to binary.
+    """
+    bits_list = []
+    secret = input('Enter the message you want to hide: ')
+    for char in secret:
+        bits_list.append("{0:08b}".format(ord(char)))
+    print(''.join(bits_list))
+    return ''.join(bits_list)
+
+def generate_secret_key(height, width):
+    """
+    Generate a secret key based on user input and calculate a signal value.
+    """
+    key = input('Enter the key: ')
+    hashed_keys = hashlib.sha256(key.encode()).hexdigest()
+    secret_key = hashed_keys * 3
+    signal = calculate_signal(secret_key, height, width)
+    print('Private key:', secret_key, ', Signal:', signal)
+    return signal
+
+def calculate_signal(key, height, width):
+    """
+    Calculate a signal value based on the secret key.
+    """
+    result = 0
+    for i in range(len(key) - 4):
+        result += xor(key[i:i + 2], key[i + 2:i + 4])
+    return result % (height - len(key))
+
+def xor(a, b):
+    """
+    Perform XOR operation on two hexadecimal values.
+    """
+    return int(a, 16) ^ int(b, 16)
+
+def load_image():
+    """
+    Open and convert the image to RGB format.
+    """
+    image = Image.open('walknut.jpg')
+    width, height = image.size
+    rgb_image = image.convert('RGB')
+    return width, height, rgb_image
+
+def replace_lsb(color, bit):
+    """
+    Replace the least significant bit of a color component with a given bit.
+    """
+    color_binary = "{0:08b}".format(color)
+    color_binary = color_binary[::-1].replace(color_binary[-1], bit, 1)
+    return int(color_binary[::-1], 2)
+
+def embed_message(height, width, image, message_bits, signal):
+    """
+    Hide the message bits in the least significant bits of the image pixels.
+    """
+    y = signal
+    k = 0
+    for x in range(signal, signal + len(message_bits) - 1, 3):
+        r, g, b = image.getpixel((y, y))
+        r = replace_lsb(r, message_bits[k])
+        g = replace_lsb(g, message_bits[k + 1])
+        b = replace_lsb(b, message_bits[k + 2])
+        image.putpixel((y, y), (r, g, b))
+        k += 3
+        y += 1
+    r, g, b = image.getpixel((y + 1, y))
+    r = replace_lsb(r, message_bits[k])
+    image.putpixel((y, y), (r, g, b))
+    print('Stego image saved as encrypted.jpg')
+    image.save('encrypted.jpg')
+    return signal
+
+def main():
+    """
+    Main function to hide the secret message in the image.
+    """
+    width, height, image = load_image()
+    message_bits = get_secret_message()
+    signal = generate_secret_key(height, width)
+    signal = embed_message(height, width, image, message_bits, signal)
+    print('Signal:', signal)
+
+if __name__ == "__main__":
+    main()

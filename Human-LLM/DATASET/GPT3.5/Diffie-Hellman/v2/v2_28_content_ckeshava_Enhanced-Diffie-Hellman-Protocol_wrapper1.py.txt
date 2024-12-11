@@ -1,0 +1,57 @@
+import os
+import random
+import paderson_commitment
+import constants
+from datetime import datetime
+from threading import Thread
+
+class NodeA(Thread):
+    def run(self):
+        # Sleep for 0.1 seconds before executing node-A.py
+        os.system('sleep 0.1; python3 node-A.py')
+
+class NodeB(Thread):
+    def run(self):
+        # Execute node-B.py
+        os.system('python3 node-B.py')
+
+def main():
+    # List of random string lengths
+    string_lengths = list(range(10, 100, 5))
+    # List of prime numbers
+    primes = [100, 140, 160, 180, 320, 384, 512]
+    
+    # Open or create a CSV file to store results
+    with open('100.csv', 'a') as output_file:
+        for prime in primes:
+            # Generate p, g, q for Paderson commitment
+            p, g, q = paderson_commitment.generate_p_g_q()
+            # Open or create constants.py file
+            with open('constants.py', 'w') as constants_file:
+                # Write constant parameters to constants.py
+                constants_data = f'PORT = {random.randint(13000, 20000)}\nSERVER_IP_ADDR = "127.0.0.1"\nSHARED_PRIME = {p}\nSHARED_BASE = 2\n'
+                for string_length in string_lengths:
+                    constants_data += f'RANDOM_STRING_LENGTH = {string_length}\nRAND_NUMBER_LOWER_BOUND = 100\nRAND_NUMBER_UPPER_BOUND = 1000\nLENGTH_OF_PRIME = {prime}\n'
+                    constants_file.write(constants_data)
+                    # Wait for 1 second
+                    os.system('sleep 1')
+                    # Create and start instances of NodeA and NodeB
+                    node_b = NodeB()
+                    node_a = NodeA()
+                    start_time = datetime.now()
+                    node_b.start()
+                    node_a.start()
+                    node_a.join()
+                    node_b.join()
+                    end_time = datetime.now()
+                    # Calculate execution time
+                    execution_time = (end_time - start_time).microseconds
+                    # Write results to CSV file
+                    output_line = f'{prime},{string_length},{execution_time}\n'
+                    output_file.write(output_line)
+                    output_file.flush()
+                    # Print progress
+                    print(f"Prime = {prime}, String Length = {string_length}")
+
+if __name__ == "__main__":
+    main()

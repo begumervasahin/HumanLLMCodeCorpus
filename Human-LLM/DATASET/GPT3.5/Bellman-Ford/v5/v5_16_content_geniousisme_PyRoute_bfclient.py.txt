@@ -1,0 +1,168 @@
+import copy
+import json
+import sys
+import socket
+from collections import defaultdict
+from Timer import CountDownTimer, ResetTimer
+from Utils import LINKDOWN, LINKUP, SHOWRT, CLOSE, RTUPDATE, INF
+from Utils import NoNodeError, argv_parser, user_cmd_parser, init_socket, localhost
+from Utils import now_time, addr_to_key, key_to_addr, decode_node_info
+
+class BFClient:
+    def __init__(self):
+        self.me_key = ""
+        self.sock = None
+        self.node_dict = {}
+        self.timeout = 0
+        self.running = False
+        self.user_cmds = {
+            CLOSE: self.close,
+            LINKDOWN: self.link_down,
+            LINKUP: self.link_up,
+            SHOWRT: self.show_rt
+        }
+        self.update_cmds = {
+            RTUPDATE: self.rt_update,
+            LINKDOWN: self.link_down,
+            LINKUP: self.link_up
+        }
+
+    def start_bfclient(self):
+        self.running = True
+
+    def close_bfclient(self):
+        print(f"{self.sock.getsockname()} is leaving PyRoute...\n")
+        self.sock.close()
+        self.running = False
+        sys.exit(0)
+
+    def get_node(self, ip, port):
+        addr_key = addr_to_key(ip, port)
+        if addr_key not in self.node_dict:
+            raise NoNodeError
+        return self.node_dict[addr_key]
+
+    def link_up(self, ip, port, **kwargs):
+        try:
+            node = self.get_node(ip, port)
+            node['direct_dist'] = node.get('link_downed_dist', INF)
+            del node['link_downed_dist']
+            node['is_neighbor'] = True
+            self.calculate_costs()
+        except NoNodeError:
+            print(f"Node at {ip}:{port} is not in the nodes!\n")
+
+    def link_down(self, ip, port, **kwargs):
+        try:
+            node = self.get_node(ip, port)
+            node['link_downed_dist'] = node.get('direct_dist', INF)
+            node['direct_dist'] = INF
+            node['is_neighbor'] = False
+            node.get('watch_dog', None)?.stop()
+            self.calculate_costs()
+        except NoNodeError:
+            print(f"Node at {ip}:{port} is not in the nodes!\n")
+
+    def close(self):
+        self.close_bfclient()
+
+    def show_rt(self):
+        print(f"{now_time()}  Distance vector list is:")
+        for addr_key, node in self.node_dict.items():
+            if addr_key == self.me_key:
+                continue
+            print(f"Destination = {addr_key}, Cost = {node['cost']}, Link = ({node['link']})")
+        print()
+
+    def init_node(self):
+        return {"cost": INF, "is_neighbor": False, "link": ""}
+
+    def node_generator(self, cost, is_neighbor, costs={}, direct_dist=INF, addr_key=""):
+        node = self.init_node()
+        node["cost"] = cost
+        node["is_neighbor"] = is_neighbor
+        node["costs"] = costs if costs else defaultdict(lambda: INF)
+        node["direct_dist"] = direct_dist
+        if is_neighbor:
+            node['link'] = addr_key
+            monitor = ResetTimer(interval=self.timeout, func_ptr=self.link_down, args=list(key_to_addr(addr_key)))
+            monitor.start()
+            node['watch_dog'] = monitor
+        return node
+
+    def get_neighbors(self):
+        return {node_addr_key: node_info for node_addr_key, node_info in self.node_dict.items() if node_info['is_neighbor']}
+
+    def rt_update(self, ip, port, **kwargs):
+        costs = kwargs['costs']
+        addr_key = addr_to_key(ip, port)
+        for node_addr_key in costs:
+            if node_addr_key not in self.node_dict:
+                self.node_dict[node_addr_key] = self.init_node()
+        if self.node_dict[addr_key]['is_neighbor']:
+            node = self.node_dict[addr_key]
+            node['costs'] = costs
+            node.get('watch_dog', None)?.reset()
+        else:
+            print(f"Welcome new neighbor at {addr_key}!\n")
+            del self.node_dict[addr_key]
+            self.node_dict[addr_key] = self.node_generator(
+                cost=self.node_dict[addr_key]['cost'],
+                is_neighbor=True,
+                direct_dist=kwargs['neighbor'].get('direct_dist', INF),
+                costs=costs,
+                addr_key=addr_key
+            )
+        self.calculate_costs()
+
+    def broadcast_costs(self):
+        costs = {node_addr_key: node_info['cost'] for node_addr_key, node_info in self.node_dict.items()}
+        packet = {'cmd': RTUPDATE}
+        for neighbor_key, neighbor in self.get_neighbors().items():
+            updated_costs = copy.deepcopy(costs)
+            for dest_addr, cost in costs.items():
+                if dest_addr not in [self.me_key, neighbor_key] and self.node_dict[dest_addr]['link'] == neighbor_key:
+                    updated_costs[dest_addr] = INF
+            packet['payload'] = {'costs': updated_costs, 'neighbor': {'direct_dist': neighbor.get('direct_dist', INF)}}
+            send_packet = json.dumps(packet)
+            self.sock.sendto(send_packet, key_to_addr(neighbor_key))
+
+    def calculate_costs(self):
+        for dest_addr, dest_node in self.node_dict.items():
+            if dest_addr == self.me_key:
+                continue
+            min_cost, next_hop = INF, ""
+            for neighbor_key, neighbor in self.get_neighbors().items():
+                if dest_addr in neighbor['costs']:
+                    curr_dist = neighbor['direct_dist'] + neighbor['costs'][dest_addr]
+                    if curr_dist < min_cost:
+                        min_cost = curr_dist
+                        next_hop = neighbor_key
+            dest_node['link'] = next_hop
+            dest_node['cost'] = min_cost
+
+    def init_rt(self):
+        route_dict = argv_parser(sys.argv)
+        self.node_dict = defaultdict(lambda: self.init_node())
+        self.timeout = 3 * route_dict["timeout"]
+        self.sock = init_socket(localhost, route_dict["port"])
+        self.me_key = addr_to_key(*self.sock.getsockname())
+        self.node_dict[self.me_key] = self.node_generator(cost=0.0, addr_key=self.me_key, is_neighbor=False, direct_dist=0.0)
+        for neighbor_info in route_dict["neighbors"]:
+            addr_key, cost = decode_node_info(neighbor_info)
+            self.node_dict[addr_key] = self.node_generator(cost=cost, addr_key=addr_key, is_neighbor=True, direct_dist=cost)
+        self.broadcast_costs()
+        CountDownTimer(route_dict["timeout"], self.broadcast_costs).start()
+
+    def client_loop(self):
+        self.start_bfclient()
+        self.init_rt()
+        connections = [self.sock, sys.stdin]
+        while self.running:
+            try:
+                read_sockets, _, _ = select(connections, [], [])
+                for sock in read_sockets:
+                    if sock == sys.stdin:
+                        update_dict = user_cmd_parser(sys.stdin.readline(), self.user_cmds)
+                        cmd = update_dict['cmd']
+                       

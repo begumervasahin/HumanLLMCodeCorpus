@@ -1,0 +1,72 @@
+# Importing necessary modules
+from keras.models import Model
+from SOM import SOMLayer
+from AE import conv2d_autoencoder
+from DESOM import DESOM
+
+class ConvDESOM(DESOM):
+    """
+    Convolutional Deep Embedded Self-Organizing Map (ConvDESOM) model.
+    """
+
+    def __init__(self, input_shape, latent_dim, encoder_filters, filter_size, pooling_size, map_size):
+        """
+        Initialize the ConvDESOM model.
+
+        Parameters:
+        - input_shape: tuple, input shape given as (height, width)
+        - latent_dim: int, dimension of latent code (units in hidden dense layer)
+        - encoder_filters: list, number of filters in each layer of encoder.
+                            The autoencoder is symmetric, so the total number of layers is 2*len(encoder_filters) - 1
+        - filter_size: int, size of convolution filters
+        - pooling_size: int, size of maxpool filters
+        - map_size: tuple, size of the rectangular map. Number of prototypes is map_size[0] * map_size[1]
+        """
+        self.input_shape = input_shape
+        self.latent_dim = latent_dim
+        self.encoder_filters = encoder_filters
+        self.filter_size = filter_size
+        self.pooling_size = pooling_size
+        self.map_size = map_size
+        self.n_prototypes = map_size[0] * map_size[1]
+        self.pretrained = False
+        self.autoencoder = None
+        self.encoder = None
+        self.decoder = None
+        self.model = None
+
+    def initialize(self, ae_act='relu', ae_init='glorot_uniform', batchnorm=False):     
+        """
+        Initialize the ConvDESOM model.
+
+        Parameters:
+        - ae_act: str (default='relu'), activation for AE intermediate layers
+        - ae_init: str (default='glorot_uniform'), initialization of AE layers
+        - batchnorm: bool (default=False), use batch normalization
+        """
+        self.autoencoder, self.encoder, self.decoder = conv2d_autoencoder(
+            self.input_shape,
+            self.latent_dim,
+            self.encoder_filters,
+            self.filter_size,
+            self.pooling_size,
+            ae_act,
+            ae_init,
+            batchnorm
+        )
+        som_layer = SOMLayer(self.map_size, name='SOM')(self.encoder.output)
+        self.model = Model(inputs=self.autoencoder.input,
+                           outputs=[self.autoencoder.output, som_layer])
+
+# Example of how to use the ConvDESOM class
+if __name__ == "__main__":
+    # Example initialization
+    desom = ConvDESOM(
+        input_shape=(28, 28),               # Example input shape
+        latent_dim=64,                      # Example latent dimension
+        encoder_filters=[32, 64, 128, 256], # Example encoder filters
+        filter_size=3,                      # Example filter size
+        pooling_size=1,                     # Example pooling size
+        map_size=(10, 10)                   # Example map size
+    )
+    desom.initialize()  # Initialize the ConvDESOM model

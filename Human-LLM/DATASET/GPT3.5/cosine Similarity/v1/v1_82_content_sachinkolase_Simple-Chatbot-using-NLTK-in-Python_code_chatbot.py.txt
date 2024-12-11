@@ -1,0 +1,80 @@
+import nltk
+import pandas as pd
+import numpy as np
+import random
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Change the working directory if necessary
+# os.chdir('C:\\MBA\\Projects\\chatbot')
+
+# Read the chatbot.txt file
+with open('chatbot.txt', 'r', errors='ignore') as f:
+    raw = f.read().lower()
+
+# Tokenize the text into sentences and words
+sent_tokens = nltk.sent_tokenize(raw)
+word_tokens = nltk.word_tokenize(raw)
+
+# Initialize the WordNet lemmatizer
+lemmer = nltk.stem.WordNetLemmatizer()
+
+# Define functions for text normalization and lemmatization
+def lemtokens(tokens):
+    return [lemmer.lemmatize(token) for token in tokens]
+
+remove_punct_dict = dict((ord(punct), None) for punct in string.punctuation)
+
+def lemnormalize(text):
+    return lemtokens(nltk.word_tokenize(text.lower().translate(remove_punct_dict)))
+
+# Define greeting inputs and corresponding responses
+greeting_inputs = ('hello', 'hi', 'whats up', 'hey')
+greeting_output = ['hi', 'hello', 'I am glad you are talking to me!']
+
+def greetings(sentence):
+    for word in sentence.split():
+        if word.lower() in greeting_inputs:
+            return random.choice(greeting_output)
+
+# Define the chatbot's response function using TF-IDF and cosine similarity
+def response(user_response):
+    robo_response = ''
+    tfidfvec = TfidfVectorizer(tokenizer=lemnormalize, stop_words='english')
+    tfidf = tfidfvec.fit_transform(sent_tokens)
+    vals = cosine_similarity(tfidf[-1], tfidf)
+    idx = vals.argsort()[0][-2]
+    flat = vals.flatten()
+    flat.sort()
+    req_tfidf = flat[-2]
+    if req_tfidf == 0:
+        robo_response = "I am sorry"
+        return robo_response
+    else:
+        robo_response = robo_response + sent_tokens[idx]
+        return robo_response
+
+# Initialize the chatbot
+flag = True
+print("BOT: My name is Robo. I will answer your queries about Chatbots. If you want to exit, type Bye!")
+
+# Chatting loop
+while flag:
+    user_response = input("You: ").lower()
+    if user_response != 'bye':
+        if user_response == 'thanks' or user_response == 'thank you':
+            flag = False
+            print("BOT: You are welcome")
+        else:
+            if greetings(user_response) is not None:
+                print("BOT:", greetings(user_response))
+            else:
+                sent_tokens.append(user_response)
+                word_tokens += nltk.word_tokenize(user_response)
+                final_words = list(set(word_tokens))
+                print("BOT:", response(user_response))
+                sent_tokens.remove(user_response)
+    else:
+        flag = False
+        print("BOT: Bye")

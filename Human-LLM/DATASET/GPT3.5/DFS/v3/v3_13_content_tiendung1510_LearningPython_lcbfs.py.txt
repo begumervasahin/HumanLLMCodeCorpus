@@ -1,0 +1,52 @@
+from collections import deque
+from mymap import myMap  # Assuming myMap is a dictionary containing the map data
+from modules import showResultWithAttr, showStep  # Assuming these functions are defined in a separate module
+
+def LCBFS(start, goal):
+    # Initialize the queue with the starting city
+    queue = deque([start])
+    
+    # Initialize the dictionary to track previous cities and their total cost
+    previous = {city: {'from': None, 'total_cost': 0} for city in myMap}
+    
+    # Initialize the counter for tracking steps
+    step_counter = 0
+    
+    # Main loop for the BFS search
+    while queue:
+        step_counter += 1
+        showStep(step_counter, queue, previous)  # Display the current step
+        
+        # Explore neighbors of current cities
+        for _ in range(len(queue)):
+            cur_city = queue.popleft()
+            cur_city_total_cost = previous[cur_city]['total_cost']
+            
+            if cur_city == goal:
+                break
+            
+            for neighbor_city, info in myMap[cur_city].items():
+                city_total_cost = previous[neighbor_city]['total_cost']
+                total_cost = info['cost'] + cur_city_total_cost
+                
+                if previous[neighbor_city]['from'] is None or total_cost < city_total_cost:
+                    queue.append(neighbor_city)
+                    previous[neighbor_city]['from'] = cur_city
+                    previous[neighbor_city]['total_cost'] = total_cost
+        
+    # Display the result if a route is found
+    if previous[goal]['from'] is not None:
+        showResultWithAttr(previous, start, goal)
+        return True
+    else:
+        return False
+
+# Example usage:
+start_city = 'A'  # Replace with actual start city
+goal_city = 'G'  # Replace with actual goal city
+result = LCBFS(start_city, goal_city)
+
+if result:
+    print("Route found!")
+else:
+    print("No route found.")

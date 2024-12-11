@@ -1,0 +1,54 @@
+import socketserver
+from diffie_hellman import DiffieHellman
+import json
+
+class ServerSocket(socketserver.BaseRequestHandler):
+    """
+    Handles Diffie-Hellman key exchange with clients.
+    """
+
+    def init_diffie_hellman(self):
+        # Check if client is connected
+        if self.request.recv(1024).decode() != "connected":
+            print("Error: Client connection failed.")
+            return
+
+        # Perform Diffie-Hellman key exchange
+        public_secret = self.dh.calc_public_secret()
+        step1 = {
+            "dh-keyexchange": {
+                "step": 1,
+                "base": self.dh.base,
+                "prime": self.dh.shared_prime,
+                "publicSecret": public_secret
+            }
+        }
+        self.request.send(json.dumps(step1).encode())
+
+        # Receive and process the second step of key exchange
+        step2_data = self.request.recv(2048)
+        if self.debug_flag:
+            print(step2_data)
+        step2 = json.loads(step2_data.decode())
+        step2 = step2["dh-keyexchange"]
+        public_secret = int(step2["publicSecret"])
+        self.dh.calc_shared_secret(public_secret)
+
+    def handle(self):
+        # Initialize Diffie-Hellman key exchange and handle client connection
+        self.debug_flag = self.server.conn
+        self.dh = DiffieHellman()
+        print("[{}] Client connected.".format(self.client_address[0]))
+        self.init_diffie_hellman()
+        print("> The shared secret key is {}\n".format(self.dh.key))
+
+def start_server(debug_flag):
+    # Create a TCP server instance and start serving
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    server = socketserver.ThreadingTCPServer(("localhost", 20000), ServerSocket)
+    server.conn = debug_flag
+    server.serve_forever()
+
+# Example usage: Start the server with debug output enabled
+debug_flag = True
+start_server(debug_flag)

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import numpy as np
+import csv
+from sklearn.manifold import TSNE
+from sklearn.decomposition import TruncatedSVD
+
+i = 1
+while True:
+    filename = input("Enter file name with extension or write exit to stop: ")
+
+    if filename.upper() == 'EXIT':
+        break
+
+    with open(filename) as textFile:
+        lines = [line.split('\t') for line in textFile]
+
+    input_data = np.asarray(lines)
+    disease_name = input_data[:,-1]
+    for j in range(len(disease_name)):
+        disease_name[j] = disease_name[j].strip()
+
+    mat = input_data[:,:(input_data.shape[1]-1)]
+    data = np.mat(mat.astype(float))
+
+    mean = np.mean(data, axis=0)
+    centered_data = np.subtract(data, mean)
+    cov_mat = np.cov(np.transpose(centered_data))
+    eigen_values, eigen_vectors = np.linalg.eig(cov_mat)
+
+    eigen_values = np.reshape(eigen_values, (1, data.shape[1]))
+    sort_indices = eigen_values.argsort()
+    result = np.append(eigen_vectors[:, sort_indices[0][-1]], eigen_vectors[:, sort_indices[0][-2]])
+    result = np.reshape(result, (data.shape[1], 2), order='F')
+
+    new_data_points = centered_data * result
+    new_data_points = new_data_points.tolist()
+
+    for j in range(len(new_data_points)):
+        new_data_points[j].append(disease_name[j])
+
+    output_file = 'pca_'+str(i)+'.csv'
+    with open(output_file, "w") as a:
+        writer = csv.writer(a)
+        writer.writerows(new_data_points)
+
+    data_tsne = TSNE(n_components=2).fit_transform(data)
+    tsne = np.c_[data_tsne, disease_name]
+    tsne_output = 'tsne_'+str(i)+'.csv'
+    with open(tsne_output, "w") as x:
+        writer = csv.writer(x)
+        writer.writerows(tsne)
+
+    svd = TruncatedSVD(n_components=2)
+    data_svd = svd.fit_transform(centered_data)
+    data_svd = np.c_[data_svd, disease_name]
+    svd_output = 'svd_'+str(i)+'.csv'
+    with open(svd_output, "w") as x:
+        writer = csv.writer(x)
+        writer.writerows(data_svd)
+
+    i += 1

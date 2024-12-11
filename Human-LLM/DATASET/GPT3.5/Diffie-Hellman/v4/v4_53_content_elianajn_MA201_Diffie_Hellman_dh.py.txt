@@ -1,0 +1,76 @@
+import random
+import time
+
+def compute_shared(g, p, k):
+    """Compute the shared secret using modular exponentiation."""
+    return pow(g, k, p)
+
+def compute_random():
+    """Generate a random number between 0 and 1000."""
+    return random.randint(0, 1000)
+
+def generate_sophie_germain_prime(base_prime, iterations):
+    """Generate a Sophie Germain prime number."""
+    prime_candidate = base_prime
+    for _ in range(iterations):
+        prime_candidate = (2 * prime_candidate) + 1
+    return prime_candidate
+
+def attempt_key_hack(alice_secret, bob_secret, real_answer):
+    """Attempt to hack the Diffie-Hellman key exchange."""
+    max_attempts = 10
+    attempts = 0
+    alice_guess = 1
+    bob_guess = 1
+    time_start = time.time()
+
+    while attempts <= max_attempts:
+        if compute_shared(g, p, alice_guess) != alice_secret:
+            alice_guess += 1
+            time.sleep(1)
+            attempts = int(time.time() - time_start)
+        else:
+            print("Found Alice's secret key!")
+            attempts = 0
+            while attempts <= max_attempts:
+                if compute_shared(g, p, bob_guess) != bob_secret:
+                    bob_guess += 1
+                    time.sleep(1)
+                    attempts = int(time.time() - time_start)
+                else:
+                    print("Found Bob's secret key!")
+                    if compute_shared(compute_shared(g, p, alice_guess), p, bob_guess) == real_answer:
+                        print("Eve found the secret key!! We genuinely didn't see that one coming. Dumb luck I guess.")
+                        return real_answer
+    print("The session has timed out")
+    return 0
+
+def main():
+    # Generate a Sophie Germain prime number
+    base_prime = 23
+    iterations = 15
+    global p, g
+    p = generate_sophie_germain_prime(base_prime, iterations)
+    g = 14
+
+    print("The prime number is:", p)
+    print("The generator is 14, a primitive root of p")
+    print("Bob and Alice's secret numbers are randomly selected from between 0 to 999")
+
+    # Generate random secrets for Alice and Bob
+    alice_secret = compute_random()
+    bob_secret = compute_random()
+
+    # Compute shared secrets
+    bob_public = compute_shared(g, p, bob_secret)
+    alice_public = compute_shared(g, p, alice_secret)
+    alice_shared_secret = compute_shared(bob_public, p, alice_secret)
+    bob_shared_secret = compute_shared(alice_public, p, bob_secret)
+
+    if alice_shared_secret == bob_shared_secret:
+        print("This is Alice and Bob's Shared Secret:", alice_shared_secret)
+        print("This is our attempt to hack the system")
+        print(attempt_key_hack(alice_public, bob_public, alice_shared_secret))
+
+if __name__ == "__main__":
+    main()

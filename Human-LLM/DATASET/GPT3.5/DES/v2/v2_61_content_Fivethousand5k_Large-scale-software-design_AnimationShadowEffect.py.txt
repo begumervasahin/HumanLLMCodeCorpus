@@ -1,0 +1,53 @@
+import sys
+from PyQt5.QtCore import QPropertyAnimation, pyqtProperty
+from PyQt5.QtWidgets import QApplication, QWidget, QGraphicsDropShadowEffect
+
+class AnimationShadowEffect(QGraphicsDropShadowEffect):
+    def __init__(self, color, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setColor(color)
+        self.setOffset(0, 0)
+        self.setBlurRadius(0)
+        self._radius = 0
+        
+        # Configure animation
+        self.animation = QPropertyAnimation(self)
+        self.animation.setTargetObject(self)
+        self.animation.setDuration(2000)
+        self.animation.setLoopCount(-1)
+        self.animation.setPropertyName(b'radius')
+        self.animation.setKeyValueAt(0, 1)
+        self.animation.setKeyValueAt(0.5, 30)
+        self.animation.setKeyValueAt(1, 1)
+
+    def start_animation(self):
+        self.animation.start()
+
+    def stop_animation(self, radius=0):
+        self.animation.stop()
+        self.radius = radius
+
+    @pyqtProperty(int)
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, radius):
+        self._radius = radius
+        self.setBlurRadius(radius)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+
+    # Create a widget with AnimationShadowEffect
+    widget = QWidget()
+    widget.setGeometry(100, 100, 300, 200)
+
+    effect = AnimationShadowEffect(color=(0, 0, 0, 255))
+    widget.setGraphicsEffect(effect)
+
+    # Start the animation
+    effect.start_animation()
+
+    widget.show()
+    sys.exit(app.exec_())

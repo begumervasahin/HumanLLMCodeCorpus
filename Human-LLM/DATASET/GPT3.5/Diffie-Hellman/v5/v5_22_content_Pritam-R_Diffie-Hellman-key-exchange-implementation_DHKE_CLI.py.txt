@@ -1,0 +1,74 @@
+import socket
+from random import randint
+import re
+
+class DiffieHellmanExchange:
+    def __init__(self, root, prime, recv_key):
+        self.root = root
+        self.prime = prime
+        self.recv_key = recv_key
+    
+    def generate_key(self):
+        """Generate a random key."""
+        min_range = 10 ** 6
+        max_range = (10 ** 7) - 1
+        self.key = randint(min_range, max_range)
+    
+    def calculate_shared_key(self):
+        """Calculate the shared key."""
+        shared_key = (self.root ** self.key) % self.prime
+        return str(shared_key)
+    
+    def calculate_secret_key(self):
+        """Calculate the secret key."""
+        secret_key = (self.recv_key ** self.key) % self.prime
+        return secret_key
+
+def perform_diffie_hellman_key_exchange(server_ip, client_ip, port_no):
+    """Initiate Diffie-Hellman key exchange with the server."""
+    host = server_ip
+    port = port_no
+    client_ip_address = client_ip
+    
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = (host, port)
+    
+    with open('agent.key', 'w') as key_file:
+        print(f"Connecting to {host} port {port}")
+        sock.connect(server_address)
+        
+        try:
+            print(f"Starting negotiation with Diffie-Hellman key exchange server: {server_ip}")
+            message = f"START_NEGOTIATION-{client_ip_address}"
+            encoded_message = base64.b64encode(message.encode('utf-8'))
+            sock.send(encoded_message)
+            
+            data = sock.recv(4096)
+            if data:
+                decoded_data = base64.b64decode(data).decode('utf-8')
+                pattern = re.search(r"(\d+):(\d+):(\d+)-(\d+\.\d+\.\d+\.\d+)", decoded_data)
+                if pattern:
+                    root = int(pattern.group(1))
+                    prime = int(pattern.group(2))
+                    recv_key = int(pattern.group(3))
+                    
+                    diffie_hellman = DiffieHellmanExchange(root, prime, recv_key)
+                    diffie_hellman.generate_key()
+                    shared_key = diffie_hellman.calculate_shared_key()
+                    
+                    message_shared_key = f"SHARED_KEY-{client_ip_address}-{shared_key}"
+                    encoded_shared_key_message = base64.b64encode(message_shared_key.encode('utf-8'))
+                    sock.send(encoded_shared_key_message)
+                    
+                    secret_key = diffie_hellman.calculate_secret_key()
+                    calculated_key = pow(root, secret_key, prime)
+                    print(f"Secret Key: {calculated_key}")
+                    key_file.write(f"{client_ip_address}:{str(calculated_key).encode('base64','strict')}")
+        except Exception as e:
+            print(f"Exception occurred: {str(e)}")
+        finally:
+            print("Closing connection to the server")
+            sock.close()
+
+if __name__ == '__main__':
+    perform_diffie_hellman_key_exchange('127.0.0.1', '192.168.1.3', 8844)

@@ -1,0 +1,44 @@
+from functools import wraps
+from typing import cast, Callable, Dict, Generic, Tuple, Type, TypeVar, Union
+
+# Define type variables for value types, keyword types, and return type
+ValueType = TypeVar('ValueType')
+KeywordType = TypeVar('KeywordType')
+ReturnType = TypeVar('ReturnType')
+
+# Alias for tail-recursive function
+TailRecFunction = Callable[..., ReturnType]
+
+# Exception class to indicate a recursive call
+class Recursion(BaseException, Generic[ValueType, KeywordType]):
+    """Indicates a recursive call to the function where this exception was raised."""
+    def __init__(self, *args: ValueType, **kwargs: KeywordType) -> None:
+        """Sets the values for the recursive call."""
+        super().__init__()
+        self.args = args
+        self.kwargs = kwargs
+
+# Metaclass to represent a value that is not provided by the user
+class NotSet(type):
+    """Represents a value that is not provided by the user."""
+    pass
+
+# Function to call a function with its raised Recursion arguments until it returns
+def virtual_recurse(func: TailRecFunction, *args: ValueType, **kwargs: KeywordType) -> ReturnType:
+    """Calls a function with its raised Recursion arguments until it returns."""
+    result: Union[Type[NotSet], ReturnType] = NotSet
+    while result is NotSet:
+        try:
+            result = func(*args, **kwargs)
+        except Recursion as next_call:
+            args = cast(Tuple[ValueType, ...], next_call.args)
+            kwargs = cast(Dict[str, KeywordType], next_call.kwargs)
+    return cast(ReturnType, result)
+
+# Decorator to mark a function as tail-recursive, allowing `raise Recursion`
+def tail_recursive(func: TailRecFunction) -> TailRecFunction:
+    """Decorates a function as tail recursive, allowing `raise Recursion`."""
+    @wraps(func)
+    def _trampolined(*args, **kwargs):
+        return virtual_recurse(func, *args, **kwargs)
+    return _trampolined

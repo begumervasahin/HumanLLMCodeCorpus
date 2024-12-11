@@ -1,0 +1,63 @@
+from myqueue import Queue
+from graphics import GraphWin, Line, Point, Text
+from myarray2d import Array2D
+from maze import Maze
+from mazedraw import MazeDraw
+
+def BFS(maze, start, goal, came_from):
+    frontier = Queue()
+    frontier.enqueue(start)
+    came_from[start] = None
+
+    while not frontier.is_empty():
+        current = frontier.dequeue()
+        if maze[current[0], current[1]] == Maze.EMPTY:
+            if current == goal:
+                return current
+            else:
+                maze[current[0], current[1]] = Maze.OCCUPIED
+                for neighbor in maze.getAllMoves(current[0], current[1]):
+                    if maze[neighbor[0], neighbor[1]] == Maze.EMPTY:
+                        frontier.enqueue(neighbor)
+                        came_from[neighbor] = current
+
+    return None
+
+def draw_path(window, maze, came_from):
+    offsets = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    add_coordinates = lambda x, y: (x[0] + y[0], x[1] + y[1])
+    current = maze.goal
+
+    while current != maze.start:
+        next_cell = came_from[current]
+        for offset in offsets:
+            next_one = tuple(map(add_coordinates, current, offset))
+            if next_one == next_cell:
+                line = Line(Point(next_cell[1] + 1 + 0.5, maze.numRows() - next_cell[0] + 1 - 0.5),
+                            Point(current[1] + 1 + 0.5, maze.numRows() - current[0] + 1 - 0.5))
+                line.setOutline('white')
+                line.setArrow('last')
+                line.draw(window)
+        current = next_cell
+
+def main():
+    window = GraphWin('BFS for Maze', 600, 600, autoflush=False)
+    maze = Maze(20, 20)
+    maze_draw = MazeDraw(window, maze)
+    maze_draw.draw()
+    came_from = {}
+    found = BFS(maze, maze.start, maze.goal, came_from)
+
+    print("Found goal:", found)
+    text = Text(Point(11, 0.5), 'Goal found!' if found == maze.goal else 'Goal not found!')
+    text.draw(window)
+
+    if found == maze.goal:
+        draw_path(window, maze, came_from)
+
+    while window.checkKey != 'Escape':
+        pass
+    window.close()
+
+if __name__ == '__main__':
+    main()

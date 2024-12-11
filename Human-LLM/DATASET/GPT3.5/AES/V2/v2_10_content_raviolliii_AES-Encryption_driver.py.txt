@@ -1,0 +1,53 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import base64
+
+class SimpleAESCipher:
+    def __init__(self, key):
+        # Convert the key to bytes and save it.
+        self.key = key.encode('utf-8')
+
+    def encrypt(self, message):
+        # Convert the message to bytes.
+        message_bytes = message.encode('utf-8')
+        
+        # Create a new AES cipher in CBC mode.
+        cipher = AES.new(self.key, AES.MODE_CBC)
+        
+        # Encrypt the message and encode the ciphertext in base64.
+        ciphertext_bytes = cipher.encrypt(pad(message_bytes, AES.block_size))
+        iv = base64.b64encode(cipher.iv).decode('utf-8')
+        ciphertext = base64.b64encode(ciphertext_bytes).decode('utf-8')
+        
+        # Return the IV and ciphertext concatenated.
+        return iv + ciphertext
+
+    def decrypt(self, encrypted_message):
+        # Decode the IV and ciphertext from base64.
+        iv = base64.b64decode(encrypted_message[:24])
+        ciphertext = base64.b64decode(encrypted_message[24:])
+        
+        # Decrypt the ciphertext.
+        cipher = AES.new(self.key, AES.MODE_CBC, iv=iv)
+        plaintext_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
+        
+        # Return the plaintext as a string.
+        return plaintext_bytes.decode('utf-8')
+
+# Example usage
+key = "Thats my Kung Fu"
+message = "Two One Nine Two"
+
+# Ensure the key is the correct length for AES-128 (16 bytes).
+# This is a simple way to adjust the key length for the example.
+key = pad(key.encode(), 16)[:16]
+
+aes_cipher = SimpleAESCipher(key)
+encrypted_message = aes_cipher.encrypt(message)
+
+print("Message:\t", message)
+print("Encrypted:\t", encrypted_message)
+
+# Demonstrating decryption as well
+decrypted_message = aes_cipher.decrypt(encrypted_message)
+print("Decrypted:\t", decrypted_message)

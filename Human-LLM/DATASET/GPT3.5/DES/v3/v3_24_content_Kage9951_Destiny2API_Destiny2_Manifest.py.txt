@@ -1,0 +1,88 @@
+import requests
+import zipfile
+import os
+import pickle
+import json
+import sqlite3
+
+# Function to download the Destiny 2 manifest
+def download_manifest():
+    manifest_url = 'https://www.bungie.net/Platform/Destiny2/Manifest/'
+    response = requests.get(manifest_url)
+    manifest = response.json()
+
+    # Extracting the manifest URL from the response
+    manifest_path = manifest['Response']['mobileWorldContentPaths']['en']
+    manifest_download_url = 'https://www.bungie.net' + manifest_path
+    response = requests.get(manifest_download_url)
+
+    # Saving the manifest zip file
+    with open("manifest.zip", "wb") as zip_file:
+        zip_file.write(response.content)
+    print("Manifest download complete!")
+
+    # Extracting the manifest zip file
+    with zipfile.ZipFile('manifest.zip') as zip_file:
+        files_in_zip = zip_file.namelist()
+        zip_file.extractall()
+    os.rename(files_in_zip[0], 'Manifest.content')
+    print('Manifest unzipped!')
+
+# Function to build dictionaries from the manifest data
+def build_manifest_dict(table_to_hash_key):
+    con = sqlite3.connect('Manifest.content')
+    print('Connected to Manifest database')
+    cur = con.cursor()
+    manifest_data = {}
+
+    # Loop through each table specified in the hash dictionary
+    for table_name, hash_key in table_to_hash_key.items():
+        cur.execute('SELECT json FROM ' + table_name)
+        print('Generating dictionary for ' + table_name + '...')
+        items = cur.fetchall()
+        item_jsons = [json.loads(item[0]) for item in items]
+        item_dict = {}
+
+        # Building dictionary for each table
+        for item in item_jsons:
+            item_dict[item[hash_key]] = item
+        manifest_data[table_name] = item_dict
+    print('Manifest dictionary generated!')
+    return manifest_data
+
+# Function to initialize the manifest
+def init_manifest():
+    manifest_file = 'manifest.pickle'
+
+    # Check if the manifest file exists
+    if not os.path.isfile(manifest_file):
+        # Download and build manifest if it doesn't exist
+        download_manifest()
+        manifest = build_manifest_dict(hashes)
+
+        # Save manifest as a pickle file
+        with open(manifest_file, 'wb') as data_file:
+            pickle.dump(manifest, data_file)
+            print("'manifest.pickle' created!\nInitialization complete!")
+    else:
+        print('Manifest pickle file already exists')
+
+    # Load manifest from pickle file
+    with open(manifest_file, 'rb') as data_file:
+        manifest = pickle.load(data_file)
+    return manifest
+
+# Dictionary mapping table names to hash keys
+hashes = {
+    'DestinyClassDefinition': 'hash',
+    'DestinyInventoryItemDefinition': 'hash',
+    'DestinyTalentGridDefinition': 'hash',
+    'DestinyHistoricalStatsDefinition': 'statId',
+    'DestinyStatDefinition': 'hash',
+    'DestinySandboxPerkDefinition': 'hash',
+    'DestinyStatGroupDefinition': 'hash',
+    'DestinyInventoryBucketDefinition': 'hash'
+}
+
+# Initialize the manifest
+manifest_data = init_manifest()

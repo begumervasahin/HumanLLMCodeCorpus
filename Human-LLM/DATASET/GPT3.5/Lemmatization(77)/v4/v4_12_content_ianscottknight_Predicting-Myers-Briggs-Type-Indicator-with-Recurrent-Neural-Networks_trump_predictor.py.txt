@@ -1,0 +1,83 @@
+import os
+import csv
+import pickle
+import numpy as np
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from keras.preprocessing import sequence
+from keras.models import load_model
+
+# Directory paths
+MODELS_DIR = "models"
+DATA_DIR = "data"
+TRUMP_TWEETS_PATH = os.path.join(DATA_DIR, "trumptweets.csv")
+
+# Model parameters
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+MODEL_BATCH_SIZE = 128
+TOP_WORDS = 2500
+MAX_POST_LENGTH = 40
+EMBEDDING_VECTOR_LENGTH = 20
+
+# Initialize variables
+final_prediction = ""
+x_test = []
+
+# Load Trump tweets
+with open(TRUMP_TWEETS_PATH, "r", encoding="ISO-8859-1") as file:
+    reader = csv.reader(file)
+    for row in reader:
+        x_test.append(row[0])
+
+# MBTI types
+types = [
+    "INFJ", "ENTP", "INTP", "INTJ", "ENTJ",
+    "ENFJ", "INFP", "ENFP", "ISFP", "ISTP",
+    "ISFJ", "ISTJ", "ESTP", "ESFP", "ESTJ", "ESFJ"
+]
+types = [x.lower() for x in types]
+
+# Initialize lemmatizer and stopwords
+lemmatizer = WordNetLemmatizer()
+stop_words = stopwords.words("english")
+
+# Function to lemmatize text
+def lemmatize_text(text):
+    lemmatized = []
+    for post in text:
+        temp = post.lower()
+        for type_ in types:
+            temp = temp.replace(" " + type_, "")
+        temp = " ".join([lemmatizer.lemmatize(word) for word in temp.split(" ") if word not in stop_words])
+        lemmatized.append(temp)
+    return np.array(lemmatized)
+
+# Iterate over dimensions
+for dimension in DIMENSIONS:
+    # Load model
+    model = load_model(os.path.join(MODELS_DIR, f"rnn_model_{dimension}.h5"))
+
+    # Load tokenizer
+    with open(os.path.join(MODELS_DIR, f"rnn_tokenizer_{dimension}.pkl"), "rb") as f:
+        tokenizer = pickle.load(f)
+
+    # Preprocess data
+    def preprocess_data(data):
+        lemmatized_data = lemmatize_text(data)
+        tokenized = tokenizer.texts_to_sequences(lemmatized_data)
+        return sequence.pad_sequences(tokenized, maxlen=MAX_POST_LENGTH)
+
+    # Make predictions
+    predictions = model.predict(preprocess_data(x_test))
+    average_prediction = float(sum(predictions) / len(predictions))
+    print(f"{dimension}: {average_prediction}")
+
+    # Determine final prediction
+    if average_prediction >= 0.5:
+        final_prediction += dimension[1]
+    else:
+        final_prediction += dimension[0]
+
+# Print final prediction
+print("\nFinal prediction:", final_prediction)

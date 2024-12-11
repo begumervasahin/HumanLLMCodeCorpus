@@ -1,0 +1,106 @@
+import paho.mqtt.client as mqtt
+from ecdsa import SigningKey, VerifyingKey, BadSignatureError
+import configparser
+
+def read_configuration(file_path):
+    """
+    Read MQTT configuration from the given file.
+
+    Args:
+        file_path (str): The path to the configuration file.
+
+    Returns:
+        config (configparser.RawConfigParser): The configuration object.
+    """
+    config = configparser.RawConfigParser()
+    config.read(file_path)
+    return config
+
+def load_keys(private_key_path, public_key_path):
+    """
+    Load the private and public keys from the given paths.
+
+    Args:
+        private_key_path (str): The path to the private key file.
+        public_key_path (str): The path to the public key file.
+
+    Returns:
+        private_key (ecdsa.SigningKey): The loaded private key.
+        public_key (ecdsa.VerifyingKey): The loaded public key.
+    """
+    with open(private_key_path, "rb") as private_key_file:
+        private_key = SigningKey.from_pem(private_key_file.read())
+    with open(public_key_path, "rb") as public_key_file:
+        public_key = VerifyingKey.from_pem(public_key_file.read())
+    return private_key, public_key
+
+def sign_message(private_key, message):
+    """
+    Sign the message with the given private key.
+
+    Args:
+        private_key (ecdsa.SigningKey): The private key for signing.
+        message (str): The message to sign.
+
+    Returns:
+        signature (bytes): The signature of the message.
+    """
+    message_bytes = message.encode('utf-8')
+    return private_key.sign(message_bytes)
+
+def verify_signature(public_key, signature, message):
+    """
+    Verify the signature of the message using the given public key.
+
+    Args:
+        public_key (ecdsa.VerifyingKey): The public key for verification.
+        signature (bytes): The signature to verify.
+        message (str): The message whose signature is to be verified.
+
+    Returns:
+        bool: True if the signature is valid, False otherwise.
+    """
+    message_bytes = message.encode('utf-8')
+    try:
+        public_key.verify(signature, message_bytes)
+        return True
+    except BadSignatureError:
+        return False
+
+def publish_message(mqtt_client, broker, port, topic, message):
+    """
+    Publish the message over MQTT.
+
+    Args:
+        mqtt_client (mqtt.Client): The MQTT client object.
+        broker (str): The MQTT broker address.
+        port (int): The MQTT broker port.
+        topic (str): The MQTT topic to publish to.
+        message (bytes): The message to publish.
+    """
+    mqtt_client.connect(broker, port)
+    mqtt_client.publish(topic, message)
+    mqtt_client.disconnect()
+
+if __name__ == "__main__":
+    # Read MQTT configuration
+    config = read_configuration('config/publisher.ini')
+
+    # Load private and public keys
+    private_key, public_key = load_keys("config/private192.pem", "config/public192.pem")
+
+    # Define the message to be signed and published
+    message = 'sds'
+
+    # Sign the message with the private key
+    signature = sign_message(private_key, message)
+
+    # Verify the signature with the public key
+    if verify_signature(public_key, signature, message):
+        print("Signature verified successfully.")
+    else:
+        print("BAD SIGNATURE")
+
+    # Publish the message over MQTT
+    mqtt_client = mqtt.Client()
+    publish_message(mqtt_client, config.get('mqtt', 'broker'), int(config.get('mqtt', 'port')), config.get('mqtt', 'topic'), message.encode('utf-8'))

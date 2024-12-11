@@ -1,0 +1,44 @@
+from des import *
+import os
+
+def reverse_permute(input_file='cipher.txt', output_file='finalcipher.txt'):
+    if os.path.isfile(input_file):
+        with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
+            for line in f_in:
+                c1, c2 = line[:64], line[65:-1]
+                c1_rev = ''.join(initial_permutation(list(c1)))
+                c2_rev = ''.join(initial_permutation(list(c2)))
+                f_out.write(f"{c1_rev} {c2_rev}\n")
+    else:
+        print("No input pair file found.")
+        raise SystemExit
+
+def compute_sbox_xor(input_file='finalcipher.txt', output_file='cipherxor.txt',
+                     expansion_file='expandr5.txt', sbox_input_file='inputxor.txt',     
+                     sbox_output_file='outputxor.txt'):
+    if os.path.isfile(input_file):
+        with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out, \
+             open(expansion_file, 'w') as f_exp, open(sbox_input_file, 'w') as f_sbox_inp, \
+             open(sbox_output_file, 'w') as f_sbox_out:
+            for line in f_in:
+                c1, c2 = line[:64], line[65:-1]
+                c1_l6, c1_r6 = c1[:32], c1[32:]
+                c2_l6, c2_r6 = c2[:32], c2[32:]
+                c1_exp = ''.join(expansion(list(c1_r6)))
+                c2_exp = ''.join(expansion(list(c2_r6)))
+                l6_xor = ''.join(xor(c1_l6, c2_l6))
+                r6_xor = ''.join(xor(c1_r6, c2_r6))
+                permutation_out = list(l6_xor)
+                sbox_input_xor = ''.join(xor(c1_exp, c2_exp))
+                sbox_output_xor = ''.join(inverse_permute(permutation_out))
+                f_out.write(f"{l6_xor} {r6_xor}\n")
+                f_exp.write(f"{c1_exp} {c2_exp}\n")
+                f_sbox_inp.write(f"{sbox_input_xor}\n")
+                f_sbox_out.write(f"{sbox_output_xor}\n")
+    else:
+        print("No input file found.")
+        raise SystemExit
+
+# Call functions to execute
+reverse_permute()
+compute_sbox_xor()

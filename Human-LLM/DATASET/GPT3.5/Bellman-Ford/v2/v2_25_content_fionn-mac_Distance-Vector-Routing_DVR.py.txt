@@ -1,0 +1,103 @@
+import threading
+import socket
+import time
+import json
+import csv
+import sys
+
+class NodeThread(threading.Thread):
+    def __init__(self, thread_id, table, neighbors):
+        threading.Thread.__init__(self)
+        self.thread_id = thread_id
+        self.table = table
+        self.neighbors = neighbors
+        self.port = 65505
+        self.is_running = True
+
+    def update_row(self, new_row, vertex_number):
+        new_vertex_id, new_distance = new_row
+        if self.table[new_vertex_id - 1][1] > self.table[vertex_number - 1][1] + new_distance:
+            self.table[new_vertex_id - 1][1] = self.table[vertex_number - 1][1] + new_distance
+            self.table[new_vertex_id - 1][2] = vertex_number
+
+    def end(self):
+        self.is_running = False
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+            host = ''
+            address = (host, self.port + self.thread_id)
+            udp_socket.sendto("End".encode(), address)
+
+    def print_table(self):
+        with open("out", 'a') as file:
+            file.write(str(n_vertices - 1) + " ")
+            for i in range(n_vertices):
+                if i != self.thread_id - 1:
+                    file.write(str(i + 1) + " " + str(self.table[i][1]) + " ")
+            file.write("\n")
+
+    def run(self):
+        while self.is_running:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+                host = ''
+                udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                udp_socket.bind((host, self.port + self.thread_id))
+                buffer_size = 1024
+                recv_node, _ = udp_socket.recvfrom(buffer_size)
+                if recv_node.decode() == "End":
+                    return
+                for _ in range(n_vertices):
+                    message, _ = udp_socket.recvfrom(buffer_size)
+                    self.update_row(json.loads(message.decode()), int(recv_node.decode()))
+
+    def send(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+            host = ''
+            for i in range(1, 6):
+                address = (host, self.port + i)
+                if i in self.neighbors:
+                    udp_socket.sendto(str(self.thread_id).encode(), address)
+                    time.sleep(0.00001)
+                    for j in range(n_vertices):
+                        udp_socket.sendto(json.dumps(self.table[j]).encode(), address)
+                        time.sleep(0.00001)
+
+def read_input_file(file_path):
+    input_data = []
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file, delimiter=' ')
+        for row in reader:
+            input_data.append(row)
+    return input_data
+
+if __name__ == "__main__":
+    input_data = read_input_file(sys.argv[1])
+    n_vertices = int(input_data[0][0])
+    routing_info = [[[_ + 1, 10000000, _ + 1] for _ in range(n_vertices)] for _ in range(n_vertices)]
+    neighbors = [[] for _ in range(n_vertices)]
+
+    for i in range(n_vertices):
+        n_edges = int(input_data[i + 1][0])
+        for j in range(n_edges):
+            vertex_id = int(input_data[i + 1][2 * j + 1])
+            routing_info[i][vertex_id - 1][0] = vertex_id
+            routing_info[i][vertex_id - 1][1] = int(input_data[i + 1][2 * j + 2])
+            neighbors[vertex_id - 1].append(i + 1)
+
+    threads = [NodeThread(i + 1, routing_info[i], neighbors[i]) for i in range(n_vertices)]
+
+    for thread in threads:
+        thread.start()
+
+    for _ in range(n_vertices - 1):
+        for thread in threads:
+            thread.send()
+
+    with open("out", 'w') as file:
+        file.write(str(n_vertices) + "\n")
+
+    for thread in threads:
+        thread.print_table()
+
+    for thread in threads:
+        thread.end()
+        thread.join()

@@ -1,0 +1,65 @@
+import nltk
+from nltk.probability import FreqDist
+import Preprocessing
+import yaml
+
+# Import the Preprocessing module and load data from 'komentar.json'
+pp = Preprocessing
+with open('komentar.json') as file:
+    komentar = yaml.safe_load(file)
+
+# Extract relevant data from the loaded file
+data_komentar = [(item[3], item[5]) for item in komentar]
+
+# Process the data into a format suitable for training
+def preprocess_data(data):
+    preprocessed_data = []
+    for words, sentiment in data:
+        words_filtered = [word.lower() for word in words.split() if len(word) >= 3]
+        preprocessed_data.append((words_filtered, sentiment))
+    return preprocessed_data
+
+# Function to get all words in the comments
+def get_all_words(data):
+    all_words = []
+    for words, _ in data:
+        all_words.extend(words)
+    return all_words
+
+# Function to get word features from the comments
+def get_word_features(wordlist):
+    word_freq = FreqDist(wordlist)
+    return word_freq.keys()
+
+# Function to extract features from a document
+def extract_features(document, word_features):
+    document_words = set(document)
+    features = {}
+    for word in word_features:
+        features['contains(%s)' % word] = (word in document_words)
+    return features
+
+# Test comments
+test_komentar = [
+    "Buku rujukan kurang jelas mau pakai yang mana",
+    "Penyampaian materi terlalu lemah lembut",
+    "saya senang dengan pembelajaran ini",
+    "saya suka dengan pembelajaran fismod karena tidak terpacu rumus"
+]
+
+# Preprocess the data
+komentars = preprocess_data(data_komentar)
+
+# Get word features from the training set
+word_features = get_word_features(get_all_words(komentars))
+
+# Train the classifier using Naive Bayes
+training_set = nltk.classify.apply_features(lambda doc: extract_features(doc, word_features), komentars)
+classifier = nltk.NaiveBayesClassifier.train(training_set)
+
+# Print the most informative features
+print(classifier.show_most_informative_features(32))
+
+# Classify test comments and print the results
+for test in test_komentar:
+    print(test, classifier.classify(extract_features(test.split(), word_features)))

@@ -1,0 +1,101 @@
+import multiprocessing
+
+def worker_function(function, operating, input_queue, output_queue, terminator, lock):
+    """
+    Worker function that processes items from the input queue and puts results into the output queue.
+    """
+    while not terminator.is_set():
+        operating.wait()
+        lock.acquire()
+        if not input_queue.empty():
+            item = input_queue.get()
+            lock.release()
+            result = function(item)
+            output_queue.put(result)
+        else:
+            lock.release()
+    output_queue.close()
+    return 0
+
+class Slaves:
+    """
+    Manages a pool of worker processes.
+    """
+    def __init__(self, function, number=None):
+        """
+        Initializes the Slaves object with the given function and number of processes.
+        """
+        if number is None:
+            number = multiprocessing.cpu_count()
+        
+        self.queueIn = multiprocessing.Queue()
+        self.queueOut = multiprocessing.Queue()
+        self.terminator = multiprocessing.Event()
+        self.operating = multiprocessing.Event()
+        self.lock = multiprocessing.Lock()
+        self.processes = []
+
+        for _ in range(number):
+            process = multiprocessing.Process(target=worker_function, args=(function, self.operating, self.queueIn, self.queueOut, self.terminator, self.lock))
+            self.processes.append(process)
+
+    def start(self):
+        """
+        Starts the worker processes.
+        """
+        self.operating.set()
+        for p in self.processes:
+            p.start()
+
+    def put(self, info):
+        """
+        Puts an item into the input queue.
+        """
+        self.queueIn.put(info)
+
+    def get(self):
+        """
+        Retrieves a result from the output queue.
+        """
+        return self.queueOut.get()
+
+    def terminate(self):
+        """
+        Terminates the worker processes.
+        """
+        self.operating.set()
+        self.terminator.set()
+        self.queueIn.close()
+
+    def pause(self):
+        """
+        Pauses the worker processes.
+        """
+        self.operating.clear()
+
+    def resume(self):
+        """
+        Resumes the worker processes.
+        """
+        self.operating.set()
+
+# Example usage:
+if __name__ == "__main__":
+    # Define the function to be executed by the processes
+    def square(x):
+        return x ** 2
+
+    # Create a Slaves object with the square function and start the processes
+    slaves = Slaves(square)
+    slaves.start()
+
+    # Put some data into the queue and retrieve the results
+    for i in range(10):
+        slaves.put(i)
+
+    for i in range(10):
+        result = slaves.get()
+        print("Result:", result)
+
+    # Terminate the processes
+    slaves.terminate()

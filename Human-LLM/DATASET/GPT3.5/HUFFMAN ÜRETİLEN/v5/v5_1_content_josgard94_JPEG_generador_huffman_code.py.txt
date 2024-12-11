@@ -1,0 +1,117 @@
+"""
+Author: Edgard Jose Diaz Tipacamu
+e.diaz@nartsoft.com.mx
+27 de febrero de 2019
+Este código implementa el algoritmo de Huffman para realizar la compresión de un archivo de texto plano.
+Para ello, se genera un archivo que contiene las probabilidades de cada uno de los símbolos definidos en el diccionario de símbolos.
+"""
+
+from decimal import Decimal
+import sys
+import os
+import operator
+
+# Nombre del archivo que contiene las probabilidades
+result_probabilidades = "result.txt"
+# Nombre del archivo que se va a comprimir (pasado como argumento desde la línea de comandos)
+fichero = sys.argv[2]
+
+def compresor_huffman():
+    # Diccionario para almacenar las probabilidades de cada símbolo
+    probabilidades = {}
+    # Diccionario para almacenar los códigos Huffman
+    tabla_codigos = {}
+    line = ""
+
+    # Lectura del archivo de probabilidades y carga en el diccionario
+    with open(result_probabilidades, 'r') as archivo:
+        for i in archivo:
+            line = i.split("\t")
+            if line[0] not in ["space", "salto"]:
+                probabilidades[line[0]] = float(line[1].rstrip())
+
+    # Construcción de los códigos Huffman
+    tabla_codigos = huffmanCode(probabilidades)
+    # Guardar los códigos en un archivo
+    save_codes(tabla_codigos)
+
+    # Lectura del archivo de entrada y escritura del archivo comprimido
+    with open(fichero, 'r') as txt, open("comprimido.dat", 'wb') as salida:
+        txt = txt.read().rstrip().lower()
+        encoded_text = TextEncode(tabla_codigos, txt)
+        padded_encoded = PadEncode(encoded_text)
+        bit_array = GeneraBitArray(padded_encoded)
+        salida.write(bytes(bit_array))
+
+def ordenar_probabilidades(dic):
+    # Ordenar el diccionario de probabilidades y devolver los dos símbolos menos probables
+    ordenado = sorted(dic.items(), key=operator.itemgetter(1), reverse=False)
+    return ordenado[0][0], ordenado[1][0]
+
+def huffmanCode(dic):
+    # Implementación del algoritmo de Huffman para generar los códigos
+    if len(dic) == 2:
+        return dict(zip(dic.keys(), ['0', '1']))
+
+    p_copy = dic.copy()
+    K1, K2 = ordenar_probabilidades(dic)
+    p1, p2 = p_copy.pop(K1), p_copy.pop(K2)
+    p_copy[K1 + K2] = p1 + p2
+
+    c = huffmanCode(p_copy)
+    ca1a2 = c.pop(K1 + K2)
+    c[K1], c[K2] = ca1a2 + '0', ca1a2 + '1'
+
+    return c
+
+def save_codes(dic):
+    # Guardar los códigos en un archivo de texto
+    with open("codigos.txt", "w") as file:
+        for i in dic:
+            if i == '\n':
+                file.write("salto" + "\t" + dic.get(i, i) + "\n")
+            else:
+                file.write(dic.get(0, i) + "\t" + dic.get(i, i) + "\n")
+
+def TextEncode(codes, texto):
+    # Codificar el texto utilizando los códigos Huffman
+    encode_text = ""
+    for ch in texto.split():
+        if ch in codes:
+            encode_text += codes[ch]
+    return encode_text
+
+def PadEncode(encoded):
+    # Agregar el padding necesario para completar el byte
+    padding = 8 - len(encoded) % 8
+    for i in range(padding):
+        encoded += "0"
+    padded_info = "{0:08b}".format(padding)
+    encoded = padded_info + encoded
+    return encoded
+
+def GeneraBitArray(cadena_binaria):
+    # Convertir la cadena binaria en un array de bits
+    if len(cadena_binaria) % 8 != 0:
+        exit(0)
+    bit_array = bytearray()
+    for i in range(0, len(cadena_binaria), 8):
+        byte = cadena_binaria[i:i + 8]
+        bit_array.append(int(byte, 2))
+    return bit_array
+
+compresor_huffman()
+
+print("\n\n")
+
+# Obtener el tamaño del archivo original y del archivo comprimido para mostrar los resultados en pantalla
+sizefile = os.path.getsize(sys.argv[2])
+sizefile2 = os.path.getsize("comprimido.dat")
+sizefile = sizefile / (1024 * 1024.0)
+sizefile2 = sizefile2 / (1024 * 1024.0)
+porcentaje = ((sizefile2 / sizefile) * 100)
+
+print("Texto original: " + str(sys.argv[2]) + " Tamaño: " + str(sizefile) + " MB")
+print("Archivo comprimido: comprimido.dat Tamaño: " + str(sizefile2) + " MB")
+print("Archivo " + sys.argv[2] + " comprimido en " + str(round(porcentaje)) + "%")
+print("¡Archivo de texto comprimido! :) \n\n")

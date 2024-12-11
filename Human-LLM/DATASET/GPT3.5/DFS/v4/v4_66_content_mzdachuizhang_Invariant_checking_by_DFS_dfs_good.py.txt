@@ -1,0 +1,50 @@
+import json
+from ts2gh import Graph
+from ts import Transition, State, Label, TransitionSystem, read_ts_from_json, out_ts_graph_origin
+from dfs_bad import satisfy, dfs
+
+def main():
+    # Read data from 'c_phy.json'
+    with open("c_phy.json", encoding='utf-8') as f:
+        data = json.load(f)
+        c_phy_list = data["c_phy"]
+
+    # Read the transition system from 'ts_mutex.json'
+    ts = read_ts_from_json("ts_mutex.json")
+
+    # Create a graph from the transition system
+    g = Graph(ts)
+
+    # Perform depth-first search
+    result = dfs(g)
+
+    # Output the original transition system graph
+    out_ts_graph_origin(ts, 'transition_system_original.gv')
+
+    # Write the result to 'counter_example.txt'
+    write_result_to_file(result)
+
+def write_result_to_file(result):
+    """
+    Write the result of the depth-first search to 'counter_example.txt'.
+
+    Args:
+        result: The result of the depth-first search.
+    """
+    with open("counter_example.txt", "w") as counter_example:
+        if result == "yes":
+            counter_example.write("yes")
+            print("yes")
+        else:
+            print("no")
+            counter_example.write("no\n")
+            init = ts.initial_states[0].s_name
+            for state in result[1]:
+                print(state.s_name)
+                if state.s_name == init:
+                    counter_example.write(state.s_name)
+                else:
+                    counter_example.write(" -> " + state.s_name)
+
+if __name__ == "__main__":
+    main()

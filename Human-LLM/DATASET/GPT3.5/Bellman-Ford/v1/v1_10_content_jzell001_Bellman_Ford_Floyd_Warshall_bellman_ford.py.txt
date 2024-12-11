@@ -1,0 +1,155 @@
+import sys
+import re
+import time
+import itertools
+
+# Compile regular expressions for parsing input
+graph_re = re.compile(r"(\d+)\s(\d+)")
+edge_re = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+def bellman_ford(graph):
+    """Implement the Bellman-Ford algorithm."""
+    path_pairs = []
+    print("\nEntered Bellman-Ford Algorithm\n")
+
+    vertices = graph[0]
+    edges = graph[1]
+
+    vertex_permutations = list(itertools.permutations(vertices, 2))
+    inf = float('inf')
+
+    for i in range(len(vertices)):
+        index = vertices[i]
+        dist = [inf] * len(vertices)
+        dist[index] = 0
+
+        for _ in range(1, len(vertices)):
+            for u, v in vertex_permutations:
+                if dist[v] > dist[u] + float(edges[u][v]):
+                    dist[v] = dist[u] + float(edges[u][v])
+
+        neg_cycle = any(dist[v] > dist[u] + float(edges[u][v]) for u, v in vertex_permutations)
+        
+        for i in range(len(vertices)):
+            if dist[i] != float('inf'):
+                dist[i] = int(dist[i])
+            new_pair = ((str(index), str(vertices[i])), str(dist[i]))
+            path_pairs.append(new_pair)
+
+    print("\npathPairs")
+    print(path_pairs)
+    if neg_cycle:
+        print("\nNote: A negative cycle exists")
+    else:
+        print("\nNote: No negative cycles exist")
+    print("\nExiting Bellman-Ford\n")
+    return path_pairs
+
+def floyd_warshall(graph):
+    """Implement the Floyd-Warshall algorithm."""
+    path_pairs = []
+    print("\nEntered Floyd-Warshall Algorithm\n")
+
+    vertices = graph[0]
+    edges = graph[1]
+
+    inf = float('inf')
+    dist = edges
+
+    for i in vertices:
+        for j in vertices:
+            dist[i][j] = float(dist[i][j])
+
+    for v in vertices:
+        dist[v][v] = 0
+
+    for k in vertices:
+        for i in vertices:
+            for j in vertices:
+                if dist[i][j] > dist[i][k] + dist[k][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+
+    for i in vertices:
+        for j in vertices:
+            if dist[i][j] != float('inf'):
+                dist[i][j] = int(dist[i][j])
+            new_pair = ((str(i), str(j)), str(dist[i][j]))
+            path_pairs.append(new_pair)
+
+    print("\npathPairs")
+    print(path_pairs)
+    print("\nExiting Floyd-Warshall\n")
+    return path_pairs
+
+def read_file(filename):
+    """Read the input file and parse vertices and edges."""
+    vertices = []
+    edges = []
+
+    with open(filename, 'r') as infile:
+        line1 = infile.readline()
+        graph_match = graph_re.match(line1)
+        if not graph_match:
+            print(line1 + " not properly formatted")
+            quit(1)
+
+        num_vertices = int(graph_match.group(1))
+        vertices = list(range(num_vertices))
+
+        for _ in range(num_vertices):
+            row = [float("inf")] * num_vertices
+            edges.append(row)
+
+        for line in infile.readlines():
+            line = line.strip()
+            edge_match = edge_re.match(line)
+            if edge_match:
+                source = int(edge_match.group(1))
+                sink = int(edge_match.group(2))
+                weight = int(edge_match.group(3))
+                edges[source][sink] = weight
+
+    print("\nVertices    Edges")
+    for i in range(len(edges)):
+        print(str(vertices[i]) + "         " + str(edges[i]))
+
+    return (vertices, edges)
+
+def main(filename, algorithm):
+    """Main function to execute the selected algorithm."""
+    algorithm = algorithm[1:]
+    graph = read_file(filename)
+    print("\nAlgorithm:", algorithm)
+
+    if algorithm in ('b', 'B'):
+        start_time = time.process_time()
+        bellman_ford(graph)
+        end_time = time.process_time()
+        bf_time = end_time - start_time
+        print("\nBellman-Ford Timing:", bf_time, "seconds\n")
+    elif algorithm in ('f', 'F'):
+        start_time = time.process_time()
+        floyd_warshall(graph)
+        end_time = time.process_time()
+        fw_time = end_time - start_time
+        print("Floyd-Warshall Timing:", fw_time, "seconds")
+    elif algorithm == "both":
+        start_time = time.process_time()
+        bellman_ford(graph)
+        end_time = time.process_time()
+        bf_time = end_time - start_time
+
+        start_time = time.process_time()
+        floyd_warshall(graph)
+        end_time = time.process_time()
+        fw_time = end_time - start_time
+
+        print("\nBellman-Ford Timing:", bf_time, "seconds")
+        print("Floyd-Warshall Timing:", fw_time, "seconds\n")
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python bellman_ford.py -<f|b> <input_file>")
+        quit(1)
+
+    main(sys.argv[2], sys.argv[1])

@@ -1,0 +1,38 @@
+import SocketServer
+import DiffieHellman
+import json
+class ServerSocket(SocketServer.BaseRequestHandler):
+	"""
+	Diffie Hellman schlüsselaustausch durchführen
+	"""
+	def initDiffieHellman(self):
+		if self.request.recv(1024).decode() != "connected":
+			print("Error while connecting")
+		publicSecret = self.dh.calcPublicSecret()
+		step1 = "{"
+		step1 += "\"dh-keyexchange\":"
+		step1 += "{"
+		step1 += "\"step\": {},".format(1)
+		step1 += "\"base\": {},".format(self.dh.base)
+		step1 += "\"prime\": {},".format(self.dh.sharedPrime)
+		step1 += "\"publicSecret\": {}".format(publicSecret)
+		step1 += "}}"
+		self.request.send(step1.encode())
+		step2 = self.request.recv(2048)
+		if self.debugflag:
+			print(step2)
+		jsonData = json.loads(step2.decode())
+		jsonData = jsonData["dh-keyexchange"]
+		publicSecret = int(jsonData["publicSecret"])
+		self.dh.calcSharedSecret(publicSecret)
+	def handle(self):
+		self.debugflag = self.server.conn
+		self.dh = DiffieHellman.DH()
+		print("[{}] Client connected.".format(self.client_address[0]))
+		self.initDiffieHellman()
+		print("> The secret key is {}\n".format(self.dh.key))
+def start_server(debugflag):
+	SocketServer.ThreadingTCPServer.allow_reuse_address = True
+	server = SocketServer.ThreadingTCPServer(("", 20000), ServerSocket)
+	server.conn = debugflag
+	server.serve_forever()

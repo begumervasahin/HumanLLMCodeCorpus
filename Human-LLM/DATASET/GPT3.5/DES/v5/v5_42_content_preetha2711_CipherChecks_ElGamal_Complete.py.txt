@@ -1,0 +1,62 @@
+import random
+import math
+import sys
+
+# Increase recursion limit to handle large numbers in Miller-Rabin test
+sys.setrecursionlimit(100000)
+
+def miller_rabin_test(number):
+    num_minus_1 = number - 1
+    k = 0
+
+    # Calculate k and m such that number - 1 = 2^k * m
+    while num_minus_1 % 2 == 1:
+        num_minus_1 //= 2
+        k += 1
+    m = num_minus_1 // (2 ** k)
+
+    # Randomly choose 'a' for the Miller-Rabin test
+    a = random.randint(2, number - 2)
+
+    # Compute b = a^m mod number
+    b = pow(a, m, number)
+
+    if b == 1 or b == number - 1:
+        return True  # Number passes the Miller-Rabin test as probable prime
+    else:
+        for _ in range(k):
+            b = pow(b, 2, number)
+            if b == number - 1:
+                return True  # Number passes the test as probable prime
+    return False  # Number is composite
+
+def generate_prime(length=300):
+    prime_found = False
+
+    while not prime_found:
+        random_num = random.getrandbits(length)
+        random_num |= (1 << length - 1) | 1  # Ensure the number is odd and has the desired length
+        prime_found = miller_rabin_test(random_num)
+
+    return random_num
+
+def get_two_primes():
+    primes_found = False
+
+    while not primes_found:
+        p = generate_prime()
+        q = 2 * p + 1  # Ensure q is also prime for Lucas test
+        primes_found = miller_rabin_test(q)
+
+    return p, q
+
+def lucas_test(integer):
+    p = integer
+    factors_of_p_minus_1 = [i for i in range(2, p) if (p - 1) % i == 0]
+
+    primitive_roots = [g for g in range(2, p) if all(pow(g, (p - 1) // q, p) != 1 for q in factors_of_p_minus_1)]
+
+    return primitive_roots
+
+# Get two prime numbers using Miller-Rabin primality test
+p, q = get_two_primes()

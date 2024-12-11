@@ -1,0 +1,61 @@
+import sys
+import os
+import subprocess
+import re
+import csv
+from multiprocessing import Pool
+
+# Constants
+INPUT_FILE = "zmap_results"
+NUM_WORKERS = 80
+OUTPUT_FILE = 'output.csv'
+
+# Open output CSV file
+with open(OUTPUT_FILE, 'w') as output_file:
+    csv_writer = csv.writer(output_file)
+
+    # Function to process each line in the input file
+    def process_line(line):
+        # Extract server address
+        server = line.strip().split(',')[0]
+
+        try:
+            # Execute openssl-trace command to check for DHE cipher
+            cmd = subprocess.check_output([
+                os.path.join(os.path.dirname(sys.argv[0]), "openssl-trace"),
+                "s_client",
+                "-trace",
+                "-cipher",
+                "DHE",
+                "-connect",
+                f"{server}:443"
+            ], stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
+
+            # Iterate over each line in the command output
+            for output_line in cmd.decode("ISO-8859-1").splitlines():
+                # Check for the presence of 'dh_p' in the line
+                if 'dh_p' in output_line:
+                    # Extract the prime number
+                    prime = int(re.sub(".*: ", "", output_line), 16)
+                    # Return server address and prime number
+                    return f'{server} {prime}'
+        
+        # Handle errors
+        except subprocess.CalledProcessError:
+            return f'{server} No_DHE'
+        except subprocess.TimeoutExpired:
+            return f'{server} Can\'t_connect'
+        except Exception as e:
+            return f'{server} Error: {str(e)}'
+
+    if __name__ == "__main__":
+        # Create a pool of workers
+        with Pool(NUM_WORKERS) as pool:
+            # Open the input file
+            with open(INPUT_FILE) as input_file:
+                # Map the process_line function to each line in the file using multiprocessing
+                result = pool.map(process_line, input_file)
+
+            # Write the results to the output CSV file
+            for item in result:
+                csv_writer.writerow([item])

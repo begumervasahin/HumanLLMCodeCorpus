@@ -1,0 +1,50 @@
+import queue
+from mymap import myMap
+from modules import showResultWithAttr, showStep
+
+def LCBFS(start, goal):
+    # Initialize the queue with the starting city
+    q = queue.deque()
+    q.append(start)
+    
+    # Initialize the dictionary to track previous cities and their total cost
+    previous = {city: {'from': None, 'total_cost': 0} for city in myMap.keys()}
+    
+    # Counter to track the number of steps
+    counter = 0
+    
+    while True:
+        counter += 1
+        showStep(counter, q, previous)
+        
+        # Process cities in the queue
+        curCities = []
+        while len(q) != 0:
+            curCities.append(q.popleft())
+        
+        # Explore neighbors of current cities
+        for curCity in curCities:
+            curCityTotalCost = previous[curCity]['total_cost']
+            
+            if curCity != goal:
+                for city, info in myMap[curCity].items():
+                    cityTotalCost = previous[city]['total_cost']
+                    totalCost = info['cost'] + curCityTotalCost
+                    
+                    if previous[city]['from'] is None or totalCost < cityTotalCost:
+                        if city in q:
+                            q.remove(city)
+                        q.append(city)
+                        previous[city]['from'] = curCity
+                        previous[city]['total_cost'] = totalCost
+        
+        # Exit loop if queue is empty
+        if len(q) == 0:
+            break
+    
+    # Display result if route is found
+    if previous[goal]['from'] is not None:
+        showResultWithAttr(previous, start, goal)
+        return True
+    else:
+        return False

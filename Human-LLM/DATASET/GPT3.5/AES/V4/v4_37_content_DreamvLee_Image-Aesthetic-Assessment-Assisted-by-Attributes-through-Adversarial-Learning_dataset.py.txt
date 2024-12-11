@@ -1,0 +1,50 @@
+import os
+import pandas as pd
+import torch
+import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
+
+class AADBDataset(Dataset):
+    def __init__(self, root, labelroot, transforms=None):       
+        self.transforms = transforms
+        self.label_data = pd.read_csv(labelroot)
+        self.imgs = [os.path.join(root, img) for img in self.label_data['filename']]
+
+    def __getitem__(self, index):
+        img_path = self.imgs[index]
+        label = self.label_data.loc[index, '1':].values.astype(np.float32)
+        pil_img = Image.open(img_path).convert('RGB')
+
+        if self.transforms:
+            pil_img = self.transforms(pil_img)
+
+        array = np.asarray(pil_img)
+        data = torch.from_numpy(array)
+
+        return data, label
+
+    def __len__(self):
+        return len(self.imgs)
+
+class AADBDatasetTest(Dataset):
+    def __init__(self, root, labelroot, transforms=None):       
+        self.transforms = transforms
+        self.label_data = pd.read_csv(labelroot)
+        self.imgs = [os.path.join(root, img) for img in self.label_data['filename']]
+
+    def __getitem__(self, index):
+        img_path = self.imgs[index]
+        label = self.label_data.loc[index, '1':].values.astype(np.float32)
+        pil_img = Image.open(img_path).convert('RGB')
+
+        if self.transforms:
+            pil_img = self.transforms(pil_img)
+
+        array = np.asarray(pil_img)
+        data = torch.from_numpy(array)
+
+        return data, label
+
+    def __len__(self):
+        return len(self.imgs)

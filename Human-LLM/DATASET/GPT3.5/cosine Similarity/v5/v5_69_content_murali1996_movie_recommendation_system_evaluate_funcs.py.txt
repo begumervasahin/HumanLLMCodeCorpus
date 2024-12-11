@@ -1,0 +1,42 @@
+# Created on Fri Oct  6 09:26:15 2017
+# Author: s.jayanthi
+
+def evaluate(ratings, max_users, max_items, n_features, gaus_mean, gaus_var, num_iter, alpha, lbd, error_threshold, continue_from_prev_model, save_model):
+    from my_funcs import init_func, compute_cost, gradient_descent
+    import pickle
+
+    # Initialize user and item feature matrices
+    user_feat, item_feat, prev_error, curr_error = init_func(ratings, max_users, max_items, n_features, gaus_mean, gaus_var, continue_from_prev_model)
+    print("User and Item feature matrices initialized successfully")
+
+    # Iterate through the specified number of iterations
+    for itr in range(num_iter):
+        error = compute_cost(ratings, user_feat, item_feat)
+        print(f"Iteration: {itr + 1} and the normalized loss: {error}")
+
+        # Check if it's the first iteration
+        if prev_error == -1 and curr_error == -1:
+            prev_error = curr_error = error
+            user_feat, item_feat = gradient_descent(ratings, user_feat, item_feat, alpha, lbd)
+        else:
+            curr_error = error
+            err_diff = abs(curr_error - prev_error)
+
+            # Check if error difference is below the threshold
+            if err_diff <= error_threshold:
+                break
+            else:
+                prev_error = curr_error
+                user_feat, item_feat = gradient_descent(ratings, user_feat, item_feat, alpha, lbd)
+
+    # Save the trained models if specified
+    if save_model:
+        with open("user_feat.pickle", "wb") as output_file:
+            pickle.dump(user_feat, output_file)
+        with open("item_feat.pickle", "wb") as output_file:
+            pickle.dump(item_feat, output_file)
+        print("Pickle Save Successful :)")
+    else:
+        print("Training Complete and Result Unsaved :(")
+
+    return n_features, user_feat, item_feat

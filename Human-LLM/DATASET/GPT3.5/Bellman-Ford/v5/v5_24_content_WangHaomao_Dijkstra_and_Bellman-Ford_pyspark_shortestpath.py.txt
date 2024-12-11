@@ -1,0 +1,48 @@
+import sys
+from pyspark import SparkContext
+from data_operation import get_graph
+from pyspark_dijkstra import Dijkstra
+from pyspark_bellman_ford import Bellman_Ford
+from pprint import pprint
+
+def main():
+    # Get command-line arguments
+    input_info = sys.argv
+    input_len = len(input_info)
+
+    # Check if at least one input file (graph) is provided
+    if input_len < 2:
+        raise ValueError('At least one input file (graph) is required.')
+    
+    # Extract the graph path from command-line arguments
+    graph_path = sys.argv[1]
+
+    # Create or get a Spark context
+    sc = SparkContext.getOrCreate()
+
+    # Print the input graph path
+    print(f"Input Graph Path: {graph_path}")
+
+    # Load the graph from the input file using Spark context
+    graph, exist_negative = get_graph(graph_path, sc)
+
+    # Choose the appropriate algorithm based on whether negative cycles exist
+    if exist_negative:
+        shortest_paths = Bellman_Ford('1', graph, sc)
+    else:
+        shortest_paths = Dijkstra('1', graph, sc)
+
+    # Save or print the shortest paths based on command-line arguments
+    handle_output(shortest_paths, input_len)
+
+def handle_output(shortest_paths, input_len):
+    if input_len == 3:
+        # Save the result to a text file if the output path is provided
+        output_path = sys.argv[2]
+        shortest_paths.saveAsTextFile(output_path)
+    else:
+        # Print the shortest paths if no output path is specified
+        pprint(shortest_paths.collect())
+
+if __name__ == '__main__':
+    main()

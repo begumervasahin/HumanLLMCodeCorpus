@@ -1,0 +1,110 @@
+import pandas as pd
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+from import_movielens_data import import_data
+from evaluate_funcs import evaluate
+import sys
+
+def give_rec(rat, user_id, retrieve_top=5):
+    print('\nUser ID Selected:', user_id)
+
+    # Load item data and item features
+    with open("u_item.pickle", "rb") as input_file:
+        items_df = pickle.load(input_file, encoding='bytes')
+    with open("item_feat.pickle", "rb") as input_file:
+        item_feat = pickle.load(input_file, encoding='bytes')
+
+    # Compute item similarity matrix
+    item_sim_mat = np.dot(item_feat, item_feat.T)
+    item_norms = np.linalg.norm(item_feat, axis=1)
+    item_sim_mat /= np.outer(item_norms, item_norms)
+
+    # Get user's watched and to-be-predicted items
+    mat = rat.pivot(index='user_id', columns='movie_id', values='rating').to_numpy()
+    watched_items = np.where(~np.isnan(mat[user_id - 1]))[0]
+    to_pred_ind = np.where(np.isnan(mat[user_id - 1]))[0]
+
+    # Compute predicted ratings based on item similarity
+    predictions = []
+    for ind in to_pred_ind:
+        pred_rating = np.sum(mat[user_id - 1, watched_items] * item_sim_mat[ind, watched_items])
+        predictions.append((pred_rating, ind))
+
+    # Sort predictions by predicted rating
+    predictions.sort(reverse=True)
+
+    # Get movie names for top predicted items
+    top_movies = predictions[:retrieve_top]
+    top_movies_df = pd.DataFrame(columns=['VAL', 'ITEM_ID', 'MOVIE_NAME'])
+    for i, (val, item_id) in enumerate(top_movies, start=1):
+        movie_name = items_df.loc[items_df['movie_id'] == item_id + 1, 'movie_title'].iloc[0]
+        top_movies_df.loc[i] = [val, item_id + 1, movie_name]
+
+    # Plot genre frequency comparison
+    plot_genre_frequency(rat, user_id, top_movies_df)
+
+    return top_movies_df
+
+def plot_genre_frequency(rat, user_id, top_movies_df):
+    genre_columns = ['Action', 'Adventure', 'Animation', 'Children\'s', 'Comedy', 'Crime', 'Documentary',
+                     'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
+                     'Thriller', 'War', 'Western']
+
+    # Compute genre frequency for watched movies
+    watched_genre_freq = np.zeros(len(genre_columns))
+    for movie_id in rat.loc[rat['user_id'] == user_id, 'movie_id']:
+        movie_info = rat.loc[(rat['user_id'] == user_id) & (rat['movie_id'] == movie_id)]
+        watched_genre_freq += movie_info[genre_columns].values
+
+    # Compute genre frequency for top recommended movies
+    pred_genre_freq = np.zeros(len(genre_columns))
+    for _, row in top_movies_df.iterrows():
+        movie_info = rat.loc[rat['movie_id'] == row['ITEM_ID']]
+        pred_genre_freq += movie_info[genre_columns].values
+
+    # Normalize genre frequencies
+    watched_genre_freq /= np.max(watched_genre_freq)
+    pred_genre_freq /= np.max(pred_genre_freq)
+
+    # Plot genre frequency comparison
+    plt.figure(figsize=(10, 6))
+    plt.bar(np.arange(len(genre_columns)), watched_genre_freq, width=0.35, label='Watched', color='b', alpha=0.4)
+    plt.bar(np.arange(len(genre_columns)) + 0.35, pred_genre_freq, width=0.35, label='Predicted', color='r', alpha=0.4)
+    plt.xlabel('Genres')
+    plt.ylabel('Avg. responses')
+    plt.title('Genre Frequency Comparison')
+    plt.xticks(np.arange(len(genre_columns)), genre_columns, rotation=90)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+def main_func(user_id=10):
+    import_data()
+    with open("ratings.pickle", "rb") as input_file:
+        rat = pickle.load(input_file, encoding='bytes')
+
+    n_features = 15
+    max_users = rat['user_id'].nunique()
+    max_items = rat['movie_id'].nunique()
+    gaus_mean = 0
+    gaus_var = 0.75
+    alpha = 200
+    lbd = 0.02
+    error_threshold = 0.000005
+    retrieve_top = 5
+    num_iter = 0
+    continue_from_prev_model = 1
+    save_model = 0
+
+    evaluate(rat, max_users, max_items, n_features, gaus_mean, gaus_var, num_iter, alpha, lbd,
+             error_threshold, continue_from_prev_model, save_model)
+
+    return give_rec(rat, user_id, retrieve_top)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Please provide a user ID as an argument.")
+    else:
+        user_id = int(sys.argv[1])
+        print(main_func(user_id))

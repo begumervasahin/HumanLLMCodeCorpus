@@ -1,0 +1,80 @@
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QApplication
+
+# Default encoding for file operations
+DEFAULT_ENCODING = 'mbcs'
+
+class PyDexThread(QThread):
+    """
+    A template thread that continuously processes items from a FIFO queue.
+    """
+
+    # Signal emitted when the thread is stopped
+    stop_signal = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        # Reference to the application instance
+        self.app = QApplication.instance()
+        # FIFO queue to store items for processing
+        self.queue = []
+
+    @pyqtSlot(object)
+    def add_item(self, new_item, *args, **kwargs):
+        """
+        Append a new item to the queue for processing.
+        """
+        self.queue.append(new_item)
+
+    def process(self, item, *args, **kwargs):
+        """
+        Process an item in the queue.
+        """
+        raise NotImplementedError
+
+    def run(self, *args, **kwargs):
+        """
+        Run the thread continuously processing items from the queue until stopped.
+        """
+        while True:
+            # Process pending events to keep the GUI responsive
+            self.app.processEvents()
+            # Check if the thread should be stopped
+            if self.should_stop():
+                break
+            # If the queue is not empty, process the next item
+            elif self.queue:
+                self.process(self.queue.pop(0), *args, **kwargs)
+
+    def should_stop(self):
+        """
+        Check if the thread should stop.
+        """
+        return self.stop_signal
+
+    def reset_stop(self):
+        """
+        Reset the stop signal.
+        """
+        self.stop_signal = False
+
+    def close(self):
+        """
+        Stop the thread safely.
+        """
+        self.stop_signal.emit()  # Emit signal to stop the thread
+        # Reset the stop signal after the thread has stopped
+        self.stop_signal.connect(self.reset_stop)
+
+def reset_slot(signal, slot, reconnect=True):
+    """
+    Disconnect all instances of slot from signal.
+    If reconnect=True, then reconnect slot to signal.
+    """
+    while True:
+        try:
+            signal.disconnect(slot)
+        except TypeError:
+            break
+    if reconnect:
+        signal.connect(slot)

@@ -1,0 +1,56 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import Blowfish
+
+class BlowfishCipher:
+    def __init__(self, key):
+        self.block_size = 32  # Block size for Blowfish encryption
+        self.key = hashlib.sha256(key.encode()).digest()  # Hash the key using SHA256 algorithm
+
+    def encrypt(self, message):
+        encoded_message = self._encode_message(message)
+        padded_message = self._pad_message(encoded_message)
+        initialization_vector = self._generate_initialization_vector()
+        cipher = Blowfish.new(self.key, Blowfish.MODE_CBC, initialization_vector)
+        encrypted_message = self._encrypt_message(cipher, padded_message, initialization_vector)
+        return encrypted_message
+
+    def decrypt(self, encrypted_message):
+        decoded_message = base64.b64decode(encrypted_message)
+        initialization_vector = decoded_message[:Blowfish.block_size]
+        cipher = Blowfish.new(self.key, Blowfish.MODE_CBC, initialization_vector)
+        decrypted_message = self._decrypt_message(cipher, decoded_message, initialization_vector)
+        return decrypted_message
+
+    def _encode_message(self, message):
+        return base64.b64encode(message.encode("cp857"))
+
+    def _pad_message(self, message):
+        padding_length = self.block_size - len(message) % self.block_size
+        return message + padding_length * chr(padding_length)
+
+    def _generate_initialization_vector(self):
+        return Random.new().read(Blowfish.block_size)
+
+    def _encrypt_message(self, cipher, message, initialization_vector):
+        return base64.b64encode(initialization_vector + cipher.encrypt(message)).decode("cp857")
+
+    def _decrypt_message(self, cipher, message, initialization_vector):
+        return base64.b64decode(self._unpad(cipher.decrypt(message[Blowfish.block_size:]))).decode("cp857")
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[-1])]
+
+# Example usage:
+if __name__ == "__main__":
+    secret_key = "YourSecretKeyHere"  # Replace with your secret key
+    message = "Hello, world!"  # Message to encrypt
+
+    cipher = BlowfishCipher(secret_key)
+    encrypted_message = cipher.encrypt(message)
+    print("Encrypted message:", encrypted_message)
+
+    decrypted_message = cipher.decrypt(encrypted_message)
+    print("Decrypted message:", decrypted_message)

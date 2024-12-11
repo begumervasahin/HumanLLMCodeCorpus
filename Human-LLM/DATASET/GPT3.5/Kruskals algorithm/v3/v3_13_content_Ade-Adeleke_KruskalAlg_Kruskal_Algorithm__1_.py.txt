@@ -1,0 +1,51 @@
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+
+    def make_set(self, vertice):
+        # Initialize a set with vertice as its own parent
+        self.parent[vertice] = vertice
+
+    def find_set(self, vertice):
+        # Find the representative of the set containing vertice (with path compression)
+        if self.parent[vertice] != vertice:
+            self.parent[vertice] = self.find_set(self.parent[vertice])
+        return self.parent[vertice]
+
+    def union(self, u, v):
+        # Merge the sets containing u and v by updating their representatives
+        ancestor1 = self.find_set(u)
+        ancestor2 = self.find_set(v)
+        if ancestor1 != ancestor2:
+            self.parent[ancestor1] = ancestor2
+
+def kruskal(graph):
+    # Initialize the Kruskal's Minimum Spanning Tree (KMST) set
+    kmst = set()
+
+    # Create a DisjointSet object
+    disjoint_set = DisjointSet()
+
+    # Create sets for each vertice in the graph
+    for vertice in graph['V']:
+        disjoint_set.make_set(vertice)
+
+    # Sort the edges based on weight
+    edges = sorted(graph['E'])
+
+    # Iterate through sorted edges to build KMST
+    for edge in edges:
+        weight, u, v = edge
+        if disjoint_set.find_set(u) != disjoint_set.find_set(v):
+            kmst.add(edge)
+            disjoint_set.union(u, v)
+
+    return kmst
+
+# Example usage
+graph = {
+    'V': ['A', 'B', 'C', 'D', 'E'],
+    'E': [(1, 'A', 'B'), (3, 'A', 'C'), (2, 'B', 'C'), (5, 'B', 'D'), (4, 'C', 'D'), (6, 'C', 'E'), (7, 'D', 'E')]
+}
+minimum_spanning_tree = kruskal(graph)
+print("Minimum Spanning Tree:", minimum_spanning_tree)

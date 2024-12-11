@@ -1,0 +1,54 @@
+import unittest
+from test_vectors.parse_ctr_drbg import parse_test_vectors
+from aes_drbg import AES_DRBG
+
+class TestDRBG(unittest.TestCase):
+    def run_test(self, key_size):
+        # Parse test vectors
+        entropy, key, v, entropy_rs, r_bits = parse_test_vectors(key_size, df_used=False)
+        indx = 0
+        # Iterate over test vectors
+        for i in range(len(entropy)):
+            # Initialize AES DRBG instance
+            drbg = AES_DRBG(256)
+            # Instantiate DRBG with entropy
+            drbg.instantiate(entropy[i])
+            # Verify generated key and V value
+            self.assertEqual(drbg.key, key[indx])
+            self.assertEqual(drbg.V, v[indx])
+            indx += 1
+            # Reseed DRBG with entropy_rs
+            drbg.reseed(entropy_rs[i])
+            # Verify updated key and V value
+            self.assertEqual(drbg.key, key[indx])
+            self.assertEqual(drbg.V, v[indx])
+            indx += 1
+            # Generate random bits
+            drbg.generate(64)
+            # Verify generated key and V value after generation
+            self.assertEqual(drbg.key, key[indx])
+            self.assertEqual(drbg.V, v[indx])
+            indx += 1
+            # Generate more random bits
+            returned_bits = drbg.generate(64)
+            # Verify generated key and V value after additional generation
+            self.assertEqual(drbg.key, key[indx])
+            self.assertEqual(drbg.V, v[indx])
+            # Verify returned bits
+            self.assertEqual(returned_bits, r_bits[i])
+            indx += 1
+
+    def test_DRBG_AES_128_no_df(self):
+        print("\nTesting SP 800-90A, Rev 1 NIST AES-128 DRBG NO DERIVATION FUNCTION\n")
+        self.run_test(128)
+
+    def test_DRBG_AES_192_no_df(self):
+        print("\nTesting SP 800-90A, Rev 1 NIST AES-192 DRBG NO DERIVATION FUNCTION\n")
+        self.run_test(192)
+
+    def test_DRBG_AES_256_no_df(self):
+        print("\nTesting SP 800-90A, Rev 1 NIST AES-256 DRBG NO DERIVATION FUNCTION\n")
+        self.run_test(256)
+
+if __name__ == "__main__":
+    unittest.main()

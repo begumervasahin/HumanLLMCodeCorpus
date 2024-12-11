@@ -1,0 +1,49 @@
+import codecs
+
+def generate_crc32_table():
+    """
+    Create a CRC-32 table using the polynomial 0xEDB88320.
+
+    Returns:
+        A list of CRC-32 remainders for byte values 0 to 255.
+    """
+    table = []
+    for byte in range(256):
+        crc = byte
+        for bit in range(8):
+            crc = (crc >> 1) ^ 0xEDB88320 if crc & 1 else crc >> 1
+        table.append(crc)
+    return table
+
+def compute_crc32(data_bytes, table):
+    """
+    Compute the CRC-32 checksum for input data using a precomputed table.
+
+    Args:
+        data_bytes: Byte data for which to compute the CRC-32.
+        table: A precomputed CRC-32 table.
+
+    Returns:
+        The computed CRC-32 checksum as an unsigned integer.
+    """
+    crc = 0xFFFFFFFF
+    for byte in data_bytes:
+        crc = table[(crc ^ byte) & 0xFF] ^ (crc >> 8)
+    return ~crc & 0xFFFFFFFF
+
+def main():
+    crc_table = generate_crc32_table()
+
+    hex_message = 'FAFAFA'
+    message_bytes = codecs.decode(hex_message, 'hex')
+
+    checksum = compute_crc32(message_bytes, crc_table)
+
+    print(f"Original message in hex: {hex_message}")
+    print(f"Checksum in hex: {hex(checksum)}")
+
+    full_message_with_checksum = hex_message + hex(checksum)[2:]
+    print(f"Full message to send (hex): {full_message_with_checksum}")
+
+if __name__ == "__main__":
+    main()

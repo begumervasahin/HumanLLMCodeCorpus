@@ -1,0 +1,64 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SQLContext, SparkSession
+from pyspark.mllib.feature import HashingTF
+from pyspark.mllib.feature import IDF
+from pyspark.mllib.linalg import SparseVector
+from pyspark_cassandra import CassandraSparkContext
+from cassandra.cluster import Cluster
+from operator import add
+
+def initialize_spark():
+    conf = SparkConf().setMaster("local").setAppName("Simple Application")
+    sc = SparkContext(conf=conf)
+    sqlContext = SQLContext(sc)
+    spark = SparkSession.builder.appName("PythonWordCount").getOrCreate()
+    return sc, spark
+
+def read_data(filename, spark):
+    data = spark.read.text(filename).cache()
+    return data
+
+def process_row(row):
+    count = [0] * len(hashmap)
+    wordlist = row[0].split(" ")[1:]
+    date = row[0].split("T")[0].split(",")[1]
+    for word in wordlist:
+        word = str(word)
+        if word in hashmap:
+            count[hashmap[word]] = 1
+    return date, count
+
+def create_tuple(row):
+    temp = []
+    for key, value in hashmap.items():
+        if row[1][value] != 0:
+            tempTuple = (row[0], key, row[1][value])
+            temp.append(tempTuple)
+    return temp
+
+def sum_arrays(arr1, arr2):
+    return list(map(add, arr1, arr2))
+
+def insert_into_cassandra(data, session):
+    for item in data:
+        session.execute("INSERT INTO keywords_count(timestamp, keyword, count) VALUES(%s, %s, %s)", item)
+
+def main():
+    sc, spark = initialize_spark()
+    data = read_data("AnsOutput.csv", spark)
+    ans = data.rdd.map(process_row).reduceByKey(sum_arrays).map(create_tuple).collect()
+    data_to_put = [x for x in ans if x != []]
+    flat_list = [item for sublist in data_to_put for item in sublist]
+    collection = sc.parallelize(flat_list)
+    cluster = Cluster(['172.31.87.203'])
+    session = cluster.connect('stackoverflowdb')
+    insert_into_cassandra(flat_list, session)
+    sc.stop()
+
+if __name__ == "__main__":
+    hashmap = {
+        "java": 0, "c": 1, "c++": 2, "python": 3, "perl": 4,
+        "sql": 5, "jquery": 6, "javascript": 7, "html": 8,
+        "linux": 9, "algorithm": 10
+    }
+    main()

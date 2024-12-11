@@ -1,0 +1,45 @@
+import os
+import numpy as np
+from datetime import datetime
+from pydhi import dfs0 as dfs0
+from pydhi import dfsu as dfsu
+from glob import glob
+
+def dfsu_reading():
+    # Initialize a dfsu object
+    dfs = dfsu.dfsu()
+
+    # Read data from the dfsu file
+    (data_list, time, names) = dfs.read("kq_ngaplut_py.dfsu")
+
+    # Get element coordinates
+    ec = dfs.get_element_coords()
+
+    # Write element coordinates to a file
+    with open("element_coordinates.txt", "w") as f:
+        for data in ec:
+            f.write(f"{data[0]}\t{data[1]}\n")
+
+    print("Shape of data_list:", np.shape(data_list))
+    print("Data list:")
+    print(data_list)
+
+    # Convert data_list to numpy array
+    data_list = np.array(data_list)
+    print("Length of data_list:", len(data_list))
+    print("Data list as numpy array:")
+    print(data_list)
+
+    # Iterate over each item in data_list
+    for index, item in enumerate(data_list):
+        for idx in range(len(time)):
+            # Create output filename
+            filename = f"DFSU_outputFiles/{names[index]}_{idx}.csv"
+
+            # Write data to CSV file
+            with open(filename, "w") as f:
+                f.write('Element,{},X,Y\n'.format(names[index]))
+                for count, data in enumerate(item[:, idx]):
+                    f.write(f"{ec[count, 0]},{ec[count, 1]},{data}\n")
+
+dfsu_reading()

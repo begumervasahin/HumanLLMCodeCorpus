@@ -1,0 +1,83 @@
+import sys
+import datetime
+from data_operation import get_graph
+import numpy as np
+from pyspark import SparkContext
+from pyspark_dijkstra import format_result
+
+def initialize_node(node, source):
+    """
+    Initialize a node with initial distance and path.
+    """
+    u, edges = node
+    distance = np.inf
+    path = str(u)
+    if u == source:
+        distance = 0
+    return (u, (edges, distance, path))
+
+def generate_edges(old_path, old_distance, neighbor):
+    """
+    Generate new edges for relaxation.
+    """
+    v_id, weight = neighbor.split(":")
+    new_distance = old_distance + float(weight)
+    new_path = f"{old_path}->{v_id}"
+    return (v_id, ('None', new_distance, new_path))
+
+def relax_paths(value1, value2):
+    """
+    Relax paths and update distances.
+    """
+    neighbors1, distance1, path1 = value1
+    neighbors2, distance2, path2 = value2
+
+    if distance1 <= distance2:
+        distance = distance1
+        path = path1
+    else:
+        distance = distance2
+        path = path2
+
+    return (neighbors1 or neighbors2, distance, path)
+
+def split_nodes(node):
+    """
+    Split nodes after relaxation.
+    """
+    nid, (neighbors, distance, path) = node
+    if path.split('->')[-1] != nid:
+        path += f"->{nid}"
+    return (nid, (neighbors, distance, path))
+
+def bellman_ford(source, graph, sc):
+    """
+    Implement the Bellman-Ford algorithm.
+    """
+    nodes = graph.map(lambda node: initialize_node(node, source))
+    total_nodes_number = nodes.count()
+    nodes = nodes.sortByKey()
+
+    for _ in range(total_nodes_number - 1):
+        nodes_values = nodes.map(lambda node: node[1])
+        probable_ways = nodes_values.filter(lambda data: data[0] is not None).flatMap(  
+            lambda data: (
+                generate_edges(data[2], data[1], neighbor) for neighbor in data[0]      
+            )
+        )
+
+        mapper = nodes.union(probable_ways)
+        reducer = mapper.reduceByKey(relax_paths)
+        nodes = reducer.map(split_nodes).sortByKey()
+        nodes.count()
+
+    result = reducer.sortByKey().map(format_result)
+    return result
+
+if __name__ == '__main__':
+    sc = SparkContext.getOrCreate()
+    print(datetime.datetime.now())
+    graph, _ = get_graph('data/tinyData.dat', sc)  # Adjust the path to your data file  
+    result = bellman_ford('1', graph, sc)
+    pprint(result.collect())
+    print(datetime.datetime.now())

@@ -1,0 +1,34 @@
+import base64
+import zlib
+import time
+import hashlib
+from Crypto.Cipher import AES
+
+class AESCipher:
+    def __init__(self, IV=False, Key=False):
+        self.BS = 16
+        self.IV = IV if IV else self.generateIV()
+        self.Key = Key if Key else hashlib.md5(str(self.IV).encode()).hexdigest()
+
+    def generateIV(self):
+        return hashlib.md5(str(time.time()).encode()).hexdigest()[:self.BS]
+
+    def encrypt(self, raw):
+        pad = lambda s: s + (self.BS - len(s) % self.BS) * chr(self.BS - len(s) % self.BS)
+        raw = pad(raw)
+        cipher = AES.new(self.Key.encode(), AES.MODE_CBC, self.IV.encode())
+        return base64.b64encode(zlib.compress(self.IV.encode() + cipher.encrypt(raw)))
+
+    def decrypt(self, enc):
+        unpad = lambda s: s[0:-ord(s[-1])]
+        enc = base64.b64decode(enc)
+        IV, enc = zlib.decompress(enc)[:self.BS].decode(), zlib.decompress(enc)[self.BS:].decode()
+        Key = hashlib.md5(IV.encode()).hexdigest()
+        cipher = AES.new(Key.encode(), AES.MODE_CBC, IV.encode())
+        return unpad(cipher.decrypt(enc)).decode()
+
+'''
+a = AESCipher()
+print(a.encrypt('aesencrypt'))
+print(a.decrypt('eJwLCk90y3VPiSz3NfUIyfRKd76yyKDQXnxm8y8uI531xl4AvycLyw=='))
+'''

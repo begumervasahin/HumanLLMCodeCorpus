@@ -1,0 +1,56 @@
+import math
+
+def encrypt_message(message, key):
+    # Determine the length of the key
+    key_length = len(key)
+
+    # Determine the number of rows needed to fit the message
+    num_rows = math.ceil(len(message) / key_length)
+
+    # Pad the message with underscores to fit into a matrix
+    padded_message = message.ljust(num_rows * key_length, '_')
+
+    # Create a matrix to store the characters of the message
+    matrix = [list(padded_message[i:i + key_length]) for i in range(0, len(padded_message), key_length)]
+
+    # Sort the key and rearrange the columns of the matrix based on the sorted key
+    sorted_key = sorted(key)
+    cipher = ""
+    for k in range(key_length):
+        index = key.index(sorted_key[k])
+        cipher += ''.join(row[index] for row in matrix)
+
+    return cipher
+
+def decrypt_message(cipher, key):
+    # Determine the length of the key
+    key_length = len(key)
+
+    # Determine the number of rows in the matrix
+    num_rows = math.ceil(len(cipher) / key_length)
+
+    # Create an empty matrix to store the characters of the decrypted message
+    dec_cipher = [[''] * key_length for _ in range(num_rows)]
+
+    # Sort the key and rearrange the columns of the matrix based on the sorted key
+    sorted_key = sorted(key)
+    for k in range(key_length):
+        index = key.index(sorted_key[k])
+        for j in range(num_rows):
+            dec_cipher[j][index] = cipher[j * key_length + k]
+
+    # Flatten the matrix to retrieve the decrypted message
+    message = ''.join(''.join(row) for row in dec_cipher)
+
+    # Remove any trailing underscores added during encryption
+    return message.rstrip('_')
+
+if __name__ == "__main__":
+    key = "HACK"
+    message = "HelloWorld Nice"
+
+    cipher = encrypt_message(message, key)
+    print("Encrypted Message:", cipher)
+
+    decrypted_message = decrypt_message(cipher, key)
+    print("Decrypted Message:", decrypted_message)

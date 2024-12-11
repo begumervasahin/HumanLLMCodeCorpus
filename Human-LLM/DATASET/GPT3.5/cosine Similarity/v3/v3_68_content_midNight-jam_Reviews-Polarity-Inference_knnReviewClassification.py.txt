@@ -1,0 +1,100 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from nltk.corpus import stopwords
+import re
+from scipy import spatial
+import random
+
+# Global variables
+cached_stop_words = stopwords.words("english")
+columns = ['label', 'document']
+doc_id_label = {}
+
+def replace_special_characters(document):
+    # Remove special characters and periods
+    result = re.sub('[^a-zA-Z\n]', ' ', document).replace(".", "")
+    # Remove extra spaces and newlines
+    result = ' '.join(result.split())
+    result = "".join(result.splitlines())
+    # Remove words with less than 3 characters
+    result = re.sub(r'\b\w{1,3}\b', '', result)
+    return result.strip()
+
+def remove_stop_words(document):
+    # Remove stopwords from the document
+    text = ' '.join([word for word in document.lower().split() if word not in cached_stop_words])
+    return text
+
+def read_document(file_path):
+    # Read and preprocess documents from file
+    data = []
+    with open(file_path) as file:
+        for idx, line in enumerate(file):
+            label = line[:2]
+            content = line[3:].strip()
+            data.append([label, content])
+            doc_id_label[idx] = label
+    df = pd.DataFrame(data, columns=columns)
+    # Apply preprocessing steps to the document column
+    df['document'] = df['document'].apply(lambda x: remove_stop_words(x))
+    df['document'] = df['document'].apply(lambda x: replace_special_characters(x))       
+    # Vectorize and transform documents using CountVectorizer and TfidfTransformer
+    vectorizer = CountVectorizer(min_df=1, max_features=2000)
+    X = vectorizer.fit_transform(df['document'].values)
+    transformer = TfidfTransformer(smooth_idf=False)
+    tfidf = transformer.fit_transform(X)
+    return tfidf
+
+def read_test_document(location):
+    # Read and preprocess test documents
+    data = []
+    with open(location) as file:
+        for line in file:
+            content = line.strip()
+            data.append(content)
+    df = pd.DataFrame(data, columns=['document'])
+    df['document'] = df['document'].apply(lambda x: remove_stop_words(x))
+    df['document'] = df['document'].apply(lambda x: replace_special_characters(x))       
+    vectorizer = CountVectorizer(min_df=1, max_features=2000)
+    X = vectorizer.fit_transform(df['document'].values)
+    transformer = TfidfTransformer(smooth_idf=False)
+    tfidf = transformer.fit_transform(X)
+    return tfidf
+
+def cosine_similarity(vector1, vector2):
+    # Compute cosine similarity between two vectors
+    return 1 - spatial.distance.cosine(vector1, vector2)
+
+def k_nearest_neighbors(train_vectors, test_vector, k):
+    # Find k nearest neighbors for a test vector in the training set
+    all_distances = {}
+    for idx, train_vector in enumerate(train_vectors):
+        dist = cosine_similarity(train_vector, test_vector)
+        all_distances[idx] = dist
+    return [(idx, all_distances[idx]) for idx in sorted(all_distances, key=lambda x: all_distances[x], reverse=True)][:k]
+
+def get_predicted_label(nearest_docs):
+    # Generate predicted label based on nearest neighbors
+    pos_count = sum(1 for idx, dist in nearest_docs if doc_id_label[idx] == '+1')
+    neg_count = sum(1 for idx, dist in nearest_docs if doc_id_label[idx] == '-1')
+    if pos_count == neg_count:
+        return random.choice(['+1', '-1'])
+    else:
+        return '+1' if pos_count > neg_count else '-1'
+
+if __name__ == '__main__':
+    # Read train and test documents
+    final_train_tfidf = read_document("data/train.dat")
+    print("Train documents read completed")
+    final_test_tfidf = read_test_document("data/test.dat")
+    print("Test documents read completed")
+    final_train_tfidf_arr = final_train_tfidf.toarray()
+    final_test_tfidf_arr = final_test_tfidf.toarray()
+    k = 5
+    # Classify test documents and write results to file
+    with open('result.dat', 'w') as f:
+        for test_vector in final_test_tfidf_arr:
+            nearest = k_nearest_neighbors(final_train_tfidf_arr, test_vector, k)
+            label = get_predicted_label(nearest)
+            f.write(label + "\n")
+            print("Calculated Label:", label)

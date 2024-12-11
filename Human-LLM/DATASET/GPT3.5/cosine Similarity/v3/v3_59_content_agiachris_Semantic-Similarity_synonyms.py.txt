@@ -1,0 +1,158 @@
+import math
+
+def norm(vector):
+    """
+    Calculate the norm of a vector.
+
+    Args:
+    - vector (dict): Vector stored as a dictionary.
+
+    Returns:
+    - float: Norm of the vector.
+    """
+    sum_of_squares = sum(value ** 2 for value in vector.values())
+    return math.sqrt(sum_of_squares)
+
+def cosine_similarity(vec1, vec2):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Args:
+    - vec1 (dict): First vector.
+    - vec2 (dict): Second vector.
+
+    Returns:
+    - float: Cosine similarity between the two vectors.
+    """
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    numerator = sum(vec1[key] * vec2[key] for key in intersection)
+    denominator = norm(vec1) * norm(vec2)
+    if denominator == 0:
+        return -1
+    else:
+        return numerator / denominator
+
+def euclidean_similarity(vec1, vec2):
+    """
+    Calculate the Euclidean similarity between two vectors.
+
+    Args:
+    - vec1 (dict): First vector.
+    - vec2 (dict): Second vector.
+
+    Returns:
+    - float: Euclidean similarity between the two vectors.
+    """
+    diff_keys = {key: vec1.get(key, 0) - vec2.get(key, 0) for key in set(vec1) | set(vec2)}
+    return -norm(diff_keys)
+
+def euclidean_normalized_similarity(vec1, vec2):
+    """
+    Calculate the normalized Euclidean similarity between two vectors.
+
+    Args:
+    - vec1 (dict): First vector.
+    - vec2 (dict): Second vector.
+
+    Returns:
+    - float: Normalized Euclidean similarity between the two vectors.
+    """
+    diff_keys = {(key, vec1.get(key, 0) / norm(vec1)) - (key, vec2.get(key, 0) / norm(vec2)) for key in set(vec1) | set(vec2)}
+    return -norm(diff_keys)
+
+def build_semantic_descriptors(sentences):
+    """
+    Build semantic descriptors from a list of sentences.
+
+    Args:
+    - sentences (list): List of sentences.
+
+    Returns:
+    - dict: Semantic descriptors.
+    """
+    semantic_descriptors = {}
+    for sentence in sentences:
+        for word in sentence:
+            if word not in semantic_descriptors:
+                semantic_descriptors[word] = {}
+            for other_word in sentence:
+                if other_word != word:
+                    semantic_descriptors[word][other_word] = semantic_descriptors[word].get(other_word, 0) + 1
+    return semantic_descriptors
+
+def build_semantic_descriptors_from_files(filenames):
+    """
+    Build semantic descriptors from a list of file names.
+
+    Args:
+    - filenames (list): List of file names.
+
+    Returns:
+    - dict: Semantic descriptors.
+    """
+    sentences = []
+    for filename in filenames:
+        with open(filename, "r", encoding="latin1") as file:
+            text = file.read().lower().replace("?", ".").replace("!", ".").replace("\n", "")
+            sentences.extend(sentence.split() for sentence in text.split("."))
+    return build_semantic_descriptors(sentences)
+
+def most_similar_word(word, choices, semantic_descriptors, similarity_fn):
+    """
+    Find the most similar word from a list of choices.
+
+    Args:
+    - word (str): Target word.
+    - choices (list): List of words to choose from.
+    - semantic_descriptors (dict): Semantic descriptors.
+    - similarity_fn (function): Similarity function.
+
+    Returns:
+    - str: Most similar word from the choices.
+    """
+    max_similarity = 0
+    most_similar = ""
+    if word in semantic_descriptors:
+        for choice in choices:
+            if choice in semantic_descriptors:
+                similarity = similarity_fn(semantic_descriptors[word], semantic_descriptors[choice])
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    most_similar = choice
+    return most_similar
+
+def run_similarity_test(filename, semantic_descriptors, similarity_fn):
+    """
+    Run a similarity test.
+
+    Args:
+    - filename (str): Name of the file containing the test data.
+    - semantic_descriptors (dict): Semantic descriptors.
+    - similarity_fn (function): Similarity function.
+
+    Returns:
+    - float: Percentage of correct answers in the test.
+    """
+    with open(filename, "r", encoding="latin1") as file:
+        lines = file.readlines()
+    total_count = len(lines)
+    correct_count = 0
+    for line in lines:
+        word, expected_similar_word, *choices = line.split()
+        most_similar = most_similar_word(word, choices, semantic_descriptors, similarity_fn)
+        if most_similar == expected_similar_word:
+            correct_count += 1
+    return (correct_count / total_count) * 100
+
+if __name__ == "__main__":
+    filenames = ["war_and_peace.txt", "swanns_way.txt"]
+    vec1 = {'a': 1, 'b': 2, 'c': 3}
+    vec2 = {'b': 4, 'c': 5, 'd': 6}
+    print(cosine_similarity(vec1, vec2))
+    print(build_semantic_descriptors([["i", "am", "a", "sick", "man"],
+                                      ["i", "am", "a", "spiteful", "man"],
+                                      ["i", "am", "an", "unattractive", "man"],
+                                      ["i", "believe", "my", "liver", "is", "diseased"],
+                                      ["however", "i", "know", "nothing", "at", "all", "about", "my",
+                                       "disease", "and", "do", "not", "know", "for", "certain", "what", "ails", "me"]]))
+    import time

@@ -1,0 +1,99 @@
+class State:
+    """
+    Represents a state in the puzzle.
+
+    Attributes:
+        board (list): The configuration of the puzzle.
+        move (str): The move that led to this state.
+        came_from (State): The previous state in the search.
+    """
+
+    def __init__(self, board=None, move=None, came_from=None, state=None):
+        """
+        Initializes a state object.
+
+        Args:
+            board (list): The configuration of the puzzle.
+            move (str): The move that led to this state.
+            came_from (State): The previous state in the search.
+            state (State): Another state object to copy from.
+        """
+        if state is None:
+            # Normal constructor
+            self.board = board
+            self.move = move
+            self.came_from = came_from
+        else:
+            # Copy constructor
+            self.board = state.board
+            self.move = state.move
+            self.came_from = state.came_from
+
+    def __hash__(self):
+        """
+        Computes the hash value of the state based on its board configuration.
+
+        Returns:
+            int: The hash value.
+        """
+        return hash(tuple(self.board))
+
+    def __eq__(self, other):
+        """
+        Compares two states for equality based on their board configurations.
+
+        Args:
+            other (State): Another state object.
+
+        Returns:
+            bool: True if the board configurations are equal, False otherwise.
+        """
+        return self.board == other.board
+
+
+class HeuristicState(State):
+    """
+    Represents a state in the puzzle with heuristic information.
+
+    Inherits from State class.
+
+    Attributes:
+        h_cost (int): The heuristic cost of the state.
+        g_cost (int): The actual cost of reaching this state from the initial state.
+    """
+
+    def __init__(self, board=None, move=None, came_from=None, state=None):
+        """
+        Initializes a heuristic state object.
+
+        Args:
+            board (list): The configuration of the puzzle.
+            move (str): The move that led to this state.
+            came_from (State): The previous state in the search.
+            state (State): Another state object to copy from.
+        """
+        super().__init__(board, move, came_from) if state is None else super().__init__(state=state)
+        self.h_cost = 0
+        self.g_cost = 0
+
+    def __lt__(self, other):
+        """
+        Compares two states based on their f_cost for A* algorithm.
+
+        Args:
+            other (HeuristicState): Another heuristic state object.
+
+        Returns:
+            bool: True if the f_cost of self is less than other, False otherwise.
+        """
+        return self.f_cost < other.f_cost
+
+    @property
+    def f_cost(self):
+        """
+        Computes the total cost of the state using the sum of g_cost and h_cost.
+
+        Returns:
+            int: The total cost.
+        """
+        return self.h_cost + self.g_cost

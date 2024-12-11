@@ -1,0 +1,67 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def mark_trail_between_cities_and_print_report(txt, G, v, pre, city, pos):
+    print(f"Marking trail between {city} and {cities[pre]}")
+    plt.annotate("", xy=pos[v], xytext=pos[pre], arrowprops=dict(arrowstyle="->", color='blue'))
+
+def mark_starting_point(G, v):
+    print(f"Marking starting point at {cities[v]}")
+    plt.annotate("Start", xy=pos[v], xytext=(pos[v][0] - 0.1, pos[v][1] + 0.1), color='green')
+
+def show_return_to_city(txt, G, v, city):
+    print(f"Returning to {city}")
+    plt.annotate("Return", xy=pos[v], xytext=(pos[v][0] + 0.1, pos[v][1] - 0.1), color='red')
+
+def execute_instructions_related_to_visited_city(txt, G, v, pre, u, city, pos):
+    print(f"Visited {city} before")
+    plt.annotate("Visited", xy=pos[v], xytext=pos[u], color='purple')
+
+def show_verify_neighbours(txt, G, v, city):
+    print(f"Verifying neighbours of {city}")
+
+def begin_note(txt, city):
+    print(f"Starting DFS from {city}")
+
+def end_note(txt):
+    print("DFS completed")
+
+def init_graph(G, cities):
+    global pos
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10, font_weight="bold")
+    nx.draw_networkx_edge_labels(G, pos, edge_labels={(u, v): f'{u}-{v}' for u, v in G.edges()}, font_color='red')
+    plt.show()
+
+def dfs_node(G, v, pre, visited):
+    visited[v] = True
+    if pre != v:
+        mark_trail_between_cities_and_print_report(G.txt, G, v, pre, cities[v], pos)
+    else:
+        mark_starting_point(G, v)
+    for u in G.neighbors(v):
+        if not visited[u]:
+            dfs_node(G, u, v, visited)
+            show_return_to_city(G.txt, G, v, cities[v])
+        else:
+            execute_instructions_related_to_visited_city(G.txt, G, v, pre, u, cities[u], pos)
+    show_verify_neighbours(G.txt, G, v, cities[v])
+
+def dfs(G, cities, v):
+    visited = [False] * len(cities)
+    begin_note(G.txt, cities[v])
+    dfs_node(G, v, v, visited)
+    end_note(G.txt)
+
+H = nx.DiGraph()
+H.add_edges_from([(0,1), (1,0), (0,2), (2,0), (1,2), (2,1), (2,3), (3,2),
+(2,4), (4,2), (3,4), (4,3), (3,5), (5,3), (4,5), (5,4), (4,6), (6,4),
+(4,7), (7,4), (5,6), (6,5), (5,8), (8,5), (6,7), (7,6), (6,8), (8,6),
+(6,9), (9,6), (6,10), (10,6), (7,9), (9,7), (9,10), (10,9), (10,11), (11,10)])
+
+cities = {0:"Lisboa", 1:"Cadiz", 2:"Madrid", 3:"Barcelona", 4:"Pamplona",
+5:"Marseille", 6:"Paris", 7:"Brest", 8:"Zurich", 9:"Dieppe",
+10:"Bruxelles", 11:"Amsterdam"}
+
+init_graph(H, cities)
+dfs(H, cities, 0)

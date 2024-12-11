@@ -1,0 +1,51 @@
+from rsa import RSA
+from convertN2T import *
+
+def encrypt_message(message, private_key, modulus):
+    """Encrypts the message using RSA."""
+    encrypted_chars = [modExp(char, private_key, modulus) for char in message]
+    return encrypted_chars
+
+def create_signature(message, public_key, modulus):
+    """Creates a digital signature for the message using RSA."""
+    signature = [modExp(char, public_key, modulus) for char in message]
+    return signature
+
+def verify_signature(signature, original_message, sender_public_key, sender_modulus, receiver_public_key, receiver_modulus):
+    """Verifies the digital signature of the received message."""
+    decrypted_signature = [modExp(char, sender_public_key, sender_modulus) for char in signature]
+    decrypted_message = [modExp(char, receiver_public_key, receiver_modulus) for char in decrypted_signature]
+    return decrypted_message
+
+if __name__ == '__main__':
+    sender_rsa = RSA()
+    receiver_rsa = RSA()
+    
+    # Read the original message from file
+    with open("original_msg") as message_file:
+        original_message = message_file.read()
+    
+    num_list = str2num(original_message)
+    block_size = 15
+    blocks = num2block(num_list, block_size)
+    
+    # Get public and private keys for sender and receiver
+    sender_public_key, sender_private_key = sender_rsa.publicKey()
+    receiver_public_key, receiver_private_key = receiver_rsa.publicKey()
+    
+    # Create a digital signature for the message
+    signature = create_signature(blocks, sender_private_key, sender_public_key)
+    
+    # Encrypt the signed message
+    encrypted_message = encrypt_message(signature, receiver_private_key, receiver_public_key)
+    
+    # Decrypt and verify the signature
+    decrypted_signature = verify_signature(encrypted_message, original_message, sender_public_key, sender_rsa.n, receiver_public_key, receiver_rsa.d)
+    
+    # Convert decrypted signature to string
+    num_list = block2num(decrypted_signature, block_size)
+    decrypted_message = num2str(num_list)
+    
+    # Verify the integrity of the message
+    print("Received Message with Verified Signature:")
+    print(decrypted_message)

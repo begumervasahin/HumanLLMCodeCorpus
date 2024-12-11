@@ -1,0 +1,109 @@
+import math
+import numpy as np
+
+class TFIDF:
+    def __init__(self):
+        self.documents = {}         # Dictionary to store documents
+        self.corpus_dict = {}       # Dictionary to store word frequencies in the entire corpus
+        self.idf = {}               # Dictionary to store IDF values for each word      
+        self.num_docs = 0           # Number of documents in the corpus
+        self.prep_status = False    # Flag to indicate whether TF-IDF preparation is done
+
+    def add_document(self, doc_name, word_list):
+        """
+        Add a document to the TF-IDF model.
+
+        Parameters:
+            doc_name (str): Name or identifier of the document.
+            word_list (list): List of words in the document.
+        """
+        doc_dict = {}
+        for word in word_list:
+            doc_dict[word] = doc_dict.get(word, 0.0) + 1.0
+
+        doc_length = float(len(word_list))
+        for key in doc_dict:
+            doc_dict[key] = doc_dict[key] / doc_length
+
+        self.documents[doc_name] = doc_dict
+
+        for word in set(word_list):
+            self.corpus_dict[word] = self.corpus_dict.get(word, 0.0) + 1.0
+
+    def prep(self):
+        """Prepare the TF-IDF values for each document in the corpus."""
+        self.num_docs = len(self.documents)
+
+        for key, value in self.corpus_dict.items():
+            self.idf[key] = math.log(self.num_docs / value)
+
+        for doc_name, word_dict in self.documents.items():
+            for word, freq in word_dict.items():
+                word_dict[word] *= self.idf[word]
+
+        self.prep_status = True
+
+    def similarities_by_name(self, query_name):
+        """
+        Calculate cosine TF-IDF similarities with respect to each document in the corpus by document name.
+
+        Parameters:
+            query_name (str): Name or identifier of the query document.
+
+        Returns:
+            dict: Dictionary containing {document_name: similarity_score} pairs.        
+        """
+        if not self.prep_status:
+            print("TF-IDF model is not prepared. Please call prep() first.")
+            return
+
+        query_dict = self.documents[query_name]
+        similarities = {}
+
+        for doc_name, doc_dict in self.documents.items():
+            score = 0.0
+            for word, freq in query_dict.items():
+                if word in doc_dict:
+                    score += freq * doc_dict[word]
+            query_norm = np.linalg.norm(list(query_dict.values()))
+            doc_norm = np.linalg.norm(list(doc_dict.values()))
+            score /= query_norm * doc_norm
+            similarities[doc_name] = score
+
+        return similarities
+
+    def similarities_by_wordlist(self, word_list):
+        """
+        Calculate cosine TF-IDF similarities with respect to each document in the corpus by a new list of words.
+
+        Parameters:
+            word_list (list): List of words to represent the query document.
+
+        Returns:
+            dict: Dictionary containing {document_name: similarity_score} pairs.        
+        """
+        if not self.prep_status:
+            print("TF-IDF model is not prepared. Please call prep() first.")
+            return
+
+        query_dict = {}
+        for word in word_list:
+            query_dict[word] = query_dict.get(word, 0.0) + 1.0
+
+        query_length = float(len(word_list))
+        for word, freq in query_dict.items():
+            query_dict[word] = (freq / query_length) * self.idf.get(word, 0.0)
+
+        similarities = {}
+
+        for doc_name, doc_dict in self.documents.items():
+            score = 0.0
+            for word, freq in query_dict.items():
+                if word in doc_dict:
+                    score += freq * doc_dict[word]
+            query_norm = np.linalg.norm(list(query_dict.values()))
+            doc_norm = np.linalg.norm(list(doc_dict.values()))
+            score /= query_norm * doc_norm
+            similarities[doc_name] = score
+
+        return similarities

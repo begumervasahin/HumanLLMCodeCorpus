@@ -1,0 +1,45 @@
+import os
+import collections
+import re
+
+DATA_DIR = "data"
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+WORDS_TO_REMOVE = [
+    "intj", "intp", "infj", "infp", "istj", "istp", "isfj", "isfp",
+    "entj", "entp", "enfj", "enfp", "estj", "estp", "esfj", "esfp",
+    "si", "ni", "ti", "fi", "se", "ne", "te", "fe", "nt", "nf",
+    "sxsp", "spsx", "spso", "sxso", "sosp", "sosx", "sp", "sx",
+    "sj", "sf", "st", "le", "socionic", "socionics", "enneagram",
+    "d", "w", "mbti",
+]
+
+def count_word_occurrences(filename):
+    """Count word occurrences in a file."""
+    with open(filename, "r") as file:
+        return collections.Counter(file.read().split())
+
+def write_special_words(filename, word_counts):
+    """Write special words to a file."""
+    with open(filename, "w") as file:
+        regex = re.compile("[^a-zA-Z]")
+        for key, count in word_counts.items():
+            mod = regex.sub("", str(key))
+            if mod not in WORDS_TO_REMOVE and count > 2:
+                file.write(f"{mod}\n" * count)
+
+# Process data for each dimension
+for dimension in DIMENSIONS:
+    # Count word occurrences in files for dimension[0] and dimension[1]
+    wordcount_a = count_word_occurrences(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"))
+    wordcount_b = count_word_occurrences(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"))
+
+    # Combine unique keys
+    cache = set(wordcount_a.keys()) | set(wordcount_b.keys())
+
+    # Calculate differences in word counts
+    a = {key: count for key, count in wordcount_a.items() if key in cache and key not in wordcount_b}
+    b = {key: count for key, count in wordcount_b.items() if key in cache and key not in wordcount_a}
+
+    # Write special words to files
+    write_special_words(os.path.join(DATA_DIR, f"special_words_{dimension[0]}.txt"), a)
+    write_special_words(os.path.join(DATA_DIR, f"special_words_{dimension[1]}.txt"), b)

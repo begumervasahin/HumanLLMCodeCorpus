@@ -1,0 +1,75 @@
+import numpy as np
+
+def calculate_cosine_similarity(vector1, vector2):
+    """Calculate the cosine similarity between two vectors."""
+    norm_vector1 = np.linalg.norm(vector1)
+    norm_vector2 = np.linalg.norm(vector2)
+    dot_product = np.dot(vector1, vector2)
+    vector_length_product = norm_vector1 * norm_vector2
+    cosine_sim = dot_product / vector_length_product
+    return cosine_sim
+
+def get_document_content(document_path):
+    """Read and return the content of a document."""
+    with open(document_path, 'r') as file:
+        content = file.read().lower().split()
+    return content
+
+def input_number_of_documents():
+    """Prompt the user to input the number of documents."""
+    while True:
+        try:
+            num_docs = int(input("Enter the number of documents: "))
+            return max(num_docs, 2)
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
+
+def input_document_paths(num_docs):
+    """Prompt the user to input paths of documents."""
+    doc_paths = []
+    for i in range(num_docs):
+        while True:
+            try:
+                path = input(f"Enter the path of document {i + 1}: ")
+                get_document_content(path)  # Check if file exists
+                doc_paths.append(path)
+                break
+            except FileNotFoundError:
+                print("File not found. Please enter a valid path.")
+    return doc_paths
+
+def calculate_document_vectors(doc_paths, all_words):
+    """Calculate word counts and create document vectors."""
+    doc_vectors = {}
+    for path in doc_paths:
+        content = get_document_content(path)
+        word_counts = [content.count(word) for word in all_words]
+        doc_vectors[path] = word_counts
+    return doc_vectors
+
+def main():
+    num_documents = input_number_of_documents()
+    document_paths = input_document_paths(num_documents)
+
+    all_words = set()
+    for path in document_paths:
+        all_words.update(get_document_content(path))
+
+    doc_vectors = calculate_document_vectors(document_paths, all_words)
+
+    cosine_similarity_dict = {}
+    for i, (doc_path1, vector1) in enumerate(doc_vectors.items()):
+        for doc_path2, vector2 in list(doc_vectors.items())[i + 1:]:
+            cosine_sim = calculate_cosine_similarity(vector1, vector2)
+            pair_key = f". <{doc_path1}> <{doc_path2}> : "
+            cosine_similarity_dict[pair_key] = cosine_sim
+
+    num_similar_pairs = min(len(cosine_similarity_dict), int(input("Enter k for the top k similar document pairs: ")))
+    num_similar_pairs = max(num_similar_pairs, 1)
+
+    sorted_pairs = sorted(cosine_similarity_dict.items(), key=lambda x: x[1], reverse=True)
+    for i, (pair_key, cosine_sim) in enumerate(sorted_pairs[:num_similar_pairs], 1):
+        print(f"{i}. {pair_key}{cosine_sim}")
+
+if __name__ == "__main__":
+    main()

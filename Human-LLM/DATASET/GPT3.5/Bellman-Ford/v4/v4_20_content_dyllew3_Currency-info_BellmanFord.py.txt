@@ -1,0 +1,92 @@
+class BellmanFord:
+    def __init__(self, vertices, edges, source):
+        """
+        Initializes the Bellman-Ford algorithm with the given vertices, edges, and source node.
+        """
+        self.vertices = vertices
+        self.size = len(vertices)
+        self.edges = edges
+        self.source = source
+        self.distance = {}
+        self.prev_node = {}
+
+        for vertex in vertices:
+            self.distance[vertex] = float('inf')
+            self.prev_node[vertex] = None
+
+        self.distance[source] = 0
+        self.neg_cycles = []
+        self.compute_shortest_path()
+
+    def compute_shortest_path(self):
+        """
+        Computes the shortest paths using the Bellman-Ford algorithm.
+        """
+        for _ in range(self.size - 1):
+            for u in self.edges:
+                for v in self.edges[u]:
+                    if self.distance[u] != float('inf') and self.distance[u] + self.edges[u][v] < self.distance[v]:
+                        self.distance[v] = self.distance[u] + self.edges[u][v]
+                        self.prev_node[v] = u
+
+        # Print shortest paths for debugging
+        for node in self.prev_node:
+            print(f"{node} {self.prev_node[node]}")
+
+        # Find negative cycles
+        self.neg_cycles = self.find_negative_cycles()
+        for cycle in self.neg_cycles:
+            print(cycle)
+
+    def find_negative_cycles(self):
+        """
+        Detects negative cycles in the graph.
+        """
+        cycles = []
+        for u in self.edges:
+            for v in self.edges[u]:
+                if self.distance[u] != float('inf') and self.distance[u] + self.edges[u][v] < self.distance[v]:
+                    marked = {}
+                    path = []
+                    node = v
+                    marked[node] = False
+
+                    while not marked[node]:
+                        marked[node] = True
+                        path.append(node)
+                        node = self.prev_node[node]
+
+                        if node not in marked:
+                            marked[node] = False
+
+                    if path not in cycles:
+                        cycles.append(path)
+
+        return cycles
+
+
+def main():
+    """
+    Entry point of the program.
+    """
+    vertices = [0, 1, 2, 3]
+    edges = {
+        vertices[0]: {},
+        vertices[1]: {},
+        vertices[2]: {},
+        vertices[3]: {}
+    }
+
+    edges[vertices[0]][vertices[1]] = -1
+    edges[vertices[0]][vertices[2]] = -1
+    edges[vertices[1]][vertices[3]] = -1
+    edges[vertices[2]][vertices[0]] = -1
+    edges[vertices[2]][vertices[1]] = -1
+    edges[vertices[3]][vertices[2]] = -1
+
+    source = 1
+    bellman_ford = BellmanFord(vertices, edges, source)
+
+
+if __name__ == "__main__":
+    main()

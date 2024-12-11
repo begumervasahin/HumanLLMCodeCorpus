@@ -1,0 +1,96 @@
+from optparse import OptionParser
+import csv
+from collections import defaultdict
+
+
+def extract_one_itemset(dataset_file):
+    """
+    Extracts all distinct 1-itemsets from the dataset file.
+    """
+    transactions = []
+    itemset = set()
+    for transaction in dataset_file:
+        transactions.append(frozenset(transaction))
+        for item in transaction:
+            itemset.add(frozenset([item]))
+    return itemset, transactions
+
+
+def find_freq_one_itemsets(one_itemset, transactions, min_sup):
+    """
+    Retrieves frequent 1-itemsets from the dataset.
+    """
+    freq_one_itemset = set()
+    for item in one_itemset:
+        item_count = sum(1 for trans in transactions if item.issubset(trans))
+        support = float(item_count) / len(transactions)
+        if support >= min_sup:
+            freq_one_itemset.add(item)
+    return freq_one_itemset
+
+
+def generate_next_itemset(current_itemset, k):
+    """
+    Generates k+1-itemset from k-itemset.
+    """
+    next_itemset = set()
+    for i in current_itemset:
+        for j in current_itemset:
+            combined_item = i.union(j)
+            if len(combined_item) == k:
+                next_itemset.add(combined_item)
+    return list(next_itemset)
+
+
+def main():
+    optparser = OptionParser()
+    optparser.add_option(
+        '-f',
+        '--inputFile',
+        dest='input',
+        help='filename containing csv',
+        default=None)
+    optparser.add_option(
+        '-s',
+        '--min_sup',
+        dest='minS',
+        help='minimum support value',
+        default=0.2,
+        type='float')
+    (options, args) = optparser.parse_args()
+    min_sup = options.minS
+
+    with open(options.input, 'r') as infile:
+        dataset_file = csv.reader(infile)
+        itemset, transactions = extract_one_itemset(dataset_file)
+
+    L = [set(), ]  # Initialize L[0] as an empty set
+    frequ_one_itemset = find_freq_one_itemsets(itemset, transactions, min_sup)
+    L.append(frequ_one_itemset)
+
+    C = [set(), itemset.copy()]  # Initialize C[0] as an empty set, C[1] as itemset
+    current_itemset = L[1]
+
+    k = 2
+    while current_itemset:
+        C.append(generate_next_itemset(current_itemset, k))
+        Ccount = defaultdict(int)
+        for c in C[k]:
+            for transaction in transactions:
+                if c.issubset(transaction):
+                    Ccount[c] += 1
+        L.append(set())
+        for c in C[k]:
+            support = float(Ccount[c]) / len(transactions)
+            if support >= min_sup:
+                L[k].add(c)
+        current_itemset = L[k]
+        k += 1
+
+    for l in L:
+        for itemset in l:
+            print(itemset)
+
+
+if __name__ == '__main__':
+    main()

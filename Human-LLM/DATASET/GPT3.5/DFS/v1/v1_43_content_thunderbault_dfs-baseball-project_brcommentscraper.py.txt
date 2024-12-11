@@ -1,0 +1,56 @@
+from bs4 import BeautifulSoup
+from bs4 import Comment
+import re
+import urllib.request
+
+def brscraper_in_comments(resource, table_ids=None, server_url="http://www.baseball-reference.com/", table_found=False):
+    """
+    Scrape data from Baseball Reference.
+    Since they updated their website and commented out tables, this function extracts data from commented out tables.
+    """
+    data = {}
+    datas = []
+    print(server_url + resource)
+    with urllib.request.urlopen(server_url + resource) as response:
+        html = response.read()
+        soup = BeautifulSoup(html, 'html.parser')
+
+    tables = soup.find_all(text=lambda text: isinstance(text, Comment))
+
+    for table in tables:
+        for table_id in table_ids:
+            if 'table class="row_summable sortable stats_table" id="%s"' % table_id in table:
+                data[table_id] = []
+                rows = table.split("</tr>")
+                for row in rows:
+                    stats = []
+                    if 'table class="row_summable sortable stats_table" id="%s"' % table_id in row:
+                        headers = re.findall(r'<th.*?>([^<]*)</th>', row)
+                        table_found = True
+                        continue
+                    if table_found:
+                        entries = row.split(">")
+                        for entry in entries:
+                            if "</th" in entry:
+                                if "</thead" in entry:
+                                    continue
+                                stat = re.findall(r'(.*)<', entry)
+                                for each in stat:
+                                    stats.append(str(each))
+                            if "</td" in entry:
+                                stat = re.findall(r'(.*)<', entry)
+                                for each in stat:
+                                    stats.append(str(each))
+                        if len(stats) > 0:
+                            data[table_id].append(dict(zip(headers, stats)))
+                table_and_data = [data, table_id]
+                datas.append(table_and_data)
+    return datas
+
+if __name__ == '__main__':
+    # Example usage:
+    resource = "path_to_resource"  # Replace with the actual resource path
+    table_ids = ["table_id1", "table_id2"]  # Replace with the actual table IDs
+    server_url = "http://www.baseball-reference.com/"  # Replace with the actual server URL
+    scraped_data = brscraper_in_comments(resource, table_ids, server_url)
+    print(scraped_data)

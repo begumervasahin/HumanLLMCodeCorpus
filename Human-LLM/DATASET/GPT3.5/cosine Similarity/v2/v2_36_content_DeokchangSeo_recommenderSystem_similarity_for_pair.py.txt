@@ -1,0 +1,84 @@
+from surprise import Dataset, Reader
+import numpy as np
+from math import sqrt
+
+def remove_zeros(element1, element2):
+    # Remove elements where either element1 or element2 is zero
+    indices_to_remove = [i for i in range(len(element1)) if element1[i] == 0 or element2[i] == 0]
+    element1 = np.delete(element1, indices_to_remove)
+    element2 = np.delete(element2, indices_to_remove)
+    print('Sorted to calculate similarity:\n', element1, '\n', element2, '\n')
+    return element1, element2
+
+def remove_zeros_all(element1, element2):
+    # Remove elements where both element1 and element2 are zero
+    indices_to_remove_element1 = [i for i in range(len(element1)) if element1[i] == 0]
+    indices_to_remove_element2 = [i for i in range(len(element2)) if element2[i] == 0]
+    indices_to_remove = set(indices_to_remove_element1 + indices_to_remove_element2)
+    element1 = np.delete(element1, list(indices_to_remove))
+    element2 = np.delete(element2, list(indices_to_remove))
+    print('Sorted to calculate average:\n', element1, '\n', element2, '\n')
+    return element1, element2
+
+def calculate_cosine_similarity(element1, element2):
+    # Calculate cosine similarity between two elements
+    element1, element2 = remove_zeros(element1, element2)
+    assert len(element1) == len(element2)
+    n = len(element1)
+    assert n > 0
+    sumxx, sumxy, sumyy = 0, 0, 0
+    for i in range(len(element1)):
+        x = element1[i]
+        y = element2[i]
+        sumxx += x * x
+        sumyy += y * y
+        sumxy += x * y
+    return sumxy / (sqrt(sumxx) * sqrt(sumyy))
+
+def calculate_pearson_similarity(element1, element2):
+    # Calculate Pearson correlation coefficient between two elements
+    element1, element2 = remove_zeros_all(element1, element2)
+    assert len(element1) == len(element2)
+    n = len(element1)
+    assert n > 0
+    avg_x = np.sum(element1) / n
+    avg_y = np.sum(element2) / n
+    sumxy_avg, sumxx_avg, sumyy_avg = 0, 0, 0
+    for i in range(n):
+        adiff = element1[i] - avg_x
+        bdiff = element2[i] - avg_y
+        sumxy_avg += adiff * bdiff
+        sumxx_avg += adiff * adiff
+        sumyy_avg += bdiff * bdiff
+    return sumxy_avg / (sqrt(sumxx_avg) * sqrt(sumyy_avg))
+
+def similarity_for_pair(dataset_path, element1, element2, users, cosine):
+    # Calculate similarity between two elements in the dataset
+    reader = Reader(line_format='user item rating', rating_scale=(1, 7), sep='\t')      
+    data = Dataset.load_from_file(dataset_path, reader)
+    trainset = data.build_full_trainset()
+    if users:
+        ratings = trainset.ur
+        user_item = "User"
+        matrix = np.zeros((trainset.n_users, trainset.n_items), dtype=float)
+    else:
+        ratings = trainset.ir
+        user_item = "Item"
+        matrix = np.zeros((trainset.n_items, trainset.n_users), dtype=float)
+    for y, y_ratings in ratings.items():
+        for xi, ri in y_ratings:
+            if ri != 0:
+                matrix[y, xi] += ri
+    print('Original table:\n', matrix, '\n')
+    print('Picked:\n', matrix[element1], '\n', matrix[element2], '\n')
+    if cosine:
+        similarity = calculate_cosine_similarity(matrix[element1], matrix[element2])
+    else:
+        similarity_method = "Pearson"
+        similarity = calculate_pearson_similarity(matrix[element1], matrix[element2])
+    return '{} similarity between {} {} and {} is: {}'.format(similarity_method, user_item, element1, element2, similarity)
+
+file_path = 'data/table2.1_ratings.txt'
+users = True
+cosine = True
+print(similarity_for_pair(file_path, 0, 2, users, cosine))

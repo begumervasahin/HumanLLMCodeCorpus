@@ -1,0 +1,187 @@
+import sys
+import getpass
+
+# Global variables for Rabin Signature
+MODULUS = 0
+
+# Rabin Signature related functions
+def update_state():
+    global index_i, index_j, index_a, step_w, state_S
+    index_i = (index_i + step_w) % 256
+    index_j = state_S[(index_j + state_S[index_i]) % 256]
+    state_S[index_i], state_S[index_j] = state_S[index_j], state_S[index_i]
+
+def output_state():
+    global index_i, index_j, index_a, step_w, state_S
+    update_state()
+    return state_S[index_j]
+
+def shuffle_state():
+    global index_i, index_j, index_a, step_w, state_S
+    for _ in range(256):
+        update_state()
+    step_w = (step_w + 2) % 256
+    index_a = 0
+
+def absorb_nibble(x):
+    global index_i, index_j, index_a, step_w, state_S
+    if index_a == 240:
+        shuffle_state()
+    state_S[index_a], state_S[240 + x] = state_S[240 + x], state_S[index_a]
+    index_a += 1
+
+def absorb_byte(byte):
+    absorb_nibble(byte % 16)
+    absorb_nibble(byte // 16)
+
+def squeeze(out, outlen):
+    global index_i, index_j, index_a, step_w, state_S
+    if index_a != 0:
+        shuffle_state()
+    for _ in range(outlen):
+        out.append(output_state())
+
+def hash_function(data):
+    global index_i, index_j, index_a, step_w, state_S, MODULUS
+    index_j = index_i = index_a = 0
+    step_w = 1
+    state_S = list(range(256))
+    for char in data:
+        absorb_byte(ord(char))
+    result = []
+    squeeze(result, 128)
+    out = 0
+    for byte in result:
+        out = (out << 8) + byte
+    return out % MODULUS
+
+# Helper functions
+def code_to_number(code):
+    result = 0
+    for char in code:
+        if '0' <= char <= '9':
+            result = (result << 6) + ord(char) - 48
+        elif 'A' <= char <= 'Z':
+            result = (result << 6) + ord(char) - 55
+        elif 'a' <= char <= 'z':
+            result = (result << 6) + ord(char) - 61
+        elif char == '.':
+            result = (result << 6) + 62
+        elif char == '/':
+            result = (result << 6) + 63
+    return result
+
+def number_to_code(number):
+    result = ''
+    while number > 0:
+        remainder = number % 64
+        if remainder < 10:
+            result = chr(remainder + 48) + result
+        elif remainder < 36:
+            result = chr(remainder + 55) + result
+        elif remainder < 62:
+            result = chr(remainder + 61) + result
+        elif remainder == 62:
+            result = '.' + result
+        elif remainder == 63:
+            result = '/' + result
+        number //= 64
+    return result
+
+def find_gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+def next_prime(candidate):
+    while candidate % 4 != 3:
+        candidate += 1
+    return find_next_prime(candidate)
+
+def find_next_prime(candidate):
+    sieve = 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while find_gcd(candidate, sieve) != 1:
+        candidate += 4
+    if pow(2, candidate-1, candidate) != 1:
+        return find_next_prime(candidate + 4)
+    if pow(3, candidate-1, candidate) != 1:
+        return find_next_prime(candidate + 4)
+    if pow(5, candidate-1, candidate) != 1:
+        return find_next_prime(candidate + 4)
+    if pow(17, candidate-1, candidate) != 1:
+        return find_next_prime(candidate + 4)
+    return candidate
+
+def compute_signature(p, q):
+    a_factor = 3
+    b_factor = 3
+    while pow(a_factor, (p-1)//2, p) == 1 or pow(a_factor, (q-1)//2, q) != 1:
+        a_factor += 1
+    while pow(b_factor, (p-1)//2, p) != 1 or pow(b_factor, (q-1)//2, q) == 1:
+        b_factor += 1
+    return a_factor, b_factor
+
+def square_root_mod_pq(message_hash, p, q):
+    global MODULUS
+    x = hash_function(message_hash)
+    a, b = compute_signature(p, q)
+    MODULUS = p * q
+    if pow(x, (p-1)//2, p) > 1:
+        x *= a
+    if pow(x, (q-1)//2, q) > 1:
+        x *= b
+    if pow(x, (q-1)//2, q) != 1 or pow(x, (p-1)//2, p) != 1:
+        print('ERROR')
+        return -1
+    return (pow(p, q-2, q) * p * pow(x, (q+1)//4, q) + pow(q, p-2, p) * q * pow(x, (p+1)//4, p)) % MODULUS
+
+def write_to_file(number, filename):
+    with open(filename, 'wb') as f:
+        while number > 0:
+            byte = number % 256
+            number //= 256
+            f.write(chr(byte))
+
+def read_from_file(filename):
+    with open(filename, 'rb') as f:
+        num = 0
+        byte_string = f.read()
+        for i in range(len(byte_string)):
+            num = (num << 8) ^ ord(byte_string[len(byte_string)-i-1])
+    return num
+
+def hash_file(filename):
+    with open(filename, 'r') as f:
+        return hash_function(f.read())
+
+def sign_file(filename, password):
+    global MODULUS
+    print("Generating primes...")
+    p = next_prime(hash_function(password) % (2**501 + 1))
+    q = next_prime((hash_function(password + '0') % (2**501 + 1)))
+    MODULUS = p * q
+    with open(filename, 'r') as f:
+        signature = square_root_mod_pq(f.read(), p, q)
+    return signature
+
+# Main logic
+print("\n\nRABIN SIGNATURE - Copyright Scheerer Software 2019 - All rights reserved\n\n")
+print("First parameter is V (Verify) or S (Sign) or G (Generate)\n\n")
+
+if len(sys.argv) == 4 and sys.argv[1] == "V":
+    print("Result of verification:", str(verify_code(code_to_number(sys.argv[3]), sys.argv[2])))
+
+if len(sys.argv) == 3 and sys.argv[1] == "S":
+    password = getpass.getpass()
+    print("Digital signature:\n", number_to_code(sign_file(sys.argv[2], password)))     
+
+if len(sys.argv) == 3 and sys.argv[1] == "G":
+    print("Generating primes...")
+    p = next_prime(hash_function(sys.argv[2]) % (2**501 + 1))
+    q = next_prime((hash_function(sys.argv[2] + '0') % (2**501 + 1)))
+    write_to_file(p, 'p_')
+    write_to_file(q, 'q_')
+    print("Modulus:", p * q)
+    print("\nModulus code:\n", number_to_code(p * q))
+    print("A factor:", compute_signature(p, q)[0])
+    print("B factor:", compute_signature(p, q)[1])

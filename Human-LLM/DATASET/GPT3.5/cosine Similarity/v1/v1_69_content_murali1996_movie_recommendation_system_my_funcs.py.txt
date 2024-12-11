@@ -1,0 +1,89 @@
+import numpy as np
+import pickle
+import pandas as pd
+
+def init_func(rat, max_users, max_items, n_features, gaus_mean, gaus_var, continue_from_prev_model):
+    if continue_from_prev_model == 0:
+        user_feat = np.random.normal(loc=gaus_mean, scale=gaus_var, size=(max_users, n_features))
+        item_feat = np.random.normal(loc=gaus_mean, scale=gaus_var, size=(max_items, n_features))
+    elif continue_from_prev_model == 1:
+        with open("user_feat.pickle", "rb") as input_file:
+            user_feat = pickle.load(input_file)
+        with open("item_feat.pickle", "rb") as input_file:
+            item_feat = pickle.load(input_file)
+    prev_error = -1.0
+    curr_error = -1.0
+    return user_feat, item_feat, prev_error, curr_error
+
+def compute_cost(rat, user_feat, item_feat):
+    J_cost = 0
+    error_norm_factor = 1.0 / (2 * rat.shape[0])
+    for row in range(rat.shape[0]):
+        user_id = int(rat.iloc[row]['user_id']) - 1
+        item_id = int(rat.iloc[row]['movie_id']) - 1
+        pred = np.dot(user_feat[user_id], item_feat[item_id])
+        actl = rat.iloc[row]['rating']
+        errorSq = (pred - actl) ** 2
+        J_cost += errorSq
+    print("Squared Error between actual values and predicted values: ", J_cost)
+    J_cost = error_norm_factor * J_cost
+    return J_cost
+
+def gradient_descent(rat, user_feat, item_feat, alpha, lbd):
+    new_user_feat = user_feat.copy()
+    new_item_feat = item_feat.copy()
+    
+    for user_id in rat['user_id'].unique():
+        temp = rat.loc[rat['user_id'] == user_id]
+        temp = temp.values
+        error_for_user = 0
+        error_norm_factor = 1.0 / (2 * rat.shape[0])
+        
+        for row_index in range(temp.shape[0]):
+            user_id_temp = int(temp[row_index][0]) - 1
+            item_id_temp = int(temp[row_index][1]) - 1
+            pred = np.dot(user_feat[user_id_temp], item_feat[item_id_temp])
+            actl = temp[row_index][2]
+            error_for_user += error_norm_factor * (pred - actl) * item_feat[item_id_temp]
+        
+        error_for_user += error_norm_factor * lbd * user_feat[user_id - 1]
+        new_user_feat[user_id - 1] -= alpha * error_for_user
+    
+    for item_id in rat['movie_id'].unique():
+        temp = rat.loc[rat['movie_id'] == item_id]
+        temp = temp.values
+        error_for_item = 0
+        error_norm_factor = 1.0 / (2 * rat.shape[0])
+        
+        for row_index in range(temp.shape[0]):
+            user_id_temp = int(temp[row_index][0]) - 1
+            item_id_temp = int(temp[row_index][1]) - 1
+            pred = np.dot(user_feat[user_id_temp], item_feat[item_id_temp])
+            actl = temp[row_index][2]
+            error_for_item += error_norm_factor * (pred - actl) * user_feat[user_id_temp]
+        
+        error_for_item += error_norm_factor * lbd * item_feat[item_id - 1]
+        new_item_feat[item_id - 1] -= alpha * error_for_item
+    
+    return new_user_feat, new_item_feat
+
+# Example usage:
+# Initialize parameters
+rat = pd.DataFrame({'user_id': [1, 2, 3], 'movie_id': [101, 102, 103], 'rating': [4, 3, 5]})
+max_users = 3
+max_items = 3
+n_features = 10
+gaus_mean = 0
+gaus_var = 1
+continue_from_prev_model = 0
+
+# Initialize model
+user_feat, item_feat, prev_error, curr_error = init_func(rat, max_users, max_items, n_features, gaus_mean, gaus_var, continue_from_prev_model)
+
+# Compute cost
+cost = compute_cost(rat, user_feat, item_feat)
+
+# Perform gradient descent
+alpha = 0.01
+lbd = 0.01
+user_feat, item_feat = gradient_descent(rat, user_feat, item_feat, alpha, lbd)

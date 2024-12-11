@@ -1,0 +1,44 @@
+# Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from minisom import MiniSom
+
+# Load the dataset
+dataset = pd.read_csv('G:\Credit_Card_Applications.csv')
+
+# Separate features and target variable
+X = dataset.iloc[:, :-1].values
+y = dataset.iloc[:, -1].values
+
+# Scale the features
+scaler = MinMaxScaler(feature_range=(0, 1))
+X_scaled = scaler.fit_transform(X)
+
+# Initialize and train the SOM
+som = MiniSom(x=10, y=10, input_len=15, sigma=1, learning_rate=0.5)
+som.random_weights_init(X_scaled)
+som.train_random(X_scaled, 100)
+
+# Visualize the SOM
+plt.figure(figsize=(8, 8))
+plt.bone()
+plt.pcolor(som.distance_map().T)
+plt.colorbar()
+
+# Plot data points on the map
+markers = ['o', 's']
+colors = ['r', 'g']
+for i, data_point in enumerate(X_scaled):
+    winner = som.winner(data_point)
+    plt.plot(winner[0] + 0.5, winner[1] + 0.5, markers[y[i]], markeredgecolor=colors[y[i]], markerfacecolor='None', markersize=10, markeredgewidth=2)
+
+# Show the plot
+plt.show()
+
+# Find potential frauds
+mappings = som.win_map(X_scaled)
+fraud_clusters = np.concatenate((mappings[(5, 2)], mappings[(5, 7)], mappings[(5, 5)]), axis=0)
+frauds = scaler.inverse_transform(fraud_clusters)
+print("Potential frauds:", frauds)

@@ -1,0 +1,57 @@
+import socket
+import ssl
+
+def open_tcp_socket():
+    """Open a TCP socket and start listening on port 50001."""
+    server_tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_tcp_socket.bind(('', 50001))
+    server_tcp_socket.listen(1)
+    return server_tcp_socket
+
+def create_tls_context():
+    """Create an SSL context for TLS communication."""
+    cert_path = "server.pem"
+    key_path = "server.key"
+    dh_path = "dh.pem"
+    ciphers = "AES128-SHA256:DHE-RSA-AES128-SHA256"
+    
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context.load_cert_chain(keyfile=key_path, certfile=cert_path)
+    context.set_ciphers(ciphers)
+    context.load_dh_params(dh_path)
+    context.options |= ssl.OP_SINGLE_DH_USE
+    context.options |= ssl.OP_NO_TICKET
+    return context
+
+def accept_connections(s_socket):
+    """Accept incoming connections and perform TLS handshake."""
+    print("Server listening...")
+    try:
+        client_socket, client_address = s_socket.accept()
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        return None
+    
+    try:
+        print("Connection succeeded, attempting handshake...")
+        context = create_tls_context()
+        tls_sock = context.wrap_socket(client_socket, server_side=True)
+    except Exception as e:
+        print(f"Handshake failed: {e}")
+        return None
+    
+    print(f"Handshake succeeded. Chosen cipher is {tls_sock.cipher()[0]}.")
+    return tls_sock
+
+def main():
+    """Main function to run the server and receive data over TLS."""
+    server_socket = open_tcp_socket()
+    while True:
+        tls_socket = accept_connections(server_socket)
+        if tls_socket:
+            data = tls_socket.recv(1024).decode()
+            print(f"Server receives: {data}")
+            tls_socket.close()
+
+if __name__ == "__main__":
+    main()

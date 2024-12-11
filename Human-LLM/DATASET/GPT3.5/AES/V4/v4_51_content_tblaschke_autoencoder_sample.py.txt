@@ -1,0 +1,77 @@
+import os
+import torch
+from torch.utils.data import DataLoader
+from random import randint
+import rdkit.Chem as Chem
+import rdkit.RDLogger as RDLogger
+from src.datareader import SMILESReader, OnehotDecoder
+from train import get_args, load_autoencoder
+
+def setup_data_loaders(args, use_cuda):
+    """Setup data loaders for training and validation datasets."""
+    base_path = os.path.dirname(__file__)
+    dataset_path = os.path.join(base_path, "data", "prior_trainingset_DRD2_actives_removed.smi")
+    alphabet_path = os.path.join(base_path, "data", "alphabet.json")
+
+    train_dataset = SMILESReader(dataset_path, alphabet_path, subset=(0, 1200001))
+    val_dataset = SMILESReader(dataset_path, alphabet_path, subset=(1200001, None))
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, pin_memory=use_cuda)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, pin_memory=use_cuda)
+
+    return train_loader, val_loader
+
+def validate_molecule(autoencoder, decoder, encoded, dataset, start_smi=None, ground_truth=None, print_all=False, repeat=100, batch_size=1):
+    """Validate molecule by attempting to reconstruct it from its encoded representation."""
+    encoded_reps = torch.stack([encoded.squeeze() for _ in range(batch_size)])
+    ground_truth_reps = torch.stack([ground_truth.squeeze() for _ in range(batch_size)]) if ground_truth is not None else None
+
+    invalid_count, identical_count, unique_molecules = 0, 0, set()
+    RDLogger.DisableLog('rdApp.*')  # Suppress RDKit warnings
+
+    for _ in range(repeat):
+        decoded_mols = autoencoder.decode(encoded_reps, ground_truth_reps) if ground_truth is not None else autoencoder.decode(encoded_reps)
+        smiles_list = decoder.decode(decoded_mols.data)
+        for smi in smiles_list:
+            mol = Chem.MolFromSmiles(smi)
+            if mol is None:
+                invalid_count += 1
+                continue
+            canonical_smi = Chem.MolToSmiles(mol)
+            if start_smi and canonical_smi == start_smi:
+                identical_count += 1
+            if not start_smi:
+                unique_molecules.add(canonical_smi)
+
+    if start_smi:
+        return invalid_count, identical_count
+    else:
+        return invalid_count, unique_molecules
+
+def main():
+    args, use_cuda = get_args()
+    train_loader, val_loader = setup_data_loaders(args, use_cuda)
+    autoencoder = load_autoencoder(args)
+    decoder = OnehotDecoder(os.path.join(os.path.dirname(__file__), "data", "alphabet.json"))
+
+    # Choose a random molecule from the validation dataset for testing
+    idx = randint(0, len(val_loader.dataset) - 1)
+    x, _ = val_loader.dataset[idx]
+    start_smi = decoder.decode(x.unsqueeze(0))[0]
+    encoded_smi = autoencoder.encode(x.unsqueeze(0).cuda() if use_cuda else x.unsqueeze(0))
+    encoded_noise = torch.randn_like(encoded_smi)
+
+    # Validate molecule with ground truth
+    invalid, same = validate_molecule(autoencoder, decoder, encoded_smi, val_loader.dataset, start_smi=start_smi, ground_truth=val_loader.dataset.onehot_encoder(start_smi))
+    print(f"Validation with Ground Truth for {start_smi}: {same} identical, {invalid} invalid out of {args.batch_size * repeat} attempts")
+
+    # Validate molecule in free mode (without ground truth)
+    invalid, _ = validate_molecule(autoencoder, decoder, encoded_smi, val_loader.dataset, start_smi=start_smi)
+    print(f"Validation in Free Mode for {start_smi}: {invalid} invalid out of {args.batch_size * repeat} attempts")
+
+    # Decode from noise
+    invalid, unique_mols = validate_molecule(autoencoder, decoder, encoded_noise, val_loader.dataset)
+    print(f"Decoding from Noise: {len(unique_mols)} unique molecules, {invalid} invalid out of {args.batch_size * repeat} attempts")
+
+if __name__ == "__main__":
+    main()

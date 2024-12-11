@@ -1,0 +1,67 @@
+def calculate_balance(balance, min_payment_rate, annual_interest_rate, months, payments):
+    '''
+    Calculates the credit card balance after X months for
+    a person who only pays the minimum monthly payment.
+    It also builds a list of monthly payments.
+    '''
+    months -= 1
+    if months < 0:
+        return round(balance, 2), payments
+    else:
+        min_payment = min_payment_rate * balance
+        payments.append(min_payment)
+        unpaid_balance = balance - min_payment
+        monthly_interest = (annual_interest_rate / 12) * unpaid_balance
+        balance = unpaid_balance + monthly_interest
+        return calculate_balance(balance, min_payment_rate, annual_interest_rate, months, payments)
+
+def pay_off_dept(balance, annual_interest_rate, months, lower_guess, upper_guess):
+    '''
+    Calculates the minimum fixed monthly payment needed in order to pay off
+    a credit card balance within X months using bisection search.
+    '''
+    guess = (lower_guess + upper_guess) / 2
+    months -= 1
+    if months < 0:
+        if round(balance) == 0:
+            return round(guess, 2)
+        elif balance < 0:
+            return pay_off_dept(balance, annual_interest_rate, months, lower_guess, guess)
+        else:
+            return pay_off_dept(balance, annual_interest_rate, months, guess, upper_guess)
+    else:
+        unpaid_balance = balance - guess
+        monthly_interest = (annual_interest_rate / 12) * unpaid_balance
+        balance = unpaid_balance + monthly_interest
+        return pay_off_dept(balance, annual_interest_rate, months, lower_guess, upper_guess)
+
+# Constants
+initial_balance = 100000
+duration_months = 12
+annual_interest_rate = 0.22
+monthly_payment_rate = 0.05
+
+# Calculate balance with minimum monthly payment
+monthly_interest_rate = annual_interest_rate / 12
+monthly_payments = []
+new_balance, monthly_payments = calculate_balance(initial_balance, monthly_payment_rate, monthly_interest_rate, duration_months, monthly_payments)     
+average_payment = round(sum(monthly_payments) / len(monthly_payments), 2)
+loss1 = round(abs(initial_balance - new_balance - sum(monthly_payments)), 2)
+
+# Calculate fixed monthly payment to pay off balance in X months
+min_guess = initial_balance / 12
+max_guess = (initial_balance * (1 + monthly_interest_rate) ** duration_months) / duration_months
+monthly_payment = pay_off_dept(initial_balance, monthly_interest_rate, duration_months, min_guess, max_guess)
+loss2 = round(abs(initial_balance - 0 - monthly_payment * duration_months), 2)
+
+# Print results
+print('Current Balance:', initial_balance, '€')
+print('Duration:', duration_months, 'months')
+print('With a monthly payment rate of %.2f:' % monthly_payment_rate)
+print('   - You will pay', average_payment, '€ per month on average.')
+print('   - Your loss will be', loss1, '€ for that time period.')
+print('   - Your remaining balance will be', new_balance, '€.')
+print('If you want to pay off your balance within', duration_months, 'months:')
+print('   - You will have to pay', monthly_payment, '€ per month.')
+print('   - Your loss will be', loss2, '€ in total.')
+print('   - Your remaining balance will be 0 €.')

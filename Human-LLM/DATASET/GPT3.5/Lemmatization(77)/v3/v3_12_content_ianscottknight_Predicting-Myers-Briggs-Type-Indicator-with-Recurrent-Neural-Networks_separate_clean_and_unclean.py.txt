@@ -1,0 +1,47 @@
+import os
+import collections
+import pandas as pd
+import csv
+
+# Constants
+DATA_DIR = "data"
+MBTI_RAW_CSV_PATH = os.path.join(DATA_DIR, "mbti_1.csv")
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+MBTI_UNCLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_unclean.csv")
+
+# Define the expected frequency of each MBTI type
+MBTI_TO_FREQUENCY_DICT = {
+    "ISTJ": 0.11, "ISFJ": 0.09, "INFJ": 0.04, "INTJ": 0.05,
+    "ISTP": 0.05, "ISFP": 0.05, "INFP": 0.06, "INTP": 0.06,
+    "ESTP": 0.04, "ESFP": 0.04, "ENFP": 0.08, "ENTP": 0.06,
+    "ESTJ": 0.08, "ESFJ": 0.09, "ENFJ": 0.05, "ENTJ": 0.05,
+}
+
+# Read the raw MBTI data
+df = pd.read_csv(MBTI_RAW_CSV_PATH)
+
+# Count occurrences of each MBTI type
+counts = collections.Counter(df["type"])
+
+# Find the limiting MBTI type based on the smallest size relative to its expected frequency
+limiting_type = min(MBTI_TO_FREQUENCY_DICT, key=lambda mbti: counts[mbti] / MBTI_TO_FREQUENCY_DICT[mbti])
+
+# Separate data by MBTI type
+mbti_data = collections.defaultdict(list)
+for index, row in df.iterrows():
+    mbti_data[row["type"]].append(row)
+
+# Write clean and unclean data to CSV files
+with open(MBTI_CLEAN_CSV_PATH, "w") as clean_file:
+    writer = csv.writer(clean_file)
+    writer.writerow(["type", "posts"])
+    for mbti, data in mbti_data.items():
+        sample_size = round(counts[mbti] * MBTI_TO_FREQUENCY_DICT[mbti])
+        writer.writerows(data[:sample_size])
+
+with open(MBTI_UNCLEAN_CSV_PATH, "w") as unclean_file:
+    writer = csv.writer(unclean_file)
+    writer.writerow(["type", "posts"])
+    for mbti, data in mbti_data.items():
+        sample_size = round(counts[mbti] * MBTI_TO_FREQUENCY_DICT[mbti])
+        writer.writerows(data[sample_size:])

@@ -1,0 +1,74 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import pickle
+import json
+import timeit
+import random
+
+def talk_to_chatbot(test_sentence, minimum_score, json_file_path, tfidf_vectorizer_path, tfidf_matrix_train_path):
+    try:
+        # Load pre-trained TF-IDF vectorizer and matrix
+        with open(tfidf_vectorizer_path, 'rb') as f:
+            tfidf_vectorizer = pickle.load(f)
+        with open(tfidf_matrix_train_path, 'rb') as f:
+            tfidf_matrix_train = pickle.load(f)
+    except FileNotFoundError:
+        # Train TF-IDF vectorizer and matrix
+        tfidf_vectorizer, tfidf_matrix_train = train_chatbot(json_file_path, tfidf_vectorizer_path, tfidf_matrix_train_path)
+
+    # Transform test sentence into TF-IDF matrix
+    tfidf_matrix_test = tfidf_vectorizer.transform([test_sentence])
+
+    # Compute cosine similarity
+    cosine_sim = cosine_similarity(tfidf_matrix_test, tfidf_matrix_train)
+    cosine_sim = np.delete(cosine_sim, 0)  # Remove similarity with itself
+    max_similarity = cosine_sim.max()
+
+    # Decide response based on similarity score
+    if max_similarity > minimum_score:
+        new_max = max_similarity - 0.01
+        indices = np.where(cosine_sim > new_max)[0]
+        response_index = random.choice(indices)
+    else:
+        return "live_chat", 0
+
+    # Get response from JSON file based on index
+    with open(json_file_path, "r") as sentences_file:
+        reader = json.load(sentences_file)
+        for idx, row in enumerate(reader):
+            if idx == response_index:
+                return row["response"], max_similarity
+
+def train_chatbot(json_file_path, tfidf_vectorizer_path, tfidf_matrix_train_path):
+    sentences = ["No you.", "No you."]
+    with open(json_file_path, "r") as sentences_file:
+        reader = json.load(sentences_file)
+        for row in reader:
+            sentences.append(row["message"])
+
+    # Train TF-IDF vectorizer and obtain TF-IDF matrix
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix_train = tfidf_vectorizer.fit_transform(sentences)
+
+    # Save trained vectorizer and matrix to pickle files
+    with open(tfidf_vectorizer_path, 'wb') as f:
+        pickle.dump(tfidf_vectorizer, f)
+    with open(tfidf_matrix_train_path, 'wb') as f:
+        pickle.dump(tfidf_matrix_train, f)
+
+    return tfidf_vectorizer, tfidf_matrix_train
+
+def previous_chats(query):
+    minimum_score = 0.7
+    json_file = "data/previous_chats.json"
+    tfidf_vectorizer_path = "data/previous_tfidf_vectorizer.pickle"
+    tfidf_matrix_train_path = "data/previous_tfidf_matrix_train.pickle"
+
+    # Get chatbot response based on user query
+    query_response, score = talk_to_chatbot(query, minimum_score, json_file, tfidf_vectorizer_path, tfidf_matrix_train_path)
+    return query_response
+
+while True:
+    user_input = input("User: ")
+    print("Bot:", previous_chats(user_input))

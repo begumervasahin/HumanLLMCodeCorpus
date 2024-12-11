@@ -1,0 +1,46 @@
+import collections
+
+class Dijkstra:
+    def __init__(self, *nodes):
+        # Initialize the Dijkstra algorithm with a list of nodes
+        self.nodes = list(nodes)
+        self.distances = {node: float('inf') for node in self.nodes}  # Initialize distances with infinite distance for all nodes
+        self.edges = collections.defaultdict(dict)  # Store edges as a defaultdict of dictionaries
+
+    def add_edge(self, src, dest, dist):
+        # Add an edge between source and destination with a given distance
+        if src not in self.edges:
+            self.edges[src] = {}  # Initialize the destination dictionary if it doesn't exist
+        self.edges[src][dist] = dest  # Add the destination and distance to the source's dictionary of destinations
+
+    def relax(self, source, destinations):
+        # Relax the distances for destinations from a source node
+        min_distance = float('inf')
+        for distance, destination in destinations.items():
+            min_distance = min(min_distance, distance)
+            if self.distances[destination] == float('inf') or self.distances[destination] > distance + self.distances[source]:
+                self.distances[destination] = distance + self.distances[source]
+        self.source = destinations[min_distance]
+
+    def calculate_shortest_paths(self, source):
+        # Calculate shortest paths from a source node to all other nodes
+        self.source = source
+        if self.source in self.edges:
+            self.distances[self.source] = 0  # Initialize distance to the source node as 0
+            for _ in range(len(self.edges)):  # Iterate through all edges to ensure relaxation
+                for source_node, destinations in self.edges.items():
+                    if source_node == self.source or self.distances[source_node] != float('inf'):
+                        self.relax(source_node, destinations)
+        print(self.distances)  # Print the calculated distances
+
+# Example usage:
+if __name__ == '__main__':
+    dijkstra = Dijkstra('A', 'B', 'C', 'D', 'E')
+    dijkstra.add_edge('A', 'B', 4)
+    dijkstra.add_edge('A', 'C', 2)
+    dijkstra.add_edge('B', 'C', 5)
+    dijkstra.add_edge('B', 'D', 10)
+    dijkstra.add_edge('C', 'D', 3)
+    dijkstra.add_edge('C', 'E', 7)
+    dijkstra.add_edge('D', 'E', 8)
+    dijkstra.calculate_shortest_paths('A')  # Calculate shortest paths from node 'A'

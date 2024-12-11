@@ -1,0 +1,72 @@
+import ujson as json
+from collections import defaultdict
+
+# Read counts from a file and return as a list of tuples
+def read_counts(file_path):
+    with open(file_path) as file:
+        return [(word, int(count)) for word, count, _ in (line.split("\t") for line in file)]
+
+# Sort words by count and filter out those with counts less than 100
+def filter_words(words):
+    return sorted([(word, count) for word, count in words if count > 100], key=lambda x: -x[1])
+
+# Create a vocabulary of 4000 words
+def create_vocab(tw_words, nyt_words):
+    vocab = set()
+    for i in range(min(len(tw_words), len(nyt_words))):
+        vocab.add(tw_words[i][0])
+        vocab.add(nyt_words[i][0])
+        if len(vocab) >= 4000:
+            break
+    return vocab
+
+# Write vocabulary to a file
+def write_vocab(vocab, nyt_counts):
+    with open("vocab", 'w') as f:
+        vocab_counts = [(word, nyt_counts.get(word, 0)) for word in vocab]
+        vocab_counts.sort(key=lambda x: -x[1])
+        for word, count in vocab_counts:
+            print(word, count, file=f)
+
+# Filter counts based on vocabulary
+def filter_counts(infile, outfile, vocab):
+    print(f"{infile} -> {outfile}")
+    ctx_numwords = defaultdict(int)
+    word_counts = {}
+    word_contexts = {}
+    with open(infile) as inf:
+        for line in inf:
+            word, count, contexts = line.split("\t")
+            if word not in vocab:
+                continue
+            contexts = json.loads(contexts)
+            for ctx in contexts:
+                ctx_numwords[ctx] += 1
+            word_contexts[word] = contexts
+            word_counts[word] = count
+    with open(outfile, 'w') as out:
+        for word, contexts in word_contexts.items():
+            for ctx in list(contexts.keys()):
+                if ctx_numwords[ctx] <= 1:
+                    del contexts[ctx]
+            print(f"{word}\t{word_counts[word]}\t{json.dumps(contexts)}", file=out)
+
+# Read Twitter and New York Times counts
+tw = read_counts("twcounts")
+nyt = read_counts("nytcounts")
+
+# Sort and filter words by count
+tw_words = filter_words(tw)
+nyt_words = filter_words(nyt)
+
+# Create vocabularly of 4000 words
+vocab = create_vocab(tw_words, nyt_words)
+
+# Write vocabulary to file
+write_vocab(vocab, dict(nyt))
+
+# Filter counts for trimmed files and files with specific words
+filter_counts("twcounts", "twcounts.trimmed", vocab)
+filter_counts("nytcounts", "nytcounts.trimmed", vocab)
+filter_counts("twcounts", "twcounts.university_cat_dog", {"university", "cat", "dog"})
+filter_counts("nytcounts", "nytcounts.university_cat_dog", {"university", "cat", "dog"})

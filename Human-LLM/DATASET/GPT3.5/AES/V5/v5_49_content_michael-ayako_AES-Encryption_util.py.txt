@@ -1,0 +1,76 @@
+import logging
+import random
+
+def configure_logger():
+    """
+    Configures the logger with specified settings.
+    """
+    logging.info("Configuring logger...")
+    try:
+        log_filename = "./chatterbot/logs{}.log".format(__file__.split(".")[0])
+        logging.basicConfig(filename=log_filename, format='%(asctime)s %(message)s', filemode='w')
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+        logging.info("Logger configured...")
+    except Exception as err:
+        logging.info("Logging not configured: {}".format(err))      
+
+def check_file(filename):
+    """
+    Checks if the specified file exists.
+    """
+    try:
+        with open(filename, 'rb'):
+            pass
+        logging.info("File '{}' was found".format(filename))
+    except Exception as err:
+        logging.error("Error occurred while checking file '{}': {}".format(filename, err))
+        exit()
+
+def create_key():
+    """
+    Generates a random key from a list of words.
+    """
+    print("Please select a random word from the list and share it with the receiver of this file by typing the number adjacent to the word")
+    keys = [random.randint(10000, 65535) for _ in range(6)]
+    for i, key in enumerate(keys):
+        print("[{}] - {}".format(i, key))
+    try:
+        selected_key_index = int(input())
+        return keys[selected_key_index]
+    except Exception as err:
+        logging.error("Error occurred while creating key: {}".format(err))
+        exit()
+
+def file_converter_enc(bits_matrix):
+    """
+    Converts binary bits to characters and writes them to a file for encryption.
+    """
+    bit_temp = [''.join(str(bit) for sublist in row for bit in sublist) for row in bits_matrix]
+    chars = [chr(int(x, 2)) for x in bit_temp]
+    with open('msg.enc', 'w', encoding='utf-8') as f:
+        f.writelines(chars)
+
+def file_converter_dec(bits_matrix):
+    """
+    Converts binary bits to characters and writes them to a file for decryption.
+    """
+    bit_temp = [''.join(str(bit) for sublist in row for bit in sublist) for row in bits_matrix]
+    chars = [chr(int(x, 2)) for x in bit_temp]
+    with open('msg.txt', 'w', encoding='utf-8') as f:
+        f.writelines(chars)
+
+def quit_program():
+    """
+    Quits the program.
+    """
+    logging.info("Quitting")
+    exit()
+
+if __name__ == "__main__":
+    configure_logger()
+    filename = input("Enter the filename: ")
+    check_file(filename)
+    key = create_key()
+    print("Selected key:", key)
+    quit_program()

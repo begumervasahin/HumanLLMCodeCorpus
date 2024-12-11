@@ -1,0 +1,62 @@
+import itertools
+
+def get_subsets(S):
+    """
+    Return a list of subsets of S, each containing len(S) - 1 elements.
+    """
+    subset_length = len(S) - 1
+    return [list(subset) for subset in itertools.combinations(S, subset_length)]
+
+def is_subset_exist(tar, L):
+    """
+    Check if each value in L is a subset of tar.
+    Return 1 if all values in L are subsets of tar, otherwise return 0.
+    """
+    tar_set = [set(item[0]) for item in tar]
+    for subset in L:
+        for tar_subset in tar_set:
+            if tar_subset < set(subset):
+                return 0
+    return 1
+
+def Apriori(tar, threshold, length):
+    """
+    Implement the Apriori algorithm for frequent item set mining.
+    """
+    # Count occurrences of each item
+    cur_frequencies = {}
+    for key in tar.keys():
+        items = tar[key]
+        for item in items:
+            cur_frequencies[item] = cur_frequencies.get(item, 0) + 1
+
+    # Calculate support for each item
+    total_transactions = len(tar)
+    cur_frequencies = {key: value / total_transactions for key, value in cur_frequencies.items() if value / total_transactions >= threshold}
+
+    if length == 1:
+        return [[key, value] for key, value in cur_frequencies.items()]
+
+    # Generate frequent item sets of length > 1
+    temp_length = 2
+    while temp_length <= length:
+        temp_list = []
+        for i in range(len(cur_frequencies)):
+            for j in range(i + 1, len(cur_frequencies)):
+                temp = cur_frequencies[i][0], cur_frequencies[j][0] if temp_length == 2 else list(set(cur_frequencies[i][0]) | set(cur_frequencies[j][0]))
+                if len(temp) != temp_length:
+                    continue
+                temp.sort()
+                if is_subset_exist(cur_frequencies, get_subsets(temp)):
+                    if temp not in temp_list:
+                        temp_list.append(temp)
+
+        # Calculate support for each generated item set
+        cur_frequencies = []
+        for item in temp_list:
+            temp_len = sum(1 for key in tar.keys() if set(item) <= set(tar[key])) / total_transactions
+            if temp_len >= threshold:
+                cur_frequencies.append([item, temp_len])
+        temp_length += 1
+
+    return cur_frequencies

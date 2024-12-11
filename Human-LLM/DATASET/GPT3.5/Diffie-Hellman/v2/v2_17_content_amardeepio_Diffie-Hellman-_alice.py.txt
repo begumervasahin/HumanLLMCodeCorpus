@@ -1,0 +1,92 @@
+import os
+import json
+from socket import *
+import random
+import time
+
+print("***********************")
+print("*    Diffie Hellman   *")
+print("*     Key Exchange    *")
+print("***********************")
+
+def is_prime(n):
+    """Check if a number is prime."""
+    factors = [i for i in range(1, n+1) if n % i == 0]
+    return len(factors) == 2
+
+def generate_prime():
+    """Generate a random prime number."""
+    while True:
+        prime = random.randint(100, 1000)
+        if is_prime(prime):
+            return prime
+
+def generate_generator(prime):
+    """Generate a random generator."""
+    while True:
+        generator = random.randint(2, prime - 2)
+        if pow(generator, prime - 1, prime) == 1:
+            return generator
+
+def generate_secret():
+    """Generate a random secret key."""
+    return random.randint(1, 35535)
+
+def send_data(conn, data):
+    """Send data over the connection."""
+    conn.send(json.dumps(data).encode())
+
+def receive_data(conn):
+    """Receive data from the connection."""
+    return json.loads(conn.recv(1024).decode())
+
+# Generate prime and generator
+prime = generate_prime()
+generator = generate_generator(prime)
+print("Prime number:", prime)
+print("Generator:", generator)
+
+# Generate Alice's secret key
+a = generate_secret()
+print("Alice's secret key:", a)
+
+# Establish TCP connection
+tcp = socket(AF_INET, SOCK_STREAM)
+tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+tcp.bind(('localhost', 2222))
+tcp.listen(5)
+
+# Accept connection
+conn, addr = tcp.accept()
+
+# Send base and prime number to Bob
+temp = {'p': prime, 'base': generator}
+send_data(conn, temp)
+print("Sent base and prime number to Bob.")
+
+# Calculate Alice's shared secret
+A = pow(generator, a, prime)
+print("Alice's shared secret:", A)
+
+# Receive Bob's public key
+foo = receive_data(conn)
+B = foo['B']
+
+# Calculate final shared secret
+s = pow(B, a, prime)
+
+# Send Alice's public key to Bob
+temp = {'A': A}
+send_data(conn, temp)
+print("Sent Alice's public key to Bob.")
+
+print("Waiting for calculations to be completed...")
+time.sleep(3)
+
+# Receive Bob's shared secret
+bar = receive_data(conn)
+secret2 = bar['S']
+
+# Verify shared secret
+if s == secret2:
+    print("Keys are verified successfully!")

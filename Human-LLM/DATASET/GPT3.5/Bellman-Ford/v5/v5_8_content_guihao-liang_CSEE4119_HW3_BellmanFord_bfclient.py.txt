@@ -1,0 +1,164 @@
+import sys
+import json
+import socket
+import time
+from threading import Thread
+from copy import deepcopy
+
+MAGNITUDE = 15
+
+class Neighbor:
+    def __init__(self, addr='127.0.0.1', port=4119, weight=5.0):
+        self.addr = addr
+        self.port = port
+        try:
+            self.weight = float(weight)
+            if self.weight < 0:
+                raise ValueError('Weight cannot be negative')
+        except ValueError as e:
+            raise ValueError(f"Invalid weight: {str(e)}")
+        self.origin = self.weight
+        self.link_status = True
+        self.link_down = False
+        self.name = f"{self.addr}:{self.port}"
+        self.time = time.time()
+
+class DistanceVector:
+    def __init__(self, addr='127.0.0.1', port=4118, timeout=3.0, *args):
+        self.addr = addr
+        self.port = port
+        self.host_name = f"{self.addr}:{self.port}"
+        self.timer = time.time()
+        self.neighbors = {self.host_name: Neighbor(self.addr, self.port, 0)}
+        self.next_hop = {self.host_name: self.host_name}
+        self.timeout = timeout
+        self.distance_vector = {}
+        self.args = args
+        self.timer_due = False
+        self.dv_update_flag = True
+        self.ceiling = 0
+
+        try:
+            self.conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.conn.bind((self.addr, self.port))
+        except socket.error as e:
+            raise socket.error(f"Socket error [{e.errno}]: {e.strerror}")
+
+    def initialize_neighbor(self, addr='127.0.0.1', port=4117, weight=6.0):
+        neighbor = Neighbor(addr, port, weight)
+        client = f"{addr}:{port}"
+        self.neighbors[client] = neighbor
+        self.next_hop[client] = client
+
+    def initialize_distance_vector_table(self):
+        neighborhood = list(self.neighbors.keys())
+        for name in neighborhood:
+            self.distance_vector[name] = {}
+            if name == self.host_name:
+                for k, v in self.neighbors.items():
+                    self.distance_vector[name][k] = v.weight
+                self.distance_vector[name][name] = 0
+            else:
+                for k in neighborhood:
+                    self.distance_vector[name][k] = float('inf') if k != name else 0
+
+    def is_neighbor_alive(self):
+        return any(v.link_status for k, v in self.neighbors.items() if k != self.host_name)
+
+    def show_routing_table(self):
+        if self.is_neighbor_alive():
+            dv = self.distance_vector[self.host_name]
+            for k, v in dv.items():
+                if v != float('inf') and k != self.host_name:
+                    print(f"Destination={k}, Cost={v}, Next hop={self.next_hop[k]}")
+        else:
+            print('No neighbor is alive.')
+
+    def close(self):
+        self.timer_due = False
+        self.dv_update_flag = False
+        print('Closing...')
+        self.conn.close()
+        sys.exit('Closed.')
+
+    def print_table(self):
+        print('Distance Vector Table'.center(80, '-'))
+        for name in self.distance_vector.keys():
+            print(self.distance_vector[name])
+        print(f"Next Hop: {self.next_hop}")
+        print(''.center(80, '-') + '\n')
+
+    def bellman_ford(self):
+        distance_vector = deepcopy(self.distance_vector)
+        next_hopper = deepcopy(self.next_hop)
+        update = False
+        for dest, cost in distance_vector[self.host_name].items():
+            min_cost = float('inf')
+            next_hop = None
+            if dest != self.host_name:
+                for mid, v in self.neighbors.items():
+                    if v.link_status and mid != self.host_name:
+                        d = self.neighbors[mid].weight + distance_vector[mid][dest]
+                        if d <= min_cost:
+                            min_cost = d
+                            next_hop = mid
+                if min_cost != cost:
+                    min_cost = min_cost if min_cost != float('inf') and min_cost > self.ceiling else float('inf')
+                    distance_vector[self.host_name][dest] = min_cost
+                    next_hopper[dest] = next_hop
+                    update = True
+        self.distance_vector = distance_vector
+        self.next_hop = next_hopper
+        return update
+
+    def update_distance_vector(self, msg, addr, link=True):
+        client = f"{addr[0]}:{addr[1]}"
+        if link:
+            if not self.neighbors[client].link_status and not self.neighbors[client].link_down:
+                self.neighbors[client].time = time.time()
+                self.neighbors[client].link_status = True
+                self.neighbors[client].weight = self.neighbors[client].origin
+            self.neighbors[client].time = time.time()
+            try:
+                tmp = json.loads(msg)
+            except Exception as e:
+                print(f"Error: {str(e)}. JSON loads exception")
+            else:
+                diff = set(tmp.keys()) - set(self.distance_vector[client].keys())
+                if diff:
+                    new_node = list(diff)
+                    for name in new_node:
+                        self.next_hop[name] = name
+                        for neighbor in self.neighbors.keys():
+                            if neighbor != client:
+                                self.distance_vector[neighbor][name] = float('inf')
+                    for k, v in tmp.items():
+                        self.distance_vector[client][k] = v
+                else:
+                    for k, v in tmp.items():
+                        self.distance_vector[client][k] = v
+        else:
+            print(f'Link down: {client}')
+            self.neighbors[client].link_status = False
+            self.neighbors[client].weight = float('inf')
+        self.dv_update_flag = self.bellman_ford()
+
+    def receive_data(self):
+        while True:
+            msg, addr = self.conn.recvfrom(1024)
+            if msg.startswith('ROUTE UPDATE'):
+                self.update_distance_vector(msg[len('ROUTE UPDATE'):], addr)
+            elif msg.startswith('LINK DOWN'):
+                self.update_distance_vector('', addr, False)
+            elif msg.startswith('LINK UP'):
+                self.update_distance_vector(msg[len('LINK UP'):], addr)
+            else:
+                print('Error:', msg)
+
+    def send_data(self):
+        while True:
+            if self.dv_update_flag or self.timer_due:
+                self.timer = time.time()
+                msg = 'ROUTE UPDATE'
+                msg += json.dumps(self.distance_vector[self.host_name], separators=(',', ': '))
+                for

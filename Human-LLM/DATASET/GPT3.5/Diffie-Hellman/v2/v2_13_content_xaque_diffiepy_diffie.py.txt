@@ -1,0 +1,67 @@
+from random import SystemRandom
+import subprocess
+
+def modular_exponentiation(base, exponent, modulus):
+    if modulus == 1:
+        return 0
+    result = 1
+    base = base % modulus
+    while exponent > 0:
+        if exponent % 2 == 1:
+            result = (result * base) % modulus
+        exponent >>= 1
+        base = (base * base) % modulus
+    return result
+
+def generate_prime():
+    rounds = 0
+    prime_found = False
+    while not prime_found:
+        rounds += 1
+        cmd = 'openssl prime -generate -bits 512'
+        proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+        prime = proc.stdout.read().decode("utf-8")
+        prime = int(prime[:-1])
+        p = int((prime * 2) + 1)
+        cmd = 'openssl prime -checks 20 ' + str(p)
+        proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+        output = proc.stdout.read().decode("utf-8")
+        output = output[:-1]
+        words = output.split(" ")
+        is_prime = words[-2] != 'not'
+        if is_prime:
+            prime_found = True
+            return p
+
+def generate_random_number():
+    return int(SystemRandom().random() * (2 ** 512))
+
+def debug():
+    p = generate_prime()
+    a = generate_random_number()
+    g = 5
+    ga = modular_exponentiation(g, a, p)
+    print("p:\t", p)
+    print("g^a:\t", ga)
+    b = 1998286638065473057944506344030256054916203227381748916180906390214373930105605405985818224246280726328877245115163209963634633681313092395058312190549
+    gb = modular_exponentiation(g, b, p)
+    print("g^b:\t", gb)
+    gab = modular_exponentiation(ga, b, p)
+    gba = modular_exponentiation(gb, a, p)
+    print("g^ab:\t", gab)
+    assert(gab == gba)
+
+def pass_off():
+    a = generate_random_number()
+    print("a:\t", a)
+    g = 5
+    p = generate_prime()
+    print("p:\t", p)
+    ga = modular_exponentiation(g, a, p)
+    print("g^a:\t", ga)
+    gb = input("g^b:\t ")
+    gb = int(gb)
+    gab = modular_exponentiation(gb, a, p)
+    print("g^ab:\t", gab)
+
+pass_off()

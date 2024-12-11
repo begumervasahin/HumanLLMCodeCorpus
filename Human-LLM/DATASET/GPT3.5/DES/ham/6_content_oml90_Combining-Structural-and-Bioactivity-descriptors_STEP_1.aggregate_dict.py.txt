@@ -1,0 +1,74 @@
+import time
+import sys, os
+if len(sys.argv) != 3:
+	print ('Usage : python ' + sys.argv[0] + ' [ Raw hts data  ] [ output folder ]')
+	quit()
+output = sys.argv[2]
+if not os.path.isdir(output):
+	print ('Usage : python ' + sys.argv[0] + ' [ Raw hts data  ] [ output folder ]')
+	sys.stderr.write("ERROR: can't find output folder at {}\n".format(output))
+	sys.exit()
+if output[-1] != '/': output=output+'/'
+header = "CID\tflag\n"
+assay_list = []
+for file in os.listdir(sys.argv[1]):
+    assay_list.append(file)
+start = time.time()
+sys.stderr.write('assays:{}\n'.format(len(assay_list)))
+K=0
+for assay in assay_list:
+    assay_path = sys.argv[1]+assay
+    f_type = assay.split('.')[-1]
+    f_string = list(assay)
+    if f_type != 'tsv':
+        print('file: {} ==> is not of type .tsv, moving to next file'.format(assay))
+        continue
+    K+=1
+    sys.stderr.write('{}\t({}/{})\t\r'.format(assay,K,len(assay_list)))
+    if not os.path.isfile(assay_path):
+        sys.stderr.write("ERROR: can't find file {}\n".format(assay_path))
+        continue
+    cmpd_data={}
+    start_assay = time.time()
+    assay_content = open(assay_path, encoding='latin-1').read().splitlines()
+    n_cmpd_total = len(assay_content)
+    n_cmpd_interest = 0
+    first_line = False
+    n_head_rows = 0
+    for line in assay_content:
+        if line[0] == '1': first_line = True;
+        if line[0] + line[1] == '1\t': print('\nnumber of head rows: {}'.format(n_head_rows))
+        if first_line == True:
+            linelist = line.split("\t")
+            Cid     = linelist[2]
+            flag    = linelist[3]
+            if Cid=='': continue
+            if flag == 'Inactive': flag = 'N'
+            elif flag == 'Active': flag = 'A'
+            elif flag == 'Inconclusive': continue
+            elif flag == 'Unspecified': continue
+            elif flag == '': print('{} No flag set for CID: {}'.format(assay, Cid)); continue
+            else: print('{} unknown flag: {}'.format(assay, flag), end='\n'); continue
+            n_cmpd_interest+=1
+            if Cid not in cmpd_data: cmpd_data[Cid]={'flag':[],'assay':assay}
+            cmpd_data[Cid]['flag'].append(flag)
+        else: n_head_rows += 1
+    if len(cmpd_data)==0:
+        end_assay = time.time()
+        sys.stdout.write(assay+"\t"+str(n_cmpd_total)+"\t"+str(n_cmpd_interest)+"\t"+str(len(cmpd_data))+"\t"+str(round(end_assay-start_assay,5))+"\n")
+        continue
+    fout=open(output+assay.split('/')[-1],'w')
+    fout.write(header)
+    for cmpd in cmpd_data:
+        if len(cmpd_data[cmpd]['flag']) > 1:
+            flag = '//'
+            n = [x for x in cmpd_data[cmpd]['flag'] if x=='N']
+            if len(n) > len(cmpd_data[cmpd]['flag'])/2: flag = 'N'
+            else:flag='A'
+            fout.write(cmpd+"\t"+flag+"\n")
+        else:
+            fout.write(cmpd+"\t"+cmpd_data[cmpd]['flag'][0]+"\n")
+    fout.close()
+    end_assay = time.time()
+    sys.stdout.write(assay+"\t"+str(n_cmpd_total)+"\t"+str(n_cmpd_interest)+"\t"+str(len(cmpd_data))+"\t"+str(round(end_assay-start_assay,5))+"\n")
+print("Elapsed time: {}".format(time.time()-start))

@@ -1,0 +1,122 @@
+import random
+import hashlib
+import sys
+
+# Global RSA parameters
+N_RSA = 14044894356192612772818841984347061797337978519759913940791778279418677427548291059927485749856462915496664738812520182880020537192153403698682811419371843770446086552727175109468776241126237562982782648467083756626157205149889393549435971679553896797633931663407696559928494554397737985903430806016836540593
+RSA_129 = 114381625757888867669235779976146612010218296721242362562561842935706935245733897830597123563958705058989075147599290026879543541
+
+# Functions for encoding and decoding text
+def encode_text_to_number(text):
+    """Encode text to a numerical representation."""
+    result = 0
+    for char in text:
+        if '0' <= char <= '9':
+            result = (result << 6) + ord(char) - ord('0')
+        elif 'A' <= char <= 'Z':
+            result = (result << 6) + ord(char) - ord('A') + 10
+        elif 'a' <= char <= 'z':
+            result = (result << 6) + ord(char) - ord('a') + 36
+        elif char == '+':
+            result = (result << 6) + 62
+        elif char == '/':
+            result = (result << 6) + 63
+    return result
+
+def decode_number_to_text(number):
+    """Decode a number back to text representation."""
+    text = ''
+    while number > 0:
+        remainder = number % 64
+        if remainder < 10:
+            text = chr(remainder + ord('0')) + text
+        elif remainder < 36:
+            text = chr(remainder - 10 + ord('A')) + text
+        elif remainder < 62:
+            text = chr(remainder - 36 + ord('a')) + text
+        elif remainder == 62:
+            text = '+' + text
+        elif remainder == 63:
+            text = '/' + text
+        number //= 64
+    return text
+
+# Function for file hash computation
+def hash_file_content(filename):
+    """Compute the hash of a file's content using SHA-512."""
+    with open(filename, 'r') as file:
+        content = file.read()
+    return hash_content(content)
+
+def hash_content(content):
+    """Hash content with a custom method combining multiple SHA-512 hashes."""
+    hash1 = hashlib.sha512(content.encode()).digest()
+    hash2 = hashlib.sha512(hash1 + content.encode()).digest()
+    hash3 = hashlib.sha512(content.encode() + hash2).digest()
+    hash4 = hashlib.sha512(content.encode() + hash3).digest()
+    hash5 = hashlib.sha512(content.encode() + hash4).digest()
+    combined_hash = sum(hash1 + hash2 + hash3 + hash4 + hash5) % N_RSA
+    return combined_hash
+
+# RSA encryption and decryption
+def encrypt_with_public_key(text, filename):
+    """Encrypt text using a public key."""
+    public_key = read_number_from_file(filename)
+    encrypted_text = pow(encode_text_to_binary(text), public_key, N_RSA)
+    print("Encrypted text: \n" + str(encrypted_text))
+
+def decrypt_with_private_key(number):
+    """Decrypt a number using the RSA private key."""
+    decrypted_text = decode_binary_to_text(pow(number, RSA_129, N_RSA))
+    print("Decrypted text:\n" + decrypted_text)
+
+# Helper functions for binary and number conversions
+def encode_text_to_binary(text):
+    """Encode text to binary."""
+    result = 0
+    for char in text:
+        result = (result << 8) ^ ord(char)
+    return result
+
+def decode_binary_to_text(number):
+    """Decode binary back to text representation."""
+    text = ''
+    while number > 0:
+        text = chr(number % 256) + text
+        number //= 256
+    return text
+
+# File operations for reading and writing numbers
+def write_number_to_file(number, filename):
+    """Write a number to a file in binary format."""
+    with open(filename, 'wb') as file:
+        while number > 0:
+            byte = number % 256
+            number //= 256
+            file.write(bytes([byte]))
+
+def read_number_from_file(filename):
+    """Read a number from a file."""
+    with open(filename, 'rb') as file:
+        number = 0
+        file_content = file.read()
+        for i in range(len(file_content)):
+            number = (number << 8) ^ file_content[len(file_content) - i - 1]
+    return number
+
+# Main function handling command line arguments
+def main():
+    print("\n\nrsacrypt - Example RSA encryption/decryption tool\n\n")
+    print("Usage examples:")
+    print("Encrypt: python rsacrypt.py E <text>")
+    print("Decrypt: python rsacrypt.py D <bigInteger>\n\n")
+    
+    if len(sys.argv) == 3 and sys.argv[1] == "E":
+        encrypt_with_public_key(sys.argv[2], 'public_key_file')
+    elif len(sys.argv) == 3 and sys.argv[1] == "D":
+        decrypt_with_private_key(int(sys.argv[2]))
+    else:
+        print("Invalid command or number of arguments.")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,81 @@
+import re
+
+# Placeholder classes and methods for missing imports
+class Config:
+    pass
+
+class story_code:
+    @staticmethod
+    def start_point():
+        pass
+
+    @staticmethod
+    def story_points():
+        pass
+
+    @staticmethod
+    def tasks():
+        pass
+
+if __name__ == "__main__":
+    from app.story.story import start_point, story_points, tasks
+
+    def validate_story():
+        validate_references()
+        validate_lookups()
+
+    def validate_references():
+        missing_references = {
+            "points": set(),
+            "tasks": set(),
+        }
+
+        existing_points = story_points.keys()
+        referenced_points = [start_point] + [dest for point in story_points.values() for dest in point["paths"].values()]
+        missing_references["points"] = {point for point in referenced_points if point not in existing_points}
+
+        existing_tasks = tasks.keys()
+        referenced_tasks = [task for point in story_points.values() for task in point.get("tasks", [])]
+        missing_references["tasks"] = {task for task in referenced_tasks if task not in existing_tasks}
+
+        if missing_references["points"]:
+            log_error(f"There are referenced, but unknown storypoints: {missing_references['points']}")
+        if missing_references["tasks"]:
+            log_error(f"There are referenced, but unknown tasks: {missing_references['tasks']}")
+        else:
+            print("All references in story.json found!")
+
+    def validate_lookups():
+        missing_validation_methods = {
+            task["validation_method"] for task in tasks.values()
+            if task["validation_method"] not in dir(story_code)
+        }
+        if missing_validation_methods:
+            log_error(f"There are referenced, but unknown task validation methods: {missing_validation_methods}")
+        else:
+            print("All validation methods defined!")
+
+        missing_action_methods = {
+            action for point in story_points.values() for action in point.get("actions", [])
+            if action not in dir(story_code)
+        }
+        if missing_action_methods:
+            log_error(f"There are referenced, but unknown server action methods: {missing_action_methods}")
+        else:
+            print("All server action methods defined!")
+
+        missing_placeholders = {
+            ph for point in story_points.values()
+            for ph in re.findall(r"{(.*?)}", ''.join(point["description"]) + ''.join(point["paths"].keys()))
+            if ph not in story_code.placeholder_getters
+        }
+        if missing_placeholders:
+            log_error(f"There are referenced, but unknown placeholders: {missing_placeholders}")
+        else:
+            print("All placeholder references found!")
+
+    def log_error(message):
+        # Placeholder for logging errors, you can implement your logging mechanism here
+        print(f"Error: {message}")
+
+    validate_story()

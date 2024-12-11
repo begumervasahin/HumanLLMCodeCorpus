@@ -1,0 +1,82 @@
+import sys
+
+# Dictionary to store Huffman codes
+code_dic = {}
+
+# Function to generate the dictionary of Huffman codes from a file
+def generate_dic(file_name: str) -> None:
+    with open(file_name, 'r') as file_stream:
+        for line in file_stream:
+            # Split each line by tab character
+            char, _, code = line.split('\t')
+            # Replace escape characters with their representations
+            char = char.replace('\\n', '\n').replace('\\t', '\t').replace('\\r', '\r')
+            # Add the character and its corresponding code to the dictionary
+            code_dic[code.strip()] = char
+
+# Function to decode binary text using Huffman codes
+def decoding(bin_text: str) -> str:
+    temp_code = ''
+    decode_text = ''
+    for b in bin_text:
+        temp_code += b
+        # Check if the current code is in the dictionary
+        if temp_code in code_dic:
+            char = code_dic[temp_code]
+            # Stop decoding if null character is encountered
+            if char == '\0':
+                break
+            decode_text += char
+            temp_code = ''
+    return decode_text
+
+# Main function to unzip the file using Huffman decoding
+def main(zip_address: str, huffman_address: str) -> None:
+    try:
+        # Read the compressed file
+        with open(zip_address, 'r') as file_stream:
+            code_text = file_stream.read()
+    except FileNotFoundError as ex:
+        print('No such file or directory:', ex.filename)
+        return
+    except IsADirectoryError as ex:
+        print('Is a directory:', ex.filename)
+        return
+
+    try:
+        # Generate Huffman dictionary
+        generate_dic(huffman_address)
+    except FileNotFoundError as ex:
+        print('No such file or directory:', ex.filename)
+        return
+    except IsADirectoryError as ex:
+        print('Is a directory:', ex.filename)
+        return
+
+    bin_text = ''
+    # Convert the compressed text to binary
+    for char in code_text:
+        temp_code = bin(ord(char))[2:]
+        if len(temp_code) < 8:
+            temp_code = (8 - len(temp_code)) * '0' + temp_code
+        bin_text += temp_code
+
+    # Decode the binary text using Huffman codes
+    decode_text = decoding(bin_text)
+
+    # Write the decoded text to Output.txt
+    with open('Output.txt', 'w') as file_stream:
+        file_stream.write(decode_text)
+
+    print("File '%s' unzipped to 'Output.txt' successfully\n" % zip_address)
+
+if __name__ == '__main__':
+    try:
+        # Get the input file addresses from command line arguments
+        zip_file_address, huffman_file_address = sys.argv[1], sys.argv[2]
+    except IndexError:
+        # Use default file addresses if command line arguments are not provided
+        zip_file_address, huffman_file_address = 'Zip.txt', 'Huffman.txt'
+
+    # Call the main function with the provided addresses
+    main(zip_file_address, huffman_file_address)

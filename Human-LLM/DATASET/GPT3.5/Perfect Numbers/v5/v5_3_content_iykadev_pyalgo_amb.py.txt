@@ -1,0 +1,80 @@
+import itertools
+
+class Amb(object):
+    def __init__(self):
+        self._names2values = {}
+        self._func = None
+        self._value_iterator = None
+        self._func_arg_names = None
+
+    def __call__(self, arg=None):
+        if hasattr(arg, '__code__'):
+            globals_dict = arg.__globals__ if hasattr(arg, '__globals__') else arg.func_globals
+            arg_names = arg.__code__.co_varnames[:arg.__code__.co_argcount]
+            for name in arg_names:
+                if name not in self._names2values:
+                    assert name in globals_dict, f"Global name {name} not found in function globals"
+                    self._names2values[name] = globals_dict[name]
+            value_sets = [self._names2values[name] for name in arg_names]
+            self._value_iterator = itertools.product(*value_sets)
+            self._func = arg
+            self._func_arg_names = arg_names
+            return self
+        elif arg is not None:
+            arg = frozenset(arg)
+            return arg
+        else:
+            return self._next_in_search()
+
+    def _next_in_search(self):
+        arg = self._func
+        globals_dict = arg.__globals__
+        arg_names = self._func_arg_names
+        found = False
+        for values in self._value_iterator:
+            if arg(*values):
+                found = True
+                for name, value in zip(arg_names, values):
+                    globals_dict[name] = value
+                break
+        if not found:
+            raise StopIteration
+        return values
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self()
+
+    next = __next__
+
+if __name__ == '__main__':
+    # Small Pythagorean triples problem
+    if True:
+        amb = Amb()
+        print("\nSmall Pythagorean triples problem:")
+        x = amb(range(1, 11))
+        y = amb(range(1, 11))
+        z = amb(range(1, 11))
+        for _ in amb(lambda x, y, z: x * x + y * y == z * z):
+            print(f"{x} {y} {z}")
+
+    # The Amb problem
+    if True:
+        amb = Amb()
+        print("\nThe Amb problem:")
+        w1 = amb(["the", "that", "a"])
+        w2 = amb(["frog", "elephant", "thing"])
+        w3 = amb(["walked", "treaded", "grows"])
+        w4 = amb(["slowly", "quickly"])
+        for _ in amb(lambda w1, w2, w3, w4: w1[-1] == w2[0] and w2[-1] == w3[0] and w3[-1] == w4[0]):
+            print(f"{w1} {w2} {w3} {w4}")
+
+    # Example demonstrating Amb with constraint
+    if True:
+        amb = Amb()
+        x = amb([1, 2, 3])
+        y = amb([4, 5, 6])
+        for _ in amb(lambda x, y: x * y != 8):
+            print(f"{x} {y}")

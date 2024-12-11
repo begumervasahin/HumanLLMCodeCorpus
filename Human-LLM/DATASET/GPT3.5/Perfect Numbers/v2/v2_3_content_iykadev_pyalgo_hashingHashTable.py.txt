@@ -1,0 +1,98 @@
+class HashTable:
+    def __init__(self):
+        """
+        Initialize the HashTable with a default size of 11 and empty slots and data lists.
+        """
+        self.size = 11
+        self.slots = [None] * self.size
+        self.data = [None] * self.size
+
+    def put(self, key, data):
+        """
+        Insert a key-value pair into the HashTable.
+        """
+        hash_value = self.hash_function(key, len(self.slots))
+        if self.slots[hash_value] is None:
+            # If the slot is empty, insert the key and data
+            self.slots[hash_value] = key
+            self.data[hash_value] = data
+        else:
+            # If the slot is not empty, handle collision using linear probing
+            if self.slots[hash_value] == key:
+                # If the key already exists, update the data
+                self.data[hash_value] = data
+            else:
+                # Find the next available slot using rehashing
+                next_slot = self.rehash(hash_value, len(self.slots))
+                while self.slots[next_slot] is not None and self.slots[next_slot] != key:
+                    next_slot = self.rehash(next_slot, len(self.slots))
+                if self.slots[next_slot] is None:
+                    # If an empty slot is found, insert the key and data
+                    self.slots[next_slot] = key
+                    self.data[next_slot] = data
+                else:
+                    # If the key already exists, update the data
+                    self.data[next_slot] = data
+
+    def hash_function(self, key, size):
+        """
+        Calculate the hash value of the key using modulo operation.
+        """
+        return key % size
+
+    def rehash(self, old_hash, size):
+        """
+        Calculate the next slot using linear probing.
+        """
+        return (old_hash + 1) % size
+
+    def get(self, key):
+        """
+        Retrieve the value associated with the given key from the HashTable.
+        """
+        start_slot = self.hash_function(key, len(self.slots))
+        data = None
+        stop = False
+        found = False
+        position = start_slot
+        while self.slots[position] is not None and not found and not stop:
+            if self.slots[position] == key:
+                found = True
+                data = self.data[position]
+            else:
+                position = self.rehash(position, len(self.slots))
+                if position == start_slot:
+                    stop = True
+        return data
+
+    def __getitem__(self, key):
+        """
+        Overloaded operator to retrieve the value associated with the given key using bracket notation.
+        """
+        return self.get(key)
+
+    def __setitem__(self, key, data):
+        """
+        Overloaded operator to insert a key-value pair using bracket notation.
+        """
+        self.put(key, data)
+
+if __name__ == "__main__":
+    # Example usage of the HashTable class
+    H = HashTable()
+    H[54] = "cat"
+    H[26] = "dog"
+    H[93] = "lion"
+    H[17] = "tiger"
+    H[77] = "bird"
+    H[31] = "cow"
+    H[44] = "goat"
+    H[55] = "pig"
+    H[20] = "chicken"
+    print("Slots:", H.slots)
+    print("Data:", H.data)
+    print("Value associated with key 20:", H[20])
+    print("Value associated with key 17:", H[17])
+    H[20] = 'duck'
+    print("Updated value associated with key 20:", H[20])
+    print("Value associated with key 99:", H[99])

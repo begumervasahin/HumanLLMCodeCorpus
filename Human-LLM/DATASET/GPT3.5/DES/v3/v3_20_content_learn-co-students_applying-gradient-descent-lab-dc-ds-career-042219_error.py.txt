@@ -1,0 +1,53 @@
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+import plotly.io as pio
+
+def y_actual(x, x_values, y_values):
+    combined_values = list(zip(x_values, y_values))
+    point_at_x = next((point for point in combined_values if point[0] == x), None)
+    return point_at_x[1] if point_at_x else None
+
+def error(x_values, y_values, m, b, x):
+    expected = m * x + b
+    return y_actual(x, x_values, y_values) - expected
+
+def error_line_trace(x_values, y_values, m, b, x):
+    y_hat = m * x + b
+    y = y_actual(x, x_values, y_values)
+    error_value = y - y_hat
+    return {'x': [x, x], 'y': [y, y_hat], 'mode': 'line', 'marker': {'color': 'red'}, 'name': f'Error at {x}', 'text': [error_value], 'textposition': 'right'}
+
+def error_line_traces(x_values, y_values, m, b):
+    return [error_line_trace(x, y_values, m, b, x) for x in x_values]
+
+def squared_error(x_values, y_values, m, b, x):
+    return error(x_values, y_values, m, b, x) ** 2
+
+def squared_errors(x_values, y_values, m, b):
+    return [squared_error(x, y_values, m, b, x) for x in x_values]
+
+def residual_sum_squares(x_values, y_values, m, b):
+    return round(sum(squared_errors(x_values, y_values, m, b)), 2)
+
+def trace_rss(x_values, y_values, m, b):
+    rss_calc = residual_sum_squares(x_values, y_values, m, b)
+    return go.Bar(x=['RSS'], y=[rss_calc], name='RSS')
+
+def plot_regression_and_rss(scatter_trace, regression_trace, rss_calc_trace):
+    fig = make_subplots(rows=1, cols=2, subplot_titles=('Regression Analysis', 'Residual Sum of Squares (RSS)'))
+    fig.add_trace(scatter_trace, row=1, col=1)
+    fig.add_trace(regression_trace, row=1, col=1)
+    fig.add_trace(rss_calc_trace, row=1, col=2)
+    fig.update_layout(showlegend=False)
+    pio.show(fig)
+
+x_values = [1, 2, 3, 4, 5]
+y_values = [2, 3, 5, 7, 9]
+m = 2
+b = 0
+
+scatter_trace = go.Scatter(x=x_values, y=y_values, mode='markers', name='Data Points')  
+regression_trace = go.Scatter(x=x_values, y=[m * x + b for x in x_values], mode='lines', name='Regression Line')
+rss_trace = trace_rss(x_values, y_values, m, b)
+
+plot_regression_and_rss(scatter_trace, regression_trace, rss_trace)

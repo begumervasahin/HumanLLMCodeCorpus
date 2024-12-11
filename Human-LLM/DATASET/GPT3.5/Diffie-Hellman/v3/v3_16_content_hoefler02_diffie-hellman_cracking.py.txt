@@ -1,0 +1,48 @@
+from Crypto.Cipher import AES
+
+def recover_private_keys(p, g, pk1, pk2):
+    """Recover the private keys based on public keys."""
+    private_key1, private_key2 = 0, 0
+    exponent = 1
+    count = 0
+    while True:
+        if pow(g, exponent, p) == pk1:
+            private_key1 = exponent
+            count += 1
+            if count == 2:
+                break
+        if pow(g, exponent, p) == pk2:
+            private_key2 = exponent
+            count += 1
+            if count == 2:
+                break
+        exponent += 1
+    return private_key1, private_key2
+
+def decrypt_messages(private_key1, private_key2, g, p, encrypted_message1, encrypted_message2):
+    """Decrypt messages using the private keys."""
+    shared_secret = pow(g, (private_key1 * private_key2), p)
+    shared_secret_hex = hex(shared_secret)[2:]
+    if len(shared_secret_hex) % 2 != 0:
+        shared_secret_hex = '0' + shared_secret_hex
+    cipher = AES.new(bytes.fromhex(shared_secret_hex))
+    plaintext1 = cipher.decrypt(encrypted_message1).decode('utf-8').replace('\x00', '')
+    plaintext2 = cipher.decrypt(encrypted_message2).decode('utf-8').replace('\x00', '')
+    return plaintext1, plaintext2
+
+if __name__ == "__main__":
+    prime_modulus = 207080661200384833303080496562605487473
+    generator = 178610548800843800639486516995488564788
+    public_key1 = 78259913733803025092539024300534194541
+    public_key2 = 31222482936005213821562053897313002272
+    encrypted_message1 = bytes.fromhex(hex(64445692639996584659112689530505997073)[2:])
+    encrypted_message2 = bytes.fromhex(hex(60371285466096798840170942333708221940493753111492365229078081035978838893670)[2:])
+
+    private_key1, private_key2 = recover_private_keys(prime_modulus, generator, public_key1, public_key2)
+    print('[*] PRIVATE KEY ONE RECOVERED :', private_key1)
+    print('[*] PRIVATE KEY TWO RECOVERED :', private_key2)
+
+    print('[-] Starting decryption...\n')
+    plaintext1, plaintext2 = decrypt_messages(private_key1, private_key2, generator, prime_modulus, encrypted_message1, encrypted_message2)
+    print('[*] PLAINTEXT ONE RECOVERED:\n', plaintext1)
+    print('[*] PLAINTEXT TWO RECOVERED:\n', plaintext2)

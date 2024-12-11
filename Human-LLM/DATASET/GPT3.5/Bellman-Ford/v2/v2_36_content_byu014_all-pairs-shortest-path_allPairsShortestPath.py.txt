@@ -1,0 +1,125 @@
+import argparse
+import os
+import re
+import sys
+import time
+import timeit
+
+# Define command-line arguments
+parser = argparse.ArgumentParser(description='Calculate the shortest path between all pairs of vertices in a graph')
+parser.add_argument('--algorithm', default='a', help='Algorithm: Select the algorithm to run, default is all. (a)ll, (b)ellman-ford only or (f)loyd-warshall only')
+parser.add_argument('-v', '--verbose', action='store_true')
+parser.add_argument('--profile', action='store_true')
+parser.add_argument('filename', metavar='<filename>', help='Input file containing graph')
+
+# Regular expressions for parsing graph input
+graph_re = re.compile(r"(\d+)\s(\d+)")
+edge_re = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+vertices = []
+edges = []
+
+def bellman_ford(G):
+    path_pairs = []
+    for source in range(len(G[0])):
+        d = [float("inf")] * len(G[0])
+        d[source] = 0.0
+        for _ in range(len(G[0]) - 1):
+            for current in range(len(G[0])):
+                for other_vertex in range(len(G[1])):
+                    if d[other_vertex] > float(d[current]) + float(G[1][current][other_vertex]):
+                        d[other_vertex] = float(d[current]) + float(G[1][current][other_vertex])
+        for current in range(len(G[0])):
+            for other_vertex in range(len(G[1])):
+                if d[other_vertex] > float(d[current]) + float(G[1][current][other_vertex]):
+                    return path_pairs, False
+        path_pairs.append(d)
+    return path_pairs, True
+
+def floyd_warshall(G):
+    path_pairs = []
+    copy_G = G
+    for x in range(len(G[0])):
+        copy_G[1][x][x] = 0
+    for i in range(len(G[0])):
+        for j in range(len(G[0])):
+            for _ in range(len(G[0])):
+                copy_G[1][j][_] = min(float(copy_G[1][j][_]), float(copy_G[1][j][i]) + float(copy_G[1][i][_]))
+    path_pairs = copy_G[1]
+    return path_pairs
+
+def read_file(filename):
+    global vertices
+    global edges
+    with open(filename, 'r') as inFile:
+        line1 = inFile.readline()
+        graph_match = graph_re.match(line1)
+        if not graph_match:
+            print(line1 + " not properly formatted")
+            sys.exit(1)
+        vertices = list(range(int(graph_match.group(1))))
+        edges = [[float("inf")] * len(vertices) for _ in range(len(vertices))]
+        for line in inFile.readlines():
+            line = line.strip()
+            edge_match = edge_re.match(line)
+            if edge_match:
+                source = int(edge_match.group(1))
+                sink = int(edge_match.group(2))
+                if source > len(vertices) or sink > len(vertices):
+                    print("Attempting to insert an edge between " + str(source) + " and " + str(sink) + " in a graph with " + str(len(vertices)) + " vertices")
+                    sys.exit(1)
+                weight = edge_match.group(3)
+                edges[source - 1][sink - 1] = weight
+    G = (vertices, edges)
+    return G
+
+def matrix_equality(a, b):
+    if len(a) == 0 or len(b) == 0 or len(a) != len(b):
+        return False
+    if len(a[0]) != len(b[0]):
+        return False
+    for i, row in enumerate(a):
+        for j, value in enumerate(b):
+            if a[i][j] != b[i][j]:
+                return False
+    return True
+
+def main(filename, algorithm):
+    G = read_file(filename)
+    path_pairs = []
+    no_cycle = True
+
+    if algorithm.lower() == 'b':
+        start_timer = timeit.default_timer()
+        path_pairs = bellman_ford(G)
+        stop_timer = timeit.default_timer()
+        print(stop_timer - start_timer)
+        path_pairs, no_cycle = path_pairs
+
+    if algorithm.lower() == 'f':
+        start_timer = timeit.default_timer()
+        path_pairs = floyd_warshall(G)
+        stop_timer = timeit.default_timer()
+        print(stop_timer - start_timer)
+
+    if algorithm.lower() == 'a':
+        print('Running both')
+        path_pairs_bellman = bellman_ford(G)
+        path_pairs_floyd = floyd_warshall(G)
+        path_pairs = path_pairs_bellman[0]
+        path_pairs = path_pairs_floyd
+        no_cycle = path_pairs_bellman[1]
+        if not matrix_equality(path_pairs_bellman, path_pairs_floyd) or not no_cycle:
+            print('Floyd-Warshall and Bellman-Ford did not produce the same result')
+
+    with open(os.path.splitext(filename)[0] + '_shortestPaths.txt', 'w') as f:
+        if not no_cycle:
+            f.write("Negative Cycle Detected \n")
+        for row in path_pairs:
+            for weight in row:
+                f.write(str(weight) + ' ')
+            f.write('\n')
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args.filename, args.algorithm)

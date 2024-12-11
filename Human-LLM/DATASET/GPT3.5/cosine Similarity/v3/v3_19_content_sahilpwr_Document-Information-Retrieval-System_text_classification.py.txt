@@ -1,0 +1,70 @@
+from math import log, sqrt
+from collections import Counter
+from operator import itemgetter
+
+def idf(term, all_documents):
+    """Calculate the inverse document frequency (IDF) for a term."""
+    num_documents_with_term = sum(1 for doc in all_documents if term in doc)
+    if num_documents_with_term > 0:
+        return round(log(float(len(all_documents)) / float(num_documents_with_term), 2), 3)
+    else:
+        return 0
+
+def tf(term, document):
+    """Calculate the term frequency (TF) in a document."""
+    return document.count(term)
+
+def cal_tfidf(term, doc, terms):
+    """Calculate the TF-IDF score for a term in a document."""
+    return tf(term, doc) * idf(term, terms)
+
+def cosine_similarity(doc, q, d):
+    """Calculate the cosine similarity between two documents."""
+    a = sum(cal_tfidf(x, doc, d) * cal_tfidf(x, q, d) for x in d)
+    b = length_of(doc, d) * length_of(q, d)
+    return round(a / b, 3) if b else 0
+
+def length_of(doc, d):
+    """Calculate the length of a document vector."""
+    val = sum(pow(cal_tfidf(x, doc, d), 2) for x in d)
+    return sqrt(val)
+
+# Initialize lists and dataset
+f = []
+doc_files = ['doc1.txt', 'doc2.txt', 'doc3.txt', 'doc4.txt', 'doc5.txt', 'doc6.txt']
+dataset = [['doc1.txt', 'science'], ['doc2.txt', 'science'], ['doc3.txt', 'science'],   
+           ['doc4.txt', 'entertainment'], ['doc5.txt', 'entertainment'], ['doc6.txt', 'entertainment']]
+
+# Read documents into f list
+for file_name in doc_files:
+    with open(file_name, 'r') as file:
+        f.append(file.read())
+
+# Get input test file and preprocess the query
+test_file = input('Enter test file name: ')
+with open(test_file, 'r') as file:
+    q = file.readline().lower().strip()
+
+# Tokenize terms from the documents
+terms = [doc.lower().rstrip('\n').split() for doc in f]
+fin_terms = set(sum(terms, []))
+
+print('\nCosine Similarity Values')
+
+# Calculate cosine similarity for each document and query
+for i, doc_terms in enumerate(terms):
+    dataset[i] = dataset[i] + [cosine_similarity(doc_terms, q, fin_terms)]
+
+# Select top-k documents with non-zero similarity
+k = 3
+sorted_dataset = sorted(dataset, key=itemgetter(2), reverse=True)
+top_k = [entry for entry in sorted_dataset[:k] if entry[2] != 0]
+
+# Print classification result
+if len(top_k) == 0:
+    print('No matches found.')
+else:
+    class_counts = Counter(category for (_, category, _) in top_k)
+    print('Class counts:', class_counts)
+    classification = max(class_counts, key=lambda cls: class_counts[cls])
+    print('Class of test file is:', classification)

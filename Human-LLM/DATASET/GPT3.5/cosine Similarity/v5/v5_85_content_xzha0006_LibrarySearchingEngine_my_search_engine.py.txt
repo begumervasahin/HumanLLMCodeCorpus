@@ -1,0 +1,84 @@
+import time
+import math
+import numpy as np
+from mpi4py import MPI
+from utils import load_files, tokenization, cal_tf
+
+# Initialize MPI
+comm = MPI.COMM_WORLD
+mpi_size = comm.Get_size()
+rank = comm.Get_rank()
+
+def command_index(index_dir, file_path):
+    # Load files and distribute workload across processes
+    file_content_list, file_names = load_files(file_path)
+    file_size = len(file_content_list)
+    tf_dict_list = []
+
+    # Determine workload for each process
+    interval = math.ceil(file_size / mpi_size)
+    start_idx = rank * interval
+    end_idx = min((rank + 1) * interval, file_size)
+
+    # Process files in the assigned range
+    for i in range(start_idx, end_idx):
+        term_list = tokenization(file_content_list[i])
+        tf_dict = calculate_tf(term_list)
+        tf_dict_list.append(tf_dict)
+        print(rank, i, len(tf_dict))
+
+    # Send processed data to rank 0
+    if rank != 0:
+        comm.send(tf_dict_list, dest=0, tag=1)
+
+    # Rank 0 aggregates data and writes index
+    if rank == 0:
+        tf_dict_list = gather_processed_data(tf_dict_list)
+        df_dict = calculate_document_frequency(tf_dict_list)
+        print(len(df_dict))
+        write_index(index_dir, file_names, tf_dict_list, df_dict)
+
+def gather_processed_data(tf_dict_list):
+    if rank == 0:
+        for i in range(1, mpi_size):
+            tf_dict_list.extend(comm.recv(source=i, tag=1))
+    else:
+        comm.send(tf_dict_list, dest=0, tag=1)
+    return tf_dict_list
+
+def calculate_document_frequency(tf_dict_list):
+    df_dict = {}
+    for tf_dict in tf_dict_list:
+        for term in tf_dict:
+            df_dict[term] = df_dict.get(term, 0) + 1
+    return df_dict
+
+def write_index(index_dir, file_names, tf_dict_list, df_dict):
+    with open(index_dir + "index_parallel.txt", 'w') as f:
+        for term in df_dict:
+            idf = math.log(len(tf_dict_list) / df_dict[term])
+            tf_vector_list = calculate_tf_vector(tf_dict_list, term, idf, file_names)
+            record = format_index_record(term, tf_vector_list, idf)
+            f.write(record)
+
+def calculate_tf_vector(tf_dict_list, term, idf, file_names):
+    tf_vector_list = [[] for _ in range(len(file_names))]
+    for i, tf_dict in enumerate(tf_dict_list):
+        tf = tf_dict.get(term, 0)
+        if tf != 0:
+            tf_vector_list[i].append(tf * idf)
+    return tf_vector_list
+
+def format_index_record(term, tf_vector_list, idf):
+    tf_record = ""
+    for i, tf_vector in enumerate(tf_vector_list):
+        if tf_vector:
+            file_name = file_names[i]
+            tf_record += ",%s,%d" % (file_name, tf_vector[0])
+    return term + tf_record + "," + ("%.3f" % idf) + "\n"
+
+if __name__ == '__main__':
+    start_time = time.time()
+    command_index("../index/", "../largeFiles/collection/")
+    end_time = time.time()
+    print("Time taken:", end_time - start_time)

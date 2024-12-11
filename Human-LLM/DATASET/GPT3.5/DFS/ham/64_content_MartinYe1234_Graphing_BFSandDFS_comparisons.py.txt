@@ -1,0 +1,70 @@
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from random import randint
+from random import choice
+from time import time
+fig = plt.figure()
+dfs_data = []
+bfs_data = []
+x_axis = [i+1 for i in range(2001)]
+plt.figure(figsize=(16, 5))
+def gen_graph():
+	global adj, adjacent
+	adj = {}
+	adjacent = {}
+	for i in range(num_of_nodes):
+		adj[i] = []
+		adjacent[i] = []
+	for i in range(num_of_connections):
+		x = randint(0,num_of_nodes-1)
+		y = randint(0,num_of_nodes-1)
+		adj[x].append(y)
+		adj[y].append(x)
+		adjacent[x].append(y)
+		adjacent[y].append(x)
+	for i in range(num_of_nodes):
+		adj[i] = list(set(adj[i]) - set([i]))
+		adjacent[i] = list(set(adjacent[i]) - set([i]))
+def dfs(node):
+	dfs_visited[node] = 1
+	for neighbor in adj[node]:
+		if not dfs_visited[neighbor]:
+			dfs(neighbor)
+def bfs(node):
+        queue.append(node)
+        bfs_visited[node] = 1
+        while queue:
+                for neighbour in adjacent[queue[0]]:
+                        if bfs_visited[neighbour] == 0:
+                                queue.append(neighbour)
+                                bfs_visited[neighbour] = 1
+                queue.pop(0)
+dfs_runtime = 0.0
+bfs_runtime = 0.0
+runs = 200
+for num_of_connections in range(0,2001):
+        num_of_nodes = 200
+        adj = {}
+        adjacent = {}
+        for i in range(runs):
+                gen_graph()
+                dfs_visited = [0 for i in range(num_of_nodes)]
+                queue = []
+                dfs_time = time()
+                dfs(0)
+                dfs_runtime += (time() - dfs_time)
+                bfs_visited = [0 for i in range(num_of_nodes)]
+                queue = []
+                bfs_time = time()
+                bfs(0)
+                bfs_runtime += (time() - bfs_time)
+        dfs_data.append(round((dfs_runtime/runs),13))
+        bfs_data.append(round((bfs_runtime/runs),13))
+        dfs_runtime = 0.0
+        bfs_runtime = 0.0
+plt.xlabel("
+plt.ylabel("Runtime (seconds)")
+plt.title("BFS(Orange)/DFS(Blue) comparison")
+plt.plot(x_axis,dfs_data)
+plt.plot(x_axis,bfs_data)
+plt.show()

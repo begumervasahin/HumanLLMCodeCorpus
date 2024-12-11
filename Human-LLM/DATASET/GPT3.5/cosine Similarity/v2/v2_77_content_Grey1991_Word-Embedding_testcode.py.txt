@@ -1,0 +1,84 @@
+import os
+import sys
+import numpy as np
+from os import walk
+
+def read_dictionary(dic_path):
+    dev_adjectives = []
+    synonyms = {}
+    for (dirpath, dirnames, filenames) in walk(dic_path):
+        dev_adjectives.extend(filenames)
+    for filename in dev_adjectives:
+        with open(os.path.join(dic_path, filename), 'r') as infile:
+            syn = [line.strip() for line in infile]
+        synonyms[filename] = syn
+    return synonyms, dev_adjectives
+
+def compute_hits(adjective, output_list, synonyms):
+    synonym_list = synonyms.get(adjective)
+    result = 0.0
+    for word in output_list:
+        if word in synonym_list:
+            result += 1
+    return result
+
+if __name__ == '__main__':
+    dic_path = "./dev_set"
+    
+    # Check if the number of steps is provided as a command-line argument
+    if len(sys.argv) > 1:
+        num_steps = int(sys.argv[1])
+    else:
+        print('Please enter a value for (num_steps) in the Dockerfile')
+        exit(0)
+
+    import submission as submission
+
+    data_file = None
+    part1 = None
+
+    print('Processing Raw Data')
+    data_file = submission.process_data('./BBC_Data.zip')
+
+    if os.path.isfile(data_file):
+        print('Writing Processed Data file: Success\n')
+        part1 = 1
+    else:
+        print('Writing Processed Data file: Failed\n')
+
+    part2 = None
+    emb_file = 'adjective_embeddings.txt'
+    embedding_dim = 200
+
+    print('Training model with %d iterations' % num_steps)
+    submission.adjective_embeddings(data_file, emb_file, num_steps, embedding_dim)      
+
+    if os.path.isfile('./adjective_embeddings.txt'):
+        print('Writing Embedding file: Success\n')
+        part2 = 1
+    else:
+        print('Writing Embedding file: Failed\n')
+
+    part3 = None
+    top_k = 100
+    model_file = './adjective_embeddings.txt'
+    synonyms, dev_adjectives = read_dictionary('./dev_set')
+
+    print('Reading Trained Model')
+    if os.path.isfile('./adjective_embeddings.txt'):
+        total_hits = []
+        for adjective in dev_adjectives:
+            output_list = submission.compute_topk(model_file, adjective, top_k)
+            hits = compute_hits(adjective, output_list, synonyms)
+            total_hits.append(hits)
+        result = np.average(total_hits)
+        part3 = 1
+        print('Reading Trained Model: Success')
+        print('Average Hits on Dev Set: %f' % result)
+    else:
+        print('Reading Trained Model: Failed\n')
+
+    result = [part1, part2, part3]
+    for item in result:
+        if item is None:
+            print('Error: Please check your code')

@@ -1,0 +1,78 @@
+from tkinter import Tk, Label, Entry, Button, Text, END, WORD
+import pyAesCrypt
+import io
+
+# Constants
+BUFFER_SIZE = 64 * 1024  # Buffer size for AES encryption/decryption
+PASSWORD = "foopassword"  # Password for encryption/decryption
+
+def encrypt_text(user_input):
+    """Encrypt the provided text and display the encrypted data."""
+    # Convert the user input to bytes
+    input_bytes = user_input.encode('utf-8')
+
+    # Create an in-memory bytes buffer for the input and encrypted data
+    input_stream = io.BytesIO(input_bytes)
+    encrypted_stream = io.BytesIO()
+
+    # Perform encryption
+    pyAesCrypt.encryptStream(input_stream, encrypted_stream, PASSWORD, BUFFER_SIZE)
+
+    # Get the encrypted data
+    encrypted_data = encrypted_stream.getvalue()
+
+    # Display the encrypted data in the GUI
+    encrypted_output.delete('1.0', END)
+    encrypted_output.insert(END, str(encrypted_data))
+
+    # Save the encrypted data to a file
+    with open('CipherText.txt', 'wb') as file:
+        file.write(encrypted_data)
+
+def decrypt_text():
+    """Decrypt the previously encrypted data and display it."""
+    # Read the encrypted data from the file
+    try:
+        with open('CipherText.txt', 'rb') as file:
+            encrypted_data = file.read()
+
+        # Decrypt the data
+        encrypted_stream = io.BytesIO(encrypted_data)
+        decrypted_stream = io.BytesIO()
+        pyAesCrypt.decryptStream(encrypted_stream, decrypted_stream, PASSWORD, BUFFER_SIZE, len(encrypted_data))
+
+        # Display the decrypted data in the GUI
+        decrypted_output.delete('1.0', END)
+        decrypted_output.insert(END, decrypted_stream.getvalue().decode('utf-8'))
+
+    except FileNotFoundError:
+        decrypted_output.delete('1.0', END)
+        decrypted_output.insert(END, "Encrypted file not found. Please encrypt some text first.")
+
+# Set up the GUI
+window = Tk()
+window.title("AES Encryption/Decryption")
+window.configure(background="black")
+
+# Input field
+Label(window, text="Enter the text", bg="black", fg="white", font="none 12 bold").grid(row=0, column=0, sticky='W')
+text_entry = Entry(window, width=20, bg='white')
+text_entry.grid(row=1, column=0, sticky='W')
+
+# Encrypt button
+Button(window, text="Encrypt", command=lambda: encrypt_text(text_entry.get())).grid(row=1, column=1)
+
+# Encrypted output display
+Label(window, text="\nEncrypted Output", bg="black", fg="white", font="none 12 bold").grid(row=2, column=0, sticky='W')
+encrypted_output = Text(window, width=75, height=6, wrap=WORD, background="white")
+encrypted_output.grid(row=3, column=0, columnspan=2, sticky='W')
+
+# Decrypt button
+Button(window, text="Decrypt", command=decrypt_text).grid(row=4, column=1)
+
+# Decrypted output display
+Label(window, text="\nDecrypted Output", bg="black", fg="white", font="none 12 bold").grid(row=5, column=0, sticky='W')
+decrypted_output = Text(window, width=75, height=6, wrap=WORD, background="white")
+decrypted_output.grid(row=6, column=0, columnspan=2, sticky='W')
+
+window.mainloop()

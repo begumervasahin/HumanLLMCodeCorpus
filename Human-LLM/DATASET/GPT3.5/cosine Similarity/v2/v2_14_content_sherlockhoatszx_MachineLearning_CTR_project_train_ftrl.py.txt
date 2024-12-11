@@ -1,0 +1,67 @@
+import random
+import math
+
+# Hyperparameters
+alpha = 0.5
+l2 = 10
+l1 = 0.1
+beta = 0.01
+iterations = 3
+
+def initialize_arrays(max_index):
+    """Initialize weights, z, and n arrays."""
+    w = [random.uniform(-0.5, 0.5) for _ in range(max_index + 1)]
+    z = [0] * (max_index + 1)
+    n = [0] * (max_index + 1)
+    return w, z, n
+
+def update_weights(file, w, z, n):
+    """Update weights based on training data."""
+    for _ in range(iterations):
+        file.seek(0)  # Reset file pointer to start
+        for line in file:
+            segments = line.strip().split("\t")
+            label = int(segments[0])
+            s = sum(w[int(segment.split(":")[0])] for segment in segments[1:])
+            p = 1.0 / (1 + math.exp(-s))
+            q = p - label
+            for segment in segments[1:]:
+                index = int(segment.split(":")[0])
+                sigma = (math.sqrt(n[index] + q * q) - math.sqrt(n[index])) / alpha     
+                z[index] += q - sigma * w[index]
+                n[index] += q * q
+                if abs(z[index]) < l1:
+                    w[index] = 0
+                else:
+                    if z[index] > 0:
+                        w[index] = -(z[index] - l1) / ((beta + math.sqrt(n[index])) / alpha + l2)
+                    else:
+                        w[index] = -(z[index] + l1) / ((beta + math.sqrt(n[index])) / alpha + l2)
+
+def predict_and_write_results(input_file, output_file, w, max_index):
+    """Predict probabilities and write results to the output file."""
+    for line_number, line in enumerate(input_file, 1):
+        segments = line.strip().split("\t")
+        label = int(segments[0])
+        s = sum(w[int(segment.split(":")[0])] for segment in segments[1:])
+        p = 1.0 / (1 + math.exp(-s))
+        output_line = f"{line_number},{segments[0]},{p}\n"
+        output_file.write(output_line)
+
+# Load train features and compute max_index
+with open("train_feature", "r") as train_file:
+    max_index = max(int(segment.split(":")[0]) for line in train_file for segment in line.strip().split("\t")[1:])
+
+# Initialize arrays and update weights
+w, z, n = initialize_arrays(max_index)
+with open("train_feature", "r") as train_file:
+    update_weights(train_file, w, z, n)
+
+# Predict probabilities for validation data and write results
+with open("validate_feature", "r") as validate_file, open("pctr", "w+") as output_file: 
+    predict_and_write_results(validate_file, output_file, w, max_index)
+
+# Predict probabilities for test data and write results
+with open("test_feature", "r") as test_file, open("test_pctr", "w+") as output_file2, open("test_pctr.csv", "w+") as output_file3:
+    predict_and_write_results(test_file, output_file2, w, max_index)
+    predict_and_write_results(test_file, output_file3, w, max_index)

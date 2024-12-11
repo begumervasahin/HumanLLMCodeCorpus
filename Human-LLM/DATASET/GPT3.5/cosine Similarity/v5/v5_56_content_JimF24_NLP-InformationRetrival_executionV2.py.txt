@@ -1,0 +1,86 @@
+import math
+import nltk
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
+
+# Initialize NLTK components
+nltk.download('stopwords')
+nltk.download('punkt')
+
+# Initialize Porter Stemmer
+porter = PorterStemmer()
+
+# Load stopwords
+stop_words = set(stopwords.words('english'))
+
+def preprocess_text(text):
+    tokens = nltk.word_tokenize(text)
+    tokens = [porter.stem(word) for word in tokens if word.lower() not in stop_words and word not in string.punctuation]
+    return tokens
+
+def compute_idf(data):
+    idf = {}
+    for document in data:
+        terms = set(document)
+        for term in terms:
+            idf[term] = idf.get(term, 0) + 1
+    total_docs = len(data)
+    for term, freq in idf.items():
+        idf[term] = math.log((total_docs / freq) + 1)
+    return idf
+
+def compute_tf_idf(data, idf):
+    tfidf_list = []
+    for document in data:
+        tfidf = {}
+        total_terms = len(document)
+        for term in document:
+            tfidf[term] = (math.log(document.count(term) + 1) / total_terms) * idf[term]
+        tfidf_list.append(tfidf)
+    return tfidf_list
+
+def compute_cosine_similarity(query_vector, document_vector):
+    cosine_num = sum(query_vector[word] * document_vector[word] for word in query_vector)
+    query_norm = math.sqrt(sum(query_vector[word] ** 2 for word in query_vector))
+    doc_norm = math.sqrt(sum(document_vector[word] ** 2 for word in document_vector))
+    cosine_den = query_norm * doc_norm
+    if cosine_den == 0:
+        return 0
+    return cosine_num / cosine_den
+
+def main():
+    # Read and preprocess queries
+    with open("cran.qry", 'r') as query_file:
+        queries = query_file.read().split(".I")
+        queries = [preprocess_text(query) for query in queries if query.strip()]
+    
+    # Compute IDF for queries
+    IDF_query_collection = compute_idf(queries)
+    
+    # Create TF-IDF vectors for queries
+    vector_list_queries = compute_tf_idf(queries, IDF_query_collection)
+
+    # Read and preprocess documents
+    with open("cran.all.1400", 'r') as abstract_file:
+        abstracts = abstract_file.read().split(".I")
+        abstracts = [preprocess_text(abstract) for abstract in abstracts if abstract.strip()]
+
+    # Compute IDF for documents
+    IDF_abstract_collection = compute_idf(abstracts)
+
+    # Create TF-IDF vectors for documents
+    vector_list_documents = compute_tf_idf(abstracts, IDF_abstract_collection)
+
+    # Calculate Cosine Similarity and Rank Documents
+    with open("output.txt", 'w') as output_file:
+        for i, query_vector in enumerate(vector_list_queries):
+            ranking = []
+            for j, document_vector in enumerate(vector_list_documents):
+                cosine_similarity = compute_cosine_similarity(query_vector, document_vector)
+                ranking.append((cosine_similarity, j))
+            ranking.sort(key=lambda x: x[0], reverse=True)
+            for rank, (cosine_similarity, document_index) in enumerate(ranking):
+                output_file.write(f"{i + 1} {document_index + 1} {cosine_similarity}\n")
+
+if __name__ == "__main__":
+    main()

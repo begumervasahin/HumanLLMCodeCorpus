@@ -1,0 +1,55 @@
+from curve import EllipticCurve, Point
+
+class WNAF(EllipticCurve):
+    def __init__(self, a, b, n, w):
+        super().__init__(a, b, n)
+        self.w = w
+        self.expw = pow(2, w)
+
+    def mod_expw(self, d):
+        mod = d % self.expw
+        if mod >= self.expw // 2:
+            return mod - self.expw
+        else:
+            return mod
+
+    def compute_naf(self, d):
+        i = 0
+        naf = []
+        while d > 0:
+            if d % 2 == 1:
+                d_i = self.mod_expw(d)
+                naf.append(d_i)
+                d = d - d_i
+            else:
+                naf.append(0)
+            d = d // 2
+            i += 1
+        return (i - 1, naf)
+
+    def precalculate_points(self, P):
+        precalculated = {}
+        i = 1
+        double_p = self.double(P)
+        Q = P
+        while i <= self.expw - 1:
+            precalculated[i] = Q
+            precalculated[-i] = Point(Q.x, 0 - Q.y)
+            Q = self.sum(Q, double_p)
+            i += 2
+        return precalculated
+
+    def wnaf_multiply(self, d, P):
+        i, naf = self.compute_naf(d)
+        precalculated = self.precalculate_points(P)
+        Q = Point(0, 0)
+        while i >= 0:
+            Q = self.double(Q)
+            di = naf[i]
+            if di != 0:
+                Q = self.sum(Q, precalculated[di])
+            i -= 1
+        return Q
+
+    def multiply(self, d, P):
+        return self.wnaf_multiply(d, P)

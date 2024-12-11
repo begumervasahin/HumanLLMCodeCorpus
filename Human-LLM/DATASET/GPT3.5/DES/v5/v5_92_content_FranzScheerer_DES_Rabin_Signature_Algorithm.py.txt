@@ -1,0 +1,140 @@
+import random
+import hashlib
+import sys
+
+NRABIN = 743285923315061462317239833498483180761958757994944213727529869984547748056373360502506707496968738956644950396991750087839098301212127406814398995599338566286313743350150054031554184465950255519795337446125090866267720843656935494147556910369163957061645307670089704099131787942606141580039094320904715577
+
+def bin_to_num(x):
+    res = 0
+    for c in x:
+        res = (res << 8) ^ ord(c)
+    return res
+
+def num_to_bin(x):
+    res = ''
+    while x > 0:
+        res = chr(x % 256) + res
+        x //= 256
+    return res
+
+def digital_to_num(x):
+    res = 0
+    for c in x:
+        if '0' <= c <= '9':
+            res = (res * 10) + ord(c) - ord('0')
+    return res
+
+def hex_text_to_num(x):
+    res = 0
+    for c in x:
+        if '0' <= c <= '9':
+            res = (res << 4) + ord(c) - ord('0')
+        elif 'a' <= c <= 'f':
+            res = (res << 4) + ord(c) - ord('a') + 10
+    return res
+
+def num_to_hex_text(x):
+    res = ''
+    while x > 0:
+        res = hex(x % 16)[2:] + res
+        x //= 16
+    return res
+
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+def next_prime(p):
+    while p % 4 != 3:
+        p += 1
+    return next_prime_3(p)
+
+def next_prime_3(p):
+    m_ = 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while gcd(p, m_) != 1:
+        p += 4
+    if all(pow(base, p - 1, p) == 1 for base in [2, 3, 5, 17]):
+        return p
+    return next_prime_3(p + 4)
+
+def h(x):
+    dx = x
+    for _ in range(5):
+        dx = hashlib.sha512(dx).digest()
+        x += dx
+    res = 0
+    for cx in dx:
+        res = (res << 8) ^ cx
+    return res % NRABIN
+
+def root(m, p, q):
+    while True:
+        x = h(m)
+        sig = pow(p, q - 2, q) * p * pow(x, (q + 1) // 4, q)
+        sig = (pow(q, p - 2, p) * q * pow(x, (p + 1) // 4, p) + sig) % NRABIN
+        if (sig * sig) % NRABIN == x:
+            with open('m', 'w') as f:
+                f.write(m)
+            break
+        m += ' '
+    return sig
+
+def write_number(number, fnam):
+    with open(fnam, 'wb') as f:
+        n = number
+        while n > 0:
+            byte = n % 256
+            n //= 256
+            f.write(bytes([byte]))
+
+def read_number(fnam):
+    n = 0
+    with open(fnam, 'rb') as f:
+        snum = f.read()
+        for byte in snum:
+            n = (n << 8) ^ byte
+    return n
+
+def random_512():
+    md = hashlib.sha512("RANDOM-SEED".encode())
+    md.update('large key value for generation of random number'.encode())
+    md.update(str(random.random()).encode())
+    md.update(str(random.random()).encode())
+    result = 0
+    largestr = md.digest()
+    for byte in largestr:
+        result = (result << 8) ^ byte
+    return result
+
+def random_1024():
+    return random_512() * random_512()
+
+def hf():
+    with open("m", 'r') as f:
+        return h(f.read().encode())
+
+def sf(fnam):
+    p = read_number("p")
+    q = read_number("q")
+    with open(fnam, 'r') as f:
+        s = root(f.read(), p, q)
+    return s
+
+def vf(s):
+    return hf() == (s * s) % NRABIN
+
+print("\n\n Rabin signature - copyright Scheerer Software 2018 - all rights reserved\n\n")
+print("First parameter is V (Verify) or S (Sign)\n\n")
+print("\n\n Verify signature (2 parameters):")
+print("   > python rabin.py V <digital signature> ")
+print(" Create signature S (2 parameter):")
+print("   > python rabin.py S <filename> \n\n")
+print(" Number of parameters is " + str(len(sys.argv) - 1))
+print(" ")
+
+if len(sys.argv) == 3 and sys.argv[1] == "V":
+    print("Result of verification: " + str(vf(hex_text_to_num(sys.argv[2]))))
+
+if len(sys.argv) == 3 and sys.argv[1] == "S":
+    print("Digital signature:\n " + num_to_hex_text(sf(sys.argv[2])))

@@ -1,0 +1,65 @@
+import base64
+import hashlib
+from Crypto.Cipher import AES
+from Crypto import Random
+import Adafruit_DHT
+
+class DHTSensor:
+    def __init__(self, gpio):
+        self.gpio = gpio
+        self.sensor = Adafruit_DHT.DHT11
+
+    def read_humidity_temperature(self):
+        return Adafruit_DHT.read_retry(self.sensor, self.gpio)
+
+class AESCipher:
+    BLOCK_SIZE = 16
+
+    @staticmethod
+    def pad(s):
+        pad_length = AESCipher.BLOCK_SIZE - len(s) % AESCipher.BLOCK_SIZE
+        return s + pad_length * chr(pad_length)
+
+    @staticmethod
+    def unpad(s):
+        return s[:-ord(s[-1])]
+
+class Encryptor:
+    @staticmethod
+    def encrypt(raw, password):
+        private_key = hashlib.sha256(password.encode("utf-8")).digest()
+        raw = AESCipher.pad(raw)
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(private_key, AES.MODE_CBC, iv)
+        return base64.b64encode(iv + cipher.encrypt(raw))
+
+class Decryptor:
+    @staticmethod
+    def decrypt(enc, password):
+        private_key = hashlib.sha256(password.encode("utf-8")).digest()
+        enc = base64.b64decode(enc)
+        iv = enc[:AES.block_size]
+        cipher = AES.new(private_key, AES.MODE_CBC, iv)
+        return AESCipher.unpad(cipher.decrypt(enc[AES.block_size:]))
+
+def main():
+    # Set up DHT sensor
+    sensor = DHTSensor(gpio=18)
+
+    # Read temperature and humidity from DHT sensor
+    humidity, temperature = sensor.read_humidity_temperature()
+
+    # Set password and message
+    password = "Neel"
+    message = "Temperature={0:0.1f}*C  Humidity={1:0.1f}%".format(temperature, humidity)
+
+    # Encrypt the message
+    encrypted_message = Encryptor.encrypt(message, password)
+    print(encrypted_message)
+
+    # Decrypt the message
+    decrypted_message = Decryptor.decrypt(encrypted_message, password)
+    print(decrypted_message.decode('utf-8'))
+
+if __name__ == "__main__":
+    main()

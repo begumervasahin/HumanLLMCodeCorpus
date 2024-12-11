@@ -1,0 +1,182 @@
+import random
+import math
+import hashlib
+import sys
+
+def gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+def next_prime(p):
+    while p % 6 != 5:
+        p += 1
+    return next_prime_odd(p)
+
+def next_prime_odd(p):
+    m_ =  5 * 7 * 11 * 13 * 17 * 19 * 23 * 29 * 31 * 37 * 41 * 43 * 47
+    while True:
+        while gcd(p, m_) != 1 or gcd((p + 1) / 12, m_) != 1:
+            p += 6
+        if (pow(7, p - 1, p) != 1 or pow(7, (p + 1) / 12 - 1, (p + 1) / 12) != 1):
+            p += 6
+            continue
+        return p
+
+def read_number(fnam):
+    with open(fnam, 'rb') as f:
+        n = 0
+        snum = f.read()
+        for i in range(len(snum)):
+            n = (n << 8) ^ ord(snum[len(snum) - i - 1])
+    return n
+
+def hex_text_to_num(x):
+    res = 0
+    for c in x:
+        if ord(c) < 58 and ord(c) >= 48:
+            res = (res << 4) + ord(c) - 48
+        elif ord(c) <= ord('f') and ord(c) >= ord('a'):
+            res = (res << 4) + ord(c) - 87
+        elif ord(c) <= ord('F') and ord(c) >= ord('A'):
+            res = (res << 4) + ord(c) - 55
+    return res
+
+prime = hex_text_to_num("FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFAC73")
+a = 0
+b = 7
+n4 = hex_text_to_num("01 00000000 00000000 0001B8FA 16DFAB9A CA16B6B3")
+print("Check the primality of prime:", pow(7, n4 - 1, n4) == 1)
+hsize = 2 ** 100 + 7
+
+def mod_inverse(b, m):
+    s = 0
+    t = 1
+    a = m
+    while b != 1:
+        q = a / b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t += m
+    return t
+
+def h(x):
+    dx1 = hashlib.sha256(x.encode()).digest()
+    res = 0
+    for cx in dx1:
+        res = (res << 8) ^ ord(cx)
+    return res % hsize
+
+def add_point(P, Q):
+    x1 = P[0]
+    x2 = Q[0]
+    y1 = P[1]
+    y2 = Q[1]
+    while x1 < x2:
+        x1 = x1 + prime
+    if x1 == x2:
+        s = ((3 * (x1 ** 2) + a) * mod_inverse(2 * y1, prime)) % prime
+    else:
+        s = ((y1 - y2) * mod_inverse(x1 - x2, prime)) % prime
+    xr = s ** 2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+def scalar_multiply(P, n):
+    isFirst = True
+    resP = P
+    if n < 0:
+        resP[1] = prime - resP[1]
+        n = -n
+    PP = resP
+    while n > 0:
+        if (n % 2 != 0):
+            if isFirst:
+                resP = PP
+                isFirst = False
+            else:
+                resP = add_point(resP, PP)
+        PP = add_point(PP, PP)
+        n = n / 2
+    return resP
+
+def verify_signature(G, s, Y, e, m):
+    return e == h(str(add_point(scalar_multiply(G, s), scalar_multiply(Y, e))[0]) + m)
+
+def verify_ecdsa_signature(G, m, S, Y):
+    si = mod_inverse(S[0], n4)
+    hh = h(m + str(S[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * S[1]) % n4
+    return add_point(scalar_multiply(G, u1), scalar_multiply(Y, u2))[0] == S[1]
+
+x = 1
+while pow(x ** 3 + 7, (prime - 1) / 2, prime) != 1:
+    x = x + 1
+y = pow(x ** 3 + 7, (prime + 1) / 4, prime)
+P = [x, y]
+print("Check (x, y):", (y ** 2 - (x ** 3 + b)) % prime == 0)
+P = scalar_multiply(P, 12)
+print("Check (x, y):", (P[1] ** 2 - (P[0] ** 3 + b)) % prime == 0)
+print("Check the period:", scalar_multiply(P, n4 + 1) == P)
+
+with open(sys.argv[1], 'r') as f:
+    message = f.read()
+
+y = [read_number('y0'), read_number('y1')]
+sig = [read_number('s0'), read_number('s1')]
+print("Public key X:", y[0] % prime)
+print("Public key Y:", y[1] % prime)
+print("Signature X:", sig[0])
+print("Signature Y:", sig[1])
+print("Verification of signature:", verify_signature(P, sig[0], y, sig[1], message))
+
+def write_number(number, fnam):
+    with open(fnam, 'wb') as f:
+        n = number
+        while n > 0:
+            byte = n % 256
+            n = n / 256
+            f.write(chr(byte))
+
+def sign_schnorr(G, m, x):
+    k = h(m + 'kk1')
+    R = scalar_multiply(G, k)
+    e = h(str(R[0]) + m)
+    return [(k - x * e) % n4, e]
+
+def ecdsa(G, m, x):
+    k = h(m + 'ecdsa')
+    R = scalar_multiply(G, k)
+    hh = h(m + str(R[0]))
+    s = (mod_inverse(k, n4) * (hh + R[0] * x)) % n4
+    return [s, R[0]]
+
+hxx = h('kk1_' + str(777 * random.random()))
+sig = sign_schnorr(P, message, hxx)
+y = scalar_multiply(P, hxx)
+dsa = ecdsa(P, message, hxx)
+print("Verification of ECDSA signature:", verify_ecdsa_signature(P, message, dsa, y))
+
+l = n4
+cx = 0
+while l > 0:
+    cx += 1
+    l = l / 2
+
+print("\nBitlength of order:", cx)
+print("Check 4a^3 + 27b^2:", (4 * a * a * a + 27 * b * b) % prime != 0)
+write_number(sig[0], 's0')
+write_number(sig[1], 's1')
+write_number(y[0], 'y0')
+write_number(y[1], 'y1')
+
+print("\nMore security checks:")
+print("Prime:", pow(7, prime - 1, prime) == 1)
+print("Prime order:", pow(7, n4 - 1, n4) == 1)
+print("Check order:", P == scalar_multiply(P, n4 + 1), " not equal to p:", prime != n4)

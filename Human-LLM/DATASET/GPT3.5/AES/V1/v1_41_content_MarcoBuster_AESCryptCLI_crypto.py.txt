@@ -1,0 +1,55 @@
+import pyAesCrypt
+import extUtils
+import glob
+from os import remove, path
+
+buffer_size = 64 * 1024
+
+def encrypt_file(file_in, file_out, password):
+    pyAesCrypt.encryptFile(file_in, file_out, password, buffer_size)
+    remove(file_in)
+    return file_out
+
+def decrypt_file(file_in, file_out, password):
+    pyAesCrypt.decryptFile(file_in, file_out, password, buffer_size)
+    remove(file_in)
+    return file_out
+
+def encrypt(file_in, password):
+    if path.isfile(file_in):
+        return encrypt_file(file_in, extUtils.add_ext(file_in), password)
+    else:
+        return encrypt_folder(file_in, password)
+
+def decrypt(file_in, password):
+    if path.isfile(file_in):
+        return decrypt_file(file_in, extUtils.remove_ext(file_in), password)
+    else:
+        return decrypt_folder(file_in, password)
+
+def encrypt_folder(folder_path, password):
+    files = glob.glob(path.join(folder_path, "**/*.*"), recursive=True)
+    output = []
+    for file in files:
+        output.append(encrypt(file, password))
+    return output
+
+def decrypt_folder(folder_path, password):
+    files = glob.glob(path.join(folder_path, "**/*.*"), recursive=True)
+    output = []
+    for file in files:
+        output.append(decrypt(file, password))
+    return output
+
+# Example usage:
+# Encrypt a file
+# encrypted_file = encrypt("plaintext.txt", "password")
+
+# Decrypt a file
+# decrypted_file = decrypt("plaintext.txt.aes", "password")
+
+# Encrypt a folder
+# encrypted_files = encrypt("folder_path", "password")
+
+# Decrypt a folder
+# decrypted_files = decrypt("folder_path", "password")

@@ -1,0 +1,60 @@
+import socket
+import json
+import threading
+from diffiehellman.diffiehellman import DiffieHellman
+
+# Initialize Diffie-Hellman for Alice
+alice_dh = DiffieHellman()
+
+SERVER_IP = '192.168.168.184'
+SERVER_PORT = 8201
+
+def handle_client(connection, address):
+    # Generate Alice's public key
+    alice_dh.generate_public_key()
+    received_data = ""
+
+    while True:
+        try:
+            # Set a timeout for receiving data
+            connection.settimeout(1)
+            message = connection.recv(100)
+            while message:
+                # Append received data to the total data
+                received_data += message.decode("utf-8")
+                message = connection.recv(100)
+        except socket.error as ex:
+            print("Socket error:", ex)
+
+        # Prepare Alice's public key to send to the client
+        alice_public_key_message = {"alice_public_key": alice_dh.public_key}
+        connection.send(json.dumps(alice_public_key_message).encode("utf-8"))
+
+        # Receive Bob's public key and generate the shared secret
+        received_json = json.loads(received_data)
+        bob_public_key = received_json["bob_public_key"]
+        alice_dh.generate_shared_secret(bob_public_key, echo_return_key=True)
+
+        # Print the shared secret key and end the process
+        print("Shared Secret Key (Alice):", alice_dh.shared_key)
+        print("END")
+        break
+
+# Set up the server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind((SERVER_IP, SERVER_PORT))
+server_socket.listen()
+
+while True:
+    try:
+        server_socket.settimeout(1)
+        client_connection, client_address = server_socket.accept()
+        print("Connection accepted from:", client_address)
+        # Start a new thread to handle the client connection
+        client_thread = threading.Thread(
+            target=handle_client, args=(client_connection, client_address)
+        )
+        client_thread.start()
+    except socket.error as e:
+        print("Socket error:", e)

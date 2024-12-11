@@ -1,0 +1,83 @@
+import sys
+import os
+from IRSystem import IRSystem
+from shared_submit import Submitter
+
+class IRSubmitter(Submitter):
+    def valid_parts(self):
+        """Returns a list of valid part names."""
+        return [
+            'Inverted Index Dev',
+            'Inverted Index Test',
+            'Boolean Retrieval Dev',
+            'Boolean Retrieval Test',
+            'Phrase Query Retrieval Dev',
+            'Phrase Query Retrieval Test',
+            'TF-IDF Dev',
+            'TF-IDF Test',
+            'Cosine Similarity Dev',
+            'Cosine Similarity Test'
+        ]
+
+    def sources(self):
+        """Returns source files, separated by part. Each part has a list of files."""
+        return [['IRSystem.py']] * 10
+
+    def homework_id(self):
+        """Returns the homework ID as a string."""
+        return '4'
+
+    def output(self, part_id, ch_aux):
+        """Computes the output for test cases using student code."""
+        version = 1
+        output = [part_id, version]
+        irsys = IRSystem()
+        irsys.read_data('../data/RiderHaggard')
+        irsys.index()
+        irsys.compute_tfidf()
+        out = sys.stdout
+
+        if part_id in [2, 4, 6, 8, 10]:
+            sys.stdout = open(os.devnull, 'w')
+
+        if part_id in [1, 2]:
+            queries = ch_aux.split(", ")
+            for query in queries:
+                posting = irsys.get_posting_unstemmed(query)
+                output.append(list(posting))
+        elif part_id in [3, 4]:
+            queries = ch_aux.split(", ")
+            for query in queries:
+                result = irsys.query_retrieve(query)
+                result = list(result)
+                output.append(result)
+        elif part_id in [5, 6]:
+            queries = ch_aux.split(",")
+            for query in queries:
+                result = irsys.phrase_query_retrieve(query)
+                result = list(result)
+                output.append(result)
+        elif part_id in [7, 8]:
+            queries = ch_aux.split("; ")
+            for query in queries:
+                word, doc_id = query.split(", ")
+                result = irsys.get_tfidf_unstemmed(word, int(doc_id))
+                output.append(result)
+        elif part_id in [9, 10]:
+            queries = ch_aux.split(", ")
+            for query in queries:
+                results = irsys.query_rank(query)
+                first_result = [results[0][0], results[0][1]]
+                output.append(first_result)
+        else:
+            print("Unknown part ID: %d" % part_id)
+            return None
+
+        if part_id in [2, 4, 6, 8, 10]:
+            sys.stdout = out
+
+        return str(output)
+
+# Instantiate and run the IRSubmitter
+submitter = IRSubmitter()
+submitter.submit(0)

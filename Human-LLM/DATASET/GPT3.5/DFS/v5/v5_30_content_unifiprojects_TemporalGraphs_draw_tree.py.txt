@@ -1,0 +1,58 @@
+from graphviz import Digraph
+import copy
+from typing import Set
+
+def get_new_name(existing_names: Set[str], name: str) -> str:
+    """Generate a new unique name based on existing names."""
+    base_name = name.split('-')[0]
+    for i in range(1, len(existing_names) + 1):
+        new_name = f"{base_name}-{i}"
+        if new_name not in existing_names:
+            return new_name
+
+def resolve_duplicate_names(root_node: TreeNode) -> None:
+    """Resolve duplicate node names in the tree."""
+    existing_names = {root_node.name}
+    queue = [root_node]
+    while queue:
+        current_node = queue.pop(0)
+        for child in current_node.children:
+            queue.append(child)
+            if child.name not in existing_names:
+                existing_names.add(child.name)
+            else:
+                child.name = get_new_name(existing_names, child.name)
+                existing_names.add(child.name)
+
+def visualize_tree(tree_root: TreeNode, output_file: str) -> None:
+    """Visualize the tree using Graphviz."""
+    copied_tree = copy.deepcopy(tree_root)
+    resolve_duplicate_names(copied_tree)
+    
+    graph = Digraph()
+    graph.node(copied_tree.name)
+    
+    queue = [copied_tree]
+    while queue:
+        current_node = queue.pop(0)
+        for child in current_node.children:
+            queue.append(child)
+            graph.node(child.name)
+            graph.edge(current_node.name, child.name, str(child.last_time_of_visit), minlen='2', dir="forward")
+    
+    graph.view(output_file)
+
+if __name__ == "__main__":
+    class TreeNode:
+        def __init__(self, name: str, last_time_of_visit: int):
+            self.name = name
+            self.last_time_of_visit = last_time_of_visit
+            self.children = []
+
+    root_node = TreeNode("A", 0)
+    b = TreeNode("B", 1)
+    c = TreeNode("C", 2)
+    d = TreeNode("A", 3)
+    root_node.children = [b, c, d]
+
+    visualize_tree(root_node, "tree_output")

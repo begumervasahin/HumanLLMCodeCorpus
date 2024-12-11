@@ -1,0 +1,65 @@
+from textwrap import wrap
+
+class BlockStream:
+    """
+    Provides an abstracted way of parsing the input text stream (either plaintext or ciphertext).
+    """
+
+    def __init__(self, textstream: str):
+        self.textstream = textstream
+        self.blockstream = []
+        self.curr_block_index = 0
+        self.blocksize = 16
+        self._parse_blocks()
+
+    def _parse_blocks(self):
+        """
+        Parses the text stream into 16-byte blocks stored as sublists of hex numbers as strings.
+        """
+        bytes_list = wrap(self.textstream, 2)
+        full_blocks = [
+            bytes_list[i:i + self.blocksize]
+            for i in range(0, len(bytes_list), self.blocksize)
+        ]
+        self.blockstream = full_blocks
+
+        partial_block_size = len(bytes_list) % self.blocksize
+        if partial_block_size > 0:
+            partial_block_start = len(bytes_list) - partial_block_size
+            partial_block = bytes_list[partial_block_start:]
+            padded_block = partial_block + ['00'] * (self.blocksize - partial_block_size)
+            self.blockstream.append(padded_block)
+
+    def get_next_block(self):
+        """Retrieves the next block from the blockstream."""
+        if self.curr_block_index < len(self.blockstream):
+            block = self.blockstream[self.curr_block_index]
+            self.curr_block_index += 1
+            return ''.join(block)
+        else:
+            return None
+
+    def get_prev_block(self):
+        """Retrieves the previous block from the blockstream."""
+        if self.curr_block_index > 0:
+            block = self.blockstream[self.curr_block_index - 1]
+            return ''.join(block)
+        else:
+            return None
+
+    def get_block_num(self):
+        """Returns the current block number."""
+        return self.curr_block_index
+
+    def is_empty(self):
+        """Checks if the blockstream is empty."""
+        return len(self.blockstream) == self.curr_block_index
+
+# Example usage:
+text_stream = "0123456789abcdef0123456789abcdef0123456789abcdef"
+block_stream = BlockStream(text_stream)
+while not block_stream.is_empty():
+    print("Current block:", block_stream.get_block_num())
+    print("Next block:", block_stream.get_next_block())
+    print("Previous block:", block_stream.get_prev_block())
+    print()

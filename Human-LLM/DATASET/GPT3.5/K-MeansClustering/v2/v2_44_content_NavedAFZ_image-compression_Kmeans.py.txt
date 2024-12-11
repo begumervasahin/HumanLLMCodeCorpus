@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from skimage import io
+from sklearn.cluster import KMeans
+import imageio
+
+# Load the original image
+original_image = io.imread('nass.jpg')
+
+# Display the original image
+plt.imshow(original_image)
+plt.axis('off')
+plt.title('Original Image')
+plt.show()
+
+# Normalize the pixel values of the image
+normalized_image = original_image / 255
+
+# Reshape the image for KMeans clustering
+num_rows, num_cols, num_channels = normalized_image.shape
+reshaped_image = normalized_image.reshape(num_rows * num_cols, num_channels)
+
+# Fit KMeans clustering to compress the image
+num_clusters = 15
+kmeans = KMeans(n_clusters=num_clusters, init='k-means++')
+cluster_labels = kmeans.fit_predict(reshaped_image)
+cluster_centers = kmeans.cluster_centers_
+
+# Assign each pixel to its nearest cluster center
+compressed_image = cluster_centers[cluster_labels]
+compressed_image = np.reshape(compressed_image, (num_rows, num_cols, num_channels))
+
+# Save the compressed image
+output_file = 'compressed_image.jpg'
+imageio.imwrite(output_file, compressed_image)
+
+# Display the compressed image
+compressed_image = io.imread(output_file)
+plt.imshow(compressed_image)
+plt.axis('off')
+plt.title('Compressed Image')
+plt.show()

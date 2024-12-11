@@ -1,0 +1,38 @@
+import multiprocessing
+import threading
+import logging
+from order_bot import order_bot_processing
+from castle_bot import castle_bot_processing
+from castle_files.bin.telethon_script import auth
+import sys
+
+# Configure logging
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+log_file = logging.FileHandler(filename='error.log', mode='a')
+log_file.setLevel(logging.ERROR)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO, handlers=[log_file, console])
+
+# Check for command-line arguments
+if len(sys.argv) > 1:
+    for arg in sys.argv[1:]:
+        if arg == "--auth":
+            logging.info("Starting telethon auth")
+            auth()
+            exit(0)
+
+# Create separate processes for order bot and castle bot
+order_bot_process = multiprocessing.Process(target=order_bot_processing)
+order_bot_process.start()
+castle_bot_process = multiprocessing.Process(target=castle_bot_processing)
+castle_bot_process.start()
+
+# Wait for the processes to complete
+try:
+    order_bot_process.join()
+except KeyboardInterrupt:
+    pass
+
+# Print a message when the processes end
+print("ended")

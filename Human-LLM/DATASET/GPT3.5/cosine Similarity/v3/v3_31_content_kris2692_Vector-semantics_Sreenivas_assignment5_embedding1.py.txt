@@ -1,0 +1,72 @@
+import re
+import operator
+from gensim.models import KeyedVectors
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Define analogy categories
+categories = [': capital-world', ': currency', ': city-in-state', ': family', ': gram1-adjective-to-adverb',
+              ': gram2-opposite', ': gram3-comparative', ': gram6-nationality-adjective', ': cellphones',
+              ': national-animals']
+
+def load_analogies(filename):
+    analogy_dict = {}
+    analogy_vocab = {}
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        key = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith(':'):
+                key = line
+                analogy_dict[key] = []
+                analogy_vocab[key] = set()
+            else:
+                analogy_dict[key].append(line.lower())
+                words = line.split()
+                analogy_vocab[key].update(words)
+    return analogy_dict, analogy_vocab
+
+def load_word_vectors(filepath):
+    return KeyedVectors.load_word2vec_format(filepath, binary=False)
+
+def get_compound_vector(word_vectors, word1, word2, word3):
+    if all(word in word_vectors.vocab for word in (word1, word2, word3)):
+        return [word_vectors[word2][i] - word_vectors[word1][i] + word_vectors[word3][i]
+                for i in range(len(word_vectors[word1]))]
+    return None
+
+def predict_analogy(word_vectors, analogy_vocab, word1, word2, word3, analogy_section):
+    cosine_similarities = {}
+    compound_vector = get_compound_vector(word_vectors, word1, word2, word3)
+    if compound_vector:
+        for each_section in analogy_vocab[analogy_section]:
+            if each_section in word_vectors.vocab:
+                cosine_similarities[each_section] = cosine_similarity([word_vectors[each_section]], [compound_vector])
+            else:
+                cosine_similarities[each_section] = 0
+    return max(cosine_similarities.items(), key=operator.itemgetter(1))[0] if cosine_similarities else None
+
+def evaluate_analogies(word_vectors, analogy_vocab, analogies_dict):
+    correct_predictions = 0
+    total_predictions = 0
+    for section in categories:
+        for value in analogies_dict[section]:
+            splits = value.split()
+            if len(splits) == 4:
+                word1, word2, word3, expected_word = splits
+                predicted_word = predict_analogy(word_vectors, analogy_vocab, word1, word2, word3, section)
+                if predicted_word and predicted_word == expected_word:
+                    correct_predictions += 1
+                total_predictions += 1
+    accuracy = (correct_predictions / total_predictions) * 100 if total_predictions > 0 else 0
+    print("Accuracy using GloVe embeddings is:", accuracy)
+
+def main():
+    analogies_file = 'analogies.txt'
+    word_vectors_file = 'glove.42B.300d.txt'
+    analogies_dict, analogy_vocab = load_analogies(analogies_file)
+    word_vectors = load_word_vectors(word_vectors_file)
+    evaluate_analogies(word_vectors, analogy_vocab, analogies_dict)
+
+if __name__ == '__main__':
+    main()

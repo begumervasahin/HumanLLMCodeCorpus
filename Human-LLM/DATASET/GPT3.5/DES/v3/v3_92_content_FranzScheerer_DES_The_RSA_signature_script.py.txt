@@ -1,0 +1,77 @@
+import random
+import hashlib
+import sys
+
+# Global RSA parameters
+N_RSA = 14044894356192612772818841984347061797337978519759913940791778279418677427548291059927485749856462915496664738812520182880020537192153403698682811419371843770446086552727175109468776241126237562982782648467083756626157205149889393549435971679553896797633931663407696559928494554397737985903430806016836540593
+RSA_129 = 114381625757888867669235779976146612010218296721242362562561842935706935245733897830597123563958705058989075147599290026879543541
+
+def encode_text_to_number(text):
+    """Encode text to a numerical representation using base64-like encoding."""
+    mapping = {char: idx for idx, char in enumerate('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/')}
+    return sum((mapping[char] << (6 * i) for i, char in enumerate(reversed(text))), 0)
+
+def decode_number_to_text(number):
+    """Decode a number back to text representation using base64-like decoding."""
+    chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/'
+    text = ''
+    while number:
+        number, idx = divmod(number, 64)
+        text = chars[idx] + text
+    return text
+
+def hash_content(content):
+    """Create a secure hash of the given content."""
+    hashes = [hashlib.sha512(content.encode()).digest()]
+    for _ in range(4):
+        hashes.append(hashlib.sha512(hashes[-1] + content.encode()).digest())
+    hash_value = sum(int.from_bytes(hash_, 'big') for hash_ in hashes) % N_RSA
+    return hash_value
+
+def read_number_from_file(filename):
+    """Read a number from a binary file."""
+    try:
+        with open(filename, 'rb') as file:
+            return int.from_bytes(file.read(), 'big')
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+        sys.exit(1)
+
+def write_number_to_file(number, filename):
+    """Write a number to a binary file."""
+    with open(filename, 'wb') as file:
+        file.write(number.to_bytes((number.bit_length() + 7) // 8, 'big'))
+
+def rsa_encrypt(message, public_key):
+    """Encrypt a message with the RSA public key."""
+    return pow(message, public_key, N_RSA)
+
+def rsa_decrypt(ciphertext, private_key=RSA_129):
+    """Decrypt a ciphertext with the RSA private key."""
+    return pow(ciphertext, private_key, N_RSA)
+
+def main():
+    if len(sys.argv) not in [3, 4]:
+        print("Usage: python rsacrypt.py [E|D] <text|number>")
+        return
+
+    operation = sys.argv[1].upper()
+    data = sys.argv[2]
+
+    if operation == "E":
+        if not data.isascii():
+            print("Error: Encryption data must be ASCII text.")
+            return
+        encrypted = rsa_encrypt(encode_text_to_number(data), read_number_from_file('public_key_file'))
+        print(f"Encrypted: {encrypted}")
+    elif operation == "D":
+        try:
+            decrypted = decode_number_to_text(rsa_decrypt(int(data)))
+            print(f"Decrypted: {decrypted}")
+        except ValueError:
+            print("Error: Decryption data must be an integer.")
+    else:
+        print("Invalid operation. Use 'E' for encrypt or 'D' for decrypt.")
+
+if __name__ == "__main__":
+    main()

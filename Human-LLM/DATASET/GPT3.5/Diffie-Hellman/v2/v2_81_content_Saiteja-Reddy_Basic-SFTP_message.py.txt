@@ -1,0 +1,58 @@
+from struct import *
+
+def convert_ip_to_int(ip):
+    """
+    Convert IP address from string to integer.
+    """
+    ip_parts = ip.split('.')
+    ip_int = sum([int(ip_part) << (8 * index) for index, ip_part in enumerate(reversed(ip_parts))])
+    return ip_int
+
+def convert_int_to_ip(ip_int):
+    """
+    Convert IP address from integer to string.
+    """
+    ip_parts = [(ip_int >> offset) & 255 for offset in [24, 16, 8, 0]]
+    ip_str = '.'.join(map(str, ip_parts))
+    return ip_str
+
+def unpack_message(packet):
+    """
+    Unpack message packet into a dictionary.
+    """
+    opcode, s_addr, d_addr, buf, ID, q, password, status, file, dummy = unpack('iqq10s10si10si80si', packet)
+    unpacked_message = {
+        'opcode': opcode,
+        's_addr': convert_int_to_ip(s_addr),
+        'd_addr': convert_int_to_ip(d_addr),
+        'buf': buf.decode("ascii").rstrip('\x00'),
+        'ID': ID.decode("ascii").rstrip('\x00'),
+        'q': q,
+        'password': password.decode("ascii").rstrip('\x00'),
+        'status': status,
+        'file': file.decode("ascii").rstrip('\x00'),
+        'dummy': dummy
+    }
+    return unpacked_message
+
+def create_message(opcode=10, s_addr="127.0.0.1", d_addr="127.0.0.1", buf="", ID="", q=-1, password="", status=0, file="", dummy=-1):
+    """
+    Create a message packet.
+    """
+    s_addr_int = convert_ip_to_int(s_addr)
+    d_addr_int = convert_ip_to_int(d_addr)
+    
+    if len(buf) > 10 or len(ID) > 10 or len(password) > 10 or len(file) > 80:
+        print("Ensure the lengths of 'buf', 'ID', 'password', and 'file' are <= 10, 10, 10, and 80 characters respectively.")
+        return "Err"
+    
+    packet = pack('iqq10s10si10si80si', opcode, s_addr_int, d_addr_int, buf.encode("ascii"), 
+                  ID.encode("ascii"), q, password.encode("ascii"), status, file.encode("ascii"), dummy)
+    
+    return packet
+
+# Example usage:
+message = create_message(buf="Hello", ID="12345", password="abcde", file="example.txt")
+print(message)
+unpacked_message = unpack_message(message)
+print(unpacked_message)

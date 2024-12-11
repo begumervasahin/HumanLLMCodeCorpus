@@ -1,0 +1,56 @@
+import random
+from math import sqrt
+from itertools import count, islice
+
+class DHCalculator:
+    def __init__(self):
+        self.private_key = 0
+        self.public_key = 0
+        self.shared_prime = 0
+
+    def is_prime(self, n):
+        if n <= 1:
+            return False
+        for i in islice(count(2), int(sqrt(n) - 1)):
+            if n % i == 0:
+                return False
+        return True
+
+    def generate_shared_values(self):
+        min_prime = 1000
+        max_prime = 10000
+        primes = [p for p in range(min_prime, max_prime) if self.is_prime(p)]
+        self.shared_prime = random.choice(primes)
+
+    def set_private_key(self, private_key):
+        self.private_key = private_key
+
+    def calculate_public_key(self, base):
+        self.public_key = base ** self.private_key % self.shared_prime
+
+    def calculate_shared_secret(self, other_public_key):
+        return other_public_key ** self.private_key % self.shared_prime
+
+
+# Example usage
+if __name__ == "__main__":
+    dh = DHCalculator()
+    
+    # Generate shared prime number
+    dh.generate_shared_values()
+    print(f"Generated shared prime: {dh.shared_prime}")
+    
+    # Set a random private key
+    private_key = random.randint(1, 100)
+    dh.set_private_key(private_key)
+    print(f"Set private key: {private_key}")
+    
+    # Generate public key
+    base = random.randint(2, dh.shared_prime - 1)
+    dh.calculate_public_key(base)
+    print(f"Calculated public key: {dh.public_key}")
+    
+    # Simulate exchange and shared secret calculation
+    other_public_key = random.randint(2, dh.shared_prime - 1)
+    shared_secret = dh.calculate_shared_secret(other_public_key)
+    print(f"Shared secret calculated: {shared_secret}")

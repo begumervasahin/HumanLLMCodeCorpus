@@ -1,0 +1,65 @@
+import queue
+
+def max_value(a, b):
+    """
+    Returns the maximum of two values.
+    """
+    return max(a, b)
+
+def output_result(distance, farthest_node, parents):
+    """
+    Outputs the result to a file named 'output.txt'.
+    """
+    with open('output.txt', 'w') as output_file:
+        output_file.write(f"{distance}\n")
+        node = farthest_node
+        output_file.write(f"{farthest_node} ")
+        while parents[node] != -1:
+            output_file.write(f"{parents[node] + 1} ")
+            node = parents[node]
+
+def bfs(graph, start_node):
+    """
+    Performs a Breadth-First Search (BFS) algorithm starting from a given node.
+    """
+    q = queue.Queue()
+    q.put(start_node)
+    distances = [-1] * num_nodes
+    visited = [False] * num_nodes
+    parents = [-1] * num_nodes
+    distances[start_node] = 0
+    visited[start_node] = True
+
+    while not q.empty():
+        node = q.get()
+        for neighbor in graph[node]:
+            if not visited[neighbor]:
+                visited[neighbor] = True
+                distances[neighbor] = distances[node] + 1
+                parents[neighbor] = node
+                q.put(neighbor)
+
+    farthest_node = start_node
+    for node in range(num_nodes):
+        if distances[node] > distances[farthest_node]:
+            farthest_node = node
+
+    output_result(distances[farthest_node], farthest_node, parents)
+
+# Read input from file
+with open('input.txt', 'r') as input_file:
+    num_edges, start_node = map(int, input_file.readline().split())
+    start_node -= 1
+    num_nodes = 0
+    edge_pairs = []
+    for _ in range(num_edges):
+        from_node, to_node = map(int, input_file.readline().split())
+        edge_pairs.append((from_node, to_node))
+        num_nodes = max_value(num_nodes, max_value(edge_pairs[-1][0], edge_pairs[-1][1]))
+
+    graph = [[] for _ in range(num_nodes)]
+    for from_node, to_node in edge_pairs:
+        graph[from_node - 1].append(to_node - 1)
+
+# Perform BFS
+bfs(graph, start_node)

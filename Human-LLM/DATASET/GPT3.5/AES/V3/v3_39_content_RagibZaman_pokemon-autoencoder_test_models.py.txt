@@ -1,0 +1,63 @@
+import unittest
+import torch
+from torch.autograd import Variable
+import models
+
+class TestEncoder(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 32
+        self.image_size = 64
+        self.latent_size = 128
+        self.encoder = models.Encoder(self.latent_size, self.image_size)
+
+    def test_output_size(self):
+        """Test the output size of the Encoder."""
+        input_tensor = self._generate_input_tensor()
+        output_tensor = self.encoder(input_tensor)
+        expected_size = torch.Size([self.batch_size, self.latent_size])
+        self.assertEqual(output_tensor.size(), expected_size)
+
+    def test_layer_output_size(self):
+        """Test the output size of each layer in the Encoder."""
+        input_tensor = self._generate_input_tensor().view(self.batch_size, -1)
+        hidden_output = self.encoder.hidden_layer(input_tensor)
+        self.assertEqual(hidden_output.size(), torch.Size([self.batch_size, self.latent_size]))
+        output_tensor = self.encoder.output_layer(hidden_output)
+        self.assertEqual(output_tensor.size(), torch.Size([self.batch_size, self.latent_size]))
+
+    def _generate_input_tensor(self):
+        return Variable(2.0 * (torch.rand((self.batch_size, 3, self.image_size, self.image_size)) - 0.5))
+
+class TestDecoder(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 32
+        self.image_size = 64
+        self.latent_size = 128
+        self.decoder = models.Decoder(self.latent_size, self.image_size)
+
+    def test_output_size(self):
+        """Test the output size of the Decoder."""
+        input_tensor = self._generate_input_tensor()
+        output_tensor = self.decoder(input_tensor)
+        expected_size = torch.Size([self.batch_size, 3, self.image_size, self.image_size])
+        self.assertEqual(output_tensor.size(), expected_size)
+
+    def test_layer_output_size(self):
+        """Test the output size of each layer in the Decoder."""
+        input_tensor = self._generate_input_tensor()
+        tensor = self.decoder.layer1(input_tensor)
+        self.assertEqual(tensor.size(), torch.Size([self.batch_size, 128, 7, 7]))
+        tensor = self.decoder.layer2(tensor)
+        self.assertEqual(tensor.size(), torch.Size([self.batch_size, 64, 15, 15]))
+        tensor = self.decoder.layer3(tensor)
+        self.assertEqual(tensor.size(), torch.Size([self.batch_size, 64, 31, 31]))
+        tensor = self.decoder.layer4(tensor)
+        self.assertEqual(tensor.size(), torch.Size([self.batch_size, 32, 63, 63]))
+        tensor = self.decoder.layer5(tensor)
+        self.assertEqual(tensor.size(), torch.Size([self.batch_size, 3, self.image_size, self.image_size]))
+
+    def _generate_input_tensor(self):
+        return Variable(2.0 * (torch.rand((self.batch_size, self.latent_size, 1, 1)) - 0.5))
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,0 +1,66 @@
+import socket
+import ssl
+
+# Function to create and open a TCP socket
+def open_tcp_socket():
+    # Create a TCP socket
+    server_tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Bind the socket to the specified address and port
+    server_tcp_socket.bind(('', 50001))
+    # Listen for incoming connections, allowing up to 1 connection in the queue
+    server_tcp_socket.listen(1)
+    return server_tcp_socket
+
+# Function to create a TLS context for secure communication
+def create_tls_context():
+    # Paths to certificate, key, and Diffie-Hellman parameters files
+    cert_path = "server.pem"
+    key_path = "server.key"
+    dh_path = "dh.pem"
+    # Define the ciphers to be used for encryption
+    ciphers = "AES128-SHA256:DHE-RSA-AES128-SHA256"
+    # Create an SSL context for TLS v1.2
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    # Load the certificate and private key files
+    context.load_cert_chain(keyfile=key_path, certfile=cert_path)
+    # Set the allowed ciphers
+    context.set_ciphers(ciphers)
+    # Load Diffie-Hellman parameters
+    context.load_dh_params(dh_path)
+    # Set options for the context
+    context.options = ssl.OP_SINGLE_DH_USE
+    return context
+
+# Function to accept incoming connections and perform TLS handshake
+def accept(s_socket):
+    print("Server listening...")
+    try:
+        # Accept an incoming connection
+        client_socket, client_address = s_socket.accept()
+    except:
+        print("Connection failed...")
+        return -1
+    try:
+        print("Connection succeeded, attempting handshake...")
+        # Create a TLS context
+        context = create_tls_context()
+        # Wrap the client socket with TLS encryption
+        tls_sock = context.wrap_socket(client_socket, server_side=True)
+    except:
+        print("Handshake failed...")
+        return -1
+    else:
+        print(f"Handshake succeeded. Chosen cipher is {tls_sock.cipher()[0]}.")
+        return tls_sock
+
+# Open a TCP socket for the server
+server_socket = open_tcp_socket()
+
+# Continuously accept incoming connections and handle them
+while True:
+    tls_socket = accept(server_socket)
+    if tls_socket == -1:
+        continue
+    # Receive data from the client over the TLS connection
+    data = tls_socket.recv(1024)
+    print(f"Server receives: {data}")

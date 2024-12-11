@@ -1,0 +1,71 @@
+# Constants for AES key expansion
+SBOX = [...]
+RCON = [...]
+
+def key_expansion(key):
+    # Initialize key schedule
+    w = [()]*44
+    for i in range(4):
+        w[i] = (key[4*i], key[4*i+1], key[4*i+2], key[4*i+3])
+
+    # Perform key expansion
+    for i in range(4, 44):
+        temp = w[i-1]
+        word = w[i-4]
+
+        if i % 4 == 0:
+            temp = rotate_word(temp)
+            temp = substitute_word(temp)
+            temp = xor_with_rcon(temp, RCON[i//4])
+
+        word = ''.join(word)
+        temp = ''.join(temp)
+        xord = xor_hex(word, temp)
+
+        w[i] = (xord[:2], xord[2:4], xord[4:6], xord[6:8])
+
+    return w
+
+def xor_hex(hex1, hex2):
+    bin1 = hex_to_binary(hex1)
+    bin2 = hex_to_binary(hex2)
+    xord = int(bin1, 2) ^ int(bin2, 2)
+    hexed = hex(xord)[2:].zfill(8)  # Ensure 8-character hex representation
+    return hexed
+
+def hex_to_binary(hex):
+    return bin(int(hex, 16))
+
+def rotate_word(word):
+    return word[1:] + word[:1]
+
+def substitute_word(word):
+    substituted_word = ()
+    for hex_val in word:
+        row, col = get_row_col_indices(hex_val)
+        sbox_index = (row * 16) + col
+        piece = format(SBOX[sbox_index], '02x')
+        substituted_word += (piece,)
+    return substituted_word
+
+def xor_with_rcon(word, rcon_value):
+    return xor_hex(word, format(rcon_value, '02x'))
+
+def get_row_col_indices(hex_val):
+    row = int(hex_val[0], 16) if hex_val[0].isdigit() else ord(hex_val[0]) - ord('a') + 10
+    col = int(hex_val[1], 16) if hex_val[1].isdigit() else ord(hex_val[1]) - ord('a') + 10
+    return row, col
+
+def pretty_print(key_schedule):
+    print("\n\nKey Schedule: \n")
+    for i, word in enumerate(key_schedule):
+        print(f"w{i} = {' '.join(word)}")
+
+def main():
+    key = ["0f", "15", "71", "c9", "47", "d9", "e8", "59", "0c", "b7", "ad", "d6", "af", "7f", "67", "98"]
+    key_schedule = key_expansion(key)
+    print("Original Key: " + "".join(key))
+    pretty_print(key_schedule)
+
+if __name__ == '__main__':
+    main()

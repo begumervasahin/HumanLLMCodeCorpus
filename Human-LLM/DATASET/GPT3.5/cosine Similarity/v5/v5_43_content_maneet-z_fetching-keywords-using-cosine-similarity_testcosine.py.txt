@@ -1,0 +1,117 @@
+import math
+import os
+
+def get_file_data(file_path):
+    """Reads and preprocesses the data from a file."""
+    if not os.path.exists(file_path):
+        print('File does not exist in the directory')
+        return None
+
+    with open(file_path, 'r') as file:
+        file_content = file.read()
+
+    file_content = file_content.replace('?', '.').replace('!', '.')
+    split_data = file_content.split('.')
+    return split_data
+
+def get_test_words(test_word_file):
+    """Reads the test words from a file."""
+    if not os.path.exists(test_word_file):
+        print('Test word file does not exist in the directory')
+        return None
+
+    with open(test_word_file, 'r') as file:
+        test_words = [line.strip() for line in file]
+
+    if len(test_words) != 1:
+        print('Test word file should contain only one word per line')
+        return None
+
+    return test_words
+
+def get_common_words(common_word_file):
+    """Reads common words from a file."""
+    common_words = {}
+    if os.path.exists(common_word_file):
+        with open(common_word_file, 'r') as file:
+            for line in file:
+                common_words[line.strip()] = 0
+    return common_words
+
+def get_word_frequency(cleaned_data, test_words, common_words):
+    """Calculates word frequencies in the data."""
+    word_count = {}
+    cleaned_data = cleaned_data.lower()
+    string_sentences = cleaned_data.split('.')
+    for test_word in test_words:
+        word_count[test_word] = {}
+        for sentence in string_sentences:
+            if test_word in sentence:
+                words_in_sentence = sentence.split()
+                for word in words_in_sentence:
+                    if word not in common_words and word != test_word:
+                        word_count[test_word][word] = word_count[test_word].get(word, 0) + 1
+    return word_count
+
+def clean_data(data):
+    """Cleans the data by removing punctuation and extra spaces."""
+    punctuation = [',', '\'', '\"', ':', ';', '(', ')', '[', ']', '\n', '_']
+    cleaned_text = ''
+    for line in data:
+        for char in line:
+            if char == '-' and ('--' in line or '- ' in line or ' -' in line):
+                cleaned_text += ' '
+            elif char in punctuation:
+                cleaned_text += ' '
+            else:
+                cleaned_text += char
+        cleaned_text += '.'
+    cleaned_text = ' '.join(cleaned_text.split())  # Remove extra spaces
+    return cleaned_text
+
+def profile_calculation(profile_count, test_words):
+    """Calculates the similarity profile."""
+    final_data_profile = []
+    for i in range(1, len(test_words)):
+        pq = 0
+        count_denom_p = sum(value ** 2 for value in profile_count[test_words[0]].values())
+        count_denom_q = sum(value ** 2 for value in profile_count[test_words[i]].values())
+        for word in profile_count[test_words[0]]:
+            if word in profile_count[test_words[i]]:
+                pq += profile_count[test_words[i]][word] * profile_count[test_words[0]][word]
+        final_denom = math.sqrt(count_denom_p * count_denom_q)
+        similarity = round(pq / final_denom, 3) if final_denom != 0 else 0
+        final_data_profile.append([test_words[i], similarity])
+    return sorted(final_data_profile, key=lambda l: l[1], reverse=True)
+
+def main(file_path, test_word_file, common_word_file=None):
+    """Main function to orchestrate the process."""
+    if not file_path or not test_word_file:
+        print('Please provide valid file paths')
+        return
+
+    start_time = os.times()
+    file_data = get_file_data(file_path)
+    if file_data is None:
+        print('Unable to read the file')
+        return
+
+    test_words = get_test_words(test_word_file)
+    if test_words is None:
+        print('Unable to read the test word file')
+        return
+
+    cleaned_data = clean_data(file_data)
+    common_words = get_common_words(common_word_file) if common_word_file else {}       
+    word_frequency = get_word_frequency(cleaned_data, test_words, common_words)
+    final_data = profile_calculation(word_frequency, test_words)
+
+    for data in final_data:
+        print(data)
+
+    finish_time = os.times()
+    print("\nExecution Times - User: {0:0.2f} Sys: {1:0.2f}".format(finish_time[0] - start_time[0],
+                                                                     finish_time[1] - start_time[1]))
+
+if __name__ == "__main__":
+    main('TCGA-XC-AA0X.B22BD117-8DF0-47FF-BE25-9FE2DA916DB6.txt', 'profile.txt', 'common.txt')

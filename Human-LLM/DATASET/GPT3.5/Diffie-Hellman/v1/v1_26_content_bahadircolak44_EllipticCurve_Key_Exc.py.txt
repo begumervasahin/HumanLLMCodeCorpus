@@ -1,0 +1,87 @@
+import time
+from EllipticCurve import EllipticCurve
+from PointAddition import PointAddition
+
+def point_doubling(a, b, x, y, f):
+    """
+    Perform point doubling on an elliptic curve.
+    """
+    alice_curve = EllipticCurve(a, b)
+    x, y = alice_curve.sum_ee(x, y, f)
+    return x, y
+
+def point_addition(a, b, x1, y1, x2, y2, f, i):
+    """
+    Perform point addition on an elliptic curve.
+    """
+    alice_curve = PointAddition(a, b)
+    x3, y3 = alice_curve.sum_ee(x1, y1, x2, y2, f)
+    return x3, y3
+
+def ayse():
+    """
+    Perform Ayse's operations for key exchange.
+    """
+    alpha = 2
+    g = key_exchange(alpha, 1)
+    print("Ayse %dP yi yayinliyor.... " % alpha, g)
+    print("-------------------------------------------")
+    g2 = bora(g)
+    g3 = diffie_hellman(g2, alpha)
+    print("Ayse nin elde ettigi:", g3)
+
+def bora(g2):
+    """
+    Perform Bora's operations for key exchange.
+    """
+    beta = 5
+    g = key_exchange(beta, 1)
+    print("Bora %dP yi yayinliyor...  " % beta, g)
+    print("-------------------------------------------")
+    g3 = diffie_hellman(g2, beta)
+    print("Bora nin elde ettigi:", g3)
+    return g
+
+def key_exchange(k, v):
+    """
+    Perform key exchange between parties.
+    """
+    a, b = 0, 1
+    x1, y1 = 7, 5
+    x2, y2 = 1, 1
+    f = 11
+    x2, y2 = point_doubling(a, b, x1, y1, f)
+    if v == 1:
+        print("  P:", (x1, y1))
+    for i in range(3, k + 1):
+        if v == 1:
+            print("%dP" % (i - 1), (x2, y2))
+        if x1 > x2:
+            x2, y2 = point_addition(a, b, x2, y2, x1, y1, f, i)
+        elif x1 < x2:
+            x2, y2 = point_addition(a, b, x1, y1, x2, y2, f, i)
+    if v == 1:
+        print("-------------------------------------------")
+    return x2, y2
+
+def diffie_hellman(g, k):
+    """
+    Perform the Diffie-Hellman key exchange.
+    """
+    a, b = 0, 1
+    x1, y1 = g
+    f = 11
+    x2, y2 = point_doubling(a, b, x1, y1, f)
+    for i in range(1, k - 1):
+        if x1 > x2:
+            x2, y2 = point_addition(a, b, x2, y2, x1, y1, f, i)
+        elif x1 < x2:
+            x2, y2 = point_addition(a, b, x1, y1, x2, y2, f, i)
+        print(x2, y2)
+    return x2, y2
+
+if __name__ == "__main__":
+    timestamp1 = time.time()
+    ayse()
+    timestamp2 = time.time()
+    print("This took %.2f seconds" % (timestamp2 - timestamp1))

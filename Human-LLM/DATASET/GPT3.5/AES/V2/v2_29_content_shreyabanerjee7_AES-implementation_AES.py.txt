@@ -1,0 +1,149 @@
+def add_round_key(state, w):
+    return [state[i] ^ w[i] for i in range(len(state))]
+
+def sub_word(word, box):
+    return [box[b] for b in word]
+
+def rot_word(word, n):
+    return word[n:] + word[:n]
+
+def key_expansion(key, box, rcon):
+    w = []
+    for i in range(4):
+        w.append([key[4 * i], key[4 * i + 1], key[4 * i + 2], key[4 * i + 3]])
+
+    for i in range(4, 4 * 11):
+        temp = w[i - 1]
+        if i % 4 == 0:
+            temp = sub_word(rot_word(temp, 1), box)
+            temp[0] ^= rcon[i // 4 - 1]
+        w.append([w[i - 4][j] ^ temp[j] for j in range(4)])     
+
+    return w
+
+def shift_rows(state):
+    output_state = [0] * len(state)
+    for i in range(4):
+        row = [state[j] for j in range(i, len(state), 4)]       
+        output_state[i:] = rot_word(row, i)
+    return output_state
+
+def mix_columns(state, box, into_func):
+    new_state = []
+    for i in range(0, len(state), 4):
+        col = state[i:i+4]
+        new_col = [0] * 4
+        for j in range(4):
+            new_col[j] = into_func(
+                col[0] * box[0 + j*4] ^
+                col[1] * box[1 + j*4] ^
+                col[2] * box[2 + j*4] ^
+                col[3] * box[3 + j*4]
+            )
+        new_state.extend(new_col)
+    return new_state
+
+def cipher(block, key, box, rcon, into_func):
+    key_ex = key_expansion(key, box, rcon)
+    state = block
+    state = add_round_key(state, key_ex[0:4])
+    for round in range(1, 10):
+        state = sub_word(state, box)
+        state = shift_rows(state)
+        state = mix_columns(state, box, into_func)
+        state = add_round_key(state, key_ex[4 * round:4 * (round + 1)])
+    state = sub_word(state, box)
+    state = shift_rows(state)
+    state = add_round_key(state, key_ex[4 * 10:])
+    return state
+
+def to_int_list(s):
+    return [ord(c) for c in s]
+
+def to_hex_list(s):
+    return [int(c, 16) for c in s.split()]
+
+def encrypt_file(plaintext_file, ciphertext_file, key, box, rcon, into_func):
+    read_file = open(plaintext_file, "r")
+    s = read_file.read()
+    read_file.close()
+    key_list = to_int_list(key)
+    plaintext_int = to_int_list(s)
+    l = len(s)
+    ciphertext = []
+    for i in range(l // 16):
+        ciphertext.append(cipher(plaintext_int[i*16:(i+1)*16], key_list, box, rcon, into_func))
+    if l % 16 > 0:
+        ciphertext.append(cipher(plaintext_int[l//16*16:] + [0] * (16 - l % 16), key_list, box, rcon, into_func))
+    write_file = open(ciphertext_file, "w")
+    for encrypted_block in ciphertext:
+        block_list = ['{:02x}'.format(i) for i in encrypted_block]
+        block_string = " ".join(block_list)
+        write_file.write(block_string + "\n")
+    write_file.close()
+
+def decrypt_file(ciphertext_file, decrypted_file, key, box, rcon, into_func):
+    key_list = to_int_list(key)
+    read_file = open(ciphertext_file, "r")
+    write_file = open(decrypted_file, "w")
+    for line in read_file:
+        encrypted_block = to_hex_list(line)
+        plain_block = inv_cipher(encrypted_block, key_list, box, rcon, into_func)
+        for i in plain_block:
+            if i != 0:
+                write_file.write(chr(i))
+    read_file.close()
+    write_file.close()
+
+def inv_cipher(block, key, box, rcon, into_func):
+    key_ex = key_expansion(key, box, rcon)
+    state = block
+    state = add_round_key(state, key_ex[4 * 10:])
+    for round in range(9, 0, -1):
+        state = inv_shift_rows(state)
+        state = sub_word(state, box)
+        state = add_round_key(state, key_ex[4 * round:4 * (round + 1)])
+        state = inv_mix_columns(state, box, into_func)
+    state = inv_shift_rows(state)
+    state = sub_word(state, box)
+    state = add_round_key(state, key_ex[0:4])
+    return state
+
+def inv_mix_columns(state, box, into_func):
+    new_state = []
+    for i in range(0, len(state), 4):
+        col = state[i:i+4]
+        new_col = [0] * 4
+        for j in range(4):
+            new_col[j] = into_func(
+                col[0] * boxinv[0 + j*4] ^
+                col[1] * boxinv[1 + j*4] ^
+                col[2] * boxinv[2 + j*4] ^
+                col[3] * boxinv[3 + j*4]
+            )
+        new_state.extend(new_col)
+    return new_state
+
+def inv_shift_rows(state):
+    output_state = [0] * len(state)
+    for i in range(4):
+        row = [state[j] for j in range(i, len(state), 4)]       
+        output_state[i:] = rot_word(row, -i)
+    return output_state
+
+def main():
+    key = "Thats my Kung Fu"
+    plaintext_file = "plaintext.txt"
+    ciphertext_file = "ciphertext.txt"
+    decrypted_file = "decrypted.txt"
+
+    # Define S-Box, Inverse S-Box, and RCON
+    box = [...]
+    boxinv = [...]
+    rcon = [...]
+
+    encrypt_file(plaintext_file, ciphertext_file, key, box, rcon, into_func=into_one)
+    decrypt_file(ciphertext_file, decrypted_file, key, boxinv, rcon, into_func=into_one)
+
+if __name__ == "__main__":
+    main()

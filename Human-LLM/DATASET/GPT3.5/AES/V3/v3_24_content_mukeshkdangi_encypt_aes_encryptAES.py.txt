@@ -1,0 +1,72 @@
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+import base64
+import hashlib
+import sys
+
+class AESCipher:
+    def __init__(self, key):
+        self.block_size = AES.block_size
+        self.key = self.generate_key(key)
+        
+    @staticmethod
+    def generate_key(user_key):
+        """Generates a SHA-256 hash of the user's key."""
+        return hashlib.sha256(user_key.encode()).digest()
+
+    def encrypt(self, plaintext):
+        """Encrypts plaintext using AES CBC mode."""
+        plaintext = self.pad(plaintext)
+        iv = get_random_bytes(self.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        encrypted_data = cipher.encrypt(plaintext.encode())
+        return base64.b64encode(iv + encrypted_data).decode('utf-8')
+
+    def decrypt(self, encrypted_text):
+        """Decrypts encrypted text using AES CBC mode."""
+        encrypted_data = base64.b64decode(encrypted_text)
+        iv = encrypted_data[:self.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted_data = cipher.decrypt(encrypted_data[self.block_size:])
+        return self.unpad(decrypted_data).decode('utf-8')
+
+    def pad(self, data):
+        """Pads data to be a multiple of the AES block size."""
+        padding_length = self.block_size - len(data) % self.block_size
+        return data + padding_length * chr(padding_length)
+
+    @staticmethod
+    def unpad(data):
+        """Removes padding from data."""
+        return data[:-ord(data[-1])]
+
+def process_file(input_path, output_path, key, mode):
+    """Encrypts or decrypts a file based on the mode."""
+    with open(input_path, 'r') as file:
+        content = file.read()
+    
+    cipher = AESCipher(key)
+    processed_content = cipher.encrypt(content) if mode == 'encrypt' else cipher.decrypt(content)
+    
+    with open(output_path, 'w') as file:
+        file.write(processed_content)
+    
+    action = "encrypted" if mode == 'encrypt' else "decrypted"
+    print(f"File successfully {action}.")
+
+def main():
+    if len(sys.argv) != 5:
+        print("Usage: python script.py -e|-d input_file output_file key")
+        sys.exit(1)
+    
+    mode_flag, input_file, output_file, key = sys.argv[1:5]
+    mode = 'encrypt' if mode_flag == '-e' else 'decrypt'
+    
+    if mode_flag not in ['-e', '-d']:
+        print("Invalid mode, use -e for encryption or -d for decryption.")
+        sys.exit(1)
+    
+    process_file(input_file, output_file, key, mode)
+
+if __name__ == "__main__":
+    main()

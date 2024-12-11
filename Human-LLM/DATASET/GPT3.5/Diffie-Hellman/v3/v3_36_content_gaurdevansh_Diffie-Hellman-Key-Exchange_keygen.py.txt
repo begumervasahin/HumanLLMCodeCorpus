@@ -1,0 +1,49 @@
+import random
+
+# Constants
+PRIME = 26994308385016394749558484505346578147056894665639
+GENERATOR = 2
+
+def generate_private_key(filename):
+    """Generate a random private key and save it to a file."""
+    private_key = str(random.randint(1000, 10000))
+    write_to_file(filename, private_key)
+
+def generate_public_key(private_filename, public_filename):
+    """Generate a public key from a private key and save it to a file."""
+    private_key = read_from_file(private_filename)
+    public_key = (GENERATOR ** int(private_key)) % PRIME
+    write_to_file(public_filename, str(public_key))
+
+def generate_shared_secret(private_file, public_file):
+    """Generate the shared secret key using private and public keys."""
+    private_key = read_from_file(private_file)
+    public_key = read_from_file(public_file)
+    shared_secret_key = (int(public_key) ** int(private_key)) % PRIME
+    return shared_secret_key
+
+def write_to_file(filename, content):
+    """Write content to a file."""
+    with open(filename, 'w') as file:
+        file.write(content)
+
+def read_from_file(filename):
+    """Read content from a file."""
+    with open(filename, 'r') as file:
+        return file.read()
+
+# Example usage
+if __name__ == "__main__":
+    # Generate and save private keys
+    generate_private_key("private_key_Alice.txt")
+    generate_private_key("private_key_Bob.txt")
+
+    # Generate public keys and save them
+    generate_public_key("private_key_Alice.txt", "public_key_Alice.txt")
+    generate_public_key("private_key_Bob.txt", "public_key_Bob.txt")
+
+    # Generate and print shared secret keys
+    secret_Alice = generate_shared_secret("private_key_Alice.txt", "public_key_Bob.txt")
+    secret_Bob = generate_shared_secret("private_key_Bob.txt", "public_key_Alice.txt")
+    print("Shared secret key for Alice:", secret_Alice)
+    print("Shared secret key for Bob:", secret_Bob)

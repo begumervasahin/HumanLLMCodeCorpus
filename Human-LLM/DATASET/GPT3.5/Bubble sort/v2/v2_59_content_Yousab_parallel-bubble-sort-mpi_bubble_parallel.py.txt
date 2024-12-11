@@ -1,0 +1,56 @@
+from mpi4py import MPI
+import numpy as np
+import time
+from operator import itemgetter
+
+# Function to perform bubble sort on a list of numbers
+def bubble_sort(nums):
+    swapped = True
+    while swapped:
+        swapped = False
+        for i in range(len(nums) - 1):
+            if nums[i] > nums[i + 1]:
+                nums[i], nums[i + 1] = nums[i + 1], nums[i]
+                swapped = True
+
+# Initialize MPI variables
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+
+# Master process
+if rank == 0:
+    # Get input for array size
+    arraySize = input("Please enter array size: ")
+    # Generate a list of numbers and shuffle it
+    numbers = np.arange(int(arraySize))
+    np.random.shuffle(numbers)
+    print("Generated list of size " + str(arraySize) + " is: " + str(numbers))
+    # Split the list into chunks for each process
+    chunks = np.array_split(numbers, size)
+else:
+    chunks = None
+
+# Scatter chunks of data to each process
+start_time = time.time()
+chunk = comm.scatter(chunks, root=0)
+print("Process " + str(rank) +" has this chunk of data: " + str(chunk))
+# Perform bubble sort on the chunk
+bubble_sort(chunk)
+# Gather sorted chunks from all processes
+sortedArrays = comm.gather(chunk, root=0)
+
+# Master process gathers sorted chunks and merges them into a single sorted array
+if rank == 0:
+    iteratorNumbers = np.zeros((len(sortedArrays),), dtype=int)
+    sortedArray = []
+    for my_index in range(0, int(arraySize)):
+        # Create an iterator to track the current position in each sorted chunk
+        iterator = [(i, (99999999 if iteratorNumbers[i] >= len(sortedArrays[i]) else sortedArrays[i][iteratorNumbers[i]])) for i in range(0, len(sortedArrays))]
+        # Find the minimum element from all iterators
+        res = min(iterator, key=itemgetter(1))
+        iteratorNumbers[res[0]] = iteratorNumbers[res[0]] + 1
+        sortedArray.append(res[1])
+        iterator = []
+    print("\n\n Sorted Array: " + str(sortedArray))
+    print("\n\n Execution Time --- %s seconds ---" % (time.time() - start_time))

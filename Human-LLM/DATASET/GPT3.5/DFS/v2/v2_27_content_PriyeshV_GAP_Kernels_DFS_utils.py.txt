@@ -1,0 +1,55 @@
+import os
+import shutil
+import tensorflow as tf
+import numpy as np
+
+def check_and_create_directory(dir_path, overwrite=False):
+    """
+    Check if a directory exists and create it if it doesn't.
+    Optionally overwrite the directory if it already exists.
+    """
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+    elif overwrite:
+        shutil.rmtree(dir_path)
+        os.mkdir(dir_path)
+
+def create_directory_tree(dir_path):
+    """Create a directory tree based on a list of directory names."""
+    for i in range(len(dir_path)):
+        check_and_create_directory(os.path.join(*dir_path[:i + 1]))
+
+def remove_directory(dir_path):
+    """Remove a directory and its contents."""
+    shutil.rmtree(dir_path, ignore_errors=True)
+
+def relu_init(shape, dtype=tf.float32, partition_info=None):
+    """Initialize weights using the ReLU activation function."""
+    init_range = np.sqrt(2.0 / shape[1])
+    initial = tf.random_normal(shape, dtype=dtype) * init_range
+    return initial
+
+def zeros(shape, dtype=tf.float32, partition_info=None):
+    """Initialize weights with all zeros."""
+    initial = tf.zeros(shape, dtype=dtype)
+    return initial
+
+def const(shape, dtype=tf.float32, partition_info=None):
+    """Initialize weights with a constant value."""
+    initial = tf.constant(0.1, shape=shape, dtype=dtype)
+    return initial
+
+def tanh_init(shape, dtype=tf.float32, partition_info=None):
+    """Initialize weights using the tanh activation function."""
+    init_range = np.sqrt(6.0 / (shape[0] + shape[1]))
+    initial = tf.random_uniform(shape, minval=-init_range, maxval=init_range, dtype=tf.float32)
+    return initial
+
+# Example usage
+directory_path = 'my_directory'
+check_and_create_directory(directory_path, overwrite=True)
+
+directory_tree = ['parent_dir', 'child_dir']
+create_directory_tree(directory_tree)
+
+remove_directory(directory_path)

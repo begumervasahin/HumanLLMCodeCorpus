@@ -1,0 +1,71 @@
+import random
+
+def check_for_duplicates(pri):
+    duplicate = pri[:]
+    check = 1
+    for i in range(len(pri)):
+        for j in range(i + 1, len(pri)):
+            if pri[i] == duplicate[j]:
+                check = 0
+                break
+            else:
+                check = 1
+                continue
+        break
+    return check
+
+def main():
+    # Input prime number and number of users
+    prime_number = int(input("Enter the prime number: "))
+    num_users = int(input("Enter the number of users: "))
+
+    # Input secret keys for each user
+    keys = []
+    for i in range(num_users):
+        key = int(input("Enter secret key for user {}: ".format(i + 1)))
+        keys.append(key)
+
+    # Determine which users want to communicate
+    if num_users > 2:
+        print("Enter the users between whom you want to communicate:")
+        user1_index = int(input("Enter the user 1: "))
+        xa = keys[user1_index - 1]
+        user2_index = int(input("Enter the user 2: "))
+        xb = keys[user2_index - 1]
+    else:
+        xa = keys[0]
+        xb = keys[1]
+
+    # Initialize variables for finding alpha
+    p = 0
+    a = []
+    pri = []
+    alpha = 0
+
+    # Find possible alphas
+    for i in range(1, prime_number):
+        for j in range(1, prime_number):
+            pri.append((i**j) % prime_number)
+        if check_for_duplicates(pri) == 1:
+            p += 1
+            a.append(i)
+        pri.clear()
+
+    # Select random alpha from possible alphas
+    alpha = random.choice(a)
+    print("alpha:", alpha)
+
+    # Calculate public keys for users A and B
+    ya = (alpha**xa) % prime_number
+    yb = (alpha**xb) % prime_number
+    print("Public key of user A:", ya)
+    print("Public key of user B:", yb)
+
+    # Calculate shared session keys for users A and B
+    Kab1 = (yb**xa) % prime_number
+    Kab2 = (ya**xb) % prime_number
+    print("Shared session key for user A:", Kab1)
+    print("Shared session key for user B:", Kab2)
+
+if __name__ == "__main__":
+    main()

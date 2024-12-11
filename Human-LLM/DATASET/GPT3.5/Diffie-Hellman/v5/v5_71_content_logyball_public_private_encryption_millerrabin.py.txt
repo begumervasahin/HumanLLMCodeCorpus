@@ -1,0 +1,48 @@
+import random
+
+def is_prime(n):
+    """
+    Miller-Rabin primality test.
+    
+    Determines whether a given integer is likely to be prime.
+    
+    Args:
+        n (int): The number to test for primality.
+    
+    Returns:
+        bool: True if n is likely to be prime, False otherwise.
+    """
+    if not isinstance(n, int):
+        return False
+    
+    if n < 2:
+        return False
+    
+    if n in {2, 3, 5, 7}:
+        return True
+    
+    if n % 2 == 0:
+        return False
+    
+    d = n - 1
+    s = 0
+    while d % 2 == 0:
+        d >>= 1
+        s += 1
+    
+    assert(2 ** s * d == n - 1)
+    
+    def trial_composite(a):
+        if pow(a, d, n) == 1:
+            return False
+        for i in range(s):
+            if pow(a, 2 ** i * d, n) == n - 1:
+                return False
+        return True
+    
+    for _ in range(8):
+        a = random.randint(2, n - 1)
+        if trial_composite(a):
+            return False
+    
+    return True

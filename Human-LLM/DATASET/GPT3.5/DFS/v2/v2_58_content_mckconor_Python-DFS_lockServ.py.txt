@@ -1,0 +1,74 @@
+from flask import Flask, jsonify, request, Blueprint
+import pymongo
+from encryption import AESCipher
+from stringHelper import getFileName, getFileExtension, getFormattedFileName
+
+# Initialize Flask application
+app = Flask(__name__)
+
+# Create a blueprint for application lock
+application_lock = Blueprint('application_lock', __name__)
+
+# MongoDB configuration
+serv_addr = "localhost"
+port = "27017"
+mongo_db_addr = f"mongodb://{serv_addr}:{port}"
+mongo_client = pymongo.MongoClient(mongo_db_addr)
+mongo_db = mongo_client.dfs
+
+# Encryption keys
+aes_key = "94CA61A3CFC9BB7B8FF07C723917851A"
+cipher = AESCipher(aes_key)
+server_key = "7596DE01913A20EC9069DBE508C5FEA3"
+
+# Define routes
+@application_lock.route('/file/lock', methods=['POST'])
+def lockFile():
+    data_in = request.get_json(force=True)
+    file_name = cipher.decode_string(data_in.get("file_name")).decode()
+    file_existing = mongo_db.files.find_one({"file_name": getFileName(file_name), "file_type": getFileExtension(file_name)})
+    mongo_db.files.update_one(file_existing, {"$set": {"locked": True}})
+    return jsonify({"response_code": 200})
+
+@application_lock.route('/file/unlock', methods=['POST'])
+def unlockFile():
+    data_in = request.get_json(force=True)
+    file_name = cipher.decode_string(data_in.get("file_name")).decode()
+    server_name = cipher.decode_string(data_in.get("server_name")).decode()
+    server = mongo_db.servers.find_one({"server_name": server_name})
+    server_info = {"server_id": server.get("id"), "server_name": server.get("server_name"), "server_address": server.get("port")}
+    file_existing = mongo_db.files.find_one({"file_name": getFileName(file_name), "file_type": getFileExtension(file_name), "server": server_info})
+    mongo_db.files.update_one(file_existing, {"$set": {"locked": False}})
+    return jsonify({"response_code": 200})
+
+@application_lock.route('/file/check', methods=['POST'])
+def checkLock():
+    data_in = request.get_json(force=True)
+    file_name = cipher.decode_string(data_in.get("file_name")).decode()
+    server_name = cipher.decode_string(data_in.get("server_name")).decode()
+    server = mongo_db.servers.find_one({"server_name": server_name})
+    server_info = {"server_id": server.get("id"), "server_name": server.get("server_name"), "server_address": server.get("port")}
+    file_existing = mongo_db.files.find_one({"file_name": getFileName(file_name), "file_type": getFileExtension(file_name), "server": server_info})
+    if file_existing.get("locked"):
+        return jsonify({"response_code": 423})
+    else:
+        return jsonify({"response_code": 200})
+
+@application_lock.route('/file/add_to_wait_queue', methods=['POST'])
+def addToQueue():
+    data_in = request.get_json(force=True)
+    file_name = cipher.decode_string(data_in.get("file_name")).decode()
+    user_addr = cipher.decode_string(data_in.get("user_addr")).decode()
+    data = {"file_name": file_name, user_addr: user_addr}
+    file_existing = mongo_db.locks.find_one({"file_name": getFormattedFileName(file_name)})
+    if file_existing is None:
+        mongo_db.locks.insert(data)
+    else:
+        mongo_db.locks.update_one(file_existing, {"$set": data})
+
+# Register the blueprint
+app.register_blueprint(application_lock)
+
+# Run the application
+if __name__ == "__main__":
+    app.run(debug=True)

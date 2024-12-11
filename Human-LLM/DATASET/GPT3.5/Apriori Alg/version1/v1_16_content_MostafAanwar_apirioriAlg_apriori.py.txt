@@ -1,0 +1,61 @@
+import pandas as pd
+import itertools
+
+# Read user input
+percentage = int(input("How many % of records you want to read? "))
+min_support = int(input("What is the minimum support? "))
+min_confidence = int(input("What is the % of the minimum confidence? "))
+
+# Read the file and calculate the number of records
+file_path = "CarSales.txt"
+num_lines = sum(1 for line in open(file_path))
+
+# Convert the percentage to the number of records
+records = int((percentage / 100) * num_lines)
+
+# Read the specified percentage of records from the file
+data_set = pd.read_csv(file_path, sep=' ', header=None, nrows=records).values
+
+# Create a dictionary to count item occurrences
+D = {}
+
+# Count occurrences of combinations
+for transaction in data_set:
+    for i in range(1, 5):
+        for comb in itertools.combinations(transaction, i):
+            D[comb] = D.get(comb, 0) + 1
+
+# Remove items with support below the minimum support threshold
+D = {k: v for k, v in D.items() if v >= min_support}
+
+# Identify maximum size of frequent itemsets
+max_size = max(len(x) for x in D)
+
+# Extract keys and values for confidence calculation
+confidence_keys = [k for k in D if len(k) == max_size]
+confidence_values = [D[k] for k in confidence_keys]
+
+# Extract unique items for confidence calculation
+confidence_subset = list(set(itertools.chain.from_iterable(confidence_keys)))
+
+# Generate combinations for confidence calculation
+combinations = []
+for quad in confidence_keys:
+    for i in range(1, 3):
+        for a in itertools.combinations(quad, i):
+            combinations.append(a)
+
+# Generate permutations for confidence calculation
+confidence_permutations = list(itertools.permutations(confidence_subset, max_size))
+
+# Generate test combinations for confidence calculation
+test = []
+for i in confidence_subset:
+    list_num = [i]
+    for j in confidence_subset:
+        if i != j:
+            list_num.append(j)
+    test.append(list_num)
+    test.append(list_num[::-1])
+
+print("Apriori algorithm completed successfully.")

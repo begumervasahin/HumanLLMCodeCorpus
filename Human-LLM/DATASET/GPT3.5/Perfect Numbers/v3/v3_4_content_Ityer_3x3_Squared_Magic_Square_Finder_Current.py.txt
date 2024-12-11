@@ -1,0 +1,125 @@
+import random
+import pickle
+
+class ResultAnalyzer:
+    def __init__(self):
+        self.limit = 30
+        self.Dupes = 0
+
+    def load_results(self):
+        array = []
+        two_matches = []
+        three_matches = []
+        four_matches = []
+        five_matches = []
+        six_matches = []
+        seven_matches = []
+        win = []
+        filenames = ["Win.txt", "Two.txt", "Three.txt", "Four.txt", "Five.txt", "Six.txt", "Seven.txt"]
+        variables = [win, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches]
+        for filename, variable in zip(filenames, variables):
+            with open(filename, 'rb') as f:
+                variable = pickle.load(f)
+        return array, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win
+
+    def generate_numbers(self):
+        nums = []
+        for letter in ["a", "b", "c", "d", "e", "f", "g", "h", "i"]:
+            tmp = False
+            while not tmp:
+                num = random.randint((self.limit * -1), self.limit)
+                if (num not in nums) and (num < self.limit):
+                    nums.append(num)
+                    tmp = True
+        return nums
+
+    def categorize_matches(self, answers, numbers, results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win, goal):
+        occurrences = 0
+        most_common_num = max(set(answers), key=answers.count)
+        for i in answers:
+            if i == most_common_num:
+                occurrences += 1
+        if occurrences == 1:
+            results.append(numbers)
+        elif occurrences <= 7:
+            matches = [two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches]
+            matches[occurrences - 2].append(numbers)
+        else:
+            win.append(numbers)
+        print(((len(results)) + sum(len(match) for match in [two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches]) + len(win)), "/", goal)
+        return results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win
+
+    def calculate_results(self, results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win, *numbers, goal):
+        squares = [num ** 2 for num in numbers]
+        horizontal_sums = [sum(squares[i:i+3]) for i in range(0, len(squares), 3)]
+        vertical_sums = [sum(squares[i::3]) for i in range(3)]
+        diagonal_sums = [sum(squares[::4]), sum(squares[2:7:2])]
+        answers = horizontal_sums + vertical_sums + diagonal_sums
+        results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win = self.categorize_matches(answers, numbers, results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win, goal)
+        return results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win
+
+    def remove_duplicates(self, lst):
+        if lst:
+            lst.sort()
+            last = lst[-1]
+            for i in range(len(lst) - 2, -1, -1):
+                if last == lst[i]:
+                    del lst[i]
+                else:
+                    last = lst[i]
+        return lst
+
+    def finalize_results(self, results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win):
+        print("Two:", len(two_matches))
+        print("Three:", len(three_matches))
+        print("Four:", len(four_matches))
+        print("Five:", len(five_matches))
+        print("Six:", len(six_matches))
+        print("Seven:", len(seven_matches))
+        print("Win:", len(win))
+        print(self.Dupes, "Duplicates Removed")
+        print("Saving Results")
+        with open("Win.txt", 'wb') as f:
+            pickle.dump(win, f)
+        with open("Two.txt", 'wb') as f:
+            pickle.dump(two_matches, f)
+        with open("Three.txt", 'wb') as f:
+            pickle.dump(three_matches, f)
+        with open("Four.txt", 'wb') as f:
+            pickle.dump(four_matches, f)
+        with open("Five.txt", 'wb') as f:
+            pickle.dump(five_matches, f)
+        with open("Six.txt", 'wb') as f:
+            pickle.dump(six_matches, f)
+        with open("Seven.txt", 'wb') as f:
+            pickle.dump(seven_matches, f)
+
+    def run(self):
+        results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win = self.load_results()
+        current_tests = len(results) + sum(len(match) for match in [two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win])
+        print("Don't run too many tests at once, as results are only saved at the end")
+        target_tests = int(input(f"There are {current_tests:,d} current tests. How many more? ")) + current_tests
+        loops = target_tests - current_tests
+        while current_tests < target_tests:
+            numbers = self.generate_numbers()
+            results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win = self.calculate_results(results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win, *numbers, goal=target_tests)
+            current_tests = len(results) + sum(len(match) for match in [two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win])
+        print("Before purification:", "{:,d}".format(current_tests))
+        # Purify results
+        results = []
+        # Remove duplicates
+        two_matches = self.remove_duplicates(two_matches)
+        three_matches = self.remove_duplicates(three_matches)
+        four_matches = self.remove_duplicates(four_matches)
+        five_matches = self.remove_duplicates(five_matches)
+        six_matches = self.remove_duplicates(six_matches)
+        seven_matches = self.remove_duplicates(seven_matches)
+        win = self.remove_duplicates(win)
+        after_purification = len(results) + sum(len(match) for match in [two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win])
+        print("After purification:", "{:,d}".format(after_purification))
+        self.finalize_results(results, two_matches, three_matches, four_matches, five_matches, six_matches, seven_matches, win)
+        input("Press enter to close")
+
+# Run the program
+if __name__ == "__main__":
+    ResultAnalyzer().run()

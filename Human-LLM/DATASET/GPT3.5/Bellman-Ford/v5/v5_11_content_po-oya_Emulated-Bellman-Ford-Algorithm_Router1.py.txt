@@ -1,0 +1,87 @@
+# Welcome message
+print("Emulated Bellman-Ford Algorithm")
+print("PoOya Khandel, Mohammad Hossein Tavakoli Bina\n")
+
+# Import necessary modules
+from BellmanFord import BFA
+import msvcrt
+import re
+import timeit
+
+# Initialize variables
+elapsedTime = 0
+start = 0
+whichPort = {}
+adrToName = {}
+routerCount = 0
+hit = None
+
+# Get the router's name from user input
+routerName = input("Welcome to Emulated Bellman-Ford Algorithm\n"
+                   "Please enter your router's name:\n")
+
+# Function to read port mapping file and populate dictionaries
+def read_port_mapping():
+    with open("which_port.txt") as whichRouter:
+        for line in whichRouter:
+            port = int(line[0])
+            router_id = int(line[2:6])
+            whichPort[port] = router_id
+            adrToName[router_id] = port
+            routerCount += 1
+
+# Function to read initial cost for the router from the adjacency matrix file
+def read_initial_cost():
+    with open("adj_mat.txt") as adjMatrix:
+        myLine = adjMatrix.readlines()[int(routerName) - 1]
+        return myLine.rstrip('\n').split(" ")
+
+# Create an instance of the Bellman-Ford Algorithm
+def create_bfa_instance():
+    initialCost = read_initial_cost()
+    return BFA(routerCount, initialCost, routerName, whichPort, adrToName)
+
+# Display initial cost
+def display_initial_cost(initialCost):
+    print('Initial Cost is {}\n'.format(initialCost))
+
+# Prompt user to start the Bellman-Ford Algorithm
+def prompt_to_start_algorithm():
+    while True:
+        s = input("To start the BellmanFord Algorithm, enter 's':\n")
+        if s == 's':
+            break
+        else:
+            print("Invalid input! Please enter 's' to start the algorithm.")
+
+# Main function to run the algorithm
+def main():
+    read_port_mapping()
+    myBf = create_bfa_instance()
+    display_initial_cost(myBf.initialCost)
+    myBf.who_to_send()
+    prompt_to_start_algorithm()
+    start = timeit.default_timer()
+
+    while True:
+        hit = msvcrt.kbhit()
+        elapsedTime = timeit.default_timer() - start
+
+        if elapsedTime > 1:
+            myBf.send()
+            start = timeit.default_timer()
+
+        myBf.receive()
+
+        if hit:
+            key = ord(msvcrt.getch())
+            if key == ord('u'):
+                with open("adj_mat.txt") as adjMatrix:
+                    myLine = adjMatrix.readlines()[int(routerName) - 1]
+                    newCost = myLine.rstrip('\n').split(" ")
+                    print('New cost is {}\n'.format(newCost))
+                    myBf.check_cost(newCost)
+
+# Run the main function
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,99 @@
+import tensorflow as tf
+from tensorflow.contrib import slim
+import numpy as np
+
+class AE(object):
+    def __init__(self, n_input, n_output, archi):
+        self.n_input = n_input
+        self.n_output = n_output
+        self.archi = archi
+        self.x = tf.placeholder(tf.float32, shape=(None, 784),  name="input")
+
+    def Encoder(self, inputs, name):
+        with tf.name_scope(name):
+            layer_1 = slim.layers.linear(inputs, num_outputs=self.archi['h1'], activation_fn=tf.nn.softplus, scope='encoder1')
+            layer_2 = slim.layers.linear(layer_1, num_outputs=self.archi['h2'], activation_fn=tf.nn.softplus, scope='encoder2')
+            return layer_2
+
+    def To_latent(self, inputs, name):
+        with tf.name_scope(name):
+            encoder_out = slim.layers.linear(inputs, num_outputs=self.archi['latent'])
+            return encoder_out
+
+    def Decoder(self, inputs, name):
+        with tf.name_scope(name):
+            layer_1 = slim.layers.linear(inputs, num_outputs=self.archi['h2'], activation_fn=tf.nn.softplus, scope='decoder1')
+            layer_2 = slim.layers.linear(layer_1, num_outputs=self.archi['h1'], activation_fn=tf.nn.softplus, scope='decoder2')
+            decoder_out = slim.layers.linear(layer_2, num_outputs=self.n_output, activation_fn=tf.nn.sigmoid, scope='decoder_out')
+            return decoder_out
+
+    def Forward(self):
+        self.encoder_out = self.Encoder(self.x, 'encoder')
+        self.z = self.To_latent(self.encoder_out, 'latent')
+        self.reconstr = self.Decoder(self.z, 'decoder')
+        with tf.name_scope('loss'):
+            self.loss = tf.reduce_mean(-tf.reduce_sum(
+                self.x * tf.math.log(tf.clip_by_value(self.reconstr, 1e-10, 1.0))
+                + (1 - self.x) * tf.math.log(tf.clip_by_value(1 - self.reconstr, 1e-10, 1.0)), 1))
+        def Summaray():
+            tf.summary.scalar('loss', self.loss)
+        Summaray()
+        return self.z, self.reconstr, self.loss
+
+class VAE(AE):
+    def __init__(self, n_input, n_output, archi):
+        super().__init__(n_input, n_output, archi)
+        self.prior = DiagonalGaussian(mu=tf.zeros(1, 1), logvar=tf.zeros(1, 1))
+
+    def To_latent(self, inputs, name):
+        with tf.name_scope(name):
+            mu = slim.layers.linear(inputs, num_outputs=self.archi['latent'], scope='mean')
+            logvar = slim.layers.linear(inputs, num_outputs=self.archi['latent'], scope='logvar')
+            return DiagonalGaussian(mu, logvar)
+
+    def Forward(self):
+        self.encoder_out = self.Encoder(self.x, 'encoder')
+        self.encode_dist = self.To_latent(self.encoder_out, 'encoder_dist')
+        with tf.name_scope('latent'):
+            self.z = self.encode_dist.sample()
+        self.reconstr = self.Decoder(self.z, 'decoder')
+        with tf.name_scope('loss'):
+            self.reconst_loss = tf.reduce_mean(-tf.reduce_sum(
+                self.x * tf.math.log(tf.clip_by_value(self.reconstr, 1e-10, 1.0))
+                + (1 - self.x) * tf.math.log(tf.clip_by_value(1 - self.reconstr, 1e-10, 1.0)), 1))
+            self.kl_loss = tf.reduce_mean(-self.prior.log_probability(self.z))
+            self.lat_loss = tf.reduce_mean(self.encode_dist.log_probability(self.z))
+            self.loss = tf.reduce_mean(self.reconst_loss + self.kl_loss + self.lat_loss)
+        def Summaray():
+            tf.summary.scalar('reconst_loss', self.reconst_loss)
+            tf.summary.scalar('kl_loss', self.kl_loss)
+            tf.summary.scalar('lat_loss', self.lat_loss)
+            tf.summary.scalar('loss', self.loss)
+        Summaray()
+        return self.z, self.reconstr, self.loss
+
+class DiagonalGaussian(object):
+    def __init__(self, mu, logvar):
+        self.mu = mu
+        self.logvar = logvar
+
+    def sample(self):
+        epsilon = tf.random_normal(tf.shape(self.mu))
+        return self.mu + tf.exp(0.5 * self.logvar) * epsilon
+
+    def log_probability(self, z):
+        return -0.5 * tf.reduce_sum(self.logvar + tf.square(z - self.mu) / tf.exp(self.logvar), axis=1)
+
+# Define the architecture
+archi = {'h1': 256, 'h2': 128, 'latent': 64}
+
+# Create an instance of the VAE
+vae = VAE(n_input=784, n_output=784, archi=archi)
+
+# Build the forward pass of the VAE
+z, reconstr, loss = vae.Forward()
+
+# Initialize TensorFlow session
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    # Train the VAE using sess.run() calls here

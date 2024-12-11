@@ -1,0 +1,64 @@
+from abc import ABC, abstractmethod
+
+class BaseCommand(ABC):
+    '''
+    Base command class
+    '''
+    @abstractmethod
+    def execute(self):
+        raise NotImplementedError("Please implement in subclass")
+
+class EmailCommand(BaseCommand):
+    '''
+    Email Command class
+    '''
+    def __init__(self, receiver, data):
+        self.receiver = receiver
+        self.data = data
+    
+    def execute(self):
+        self.receiver.send_email(self.data)
+
+class SMSCommand(BaseCommand):
+    '''
+    SMS Command class
+    '''
+    def __init__(self, receiver, data):
+        self.receiver = receiver
+        self.data = data
+    
+    def execute(self):
+        self.receiver.send_sms(self.data)
+
+class NotificationService:
+    '''
+    Receiver class
+    '''
+    def send_email(self, data):
+        print("Sending email:", data)
+    
+    def send_sms(self, data):
+        print("Sending SMS:", data)
+
+class NotificationInvoker:
+    '''
+    Invoker class
+    '''
+    def __init__(self):
+        self.notification_history = []
+    
+    def invoke(self, command):
+        self.notification_history.append(command)
+        command.execute()
+
+if __name__ == "__main__":
+    invoker = NotificationInvoker()
+    receiver = NotificationService()
+
+    email_command = EmailCommand(receiver, {"subject": "Test Email"})
+    sms_command = SMSCommand(receiver, {"subject": "Test SMS"})
+
+    invoker.invoke(email_command)
+    invoker.invoke(sms_command)
+
+    print("Notification History:", invoker.notification_history)

@@ -1,0 +1,35 @@
+import pandas as pd
+
+# Define column headers for the DataFrame
+column_headers = ['Player', 'FP', 'Cost', 'Value', 'C/A', 'PYDS', 'PTDS', 'INTS', 'RUATT', 'RUYDS', 'RUTDS', 'REREC', 'REYDS', 'RETDS', 'RETGTS']
+
+# Read the Excel file into a DataFrame
+file_path = 'C:\\Users\\Alan\\Documents\\Fantasy\\Football\\DFS\\10292017\\FD_ALL_POS_PROJ.xlsx'
+dk_df = pd.read_excel(file_path, sheet_name='Sheet1', names=column_headers)
+
+# Parse player information
+dk_df['Player'] = dk_df['Player'].str.replace('GTD', '').str.split()
+dk_df['Player'] = dk_df['Player'].apply(lambda x: ' '.join(x[:2]))
+dk_df['Position'] = dk_df['Player'].apply(lambda x: x.split()[2])
+dk_df['Matchup'] = dk_df['Player'].apply(lambda x: f"{x.split()[3]} @ {x.split()[5][:-3]}")
+dk_df['Game Time'] = dk_df['Player'].apply(lambda x: f"{x.split()[5][-3:]} {x.split()[6]}")
+
+# Remove the original 'Player' column
+dk_df.drop(columns=['Player'], inplace=True)
+
+# Filter DataFrames by position
+dk_df_qb = dk_df[dk_df['Position'] == 'QB']
+dk_df_wr = dk_df[dk_df['Position'] == 'WR']
+dk_df_rb = dk_df[dk_df['Position'] == 'RB']
+dk_df_te = dk_df[dk_df['Position'] == 'TE']
+dk_df_def = dk_df[dk_df['Position'] == 'D/ST']
+
+# Write DataFrames to separate sheets in an Excel file
+output_file_path = 'C:\\Users\\Alan\\Documents\\Fantasy\\Football\\DFS\\10292017\\FD_ALL_POS_PROJ_PROCESSED.xlsx'
+with pd.ExcelWriter(output_file_path) as writer:
+    dk_df.to_excel(writer, 'DK Projections', index=False)
+    dk_df_qb.to_excel(writer, 'DK QB', index=False)
+    dk_df_wr.to_excel(writer, 'DK WR', index=False)
+    dk_df_rb.to_excel(writer, 'DK RB', index=False)
+    dk_df_te.to_excel(writer, 'DK TE', index=False)
+    dk_df_def.to_excel(writer, 'DK DEF', index=False)

@@ -1,0 +1,127 @@
+import gf
+
+def do(state):
+    """
+    Applies the MixColumns operation to the AES state matrix.
+
+    Args:
+        state (bytes): The state matrix.
+
+    Returns:
+        bytes: The new state matrix after the MixColumns operation.
+    """
+    fixed_matrix = bytes([0x02, 0x03, 0x01, 0x01])
+    c0, c1, c2, c3 = bytearray(), bytearray(), bytearray(), bytearray()
+    
+    for i in range(4):
+        c0.append(state[i * 4])
+        c1.append(state[1 + i * 4])
+        c2.append(state[2 + i * 4])
+        c3.append(state[3 + i * 4])
+    
+    new_state_matrix = mix_column(c0) + mix_column(c1) + mix_column(c2) + mix_column(c3)
+    
+    return bytes(new_state_matrix)
+
+def inverse(m):
+    """
+    Computes the inverse of the MixColumns operation.
+
+    Args:
+        m (bytes): The input matrix.
+
+    Returns:
+        bytes: The inverse matrix.
+    """
+    fixed_matrix = bytes([0x0e, 0x0b, 0x0d, 0x09])
+    return inv(m[:4]) + inv(m[4:8]) + inv(m[8:12]) + inv(m[-4:])
+
+def mix_column(column):
+    """
+    Mixes a single column of the AES state matrix.
+
+    Args:
+        column (bytes): The input column.
+
+    Returns:
+        bytes: The mixed column.
+    """
+    fixed_matrix = bytes([0x02, 0x03, 0x01, 0x01])
+    mix_column_matrix = bytearray()
+    
+    for i in range(4):
+        resulting_list = []
+        rijndael = gf.makeblist(0x11b)
+        
+        for j in range(4):
+            fixed_byte_list = gf.makeblist(fixed_matrix[j])
+            column_vector = gf.makeblist(column[j])
+            resulting_byte = gf.mul(fixed_byte_list, column_vector)
+            
+            if gf.value(resulting_byte) > 255:
+                resulting_byte = gf.div(resulting_byte, rijndael)[1]
+            
+            resulting_list.append(resulting_byte)
+        
+        final_value = gf.add(resulting_list[0], resulting_list[1])
+        final_value = gf.add(final_value, resulting_list[2])
+        final_value = gf.add(final_value, resulting_list[3])
+        mix_column_matrix.append(gf.value(final_value))
+        fixed_matrix = gf.circrotateright(fixed_matrix)
+    
+    return mix_column_matrix
+
+def inv(column):
+    """
+    Computes the inverse of a single column.
+
+    Args:
+        column (bytes): The input column.
+
+    Returns:
+        bytes: The inverse column.
+    """
+    fixed_matrix = bytes([0x0e, 0x0b, 0x0d, 0x09])
+    mix_column_matrix = bytearray()
+    
+    for i in range(4):
+        resulting_list = []
+        rijndael = gf.makeblist(0x11b)
+        
+        for j in range(4):
+            fixed_bit_list = gf.makeblist(fixed_matrix[j])
+            column_vector = gf.makeblist(column[j])
+            resulting_byte = gf.mul(fixed_bit_list, column_vector)
+            
+            while gf.value(resulting_byte) > 255:
+                resulting_byte = gf.div(rijndael, resulting_byte)[1]
+            
+            resulting_list.append(resulting_byte)
+        
+        final_value = gf.add(resulting_list[0], resulting_list[1])
+        final_value = gf.add(final_value, resulting_list[2])
+        final_value = gf.add(final_value, resulting_list[3])
+        mix_column_matrix.append(gf.value(final_value))
+        fixed_matrix = gf.circrotateright(fixed_matrix)
+    
+    return mix_column_matrix
+
+def blhex(bitlist):
+    """
+    Converts a bitlist to hexadecimal representation.
+
+    Args:
+        bitlist (list): The input bitlist.
+
+    Returns:
+        str: The hexadecimal representation.
+    """
+    print(hex(gf.value(bitlist)))
+
+
+# Example usage:
+# state_matrix = bytearray([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10])
+# new_state_matrix = do(state_matrix)
+# print(new_state_matrix)
+# inv_matrix = inverse(new_state_matrix)
+# print(inv_matrix)

@@ -1,0 +1,50 @@
+def gf_multiply(a, b):
+    # Intermediate values during Galois Field multiplication
+    intermediate_values = [0, 0, 0, 0]
+
+    # Initialize the first element with the value of b
+    intermediate_values[0] = b
+
+    # Iterate through the remaining elements
+    for i in range(1, 4):
+        # Multiply the previous element by 2
+        intermediate_values[i] = intermediate_values[i - 1] << 1
+
+        # Apply reduction polynomial if MSB is set
+        if intermediate_values[i - 1] & 0x80:
+            intermediate_values[i] ^= 0x1b
+
+        # Ensure result fits within a byte
+        intermediate_values[i] &= 0xff
+
+    # Calculate the result by performing XOR operations
+    result = 0
+    for i in range(4):
+        if (a >> i) & 0x01:
+            result ^= intermediate_values[i]
+
+    return result
+
+def generate_substitution_table(n):
+    # Initialize an empty list to store the substitution table
+    substitution_table = []
+
+    # Generate the substitution table
+    for i in range(256):
+        # Calculate value for the current input using the gf_multiply function
+        value = gf_multiply(n, i)
+
+        # Append the calculated value to the table
+        substitution_table.append(value)
+
+    # Convert the list to a tuple for efficiency
+    substitution_table = tuple(substitution_table)
+
+    # Print the substitution table
+    print(substitution_table)
+
+# Test cases for different values of n
+for n in [2, 3, 9, 11, 13, 14]:
+    print(f"Value of n: {n}")
+    generate_substitution_table(n)
+    print("-------------------------")

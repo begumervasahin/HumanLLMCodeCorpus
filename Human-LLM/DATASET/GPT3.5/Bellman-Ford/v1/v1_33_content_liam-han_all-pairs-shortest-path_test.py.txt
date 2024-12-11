@@ -1,0 +1,51 @@
+import argparse
+import os
+import re
+import sys
+import time
+from allPairsShortestPath import graphRE, edgeRE
+
+def read_file(filename):
+    """
+    Read graph data from a file.
+    """
+    global vertices
+    global edges
+    with open(filename, 'r') as inFile:
+        line1 = inFile.readline().strip()
+        graph_match = graphRE.match(line1)
+        if not graph_match:
+            print(line1 + " not properly formatted")
+            sys.exit(1)
+
+        vertices = list(range(int(graph_match.group(1))))
+        edges = []
+        for i in range(len(vertices)):
+            row = [float("inf")] * len(vertices)
+            edges.append(row)
+
+        for line in inFile.readlines():
+            line = line.strip()
+            edge_match = edgeRE.match(line)
+            if edge_match:
+                source = int(edge_match.group(1)) - 1
+                sink = int(edge_match.group(2)) - 1
+                if source >= len(vertices) or sink >= len(vertices):
+                    print(f"Attempting to insert an edge between {source} and {sink} "
+                          f"in a graph with {len(vertices)} vertices")
+                    sys.exit(1)
+                weight = float(edge_match.group(3))
+                edges[source][sink] = weight
+
+    return vertices, edges
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Read graph data from a file.")
+    parser.add_argument("filename", type=str, help="Path to the input file")
+    args = parser.parse_args()
+
+    filename = args.filename
+
+    vertices, edges = read_file(filename)
+    print("Vertices:", vertices)
+    print("Edges:", edges)

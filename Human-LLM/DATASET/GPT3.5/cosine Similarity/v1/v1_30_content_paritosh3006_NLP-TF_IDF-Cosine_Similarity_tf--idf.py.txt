@@ -1,0 +1,66 @@
+print("hi")
+
+# Define the documents
+docA = "I am going to Bangalore"
+docB = "I am coming from Delhi"
+
+# Tokenize the documents
+bowA = docA.split(" ")
+bowB = docB.split(" ")
+
+# Create a set of unique words from both documents
+wordSet = set(bowA).union(set(bowB))
+
+# Initialize dictionaries to store word frequencies in each document
+wordDictA = dict.fromkeys(wordSet, 0)
+wordDictB = dict.fromkeys(wordSet, 0)
+
+# Count word occurrences in each document
+for word in bowA:
+    wordDictA[word] += 1
+for word in bowB:
+    wordDictB[word] += 1
+
+# Function to compute term frequency (TF)
+def computeTF(wordDict, bow):
+    tfDict = {}
+    bowCount = len(bow)
+    for word, count in wordDict.items():
+        tfDict[word] = count / float(bowCount)
+    return tfDict
+
+# Compute TF for each document
+tfBowA = computeTF(wordDictA, bowA)
+tfBowB = computeTF(wordDictB, bowB)
+
+# Function to compute inverse document frequency (IDF)
+def computeIDF(docList):
+    import math
+    idfDict = {}
+    N = len(docList)
+    idfDict = dict.fromkeys(docList[0].keys(), 0)
+    for doc in docList:
+        for word, val in doc.items():
+            if val > 0:
+                idfDict[word] += 1
+    for word, val in idfDict.items():
+        idfDict[word] = math.log(N / float(val))
+    return idfDict
+
+# Compute IDF for the set of documents
+idfs = computeIDF([wordDictA, wordDictB])
+
+# Function to compute TF-IDF
+def computeTFIDF(tfBow, idfs):
+    tfidf = {}
+    for word, val in tfBow.items():
+        tfidf[word] = val * idfs[word]
+    return tfidf
+
+# Compute TF-IDF for each document
+tfidfBowA = computeTFIDF(tfBowA, idfs)
+tfidfBowB = computeTFIDF(tfBowB, idfs)
+
+# Display TF-IDF values as DataFrame
+import pandas as pd
+pd.DataFrame([tfidfBowA, tfidfBowB])

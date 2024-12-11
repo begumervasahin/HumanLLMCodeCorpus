@@ -1,0 +1,65 @@
+import random
+
+def euler_totient_function(n):
+    """Calculate Euler's Totient Function."""
+    count = 0
+    for i in range(1, n):
+        if greatest_common_divisor(i, n) == 1:
+            count += 1
+    return count
+
+def greatest_common_divisor(a, b):
+    """Calculate the Greatest Common Divisor."""
+    while a % b != 0:
+        a, b = b, a % b
+    return b
+
+def find_primitive_root(n):
+    """Find the primitive root of a number."""
+    phi = euler_totient_function(n)
+    primitive_roots = []
+    prime_list = [i for i in range(1, n) if greatest_common_divisor(i, n) == 1]
+    for j in prime_list:
+        powers_mod_n = [j**k % n for k in range(1, phi + 1)]
+        powers_mod_n.sort()
+        if powers_mod_n == prime_list:
+            primitive_roots.append(j)
+    if primitive_roots:
+        return n, primitive_roots
+
+def discrete_logarithm(a, p, result):
+    """Find the discrete logarithm."""
+    ans = 0
+    while pow(a, ans, p) != result:
+        ans += 1
+    return ans
+
+def diffie_hellman(prime, primitive_root):
+    """Implement the Diffie-Hellman key exchange."""
+    ya = random.randint(500, 1000)
+    yb = random.randint(500, 1000)
+    print(f'The public number is: {prime}. The primitive root of this public number is: {primitive_root}.')
+    keya = pow(primitive_root, ya, prime)
+    keyb = pow(primitive_root, yb, prime)
+    print(f'The Key User A sends to User B is {keya}. The Key User B sends to User A is {keyb}.')
+    share_keya = pow(keyb, ya, prime)
+    share_keyb = pow(keya, yb, prime)
+    print(f'The first shared key is {share_keya}. The second shared key is {share_keyb}.')
+
+def crack_key(prime, primitive_root, keya, keyb):
+    """Solve the key using brute force."""
+    ansa, ansb = 1, 1
+    while pow(primitive_root, ansa, prime) != keya:
+        ansa += 1
+    while pow(primitive_root, ansb, prime) != keyb:
+        ansb += 1
+    shared_key = pow(keya, ansb, prime)
+    return ansa, ansb, shared_key
+
+def decipher_key(prime, primitive_root, keya, keyb):
+    """Crack the key using tail recursion."""
+    # Placeholder implementation for deciphering the key using tail recursion
+    pass
+
+print(find_primitive_root(794))
+print(crack_key(794, 789, 115, 339))

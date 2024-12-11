@@ -1,0 +1,75 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class LSTMBaseline(nn.Module):
+    """
+    A typical LSTM with a linear classification layer and softmax output.
+    It's potentially multilayered (num_layers).
+    We use a special initialization on the LSTM of setting biases to 1 to not forget previous hidden states.
+    """
+
+    def __init__(self, input_size, batch_size, hidden_dim=32, num_layers=1):
+        super(LSTMBaseline, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.input_size = input_size
+        self.batch_size = batch_size
+
+        # LSTM layer
+        self.lstm = nn.LSTM(input_size=input_size,
+                            hidden_size=hidden_dim,
+                            num_layers=num_layers,
+                            batch_first=True)
+
+        # Linear classification layer
+        self.linear_layer = nn.Linear(hidden_dim, 10)
+
+        # Initialize biases of LSTM to 1
+        self._initialize_lstm_bias()
+
+        # Initialize hidden state
+        self.hidden = self._init_hidden()
+
+    def _initialize_lstm_bias(self):
+        """
+        Initialize biases of LSTM to 1 to prevent forgetting previous hidden states.
+        """
+        for weights in self.lstm._all_weights:
+            for name in filter(lambda n: "bias" in n, weights):
+                bias = getattr(self.lstm, name)
+                half_size = bias.size(0) // 2
+                bias.data[half_size:].fill_(1.)
+
+    def _init_hidden(self):
+        """
+        Initialize hidden state.
+        """
+        return (torch.zeros(self.num_layers, self.batch_size, self.hidden_dim).cuda(),
+                torch.zeros(self.num_layers, self.batch_size, self.hidden_dim).cuda())
+
+    def forward(self, x):
+        """
+        Forward pass through the LSTM model.
+        """
+        x, self.hidden = self.lstm(x, self.hidden)
+        x = x[:, -1, :]  # Extract the output at the last time step
+        x = self.linear_layer(x.view(-1, self.hidden_dim))  # Linear layer
+        return F.log_softmax(x, dim=1)
+
+# Example usage:
+input_size = 10
+batch_size = 16
+hidden_dim = 32
+num_layers = 2
+
+# Create an instance of the model
+model = LSTMBaseline(input_size, batch_size, hidden_dim, num_layers)
+
+# Generate sample input tensor (sequence data)
+sequence_length = 5
+input_tensor = torch.randn(batch_size, sequence_length, input_size)
+
+# Forward pass through the model
+output = model(input_tensor)
+print("Output shape:", output.shape)

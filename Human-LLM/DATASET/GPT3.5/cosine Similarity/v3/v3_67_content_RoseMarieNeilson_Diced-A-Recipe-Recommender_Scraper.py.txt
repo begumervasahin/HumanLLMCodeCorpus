@@ -1,0 +1,77 @@
+import requests
+from bs4 import BeautifulSoup
+from pymongo import MongoClient
+
+def extract_recipe_links(url):
+    '''
+    Extracts recipe links from a search page URL.
+    '''
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    recipe_links = []
+
+    for link in soup.find_all("a"):
+        href = link.get('href').strip()
+        if href.startswith('/recipe/'):
+            recipe_links.append('http://allrecipes.com' + href)
+
+    return recipe_links
+
+def store_recipe_data(recipes, recipe_collection):
+    '''
+    Stores recipe information in MongoDB.
+    '''
+    for recipe in recipes:
+        recipe_collection.insert_one(recipe)
+
+def scrape_recipes(recipe_links):
+    '''
+    Scrapes recipe data from a list of recipe links.
+    '''
+    recipes = []
+
+    for link in recipe_links:
+        recipe_data = extract_recipe_info(link)
+        recipes.append(recipe_data)
+
+    return recipes
+
+def extract_recipe_info(recipe_link):
+    '''
+    Extracts recipe information from a recipe page URL.
+    '''
+    response = requests.get(recipe_link)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    item_name = soup.find('h1', {'class': 'recipe-summary__h1'}).text.strip()
+    submitter_name = soup.find('span', {'class': 'submitter__name'}).text.strip()       
+    submitter_desc = soup.find('div', {'class': 'submitter__description'}).text.strip() 
+    stars = soup.find('div', {'class': 'rating-stars'}).get('data-ratingstars')
+
+    ingredients = [s.text.strip().split('\n')[0] for s in soup.find_all('li', {'class': 'checkList__line'}) if not s.text.strip().startswith(('Add', 'ADVERTISEMEN'))]
+    directions = [d.text.strip() for d in soup.find_all('span', {'class': 'recipe-directions__list--item'})]
+
+    recipe_data = {
+        'item_name': item_name,
+        'ingred_list': ingredients,
+        'direction_list': directions,
+        'stars': stars,
+        'submitter_name': submitter_name,
+        'submitter_desc': submitter_desc
+    }
+
+    return recipe_data
+
+if __name__ == '__main__':
+    # Example URL to scrape
+    search_url = "http://allrecipes.com/recipe/260696/cauliflower-pizza-bites/"
+
+    # Connect to MongoDB
+    db_client = MongoClient()
+    db = db_client['allrecipes']
+    recipe_collection = db['recipe_data']
+
+    # Scrape recipe data and store in MongoDB
+    recipe_links = extract_recipe_links(search_url)
+    recipes_data = scrape_recipes(recipe_links)
+    store_recipe_data(recipes_data, recipe_collection)

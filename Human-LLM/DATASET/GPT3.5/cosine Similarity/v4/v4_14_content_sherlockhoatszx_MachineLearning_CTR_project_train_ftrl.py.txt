@@ -1,0 +1,86 @@
+import random
+import math
+
+# Define hyperparameters
+alpha = 0.5
+l2 = 10
+l1 = 0.1
+beta = 0.01
+iterations = 3
+
+# Initialize variables
+max_index = 0
+w = []
+z = []
+n = []
+
+# Load training data and determine max_index
+with open("train_feature", "r") as train_file:
+    for line in train_file:
+        segments = line.strip().split("\t")
+        for segment in segments[1:]:
+            index = int(segment.split(":")[0])
+            if index > max_index:
+                max_index = index
+
+# Initialize arrays w, z, and n
+w = [random.uniform(-0.5, 0.5) for _ in range(max_index + 1)]
+z = [0] * (max_index + 1)
+n = [0] * (max_index + 1)
+
+# Train the model
+for _ in range(iterations):
+    train_file = open("train_feature", "r")
+    for line in train_file:
+        segments = line.strip().split("\t")
+        label = int(segments[0])
+        s = 0.0
+        for segment in segments[1:]:
+            index = int(segment.split(":")[0])
+            s += w[index]
+        
+        p = 1.0 / (1 + math.exp(-s))
+        q = p - label
+        
+        for segment in segments[1:]:
+            index = int(segment.split(":")[0])
+            sigma = (math.sqrt(n[index] + q*q) - math.sqrt(n[index])) / alpha
+            z[index] = z[index] + q - sigma * w[index]
+            n[index] = n[index] + q*q
+            
+            if math.fabs(z[index]) < l1:
+                w[index] = 0
+            else:
+                if z[index] > 0:
+                    w[index] = -(z[index] - l1) / ((beta + math.sqrt(n[index])) / alpha + l2)
+                else:
+                    w[index] = -(z[index] + l1) / ((beta + math.sqrt(n[index])) / alpha + l2)
+
+# Validate the model
+with open("validate_feature", "r") as validate_file, open("pctr", "w+") as output_file:
+    for line in validate_file:
+        segments = line.strip().split("\t")
+        label = int(segments[0])
+        s = 0.0
+        for segment in segments[1:]:
+            index = int(segment.split(":")[0])
+            if index <= max_index:
+                s += w[index]
+        p = 1.0 / (1 + math.exp(-s))
+        output_line = f"{label},{p}\n"
+        output_file.write(output_line)
+
+# Test the model
+with open("test_feature", "r") as test_file, open("test_pctr", "w+") as output_file2, open("test_pctr.csv", "w+") as output_file3:
+    for line in test_file:
+        segments = line.strip().split("\t")
+        s = 0.0
+        for segment in segments[1:]:
+            index = int(segment.split(":")[0])
+            if index <= max_index:
+                s += w[index]
+        p = 1.0 / (1 + math.exp(-s))
+        label = 1 if p > 0.5 else 0
+        output_line2 = f"{label},{p}\n"
+        output_file2.write(output_line2)
+        output_file3.write(f"{p}\n")

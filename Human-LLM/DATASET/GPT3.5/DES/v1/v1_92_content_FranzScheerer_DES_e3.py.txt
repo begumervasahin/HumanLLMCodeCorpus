@@ -1,0 +1,251 @@
+import sys
+import math
+import hashlib
+import random
+import time
+
+# Function to write a number to a file
+def writeNumber(number, filename):
+    with open(filename, 'wb') as f:
+        n = number
+        while n > 0:
+            byte = n % 256
+            n = n // 256
+            f.write(chr(byte))
+
+# Function to convert binary to a number
+def bin2num(x):
+    res = 0
+    for c in x:
+        res = (res << 8) ^ ord(c)
+    return res
+
+# Function to convert a number to binary
+def num2bin(x):
+    res = ''
+    while x > 0:
+        res = chr(x % 256) + res
+        x //= 256
+    return res
+
+# Function to calculate the greatest common divisor
+def gcd(a, b):
+    while b > 0:
+        a, b = b, a % b
+    return a
+
+# Function to find the next prime number
+def nextPrime(p):
+    while p % 3 != 2 or p % 2 != 1:
+        p += 1
+    return nextPrimeOdd(p)
+
+# Function to find the next odd prime number
+def nextPrimeOdd(p):
+    m_ = 5 * 7 * 11 * 13 * 17 * 19 * 23 * 29
+    while True:
+        while gcd(p, m_) != 1:
+            p += 6
+        q = (p + 1) / 4
+        if (pow(2, p - 1, p) != 1 or pow(2, q - 1, q) != 1):
+            p += 6
+            continue
+        if (pow(3, p - 1, p) != 1 or pow(3, q - 1, q) != 1):
+            p += 6
+            continue
+        if (pow(5, p - 1, p) != 1 or pow(5, q - 1, q) != 1):
+            p += 6
+            continue
+        if (pow(17, p - 1, p) != 1 or pow(17, q - 1, q) != 1):
+            p += 6
+            continue
+        break
+    return p
+
+# Function to calculate the modular inverse
+def inv(b, m):
+    s, t = 0, 1
+    a = m
+    while b != 1:
+        q = a // b
+        a, b = b, a % b
+        aa = b
+        b = a % b
+        a = aa
+        ss = t
+        t = s - q * t
+        s = ss
+    if t < 0:
+        t += m
+    return t
+
+# Function to perform elliptic curve encryption
+def E(m, key, prime):
+    return pow(m, key, prime)
+
+# Function to perform elliptic curve decryption
+def D(c, key, prime):
+    key = inv(key, prime - 1)
+    return pow(c, key, prime)
+
+# Function to convert hexadecimal text to a number
+def hextxt2num(x):
+    res = 0
+    for c in x:
+        if 48 <= ord(c) < 58:
+            res = (res << 4) + ord(c) - 48
+        elif 97 <= ord(c) < 123:
+            res = (res << 4) + ord(c) - 87
+    return res
+
+# Function to convert code to a number
+def code2num(x):
+    res = 0
+    for c in x:
+        if 48 <= ord(c) < 58:
+            res = (res << 6) + ord(c) - 48
+        elif 65 <= ord(c) < 91:
+            res = (res << 6) + ord(c) - 55
+        elif 97 <= ord(c) < 123:
+            res = (res << 6) + ord(c) - 61
+        elif c == "'":
+            res = (res << 6) + 62
+        elif c == '/':
+            res = (res << 6) + 63
+    return res
+
+# Function to convert a number to a code
+def num2code(x):
+    res = ''
+    while x > 0:
+        y = x % 64
+        if y < 10:
+            res = chr(y + 48) + res
+        elif 10 <= y < 36:
+            res = chr(y + 55) + res
+        elif 36 <= y < 62:
+            res = chr(y + 61) + res
+        elif y == 62:
+            res = "'" + res
+        elif y == 63:
+            res = '/' + res
+        x //= 64
+    return res
+
+# Function to calculate the hash value
+def h(x):
+    dx1 = hashlib.sha256(x).digest()
+    res = 0
+    for cx in (dx1):
+        res = (res << 8) ^ ord(cx)
+    return res % n4
+
+# Function to generate a random 256-bit number
+def random256(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+# Function to generate a random number
+def randomX(m):
+    md = hashlib.sha256("***RANDOM-SEED_X***")
+    md.update('large key value for generation of random number')
+    md.update(m)
+    md.update(str(time.gmtime().tm_year + time.gmtime().tm_mday))
+    result = 0
+    largestr = md.digest()
+    for i in range(len(largestr)):
+        result = (result << 8) ^ ord(largestr[i])
+    return result
+
+# Function to generate a point on the elliptic curve
+def genP(y, b):
+    yy = (y * y - b) % (prime)
+    x = pow(yy, inv(3, prime - 1), prime)
+    return [(x) % prime, (y) % prime]
+
+# Function to add two points on the elliptic curve
+def addP(P, Q):
+    x1, x2 = P[0], Q[0]
+    y1, y2 = P[1], Q[1]
+    if x2 > x1:
+        x2 -= prime
+    if x1 == x2:
+        s = ((3 * (x1 ** 2) + a) * inv(2 * y1, prime)) % prime
+    else:
+        s = ((y1 - y2) * inv(x1 - x2, prime)) % prime
+    xr = s ** 2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+# Function to multiply a point on the elliptic curve by a scalar
+def mulP(P, n):
+    isFirst = True
+    resP = P
+    if n < 0:
+        resP[1] = prime - resP[1]
+        n = (-1) * n
+    PP = resP
+    while n > 0:
+        if n & 1:
+            if isFirst:
+                resP = PP
+                isFirst = False
+            else:
+                resP = addP(resP, PP)
+        PP = addP(PP, PP)
+        n >>= 1
+    return resP
+
+# Function to sign a message using Schnorr signature
+def signSchnorr(G, m, x):
+    k = randomX(m)
+    R = mulP(G, k)
+    e = h(str(R[0]) + m)
+    return [(k - x * e) % n4, e]
+
+# Function to perform ECDSA (Elliptic Curve Digital Signature Algorithm)
+def ecdsa(G, m, x):
+    k = randomX(m)
+    R = mulP(G, k)
+    hh = h(m + str(R[0]))
+    s = (inv(k, n4) * (hh + R[0] * x)) % n4
+    return [s, R[0]]
+
+# Function to verify ECDSA signature
+def ecdsa_v(G, m, S, Y):
+    si = inv(S[0], n4)
+    hh = h(m + str(S[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * S[1]) % n4
+    return addP(mulP(G, u1), mulP(Y, u2))[0] == S[1]
+
+# Generate the point P on the elliptic curve
+P = genP(17, b)
+n4 = (prime + 1) // 4
+P = mulP(P, 90)
+print(mulP(P, prime + 2))
+print(P)
+print("Prime number:", prime)
+
+# Read message from file
+with open(sys.argv[1], 'r') as f:
+    message = f.read()
+
+# Generate random number x and calculate y
+x = 2 * random256(sys.argv[1]) + 1
+y = mulP(P, x)
+writeNumber(y[0], 'y0')
+writeNumber(y[1], 'y1')
+
+# Sign the message using ECDSA
+sig = ecdsa(P, message, x)
+print("Verify:", ecdsa_v(P, message, sig, y))
+writeNumber(sig[0], 's0')
+writeNumber(sig[1], 's1')
+print("Test Schnorr:", h(str(addP(mulP(P, sig[0]), mulP(y, sig[1]))[0]) + message) == sig[1])

@@ -1,0 +1,78 @@
+import csv
+import copy
+
+def calculate_similarity_matrix(input_data):
+    # Determine the dimensions of the input data
+    row = len(input_data) - 1
+    col = len(input_data[0]) - 1
+
+    # Initialize lists for calculations
+    list_nn = []
+    avg = []
+
+    # Deep copy the input data to avoid modifying the original data
+    list_copy = copy.deepcopy(input_data)
+
+    # Calculate average values for each row
+    for i in range(1, row + 1):
+        row_sum = 0
+        count = 0
+        for j in range(1, col + 1):
+            value = float(list_copy[i][j])
+            if value != 0.0:
+                row_sum += value
+                count += 1
+        avg.append(row_sum / count if count != 0 else 0.0)
+
+    # Subtract average values from non-zero elements
+    for i in range(1, row + 1):
+        for j in range(1, col + 1):
+            if float(list_copy[i][j]) != 0.0:
+                list_copy[i][j] -= avg[i - 1]
+
+    # Store modified data in a new list
+    for i in range(1, row + 1):
+        temp = [float(list_copy[i][j]) for j in range(1, col + 1)]
+        list_nn.append(temp)
+
+    # Initialize the similarity matrix
+    similarity_matrix = [[0 for _ in range(row)] for _ in range(row)]
+
+    # Calculate similarities between rows
+    for z in range(row - 1):
+        a = z
+        while a < row - 1:
+            tmplst1 = list_nn[z][:]
+            tmplst2 = list_nn[a + 1][:]
+            num = sum(x * y for x, y in zip(tmplst1, tmplst2))
+            den1 = sum(x ** 2 for x in tmplst1)
+            den2 = sum(x ** 2 for x in tmplst2)
+
+            if den1 != 0 and den2 != 0:
+                s_sum = num / (den1 ** 0.5 * den2 ** 0.5)
+            else:
+                s_sum = -5.0
+
+            similarity_matrix[z][a + 1] = similarity_matrix[a + 1][z] = s_sum
+            a += 1
+
+    # Set diagonal elements of similarity matrix to 1.0
+    for i in range(row):
+        similarity_matrix[i][i] = 1.0
+
+    return similarity_matrix
+
+def read_csv_data(filename):
+    # Read data from CSV file and return as a list
+    with open(filename, newline='') as csvfile:
+        data_reader = csv.reader(csvfile)
+        data = list(data_reader)
+    return data
+
+if __name__ == '__main__':
+    filename = 'sample.csv'
+    input_data = read_csv_data(filename)
+    similarity_matrix = calculate_similarity_matrix(input_data)
+    print('\nFinal Similarity Matrix:\n')
+    for row in similarity_matrix:
+        print(row)

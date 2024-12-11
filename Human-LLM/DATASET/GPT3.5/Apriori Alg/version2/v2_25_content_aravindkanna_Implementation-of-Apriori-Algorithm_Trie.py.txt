@@ -1,0 +1,77 @@
+class TrieNode:
+    def __init__(self, count=1, name="root"):
+        self.child = {}  # Dictionary to store child nodes
+        self.count = count  # Count of occurrences of the itemset
+        self.name = name  # Name of the node
+
+    def insertNode(self, itemset, count):
+        """
+        Insert a node into the trie.
+        """
+        current_node = self.child
+        for item in itemset:
+            if item in current_node:
+                current_node = current_node[item].child
+            else:
+                new_node = TrieNode(count, item)
+                current_node[item] = new_node
+
+    def hasNode(self, itemset):
+        """
+        Check if a node exists in the trie.
+        """
+        current_node = self.child
+        for item in itemset:
+            if item in current_node:
+                current_node = current_node[item].child
+            else:
+                return False
+        return True
+
+    def insertAll(self, FreqItemSets, counts):
+        """
+        Insert multiple nodes into the trie.
+        """
+        size = len(FreqItemSets)
+        for i in range(size):
+            self.insertNode(FreqItemSets[i], counts[i])
+
+    def printAll(self, prevStr):
+        """
+        Print all nodes in the trie.
+        """
+        for item in self.child:
+            temp_str = prevStr + item
+            print(temp_str)
+            self.child[item].printAll(temp_str + ",")
+
+    def getItemSets(self, prevList):
+        """
+        Get item sets from the trie.
+        """
+        for item in self.child:
+            temp_list = prevList + [item]
+            yield temp_list
+            for sub_item in self.child[item].getItemSets(temp_list):
+                yield sub_item
+
+    def getCount(self, itemSet):
+        """
+        Get the count of occurrences of an item set.
+        """
+        current_node = self.child
+        for item in itemSet:
+            current_node = current_node[item].child
+        return current_node.count
+
+
+if __name__ == "__main__":
+    # Example usage of the TrieNode class
+    root = TrieNode()
+    root.insertNode(['a', 'b'], 2)
+    root.insertNode(['a', 'c'], 3)
+    root.insertNode(['b', 'c'], 4)
+    print(root.hasNode(['a', 'b']))  # True
+    print(root.hasNode(['a', 'd']))  # False
+    print(root.getCount(['a', 'b']))  # 2
+    print(root.getCount(['b', 'c']))  # 4

@@ -1,0 +1,40 @@
+import os
+import pandas as pd
+from word_mover_distance import similarity
+
+# Print statement indicating successful import of modules
+print('All modules imported correctly')
+
+# Set the directory path containing the documents
+mypath = 'C:\\Users\\Administrator\\Dropbox\\IPO analysis sourcecode\\IPO Project\\Data\\Individual Sections of IPO documents\\newuop'
+
+# Get only file names from the directory
+onlyfiles = [f for f in os.listdir(mypath) if os.path.isfile(os.path.join(mypath, f))]
+
+# Create an empty DataFrame to store similarity scores
+similarity_df = pd.DataFrame()
+
+# Compute similarity between each pair of documents
+for i, file1 in enumerate(onlyfiles):
+    with open(os.path.join(mypath, file1), 'r') as file:
+        content1 = file.read()
+    for j, file2 in enumerate(onlyfiles):
+        if i <= j:
+            with open(os.path.join(mypath, file2), 'r') as file:
+                content2 = file.read()
+            similarity_score = similarity(content1, content2)
+            similarity_df.loc[i, j] = similarity_score
+        # Print progress if verbose flag is set
+        if verbose:
+            print('Currently processing:', file1, 'and', file2)
+
+# Set column and index names for the DataFrame
+similarity_df.columns = onlyfiles
+similarity_df.index = onlyfiles
+
+# Export DataFrame to a CSV file
+csv_filename = 'document_similarity_business.csv'
+similarity_df.to_csv(csv_filename, encoding='utf-8')
+
+# Print confirmation message after exporting to CSV
+print('All calculations made. Exported to CSV file:', csv_filename)

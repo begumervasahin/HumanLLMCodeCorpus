@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+import pandas as pd
+
+def plot_elbow_method(wcss):
+    """Plot the Elbow Method graph to find the optimal number of clusters."""
+    plt.plot(range(1, len(wcss) + 1), wcss)
+    plt.title('Elbow Method')
+    plt.xlabel('Number Of Clusters')
+    plt.ylabel('WCSS')
+    plt.show()
+
+def plot_clusters(X, cluster_labels, kmeans):
+    """Plot clusters and centroids."""
+    optimal_num_clusters = len(kmeans.cluster_centers_)
+    colors = ['red', 'blue', 'green', 'pink']  # Colors for different clusters
+    
+    for cluster_num in range(optimal_num_clusters):
+        plt.scatter(X[cluster_labels == cluster_num, 0], X[cluster_labels == cluster_num, 1],
+                    s=25, c=colors[cluster_num], label=f'Cluster {cluster_num+1}')
+    
+    plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1],
+                s=25, c='yellow', label='Centroids')
+    
+    plt.title('KMeans Clustering')
+    plt.xlabel('Balance')
+    plt.ylabel('Estimated Salary in $')
+    plt.legend()
+    plt.show()
+
+# Read the dataset
+dataset = pd.read_csv("Churn_Modelling.csv")
+
+# Select features for clustering
+X = dataset.iloc[:, [8, 12]].values
+
+# Calculate WCSS (Within-Cluster Sum of Squares) for different numbers of clusters
+wcss = []
+for num_clusters in range(1, 16):
+    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=0)
+    kmeans.fit(X)
+    wcss.append(kmeans.inertia_)
+
+# Plot the Elbow Method graph
+plot_elbow_method(wcss)
+
+# Apply KMeans clustering with the optimal number of clusters
+optimal_num_clusters = 4
+kmeans = KMeans(n_clusters=optimal_num_clusters, init='k-means++', random_state=0)      
+cluster_labels = kmeans.fit_predict(X)
+
+# Plot clusters and centroids
+plot_clusters(X, cluster_labels, kmeans)

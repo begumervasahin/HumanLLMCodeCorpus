@@ -1,0 +1,79 @@
+import re
+import math
+import numpy as np
+from os import listdir
+from os.path import abspath, isfile, join
+from modules.TokenizedDocument import TokenizedDocument
+from modules.CosineSimilarity import get_cos_similarity_matrix
+
+# Print assignment information
+print("Assignment 1: NLTK text preprocessing and cosine similarity")
+print("Information Retrieval: Florida Atlantic University, Fall 2017")
+print("Justin J, jjohn273")
+
+# Set options for numpy array formatting
+np.set_printoptions(formatter={'float': '{: 0.5f}'.format})
+
+# Define the directory containing the dataset
+DATA_SET_DIR = abspath('hw1-dataset')
+
+# Print information about data set directory
+print('\nGetting list of text files from directory:', DATA_SET_DIR)
+files = [f for f in listdir(DATA_SET_DIR) if isfile(join(DATA_SET_DIR, f)) and f.lower().endswith('.txt')]
+print('List of text files retrieved.')
+
+# Tokenize each document
+print('\nTokenizing each document...')
+tokenized_documents = []
+for file in files:
+    doc = TokenizedDocument(join(DATA_SET_DIR, file))
+    doc.tokenizeDocument()
+    tokenized_documents.append(doc)
+    print('Tokenized:', doc.toString())
+
+# Function to build term document frequency dictionary
+def build_term_doc_freq_dict(tokenized_documents):
+    term_doc_freq_dict = {}
+    for doc in tokenized_documents:
+        for term in doc.termList:
+            term_doc_freq_dict[term] = term_doc_freq_dict.get(term, 0) + 1
+    return term_doc_freq_dict
+
+# Calculate document frequency (df) for all terms
+print('\nCalculating document frequency (df) for all terms...')
+term_doc_freq_dict = build_term_doc_freq_dict(tokenized_documents)
+
+# Print inverse document frequency (idf) for every term
+print('\nPrinting inverse document frequency (idf) for every term...')
+term_idf_dict = {}
+n_docs = len(tokenized_documents)
+for term, freq in term_doc_freq_dict.items():
+    term_idf_dict[term] = math.log10(n_docs / freq)
+    print(term + ':', term_idf_dict[term])
+
+# Initialize term-document TF-IDF matrix
+term_doc_tfidf_matrix = np.zeros((len(term_idf_dict), len(tokenized_documents)))
+
+# Fill term-document TF-IDF matrix
+print('\nCalculating TF-IDF for each term and document...')
+for i, term in enumerate(term_idf_dict):
+    for j, doc in enumerate(tokenized_documents):
+        tfidf = math.ceil((doc.getTermFrequency(term) * term_idf_dict[term]) * 10000) / 10000
+        term_doc_tfidf_matrix[i][j] = tfidf
+
+# Print TF-IDF for each term
+print('\nPrinting TF-IDF for each term...')
+for idx, term in enumerate(term_idf_dict):
+    print('{:<10}'.format(term), term_doc_tfidf_matrix[idx])
+
+# Calculate and print cosine similarity matrix
+print('\nCalculating cosine similarity matrix...')
+print('\t Doc1     Doc2     Doc3     Doc4')
+cos_similarity_matrix = np.zeros((len(tokenized_documents), len(tokenized_documents)))
+for doc_row, doc1 in enumerate(tokenized_documents):
+    for doc_col, doc2 in enumerate(tokenized_documents):
+        cos_sim = get_cos_similarity_matrix(term_doc_tfidf_matrix[:, doc_row], term_doc_tfidf_matrix[:, doc_col])
+        cos_similarity_matrix[doc_row][doc_col] = cos_sim
+
+for idx, row in enumerate(cos_similarity_matrix):
+    print('Doc' + str(idx + 1), row)

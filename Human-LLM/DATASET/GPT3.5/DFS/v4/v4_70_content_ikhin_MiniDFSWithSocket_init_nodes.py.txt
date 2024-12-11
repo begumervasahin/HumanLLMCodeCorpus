@@ -1,0 +1,54 @@
+import os
+from commute.multiclient import MultiClient
+from commute.multiserver import MultiServer
+from core.common import *
+from core.datanodehandler import DataNodeHandler
+from core.namenodehandler import NameNodeHandler
+
+def initialize_data_node(name, server_id):
+    """
+    Initialize a data node.
+
+    Args:
+        name (str): The name prefix for the data node.
+        server_id (int): The ID of the server.
+    """
+    # Set server ID for the DataNodeHandler
+    DataNodeHandler.server_id = server_id
+    
+    # Initialize the data node
+    data_node = MultiServer(DataNodeHandler)
+    data_node.name = f"{name}{server_id}"
+    data_node.bind((DATA_NODE_FIRST[0], DATA_NODE_FIRST[1] + server_id))
+    data_node.listen()
+    data_node.run()
+
+def initialize_name_node(name):
+    """
+    Initialize the name node.
+
+    Args:
+        name (str): The name of the name node.
+    """
+    def make_dfs_directories():
+        """
+        Create necessary directories for the DFS if they don't exist.
+        """
+        if not os.path.isdir("dfs"):
+            os.makedirs("dfs")
+            for i in range(NUM_DATA_SERVER):
+                os.makedirs(f"dfs/datanode{i}")
+            os.makedirs("dfs/namenode")
+
+    # Create DFS directories
+    make_dfs_directories()
+    
+    # Define addresses for connecting to data nodes
+    address_list = [(DATA_NODE_FIRST[0], DATA_NODE_FIRST[1] + i) for i in range(NUM_DATA_SERVER)]
+    
+    # Initialize the name node
+    name_node = MultiClient(NameNodeHandler, NAME_NODE)
+    name_node.name = name
+    for address in address_list:
+        name_node.connect(address)
+    name_node.run()

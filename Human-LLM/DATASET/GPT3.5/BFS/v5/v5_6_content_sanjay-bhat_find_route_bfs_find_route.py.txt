@@ -1,0 +1,98 @@
+import sys
+import romania
+
+class RouteFinder:
+    """Finds the shortest route between two cities using Breadth First Search."""
+
+    def __init__(self):
+        """Initialize the RouteFinder object."""
+        self.graph = {}
+
+    def find_route(self):
+        """Find the shortest route between two unique vertices (cities)."""
+        file_input = sys.argv[1]
+        source_city = sys.argv[2]
+        destination_city = sys.argv[3]
+        total_distance = 0
+        stack = []
+
+        # Get graphical representation of unique vertices and their respective weights
+        bi_dir_graph = romania.romania(0).get_data_romania(file_input)
+        graph = bi_dir_graph[0]
+        vertices = bi_dir_graph[1]
+        visited = [False] * vertices
+
+        for i in range(vertices):
+            if not visited[i]:
+                # Traverse the graph and mark vertices as 'Visited' according to levels
+                self.sort(graph, source_city, visited, stack)
+
+        dist = [float("Inf")] * vertices  # Total Distance From Source to all vertices
+        dist[graph.keys().index(source_city)] = 0.0
+        from_city = [0] * vertices  # Source or via vertices
+        to_city = [0] * vertices  # Destination or via vertices
+        to_fro_dist = [0] * vertices  # Distance between internal vertices, i.e: city to city till Destination
+
+        while stack:
+            pos = stack.pop()  # Get each vertex (city) according to levels
+            for destination, distance in graph[pos]:
+                # Distance between starting or intermediate vertex and adjacent vertex
+                cumulative_distance = float(dist[graph.keys().index(pos)]) + float(distance)
+
+                # Check if weight of vertex exceeds cumulative path weight, in this case distances between vertices
+                if float(dist[graph.keys().index(destination)]) > cumulative_distance:
+                    dist[graph.keys().index(destination)] = cumulative_distance
+                    from_city[graph.keys().index(destination)] = pos
+                    to_city[graph.keys().index(destination)] = destination
+                    to_fro_dist[graph.keys().index(destination)] = float(distance)
+
+                    if destination == destination_city:
+                        total_distance = cumulative_distance
+
+            pos = 0
+            return_str = []
+            final_dist = total_distance
+
+        # Get individual distances between adjacent nodes from Source to Destination
+        while total_distance != 0:
+            if to_city[pos] == destination_city:
+                    return_str.append(from_city[pos])
+                    return_str.append(to_city[pos])
+                    return_str.append(str(to_fro_dist[pos]))
+                    total_distance = dist[pos] - to_fro_dist[pos]
+                    destination_city = from_city[pos]  # Via node
+                    pos = 0
+            else:
+                pos += 1
+
+        # Bottom-Up traversal
+        return_str.reverse()
+
+        # Print the paths
+        if final_dist == 0:
+            path_str = "distance: infinity\nroute:\nnone\n"
+        else:
+            path_str = f"distance: {final_dist} km\nroute:\n"
+            pos = 0
+            while pos < len(return_str):
+                path_str += f"{return_str[pos + 2]} to {return_str[pos + 1]}, {return_str[pos]} km\n"
+                pos += 3
+
+        print(path_str)
+
+    def sort(self, graph, source_city, visited, stack):
+        """Traverse the graph and mark vertices as 'Visited' according to levels."""
+        visited[graph.keys().index(source_city)] = True
+        if source_city in graph.keys():
+            for dest, distance in graph[source_city]:
+                if not visited[graph.keys().index(dest)]:
+                    self.sort(graph, dest, visited, stack)
+        stack.append(source_city)
+
+def main():
+    """Main method to execute the route finding."""
+    route_finder = RouteFinder()
+    route_finder.find_route()
+
+if __name__ == "__main__":
+    main()

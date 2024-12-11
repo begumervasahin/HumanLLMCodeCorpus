@@ -1,0 +1,41 @@
+import random
+
+def encrypt_block(public_key, message, debug=False):
+    """Encrypts a single block of text using the ElGamal encryption scheme."""
+    k = random.randint(1, public_key['p'] - 1)
+    if debug:
+        c1 = pow(public_key['g'], k, public_key['p'])
+        c2 = (pow(public_key['e2'], k, public_key['p']) * message) % public_key['p']
+        print("DEBUG c1: %d c2: %d" % (c1, c2))
+    return {
+        'c1': pow(public_key['g'], k, public_key['p']),
+        'c2': (pow(public_key['e2'], k, public_key['p']) * message) % public_key['p']
+    }
+
+def make_message(string):
+    """Converts a string message into an integer."""
+    num = sum((ord(c) << (i * 8)) for i, c in enumerate(string[::-1]))
+    return num
+
+def make_public_key_from_file(public_key_file):
+    """Reads the public key parameters from a file and creates a public key dictionary."""
+    public_key = {}
+    with open(public_key_file, 'r') as pkf:
+        public_key_list = pkf.readlines()
+    public_key['p'] = int(public_key_list[0])
+    public_key['g'] = int(public_key_list[1])
+    public_key['e2'] = int(public_key_list[2])
+    return public_key
+
+def encrypt_file(read_path="test/testText.txt", write_path="test/testEncrypted.txt", public_key_path='test/testpubkey.txt', debug=False):
+    """Encrypts a text file using the ElGamal encryption scheme."""
+    public_key = make_public_key_from_file(public_key_path)
+    with open(read_path, 'r', encoding='utf-8') as rf:
+        all_text = rf.read()
+    with open(write_path, 'w') as wf:
+        for c in all_text:
+            cipher = encrypt_block(public_key, ord(c), debug)
+            wf.write(str(cipher['c1']) + " " + str(cipher['c2']) + "\n")
+
+# Example usage:
+encrypt_file(read_path="test/testText.txt", write_path="test/testEncrypted.txt", public_key_path='test/testpubkey.txt', debug=True)

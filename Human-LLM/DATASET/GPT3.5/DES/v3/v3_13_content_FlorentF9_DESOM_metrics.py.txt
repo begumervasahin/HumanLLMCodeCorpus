@@ -1,0 +1,98 @@
+import numpy as np
+from sklearn import metrics
+from sklearn.utils.linear_assignment_ import linear_assignment
+
+def cluster_accuracy(true_labels, predicted_labels):
+    """
+    Calculate unsupervised clustering accuracy.
+
+    Parameters:
+        true_labels: numpy array of true labels with shape (n_samples,)
+        predicted_labels: numpy array of predicted labels with shape (n_samples,)       
+
+    Returns:
+        Accuracy in the range [0, 1]
+    """
+    true_labels = true_labels.astype(np.int64)
+    assert predicted_labels.size == true_labels.size
+
+    num_clusters = max(predicted_labels.max(), true_labels.max()) + 1
+    confusion_matrix = np.zeros((num_clusters, num_clusters), dtype=np.int64)
+
+    for i in range(predicted_labels.size):
+        confusion_matrix[predicted_labels[i], true_labels[i]] += 1
+
+    row_ind, col_ind = linear_assignment(confusion_matrix.max() - confusion_matrix)
+    accuracy = confusion_matrix[row_ind, col_ind].sum() * 1.0 / predicted_labels.size
+
+    return accuracy
+
+def clustering_purity(true_labels, predicted_labels):
+    """
+    Calculate clustering purity.
+
+    Parameters:
+        true_labels: numpy array of true labels with shape (n_samples,)
+        predicted_labels: numpy array of predicted labels with shape (n_samples,)       
+
+    Returns:
+        Purity in the range [0, 1]
+    """
+    true_labels = true_labels.astype(np.int64)
+    assert predicted_labels.size == true_labels.size
+
+    num_clusters = max(predicted_labels.max(), true_labels.max()) + 1
+    confusion_matrix = np.zeros((num_clusters, num_clusters), dtype=np.int64)
+
+    for i in range(predicted_labels.size):
+        confusion_matrix[predicted_labels[i], true_labels[i]] += 1
+
+    label_mapping = confusion_matrix.argmax(axis=1)
+    predicted_labels_voted = label_mapping[predicted_labels]
+
+    purity = metrics.accuracy_score(predicted_labels_voted, true_labels)
+    return purity
+
+def kmeans_quantization_error(distance_array):
+    """
+    Calculate k-means quantization error.
+
+    Parameters:
+        distance_array: numpy array of distances with shape (n_samples, n_clusters)     
+
+    Returns:
+        Quantization error
+    """
+    return distance_array.min(axis=1).mean()
+
+def som_topographic_error(distance_array, map_size):
+    """
+    Calculate SOM topographic error.
+    Topographic error is the ratio of data points for which the two best matching units are not neighbors on the map.
+
+    Parameters:
+        distance_array: numpy array of distances with shape (n_samples, n_units)        
+        map_size: tuple containing the dimensions of the map, e.g., (10, 10)
+
+    Returns:
+        Topographic error
+    """
+    height, width = map_size
+
+    def is_adjacent(k, l):
+        return (abs(k // width - l // width) == 1 and abs(k % width - l % width) == 0) or \
+               (abs(k // width - l // width) == 0 and abs(k % width - l % width) == 1)  
+
+    best_matching_units = np.argsort(distance_array, axis=1)[:, :2]
+    topographic_error = 1.0 - np.mean([is_adjacent(best_matching_units[i, 0], best_matching_units[i, 1]) \
+                                       for i in range(distance_array.shape[0])])        
+
+    return topographic_error
+
+# Example usage:
+if __name__ == "__main__":
+    true_labels = np.array([0, 0, 1, 1, 2, 2])
+    predicted_labels = np.array([0, 0, 1, 2, 2, 2])
+
+    print("Unsupervised Clustering Accuracy:", cluster_accuracy(true_labels, predicted_labels))
+    print("Clustering Purity:", clustering_purity(true_labels, predicted_labels))       

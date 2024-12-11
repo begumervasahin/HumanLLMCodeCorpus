@@ -1,0 +1,167 @@
+import os
+import argparse
+import numpy as np
+import pickle
+import keras
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import (
+    Conv2D, Dense, Dropout, Flatten, MaxPooling2D, Activation, BatchNormalization, GlobalAveragePooling2D
+)
+from keras.callbacks import LearningRateScheduler
+from keras.models import Sequential, load_model
+from keras import optimizers, regularizers
+
+# Set CUDA_VISIBLE_DEVICES environment variable
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+def color_preprocessing(x_train, x_test):
+    """
+    Normalize training and testing data based on mean and standard deviation.
+
+    Args:
+        x_train (numpy.ndarray): Training data.
+        x_test (numpy.ndarray): Testing data.
+
+    Returns:
+        numpy.ndarray, numpy.ndarray: Preprocessed training and testing data.
+    """
+    mean = [125.307, 122.95, 113.865]
+    std = [62.9932, 62.0887, 66.7048]
+    x_train = (x_train.astype('float32') - mean) / std
+    x_test = (x_test.astype('float32') - mean) / std
+    return x_train, x_test
+
+def scheduler(epoch):
+    """
+    Learning rate scheduler.
+
+    Args:
+        epoch (int): Current epoch number.
+
+    Returns:
+        float: Learning rate for the current epoch.
+    """
+    if epoch < 40:
+        return 0.1
+    elif epoch < 120:
+        return 0.01
+    else:
+        return 0.001
+
+class VGG:
+    def __init__(self, num_classes=10):
+        self.num_classes = num_classes
+        self.input_shape = (32, 32, 3)
+
+    def build_model(self):
+        """
+        Build VGG model.
+
+        Returns:
+            keras.Model: VGG model.
+        """
+        weight_decay = 1e-4
+        model = Sequential([
+            Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay), input_shape=self.input_shape),
+            Activation('relu'),
+            BatchNormalization(),
+            Dropout(0.3),
+            Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)),
+            Activation('relu'),
+            BatchNormalization(),
+            MaxPooling2D(pool_size=(2, 2)),
+            Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)),
+            Activation('relu'),
+            BatchNormalization(),
+            Dropout(0.4),
+            Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)),
+            Activation('relu'),
+            BatchNormalization(),
+            MaxPooling2D(pool_size=(2, 2)),
+            # Continue with the rest of the VGG architecture
+        ])
+        return model
+
+def train():
+    """
+    Train the VGG model.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-b', '--batch_size', type=int, default=200, metavar='NUMBER', help='batch size(default: 200)')
+    parser.add_argument('-e', '--epochs', type=int, default=200, metavar='NUMBER', help='epochs(default: 200)')
+    args = parser.parse_args()
+    num_classes = 10
+    batch_size = args.batch_size
+    epochs = args.epochs
+
+    print("========================================")
+    print("BATCH SIZE: {:3d}".format(batch_size))
+    print("EPOCHS: {:3d}".format(epochs))
+    print("== LOADING DATA... ==")
+
+    with open('dataset/cifar_train', 'rb') as f1:
+        trainset = pickle.load(f1, encoding='bytes')
+    with open('dataset/cifar_test', 'rb') as f2:
+        testset = pickle.load(f2, encoding='bytes')
+
+    x_train, y_train = trainset['x_train'], trainset['y_train']
+    x_test, y_test = testset['x_test'], testset['y_test']
+    y_train = keras.utils.to_categorical(y_train, num_classes)
+    y_test = keras.utils.to_categorical(y_test, num_classes)
+    iterations = x_train.shape[0] // batch_size + 1
+
+    print("== DONE! ==\n== COLOR PREPROCESSING... ==")
+    x_train, x_test = color_preprocessing(x_train, x_test)
+    print("== DONE! ==\n== BUILD MODEL... ==")
+
+    vgg = VGG(num_classes)
+    model = vgg.build_model()
+    sgd = optimizers.SGD(lr=.1, momentum=0.9, nesterov=True)
+    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
+
+    print("== USING REAL-TIME DATA AUGMENTATION, START TRAIN... ==")
+    datagen = ImageDataGenerator(
+        horizontal_flip=True,
+        width_shift_range=0.125,
+        height_shift_range=0.125,
+        fill_mode='constant',
+        cval=0.
+    )
+    datagen.fit(x_train)
+    model.fit_generator(
+        datagen.flow(x_train, y_train, batch_size=batch_size),
+        steps_per_epoch=iterations,
+        epochs=epochs,
+        verbose=2,
+        callbacks=[LearningRateScheduler(scheduler)],
+        validation_data=(x_test, y_test),
+        shuffle=True
+    )
+    model.save('model/vgg.h5')
+    model.save_weights('weights/vgg_weights.h5')
+
+def test():
+    """
+    Test the trained VGG model.
+    """
+    num_classes = 10
+    print("== LOADING DATA... ==")
+    with open('dataset/cifar_test', 'rb') as f:
+        testset = pickle.load(f, encoding='bytes')
+
+    x_test, y_test = testset['x_test'], testset['y_test']
+    y_test = keras.utils.to_categorical(y_test, num_classes)
+
+    print("== DONE! ==\n== COLOR PREPROCESSING... ==")
+    x_test = (x_test.astype('float32') - np.array([125.307, 122.95, 113.865])) / np.array([62.9932, 62.0887, 66.7048])
+
+    model = load_model('model/vgg.h5')
+    sgd = optimizers.SGD(lr=.1, momentum=0.9, nesterov=True)
+    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
+
+    _, test_accuracy = model.evaluate(x_test, y_test, verbose=2)
+    print('Test accuracy:', test_accuracy)
+
+if __name__ == '__main__':
+    train()
+    test()

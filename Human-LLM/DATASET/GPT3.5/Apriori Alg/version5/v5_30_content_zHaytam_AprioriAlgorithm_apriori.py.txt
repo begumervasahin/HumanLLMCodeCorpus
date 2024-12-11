@@ -1,0 +1,118 @@
+import pandas as pd
+from itertools import combinations, chain
+
+class Apriori:
+    """
+    Apriori algorithm for association rule mining.
+    """
+
+    def __init__(self, df, min_support, min_confidence):
+        """
+        Initialize the Apriori algorithm.
+        """
+        self.min_support = min_support
+        self.min_confidence = min_confidence
+        self._construct_transactions(df)
+        self.frequent_itemsets = None
+        self.association_rules = None
+
+    def _construct_transactions(self, df):
+        """
+        Construct transactions from the given DataFrame.
+        """
+        self.transactions = []
+        self.one_item_sets = set()
+        cols = df.columns.values
+
+        for row in df.values:
+            transaction = frozenset(['%s_%s' % (col, val) for val, col in zip(row, cols)])
+            self.transactions.append(transaction)
+            for item in transaction:
+                self.one_item_sets.add(frozenset([item]))
+
+    @staticmethod
+    def _generate_candidates(itemsets, k):
+        """
+        Generate unique combinations of length k.
+        """
+        return set(chain.from_iterable(combinations(itemset, k) for itemset in itemsets))
+
+    def generate_frequent_itemsets(self):
+        """
+        Generate all frequent itemsets.
+        """
+        self.frequent_itemsets = {}
+        itemsets = self._generate_itemsets(self.one_item_sets)
+        self.frequent_itemsets.update(itemsets)
+
+        k = 2
+        while itemsets:
+            itemsets = self._generate_itemsets(self._generate_candidates(itemsets.keys(), k))
+            self.frequent_itemsets.update(itemsets)
+            k += 1
+
+    def _generate_itemsets(self, itemsets):
+        """
+        Generate frequent itemsets and calculate their support.
+        """
+        transactions_len = len(self.transactions)
+        frequent_itemsets = {}
+
+        for itemset in itemsets:
+            support = sum(1 for row in self.transactions if itemset.issubset(row)) / transactions_len
+            if support >= self.min_support:
+                frequent_itemsets[itemset] = support
+
+        return frequent_itemsets
+
+    @staticmethod
+    def _generate_subsets(itemset):
+        """
+        Generate all subsets of the given itemset.
+        """
+        return [frozenset(subset) for i in range(1, len(itemset))
+                for subset in combinations(itemset, i)]
+
+    def generate_association_rules(self):
+        """
+        Generate association rules using the frequent itemsets.
+        """
+        if not self.frequent_itemsets:
+            raise ValueError('Please generate the frequent itemsets first.')
+
+        self.association_rules = []
+        for itemset, support in self.frequent_itemsets.items():
+            if len(itemset) < 2:
+                continue
+
+            for X in self._generate_subsets(itemset):
+                Y = itemset - X
+                confidence = support / self.frequent_itemsets[X]
+                if confidence >= self.min_confidence:
+                    self.association_rules.append((X, Y, confidence))
+
+
+def get_test_data():
+    """
+    Get sample data from the Titanic dataset.
+    """
+    df = pd.read_csv('titanic_train.csv')
+    return df[['Pclass', 'Sex', 'Age', 'Survived']]
+
+
+if __name__ == '__main__':
+    test_df = get_test_data()
+    apriori = Apriori(test_df, min_support=0.1, min_confidence=0.5)
+    print('Constructed transactions and 1-itemsets:')
+    print(apriori.transactions[0])
+    print(len(apriori.one_item_sets))
+    apriori.generate_frequent_itemsets()
+    print('Frequent itemsets:')
+    print(apriori.frequent_itemsets)
+
+    print('Frequent 3-itemsets:')
+    print([(fi, apriori.frequent_itemsets[fi]) for fi in apriori.frequent_itemsets if len(fi) == 3])
+
+    apriori.generate_association_rules()
+    print('Association rules:')
+    print(apriori.association_rules)

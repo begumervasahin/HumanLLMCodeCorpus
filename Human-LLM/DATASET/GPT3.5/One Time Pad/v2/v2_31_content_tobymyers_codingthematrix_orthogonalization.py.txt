@@ -1,0 +1,89 @@
+# Function to project a vector b along another vector v
+def project_along(b, v, eps=1E-20):
+    """
+    Project b along v.
+    
+    Arguments:
+    - b: a vector represented by Vec class
+    - v: a vector represented by Vec class
+    - eps (default: 1E-20): threshold below which squared norms are considered zero
+    
+    Returns:
+    - a vector representing the projection of b onto v
+    """
+    sigma = ((b * v) / (v * v)) if v * v > eps else 0
+    return sigma * v
+
+# Function to project a vector b orthogonal to a list of vectors vlist
+def project_orthogonal(b, vlist):
+    """
+    Project b orthogonal to vlist.
+    
+    Arguments:
+    - b: a vector represented by Vec class
+    - vlist: a list of vectors represented by Vec class
+    
+    Returns:
+    - the projection of b orthogonal to the vectors in vlist
+    """
+    for v in vlist:
+        b = b - project_along(b, v)
+    return b
+
+# Function to project a vector b orthogonal to a list of vectors vlist along with intermediate coefficients
+def aug_project_orthogonal(b, vlist, eps=1E-20):
+    """
+    Augmented projection of b orthogonal to vlist.
+    
+    Arguments:
+    - b: a vector represented by Vec class
+    - vlist: a list of vectors represented by Vec class
+    - eps (default: 1E-20): threshold below which squared norms are considered zero
+    
+    Returns:
+    - a tuple containing the projection of b orthogonal to vlist and a dictionary of intermediate coefficients
+    """
+    alphadict = {len(vlist): 1}
+    for i, v in enumerate(vlist):
+        sigma = (b * v) / (v * v) if v * v > eps else 0
+        alphadict[i] = sigma
+        b = b - sigma * v
+    return (b, alphadict)
+
+# Function to orthogonalize a list of vectors while preserving order
+def orthogonalize(vlist):
+    """
+    Orthogonalize vlist preserving order.
+    
+    Arguments:
+    - vlist: a list of vectors represented by Vec class
+    
+    Returns:
+    - a list of mutually orthogonal vectors spanning the same space as the input vectors
+    """
+    assert isinstance(vlist, list)
+    vstarlist = []
+    for v in vlist:
+        vstarlist.append(project_orthogonal(v, vstarlist))
+    return vstarlist
+
+# Function to orthogonalize a list of vectors and normalize them to be orthonormal
+def aug_orthogonalize(vlist):
+    """
+    Augmented orthogonalization of vlist.
+    
+    Arguments:
+    - vlist: a list of vectors represented by Vec class
+    
+    Returns:
+    - a tuple containing a list of orthonormal vectors and a list of vectors with intermediate coefficients
+    """
+    assert isinstance(vlist, list)
+    vstarlist = []
+    sigma_vecs = []
+    D = set(range(len(vlist)))
+    for v in vlist:
+        (vstar, sigmadict) = aug_project_orthogonal(v, vstarlist)
+        vstarlist.append(vstar)
+        sigma_vecs.append(Vec(D, sigmadict))
+    return vstarlist, sigma_vecs

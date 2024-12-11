@@ -1,0 +1,124 @@
+class Vec:
+    """
+    Class representing a vector.
+    """
+
+    def __init__(self, D, vec_dict=None):
+        """
+        Initialize the vector with its domain and optional dictionary of components.
+
+        Arguments:
+        - D: the domain of the vector
+        - vec_dict (default: None): dictionary of components (keys represent indices, values represent components)
+        """
+        self.D = D
+        self.f = vec_dict if vec_dict else {}
+
+    def __mul__(self, other):
+        """
+        Define multiplication operation between two vectors.
+
+        Arguments:
+        - other: another vector to perform multiplication with
+
+        Returns:
+        - the dot product of the two vectors
+        """
+        return sum(self.f[d] * other.f[d] for d in self.D)
+
+    def __rmul__(self, other):
+        """
+        Define right multiplication operation for scalar multiplication.
+
+        Arguments:
+        - other: scalar value to multiply with the vector
+
+        Returns:
+        - the scaled vector
+        """
+        return Vec(self.D, {d: other * self.f[d] for d in self.D})
+
+def project_along(b, v, eps=1E-20):
+    """
+    Project vector b along vector v.
+
+    Arguments:
+    - b: a vector represented by Vec class
+    - v: a vector represented by Vec class
+    - eps (default: 1E-20): threshold below which squared norms are considered zero
+
+    Returns:
+    - a vector representing the projection of b onto v
+    """
+    sigma = ((b * v) / (v * v)) if v * v > eps else 0
+    return sigma * v
+
+def project_orthogonal(b, vlist):
+    """
+    Project vector b orthogonal to a list of vectors vlist.
+
+    Arguments:
+    - b: a vector represented by Vec class
+    - vlist: a list of vectors represented by Vec class
+
+    Returns:
+    - the projection of b orthogonal to the vectors in vlist
+    """
+    for v in vlist:
+        b = b - project_along(b, v)
+    return b
+
+def aug_project_orthogonal(b, vlist, eps=1E-20):
+    """
+    Augmented projection of b orthogonal to a list of vectors vlist.
+
+    Arguments:
+    - b: a vector represented by Vec class
+    - vlist: a list of vectors represented by Vec class
+    - eps (default: 1E-20): threshold below which squared norms are considered zero
+
+    Returns:
+    - a tuple containing the projection of b orthogonal to vlist and a dictionary of intermediate coefficients
+    """
+    alphadict = {len(vlist): 1}
+    for i, v in enumerate(vlist):
+        sigma = (b * v) / (v * v) if v * v > eps else 0
+        alphadict[i] = sigma
+        b = b - sigma * v
+    return b, alphadict
+
+def orthogonalize(vlist):
+    """
+    Orthogonalize a list of vectors while preserving order.
+
+    Arguments:
+    - vlist: a list of vectors represented by Vec class
+
+    Returns:
+    - a list of mutually orthogonal vectors spanning the same space as the input vectors
+    """
+    assert isinstance(vlist, list)
+    vstarlist = []
+    for v in vlist:
+        vstarlist.append(project_orthogonal(v, vstarlist))
+    return vstarlist
+
+def aug_orthogonalize(vlist):
+    """
+    Augmented orthogonalization of a list of vectors.
+
+    Arguments:
+    - vlist: a list of vectors represented by Vec class
+
+    Returns:
+    - a tuple containing a list of orthonormal vectors and a list of vectors with intermediate coefficients
+    """
+    assert isinstance(vlist, list)
+    vstarlist = []
+    sigma_vecs = []
+    D = set(range(len(vlist)))
+    for v in vlist:
+        vstar, sigmadict = aug_project_orthogonal(v, vstarlist)
+        vstarlist.append(vstar)
+        sigma_vecs.append(Vec(D, sigmadict))
+    return vstarlist, sigma_vecs

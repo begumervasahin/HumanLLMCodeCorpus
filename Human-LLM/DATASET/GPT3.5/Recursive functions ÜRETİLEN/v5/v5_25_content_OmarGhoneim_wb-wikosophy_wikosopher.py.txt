@@ -1,0 +1,75 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+
+def fetch_webpage_content(url):
+    # Introduce a delay to prevent overloading the server
+    time.sleep(0.5)
+    # Fetch the webpage content
+    response = requests.get(url)
+    return response.text
+
+def extract_valid_link(soup):
+    # Classes and IDs to exclude from parsing
+    excluded_classes = ["new", "extiw", 'nowrap', 'IPA', 'reference', 'mw-selflink selflink']
+    excluded_ids = ["coordinates"]
+
+    # Iterate over paragraphs in the main content
+    for paragraph in soup.find(class_='mw-parser-output').find_all('p', recursive=False):
+        # Remove elements with excluded classes and IDs
+        for c in paragraph.find_all(class_=excluded_classes):
+            c.extract()
+        for i in paragraph.find_all(id=excluded_ids):
+            i.extract()
+
+        # Remove text within parentheses
+        paragraph = BeautifulSoup(re.sub(r'(?<!_)(?<rec>\((?:[^()]++|(?&rec))*\))', '', str(paragraph)), features="lxml")
+
+        # Remove italicized text
+        for italic in paragraph.find_all('i'):
+            italic.extract()
+
+        link_suffix = paragraph.a.get('href', None)
+        if link_suffix:
+            return link_suffix
+
+    return None
+
+def get_to_philosophy(url, cache=[]):
+    # Append current URL to the cache
+    cache.append(url)
+
+    # Fetch the webpage content
+    webpage_content = fetch_webpage_content(url)
+    soup = BeautifulSoup(webpage_content, 'lxml')
+
+    # Extract valid link from the webpage content
+    link_suffix = extract_valid_link(soup)
+
+    # If no valid link found, return the URL
+    if link_suffix is None:
+        print("No outgoing wikilinks in the article:", url[30:])
+        return url
+
+    # Construct the full link and print it
+    link = "https://en.wikipedia.org" + link_suffix
+    print(link)
+
+    # Check if the link leads to the Philosophy page
+    if link == "https://en.wikipedia.org/wiki/Philosophy":
+        print("Wikosopher found it, Just as expected !")
+        return link
+
+    # Check for loops in the cache
+    elif link in cache:
+        print("Stuck in a loop !")
+        return link
+
+    # Recursively call the function with the new link
+    else:
+        return get_to_philosophy(link, cache)
+
+# Random Wikipedia URL to start the search
+random_url = "https://en.wikipedia.org/wiki/Special:Random"
+get_to_philosophy(random_url)

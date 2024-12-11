@@ -1,0 +1,51 @@
+def GF(a, b):
+    # Define a list to store the intermediate values during Galois Field multiplication
+    bw = [0, 0, 0, 0]
+    res = 0  # Initialize the result variable
+
+    # Initialize the first element of the list with the value of b
+    bw[0] = b
+
+    # Iterate through the remaining elements of the list
+    for i in range(1, 4):
+        # Multiply the previous element by 2
+        bw[i] = bw[i - 1] << 1
+        
+        # Check if the most significant bit of the previous element is set
+        if bw[i - 1] & 0x80:
+            # Apply the reduction polynomial if the most significant bit is set
+            bw[i] ^= 0x1b
+        
+        # Ensure that the result fits within a single byte
+        bw[i] &= 0xff
+
+    # Calculate the result by performing XOR operations
+    for i in range(4):
+        if (a >> i) & 0x01:
+            res ^= bw[i]
+
+    return res
+
+def G_box(n):
+    # Initialize an empty list to store the substitution table
+    table = []
+
+    # Generate the substitution table by iterating through all possible input values
+    for i in range(256):
+        # Calculate the value for the current input using the GF function
+        i = GF(n, i)
+        
+        # Append the calculated value to the table
+        table.append(i)
+    
+    # Convert the list to a tuple for efficiency
+    table = tuple(table)
+
+    # Print the substitution table
+    print(table)
+
+# Test cases for different values of n
+for i in [2, 3, 9, 11, 13, 14]:
+    print(f"Value of n: {i}")
+    G_box(i)
+    print("-------------------------")

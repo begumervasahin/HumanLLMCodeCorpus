@@ -1,0 +1,105 @@
+import sys
+
+class Vertex:
+    def __init__(self, id):
+        self.id = id
+        self.distance = sys.maxsize
+        self.previous = None
+        self.adjacent_vertices = {}
+
+    def get_id(self):
+        return self.id
+
+    def get_distance(self):
+        return self.distance
+
+    def set_distance(self, distance):
+        self.distance = distance
+
+    def get_previous(self):
+        return self.previous
+
+    def set_previous(self, previous):
+        self.previous = previous
+
+    def get_adjacent_vertices(self):
+        return self.adjacent_vertices
+
+    def add_adjacent_vertex(self, vertex, weight):
+        self.adjacent_vertices[vertex] = weight
+
+class Graph:
+    def __init__(self):
+        self.vertices = {}
+
+    def get_vertices(self):
+        return self.vertices.values()
+
+    def get_vertex(self, id):
+        return self.vertices.get(id)
+
+    def add_vertex(self, id):
+        if id not in self.vertices:
+            self.vertices[id] = Vertex(id)
+
+    def add_edge(self, start, end, weight):
+        if start in self.vertices and end in self.vertices:
+            self.vertices[start].add_adjacent_vertex(self.vertices[end], weight)
+
+def initialize_single_source(graph, source):
+    for vertex in graph.get_vertices():
+        vertex.set_distance(sys.maxsize)
+    graph.get_vertex(source).set_distance(0)
+
+def extract_min(queue):
+    min_vertex = queue[0]
+    for vertex in queue:
+        if vertex.get_distance() < min_vertex.get_distance():
+            min_vertex = vertex
+    queue.remove(min_vertex)
+    return min_vertex
+
+def relax(start_vertex, end_vertex):
+    if end_vertex.get_distance() > start_vertex.get_distance() + start_vertex.get_adjacent_vertices()[end_vertex]:
+        end_vertex.set_distance(start_vertex.get_distance() + start_vertex.get_adjacent_vertices()[end_vertex])
+        end_vertex.set_previous(start_vertex)
+
+def shortest_path_to_vertex(vertex, path):
+    if vertex.get_previous():
+        path.append(vertex.get_previous().get_id())
+        shortest_path_to_vertex(vertex.get_previous(), path)
+    return path
+
+# Test the functionality
+if __name__ == "__main__":
+    graph = Graph()
+    vertices = ['a', 'b', 'c', 'd', 'e']
+    for vertex in vertices:
+        graph.add_vertex(vertex)
+
+    edges = [
+        ('a', 'b', 10),
+        ('a', 'c', 3),
+        ('b', 'c', 1),
+        ('b', 'd', 2),
+        ('c', 'b', 4),
+        ('c', 'd', 8),
+        ('c', 'e', 2),
+        ('d', 'e', 7),
+        ('e', 'd', 9)
+    ]
+
+    for edge in edges:
+        graph.add_edge(*edge)
+
+    initialize_single_source(graph, 'a')
+    queue = graph.get_vertices()
+    while queue:
+        u = extract_min(queue)
+        for v in u.get_adjacent_vertices():
+            relax(u, v)
+
+    for vertex in graph.get_vertices():
+        path = [vertex.get_id()]
+        shortest_path = shortest_path_to_vertex(vertex, path)
+        print(f'The shortest path from a to {vertex.get_id()} is: {shortest_path[::-1]} with cost {vertex.get_distance()}.')

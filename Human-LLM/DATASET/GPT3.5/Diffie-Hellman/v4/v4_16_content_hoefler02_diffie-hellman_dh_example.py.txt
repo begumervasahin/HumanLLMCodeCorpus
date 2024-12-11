@@ -1,0 +1,30 @@
+from Crypto.Util.number import getStrongPrime
+from dh_client import DH_Client
+from random import randint
+
+# Generate a strong prime number and a random generator
+prime = getStrongPrime(512)
+generator = randint(2, prime - 2)
+
+# Create two DH clients
+alice = DH_Client('Alice', generator, prime)
+bob = DH_Client('Bob', generator, prime)
+
+# Establish secure communication
+print(f'Secure communication established between {alice.name} and {bob.name}!\n')
+print(f'Prime (p) = {prime}\nGenerator (g) = {generator}\n')
+
+# Perform key exchange and establish shared secret
+print(f'{bob.name} -> {alice.name} : Public Key Exchange ~ {bob.public_key}')
+alice.establish_shared_secret(bob.public_key)
+print(f'{alice.name} -> {bob.name} : Public Key Exchange ~ {alice.public_key}\n')
+bob.establish_shared_secret(alice.public_key)
+print('Shared secret established!\n')
+
+# Encrypt and exchange messages
+msg_bob = 'The weather is nice today.'
+print(f'{bob.name} -> {alice.name} : Encrypted Message ~ {bob.aes_ecb_encrypt(msg_bob)}')
+msg_alice = 'It is indeed.'
+print(f'{alice.name} -> {bob.name} : Encrypted Message ~ {alice.aes_ecb_encrypt(msg_alice)}\n')
+
+print('Secure communication ended.')

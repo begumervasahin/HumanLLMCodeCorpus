@@ -1,0 +1,79 @@
+import random
+import sys
+
+def modular_exponentiation(base, exponent, modulus):
+    """Performs modular exponentiation efficiently."""
+    result = 1
+    bits = "{0:b}".format(exponent)
+    for bit in bits:
+        if bit == '1':
+            result = (((result ** 2) * base) % modulus)
+        elif bit == '0':
+            result = ((result ** 2) % modulus)
+    return result % modulus
+
+def is_prime(n, k=128):
+    """Checks if a number is prime using the Miller-Rabin primality test."""
+    if n == 2 or n == 3:
+        return True
+    if n <= 1 or n % 2 == 0:
+        return False
+    s = 0
+    r = n - 1
+    while r & 1 == 0:
+        s += 1
+        r //= 2
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = modular_exponentiation(a, r, n)
+        if x != 1 and x != n - 1:
+            j = 1
+            while j < s and x != n - 1:
+                x = modular_exponentiation(x, 2, n)
+                if x == 1:
+                    return False
+                j += 1
+            if x != n - 1:
+                return False
+    return True
+
+def generate_prime_candidate(bit_length):
+    """Generates a probable prime candidate."""
+    candidate = random.getrandbits(bit_length)
+    candidate |= (1 << bit_length - 1) | 1
+    return candidate
+
+def generate_prime_number(bit_length=1023):
+    """Generates a large prime number using the Miller-Rabin test."""
+    prime_candidate = 4
+    while not is_prime(prime_candidate, 128):
+        prime_candidate = generate_prime_candidate(bit_length)
+    return prime_candidate
+
+if __name__ == '__main__':
+    # Generate a large prime number q
+    large_prime_q = generate_prime_number()
+    
+    # Choose a multiplier j and calculate another large prime p
+    multiplier_j = 2
+    large_prime_p = multiplier_j * large_prime_q + 1
+    while not is_prime(large_prime_p):
+        large_prime_p += 2
+    
+    # Find a generator for the cyclic group modulo p
+    generator = 1
+    while generator == 1:
+        h = random.randint(2, large_prime_p - 1)
+        generator = modular_exponentiation(h, multiplier_j, large_prime_p)
+    
+    # Choose a secret integer a
+    secret_a = random.randint(2, large_prime_q - 1)
+    
+    # Calculate public key ga
+    public_key_ga = modular_exponentiation(generator, secret_a, large_prime_p)
+    
+    # Write the public and private keys to files
+    with open(sys.argv[1], 'w') as public_key_file:
+        public_key_file.write('( %d, %d, %d )' % (large_prime_p, generator, public_key_ga))
+    with open(sys.argv[2], 'w') as private_key_file:
+        private_key_file.write('( %d, %d, %d )' % (large_prime_p, generator, secret_a))

@@ -1,0 +1,107 @@
+from PIL import Image
+import numpy as np
+from random import choice, randint
+from glob import glob
+import cv2
+
+def calculate_bounds(rect, offset):
+    """
+    Calculate the bounds for a rectangle with an offset.
+    """
+    upper_left = (rect[0] + offset[0], rect[1] + offset[1])
+    lower_right = (rect[0] + rect[2] + offset[2], rect[1] + rect[3] + offset[3])
+    return upper_left, lower_right
+
+def detect_feature(clf, gray_img, size, offset, k=10):
+    """
+    Detect features in a grayscale image and return the bounding rectangle.
+    """
+    features = clf.detectMultiScale(gray_img, 1.5, k)
+    for feature in features:
+        upper_left, lower_right = calculate_bounds(feature, offset)
+        if upper_left[0] >= 0 and lower_right[0] >= size // 2 and lower_right[1] - upper_left[1] <= 300:
+            return [upper_left[0], upper_left[1], lower_right[0], lower_right[1]]
+    return None
+
+def apply_drag_effect(image, rect):
+    """
+    Apply a pixel dragging effect to the specified rectangle area of the image.
+    """
+    h, w, _ = image.shape
+    orientation = choice(["horizontal", "vertical"])
+
+    if orientation == "vertical":
+        offset = -90
+        line = rect[1] + rect[3] // 2 + offset
+        image[0:line, rect[0]:rect[0] + rect[2] + offset] = image[line, rect[0]:rect[0] + rect[2] + offset]
+    else:
+        line = randint(rect[0] + 50, rect[0] + rect[2] - 160)
+        direction = choice(["left", "right"])
+        if direction == "left":
+            image[rect[1]:rect[1] + rect[3], 0:line] = image[rect[1]:rect[1] + rect[3], line:line + 1]
+        else:
+            image[rect[1]:rect[1] + rect[3], line:w] = image[rect[1]:rect[1] + rect[3], line:line + 1]
+
+    return image
+
+def apply_stagger_effect(image, rect):
+    """
+    Apply a pixel staggering effect to simulate a glitch around the rectangle.
+    """
+    h, w, _ = image.shape
+    rect[0] -= 75
+    strip_height = rect[3] // randint(50, 90)
+    num_strips = rect[3] // (strip_height * 3)
+
+    for i in range(num_strips):
+        start_y = rect[1] + (i * strip_height)
+        end_y = rect[1] + strip_height * (i + 1)
+        offset = randint(1, 50)
+
+        if rect[0] + rect[2] + offset >= w:
+            offset = w - rect[0] - rect[2]
+
+        image[start_y:end_y, (rect[0] + offset):(rect[0] + rect[2] + offset)] = image[start_y:end_y, rect[0]:(rect[0] + rect[2])]
+
+    return image
+
+def apply_censor_bar(image, censor_bar_path, rect):
+    """
+    Apply a censor bar over the specified rectangle area of the image.
+    """
+    pil_image = Image.fromarray(image).convert("RGBA")
+    censor_bar = Image.open(censor_bar_path).resize((rect[2] - rect[0], rect[3] - rect[1]))
+    pil_image.paste(censor_bar, (rect[0], rect[1]), censor_bar)
+    return np.array(pil_image)
+
+def modify_image(image, rect, modification, censor_bar_directory=None):
+    """
+    Apply the specified modification to the image within the given rectangle.
+    """
+    if rect is not None:
+        if modification == "cover" and censor_bar_directory is not None:
+            censor_bar_path = choice(glob(f"./images/{censor_bar_directory}/*"))
+            image = apply_censor_bar(image, censor_bar_path, rect)
+        elif modification == "stagger":
+            image = apply_stagger_effect(image, rect)
+        elif modification == "drag":
+            image = apply_drag_effect(image, rect)
+
+    return image
+
+# Example usage
+if __name__ == "__main__":
+    # Load your image and classifier here
+    img_path = "path/to/your/image.jpg"
+    image = cv2.imread(img_path)
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    size = max(image.shape[:2])
+    offset = [0, 0, 0, 0]  # Adjust based on your needs
+
+    # Example of using a face classifier
+    face_clf = cv2.CascadeClassifier('path/to/your/haarcascade_frontalface_default.xml')
+    rect = detect_feature(face_clf, gray_image, size, offset)
+
+    # Apply modifications
+    modified_image = modify_image(image, rect, "drag")
+    cv2.imwrite("modified_image.jpg", modified_image)

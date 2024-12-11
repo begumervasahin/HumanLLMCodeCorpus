@@ -1,0 +1,62 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Constants
+CONSOLE_A = 'Wii'
+CONSOLE_B = 'PS3'
+GENRE_LIST = ['Sports', 'Platform', 'Racing', 'Role-Playing', 'Puzzle', 'Misc', 'Shooter',
+              'Simulation', 'Action', 'Fighting', 'Adventure', 'Strategy']
+
+# Read data
+df = pd.read_csv('vgsales.csv')
+
+# Introduction
+print('This application analyzes the similarity among markets of different video game consoles')
+print('Game genres in the data:', GENRE_LIST)
+
+# Filter data for consoles A and B
+data_a = df.loc[df['Platform'] == CONSOLE_A]
+data_b = df.loc[df['Platform'] == CONSOLE_B]
+
+# Print top 10 best-selling games for consoles A and B
+print(f'Top 10 best-selling games on {CONSOLE_A}:')
+print(data_a.head(10), '\n')
+
+print(f'Top 10 best-selling games on {CONSOLE_B}:')
+print(data_b.head(10), '\n')
+
+# Function to build sales data by genre for a given console
+def build_sales_data(dataset, console):
+    sales_list = np.zeros(len(GENRE_LIST))
+    for idx, genre in enumerate(GENRE_LIST):
+        sales_temp = dataset.loc[dataset['Genre'] == genre]['Global_Sales'].sum()
+        sales_list[idx] = sales_temp
+    print(f'Sales data of {console} by genre:', sales_list, '\n')
+    return sales_list
+
+# Build sales data for consoles A and B
+sales_data_a = build_sales_data(data_a, CONSOLE_A)
+sales_data_b = build_sales_data(data_b, CONSOLE_B)
+
+# Function to calculate cosine similarity
+def cosine_similarity(x, y):
+    numerator = sum(a * b for a, b in zip(x, y))
+    denominator = round(np.sqrt(sum(a ** 2 for a in x)) * np.sqrt(sum(b ** 2 for b in y)), 4)
+    result = round(numerator / float(denominator), 4)
+    return result
+
+# Calculate similarity between consoles A and B
+similarity_score = cosine_similarity(sales_data_a, sales_data_b)
+print(f'The similarity between {CONSOLE_A} and {CONSOLE_B} is {similarity_score}')
+
+# Function to plot sales distribution as pie chart
+def plot_sales_distribution(sales_data, console):
+    plt.figure(figsize=(8, 6))
+    plt.pie(sales_data, labels=GENRE_LIST, autopct='%1.1f%%', startangle=140)
+    plt.title(f'Sales Distribution of {console}')
+    plt.show()
+
+# Plot sales distribution for consoles A and B
+plot_sales_distribution(sales_data_a, CONSOLE_A)
+plot_sales_distribution(sales_data_b, CONSOLE_B)

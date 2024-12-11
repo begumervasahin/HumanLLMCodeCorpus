@@ -1,0 +1,66 @@
+import csv
+from collections import deque
+
+# List of input files to process
+input_files = ['matrix_100_1_3_1.txt', 'matrix_100_1_3_2.txt', 'rome99']
+
+# Process each input file
+for input_file_name in input_files:
+    # Open the input graph file
+    with open(input_file_name + ".gr") as input_file:
+        adjacency_list = {}  # Initialize adjacency list
+        weights = {}  # Initialize weights dictionary
+        vertices = 0  # Initialize number of vertices
+
+        # Parse the input graph file
+        for line in input_file:
+            parts = line.split(' ')
+            if parts[0] == 'p':
+                vertices = int(parts[2])  # Extract number of vertices
+                edges = int(parts[3])  # Extract number of edges
+            elif parts[0] == 'a':
+                vertex1, vertex2, weight = int(parts[1]), int(parts[2]), int(parts[3])
+                weights[vertex1, vertex2] = weight  # Populate weights dictionary
+                adjacency_list.setdefault(vertex1, []).append(vertex2)  # Populate adjacency list
+
+        # Ensure all vertices have an entry in the adjacency list
+        for vertex in range(1, vertices + 1):
+            adjacency_list.setdefault(vertex, [])
+
+        # Define the FIFO Bellman-Ford algorithm
+        def fifo_bellman_ford(graph, source):
+            distances = {}  # Initialize distances dictionary
+            predecessors = {}  # Initialize predecessors dictionary
+            distances[source] = 0  # Initialize distance of source vertex
+            predecessors[source] = 0  # Initialize predecessor of source vertex
+            remaining_vertices = list(range(1, vertices + 1))
+            remaining_vertices.remove(source)
+
+            max_weight = vertices * max(weights.values())  # Maximum possible weight
+            for vertex in remaining_vertices:
+                distances[vertex] = max_weight  # Initialize distances to maximum
+                predecessors[vertex] = -1  # Initialize predecessors
+
+            queue = deque([source])  # Initialize queue with source vertex
+            while queue:
+                current_vertex = queue.popleft()
+                for neighbor_vertex in graph[current_vertex]:
+                    if distances[neighbor_vertex] > distances[current_vertex] + weights[current_vertex, neighbor_vertex]:
+                        distances[neighbor_vertex] = distances[current_vertex] + weights[current_vertex, neighbor_vertex]
+                        predecessors[neighbor_vertex] = current_vertex
+                        if neighbor_vertex not in queue:
+                            queue.append(neighbor_vertex)
+
+            return distances, predecessors
+
+        # Perform FIFO Bellman-Ford algorithm
+        source_vertex = 1
+        distances, predecessors = fifo_bellman_ford(adjacency_list, source_vertex)
+
+        # Write results to CSV file
+        output_file = input_file_name + ".csv"
+        with open(output_file, 'w', newline='') as outfile:
+            writer = csv.DictWriter(outfile, fieldnames=['Vertex', 'Distance', 'Predecessor'])
+            writer.writeheader()
+            for vertex, distance in distances.items():
+                writer.writerow({'Vertex': vertex, 'Distance': distance, 'Predecessor': predecessors[vertex]})

@@ -1,0 +1,71 @@
+from BellmanFord import BFA
+import msvcrt
+import re
+import timeit
+
+# Initialize variables
+elapsedTime = 0
+start = 0
+whichPort = {}
+adrToName = {}
+routerCount = 0
+hit = None
+
+# Get router name from user input
+routerName = input("Welcome to Emulated Bellman-Ford Algorithm\n"
+                   "Which router am I?\n")
+
+# Read which port file to populate whichPort and adrToName dictionaries
+with open("which_port.txt") as whichRouter:
+    for line in whichRouter:
+        router_id = int(line[2:6])
+        port_number = int(line[0])
+        whichPort[port_number] = router_id
+        adrToName[router_id] = port_number
+        routerCount += 1
+
+# Read initial cost for the router from adj_mat.txt
+with open("adj_mat.txt") as adjMatrix:
+    myLine = adjMatrix.readlines()[int(routerName) - 1]
+    initialCost = myLine.rstrip('\n').split(" ")
+    print('Initial Cost is {}\n'.format(initialCost))
+
+# Create instance of Bellman-Ford Algorithm
+myBf = BFA(routerCount, initialCost, routerName, whichPort, adrToName)
+myBf.who_to_send()
+
+# Prompt user to start BellmanFord Algorithm
+start_prompt = "To start BellmanFord Algorithm, Enter 's'\n"
+s = input(start_prompt)
+
+# Ensure user inputs 's' to start algorithm
+while s != 's':
+    s = input("Wrong input! " + start_prompt)
+
+# Start the timer
+start = timeit.default_timer()
+
+# Main loop
+while True:
+    # Check if a key has been pressed
+    hit = msvcrt.kbhit()
+    elapsedTime = timeit.default_timer() - start
+
+    # Send updates if more than 1 second has passed
+    if elapsedTime > 1:
+        myBf.send()
+        start = timeit.default_timer()
+
+    # Receive updates
+    myBf.receive()
+
+    # Check for keyboard input
+    if hit:
+        key = ord(msvcrt.getch())
+        if key == ord('u'):
+            # Read new cost from adj_mat.txt
+            with open("adj_mat.txt") as adjMatrix:
+                myLine = adjMatrix.readlines()[int(routerName) - 1]
+                newCost = myLine.rstrip('\n').split(" ")
+                print('New cost is {}\n'.format(newCost))
+                myBf.check_cost(newCost)

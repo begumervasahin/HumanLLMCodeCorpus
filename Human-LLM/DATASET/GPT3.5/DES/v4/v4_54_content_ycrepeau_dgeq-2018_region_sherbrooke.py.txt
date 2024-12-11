@@ -1,0 +1,91 @@
+import os
+import folium
+import pandas as pd
+import geopandas as gpd
+import re
+
+# Function to determine section color based on candidate votes
+def get_color(data):
+    max_vote = 0
+    color = 'gray'
+    try:
+        if data['pq'] > max_vote:
+            max_vote = data['pq']
+            color = 'blue'
+        if data['plq'] > max_vote:
+            max_vote = data['plq']
+            color = 'red'
+        if data['caq'] > max_vote:
+            max_vote = data['caq']
+            color = 'lightblue'
+        if data['qs'] > max_vote:
+            max_vote = data['qs']
+            color = 'orange'
+    except:
+        color = 'white'
+    return color
+
+# Regular expressions to match candidate names
+candidate_regex = {
+    'caq': re.compile('.*C\.A\.Q\.-É\.F\.L\.$'),
+    'qs': re.compile('.*Q\.S\.$'),
+    'plq': re.compile('.*P\.L\.Q\./Q\.L\.P\.$'),
+    'pq': re.compile('.* P\.Q\.$')
+}
+
+# List of coverage areas
+coverage_areas = ['104', '110', '116', '120', '126', '132', '138', '144', '150', '204', '206', '210', '212', '216', '218', '220', '224', '226', '230', '232', '236', '238', '240', '244', '246', '250', '252', '256', '258', '260', '264', '502', '508', '514', '542', '548', '554', '560', '566', '554', '594', '570', '576', '660', '666', '670', '676', '708', '714', '720', '742', '754', '760', '802', '806', '810', '814', '818', '822', '826', '834', '838', '842', '850', '854', '858', '902', '906', '914', '918', '922', '926', '930', '938']
+
+# Load section data
+sections_path = os.path.join('data', 'sherbrooke.json')
+sections_data = gpd.read_file(sections_path)
+sections_data.rename(columns={'NO_SV': 'S.V.'}, inplace=True)
+
+# Filter sections based on coverage areas
+sections_filtered = sections_data[sections_data['CO_CEP'].isin(coverage_areas)]
+
+# Load and process results data
+cumulative_data = pd.DataFrame()
+for area in coverage_areas:
+    results_path = os.path.join('data', 'resultats-section-vote', f"{area}.csv")
+    results_data = pd.read_csv(results_path, sep=';', encoding='latin1', dtype={'S.V.': 'str', 'Code': 'str'})
+    results_data.dropna(subset=['S.V.'], inplace=True)
+    results_data.rename(columns={"Code": "CO_CEP", 'Nom des Municipalités': 'NM_MUNI'}, inplace=True)
+
+    # Rename columns based on candidate names using regex
+    for candidate, regex in candidate_regex.items():
+        matching_columns = [col for col in results_data.columns if regex.match(col)]
+        if matching_columns:
+            results_data.rename(columns={matching_columns[0]: candidate}, inplace=True)
+
+    results_data.drop(labels=['Circonscription', 'Date scrutin', 'Étendue', 'Secteur', 'Regroupement', 'É.I.'], axis=1, inplace=True)
+    
+    if cumulative_data.empty:
+        cumulative_data = results_data
+    else:
+        cumulative_data = cumulative_data.append(results_data, sort=False)
+
+# Merge sections data with results data
+merged_data = sections_filtered.merge(cumulative_data, on=['CO_CEP', 'S.V.'], how='inner')
+
+# Apply color determination function to create 'couleur' column
+merged_data['couleur'] = merged_data.apply(get_color, axis=1)
+
+# Generate Folium map
+m = folium.Map([45.5, -72], tiles='stamentoner', zoom_start=8)
+
+# Add GeoJson layer to the map
+folium.GeoJson(
+    merged_data,
+    tooltip=folium.features.GeoJsonTooltip(fields=['NM_CEP', 'S.V.', 'couleur', 'NM_MUNI'], labels=True),
+    style_function=lambda feature: {
+        'fillColor': feature['properties']['couleur'],
+        'color': 'green',
+        'weight': 0.25,
+        'fillOpacity': 0.5,
+    },
+).add_to(m)
+
+# Save the map as HTML file
+output_html_path = os.path.join('docs', 'region_sherbrooke.html')
+m.save(output_html_path)

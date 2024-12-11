@@ -1,0 +1,42 @@
+"""
+Package: AESynop
+Version: 0.0.1
+Developer: Diego Garro Molina
+e-mail: diego.garromolina@ucr.ac.cr
+
+AESynop version 0.0.1 is a project for evaluating synoptic reports
+issued by terrestrial weather stations.
+This program evaluates the reports group by group, extracting all the errors
+made by the staff of each station to learn from them.
+"""
+
+from datetime import datetime
+# Assuming utils.py and the tools module, as well as the Group_iRixhVV class, are correctly implemented and placed.
+from utils import tools as tl
+from synoptic.section1 import Group_iRixhVV
+
+def main():
+    # Initialize log file
+    with open("log.txt", "w") as log:
+        # Get dates for the synops evaluation
+        hoy, hoy_6h = tl.fecha_para_synops()
+        
+        # Define URLs for Spanish (ES) and English (EN) versions
+        URL_ES = 'http://ogimet.com/display_synops2.php?lugar=78764+78762+78774+78767&tipo=ALL&ord=DIR&nil=SI&fmt=txt&ano={}&mes={}&day={}&hora={}&anof={}&mesf={}&dayf={}&horaf={}&enviar=Ver'
+        URL_EN = 'https://www.ogimet.com/display_synops2.php?lang=en&lugar=78764+78762+78774+78767&tipo=ALL&ord=DIR&nil=SI&fmt=txt&ano={}&mes={}&day={}&hora={}&anof={}&mesf={}&dayf={}s&horaf={}&send=send'
+        
+        # Format URL with today's date and time
+        url = URL_ES.format(hoy_6h[0], str(hoy_6h[1]).zfill(2), str(hoy_6h[2]).zfill(2), str(hoy_6h[3]).zfill(2), hoy[0], str(hoy[1]).zfill(2), str(hoy[2]).zfill(2), str(hoy[3]).zfill(2))
+        print(url)
+        
+        # Extract synoptic reports from a source (assuming 'texto_web.txt' is available and formatted correctly)
+        sinopticos = tl.extraer_synops("texto_web.txt", 78774)
+        
+        for s in sinopticos:
+            print(s)
+            lista = s.split(' ')
+            group_iRixhVV = Group_iRixhVV(lista[4], log)
+            group_iRixhVV.evaluate_group()
+
+if __name__ == "__main__":
+    main()

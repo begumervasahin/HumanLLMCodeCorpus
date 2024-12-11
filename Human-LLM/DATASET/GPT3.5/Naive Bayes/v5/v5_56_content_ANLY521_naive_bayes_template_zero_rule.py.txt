@@ -1,0 +1,45 @@
+from util import labels_to_key, parse_federalist_papers, labels_to_y, find_zero_rule_class, apply_zero_rule
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+import argparse
+
+def main(data_file, random_seed):
+    # Print data file path
+    print(f"Data file: {data_file}")
+
+    # Parsing the Federalist Papers dataset
+    authors, essays, essay_ids = parse_federalist_papers(data_file)
+    num_essays = len(essays)
+    print(f"Working with {num_essays} reviews")
+
+    # Creating author key
+    author_key = labels_to_key(authors)
+    print(f"Author key: {author_key}")
+
+    # Converting labels to binary
+    y = labels_to_y(authors, author_key)
+    assert y.size == len(authors), f"Size of label array (y.size) must equal number of labels {len(authors)}"
+
+    # Splitting data into training and testing sets
+    train_X, test_X, train_y, test_y = train_test_split(essays, y, test_size=0.3, random_state=random_seed)
+    print(f"{len(train_X)} in train; {len(test_X)} in test")
+
+    # Finding the most frequent class
+    most_frequent_class = find_zero_rule_class(train_y)
+    reverse_author_key = {v: k for k, v in author_key.items()}
+    print(f"The most frequent class is {reverse_author_key[most_frequent_class]}")
+
+    # Applying zero rule to the test data
+    test_predictions = apply_zero_rule(test_X, most_frequent_class)
+    print(f"Zero rule predictions on held-out data: {test_predictions}")
+
+    # Calculating accuracy of zero rule
+    test_accuracy = accuracy_score(test_y, test_predictions)
+    print(f"Accuracy of zero rule: {test_accuracy:0.03f}")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Test supervised learning utilities')
+    parser.add_argument('--path', type=str, default="federalist_dev.json", help='Path to author dataset')
+    parser.add_argument('--seed', type=int, default=7, help='Random seed for dataset split')
+    args = parser.parse_args()
+    main(args.path, args.seed)

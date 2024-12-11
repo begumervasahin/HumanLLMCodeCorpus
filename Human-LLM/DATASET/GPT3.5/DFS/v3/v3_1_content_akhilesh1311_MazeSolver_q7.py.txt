@@ -1,0 +1,49 @@
+import pickle
+from os import listdir
+from os.path import isfile, join
+from maze import Maze
+from maze_solver import DFSSolver, BFSSolver
+import matplotlib.pyplot as plt
+
+def generate_and_solve_mazes(probability_values, maze_dimension):
+    nodes_expanded = {'dfs': {p: [] for p in probability_values}, 'bfs': {p: [] for p in probability_values}}
+    
+    for p in probability_values:
+        count = 0
+        while count < 30:
+            maze = Maze(maze_dimension, p)
+            dfs_solver = DFSSolver(maze)
+            dfs_solver.display_solution(display=False)
+            
+            if dfs_solver.is_solvable:
+                count += 1
+                bfs_solver = BFSSolver(maze)
+                print(f"Solving maze {count} for p={p}...")
+                bfs_solver.display_solution(display=False)
+                assert bfs_solver.is_solvable == True
+                
+                nodes_expanded['dfs'][p].append(dfs_solver.nodes_expanded)
+                nodes_expanded['bfs'][p].append(bfs_solver.nodes_expanded)
+    
+    return nodes_expanded
+
+def calculate_average_nodes(nodes_expanded):
+    average_bfs_nodes = [sum(nodes_expanded['bfs'][p]) / len(nodes_expanded['bfs'][p]) for p in probability_values]
+    average_dfs_nodes = [sum(nodes_expanded['dfs'][p]) / len(nodes_expanded['dfs'][p]) for p in probability_values]
+    return average_bfs_nodes, average_dfs_nodes
+
+def plot_results(probability_values, average_bfs_nodes, average_dfs_nodes):
+    plt.plot(probability_values, average_bfs_nodes, probability_values, average_dfs_nodes)
+    plt.legend(('BFS', 'DFS'))
+    plt.xlabel("Probability Value")
+    plt.ylabel("Average Number of Nodes Expanded")
+    plt.savefig("q7.png")
+    plt.show()
+
+if __name__ == "__main__":
+    probability_values = [x / 100 for x in range(10, 35, 5)]
+    maze_dimension = 1000
+    
+    nodes_expanded = generate_and_solve_mazes(probability_values, maze_dimension)
+    average_bfs_nodes, average_dfs_nodes = calculate_average_nodes(nodes_expanded)
+    plot_results(probability_values, average_bfs_nodes, average_dfs_nodes)

@@ -1,0 +1,91 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import datetime
+import sys
+
+def main():
+    position = selection_menu()
+    url = build_url(position)
+    if position == 1:
+        end_filename = 'Quarterbacks'
+    elif position == 2:
+        end_filename = 'Runningbacks'
+    elif position == 3:
+        end_filename = 'Receivers'
+    elif position == 4:
+        end_filename = 'Tightends'
+    elif position == 5:
+        end_filename = 'Defenses'
+    filename = f'DFS_data_{end_filename}_{datetime.date.today()}.csv'
+
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Name', 'Team', 'Pos', 'Fantasy Team'])
+
+        page_num = 0
+        while True:
+            page_count = str(page_num * 25)
+            print(f"Loading page {page_num+1}")
+            r = requests.get(url + page_count)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            players = soup.find_all('div', class_='ysf-player-name Nowrap Grid-u Relative Lh-xs Ta-start')
+            data_list = soup.find_all('td', class_='Ta-end')
+            fantasy_teams = soup.find_all('div', style='text-overflow: ellipsis; overflow: hidden;')
+
+            for player, data, fantasy_team in zip(players, data_list, fantasy_teams):
+                player_stats = []
+                name = get_name(player.text)
+                team, pos = get_team_and_position(data.text)
+                fan_team = fix_text(fantasy_team.text)
+                player_stats.extend([name, team, pos, fan_team])
+                writer.writerow(player_stats)
+
+            page_num += 1
+            if page_num >= 10:  # Set a limit for demonstration purposes
+                break
+
+def selection_menu():
+    print("\nPosition:")
+    print("-------------")
+    print("1. Quarterbacks\n2. Runningbacks\n3. Receivers\n4. Tightends\n5. Defenses")
+    print("-------------")
+    try:
+        position = int(input("Enter 1 - 5: "))
+    except ValueError:
+        print("Bad Selection. Exiting...")
+        sys.exit()
+    if not (1 <= position <= 5):
+        print("Bad Selection. Exiting...")
+        sys.exit()
+    print('Gathering Data...')
+    return position
+
+def build_url(position):
+    league_id = 12345  # Your league ID
+    begin_url = f'http://baseball.fantasysports.yahoo.com/b1/{league_id}/players?status='
+    end_url = '&myteam=0&sort=OR&sdir=1&count='
+    return begin_url + end_url
+
+def get_name(data):
+    return fix_text(data.split("'")[1])
+
+def get_team_and_position(data):
+    player_data = data.split("'")
+    teampos = player_data[5] if data[2] == '"' else player_data[4]
+    team = teampos[:teampos.find("-")-1]
+    pos = teampos[teampos.find("-")+2:]
+    return team, pos
+
+def fix_text(string):
+    replacements = {
+        '\\xe1': 'a', '\\xe0': 'a', '\\xc1': 'A', '\\xe9': 'e', '\\xc9': 'E',
+        '\\xed': 'i', '\\xcd': 'I', '\\xf3': 'o', '\\xd3': 'O', '\\xfa': 'u',
+        '\\xda': 'U', '\\xf1': 'n'
+    }
+    for key, value in replacements.items():
+        string = string.replace(key, value)
+    return string
+
+if __name__ == "__main__":
+    main()

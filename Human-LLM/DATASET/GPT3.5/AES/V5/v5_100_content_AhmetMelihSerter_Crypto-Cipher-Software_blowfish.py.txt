@@ -1,0 +1,53 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import Blowfish
+
+class BlowfishCipher:
+    def __init__(self, key):
+        # Initialize BlowfishCipher object
+        self.block_size = 32  # Block size for Blowfish encryption
+        self.key = hashlib.sha256(key.encode()).digest()  # Hash the key using SHA256 algorithm
+
+    def encrypt(self, message):
+        # Encrypt a message using Blowfish encryption
+        encoded_message = self._encode_message(message)
+        padded_message = self._pad_message(encoded_message)
+        initialization_vector = self._generate_initialization_vector()
+        cipher = self._create_cipher(initialization_vector)
+        encrypted_message = self._encrypt_message(cipher, padded_message, initialization_vector)
+        return encrypted_message
+
+    def decrypt(self, encrypted_message):
+        # Decrypt an encrypted message using Blowfish decryption
+        decoded_message = base64.b64decode(encrypted_message)
+        initialization_vector = self._extract_initialization_vector(decoded_message)
+        cipher = self._create_cipher(initialization_vector)
+        decrypted_message = self._decrypt_message(cipher, decoded_message, initialization_vector)
+        return decrypted_message
+
+    def _encode_message(self, message):
+        return base64.b64encode(message.encode("cp857"))
+
+    def _pad_message(self, message):
+        padding_length = self.block_size - len(message) % self.block_size
+        return message + padding_length * chr(padding_length)
+
+    def _generate_initialization_vector(self):
+        return Random.new().read(Blowfish.block_size)
+
+    def _create_cipher(self, initialization_vector):
+        return Blowfish.new(self.key, Blowfish.MODE_CBC, initialization_vector)
+
+    def _encrypt_message(self, cipher, message, initialization_vector):
+        return base64.b64encode(initialization_vector + cipher.encrypt(message)).decode("cp857")
+
+    def _extract_initialization_vector(self, decoded_message):
+        return decoded_message[:Blowfish.block_size]
+
+    def _decrypt_message(self, cipher, message, initialization_vector):
+        return base64.b64decode(self._unpad(cipher.decrypt(message[Blowfish.block_size:]))).decode("cp857")
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[-1])]

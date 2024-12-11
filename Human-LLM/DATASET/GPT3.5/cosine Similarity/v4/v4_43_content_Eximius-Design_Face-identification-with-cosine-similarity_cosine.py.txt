@@ -1,0 +1,56 @@
+import numpy as np
+import os
+from sklearn.metrics.pairwise import cosine_similarity
+import tensorflow as tf
+import cv2
+
+# Load precomputed embeddings and labels
+test_embavg = np.load("emb.npy")
+x2 = np.load("lab.npy")
+
+class CosineSimilarity:
+    @staticmethod
+    def similarity(embedding):
+        similarities = []
+        for e2 in test_embavg:
+            e2 = e2.reshape(1, 512)
+            similarities.append(cosine_similarity(embedding, e2))
+        
+        index_of_max_similarity = np.argmax(np.array(similarities))
+        recognized_name = x2[index_of_max_similarity]
+        return recognized_name, max(similarities)
+
+class Recognition:
+    def __init__(self, model_path):
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            with open(model_path, 'rb') as f:
+                graph_def = tf.GraphDef.FromString(f.read())
+                tf.import_graph_def(graph_def, name='')
+
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        self.sess = tf.Session(graph=self.graph, config=config)
+        print("Recognition Model Graph Initialized")
+
+    def recognize(self, face_image):
+        resized_face = cv2.resize(face_image, (160, 160))
+        reshaped_face = resized_face.reshape(1, 160, 160, 3)
+        images_placeholder = self.graph.get_tensor_by_name("input:0")
+        embeddings = self.graph.get_tensor_by_name("embeddings:0")
+        phase_train_placeholder = self.graph.get_tensor_by_name("phase_train:0")        
+        feed_dict = {images_placeholder: reshaped_face, phase_train_placeholder: False} 
+        calculated_embeddings = self.sess.run(embeddings, feed_dict=feed_dict)
+        return calculated_embeddings
+
+# Initialize the Recognition model
+recognition_model = Recognition("/home/soumallyab/Data/Recognition_facenet.pb")
+
+# Recognize a face image
+face_image = cv2.imread("/home/soumallyab/Data/EX1057/face-10-2019-04-10 16:07:30.jpg") 
+calculated_embeddings = recognition_model.recognize(face_image)
+
+# Calculate cosine similarity and get recognized name and probability
+recognized_name, similarity_prob = CosineSimilarity.similarity(calculated_embeddings)   
+print("Name recognized:", recognized_name)
+print("Probability:", similarity_prob)

@@ -1,0 +1,142 @@
+import sys
+import random
+from collections import defaultdict
+
+class KNearestNeighbor:
+    def __init__(self, file_contents, debug=False):
+        self.debug = debug
+        self.file_contents = file_contents
+        self.user_ratings = defaultdict(dict)
+        self.users = set()
+        self.movie_indexes = set()
+        self._parse_file_contents()
+
+    def _parse_file_contents(self):
+        for line in self.file_contents:
+            user_id, movie_index, rating = map(int, line.strip().split('\t'))
+            self.users.add(user_id)
+            self.movie_indexes.add(movie_index)
+            self.user_ratings[user_id][movie_index] = rating
+        self._fill_missing_ratings()
+
+    def _fill_missing_ratings(self):
+        default_rating = 2.5
+        for user in self.users:
+            for movie_index in range(1, max(self.movie_indexes) + 1):
+                if movie_index not in self.user_ratings[user]:
+                    self.user_ratings[user][movie_index] = default_rating
+
+    def cross_validate(self, k_values, folds):
+        fold_list = self._partition_folds(folds)
+        best_k, min_mean_squared_error = self._perform_cross_validation(k_values, fold_list)
+        print('Best k value:', best_k)
+        return best_k
+
+    def _partition_folds(self, folds):
+        fold_size = len(self.file_contents) // folds
+        fold_list = [[] for _ in range(folds)]
+
+        for i in range(folds):
+            for _ in range(fold_size):
+                index = random.randint(0, len(self.file_contents) - 1)
+                fold_list[i].append(self.file_contents.pop(index))
+        return fold_list
+
+    def _perform_cross_validation(self, k_values, fold_list):
+        best_k = None
+        min_mean_squared_error = float('inf')
+
+        for k in k_values:
+            total_mean_squared_error = 0.0
+
+            for i, fold in enumerate(fold_list):
+                training_data = [item for sublist in fold_list[:i] + fold_list[i + 1:] for item in sublist]
+                current_fold = KNearestNeighbor(training_data, debug=False)
+
+                test_ratings, actual_ratings = self._prepare_test_data(fold)
+                mean_squared_error = self._calculate_mean_squared_error(current_fold, k, test_ratings, actual_ratings)
+                total_mean_squared_error += mean_squared_error / len(actual_ratings)
+
+            average_mean_squared_error = total_mean_squared_error / len(fold_list)
+            print('Average mean squared error for k =', k, average_mean_squared_error)
+
+            if average_mean_squared_error < min_mean_squared_error:
+                min_mean_squared_error = average_mean_squared_error
+                best_k = k
+
+        return best_k, min_mean_squared_error
+
+    def _prepare_test_data(self, fold):
+        test_ratings = defaultdict(list)
+        actual_ratings = []
+
+        for line in fold:
+            user_id, movie_index, rating = map(int, line.strip().split('\t'))
+            test_ratings[user_id].append(movie_index)
+            actual_ratings.append(rating)
+
+        return test_ratings, actual_ratings
+
+    def _calculate_mean_squared_error(self, current_fold, k, test_ratings, actual_ratings):
+        mean_squared_error = 0.0
+
+        for user_id, movies in test_ratings.items():
+            predictions = current_fold.k_nearest_neighbors_prediction(user_id, k, movies)
+            for prediction, actual_rating in zip(predictions, actual_ratings):
+                mean_squared_error += (prediction - actual_rating) ** 2
+
+        return mean_squared_error
+
+    def __cosine_similarity__(self, vector1, vector2):
+        dot_product = sum(vector1[movie_index] * vector2[movie_index] for movie_index in self.movie_indexes)
+        vector1_norm = sum(val ** 2 for val in vector1.values()) ** 0.5
+        vector2_norm = sum(val ** 2 for val in vector2.values()) ** 0.5
+        return dot_product / (vector1_norm * vector2_norm)
+
+    def k_nearest_neighbors_prediction(self, user_id, k, movies):
+        other_user_distances = {}
+
+        for user in self.users:
+            if user != user_id:
+                other_user_distances[user] = self.__cosine_similarity__(self.user_ratings[user_id],
+                                                                        self.user_ratings[user])
+
+        k_nearest_neighbors_indexes = [min(other_user_distances, key=other_user_distances.get) for _ in range(k)]
+
+        predictions = []
+        for movie_index in movies:
+            numerator = sum(other_user_distances[user] * self.user_ratings[user][movie_index] for user in k_nearest_neighbors_indexes)
+            denominator = sum(other_user_distances[user] for user in k_nearest_neighbors_indexes)
+            predictions.append(numerator / denominator if denominator != 0 else 0)
+
+        return predictions
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python script.py training_file test_file [-cv]")
+        sys.exit(1)
+
+    training_filename, test_filename = sys.argv[1:3]
+    k_values = [1, 3, 5, 7, 9]
+    cross_validate = '-cv' in sys.argv
+
+    with open(training_filename) as training_file:
+        file_contents = training_file.readlines()
+
+    k_nearest_neighbor = KNearestNeighbor(file_contents, debug=True)
+    k = k_nearest_neighbor.cross_validate(k_values, 4 if cross_validate else 1)
+
+    with open(test_filename) as test_file:
+        test_ratings = [line.strip() for line in test_file]
+
+    test_ratings = [tuple(map(int, line.split('\t'))) for line in test_ratings]
+    test_ratings_dict = defaultdict(list)
+
+    for user_id, movie_index, rating in test_ratings:
+        test_ratings_dict[user_id].append(movie_index)
+
+    predictions = k_nearest_neighbor.k_nearest_neighbors_prediction(user_id, k, movies)
+    print('Predictions:', predictions)
+
+if __name__ == "__main__":
+    main()

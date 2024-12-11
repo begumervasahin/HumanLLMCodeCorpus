@@ -1,0 +1,128 @@
+"""
+This is an implementation to the basic collaborative filtering method.
+"""
+from __future__ import (absolute_import, division, print_function, unicode_literals)
+from surprise import similarities as sims
+from surprise import Dataset, Reader
+from six import iteritems
+from numpy import *
+import heapq
+def load_dataset(dataset_path,line_format= 'user item rating', rating_scale=(1, 7), sep=None):
+    name = None
+    file_format = Reader(name, line_format, sep, rating_scale)
+    dataset = Dataset.load_from_file(dataset_path, file_format)
+    return dataset
+def create_full_trainset(dataset_path,line_format= None, rating_scale=(1, 7), sep=None):
+    data = load_dataset(dataset_path,line_format, rating_scale, sep)
+    trainset = data.build_full_trainset()
+    return trainset
+def mean_centered_ratings(rating_matrix):
+    myDict = {}
+    for x, x_ratings in iteritems(rating_matrix):
+        temp_a, temp_b = [], []
+        temp_a = temp_a + ([yi for xi, yi in x_ratings])
+        for xi, yi in x_ratings:
+            temp_b.append((xi, round(yi- (sum(temp_a)/len(x_ratings)),2)))
+            myDict[x] = temp_b
+    return myDict
+def adjustedCosine(num_rows, rating_matrix, min_support):
+    """
+        Compute the adjusted cosine similarity between all pairs of rows.
+        Only **common** columns are taken into account.
+    """
+    myDict = mean_centered_ratings(rating_matrix)
+    prods = zeros((num_rows, num_rows), double)
+    freq = zeros((num_rows, num_rows), double)
+    sqi = zeros((num_rows, num_rows), double)
+    sqj = zeros((num_rows, num_rows), double)
+    sim = zeros((num_rows, num_rows), double)
+    for y, y_ratings in iteritems(myDict):
+        for xi, ri in y_ratings:
+            for xj, rj in y_ratings:
+                freq[xi, xj] += 1
+                prods[xi, xj] += ri * rj
+                sqi[xi, xj] += ri**2
+                sqj[xi, xj] += rj**2
+    for xi in range(num_rows):
+        sim[xi, xi] = 1
+        for xj in range(xi + 1, num_rows):
+            if freq[xi, xj] < min_support:
+                sim[xi, xj] = 0
+            else:
+                denum = sqrt(sqi[xi, xj]) * sqrt(sqj[xi, xj])
+                sim[xi, xj] = prods[xi, xj] / denum
+            sim[xj, xi] = sim[xi, xj]
+    return sim
+def rating_prediction(sim, target, rTarget, tRatings, neighbor_size):
+    target_sim = []
+    for iID, rtings in tRatings[rTarget]:
+        target_sim.append(sim[target][iID])
+    n_sims = heapq.nlargest(neighbor_size, target_sim)
+    neighbours = {}
+    for x in range(neighbor_size):
+        i = 0
+        for y in sim[target]:
+            if y == n_sims[x] and i != target:
+                neighbours[i] = y
+            i += 1
+    selected_ratings = {}
+    for x in list(neighbours.keys()):
+        for iID, rating in tRatings[rTarget]:
+            if x == iID:
+                selected_ratings[x] = rating
+    if len(selected_ratings) < neighbor_size:
+        print('No sufficient neighbors')
+        return 0
+    prediction_ratings = 0
+    for x in list(neighbours.keys()):
+        prediction_ratings += selected_ratings[x] * neighbours[x]
+    return prediction_ratings / sum(list(neighbours.values()))
+def prediction_by_CF(trainset, item_rawId, user_rawId, neighhor_size, user_item, sim_method):
+    itemId = item_rawId - 1
+    userId = user_rawId - 1
+    min_support = 0
+    number_users = trainset.n_users
+    number_items = trainset.n_items
+    user_ratings = trainset.ur
+    item_ratings = trainset.ir
+    n_target, target, rTarget, ratings, tRatings = number_users, userId, itemId, user_ratings, item_ratings
+    if user_item != "user":
+        n_target, target, rTarget, ratings, tRatings = number_items, itemId, userId, item_ratings, user_ratings
+    args = [n_target, tRatings, min_support]
+    if sim_method == "cosine":
+        sim = sims.cosine(*args)
+    elif sim_method == "pearson":
+        sim = sims.pearson(*args)
+    else:
+        sim = adjustedCosine(*args)
+    print('\nSimilarity:\n', sim)
+    return rating_prediction(sim, target, rTarget, tRatings, neighhor_size)
+file_path = 'ratings_for_question1.txt'
+trainset = create_full_trainset(file_path, line_format= 'user item rating', rating_scale=(1, 7), sep='\t')
+print("Original user ratings\nUser \t Ratings (item_id, rating)")
+for user_id, item_ratings in trainset.ur.items():
+	 print(user_id, '\t', item_ratings)
+item_rawId = 1
+user_rawId = 3
+neighbor = 2
+user_item = 'user'
+sim_method = 'pearson'
+estimate = prediction_by_CF(trainset, item_rawId, user_rawId, neighbor, user_item, sim_method)
+print ('\nUsing {} based CF, the predicted rating to item {} for user {} is: {est:4.2f} \n'.format(user_item, item_rawId, user_rawId, est=estimate))
+item_rawId = 6
+estimate = prediction_by_CF(trainset, item_rawId, user_rawId, neighbor, user_item, sim_method)
+print ('\nUsing {} based CF, the predicted rating to item {} for user {} is: {est:4.2f} \n'.format(user_item, item_rawId, user_rawId, est=estimate))
+item_rawId = 1
+user_rawId = 3
+neighbor = 2
+user_item = 'item'
+sim_method = 'adjustedCosine'
+estimate = prediction_by_CF(trainset, item_rawId, user_rawId, neighbor, user_item, sim_method)
+print ('\nUsing {} based CF, the predicted rating to item {} for user {} is: {est:4.2f} \n'.format(user_item, item_rawId, user_rawId, est=estimate))
+item_rawId = 6
+estimate = prediction_by_CF(trainset, item_rawId, user_rawId, neighbor, user_item, sim_method)
+print ('\nUsing {} based CF, the predicted rating to item {} for user {} is: {est:4.2f} \n'.format(user_item, item_rawId, user_rawId, est=estimate))
+item_rawId = 3
+user_rawId = 2
+estimate = prediction_by_CF(trainset, item_rawId, user_rawId, neighbor, user_item, sim_method)
+print ('\nUsing {} based CF, the predicted rating to item {} for user {} is: {est:4.2f} \n'.format(user_item, item_rawId, user_rawId, est=estimate))

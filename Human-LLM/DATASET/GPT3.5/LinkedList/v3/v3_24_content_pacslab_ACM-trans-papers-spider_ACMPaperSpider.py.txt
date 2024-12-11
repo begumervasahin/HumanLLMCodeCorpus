@@ -1,0 +1,84 @@
+import requests
+import os
+import re
+from bs4 import BeautifulSoup
+
+class PaperSpider:
+    def __init__(self, name, url="https://dlnext.acm.org/toc/tompecs/2016/1/1", filename="ACM_papers_list.txt"):
+        self.name = name
+        self.url = url
+        self.filename = filename
+        self.papers_order = 1
+
+    def get_html(self, url):
+        try:
+            headers = {"User-Agent": "Safari/12.1.2"}
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            response.encoding = response.apparent_encoding
+            html = os.linesep.join([s for s in response.text.splitlines() if s])
+            return html
+        except requests.exceptions.RequestException as e:
+            print("Error fetching HTML:", e)
+            return ""
+
+    def parse_page(self, html):
+        try:
+            current_issue_papers = self.extract_papers_info(html)
+            self.store_paper_info(current_issue_papers)
+            next_link = self.get_next_page_link(html)
+            if next_link:
+                next_html = self.get_html(next_link)
+                self.parse_page(next_html)
+        except Exception as e:
+            print("Error parsing page:", e)
+
+    def extract_papers_info(self, html):
+        papers_info = []
+        soup = BeautifulSoup(html, 'html.parser')
+        title_boxes = soup.findAll('h5', attrs={'class': 'issue-item__title'})
+        for title_box in title_boxes:
+            title = title_box.text.strip().replace('\n', ' ')
+            if title == "List of Reviewers":
+                continue
+            doi_num = re.search(r'/doi/abs(.*?)">', str(title_box))
+            if doi_num:
+                doi_link = "https://doi.org" + doi_num.group(1)
+                papers_info.append([doi_link, title])
+        return papers_info
+
+    def get_next_page_link(self, html):
+        soup = BeautifulSoup(html, 'html.parser')
+        next_box = soup.find('a', attrs={'class': 'content-navigation__btn--next'})
+        if next_box and next_box['href'] != "javascript:void(0)":
+            return "https://dlnext.acm.org" + next_box['href']
+        return None
+
+    def store_paper_info(self, papers_info):
+        try:
+            with open(self.filename, "a") as f:
+                for doi_link, paper_title in papers_info:
+                    f.write(f"paper{self.papers_order}\nTitle: {paper_title}\nDoi_link: {doi_link}\n")
+                    f.write("==========================\n")
+                    self.papers_order += 1
+        except Exception as e:
+            print("Error storing paper info:", e)
+
+
+if __name__ == '__main__':
+    run = True
+    while run:
+        print("Welcome to the ACM Transactions journal papers Spider!")
+        start_url = input("Enter a start URL or 'quit' to exit: ")
+        if start_url.lower() == 'quit':
+            print("Goodbye!")
+            run = False
+            break
+        file_name = input("Enter a filename (e.g., ACM_papers_list.txt) or 'quit' to exit: ")
+        if file_name.lower() == 'quit':
+            print("Goodbye!")
+            run = False
+            break
+        acm_spider = PaperSpider("ACM Spider", start_url, file_name)
+        html_result = acm_spider.get_html(start_url)
+        acm_spider.parse_page(html_result)

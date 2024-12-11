@@ -1,0 +1,54 @@
+from graphviz import Digraph
+import copy
+
+def get_new_name(existing_names, name):
+    base_name = name.split('-')[0]
+    for i in range(1, len(existing_names) + 1):
+        new_name = f"{base_name}-{i}"
+        if new_name not in existing_names:
+            return new_name
+
+def resolve_duplicate_names(root_node):
+    existing_names = {root_node.name}
+    queue = [root_node]
+    while queue:
+        current_node = queue.pop(0)
+        for child in current_node.children:
+            queue.append(child)
+            if child.name not in existing_names:
+                existing_names.add(child.name)
+            else:
+                child.name = get_new_name(existing_names, child.name)
+                existing_names.add(child.name)
+
+def visualize_tree(tree_root, output_file):
+    copied_tree = copy.deepcopy(tree_root)
+    resolve_duplicate_names(copied_tree)
+    
+    graph = Digraph()
+    graph.node(copied_tree.name)
+    
+    queue = [copied_tree]
+    while queue:
+        current_node = queue.pop(0)
+        for child in current_node.children:
+            queue.append(child)
+            graph.node(child.name)
+            graph.edge(current_node.name, child.name, str(child.last_time_of_visit), minlen='2', dir="forward")
+    
+    graph.view(output_file)
+
+if __name__ == "__main__":
+    class TreeNode:
+        def __init__(self, name, last_time_of_visit):
+            self.name = name
+            self.last_time_of_visit = last_time_of_visit
+            self.children = []
+
+    root_node = TreeNode("A", 0)
+    b = TreeNode("B", 1)
+    c = TreeNode("C", 2)
+    d = TreeNode("A", 3)
+    root_node.children = [b, c, d]
+
+    visualize_tree(root_node, "tree_output")

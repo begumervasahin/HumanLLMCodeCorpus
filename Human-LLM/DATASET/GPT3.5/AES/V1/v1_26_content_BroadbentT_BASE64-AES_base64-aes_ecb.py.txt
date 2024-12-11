@@ -1,0 +1,48 @@
+import os
+import base64
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+
+def clear_screen():
+    """Clears the terminal screen."""
+    os.system("clear")
+
+def key_derivation_function(company_key, salt, key_length):
+    """Generates a key using PBKDF2 key derivation function."""
+    return PBKDF2(company_key, salt, dkLen=key_length)
+
+def encrypt(plaintext, company_key):
+    """Encrypts the plaintext using AES in ECB mode."""
+    salt = 'Pots de sel et de poivre'
+    private_key = key_derivation_function(company_key, salt.encode(), 32)
+    cipher = AES.new(private_key, AES.MODE_ECB)
+    padded_plaintext = plaintext + (AES.block_size - len(plaintext) % AES.block_size) * chr(AES.block_size - len(plaintext) % AES.block_size)
+    encrypted_text = cipher.encrypt(padded_plaintext)
+    return base64.b64encode(encrypted_text).decode()
+
+def decrypt(encrypted_text, company_key):
+    """Decrypts the encrypted text using AES in ECB mode."""
+    salt = 'Pots de sel et de poivre'
+    private_key = key_derivation_function(company_key, salt.encode(), 32)
+    cipher = AES.new(private_key, AES.MODE_ECB)
+    decrypted_text = cipher.decrypt(base64.b64decode(encrypted_text))
+    return decrypted_text.rstrip(chr(AES.block_size)).decode()
+
+# Clear the screen
+clear_screen()
+
+# Define plaintext, company key, and block size
+plain_text = "Blessent mon coeur d'une langueur monotone"
+company_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX'
+
+# Encrypt and decrypt the plaintext
+encrypted = encrypt(plain_text, company_key)
+decrypted = decrypt(encrypted, company_key)
+
+# Print results
+print("Plain Text  : " + plain_text)
+print("Company Key : " + company_key)
+print("Unique Salt : Pots de sel et de poivre")
+print("Cipher Mode : ECB\n")
+print("Encrypted   : " + encrypted)
+print("Decrypted   : " + decrypted)

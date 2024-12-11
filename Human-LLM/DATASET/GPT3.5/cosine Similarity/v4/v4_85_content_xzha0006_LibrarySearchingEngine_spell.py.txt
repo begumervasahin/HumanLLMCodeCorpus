@@ -1,0 +1,43 @@
+import re
+from collections import Counter
+
+# Read the text file and generate a list of words
+word_list = re.findall(r'\w+', open('LargeTextFile.txt').read().lower())
+word_freq = Counter(word_list)
+
+def probability(word, total=sum(word_freq.values())):
+    """Calculate the probability of a word."""
+    return word_freq[word] / total
+
+def correct(word):
+    """Correct a misspelled word."""
+    return max(candidates(word), key=probability)
+
+def candidates(word):
+    """Generate possible corrections for a misspelled word."""
+    if len(known([word])) != 0:
+        return known([word])
+    elif len(known(edits_levenshtein(word))) != 0:
+        return known(edits_levenshtein(word))
+    elif len(known(edits_levenshtein2(word))) != 0:
+        return known(edits_levenshtein2(word))
+    else:
+        return [word]
+
+def known(words):
+    """Filter out known words from a list of words."""
+    return set(w for w in words if w in word_freq)
+
+def edits_levenshtein(word):
+    """Generate edits with one edit distance from the input word."""
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+    deletion = [left + right[1:] for left, right in splits if right]
+    transposition = [left + right[1] + right[0] + right[2:] for left, right in splits if len(right) > 1]
+    replacement = [left + char + right[1:] for left, right in splits if right for char in alphabet]
+    insertion = [left + char + right for left, right in splits for char in alphabet]
+    return set(deletion + transposition + replacement + insertion)
+
+def edits_levenshtein2(word):
+    """Generate edits with two edit distances from the input word."""
+    return (j for i in edits_levenshtein(word) for j in edits_levenshtein(i))

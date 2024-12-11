@@ -1,0 +1,49 @@
+import re
+
+def open_problem(file_name):
+    with open(file_name, 'r') as f:
+        problem = f.read()
+    
+    problem = re.sub('[ ]+', ' ', re.sub('[ ]*\)\(', ')\n(', re.sub('\n', '', problem)))
+    segmented_list = re.compile('\(:objects.*\)\s*|\(:INIT.*\)\s*|\(:goal.*\)\s*', re.IGNORECASE).findall(problem)
+    
+    objects = re.findall(' (\w*)', segmented_list[0])
+    init_temp = re.findall('\((\w*) (\w*)\s?(\w*)?\)', segmented_list[1])
+    goal_temp = re.findall('\(\w* (\w*) (\w*)\)', segmented_list[2])
+    
+    init = {i: ['table', True] for i in objects}
+    for item in init_temp:
+        if item[0] == 'ON':
+            init[item[1]][0] = item[2]
+            init[item[2]][1] = False
+    
+    goal = {i: ['table', True] for i in objects}
+    for item in goal_temp:
+        goal[item[0]][0] = item[1]
+        goal[item[1]][1] = False
+    
+    return init, goal, objects
+
+def write_solution(solution, output=''):
+    if output == '':
+        output = 'solution.txt'
+    
+    with open(output, 'w') as file:
+        i = 0
+        for move in solution:
+            i += 1
+            file.write('{}. Move({}, {}, {})\n'.format(i, move[0], move[1], move[2]))
+
+# Example usage
+if __name__ == '__main__':
+    init_state, goal_state, obj_list = open_problem('problem_file.txt')
+    
+    # Solving the problem and getting the solution as a list of moves
+    solution = [
+        ('pickup', 'A', 'table'),
+        ('putdown', 'A', 'B'),
+        ('pickup', 'C', 'table'),
+        # Add more moves as needed
+    ]
+    
+    write_solution(solution, 'solution_file.txt')

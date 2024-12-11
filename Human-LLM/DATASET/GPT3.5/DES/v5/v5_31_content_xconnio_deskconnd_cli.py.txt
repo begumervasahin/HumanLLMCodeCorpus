@@ -1,0 +1,87 @@
+import argparse
+import sys
+from autobahn.twisted.component import Component, run
+from autobahn.wamp.auth import AuthCryptoSign
+import pyqrcode
+from deskconnd.database.controller import DB
+
+# Function to print QR code
+def _print_qr_code(text):
+    qr = pyqrcode.create(text, mode='numeric')
+    print(qr.terminal(quiet_zone=1))
+
+# Function to handle connect failure
+def on_connect_failure(component: Component, message):
+    print("Unable to connect to the backend. Please ensure it's running.")
+    component.stop()
+
+# Function to generate OTP
+def generate_otp(component):
+    @component.on_join
+    async def joined(session, _details):
+        res = await session.call("org.deskconn.generate_otp")
+        _print_qr_code(res)
+        print(f"Scan the QR Code or manually pair with: {res}\n")
+        session.leave()
+
+    run([component], None)
+
+# Function to toggle discovery
+def toggle_discovery(component, enable):
+    @component.on_join
+    async def joined(session, _details):
+        procedure = "org.deskconn.enable_discovery" if enable else "org.deskconn.disable_discovery"
+        await session.call(procedure)
+        session.leave()
+
+    run([component], None)
+
+if __name__ == '__main__':
+    # Get principle from the database controller
+    principle = DB().get_local_principle()
+
+    # Check if the principle is None, indicating backend is not running
+    if principle is None:
+        print("The backend is likely not running, please ensure it's up.")
+        sys.exit(1)
+
+    # Extract authentication details from the principle
+    authid = principle.authid
+    authrole = principle.authrole
+    privkey = principle.privkey
+    realm = principle.realm
+
+    # Create the component for communication
+    component = Component(
+        transports="ws://127.0.0.1:5020/ws",
+        realm=realm,
+        authentication={"cryptosign": AuthCryptoSign(authid=authid, authrole=authrole, privkey=privkey)}
+    )
+
+    # Handle connect failure event
+    component.on_connect_failure = on_connect_failure
+
+    # Create argument parser
+    parser = argparse.ArgumentParser(description='DeskConn command line utility')
+    commands = parser.add_subparsers(title='Available commands', dest='command')
+
+    # Add sub-parser for 'discovery' command
+    discovery = commands.add_parser("discovery")
+    discovery.add_argument('status', type=str, choices=('enable', 'disable'))
+
+    # Add sub-parser for 'pair' command
+    commands.add_parser('pair')
+
+    # Parse the command-line arguments
+    args = parser.parse_args()
+
+    # Perform actions based on the command provided
+    if args.command == 'pair':
+        generate_otp(component)
+    elif args.command == 'discovery':
+        if args.status == 'enable':
+            toggle_discovery(component, True)
+        else:
+            toggle_discovery(component, False)
+    else:
+        parser.print_help()

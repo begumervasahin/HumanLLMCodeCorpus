@@ -1,0 +1,133 @@
+import matplotlib.pyplot as plt
+from nltk import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from collections import Counter
+import math
+
+# Read the input text files
+with open("model.txt", "r") as input_text:
+    text = input_text.read()
+
+with open("ans1.txt", "r") as input_text1:
+    text1 = input_text1.read()
+
+# Tokenize sentences
+sentences = sent_tokenize(text)
+sentences1 = sent_tokenize(text1)
+
+# Get the number of sentences
+N = len(sentences)
+N1 = len(sentences1)
+
+# Initialize Porter Stemmer and set of stop words
+ps = PorterStemmer()
+stop_words = set(stopwords.words('english'))
+
+# Define special characters to exclude
+special = ['.', ',', '\'', '"', '-', '/', '*', '+', '=', '!', '@', '$', '%', '^', '&', '``', '\'\'', 'We', 'The', 'This']
+
+def normalize(word):
+    """
+    Normalize a word by converting it to lowercase and applying stemming.
+
+    Args:
+    - word (str): Word to be normalized.
+
+    Returns:
+    - str: Normalized word.
+    """
+    word = word.lower()
+    word = ps.stem(word)
+    return word
+
+def get_cosine(vec1, vec2):
+    """
+    Calculate cosine similarity between two vectors.
+
+    Args:
+    - vec1 (Counter): First vector.
+    - vec2 (Counter): Second vector.
+
+    Returns:
+    - float: Cosine similarity between the two vectors.
+    """
+    intersection = set(vec1) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+    sum1 = sum([vec1[x] ** 2 for x in vec1.keys()])
+    sum2 = sum([vec2[x] ** 2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    if not denominator:
+        return 0.0
+    else:
+        return numerator / denominator
+
+def text_to_vector(text):
+    """
+    Convert text to a vector representation.
+
+    Args:
+    - text (str): Input text.
+
+    Returns:
+    - Counter: Vector representation of the text.
+    """
+    words = word_tokenize(text)
+    vec = [normalize(word) for word in words if word not in stop_words and word not in special]
+    return Counter(vec)
+
+def document_to_vector(sent):
+    """
+    Convert document to a vector representation.
+
+    Args:
+    - sent (list): List of sentences in the document.
+
+    Returns:
+    - Counter: Vector representation of the document.
+    """
+    vec = []
+    for text in sent:
+        words = word_tokenize(text)
+        vec.extend(normalize(word) for word in words if word not in stop_words and word not in special)
+    return Counter(vec)
+
+def sentence_to_sentence_similarity(sent):
+    """
+    Calculate cosine similarity between sentences in a document.
+
+    Args:
+    - sent (list): List of sentences to compare.
+
+    Returns:
+    - list: List of cosine similarities between each sentence in the document and the given sentences.
+    """
+    cosine_mat = []
+    for text in sentences:
+        vector1 = text_to_vector(text)
+        max_cosine = 0
+        for text1 in sent:
+            vector2 = text_to_vector(text1)
+            cosine = get_cosine(vector1, vector2)
+            max_cosine = max(max_cosine, cosine)
+        cosine_mat.append(max_cosine)
+    return cosine_mat
+
+def main():
+    # Calculate sentence-to-sentence similarity
+    similarity_matrix = sentence_to_sentence_similarity(sentences1)
+    print(similarity_matrix)
+
+    # Calculate total similarity
+    total_similarity = sum(similarity_matrix)
+    print(total_similarity)
+
+    # Plot document similarity graph
+    plt.plot(similarity_matrix, range(len(similarity_matrix)))
+    plt.xlabel('Points')
+    plt.ylabel('Line')
+    plt.title('Document Similarity Graph')
+    plt.show()
+
+if __name__ == '__main__':
+    main()

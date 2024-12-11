@@ -1,0 +1,248 @@
+class TreeNode:
+    """
+    Represents a node in a binary tree.
+    """
+
+    def __init__(self, value):
+        """
+        Initializes a tree node with a given value.
+        """
+        self.value = value
+        self.left = None
+        self.right = None
+
+
+class BinarySearchTree:
+    """
+    Represents a binary search tree.
+    """
+
+    def __init__(self, contents=None):
+        """
+        Initializes a binary search tree with optional initial contents.
+        """
+        self.root = None
+        if contents:
+            for item in contents:
+                self.insert(item)
+
+    def insert(self, value):
+        """
+        Inserts a value into the binary search tree.
+        """
+        if not self.root:
+            self.root = TreeNode(value)
+        else:
+            self._insert_recursively(self.root, value)
+
+    def _insert_recursively(self, node, value):
+        """
+        Helper method for recursive insertion.
+        """
+        if value < node.value:
+            if not node.left:
+                node.left = TreeNode(value)
+            else:
+                self._insert_recursively(node.left, value)
+        elif value > node.value:
+            if not node.right:
+                node.right = TreeNode(value)
+            else:
+                self._insert_recursively(node.right, value)
+
+    def delete(self, value):
+        """
+        Deletes a value from the binary search tree.
+        """
+        self.root = self._delete_recursively(self.root, value)
+
+    def _delete_recursively(self, node, value):
+        """
+        Helper method for recursive deletion.
+        """
+        if not node:
+            return None
+        if value < node.value:
+            node.left = self._delete_recursively(node.left, value)
+        elif value > node.value:
+            node.right = self._delete_recursively(node.right, value)
+        else:
+            if not node.left and not node.right:
+                return None
+            if not node.left:
+                return node.right
+            if not node.right:
+                return node.left
+            min_val = self._find_min(node.right)
+            node.value = min_val
+            node.right = self._delete_recursively(node.right, min_val)
+        return node
+
+    def _find_min(self, node):
+        """
+        Finds the minimum value in a subtree.
+        """
+        while node.left:
+            node = node.left
+        return node.value
+
+    def inorder(self):
+        """
+        Performs an inorder traversal of the binary search tree.
+        """
+        return self._inorder_recursively(self.root, [])
+
+    def _inorder_recursively(self, node, result):
+        """
+        Helper method for recursive inorder traversal.
+        """
+        if node:
+            self._inorder_recursively(node.left, result)
+            result.append(node.value)
+            self._inorder_recursively(node.right, result)
+        return result
+
+    def preorder(self):
+        """
+        Performs a preorder traversal of the binary search tree.
+        """
+        return self._preorder_recursively(self.root, [])
+
+    def _preorder_recursively(self, node, result):
+        """
+        Helper method for recursive preorder traversal.
+        """
+        if node:
+            result.append(node.value)
+            self._preorder_recursively(node.left, result)
+            self._preorder_recursively(node.right, result)
+        return result
+
+    def postorder(self):
+        """
+        Performs a postorder traversal of the binary search tree.
+        """
+        return self._postorder_recursively(self.root, [])
+
+    def _postorder_recursively(self, node, result):
+        """
+        Helper method for recursive postorder traversal.
+        """
+        if node:
+            self._postorder_recursively(node.left, result)
+            self._postorder_recursively(node.right, result)
+            result.append(node.value)
+        return result
+
+    def levelorder(self):
+        """
+        Performs a levelorder traversal of the binary search tree.
+        """
+        if not self.root:
+            return []
+        result = []
+        queue = [self.root]
+        while queue:
+            node = queue.pop(0)
+            result.append(node.value)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        return result
+
+    def __contains__(self, value):
+        """
+        Checks if a value is contained in the binary search tree.
+        """
+        return self._contains_recursively(self.root, value)
+
+    def _contains_recursively(self, node, value):
+        """
+        Helper method for recursive containment check.
+        """
+        if not node:
+            return False
+        if value == node.value:
+            return True
+        elif value < node.value:
+            return self._contains_recursively(node.left, value)
+        else:
+            return self._contains_recursively(node.right, value)
+
+
+import unittest
+
+class BinarySearchTreeTests(unittest.TestCase):
+    """
+    Test cases for the BinarySearchTree class.
+    """
+
+    def test_constructor(self):
+        """
+        Tests the constructor with initial contents.
+        """
+        bt = BinarySearchTree(contents=[0, 1, 2, 5, 90, -1])
+        self.assertListEqual(bt.inorder(), [-1, 0, 1, 2, 5, 90])
+        self.assertListEqual(bt.preorder(), [0, -1, 1, 2, 5, 90])
+        self.assertListEqual(bt.postorder(), [-1, 2, 1, 90, 5, 0])
+        self.assertListEqual(bt.levelorder(), [0, -1, 1, 2, 5, 90])
+
+    def test_inorder(self):
+        """
+        Tests inorder traversal.
+        """
+        bt = BinarySearchTree(contents=[0, -1, 1])
+        self.assertListEqual(bt.inorder(), [-1, 0, 1])
+
+    def test_preorder(self):
+        """
+        Tests preorder traversal.
+        """
+        bt = BinarySearchTree(contents=[2, 0, 1])
+        self.assertListEqual(bt.preorder(), [2, 0, 1])
+
+    def test_postorder(self):
+        """
+        Tests postorder traversal.
+        """
+        bt = BinarySearchTree(contents=[2, 0, 1])
+        self.assertListEqual(bt.postorder(), [1, 0, 2])
+
+    def test_levelorder(self):
+        """
+        Tests levelorder traversal.
+        """
+        bt = BinarySearchTree(contents=[2, 0, 1, 6, 10])
+        self.assertListEqual(bt.levelorder(), [2, 0, 6, 1, 10])
+
+    def test_insert(self):
+        """
+        Tests insertion of new nodes.
+        """
+        bt = BinarySearchTree()
+        bt.insert(0)
+        bt.insert(-1)
+        bt.insert(1)
+        self.assertListEqual(bt.inorder(), [-1, 0, 1])
+
+    def test_delete(self):
+        """
+        Tests deletion of nodes.
+        """
+        bt = BinarySearchTree(contents=[0, 1, 2])
+        bt.delete(0)
+        self.assertListEqual(bt.inorder(), [1, 2])
+
+    def test_contains(self):
+        """
+        Tests if a value is contained in the tree.
+        """
+        bt = BinarySearchTree(contents=[0, 1, 2])
+        self.assertTrue(0 in bt)
+        bt.delete(0)
+        self.assertFalse(0 in bt)
+
+
+if __name__ == '__main__':
+    unittest.main()

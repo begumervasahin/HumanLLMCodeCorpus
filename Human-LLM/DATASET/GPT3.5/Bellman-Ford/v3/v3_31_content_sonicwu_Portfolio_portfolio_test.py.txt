@@ -1,0 +1,73 @@
+class Portfolio:
+    def __init__(self, currencies):
+        # Initialize Portfolio with currencies
+        self.currencies = currencies
+
+    def increase_currency(self, currency, amount):
+        # Increase the specified currency in the portfolio by the given amount
+        if amount < 0:
+            raise ValueError('Negative amount')
+        self.currencies[currency] = self.currencies.get(currency, 0) + amount
+
+    def decrease_currency(self, currency, amount):
+        # Decrease the specified currency in the portfolio by the given amount
+        if currency not in self.currencies or amount > self.currencies[currency]:
+            raise RuntimeError('Insufficient funds')
+        self.currencies[currency] -= amount
+
+def exchange_currency(portfolio, exchange_rates, exchange_fee, target_currency, target_amount):  
+    # Helper function to perform depth-first search (DFS) for currency conversion       
+    def dfs(current_currency, amount, visited_currencies):
+        if current_currency == target_currency:
+            return amount
+        visited_currencies.add(current_currency)
+        max_amount = 0
+        for next_currency, rate in exchange_rates[current_currency].items():
+            if next_currency not in visited_currencies and rate > 0:
+                max_amount = max(max_amount, dfs(next_currency, amount * rate, visited_currencies))    
+        visited_currencies.remove(current_currency)
+        return max_amount
+
+    # Check if the portfolio has currencies
+    if not portfolio.currencies:
+        raise RuntimeError('You have no currency')
+
+    # Check if there is a route to the target currency
+    if target_currency not in exchange_rates:
+        raise RuntimeError(f'No route to {target_currency}')
+
+    # Perform currency conversion
+    converted_amount = dfs('USD', target_amount, set())
+    if converted_amount <= 0:
+        raise RuntimeError('Negative cycle detected, cannot find the shortest paths')   
+
+    # Update portfolio balances after currency conversion
+    portfolio.decrease_currency('USD', converted_amount + (converted_amount * exchange_fee))
+    portfolio.increase_currency(target_currency, target_amount)
+
+# Test the Portfolio and exchange_currency functions
+def test_portfolio_exchange():
+    portfolio = Portfolio({'USD': 100})  # Initialize portfolio with USD 100
+    assert portfolio.currencies == {'USD': 100}
+
+    portfolio.increase_currency('USD', 50)  # Increase USD balance by 50
+    assert portfolio.currencies['USD'] == 150
+
+    portfolio.decrease_currency('USD', 75)  # Decrease USD balance by 75
+    assert portfolio.currencies['USD'] == 75
+
+    # Test currency exchange_currency function
+    exchange_rates = {
+        'USD': {'BTC': 1, 'ETH': 4},
+        'BTC': {'ETH': 3},
+        'ETH': {},
+        'LTC': {}
+    }
+    exchange_currency(portfolio, exchange_rates, 0.01, 'ETH', 10)  # Exchange 10 USD to ETH      
+    assert float(portfolio.currencies['ETH']) == 10  # Check ETH balance after exchange 
+    assert float(portfolio.currencies['USD']) == 64.75  # Check USD balance after exchange
+
+    print('All tests passed successfully.')
+
+if __name__ == '__main__':
+    test_portfolio_exchange()  # Run the test function

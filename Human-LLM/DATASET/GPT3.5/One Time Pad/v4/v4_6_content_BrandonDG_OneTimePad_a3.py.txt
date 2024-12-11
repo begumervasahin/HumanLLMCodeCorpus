@@ -1,0 +1,57 @@
+import os
+
+def xor_message(message, key):
+    """
+    XORs the message with the key.
+    """
+    return bytes(p ^ k for p, k in zip(*map(bytes, [message, key])))
+
+def main():
+    """
+    Main function to encrypt plaintext using a one-time pad.
+    """
+    print("Welcome to the One-Time Pad encryption tool.")
+    plaintext = ""
+    
+    # Determine the source of plaintext
+    while True:
+        where_is_cipher = input("Is the plaintext provided via stdin or file? ")
+        if where_is_cipher == "file":
+            print("File selected")
+            plain = input("Please enter the file name: ")
+            plaintext += open(plain, 'rU').read()
+            break
+        elif where_is_cipher == "stdin":
+            print("Stdin selected")
+            plain = input("Please enter the plaintext: ")
+            plaintext = plain
+            break
+        else:
+            print("Please select a valid option ('file' or 'stdin')")
+    
+    plaintext = plaintext.strip('\n')
+    key = os.urandom(len(plaintext))
+    
+    print("------")
+    print("Plaintext:\n%s" % plaintext)
+    print("\nKey:\n%s" % key)
+    print("------")
+    
+    ciphertext = xor_message(plaintext.encode("utf-8"), key)
+    
+    print("Binary Ciphertext:\n%s" % ciphertext)
+    print("------")
+    
+    # Verify by decrypting
+    print("Verify:\n%s" % xor_message(ciphertext, key))
+    
+    # Write ciphertext to a file
+    with open("ciphertext", "wb") as outputfile:
+        outputfile.write(ciphertext)
+    
+    print("------")
+    print("Character Ciphertext:\n")
+    os.system("cat ciphertext")
+
+if __name__ == "__main__":
+    main()

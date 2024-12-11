@@ -1,0 +1,35 @@
+import paho.mqtt.client as mqtt
+from ecdsa import SigningKey, VerifyingKey, BadSignatureError
+import configparser
+
+# Read MQTT configuration from the publisher.ini file
+config = configparser.RawConfigParser()
+config.read('config/publisher.ini')
+
+# Load the private and public keys
+private_key_path = "config/private192.pem"
+public_key_path = "config/public192.pem"
+with open(private_key_path, "rb") as private_key_file:
+    private_key = SigningKey.from_pem(private_key_file.read())
+with open(public_key_path, "rb") as public_key_file:
+    public_key = VerifyingKey.from_pem(public_key_file.read())
+
+# Define the message to be signed and published
+message = 'sds'
+message_bytes = message.encode('utf-8')
+
+# Sign the message with the private key
+signature = private_key.sign(message_bytes)
+
+# Verify the signature with the public key
+try:
+    public_key.verify(signature, message_bytes)
+    print("Signature verified successfully.")
+except BadSignatureError:
+    print("BAD SIGNATURE")
+
+# Publish the message over MQTT
+mqtt_client = mqtt.Client()
+mqtt_client.connect(config.get('mqtt', 'broker'), int(config.get('mqtt', 'port')))
+mqtt_client.publish(config.get('mqtt', 'topic'), message_bytes)
+mqtt_client.disconnect()

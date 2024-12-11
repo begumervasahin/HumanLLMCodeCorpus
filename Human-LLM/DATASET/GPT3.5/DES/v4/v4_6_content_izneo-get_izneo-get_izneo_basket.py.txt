@@ -1,0 +1,86 @@
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+import re
+import os
+import sys
+import argparse
+import configparser
+import json
+
+__version__ = "0.08.0"
+
+def requests_retry_session(retries=3, backoff_factor=1, status_forcelist=(500, 502, 504), session=None):
+    """
+    Handles simple connection problems by retrying the request.
+    """
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+def parse_from_id(session, id):
+    """
+    Parses information from a given ID using the Izneo API.
+    """
+    url = f"https://www.izneo.com/fr/api/web/purchase-complete-details/{id}"
+    response = requests_retry_session(session=session).get(url, allow_redirects=True)
+    content = json.loads(response.text)
+    new_results = 0
+    if 'error' in content:
+        print(f'Error: {content["error"]}')
+        return 0
+    for vol in content["albums"]:
+        link = root_path + vol["url"]
+        title = vol["title"]
+        if title and link:
+            print(link)
+            new_results += 1
+    return new_results
+
+if __name__ == "__main__":
+    session_id = ""
+    root_path = "https://www.izneo.com"
+
+    parser = argparse.ArgumentParser(description="Script to obtain a list of Izneo comics.")
+    parser.add_argument("url", type=str, default=None, help="The checkout page URL containing a list of comics")
+    parser.add_argument("--session-id", "-s", type=str, default=None, help="The session identifier")
+    parser.add_argument("--config", type=str, default=None, help="Configuration file")
+    args = parser.parse_args()
+
+    config = configparser.RawConfigParser()
+    if args.config:
+        config_name = args.config
+    else:
+        script_path = os.path.abspath(sys.argv[0])
+        config_name = re.sub(r"\.py$", ".cfg", script_path.replace("izneo_list", "izneo_get"))
+    config.read(config_name)
+
+    def get_param_or_default(config, param_name, default_value, cli_value=None):        
+        if cli_value is None:
+            return config.get("DEFAULT", param_name, fallback=default_value)
+        else:
+            return cli_value
+
+    session_id = get_param_or_default(config, "session_id", "", args.session_id)        
+    url = args.url
+
+    session = requests.Session()
+    session.cookies.set("lang", "fr", domain=".izneo.com")
+    session.cookies.set("c03aab1711dbd2a02ea11200dde3e3d1", session_id, domain=".izneo.com")  
+
+    if re.match(r"^http[s]://www.izneo.com/fr/panier-fin/(\d+)", url):
+        id_matches = re.findall("(\d+)/", url) or re.findall("(\d+)", url)
+        id = id_matches[0] if id_matches else None
+        if id:
+            parse_from_id(session, id)
+        else:
+            print("Invalid URL format.")

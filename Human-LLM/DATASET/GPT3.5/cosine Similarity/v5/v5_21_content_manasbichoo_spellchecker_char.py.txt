@@ -1,0 +1,50 @@
+import chars2vec
+import sklearn.decomposition
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load words from file into a list
+words_array = []
+with open('words.txt') as file:
+    words_array = [word.strip() for word in file]
+
+print("List of words:")
+print(words_array)
+
+# Load chars2vec model
+c2v_model = chars2vec.load_model('eng_50')
+
+# Vectorize words using chars2vec model
+word_embeddings = c2v_model.vectorize_words(words_array)
+
+print("Word embeddings:")
+print(word_embeddings)
+
+# Get input word from user and vectorize it
+user_word = input("Enter a word: ")
+user_word_vector = c2v_model.vectorize_words([user_word])
+
+print("Vector representation of the input word:")
+print(user_word_vector)
+
+# Calculate cosine similarity between user word and words_array
+similarities = cosine_similarity(word_embeddings, user_word_vector)
+max_similarity = max(similarities)
+max_sim_index = similarities.argmax()
+
+print("Maximum similarity:", max_similarity)
+print("Index of most similar word:", max_sim_index)
+print("The most similar word is:", words_array[max_sim_index])
+
+'''
+# Visualization (commented out to avoid execution)
+projection_2d = sklearn.decomposition.PCA(n_components=2).fit_transform(word_embeddings)
+plt.figure(figsize=(8, 6))
+for j in range(len(projection_2d)):
+    plt.scatter(projection_2d[j, 0], projection_2d[j, 1],
+                marker=('$' + words_array[j] + '$'),
+                s=500 * len(words_array[j]),
+                label=j,
+                facecolors='green' if words_array[j] in ['Natural', 'Language', 'Understanding'] else 'black')
+plt.show()
+'''

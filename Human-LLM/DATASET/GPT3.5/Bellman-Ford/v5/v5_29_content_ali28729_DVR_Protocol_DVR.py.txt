@@ -1,0 +1,160 @@
+import time
+import sys
+import os
+import threading
+from socket import *
+import math
+
+# Constants
+TIMEOUT_INTERVAL = 10.0
+LIVE_INTERVAL = 5.0
+
+# Global variables
+neighbours_paths = {}
+rout_path = {}
+lock = threading.Lock()
+
+# Retrieve command line arguments
+ID = sys.argv[1]
+port = int(sys.argv[2])
+filename_config = sys.argv[3]
+
+# Define Path class for routing
+class Path:
+    def __init__(self, distance, next_destination):
+        self.distance = distance
+        self.next_destination = next_destination
+
+    def equals(self, other_path):
+        return self.distance == other_path.distance and self.next_destination == other_path.next_destination
+
+# Define Neighbour class
+class Neighbour:
+    def __init__(self, cost_path, port, lifetime_interval):
+        self.cost_path = cost_path
+        self.port = port
+        self.lifetime_interval = lifetime_interval
+        self.paths = {}
+        self.check_alive = False
+
+# Menu for user interaction
+def menu():
+    while True:
+        print(f'\nThis is router {ID}\n')
+        option = int(input('1: View Costs\n2: Edit Link Cost\n3: Quit\nEnter option: '))
+        if option == 1:
+            display_costs()
+        elif option == 2:
+            edit_link_cost()
+        elif option == 3:
+            os._exit(-1)
+
+# Display costs to neighboring routers
+def display_costs():
+    for neighbor_id, route in sorted(rout_path.items()):
+        if neighbor_id != ID:
+            print(f'Shortest Path to {neighbor_id}: {route.next_destination} and distance {route.distance:.1f}')
+
+# Edit link cost based on user input
+def edit_link_cost():
+    print('Neighbours:', ' '.join(sorted(neighbours_paths.keys())))
+    neighbor_id = input('Enter the ID of the neighbor router: ')
+    new_distance = float(input(f'Enter new distance for {neighbor_id}: '))
+    neighbours_paths[neighbor_id].cost_path = new_distance
+    ss = socket(AF_INET, SOCK_DGRAM)
+    lock.acquire()
+    ss.sendto(new_packet(neighbor_id, True), ('localhost', neighbours_paths[neighbor_id].port))
+    lock.release()
+    ss.close()
+    threading.Thread(target=bellman_ford).start()
+
+# Send distance vector to neighbors
+def send_distance_vector(send_cost_path):
+    ss = socket(AF_INET, SOCK_DGRAM)
+    lock.acquire()
+    for neighbor_id, neighbour in neighbours_paths.items():
+        ss.sendto(new_packet(neighbor_id, send_cost_path), ('localhost', neighbour.port))
+    lock.release()
+    ss.close()
+
+# Periodically send distance vectors
+def make_ready():
+    while True:
+        time.sleep(LIVE_INTERVAL)
+        send_distance_vector(False)
+
+# Check if neighbors are alive
+def check_alive():
+    while True:
+        time.sleep(1)
+        for neighbor_id, neighbour in neighbours_paths.items():
+            if time.time() > neighbour.lifetime_interval:
+                if neighbours_paths[neighbor_id].cost_path != math.inf:
+                    lock.acquire()
+                    rout_path[neighbor_id].distance = math.inf
+                    neighbour.cost_path = math.inf
+                    neighbour.check_alive = True
+                    for key2, item2 in rout_path.items():
+                        if item2.next_destination == neighbor_id:
+                            item2.distance = math.inf
+                    lock.release()
+                    send_distance_vector(False)
+                    threading.Thread(target=bellman_ford).start()
+
+# Create a new packet for communication
+def new_packet(dest_id, send_cost_path):
+    dist_vect = str(ID)
+    if send_cost_path:
+        dist_vect += ' ' + str(neighbours_paths[dest_id].cost_path)
+    dist_vect += '\n'
+    for neighbor_id, path in rout_path.items():
+        dist_vect += f'{neighbor_id} {path.distance}\n'
+    return bytes(dist_vect, 'utf-8')
+
+# Initialize routing paths and neighbors from configuration file
+def initialize_network():
+    with open(filename_config) as file:
+        lines = file.readlines()[1:]  # Skip header line
+        for line in lines:
+            neighbor_id, cost_path, neighbor_port = line.split()
+            neighbours_paths[neighbor_id] = Neighbour(float(cost_path), int(neighbor_port), time.time() + TIMEOUT_INTERVAL)
+            rout_path[neighbor_id] = Path(float(cost_path), ID)
+    for neighbor_id, neighbour in neighbours_paths.items():
+        neighbour.paths = {id2: Path(math.inf, ID) for id2 in neighbours_paths}
+
+# Bellman-Ford algorithm for path calculation
+def bellman_ford():
+    lock.acquire()
+    for neighbor_id, route in rout_path.items():
+        m_list = []
+        if neighbor_id == ID:
+            continue
+        if neighbor_id in neighbours_paths:
+            m_list.append(Path(neighbours_paths[neighbor_id].cost_path, ID))
+        for id2, neighbour in neighbours_paths.items():
+            p = Path(neighbours_paths[id2].cost_path + neighbour.paths[neighbor_id].distance, id2)
+            m_list.append(p)
+        m = min(m_list, key=lambda x: x.distance)
+        rout_path[neighbor_id] = Path(m.distance, m.next_destination)
+    lock.release()
+
+# Receive input from neighbors
+def rec_input():
+    rec_input_socket = socket(AF_INET, SOCK_DGRAM)
+    rec_input_socket.bind(('localhost', port))
+    while True:
+        message, S_addr = rec_input_socket.recvfrom(2048)
+        lines = str(message)[2:len(str(message))-1].split('\\n')
+        first_line = lines[0].split()
+        neighbor_dest = first_line[0]
+        neighbours_paths[neighbor_dest].lifetime_interval = time.time() + TIMEOUT_INTERVAL
+        if len(first_line) > 1:
+            neighbours_paths[neighbor_dest].cost_path = float(first_line[1])
+        lock.acquire()
+        is_updated = False
+        for i in range(1, len(lines)):
+            if lines[i] == '':
+                continue
+            t_ID = lines[i].split()
+            p_id = Path(float(t_ID[1]), ID)
+            if t

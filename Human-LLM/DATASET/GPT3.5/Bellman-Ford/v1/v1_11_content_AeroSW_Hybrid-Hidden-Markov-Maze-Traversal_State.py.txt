@@ -1,0 +1,83 @@
+from Action import Action
+
+class State:
+    def __init__(self, reward, term, sKey, action_list=None, count_actions=False):      
+        self.reward = reward
+        self.terminal = bool(term)
+        self.state_key = sKey
+        self.__actions = [] if action_list is None else action_list
+        self.num_actions = len(self.__actions)
+        self.counting = count_actions
+        self.action_counter = {} if count_actions else None
+        if self.counting:
+            for action in self.__actions:
+                self.action_counter[action.getKey()] = 0
+
+    def tryAction(self, aKey):
+        for action in self.__actions:
+            if action.getKey() == aKey:
+                if self.counting:
+                    self.action_counter[aKey] += 1
+                return action.testAction()
+        return -1
+
+    def getKey(self):
+        return self.state_key
+
+    def getReward(self):
+        return self.reward
+
+    def isTerminal(self):
+        return self.terminal
+
+    def addAction(self, action):
+        if isinstance(action, Action):
+            aKey = action.getKey()
+            if aKey in [a.getKey() for a in self.__actions]:
+                raise NameError(f"Action key '{aKey}' already exists in the state's actions.")
+            self.__actions.append(action)
+            self.num_actions += 1
+            if self.counting:
+                self.action_counter[aKey] = 0
+            return True
+        raise TypeError("Action must be an instance of the Action class.")
+
+    def getNumActions(self):
+        return self.num_actions
+
+    def getCount(self):
+        if not self.counting:
+            raise ValueError("Counting is not enabled for this state.")
+        action_dict = {}
+        for action in self.__actions:
+            action_dict[action.getKey()] = action.getCount()
+        return self.action_counter, action_dict
+
+# Usage example:
+if __name__ == '__main__':
+    # Create an example state
+    state = State(reward=10.0, term=1, sKey='State1', count_actions=True)
+
+    # Create example actions and add them to the state
+    action1 = Action('Action1', lambda: random.uniform(0, 1))
+    action2 = Action('Action2', lambda: random.uniform(0, 1))
+    state.addAction(action1)
+    state.addAction(action2)
+
+    # Test tryAction method
+    print(state.tryAction('Action1'))  # Output: random value between 0 and 1
+    print(state.tryAction('Action2'))  # Output: random value between 0 and 1
+
+    # Get state key, reward, terminal status, and number of actions
+    print(state.getKey())  # Output: 'State1'
+    print(state.getReward())  # Output: 10.0
+    print(state.isTerminal())  # Output: True
+    print(state.getNumActions())  # Output: 2
+
+    # Get action count information (assuming counting is enabled)
+    try:
+        counter, action_info = state.getCount()
+        print(counter)  # Output: {'Action1': 0, 'Action2': 0}
+        print(action_info)  # Output: {'Action1': 0, 'Action2': 0}
+    except ValueError as e:
+        print(e)  # Output: Counting is not enabled for this state.

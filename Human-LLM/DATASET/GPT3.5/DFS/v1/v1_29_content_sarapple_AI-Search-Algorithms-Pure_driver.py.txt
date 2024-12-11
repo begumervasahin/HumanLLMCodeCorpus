@@ -1,0 +1,46 @@
+import queue as Q
+import time
+import resource
+import sys
+import math
+from puzzle_state import PuzzleState
+from algorithms import Algorithms
+from utilities import Utilities
+from reporter import Reporter
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python script_name.py <search_method> <begin_state>")
+        return
+    
+    sm = sys.argv[1].lower()
+    begin_state = sys.argv[2].split(",")
+    begin_state = tuple(map(int, begin_state))
+    size = int(math.sqrt(len(begin_state)))
+    hard_state = PuzzleState(begin_state, size)
+    
+    args = {
+        "client_defined_expand": Utilities.expand,
+        "client_defined_goal_state_check": Utilities.goal_state_check,
+        "client_defined_hashed_state": Utilities.hashed_state,
+        "client_defined_compute_state_cost": Utilities.compute_state_cost,
+        "start_state_hash": sm,
+        "start_state": hard_state,
+    }
+    
+    search_type = ""
+    if sm == "bfs":
+        search_type = "bfs"
+    elif sm == "dfs":
+        search_type = "dfs"
+    elif sm == "ast":
+        search_type = "astar"
+    else:
+        print("Invalid search method! Available options: bfs, dfs, ast")
+        return
+    
+    result = Algorithms.search_wrapper(**args, search_type=search_type)
+    Reporter.write_output(file_name="output.txt", **result)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,52 @@
+import os
+from glob import glob
+from osgeo import gdal
+
+# Constants for file extensions
+CSV_EXT = ".csv"
+VRT_EXT = ".vrt"
+TIFF_EXT = ".tiff"
+
+# Set the directory containing CSV files
+csv_directory = r"C:/anhHoangKTTV/PythonScripts_DFS0/Project_NTB/"
+os.chdir(csv_directory)
+
+def find_csv_files(directory, suffix=CSV_EXT):
+    """
+    Find all CSV files in the specified directory.
+    """
+    files_pattern = os.path.join(directory, "*" + suffix)
+    filenames = [os.path.relpath(file) for file in glob(files_pattern)]
+    return filenames
+
+def create_vrt_file(csv_file, lyr_name):
+    """
+    Create a VRT file for the given CSV file.
+    """
+    vrt_file = csv_file.replace(CSV_EXT, VRT_EXT)
+    with open(vrt_file, 'w') as vrt_handle:
+        vrt_handle.write('<OGRVRTDataSource>\n')
+        vrt_handle.write('\t<OGRVRTLayer name="%s">\n' % lyr_name)
+        vrt_handle.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % csv_file)        
+        vrt_handle.write('\t\t<GeometryType>wkbPoint</GeometryType>\n')
+        vrt_handle.write('\t\t<GeometryField encoding="PointFromColumns" x="Lon" y="Lat" z="Ref"/>\n')
+        vrt_handle.write('\t</OGRVRTLayer>\n')
+        vrt_handle.write('</OGRVRTDataSource>\n')
+    return vrt_file
+
+# Get a list of CSV files in the directory
+csv_files = find_csv_files(csv_directory)
+
+# Process each CSV file
+for csv_file in csv_files:
+    lyr_name = os.path.splitext(os.path.basename(csv_file))[0]
+    vrt_file = create_vrt_file(csv_file, lyr_name)
+    tiff_file = csv_file.replace(CSV_EXT, TIFF_EXT)
+
+    # Convert the VRT file to a TIFF file using gdal.Grid
+    gdal.Grid(tiff_file, vrt_file)
+    print("Generated TIFF file:", tiff_file)
+
+# Generate outcome2.tif using gdal.Grid with specific parameters
+gdal.Grid('outcome2.tif', 'name.vrt', algorithm='invdist:power=2.0:smoothing=1.0')    
+print("Generated outcome2.tif")

@@ -1,0 +1,64 @@
+import zns
+from db import primes as RealPrimes
+
+def sieve(N):
+    primes = [2]  # Initialize the list of prime numbers with 2
+    state = [-1] * 2 + [0] * N  # Initialize the state list for marking primes
+    prime_i = 0  # Index of the current prime number
+    p = 2  # Current prime number
+    upto = 2  # Upper limit for marking primes
+
+    # Iterate until the square of the current prime is less than N
+    while p ** 2 < N:
+        print(f" -- {p} -- ")
+
+        # Mark the squares of existing primes as prime
+        for i in range(primes[prime_i - 1] ** 2 if prime_i else p + 1, p ** 2):
+            if state[i] == 0:
+                print("new ^2 prime:", i)
+                primes.append(i)
+
+        print(f" -- {p}**2 -- ")
+
+        # Iterate through existing primes to mark multiples
+        for e, q in enumerate(primes[:prime_i]):
+            l = zns.lcm(e)  # Calculate the least common multiple
+            for i in range(upto + (q - (upto % q)), min(p ** 3, N + 1), q):
+                if state[i] == 0:
+                    if q > 3:
+                        print(f"  {q}] new: {i} = {q}*({l}[{(i // q) % l}])")
+                state[i] = q
+
+            if q > 3:
+                print()
+            else:
+                print(f"  {q}] ...\n")
+
+        # Mark multiples of remaining primes
+        for q in primes[prime_i:]:
+            l = q * p
+            if q > p ** 2:
+                print(f"uh oh, breaking because while marking cubethm composites got a {q} > {p ** 2}")
+                break
+            if l > N:
+                continue
+            assert l < p ** 3
+            if state[l] == 0:
+                print(f"  [{p} * {q} = {l}]")
+            state[l] = p
+
+        # Mark the cube of the current prime as prime
+        if p ** 3 < N:
+            print(f"  [{p}**3 = {p ** 3}]")
+            state[p ** 3] = p
+
+        upto = p ** 3
+        print(f" -- {p}**3 -- ")
+        prime_i += 1
+        p = primes[prime_i]
+        print("-" * 22)
+
+        # Assert that the generated primes match or exceed the real primes list
+        assert RealPrimes[:len(primes)] == primes or len(primes) > len(RealPrimes)
+
+sieve(15000)

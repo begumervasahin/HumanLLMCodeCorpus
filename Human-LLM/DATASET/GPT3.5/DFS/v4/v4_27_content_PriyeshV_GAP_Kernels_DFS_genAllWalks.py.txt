@@ -1,0 +1,74 @@
+import numpy as np
+from scipy.io import loadmat, savemat
+import scipy
+import time
+
+class WalkGenerator:
+    def __init__(self, config):
+        self.config = config
+        self.max_depth = config.max_depth
+        self.walks = {}
+        try:
+            print(f"---- Loading walks from path: {self.config.walks_dir}")
+            self.walks = np.load(config.walks_dir + '.npy').item()
+        except FileNotFoundError:
+            print("---- No walks found, creating walks...")
+            self.create_walks()
+            np.save(config.walks_dir, self.walks)
+            print(f"---- Walks saved to: {self.config.walks_dir}")
+
+    def create_walks(self):
+        self.adjmat_depth = self.calculate_adjacency_depth()
+        total_walks = 0
+        for idx in range(self.adjmat.shape[0]):
+            self.walks[idx + 1] = np.empty((0, self.max_depth + 1), int)
+            self.generate_walk(idx, seed=idx + 1, path=[idx + 1], curr_depth=1)
+            total_walks += len(self.walks[idx + 1])
+            if idx % 1000 == 0:
+                print(f"{idx}/{self.adjmat.shape[0]}")
+        print(f"Total {total_walks} walks generated")
+
+    def calculate_adjacency_depth(self):
+        self.adjmat = loadmat(self.config.adjmat_path)['adjmat']
+        self.adjmat = self.adjmat + self.adjmat.T
+        adjmat_depth = {}
+        adjmat_depth[1] = scipy.sparse.csr_matrix(self.adjmat, dtype='bool')
+        adjmat_sum = adjmat_depth[1].copy().toarray() + np.eye(self.adjmat.shape[0])
+        adjmat_pow = adjmat_depth[1].copy()
+        for idx in range(2, self.max_depth + 1):
+            adjmat_pow = adjmat_pow.dot(adjmat_depth[1])
+            temp = np.logical_and(adjmat_pow.toarray(), np.logical_not(adjmat_sum))
+            adjmat_depth[idx] = scipy.sparse.csr_matrix(temp, dtype='bool')
+            adjmat_sum += temp
+        return adjmat_depth
+
+    def generate_walk(self, node_id, seed, path, curr_depth):
+        if curr_depth < (self.max_depth + 1):
+            _, seed_d_neighs = self.adjmat_depth[curr_depth].getrow(seed - 1).nonzero()
+            _, imm_neighs = self.adjmat_depth[1].getrow(node_id).nonzero()
+            neighs = np.intersect1d(seed_d_neighs, imm_neighs)
+            if len(neighs):
+                for neigh in neighs:
+                    self.generate_walk(neigh, seed, np.insert(path, 0, neigh + 1), curr_depth + 1)
+            else:
+                pad_size = self.max_depth - curr_depth + 1
+                path = np.pad(path, (pad_size, 0), 'constant', constant_values=(0))
+                self.walks[seed] = np.append(self.walks[seed], np.expand_dims(path, 0), axis=0)
+        else:
+            self.walks[seed] = np.append(self.walks[seed], np.expand_dims(path, 0), axis=0)
+
+def run_test():
+    class Config:
+        max_depth = 2
+        walks_dir = './temp/walks-D' + str(max_depth)
+        adjmat_path = './temp/adjmat_test.mat'
+        arr = np.array([[0, 1, 0, 1],
+                        [1, 0, 1, 1],
+                        [0, 1, 0, 0],
+                        [1, 1, 0, 0]])
+        savemat(adjmat_path, {'adjmat': arr})
+
+    cfg = Config()
+    gW = WalkGenerator(cfg)
+
+run_test()

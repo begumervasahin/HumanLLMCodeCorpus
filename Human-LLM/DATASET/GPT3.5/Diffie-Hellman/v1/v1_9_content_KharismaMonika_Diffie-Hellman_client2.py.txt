@@ -1,0 +1,68 @@
+import socket
+import sys
+from desv4 import *
+from desv4c import *
+
+# Define keys and parameters
+keya = 3
+keyq = 353
+
+# Take input for random key
+hm = input('Masukkan random key: ')
+hasil = (keya ** hm) % keyq
+hasil3 = str(hasil)
+print(hasil)
+
+cekpoin = 0
+while True:
+    cekpoin += 1
+    try:
+        # Create a socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_address = ('localhost', 11000)
+        
+        # Connect to the server
+        sock.connect(server_address)
+        
+        # Exchange keys with the server
+        if cekpoin == 1:
+            data7 = sock.recv(10)
+            print(data7)
+            sock.sendall(hasil3.encode())
+            hasill = (int(data7) ** hm) % keyq
+            print(hasill)
+            hasill2 = str(hasill)
+            if len(hasill2) < 8:
+                oj = len(hasill2)
+                while oj < 8:
+                    oj += 1
+                    hasill2 = hasill2 + str(oj)
+            print(hasill2)
+            with open('key.txt', 'wb') as f:
+                f.write(hasill2.encode())
+        
+        # Send message to the server
+        message = input('Faishal : ')
+        with open('plain.txt', 'wb') as f:
+            f.write(message.encode())
+        exec(open("desv4.py").read())
+        with open('hasil.txt', 'rb') as file:
+            data2 = file.read()
+        print('sending "%s"' % message)
+        sock.sendall(data2)
+        
+        # Receive encrypted data from the server
+        data = sock.recv(150)
+        amount_received = 0
+        amount_expected = len(data)
+        while amount_received < amount_expected:
+            print('data enkripsi "%s"' % data)
+            with open('terima2.txt', 'wb') as f:
+                f.write(data)
+            exec(open("desv4c.py").read())
+            with open('dekrip2.txt', 'rb') as file:
+                data4 = file.read()
+            amount_received += len(data4)
+            print('received "%s"' % data4.decode())
+    finally:
+        sock.close()

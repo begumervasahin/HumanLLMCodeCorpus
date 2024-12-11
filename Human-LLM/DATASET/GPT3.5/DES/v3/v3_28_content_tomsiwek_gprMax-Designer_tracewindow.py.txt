@@ -1,0 +1,73 @@
+import tkinter as tk
+from tkinter import simpledialog, Label, Checkbutton, IntVar, Frame, W
+
+class TraceWindow(simpledialog.Dialog):
+    """
+    Represents a popup window used to choose trace components and FFT.
+    """
+
+    def __init__(self, master, show_fft=True):
+        """
+        Initialize object variables and call the parent class constructor.
+        """
+        self.show_fft = show_fft
+        super().__init__(master)
+
+    def body(self, master):
+        """
+        Initialize widgets.
+        """
+        Label(self, text="Choose component(s) to plot:").pack()
+        button_width = 3
+        self.button_frame = Frame(self)
+
+        # Trace component checkboxes
+        self.trace_vars = []
+        self.trace_buttons = []
+
+        trace_labels = ["Ex", "Ey", "Ez", "Hx", "Hy", "Hz"]
+        for row, label in enumerate(trace_labels[:3]):
+            var = IntVar()
+            button = Checkbutton(self.button_frame, text=label, variable=var,
+                                 width=button_width, anchor=W)
+            button.select()
+            button.grid(row=0, column=row)
+            self.trace_vars.append(var)
+            self.trace_buttons.append(button)
+
+        for row, label in enumerate(trace_labels[3:], start=1):
+            var = IntVar()
+            button = Checkbutton(self.button_frame, text=label, variable=var,
+                                 width=button_width, anchor=W)
+            button.select()
+            button.grid(row=row, column=row-3)
+            self.trace_vars.append(var)
+            self.trace_buttons.append(button)
+
+        self.button_frame.pack()
+
+        # FFT checkbox
+        self.fft_var = IntVar()
+        if self.show_fft:
+            self.fft_button = Checkbutton(self, text="Show FFT", variable=self.fft_var)
+            self.fft_button.pack()
+
+    def apply(self):
+        """
+        Return requested inputs.
+        """
+        selected_components = [label.cget("text") for label, var in zip(self.trace_buttons, self.trace_vars) if var.get() == 1]
+        res_str = " ".join(selected_components)
+
+        if self.fft_var.get() == 1:
+            res_str += " -fft"
+        self.result = res_str.strip()
+
+# Example usage
+def run_trace_window():
+    root = tk.Tk()
+    trace_window = TraceWindow(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    run_trace_window()

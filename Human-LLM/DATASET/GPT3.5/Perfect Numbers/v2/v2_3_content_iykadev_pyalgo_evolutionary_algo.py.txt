@@ -1,0 +1,64 @@
+from string import ascii_uppercase, ascii_lowercase
+from random import choice, random
+
+# Define the target string and character set
+target = "METHINKS IT IS LIKE A WEASEL"
+charset = ascii_uppercase + ascii_lowercase + ' '
+
+# Initialize the parent string with random characters
+parent = [choice(charset) for _ in range(len(target))]
+
+# Define the minimum mutation rate, iteration range, and perfect fitness score
+min_mutate_rate = 0.09
+iteration_range = range(100)
+perfect_fitness = float(len(target))
+
+# Function to calculate the fitness score of a trial string
+def fitness(trial):
+    return sum(t == h for t, h in zip(trial, target))
+
+# Function to calculate the mutation rate based on the current fitness score
+def mutate_rate():
+    return 1 - ((perfect_fitness - fitness(parent)) / perfect_fitness * (1 - min_mutate_rate))
+
+# Function to mutate the parent string based on the mutation rate
+def mutate(parent, rate):
+    return [(ch if random() <= rate else choice(charset)) for ch in parent]
+
+# Function to print the current iteration details
+def display_iteration():
+    print("(iterations: {}, fitness: {:.2f}%, parent: {})".format(iterations, fitness(parent) * 100. / perfect_fitness, ''.join(parent)))
+
+# Function to perform crossover between parent strings
+def mate(a, b):
+    place = 0
+    if choice(range(10)) < 7:
+        place = choice(range(len(target)))
+    else:
+        return a, b
+    return a, b, a[:place] + b[place:], b[:place] + a[place:]
+
+# Initialize iteration counter
+iterations = 0
+center = len(iteration_range) // 2
+
+# Perform the evolution process until the target string is reached
+while parent != list(target):
+    # Calculate the mutation rate and increment iteration count
+    rate = mutate_rate()
+    iterations += 1
+    
+    # Print iteration details every 100 iterations
+    if iterations % 100 == 0:
+        display_iteration()
+    
+    # Generate mutated copies of the parent string and select the most fit parents
+    copies = [mutate(parent, rate) for _ in iteration_range] + [parent]
+    parent1 = max(copies[:center], key=fitness)
+    parent2 = max(copies[center:], key=fitness)
+    
+    # Perform crossover and select the most fit offspring as the new parent
+    parent = max(mate(parent1, parent2), key=fitness)
+
+# Print the final iteration details
+display_iteration()

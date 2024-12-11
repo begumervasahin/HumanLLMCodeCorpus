@@ -1,0 +1,67 @@
+import os
+import pandas as pd
+from fuzzywuzzy import process
+import pickle
+from sys import stdin
+from data_processor import DataProcessor
+
+# Initialize DataProcessor
+show_data_processor = DataProcessor()
+
+def scrape_data():
+    # Remove existing files if they exist
+    for file_path in ["data/tv.csv", "logging/metacritic_scraper.log", "data/tv_shows_with_features.csv", "logging/imdb_scraper.log"]:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    
+    # Scraping metacritic
+    print('Scraping metacritic')
+    import metacritic_scraper
+    
+    # Scraping IMDB
+    print('Scraping IMDB')
+    get_info()
+
+def manual_loop():
+    # Prompt user for input
+    result = input("Enter 'Y' if you want to scrape data: ")
+    
+    if result.upper() == 'Y':
+        scrape_data()
+        df_trained = show_data_processor.load_model()
+    else:
+        result = input("Enter 'Y' if you want to retrain the model: ")
+        if result.upper() == 'Y':
+            # Remove existing model file if it exists
+            if os.path.exists('data/cosine_model.pkl'):
+                os.remove("data/cosine_model.pkl")
+            df_trained = show_data_processor.load_model()
+        else:
+            # Load existing model
+            df_trained = pickle.load(open('data/cosine_model.pkl', "rb"))
+
+    # User input loop
+    print('Please enter the title of a TV Show (or enter "exit" to quit)')
+    for title in stdin:
+        title = title.strip()
+        if title.lower() == 'exit':
+            break
+        
+        titles = df_trained['title'].tolist()
+        similar_title, score = process.extractOne(title, titles)
+
+        if similar_title != title:
+            print('Found "' + similar_title + '", which was the closest match.\n')
+        
+        print('Finding TV shows similar to ' + similar_title + '...\n')
+        top_shows, sim_scores = show_data_processor.get_similar(df_trained, similar_title)
+        top_shows = show_data_processor.predict_score(top_shows, sim_scores)
+        top_shows = top_shows.set_index('index')
+        
+        print('Found the following TV Shows:\n')
+        print(top_shows[['title', 'score', 'user_rating', 'similarity', 'metascore', 'userscore']].head(15))
+        print('\nPlease enter the title of a TV Show (or enter "exit" to quit)')
+
+if __name__ == "__main__":
+    manual_loop()
+    df_trained = show_data_processor.load_model()

@@ -1,0 +1,94 @@
+import matplotlib.pyplot as plt
+from random import randint
+from time import time
+
+# Initialize lists for storing data
+dfs_data = []
+bfs_data = []
+
+# Generate x-axis values
+x_axis = [i + 1 for i in range(2001)]
+
+# Set figure size
+plt.figure(figsize=(16, 5))
+
+# Define function to generate a graph
+def generate_graph(num_of_nodes, num_of_connections):
+    adj_list = {i: [] for i in range(num_of_nodes)}
+    adjacent = {i: [] for i in range(num_of_nodes)}
+    
+    # Generate connections
+    for _ in range(num_of_connections):
+        x = randint(0, num_of_nodes - 1)
+        y = randint(0, num_of_nodes - 1)
+        
+        adj_list[x].append(y)
+        adj_list[y].append(x)
+        
+        adjacent[x].append(y)
+        adjacent[y].append(x)
+    
+    # Remove self-loops
+    for i in range(num_of_nodes):
+        adj_list[i] = list(set(adj_list[i]) - {i})
+        adjacent[i] = list(set(adjacent[i]) - {i})
+    
+    return adj_list, adjacent
+
+# Define depth-first search algorithm
+def depth_first_search(node):
+    dfs_visited[node] = 1
+    for neighbor in adj[node]:
+        if not dfs_visited[neighbor]:
+            depth_first_search(neighbor)
+
+# Define breadth-first search algorithm
+def breadth_first_search(node):
+    queue = [node]
+    bfs_visited[node] = 1
+    while queue:
+        for neighbour in adjacent[queue[0]]:
+            if bfs_visited[neighbour] == 0:
+                queue.append(neighbour)
+                bfs_visited[neighbour] = 1
+        queue.pop(0)
+
+# Perform tests
+dfs_runtime = 0.0
+bfs_runtime = 0.0
+runs = 200
+for num_of_connections in range(0, 2001):
+    num_of_nodes = 200
+    adj = {}
+    adjacent = {}
+    
+    # Run tests multiple times
+    for _ in range(runs):
+        adj, adjacent = generate_graph(num_of_nodes, num_of_connections)
+        
+        dfs_visited = [0 for _ in range(num_of_nodes)]
+        queue = []
+        dfs_time = time()
+        depth_first_search(0)
+        dfs_runtime += (time() - dfs_time)
+        
+        bfs_visited = [0 for _ in range(num_of_nodes)]
+        queue = []
+        bfs_time = time()
+        breadth_first_search(0)
+        bfs_runtime += (time() - bfs_time)
+    
+    # Calculate average runtimes
+    dfs_data.append(round((dfs_runtime / runs), 13))
+    bfs_data.append(round((bfs_runtime / runs), 13))
+    dfs_runtime = 0.0
+    bfs_runtime = 0.0
+
+# Plot the results
+plt.xlabel("Number of Connections")
+plt.ylabel("Runtime (seconds)")
+plt.title("BFS (Orange) / DFS (Blue) comparison")
+plt.plot(x_axis, dfs_data, label='DFS', color='blue')
+plt.plot(x_axis, bfs_data, label='BFS', color='orange')
+plt.legend()
+plt.show()

@@ -1,0 +1,54 @@
+import sys
+
+def calculate_auc(labels, predicted_ctr):
+    """
+    Calculate the Area Under the ROC Curve (AUC) given true labels and predicted CTRs.
+    """
+    sorted_indices = sorted(range(len(predicted_ctr)), key=lambda i: predicted_ctr[i], reverse=True)
+
+    auc_temp = 0.0
+    tp = 0.0
+    tp_prev = 0.0
+    fp = 0.0
+    fp_prev = 0.0
+
+    last_value = predicted_ctr[sorted_indices[0]]
+
+    for i in range(len(labels)):
+        if labels[sorted_indices[i]] > 0:
+            tp += 1
+        else:
+            fp += 1
+
+        if last_value != predicted_ctr[sorted_indices[i]]:
+            auc_temp += (tp + tp_prev) * (fp - fp_prev) / 2.0
+            tp_prev = tp
+            fp_prev = fp
+            last_value = predicted_ctr[sorted_indices[i]]
+
+    auc_temp += (tp + tp_prev) * (fp - fp_prev) / 2.0
+
+    if tp * fp == 0:
+        return 0.0
+    else:
+        return auc_temp / (tp * fp)
+
+def evaluate_auc(ids, true_values, predicted_values):
+    """
+    Evaluate AUC given IDs, true values, and predicted values.
+    """
+    true_labels = [int(label) for label in true_values]
+    predicted_ctr = [float(value) for value in predicted_values]
+    return calculate_auc(true_labels, predicted_ctr)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python script_name.py input_file")
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+
+    with open(input_file, "r") as file:
+        ids, true_values, predicted_values = zip(*(line.strip().split(",") for line in file))
+
+    print(evaluate_auc(ids, true_values, predicted_values))

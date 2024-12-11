@@ -1,0 +1,194 @@
+import itertools
+
+# Global variables
+phi = 0.0
+minimum_support = {}
+temporary_values = {}
+sorted_items = {}
+item_list = []
+item_count = {}
+transaction_list = []
+transaction_count = 0
+L = []
+frequent_item_sets = [[] for _ in range(10)]
+candidate_item_sets = [[] for _ in range(10)]
+candidate_dictionary = {}
+incompatible_sets = []
+required_items = []
+tail_item_count = {}
+
+def main():
+    read_data()
+    initialize_pass()
+    find_frequent_1_item_sets()
+    find_frequent_item_sets()
+    apply_constraints()
+    generate_output()
+
+
+def read_data():
+    global minimum_support, transaction_count, item_list, item_count, phi, transaction_list, incompatible_sets, required_items
+    with open('para1-2.txt') as file1:
+        for line in file1:
+            if 'SDC' in line:
+                phi = float(line.replace(' ', '').rstrip().split('=')[1])
+
+            if 'MIS' in line:
+                temporary_values = line.replace(' ', '').replace('MIS', '').replace('(', '').replace(')', '').rstrip().split('=')
+                minimum_support[int(temporary_values[0])] = float(temporary_values[1])
+
+            if 'must-have' in line:
+                required_items = line.replace('must-have:', '').replace(' ', '').rstrip().split('or')
+                if required_items:
+                    required_items = list(map(int, required_items))
+
+            if 'cannot_be_together' in line:
+                incompatible_sets = line.replace(' ', '').replace('cannot_be_together:', '').replace('{', '[').replace('}', ']').replace("'", 'a').rstrip().split('a')
+                incompatible_sets = incompatible_sets[0].replace('],[', ' ').replace('[', '').replace(']', '').split()
+                incompatible_sets = [list(map(int, subset.split(','))) for subset in incompatible_sets]
+
+    items = sorted(minimum_support, key=minimum_support.get)
+    for item in items:
+        item_list.append(int(item))
+        item_count[int(item)] = 0
+
+    with open('data-1.txt') as file2:
+        for line in file2:
+            transaction = line.replace(' ', '').replace('{', '').replace('}', '').replace('<', '').replace('>', '').split(',')
+            transaction_list.append([int(t) for t in transaction])
+            for t in transaction:
+                item_count[int(t)] = item_count.get(int(t), 0) + 1
+
+    transaction_count = len(transaction_list)
+
+
+def initialize_pass():
+    global L
+    for i in range(len(item_list)):
+        if i == 0:
+            L.append(item_list[0])
+        elif (item_count.get(item_list[i]) / transaction_count) >= minimum_support.get(item_list[0]):
+            L.append(item_list[i])
+
+    for i, item in enumerate(L):
+        sorted_items[item] = i
+
+
+def level_2_candidate_generation():
+    global candidate_item_sets, L
+    for l in range(len(L)):
+        if (item_count[L[l]] / transaction_count) >= minimum_support[L[l]]:
+            for h in range(l + 1, len(L)):
+                if (item_count[L[h]] / transaction_count) >= minimum_support[L[l]] and abs(
+                        (item_count[L[h]] / transaction_count) - (item_count[L[l]] / transaction_count)) <= phi:
+                    candidate_item_sets[2].append([L[l], L[h]])
+    candidate_item_sets[2].sort(key=lambda row: row[1])
+
+
+def find_subsets(S, m):
+    return list(set(itertools.combinations(S, m)))
+
+
+def MS_candidate_generation(n):
+    m = n - 1
+    for i in range(len(frequent_item_sets[m])):
+        for j in range(len(frequent_item_sets[m])):
+            k = 0
+            while k < m - 1 and frequent_item_sets[m][i][k] == frequent_item_sets[m][j][k]:
+                k += 1
+
+            if k == m - 1:
+                if sorted_items[frequent_item_sets[m][i][k]] < sorted_items[frequent_item_sets[m][j][k]] and abs(
+                        (item_count[frequent_item_sets[m][i][k]] / transaction_count) - (
+                        item_count[frequent_item_sets[m][j][k]] / transaction_count)) <= phi:
+                    candidate_item_sets[m + 1].append(list(frequent_item_sets[m][i]))
+                    candidate_item_sets[m + 1][-1].append(frequent_item_sets[m][j][k])
+                    subset = find_subsets(candidate_item_sets[m + 1][-1], m)
+                    if not candidate_item_sets[m + 1]:
+                        if bool(candidate_item_sets[m + 1][-1][0]) in subset[sub] or minimum_support[
+                            candidate_item_sets[m + 1][-1][1]] == minimum_support[
+                            candidate_item_sets[m + 1][-1][0]]:
+                            if bool(subset[sub]) not in frequent_item_sets[m]:
+                                candidate_item_sets[m + 1][-1].remove()
+
+            k = 0
+
+
+def find_frequent_1_item_sets():
+    global frequent_item_sets
+    if not frequent_item_sets[1]:
+        for item in item_list:
+            if (item_count.get(item) / transaction_count) >= minimum_support.get(item):
+                frequent_item_sets[1].append([item])
+
+
+def find_frequent_item_sets():
+    global frequent_item_sets, candidate_dictionary, tail_item_count
+    k = 2
+    while frequent_item_sets[k - 1]:
+        if k == 2:
+            level_2_candidate_generation()
+        else:
+            MS_candidate_generation(k)
+
+        for t in transaction_list:
+            for c in candidate_item_sets[k]:
+                if set(c).issubset(set(t)):
+                    candidate_dictionary[tuple(c)] = candidate_dictionary.get(tuple(c), 0) + 1
+
+                if set(c[1:]).issubset(set(t)):
+                    tail_item_count[tuple(c)] = tail_item_count.get(tuple(c), 0) + 1
+
+        for c in candidate_item_sets[k]:
+            if candidate_dictionary.get(tuple(c)) is not None:
+                if candidate_dictionary.get(tuple(c)) / transaction_count >= minimum_support[c[0]]:
+                    frequent_item_sets[k].append(c[:])
+        k += 1
+
+
+def apply_constraints():
+    global incompatible_sets, frequent_item_sets
+    for fListIndex in range(len(frequent_item_sets)):
+        listIndex = len(frequent_item_sets[fListIndex]) - 1
+        while listIndex > -1:
+            subset = frequent_item_sets[fListIndex][listIndex]
+            for incompatible_set in incompatible_sets:
+                if set(incompatible_set) <= set(subset):
+                    frequent_item_sets[fListIndex].pop(listIndex)
+                    break
+            listIndex -= 1
+
+    global required_items, frequent_item_sets
+    for fListIndex in range(len(frequent_item_sets)):
+        listIndex = len(frequent_item_sets[fListIndex]) - 1
+        while listIndex > -1:
+            subset = frequent_item_sets[fListIndex][listIndex]
+            if set(required_items).isdisjoint(subset):
+                frequent_item_sets[fListIndex].pop(listIndex)
+            listIndex -= 1
+
+
+def generate_output():
+    global frequent_item_sets, tail_item_count, item_count, transaction_list
+    frequent_item_sets = [x for x in frequent_item_sets if x]
+    with open("result1-2.txt", "w") as file3:
+        count = 0
+        file3.write("\nFrequent 1-itemsets\n")
+        for t in frequent_item_sets[0]:
+            count += 1
+            file3.write('\t' + str(item_count[t[0]]) + ' : { ' + str(t[0]) + ' }\n')
+        file3.write("\tTotal number of frequent 1-itemsets = " + str(count) + "\n")
+
+        for i in range(1, len(frequent_item_sets)):
+            count = 0
+            file3.write('\n\nFrequent ' + str(i + 1) + '-itemsets\n')
+            for t in frequent_item_sets[i]:
+                tCount = sum(1 for j in transaction_list if set(j) >= set(t))
+                count += 1
+                file3.write('\t' + str(tCount) + ' : {' + str(t).replace("[", "").replace("]", "") + '}\n')
+                file3.write('Tail Count = ' + str(tail_item_count.get(tuple(t), 0)) + "\n")
+            file3.write('\n\tTotal number of frequent ' + str(i + 1) + '-itemsets = ' + str(count) + "\n")
+
+
+if __name__ == "__main__":
+    main()

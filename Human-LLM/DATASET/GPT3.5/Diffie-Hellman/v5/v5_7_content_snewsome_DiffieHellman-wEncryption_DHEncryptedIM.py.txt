@@ -1,0 +1,178 @@
+import os
+import sys
+import argparse
+import socket
+import select
+import logging
+import signal
+import random
+from collections import deque
+from Crypto.Hash import SHA256, HMAC
+from Crypto.Cipher import AES
+
+DEFAULT_PORT = 9999
+s = None
+server_s = None
+logger = logging.getLogger('main')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='A P2P IM service.')
+    parser.add_argument('-c', dest='connect', metavar='HOSTNAME', type=str,
+                        help='Host to connect to')
+    parser.add_argument('-s', dest='server', action='store_true',
+                        help='Run as server (on port 9999)')
+    parser.add_argument('-p', dest='port', metavar='PORT', type=int,
+                        default=DEFAULT_PORT,
+                        help='For testing purposes - allows use of different port')
+    return parser.parse_args()
+
+def print_how_to():
+    print("This program must be run with exactly ONE of the following options:")
+    print("-c <HOSTNAME>  : to connect to <HOSTNAME> on TCP port 9999")
+    print("-s             : to run a server listening on TCP port 9999")
+
+def handle_sigint(signal, frame):
+    logger.debug("SIGINT Captured! Exiting...")
+    global s, server_s
+    if s:
+        s.close()
+    if server_s:
+        server_s.close()
+    sys.exit(0)
+
+def initialize(crypt):
+    global s
+    args = parse_arguments()
+    logging.basicConfig()
+    logger.setLevel(logging.CRITICAL)
+    signal.signal(signal.SIGINT, handle_sigint)
+    
+    if args.connect is None and not args.server:
+        print_how_to()
+        sys.exit(1)
+    if args.connect and args.server:
+        print_how_to()
+        sys.exit(1)
+
+    shared_base = 2
+    shared_prime_hex = (
+        "00cc81ea8157352a9e9a318aac4e33ffba80fc8da3373fb44895109e4c3f"
+        "f6cedcc55c02228fccbd551a504feb4346d2aef47053311ceaba95f6c540"
+        "b967b9409e9f0502e598cfc71327c5a455e2e807bede1e0b7d23fbea054b"
+        "951ca964eaecae7ba842ba1fc6818c453bf19eb9c5c86e723e69a210d4b7"
+        "2561cab97b3fb3060b"
+    )
+    shared_prime = int(shared_prime_hex, 16)
+    auth_key = "wedontcareabouthis"
+    crypt['auth_out'] = HMAC.new(auth_key, digestmod=SHA256)
+    crypt['auth_in'] = HMAC.new(auth_key, digestmod=SHA256)
+
+    if args.connect:
+        iv = os.urandom(32)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        logger.debug(f'Connecting to {args.connect} on port {args.port}')
+        s.connect((args.connect, args.port))
+        s.send(iv)
+        a_secret = random.randint(1, 16)
+        A = str(calculate_shared_secret(shared_base, a_secret, shared_prime)).zfill(5)
+        s.send(A)
+        B = int(s.recv(5))
+        secret_A = str(calculate_private_key(B, a_secret, shared_prime))
+        conf_key = SHA256.new(secret_A.encode()).digest()[:16]
+        crypt['conf_out'] = AES.new(conf_key, AES.MODE_CBC, iv[:16])
+        crypt['conf_in'] = AES.new(conf_key, AES.MODE_CBC, iv[16:])
+
+    if args.server:
+        global server_s
+        server_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_s.bind(('', args.port))
+        server_s.listen(1)
+        s, remote_addr = server_s.accept()
+        server_s.close()
+        logger.debug(f"Connection received from {remote_addr}")
+        iv = s.recv(32)
+        b_secret = random.randint(1, 16)
+        A = int(s.recv(5))
+        B = str(calculate_shared_secret(shared_base, b_secret, shared_prime)).zfill(5)
+        s.send(B)
+        secret_B = str(calculate_private_key(A, b_secret, shared_prime))
+        conf_key = SHA256.new(secret_B.encode()).digest()[:16]
+        crypt['conf_out'] = AES.new(conf_key, AES.MODE_CBC, iv[16:])
+        crypt['conf_in'] = AES.new(conf_key, AES.MODE_CBC, iv[:16:])
+
+def calculate_shared_secret(base, secret, prime):
+    return pow(base, secret, prime)
+
+def calculate_private_key(publicly_sent, secret, prime):
+    return pow(publicly_sent, secret, prime)
+
+def encode_message(data, crypt):
+    data_length = str(len(data)).zfill(16)
+    padded_data = data.ljust((len(data) + 15) // 16 * 16, 'x')
+    crypt['auth_out'].update(data_length.encode() + padded_data.encode())
+    data = data_length + padded_data + crypt['auth_out'].digest()[:32]
+    encrypted_data = crypt['conf_out'].encrypt(data)
+    return encrypted_data
+
+def decode_message(data, crypt):
+    decrypted_data = crypt['conf_in'].decrypt(data)
+    mac = decrypted_data[-32:]
+    decrypted_data = decrypted_data[:-32]
+    crypt['auth_in'].update(decrypted_data)
+    if mac != crypt['auth_in'].digest():
+        exit("AUTH FAIL on: " + decrypted_data)
+    data_length = int(decrypted_data[:16])
+    return decrypted_data[16:16 + data_length]
+
+def main():
+    global s
+    data_length = 64
+    crypt = {}
+    initialize(crypt)
+    inputs = [sys.stdin, s]
+    outputs = [s]
+    output_buffer = deque()
+
+    while s:
+        if output_buffer:
+            outputs = [s]
+        else:
+            outputs = []
+
+        readable, writeable, exceptional = select.select(inputs, outputs, inputs)
+
+        if s in readable:
+            data = s.recv(data_length)
+            if data:
+                data = decode_message(data, crypt)
+                sys.stdout.write(data)
+            else:
+                s.close()
+                s = None
+
+        if sys.stdin in readable:
+            data = sys.stdin.readline(1024)
+            if data:
+                for data_piece in [data[i:i + data_length - 48] for i in range(0, len(data), data_length - 48)]:
+                    data_piece = encode_message(data_piece, crypt)
+                    output_buffer.append(data_piece)
+            else:
+                if not output_buffer:
+                    s.shutdown(socket.SHUT_RDWR)
+                    s.close()
+                    s = None
+
+        if s in writeable:
+            if output_buffer:
+                data = output_buffer.popleft()
+                bytes_sent = s.send(data)
+                if bytes_sent < len(data):
+                    output_buffer.appendleft(data[bytes_sent:])
+
+        if s in exceptional:
+            s.shutdown(socket.SHUT_RDWR)
+            s.close()
+            s = None
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,90 @@
+import pymongo
+import csv
+
+# Establish connection to MongoDB
+client = pymongo.MongoClient()
+db = client["projectOne"]
+
+# Define MongoDB collections
+users = db["Users"]
+organizations = db["Organizations"]
+interests = db["Interests"]
+projects = db["Projects"]
+skills = db["Skill"]
+
+def main():
+    # Main loop to search for users
+    while True:
+        search_input = input("\nWould you like to search for a user (y/n): ").lower()
+        if search_input == 'y':
+            userID = input("Enter the userID: ")
+            lookUpUser(userID)
+        else:
+            break
+
+def lookUpUser(userID):
+    # Search for a user in the database
+    user_result = users.find_one({"User_id": userID})
+    if not user_result:
+        print("This user does not exist. Please try another userID.")
+    else:
+        # Display user information
+        print(f"\tName: {user_result['First name']} {user_result['First name']}")
+        printOrganization(userID)
+        printInterests(userID)
+        printSkills(userID)
+        printProjects(userID)
+
+def printOrganization(userID):
+    # Display organization information of the user
+    organization_result = organizations.find({"User_id": userID})
+    for org in organization_result:
+        print(f"\tWorks at: {org['organization']}")
+
+def printInterests(userID):
+    # Display interests of the user
+    interests_results = interests.find({"User_id": userID})
+    interest_collection = ", ".join([f"{i['Interest']}({i['Interest level']})" for i in interests_results])
+    print(f"\tInterest: {interest_collection}")
+
+def printSkills(userID):
+    # Display skills of the user
+    skill_results = skills.find({"User_id": userID})
+    skill_collection = ", ".join([f"{sk['Skill']}({sk['Skill level']})" for sk in skill_results])
+    print(f"\tSkill: {skill_collection}")
+
+def printProjects(userID):
+    # Display projects the user is involved in
+    projects_results = projects.find({"User_id": userID})
+    project_collection = ", ".join([p['Project'] for p in projects_results])
+    print(f"\tWorks on: {project_collection}")
+
+def readFile(file_name):
+    # Read data from a CSV file and return as a list of dictionaries
+    with open(file_name) as f:
+        csv_file = csv.DictReader(f)
+        return list(csv_file)
+
+def insertData(collection_name, entries):
+    # Insert data into a MongoDB collection
+    collection_name.create_index("User_id", unique=True)
+    for data in entries:
+        try:
+            collection_name.insert_one(data)
+        except pymongo.errors.DuplicateKeyError:
+            print(f"Duplicate entry found for {data['User_id']}. Skipping insertion.")
+
+def loadFiles(csvfiles):
+    # Load data from CSV files into MongoDB collections
+    insertData(users, readFile(csvfiles[0]))
+    insertData(organizations, readFile(csvfiles[1]))
+    insertData(projects, readFile(csvfiles[2]))
+    insertData(interests, readFile(csvfiles[3]))
+    insertData(skills, readFile(csvfiles[4]))
+
+def dropDB():
+    # Drop the entire database
+    client.drop_database("projectOne")
+
+if __name__ == "__main__":
+    main()

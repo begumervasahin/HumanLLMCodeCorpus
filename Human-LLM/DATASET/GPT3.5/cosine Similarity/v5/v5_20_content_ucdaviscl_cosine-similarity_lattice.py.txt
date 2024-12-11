@@ -1,0 +1,116 @@
+import os
+import sys
+import time
+import gensim
+import nltk
+import networkx as nx
+from gensim.models import Word2Vec
+from gensim.models.word2vec import LineSentence
+from nltk import pos_tag, word_tokenize
+from itertools import islice
+
+# Constants
+DISTANCE_THRESHOLD = 0.80
+NEIGHBOR_COUNT = 3
+CANDIDATE_COUNT = 3
+
+# File paths
+path = '.'
+model_path = 'test_model.txt'
+token_path = '../compling/tokenizer_tokens.txt'
+os.chdir(path)
+
+def load_or_train_word2vec_model():
+    if not os.path.isfile(model_path):
+        # Train Word2Vec model if not already trained
+        sentences = LineSentence(token_path)
+        model = Word2Vec(sentences, size=300, window=4, min_count=10)
+        model.wv.save_word2vec_format('model.txt', binary=False)
+        del model
+    else:
+        # Load Word2Vec model
+        wv = gensim.models.KeyedVectors.load_word2vec_format(model_path, binary=False)
+        return wv
+
+def build_graph_for_sentence(sent, wv):
+    G = nx.DiGraph()
+    G.add_node("START")
+    temp = []
+    words = []
+
+    # Build graph for sentence
+    for i in range(len(sent)):
+        node = sent[i] + '*' + str(i) + '*'
+        G.add_node(node)
+        if i == 0:
+            G.add_edge("START", node, weight=-1)
+        else:
+            prev_node = sent[i - 1] + '*' + str(i - 1) + '*'
+            G.add_edge(prev_node, node, weight=-1)
+            for w in range(len(words)):
+                G.add_edge(words[w], node, weight=-1)
+        temp = words
+        words = []
+
+        # Find neighboring words based on Word2Vec similarity
+        if sent[i] in wv.vocab:
+            for j in range(NEIGHBOR_COUNT):
+                nearest = wv.most_similar(sent[i], topn=NEIGHBOR_COUNT)[j]
+                if nearest[1] >= DISTANCE_THRESHOLD:
+                    word_tag = nltk.pos_tag(nltk.word_tokenize(sent[i]))
+                    neighbor_tag = nltk.pos_tag(nltk.word_tokenize(nearest[0]))
+                    if word_tag[0][1] and neighbor_tag[0][1] in {'NN', 'NNS', 'RB', 'RBR', 'RBS',
+                                                                 'VB', 'VBD', 'VBG', 'VBN', 'VBP',
+                                                                 'VBZ', 'JJ', 'JJR', 'JJS'}:
+                        neighbor_node = nearest[0] + '*' + str(j) + '*'
+                        words.append(neighbor_node)
+                        G.add_node(neighbor_node)
+                        if i == 0:
+                            G.add_edge("START", neighbor_node, weight=-round(nearest[1], 5))
+                        else:
+                            G.add_edge(prev_node, neighbor_node, weight=-round(nearest[1], 5))
+                            for t in range(len(temp)):
+                                G.add_edge(temp[t], neighbor_node, weight=-round(nearest[1], 5))
+    G.add_node("END")
+    G.add_edge(node, "END", weight=-1)
+    for w in range(len(words)):
+        G.add_edge(words[w], "END", weight=-1)
+
+    return G
+
+def generate_candidate_sentences(G):
+    candidate_list = []
+    for path in k_shortest_paths(G, "START", "END", CANDIDATE_COUNT):
+        H = G.subgraph(path)
+        candidate = []
+        if len(k_shortest_paths(G, "START", "END", CANDIDATE_COUNT)) == 1:
+            for c in range(CANDIDATE_COUNT):
+                candidate_list.append('-------')
+            continue
+        if -(len(sent) + 1) != nx.shortest_path_length(H, "START", "END", weight='weight'):
+            for word in path:
+                candidate.append(re.sub(r'\*.*\*', '', word))
+            candidate = [c.decode('utf-8') for c in candidate]
+            candidate = ' '.join(candidate[1:-1])
+            candidate_list.append(candidate)
+        else:
+            candidate_list.append('-------')
+
+    return candidate_list
+
+def main():
+    start_time = time.time()
+    wv = load_or_train_word2vec_model()
+
+    with open('test.txt', 'r') as f:
+        lines = f.readlines()
+
+    with open('output.txt', 'a+') as f_out:
+        for count, line in enumerate(lines, start=1):
+            print(f"Processing Sentence {count} of {len(lines)}")
+            sent = word_tokenize(line)
+            G = build_graph_for_sentence(sent, wv)
+            candidate_list = generate_candidate_sentences(G)
+
+            for sent in candidate_list:
+                f_out.write(sent.encode('utf-8') +

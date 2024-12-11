@@ -1,0 +1,123 @@
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Default values for rows and columns
+DEFAULT_ROWS = 24
+DEFAULT_COLS = 2
+
+def get_input_args():
+    """
+    Get command line arguments to override default row and column values.
+
+    Returns:
+        tuple: Number of columns and rows.
+    """
+    cols = DEFAULT_COLS
+    rows = DEFAULT_ROWS
+
+    if len(sys.argv) > 1:
+        cols = int(sys.argv[1])
+    if len(sys.argv) > 2:
+        rows = int(sys.argv[2])
+
+    return cols, rows
+
+def generate_primes(n):
+    """
+    Generate prime numbers up to a given limit using the Sieve of Eratosthenes algorithm.
+
+    Parameters:
+        n (int): The upper limit for prime generation.
+
+    Returns:
+        list: List of prime numbers.
+    """
+    if n < 2:
+        return []
+    primes = [2]
+    sieve = [True] * ((n - 1) // 2)
+    for i in range(3, int(n ** 0.5) + 1, 2):
+        if sieve[i // 2]:
+            primes.append(i)
+            sieve[i*i // 2::i] = [False] * ((n - i*i - 1) // (2 * i) + 1)
+    return primes
+
+def main():
+    cols, rows = get_input_args()
+
+    # Generate prime numbers
+    max_number = cols * rows
+    known_primes = generate_primes(max_number)
+
+    # Print known primes if the number of columns is less than 5
+    if cols < 5:
+        print(known_primes)
+
+    # Initialize arrays to store numbers and prime numbers
+    n_numbers = np.zeros(max_number)
+    r_numbers = np.zeros(max_number)
+    th_numbers = np.zeros(max_number)
+
+    n_primes = np.zeros(len(known_primes))
+    r_primes = np.zeros(len(known_primes))
+    th_primes = np.zeros(len(known_primes))
+
+    # Generate numbers and prime numbers
+    n = 0
+    p = 0
+    for col in range(cols):
+        for row in range(rows):
+            n_numbers[n] = n + 1
+            r_numbers[n] = col + 1
+            th_numbers[n] = (2. * np.pi / float(rows)) * (row + 1)
+
+            # Store prime numbers
+            if p < len(known_primes) and n_numbers[n] == known_primes[p]:
+                n_primes[p] = n_numbers[n]
+                r_primes[p] = r_numbers[n]
+                th_primes[p] = th_numbers[n]
+                p += 1
+            n += 1
+
+    # Plotting
+    fig = plt.figure(figsize=(10., 10.))
+    ax = fig.add_subplot(111, projection="polar")
+
+    # Adjusting point and font sizes based on the number of columns
+    points_size = 100
+    font_size = 12
+    if cols > 10:
+        points_size = 50
+        font_size = 6
+    if cols > 30:
+        points_size = 10
+        font_size = 0
+
+    # Plot all numbers
+    for theta, radius, number in zip(th_numbers, r_numbers, n_numbers):
+        ax.scatter((theta,), (radius,), color="gray", s=points_size)
+        if cols < 30:
+            plt.text(theta, radius, '%i' % number, fontsize=font_size)
+
+    # Plot prime numbers
+    for theta, radius, prime in zip(th_primes, r_primes, n_primes):
+        ax.scatter((theta,), (radius,), color="red", s=points_size)
+        if cols < 30:
+            plt.text(theta, radius, '%i' % prime, fontsize=font_size)
+
+    # Adjusting grid and labels
+    ax.set_rticks([])
+    dtheta = 360 / rows
+    ax.set_thetagrids([-dtheta, dtheta, 90 - dtheta, 90 + dtheta, 180 - dtheta, 180 + dtheta, 270 - dtheta, 270 + dtheta], labels=[''] * cols)
+    if cols > 1:
+        ax.set_rgrids(np.arange(1, cols), labels=[''] * cols)
+    ax.grid(True)
+
+    # Saving and showing the plot
+    extension = "jpg"
+    plt.savefig("%s/primes_r%i_c%i.%s" % (extension, rows, cols, extension))
+    plt.show()
+
+if __name__ == "__main__":
+    main()

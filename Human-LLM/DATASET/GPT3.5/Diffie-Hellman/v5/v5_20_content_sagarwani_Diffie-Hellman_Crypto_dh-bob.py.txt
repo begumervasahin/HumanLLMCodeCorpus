@@ -1,0 +1,67 @@
+import sys
+import random
+import re
+
+def modular_exponentiation(base, exponent, modulus):
+    """Efficiently computes modular exponentiation."""
+    result = 1
+    binary_exponent = "{0:b}".format(exponent)
+    for bit in binary_exponent:
+        result = (result * result) % modulus
+        if bit == '1':
+            result = (result * base) % modulus
+    return result
+
+def is_prime(n, k=128):
+    """Checks if a number is prime using the Miller-Rabin primality test."""
+    if n in {2, 3}:
+        return True
+    if n <= 1 or n % 2 == 0:
+        return False
+
+    s, r = 0, n - 1
+    while r & 1 == 0:
+        s += 1
+        r //= 2
+
+    for _ in range(k):
+        a = random.randint(2, n - 1)
+        x = modular_exponentiation(a, r, n)
+        if x not in {1, n - 1}:
+            j, x_temp = 1, x
+            while j < s and x_temp != n - 1:
+                x_temp = modular_exponentiation(x_temp, 2, n)
+                if x_temp == 1:
+                    return False
+                j += 1
+            if x_temp != n - 1:
+                return False
+
+    return True
+
+if __name__ == '__main__':
+    # Ensure correct script usage
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <input_file> <output_file>")
+        sys.exit(1)
+
+    # Read input values from the input file
+    with open(sys.argv[1], 'r') as input_file:
+        big_primep, generator, ga = map(int, re.findall(r'\d+', input_file.readline()))
+
+    # Calculate q from p
+    big_primeq = (big_primep - 1) // 2
+    while not is_prime(big_primeq):
+        big_primeq -= 1
+
+    # Generate random b and compute gb
+    b = random.randint(2, big_primeq - 1)
+    gb = modular_exponentiation(generator, b, big_primep)
+
+    # Write gb to the output file
+    with open(sys.argv[2], 'w') as output_file:
+        output_file.write(str(gb))
+
+    # Compute gab
+    gab = modular_exponentiation(ga, b, big_primep)
+    print(gab)

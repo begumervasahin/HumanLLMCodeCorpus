@@ -1,0 +1,141 @@
+import time
+import sys
+import os
+import threading
+from socket import *
+import math
+
+# Constants
+TIMEOUT_INTERVAL = 10.0
+LIVE_INTERVAL = 5.0
+lock = threading.Lock()
+
+# Global variables
+router_id = sys.argv[1]
+port_number = int(sys.argv[2])
+filename_config = sys.argv[3]
+neighbours = {}
+routing_table = {}
+
+# Define classes for paths and neighbors
+class Path:
+    def __init__(self, distance, next_hop):
+        self.distance = distance
+        self.next_hop = next_hop
+
+    def equals(self, other_path):
+        return self.distance == other_path.distance and self.next_hop == other_path.next_hop
+
+class Neighbour:
+    def __init__(self, cost, port, lifetime):
+        self.cost = cost
+        self.port = port
+        self.lifetime = lifetime
+        self.paths = {}
+        self.check_alive = False
+
+# Menu for user interaction
+def menu():
+    while True:
+        print(f'\nThis is router {router_id}\n')
+        option = int(input('1: Display Costs.\n2: Edit Link Cost\n3: Quit: '))
+        if option == 1:
+            display_costs()
+        elif option == 2:
+            edit_link_cost()
+        elif option == 3:
+            os._exit(-1)
+
+# Display costs to neighboring routers
+def display_costs():
+    for id, route in sorted(routing_table.items()):
+        if id != router_id:
+            print(f'Shortest Path to {id}: {route.next_hop} and Distance {route.distance:.1f}')
+
+# Edit link cost based on user input
+def edit_link_cost():
+    print('Neighbours:', ' '.join(sorted(neighbours.keys())))
+    to_edit = input('Enter the ID of the router: ')
+    new_cost = float(input(f'Write new cost for {to_edit}: '))
+    neighbours[to_edit].cost = new_cost
+    send_distance_vector(True, to_edit)
+
+# Send distance vector to neighbors
+def send_distance_vector(send_cost, dest_id):
+    ss = socket(AF_INET, SOCK_DGRAM)
+    lock.acquire()
+    for id, neighbour in neighbours.items():
+        ss.sendto(create_packet(send_cost, dest_id), ('localhost', neighbour.port))
+    lock.release()
+    ss.close()
+
+# Periodically send distance vectors
+def make_ready():
+    while True:
+        time.sleep(LIVE_INTERVAL)
+        send_distance_vector(False, '')
+
+# Check if neighbors are alive
+def check_alive():
+    while True:
+        time.sleep(1)
+        current_time = time.time()
+        for id, neighbour in neighbours.items():
+            if current_time > neighbour.lifetime:
+                if neighbours[id].cost != math.inf:
+                    lock.acquire()
+                    routing_table[id].distance = math.inf
+                    neighbour.cost = math.inf
+                    neighbour.check_alive = True
+                    for key2, item2 in routing_table.items():
+                        if item2.next_hop == id:
+                            item2.distance = math.inf
+                    lock.release()
+                    send_distance_vector(False, '')
+
+# Create a new packet for communication
+def create_packet(send_cost, dest_id):
+    packet_data = str(router_id)
+    if send_cost:
+        packet_data += f' {neighbours[dest_id].cost}'
+    packet_data += '\n'
+    for id, path in routing_table.items():
+        packet_data += f'{id} {path.distance}\n'
+    return bytes(packet_data, 'utf-8')
+
+# Initialize routing paths and neighbors from configuration file
+def initialize_network():
+    with open(filename_config) as file:
+        lines = file.readlines()[1:]  # Skip the first line (header)
+        for line in lines:
+            id, cost, port = line.split()
+            cost = float(cost)
+            port = int(port)
+            neighbours[id] = Neighbour(cost, port, time.time() + TIMEOUT_INTERVAL)
+            routing_table[id] = Path(cost, router_id)
+    for id, neighbour in neighbours.items():
+        neighbour.paths = {id2: Path(math.inf, router_id) for id2 in neighbours}
+
+# Bellman-Ford algorithm for path calculation
+def bellman_ford():
+    lock.acquire()
+    for id, route in routing_table.items():
+        if id == router_id:
+            continue
+        min_list = [Path(neighbours[id].cost, router_id)] if id in neighbours else []
+        for id2, neighbour in neighbours.items():
+            p = Path(neighbours[id2].cost + neighbour.paths[id].distance, id2)
+            min_list.append(p)
+        min_path = min(min_list, key=lambda x: x.distance)
+        routing_table[id] = Path(min_path.distance, min_path.next_hop)
+    lock.release()
+
+# Main function to start threads and initialize network
+def main():
+    initialize_network()
+    threading.Thread(target=make_ready).start()
+    threading.Thread(target=check_alive).start()
+    threading.Thread(target=menu).start()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,48 @@
+import os
+import smtplib
+import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+class Mail:
+    def __init__(self, maillogin, mailpwd, smtpserver, smtpport):
+        self.logger = logging.getLogger()
+        if maillogin is None:
+            raise Exception("Provide a mail login")
+        if mailpwd is None:
+            raise Exception("Provide a mail password")
+        if smtpserver is None:
+            raise Exception("Provide an SMTP server")
+        if smtpport is None:
+            raise Exception("Provide an SMTP port")
+        self.maillogin = maillogin
+        self.mailpwd = mailpwd
+        self.smtpserver = smtpserver
+        self.smtpport = smtpport
+
+    def envoie(self, mailfrom, mailto, subject, text):
+        msg = MIMEMultipart()
+        msg['From'] = mailfrom
+        msg['To'] = mailto
+        msg['Subject'] = subject
+        msg.attach(MIMEText(text))
+        
+        try:
+            mailserver = smtplib.SMTP_SSL(self.smtpserver, self.smtpport)
+            mailserver.login(self.maillogin, self.mailpwd)
+            mailserver.sendmail(mailfrom, mailto, msg.as_string())
+            mailserver.quit()
+            return "Message sent successfully"
+        except Exception as e:
+            return f"Failed to send message: {e}"
+
+# Example usage
+mail = Mail(
+    os.getenv('MAIL_LOGIN'),
+    os.getenv('MAIL_PWD'),
+    os.getenv('SMTP_SERVER'),
+    os.getenv('SMTP_PORT')
+)
+
+result = mail.envoie('sender@example.com', 'recipient@example.com', 'Test Subject', 'This is a test email.')
+print(result)

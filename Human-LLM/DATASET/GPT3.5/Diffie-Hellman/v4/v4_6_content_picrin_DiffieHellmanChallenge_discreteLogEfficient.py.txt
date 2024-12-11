@@ -1,0 +1,41 @@
+import sys
+import random
+
+# Read the prime number 'p' from the file specified as a command-line argument
+filename_with_prime = sys.argv[1]
+with open(filename_with_prime, "r") as file:
+    p = int(file.readline().strip())
+
+# Read the value of 'a' from the command-line argument
+a = int(sys.argv[2])
+
+# Generate a random number 'g' between 0 and 'p'
+g = random.randint(0, p)
+
+# Initialize variables for the extended Euclidean algorithm
+left, right = p, g
+remainder = -1
+gcd = -1
+reconstruct = {left: [1, 0], right: [0, 1]}
+current_left, current_right = left, right
+counter = 0
+
+# Perform the extended Euclidean algorithm to find gcd and multiplicative inverse
+while remainder != 0:
+    remainder = current_left % current_right
+    counter += 1
+    multiplicity = current_left // current_right
+    reconstruct_left, reconstruct_right = reconstruct[current_left], reconstruct[current_right]
+    i = multiplicity * reconstruct_right[0]
+    j = multiplicity * reconstruct_right[1]
+    reconstruct[remainder] = [reconstruct_left[0] - i, reconstruct_left[1] - j]
+    current_left = current_right
+    if remainder == 0:
+        gcd = current_right
+    current_right = remainder
+
+# Calculate the multiplicative inverse (a^-1 mod p)
+multiplicative_inverse = (reconstruct[gcd][1] + p) % p
+
+# Print the result of the multiplication (a * multiplicative_inverse)
+print(a * multiplicative_inverse)

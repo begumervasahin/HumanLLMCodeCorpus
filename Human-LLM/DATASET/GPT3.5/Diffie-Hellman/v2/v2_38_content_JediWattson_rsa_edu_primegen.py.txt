@@ -1,0 +1,44 @@
+import random
+from math import log
+
+def generate_random_bit_string(bits):
+    bit_string = '1'  # Start the bit string with '1' as all prime numbers are odd
+    for _ in range(bits - 2):  # Generate the middle bits of the bit string
+        random_bit = random.SystemRandom().randrange(2)  # Generate either '0' or '1'
+        bit_string += str(random_bit)  # Append the random bit to the bit string
+    bit_string += '1'  # End the bit string with '1' to ensure the number is odd and greater than 1
+    return bit_string
+
+def convert_bit_string_to_prime(bit_string):
+    prime_number = int(bit_string, 2)  # Convert the bit string to an integer
+    while True:
+        # Initialize variables for Miller-Rabin primality test
+        is_prime = True
+        exponent = prime_number - 1
+        shift = 0
+
+        # Perform the Miller-Rabin primality test
+        while exponent % 2 == 0:  # Calculate the exponent and shift values
+            exponent //= 2
+            shift += 1
+
+        for _ in range(100):  # Perform the Miller-Rabin test 100 times for accuracy
+            base = random.SystemRandom().randrange(2, 100)
+            if pow(base, exponent, prime_number) == 1 or pow(base, exponent, prime_number) == prime_number - 1:
+                continue
+            else:
+                is_prime = False
+                break
+
+        if is_prime:
+            return prime_number
+        elif prime_number % 2 == 0:  # If the number is even, increment by 1
+            prime_number += 1
+        else:  # If the number is odd, increment by 2
+            prime_number += 2
+
+# Example usage
+bits = 16
+random_bit_string = generate_random_bit_string(bits)
+random_prime = convert_bit_string_to_prime(random_bit_string)
+print(f"Random {bits}-bit prime number: {random_prime}")

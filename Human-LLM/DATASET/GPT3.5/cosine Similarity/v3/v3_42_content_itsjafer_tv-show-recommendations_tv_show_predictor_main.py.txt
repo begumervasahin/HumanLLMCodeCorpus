@@ -1,0 +1,89 @@
+import os
+import pandas as pd
+from fuzzywuzzy import process
+import pickle
+from sys import stdin
+from data_processor import DataProcessor
+
+# Initialize DataProcessor
+show_data_processor = DataProcessor()
+
+def scrape_data():
+    # Remove existing files if they exist
+    files_to_remove = [
+        "data/tv.csv",
+        "logging/metacritic_scraper.log",
+        "data/tv_shows_with_features.csv",
+        "logging/imdb_scraper.log"
+    ]
+    for file_path in files_to_remove:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    # Scraping data from Metacritic and IMDB
+    print('Scraping Metacritic...')
+    import metacritic_scraper
+    print('Scraping IMDB...')
+    get_info()
+
+def prompt_yes_no(prompt_message):
+    """Prompt user for a yes/no response."""
+    response = input(prompt_message).strip().upper()
+    return response == 'Y'
+
+def handle_scrape_option():
+    """Handle user choice to scrape data or not."""
+    if prompt_yes_no("Do you want to scrape data (Y/N)? "):
+        scrape_data()
+        df_trained = show_data_processor.load_model()
+    else:
+        handle_retrain_option()
+
+def handle_retrain_option():
+    """Handle user choice to retrain the model or not."""
+    if prompt_yes_no("Do you want to retrain the model (Y/N)? "):
+        remove_existing_model()
+        df_trained = show_data_processor.load_model()
+    else:
+        df_trained = load_existing_model()
+
+    find_similar_tv_shows(df_trained)
+
+def remove_existing_model():
+    """Remove existing model file if it exists."""
+    if os.path.exists('data/cosine_model.pkl'):
+        os.remove("data/cosine_model.pkl")
+
+def load_existing_model():
+    """Load existing model from file."""
+    return pickle.load(open('data/cosine_model.pkl', "rb"))
+
+def find_similar_tv_shows(df):
+    """Find similar TV shows based on user input."""
+    print('Please enter the title of a TV Show (or enter "exit" to quit)')
+    for title in stdin:
+        title = title.strip()
+        if title.lower() == 'exit':
+            break
+
+        # Find the closest match to the input title
+        titles = df['title'].tolist()
+        similar_title, score = process.extractOne(title, titles)
+
+        if similar_title != title:
+            print(f'Found "{similar_title}", which is the closest match.\n')       
+
+        # Find TV shows similar to the closest match
+        print(f'Finding TV shows similar to {similar_title}...\n')
+        top_shows, sim_scores = show_data_processor.get_similar(df, similar_title)
+        top_shows = show_data_processor.predict_score(top_shows, sim_scores)
+        top_shows = top_shows.set_index('index')
+
+        # Display the similar TV shows
+        print('Found the following TV Shows:\n')
+        print(top_shows[['title', 'score', 'user_rating', 'similarity', 'metascore', 'userscore']].head(15))
+        print('\nPlease enter the title of a TV Show (or enter "exit" to quit)')        
+
+if __name__ == "__main__":
+    handle_scrape_option()
+    df_trained = show_data_processor.load_model()

@@ -1,0 +1,60 @@
+import socket
+import ssl
+import sys
+
+def create_tls_context(key_exchange):
+    cert_path = "client.pem"
+    key_path = "client.key"
+    if key_exchange == "DHE":
+        ciphers = "DHE-RSA-AES128-SHA256"
+    elif key_exchange == "RSA":
+        ciphers = "AES128-SHA256"
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context.load_cert_chain(keyfile=key_path, certfile=cert_path)
+    context.set_ciphers(ciphers)
+    return context
+
+def connect(s_address, s_port, key_exchange):
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        context = create_tls_context(key_exchange)
+        tls_sock = context.wrap_socket(client_socket, do_handshake_on_connect=False)
+        tls_sock.connect((s_address, s_port))
+    except Exception as e:
+        print("Connection failed:", e)
+        return None
+    try:
+        print("Connection succeeded, attempting handshake...")
+        tls_sock.do_handshake()
+    except Exception as e:
+        print("Handshake failed:", e)
+        return None
+    else:
+        print("Handshake succeeded. Chosen cipher is %s." % str(tls_sock.cipher()[0]))
+        return tls_sock
+
+def get_key_mode(arg_list):
+    if len(arg_list) != 2:
+        raise IndexError("Require 1 argument but %d were given. Only accept following argument: "
+                         "<key_exchange_mode> = DHE or RSA" % (len(arg_list)-1))
+    try:
+        key_mode = str(arg_list[1]).upper()
+        if key_mode != "RSA" and key_mode != "DHE":
+            raise ValueError("key_exchange_mode must be either DHE or RSA, not %s." % arg_list[1])
+    except ValueError:
+        raise ValueError("key_exchange_mode must be either DHE or RSA, not %s." % arg_list[1])
+    else:
+        return key_mode
+
+def main():
+    server_address, server_port = '127.0.0.1', 50001
+    key_exchange_mode = get_key_mode(sys.argv)
+    tls_socket = connect(server_address, server_port, key_exchange_mode)
+    if tls_socket is not None:
+        data = 'test_message'
+        print('Client sends:', data)
+        tls_socket.send(data.encode())
+        tls_socket.close()
+
+if __name__ == "__main__":
+    main()

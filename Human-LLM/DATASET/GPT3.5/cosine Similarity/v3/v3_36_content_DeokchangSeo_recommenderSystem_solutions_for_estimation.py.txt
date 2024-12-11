@@ -1,0 +1,169 @@
+from collections import defaultdict
+from surprise import KNNBasic, Dataset, Reader
+
+def load_dataset(dataset_path, line_format='user item rating', rating_scale=(1, 7), sep='\t'):
+    """
+    Load dataset from a file.
+
+    Parameters:
+    dataset_path (str): Path to the dataset file.
+    line_format (str): Line format of the dataset file.
+    rating_scale (tuple): Rating scale of the dataset.
+    sep (str): Delimiter used in the dataset file.
+
+    Returns:
+    Dataset: Loaded dataset.
+    """
+    reader = Reader(line_format=line_format, sep=sep, rating_scale=rating_scale)
+    dataset = Dataset.load_from_file(dataset_path, reader)
+    return dataset
+
+def create_full_trainset(dataset_path, line_format=None, rating_scale=(1, 7), sep='\t'):
+    """
+    Create a full training set from the dataset.
+
+    Parameters:
+    dataset_path (str): Path to the dataset file.
+    line_format (str): Line format of the dataset file.
+    rating_scale (tuple): Rating scale of the dataset.
+    sep (str): Delimiter used in the dataset file.
+
+    Returns:
+    Trainset: Full training set.
+    """
+    dataset = load_dataset(dataset_path, line_format, rating_scale, sep)
+    trainset = dataset.build_full_trainset()
+    return trainset
+
+def convert_to_binary(testset, threshold=3):
+    """
+    Convert testset ratings to binary values based on a threshold.
+
+    Parameters:
+    testset (list of tuples): Testset containing user-item-rating tuples.
+    threshold (int): Threshold value for converting ratings.
+
+    Returns:
+    list of tuples: Modified testset with binary ratings.
+    """
+    modified_testset = []
+    for user_id, item_id, rating in testset:
+        modified_rating = 1.0 if rating > threshold else 0.0
+        modified_testset.append((user_id, item_id, modified_rating))
+    return modified_testset
+
+def get_top_n_recommendations(predictions, n=10):
+    """
+    Get top-N recommendations for each user from a list of predictions.
+
+    Parameters:
+    predictions (list of Prediction objects): List of predictions.
+    n (int): Number of recommendations to return for each user.
+
+    Returns:
+    dict: Dictionary where keys are user ids and values are lists of top-N recommendations.
+    """
+    top_n_recommendations = defaultdict(list)
+    for user_id, item_id, _, estimated_rating, _ in predictions:
+        top_n_recommendations[user_id].append((item_id, estimated_rating))
+    for user_id, recommendations in top_n_recommendations.items():
+        recommendations.sort(key=lambda x: x[1], reverse=True)
+        top_n_recommendations[user_id] = recommendations[:n]
+    return top_n_recommendations
+
+def create_recommendations_and_positives(prediction, testset, threshold=3):
+    """
+    Create dictionaries of recommended items and true positive items.
+
+    Parameters:
+    prediction (dict): Predicted recommendations for each user.
+    testset (list of tuples): Testset containing user-item-rating tuples.
+    threshold (int): Threshold value for positive ratings.
+
+    Returns:
+    tuple: Tuple containing dictionaries of recommended items and true positive items.
+    """
+    recommended_items = {}
+    true_positive_items = {}
+    for user_id, recommendations in prediction.items():
+        recommended_items[user_id] = [item_id for item_id, _ in recommendations]
+    for user_id, recommended_items in recommended_items.items():
+        true_positive_items[user_id] = [item_id for user_id_test, item_id, rating in testset if user_id_test == user_id and rating == 1]
+    return recommended_items, true_positive_items
+
+def calculate_precision(prediction, testset, threshold=3):
+    """
+    Calculate precision for the recommendations.
+
+    Parameters:
+    prediction (dict): Predicted recommendations for each user.
+    testset (list of tuples): Testset containing user-item-rating tuples.
+    threshold (int): Threshold value for positive ratings.
+
+    Returns:
+    dict: Dictionary containing precision values for each user.
+    """
+    recommended_items, true_positive_items = create_recommendations_and_positives(prediction, testset, threshold)
+    precision_dict = {}
+    print("\nUser\t k-recommended\t\t True positive items")
+    for user_id, recommended_items_list in recommended_items.items():
+        for user_id_test, true_positive_items_list in true_positive_items.items():
+            if user_id == user_id_test:
+                precision_value = (len(set(recommended_items_list) & set(true_positive_items_list)) / len(recommended_items_list)) * 100 if len(recommended_items_list) > 0 else 0
+                print(user_id, '\t', recommended_items_list, '\t', true_positive_items_list)
+                precision_dict[user_id] = precision_value
+    return precision_dict
+
+def calculate_recall(prediction, testset, threshold=3):
+    """
+    Calculate recall for the recommendations.
+
+    Parameters:
+    prediction (dict): Predicted recommendations for each user.
+    testset (list of tuples): Testset containing user-item-rating tuples.
+    threshold (int): Threshold value for positive ratings.
+
+    Returns:
+    dict: Dictionary containing recall values for each user.
+    """
+    recommended_items, true_positive_items = create_recommendations_and_positives(prediction, testset, threshold)
+    recall_dict = {}
+    print("\nUser\t k-recommended\t\t True positive items")
+    for user_id, recommended_items_list in recommended_items.items():
+        for user_id_test, true_positive_items_list in true_positive_items.items():
+            if user_id == user_id_test:
+                recall_value = (len(set(recommended_items_list) & set(true_positive_items_list)) / len(true_positive_items_list)) * 100 if len(true_positive_items_list) > 0 else 0
+                print(user_id, '\t', recommended_items_list, '\t', true_positive_items_list)
+                recall_dict[user_id] = recall_value
+    return recall_dict
+
+# File path
+file_path = 'ratings_for_question1.txt'
+
+# Create trainset
+trainset = create_full_trainset(file_path, line_format='user item rating', rating_scale=(1, 7), sep='\t')
+
+# Create testset
+testset = trainset.build_testset()
+
+# Set threshold
+threshold = 3
+
+# Print ground truth
+print(convert_to_binary(testset, threshold))
+
+# Train algorithm
+algo = KNNBasic()
+algo.train(trainset)
+
+# Get predictions
+predictions = algo.test(testset)
+
+# Get top-N recommendations
+top_n_recommendations = get_top_n_recommendations(predictions, n=3)
+
+# Print precision
+print(calculate_precision(top_n_recommendations, testset, threshold))
+
+# Print recall
+print(calculate_recall(top_n_recommendations, testset, threshold))

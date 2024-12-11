@@ -1,0 +1,191 @@
+import socket
+import threading
+import time
+import math
+import sys
+from collections import defaultdict as dd
+import distanceVec_pb2
+
+MAX_NETWORK_SIZE = 16
+TIMEOUT_PERIOD = 30
+
+class TimeOut(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.timers = {}
+        self.is_active = {}
+        self.down = {}
+
+    def set_router_down(self, ID):
+        global MAX_NETWORK_SIZE
+        global routing_table
+        print()
+        print(f'{ID} HAS TIMED OUT')
+        for node, neighbors in routing_table.items():
+            if ID in neighbors:
+                neighbors[ID] = MAX_NETWORK_SIZE
+        bellman.link_cost_changed = True
+
+    def run(self):
+        global TIMEOUT_PERIOD
+        while True:
+            for ID, timer in self.timers.items():
+                if self.is_active[ID]:
+                    self.timers[ID] = time.time()
+                    self.is_active[ID] = False
+                    self.down[ID] = False
+                elif not self.down[ID] and time.time() - timer >= TIMEOUT_PERIOD and not self.is_active[ID]:
+                    self.timers[ID] = time.time()
+                    self.down[ID] = True
+                    self.set_router_down(ID)
+
+class IO(threading.Thread):
+    def __init__(self):
+        super().__init__()
+
+    def print_routing_table(self):
+        global routing_table
+        print("TO | [NEXT HOP-COST]")
+        for key, val in routing_table.items():
+            print(key, ' | ', end='')
+            for neighbor, cost in val.items():
+                print(f'{neighbor} - {cost:.2f}  ', end='')
+            print()
+
+    def take_input(self):
+        global routing_table
+        global bellman
+        task = int(input('Enter 0 to view Reachability Matrix, 1 to change the cost: '))
+        if task == 0:
+            self.print_routing_table()
+        elif task == 1:
+            link = input('Enter the ID of the link to change: ')
+            through = input('Enter the hop to change: ')
+            cost = float(input('Enter the new cost: '))
+            routing_table[link][through] = cost
+            bellman.link_cost_changed = True
+
+    def run(self):
+        while True:
+            self.take_input()
+
+class Server(threading.Thread):
+    def __init__(self, PORT):
+        super().__init__()
+        self.port = PORT
+        self.distance_vec = distanceVec_pb2.Vector()
+        self.changed = False
+
+    def run(self):
+        global time_out
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('', self.port))
+        while True:
+            self.message, self.adr = self.sock.recvfrom(4096)
+            self.distance_vec.ParseFromString(self.message)
+            if self.distance_vec != distanceVec:
+                self.changed = True
+            time_out.is_active[self.distance_vec.source] = True
+
+class BellmanFord(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.link_cost_changed = False
+
+    def print_routes(self):
+        global distanceVec
+        global MAX_NETWORK_SIZE
+        print()
+        print("I am Router", distanceVec.source)
+        for neighbor in distanceVec.neighbours:
+            if neighbor.cost < MAX_NETWORK_SIZE:
+                print(f"Least cost to {neighbor.ID} is {neighbor.cost:.2f} through {nextHop[neighbor.ID]}")
+            else:
+                print(f"{neighbor.ID} is unreachable")
+
+    def construct_distance_vec(self):
+        global distanceVec
+        self.new_dist_vec = distanceVec_pb2.Vector()
+        self.new_dist_vec.source = distanceVec.source
+        for node, neighbors in routing_table.items():
+            min_cost = float('inf')
+            min_hop = ''
+            for neighbor, cost in neighbors.items():
+                if cost < min_cost:
+                    min_cost = cost
+                    min_hop = neighbor
+            new_neighbor = self.new_dist_vec.neighbours.add()
+            new_neighbor.ID = node
+            new_neighbor.cost = min_cost
+            nextHop[node] = min_hop
+        if self.new_dist_vec.neighbours != distanceVec.neighbours:
+            distanceVec = self.new_dist_vec
+            send_distance_vec(distanceVec)
+            self.print_routes()
+
+    def run(self):
+        global MAX_NETWORK_SIZE
+        while True:
+            if server.changed:
+                server.changed = False
+                for neighbor in server.distance_vec.neighbours:
+                    source_cost = routing_table[server.distance_vec.source][server.distance_vec.source]
+                    if neighbor.ID == routerID and routing_table[server.distance_vec.source][server.distance_vec.source] >= MAX_NETWORK_SIZE:
+                        if neighbor.cost != routing_table[server.distance_vec.source][server.distance_vec.source]:
+                            routing_table[server.distance_vec.source][server.distance_vec.source] = neighbor.cost
+                            self.link_cost_changed = True
+                    elif neighbor.ID != routerID:
+                        if neighbor.cost >= MAX_NETWORK_SIZE:
+                            new_val = MAX_NETWORK_SIZE
+                        elif source_cost >= MAX_NETWORK_SIZE and neighbor.cost < MAX_NETWORK_SIZE:
+                            for vec in server.distance_vec.neighbours:
+                                if vec.ID == routerID:
+                                    source_cost = vec.cost
+                            routing_table[server.distance_vec.source][server.distance_vec.source] = source_cost
+                            new_val = source_cost + neighbor.cost
+                        else:
+                            new_val = neighbor.cost + source_cost
+                        if not (vec.ID in routing_table and server.distance_vec.source in routing_table[vec.ID] and routing_table[vec.ID][server.distance_vec.source] == new_val):
+                            routing_table[vec.ID][server.distance_vec.source] = new_val
+                            self.link_cost_changed = True
+            if self.link_cost_changed:
+                self.link_cost_changed = False
+                self.construct_distance_vec()
+
+def read_input(vec):
+    global time_out
+    temp_str = configFile.readline()
+    split = temp_str.split()
+    vec.ID = split[0]
+    vec.cost = float(split[1])
+    neighbour_ports[vec.ID] = int(split[2])
+    nextHop[vec.ID] = vec.ID
+    routing_table[vec.ID][vec.ID] = vec.cost
+    time_out.timers[vec.ID] = time.time()
+    time_out.is_active[vec.ID] = False
+    time_out.down[vec.ID] = False
+
+def send_distance_vec(MESSAGE):
+    global MAX_NETWORK_SIZE
+    IP = 'localhost'
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    msg_backup = distanceVec_pb2.Vector()
+    msg_backup.CopyFrom(MESSAGE)
+    for neighbor, port in neighbour_ports.items():
+        for vec in MESSAGE.neighbours:
+            if nextHop[vec.ID] != vec.ID and nextHop[vec.ID] == neighbor:
+                vec.cost = MAX_NETWORK_SIZE
+        sock.sendto(MESSAGE.SerializeToString(), (IP, port))
+        MESSAGE.CopyFrom(msg_backup)
+    sock.close()
+
+routing_table = dd(dict)
+if len(sys.argv) < 4:
+    print("Usage: python DVR.py <router-id> <port-no> <router-config-file>")
+    exit()
+routerID = sys.argv[1]
+port = int(sys.argv[2])
+configFile = open(sys.argv[3])
+n = int(configFile.readline().strip())
+nextHop = {}
+ne

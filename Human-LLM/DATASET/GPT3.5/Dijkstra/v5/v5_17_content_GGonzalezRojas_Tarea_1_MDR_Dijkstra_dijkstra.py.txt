@@ -1,0 +1,79 @@
+from collections import defaultdict
+from heapq import heappop, heappush
+
+
+def dijkstra(edges, start, end):
+    """
+    Find the shortest path from node 'start' to node 'end' using Dijkstra's algorithm.
+
+    Args:
+        edges (list): List of tuples representing edges in the graph. Each tuple contains
+                      three elements: (source node, destination node, edge cost).
+        start (str): Starting node of the path.
+        end (str): Ending node of the path.
+
+    Returns:
+        tuple: A tuple containing the cost of the shortest path and the path itself.
+    """
+    # Initialize graph as a defaultdict of lists
+    graph = defaultdict(list)
+    for source, destination, cost in edges:
+        graph[source].append((cost, destination))
+
+    # Initialize priority queue with starting node and an empty path
+    priority_queue = [(0, start, ())]
+    visited = set()
+
+    # Perform Dijkstra's algorithm
+    while priority_queue:
+        cost, current_node, path = heappop(priority_queue)
+        
+        # If current node hasn't been visited yet
+        if current_node not in visited:
+            visited.add(current_node)
+            path = (current_node, path)
+            
+            # If the current node is the end node, return the cost and path
+            if current_node == end:
+                return cost, path
+            
+            # Explore neighbors of the current node
+            for next_cost, next_node in graph.get(current_node, ()):
+                if next_node not in visited:
+                    heappush(priority_queue, (cost + next_cost, next_node, path))
+    
+    # If no path found, return infinity and an empty path
+    return float("inf"), ()
+
+
+if __name__ == "__main__":
+    # Define edges of the graph
+    edges = [
+        ("A", "B", 7),
+        ("A", "D", 5),
+        ("B", "C", 8),
+        ("B", "D", 9),
+        ("B", "E", 7),
+        ("C", "E", 5),
+        ("D", "E", 15),
+        ("D", "F", 6),
+        ("E", "F", 8),
+        ("E", "G", 9),
+        ("F", "G", 11),
+        ("G", "H", 5)
+    ]
+
+    # Print the results of Dijkstra's algorithm for various paths
+    print("=== Dijkstra ===")
+    print("Shortest path from A to H:")
+    print(dijkstra(edges, "A", "H"))
+    print("Shortest path from A to D:")
+    print(dijkstra(edges, "A", "D"))
+    print("Shortest path from D to F:")
+    print(dijkstra(edges, "D", "F"))
+    print("Shortest path from F to G:")
+    print(dijkstra(edges, "F", "G"))
+    print("Shortest path from G to H:")
+    print(dijkstra(edges, "G", "H"))
+    print("Shortest path from F to G:")
+    print(dijkstra(edges, "F", "G"))

@@ -1,0 +1,64 @@
+import pandas as pd
+import math
+import csv
+
+def extract_player_features(player, game):
+    player_data = {}
+    # Define the features and initialize them to 0
+    features = [
+        'Home', 'Minutes Played', 'Field Goals Made', 'Field Goals Attempted', 'Field Goal Percentage',
+        '3-Point Field Goals Made', '3-Point Field Goals Attempted', '3-Point Field Goal Percentage',
+        'Free Throws Made', 'Free Throws Attempted', 'Free Throw Percentage', 'Offensive Rebounds',
+        'Defensive Rebounds', 'Total Rebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers',
+        'Personal Fouls', 'Points', 'Plus/Minus', 'True Shooting Percentage', 'Effective Field Goal Percentage',
+        '3-Point Attempt Rate', 'Free Throw Attempt Rate', 'Offensive Rebound Percentage', 'Defensive Rebound Percentage',
+        'Total Rebound Percentage', 'Assist Percentage', 'Steal Percentage', 'Block Percentage', 'Turnover Percentage',
+        'Usage Percentage', 'Offensive Rating', 'Defensive Rating'
+    ]
+    player_data = {feature: 0 for feature in features}  # Initialize all features to 0
+    
+    # Load player data from a CSV file
+    player_df = pd.read_csv('data/LakersPlayerData.csv')
+    previous_game = game - 1
+    
+    for index, row in player_df.iterrows():
+        if row['Players'] == player and row['Game'] == previous_game:
+            # Update feature values from the dataset
+            player_data['Home'] = float(row['Home'])
+            player_data['Minutes Played'] = calculate_minutes(row['MP'])
+            if player_data['Minutes Played'] == 0:
+                continue
+            # Update other features
+            for feature in features[2:]:
+                player_data[feature] = check_nan(float(row[feature]))
+            break
+
+    return player_data
+
+def calculate_minutes(time_str):
+    if not time_str:
+        return 0
+    minutes, seconds = map(int, time_str.split(':'))
+    return minutes + seconds / 60
+
+def check_nan(value):
+    return value if not math.isnan(value) else 0
+
+def create_test_data(player, game, var, features):
+    # Load test data from CSV file
+    test_data = pd.read_csv(f'testData/{var}/{player}.csv')
+    new_data_sheet = test_data[test_data['Game'] == game]
+
+    # Write test data to a new CSV file
+    with open(f'test/{var}/{player}_{game}.csv', mode='w', newline='') as player_file:
+        player_writer = csv.writer(player_file)
+        player_writer.writerow(features)
+        new_data_sheet.to_csv(player_file, index=False)
+
+# Example usage
+player_data = extract_player_features('LeBron James', 5)
+print(player_data)
+
+# Example usage of create_test_data function
+selected_features = ['Game', 'Minutes Played', 'Field Goals Made', '3-Point Field Goals Made', 'Free Throws Made', 'Points']
+create_test_data('LeBron James', 5, 'players', selected_features)

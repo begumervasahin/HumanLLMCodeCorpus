@@ -1,0 +1,79 @@
+import os
+import pickle
+import sys
+from extract import extractFeatures
+
+def generatePickleFromBatch(pckPath, imgsPath):
+    # List all image files in the directory
+    files = [os.path.join(imgsPath, p) for p in sorted(os.listdir(imgsPath))]
+    db = {}  # Dictionary to store extracted features
+    count = len(files)  # Total number of image files
+    extracted = 0  # Counter for extracted images
+
+    # Iterate over each image file
+    for f in files:
+        extracted += 1
+        print(f'-> [Entry {extracted}/{count}] Extracting {f}               \r', end='')
+        db[f] = extractFeatures(f)  # Extract features and store them in the dictionary
+
+    # Save the extracted features to a pickle file
+    with open(pckPath, 'wb') as dbfile:
+        pickle.dump(db, dbfile)
+    print('\nDone.')
+
+def generateDB(dbPath, pinsPath):
+    # Create the database directory if it doesn't exist
+    if not os.path.exists(dbPath):
+        os.makedirs(dbPath)
+
+    if os.path.exists(pinsPath):
+        count = 0  # Total number of directories
+        generated = 0  # Counter for generated databases
+        persons = [os.path.join(pinsPath, p) for p in sorted(os.listdir(pinsPath))]
+        count = len(persons)
+        print(f'Found {count} directories on {pinsPath}')
+
+        # Iterate over each directory containing images
+        for person in persons:
+            generated += 1
+            db = os.path.join(dbPath, os.path.basename(person))
+            print(f'[{generated}/{count}] Generating {db}.db')
+            generatePickleFromBatch(db + '.db', person)
+
+        print(f'Extracted {count} entries.')
+    else:
+        print('Directory not found')
+
+def joinDB(dirPath, dbPath):
+    db = {}  # Dictionary to store the merged database
+    print(f'Joining databases from {dirPath} to {dbPath}')
+
+    if os.path.exists(dirPath):
+        files = [os.path.join(dirPath, p) for p in sorted(os.listdir(dirPath))]
+
+        # Iterate over each database file and merge them
+        for f in files:
+            a = {}  # Temporary dictionary to store the database from each file
+            print('->', f)
+            with open(f, 'rb') as tempdb:
+                a = pickle.load(tempdb)
+                db.update(a)
+
+        # Save the merged database to a single pickle file
+        with open(dbPath, 'wb') as dbfile:
+            pickle.dump(db, dbfile)
+
+        print('Done.')
+    else:
+        print('Directory not found')
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if os.path.exists(sys.argv[1]):
+            generateDB('db', sys.argv[1])
+            joinDB('db', 'pins.db')
+        else:
+            print('Fatal: not a directory')
+    else:
+        print('Please specify a file. It must contain folders which contain pictures.') 
+        print('Usage: python3 generate-pickle-file.py <folder-name>')

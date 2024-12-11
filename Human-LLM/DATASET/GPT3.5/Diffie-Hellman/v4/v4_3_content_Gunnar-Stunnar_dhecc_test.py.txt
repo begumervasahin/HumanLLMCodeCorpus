@@ -1,0 +1,34 @@
+import Encryption
+import os
+
+# Generate random keys
+random_key1 = os.urandom(32)
+random_key2 = os.urandom(32)
+
+# Convert random keys to integers
+random_key1_int = int.from_bytes(random_key1, byteorder='big')
+random_key2_int = int.from_bytes(random_key2, byteorder='big')
+
+print("Generated Keys:")
+print("Key 1:", random_key1_int)
+print("Key 2:", random_key2_int)
+
+# Initialize AESCipher instances with the random keys
+cipher1 = Encryption.AESCipher(random_key1_int)
+cipher2 = Encryption.AESCipher(random_key2_int)
+
+print("\nPublic Keys:")
+print("Cipher 1 Public Key:", cipher1.getPubKey())
+print("Cipher 2 Public Key:", cipher2.getPubKey())
+
+# Perform Diffie-Hellman key exchange
+cipher1.DHEC(cipher2.getPubKey())
+cipher2.DHEC(cipher1.getPubKey())
+
+print("\nTest Rounds:")
+# Encrypt and decrypt test messages
+encrypted_msg1 = cipher1.encrypt("howdy" + " " + 128 * ",")
+print("Decrypted Message 1:", cipher2.decrypt(encrypted_msg1))
+
+encrypted_msg2 = cipher2.encrypt("howdy2")
+print("Decrypted Message 2:", cipher1.decrypt(encrypted_msg2))

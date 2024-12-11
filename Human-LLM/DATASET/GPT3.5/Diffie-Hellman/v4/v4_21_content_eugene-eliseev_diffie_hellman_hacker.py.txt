@@ -1,0 +1,29 @@
+from person import Person
+from tools import AESCipher
+
+class Hacker(Person):
+    def read_data(self, data_tuple):
+        sender, receiver, action, data = data_tuple
+
+        if action == "my param":
+            # Calculate encryption key based on received data
+            key_value = (int(data) ** self.prime) % self.p
+            self.keys[sender] = AESCipher(str(key_value))
+
+            # Simulate communication and retrieve updated action and data
+            _, _, action, data = self.start_communication_with("")
+            return sender, receiver, action, data
+
+        elif sender in self.keys and receiver in self.keys:
+            # Decrypt data if both sender and receiver have keys
+            decrypted_data = self.decode_message(self.keys[sender], data)
+
+            # Retrieve stored message if decrypted data matches
+            if decrypted_data in self.messages:
+                decrypted_data = self.messages[decrypted_data]
+
+            # Encrypt decrypted data using receiver's key
+            encrypted_data = self.encode_message(self.keys[receiver], decrypted_data)
+            return sender, receiver, "message", encrypted_data
+
+        return data_tuple

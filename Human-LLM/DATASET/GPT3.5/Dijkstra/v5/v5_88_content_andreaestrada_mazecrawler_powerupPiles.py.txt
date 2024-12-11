@@ -1,0 +1,68 @@
+import pygame
+from random import randint
+import spec
+import powerup
+
+class Piles(powerup.PowerupGeneric):
+    """A class representing a generic powerup pile."""
+    
+    def __init__(self, centerX, centerY, amount, images, group, size):
+        """
+        Initializes a powerup pile object.
+
+        Args:
+            centerX (int): X-coordinate of the center.
+            centerY (int): Y-coordinate of the center.
+            amount (int): Amount of the powerup.
+            images (list): List of images for the powerup.
+            group (pygame.sprite.Group): Group to which the powerup belongs.
+            size (int): Size of the powerup.
+        """
+        super().__init__(centerX, centerY, images, group, size)
+        self.amount = amount
+
+    @staticmethod
+    def generate_new_powerup(data, type_added):
+        """
+        Generates a new powerup and sends the data to the server.
+
+        Args:
+            data: Data object containing the server.
+            type_added (str): Type of powerup added ('AmmoAdded' or 'PointsAdded').     
+        """
+        centerX, centerY = powerup.PowerupGeneric.generateNewPowerupLocation()
+        amount = randint(3, 7)
+        msg = f"{type_added} {centerX} {centerY} {amount}\n"
+        data.server.send(msg.encode())
+        if type_added == "AmmoAdded":
+            AmmoPile(centerX, centerY, amount)
+        elif type_added == "PointsAdded":
+            PointPile(centerX, centerY, amount)
+
+class AmmoPile(Piles):
+    """A class representing an ammo powerup pile."""
+    
+    def __init__(self, centerX, centerY, amount):
+        """
+        Initializes an ammo powerup pile object.
+
+        Args:
+            centerX (int): X-coordinate of the center.
+            centerY (int): Y-coordinate of the center.
+            amount (int): Amount of ammo in the pile.
+        """
+        super().__init__(centerX, centerY, amount, spec.ammoPileImages, spec.staticAmmos, spec.cellWidth / 3)
+
+class PointPile(Piles):
+    """A class representing a point powerup pile."""
+    
+    def __init__(self, centerX, centerY, amount):
+        """
+        Initializes a point powerup pile object.
+
+        Args:
+            centerX (int): X-coordinate of the center.
+            centerY (int): Y-coordinate of the center.
+            amount (int): Amount of points in the pile.
+        """
+        super().__init__(centerX, centerY, amount, spec.pointPileImages, spec.staticPoints, spec.cellWidth / 3)

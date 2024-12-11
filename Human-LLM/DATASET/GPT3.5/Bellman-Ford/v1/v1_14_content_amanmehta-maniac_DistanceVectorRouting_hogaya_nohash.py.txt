@@ -1,0 +1,109 @@
+from collections import defaultdict
+import socket
+import time
+from threading import Thread
+
+class Server(Thread):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        port = 60000
+        server_socket = socket.socket()
+        host = ""
+        server_socket.bind((host, port))
+        server_socket.listen(5)
+
+        conn, addr = server_socket.accept()
+        for i in range(1, N):
+            for u in range(1, N + 1):
+                to_send = ""
+                for v in range(1, N + 1):
+                    to_send = to_send + str(v) + ' ' + str(d[u][v]) + "\n"
+                forward_table_u = to_send
+                for v in graph[u]:
+                    conn.send(forward_table_u.encode())
+                    time.sleep(0.01)
+                    conn.send(str(v).encode())
+                    time.sleep(0.01)
+                    conn.send(str(u).encode())
+
+        conn.send("Bye".encode())
+        conn.close()
+
+class Receiver(Thread):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        distance = defaultdict()
+        ii = 0
+        while True:
+            ii += 1
+            s = socket.socket()
+            host = ""
+            port = 60000
+            s.connect((host, port))
+            data = s.recv(1024)
+            if ii % 3 == 1:
+                dist = data
+            elif ii % 3 == 2:
+                node = int(data)
+            else:
+                sender = int(data)
+                dist = dist.split('\n')
+                for i in range(len(dist) - 1):
+                    dist[i] = dist[i].split()
+                    dist[i][0], dist[i][1] = int(dist[i][0]), int(dist[i][1])
+                    distance[dist[i][0]] = dist[i][1]
+                for j in graph:
+                    if d[node][j] > distance[j] + graph[sender][node]:
+                        d[node][j] = distance[j] + graph[sender][node]
+            if data == b'Bye':
+                break
+        s.close()
+
+if __name__ == '__main__':
+    graph = defaultdict(dict)
+    N = 0
+    with open('test2') as f:
+        lines = f.readlines()
+        N = int(lines[0])
+        for i in range(1, 1 + N):
+            gf = lines[i].split()
+            if i != 0:
+                k = 1
+                for l in range(int(gf[0])):
+                    if int(gf[k]) not in graph[i]:
+                        graph[int(gf[k])][i] = int(gf[k + 1])
+                    else:
+                        graph[int(gf[k])][i] = min(graph[i][int(gf[k])], int(gf[k + 1]))
+                    k = k + 2
+
+    d = defaultdict(dict)
+    for node in range(1, N + 1):
+        for Node in range(1, N + 1):
+            if node != Node:
+                d[node][Node] = 10 ** 123
+            else:
+                d[node][Node] = 0
+
+    rec = Receiver()
+    ser = Server()
+    ser.start()
+    time.sleep(0.3)
+    rec.start()
+    ser.join()
+    rec.join()
+
+    print(N)
+
+    for i in range(1, N + 1):
+        print(N - 1, end=' ')
+        for j in range(1, N + 1):
+            if i != j:
+                if d[i][j] == 10 ** 123:
+                    print(j, 'inf', end=' ')
+                else:
+                    print(j, d[i][j], end=' ')
+        print()

@@ -1,0 +1,54 @@
+import os
+import collections
+import re
+
+# Constants
+DATA_DIR = "data"
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+WORDS_TO_REMOVE = [
+    "intj", "intp", "infj", "infp", "istj", "istp", "isfj", "isfp",
+    "entj", "entp", "enfj", "enfp", "estj", "estp", "esfj", "esfp",
+    "si", "ni", "ti", "fi", "se", "ne", "te", "fe", "nt", "nf",
+    "sxsp", "spsx", "spso", "sxso", "sosp", "sosx", "sp", "sx",
+    "sj", "sf", "st", "le", "socionic", "socionics", "enneagram",
+    "d", "w", "mbti",
+]
+
+# Function to count occurrences of words in a file
+def count_word_occurrences(file_path):
+    with open(file_path, "r") as file:
+        return collections.Counter(file.read().split())
+
+# Process data for each dimension
+for dimension in DIMENSIONS:
+    # Count word occurrences for each extreme example file
+    wordcount_a = count_word_occurrences(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"))
+    wordcount_b = count_word_occurrences(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"))
+
+    # Combine unique keys from both word counts
+    cache = set(wordcount_a.keys()) | set(wordcount_b.keys())
+
+    # Calculate differences in word counts
+    a = {}
+    b = {}
+    for key in cache:
+        if key in wordcount_a:
+            if key in wordcount_b:
+                diff = wordcount_a[key] - wordcount_b[key]
+                if diff > 0:
+                    a[key] = diff
+                elif diff < 0:
+                    b[key] = -diff
+            else:
+                a[key] = wordcount_a[key]
+        elif key in wordcount_b:
+            b[key] = wordcount_b[key]
+
+    # Write special words to files
+    regex = re.compile("[^a-zA-Z]")
+    for label, wordcount in [("a", a), ("b", b)]:
+        with open(os.path.join(DATA_DIR, f"special_words_{dimension[label]}.txt"), "w") as file:
+            for key, count in wordcount.items():
+                mod = regex.sub("", str(key))
+                if mod not in WORDS_TO_REMOVE and count > 2:
+                    file.write(f"{mod}\n" * count)

@@ -1,0 +1,165 @@
+from matplotlib import pyplot as plt
+from tqdm import tqdm
+from time import time
+from random import randint, shuffle
+
+# Utility Functions
+def generate_random_list(n, low=0, high=100):
+    return [randint(low, high) for _ in range(n)]
+
+def measure_time(func, lst):
+    shuffled_list = lst.copy()
+    shuffle(shuffled_list)
+    start_time = time()
+    func(shuffled_list)
+    end_time = time()
+    return end_time - start_time
+
+def average_sort_time(func, lst, trials=500):
+    total_time = 0
+    for _ in range(trials):
+        total_time += measure_time(func, lst)
+    return total_time / trials
+
+def is_sorted(lst):
+    return all(lst[i] <= lst[i + 1] for i in range(len(lst) - 1))
+
+# Sorting Algorithms
+def insertion_sort(lst):
+    for j in range(1, len(lst)):
+        key = lst[j]
+        i = j - 1
+        while i >= 0 and lst[i] > key:
+            lst[i + 1] = lst[i]
+            i -= 1
+        lst[i + 1] = key
+
+def bubble_sort(lst):
+    n = len(lst)
+    for i in range(n):
+        for j in range(n - i - 1):
+            if lst[j] > lst[j + 1]:
+                lst[j], lst[j + 1] = lst[j + 1], lst[j]
+
+def selection_sort(lst):
+    for i in range(len(lst)):
+        min_idx = i
+        for j in range(i + 1, len(lst)):
+            if lst[j] < lst[min_idx]:
+                min_idx = j
+        lst[i], lst[min_idx] = lst[min_idx], lst[i]
+
+def heap_sort(lst):
+    def sift_down(lst, start, end):
+        root = start
+        while True:
+            child = 2 * root + 1
+            if child > end:
+                break
+            if child + 1 <= end and lst[child] < lst[child + 1]:
+                child += 1
+            if lst[root] < lst[child]:
+                lst[root], lst[child] = lst[child], lst[root]
+                root = child
+            else:
+                break
+
+    for start in range(len(lst) // 2 - 1, -1, -1):
+        sift_down(lst, start, len(lst) - 1)
+    for end in range(len(lst) - 1, 0, -1):
+        lst[end], lst[0] = lst[0], lst[end]
+        sift_down(lst, 0, end - 1)
+
+def merge_sort(lst):
+    if len(lst) > 1:
+        mid = len(lst) // 2
+        left_half = lst[:mid]
+        right_half = lst[mid:]
+        merge_sort(left_half)
+        merge_sort(right_half)
+        i = j = k = 0
+        while i < len(left_half) and j < len(right_half):
+            if left_half[i] < right_half[j]:
+                lst[k] = left_half[i]
+                i += 1
+            else:
+                lst[k] = right_half[j]
+                j += 1
+            k += 1
+        while i < len(left_half):
+            lst[k] = left_half[i]
+            i += 1
+            k += 1
+        while j < len(right_half):
+            lst[k] = right_half[j]
+            j += 1
+            k += 1
+
+def quick_sort(lst):
+    def partition(lst, low, high):
+        pivot = lst[high]
+        i = low - 1
+        for j in range(low, high):
+            if lst[j] < pivot:
+                i += 1
+                lst[i], lst[j] = lst[j], lst[i]
+        lst[i + 1], lst[high] = lst[high], lst[i + 1]
+        return i + 1
+
+    def quick_sort_helper(lst, low, high):
+        if low < high:
+            pi = partition(lst, low, high)
+            quick_sort_helper(lst, low, pi - 1)
+            quick_sort_helper(lst, pi + 1, high)
+
+    quick_sort_helper(lst, 0, len(lst) - 1)
+
+def radix_sort(lst):
+    def counting_sort(lst, exp):
+        output = [0] * len(lst)
+        count = [0] * 10
+        for num in lst:
+            index = num // exp
+            count[index % 10] += 1
+        for i in range(1, 10):
+            count[i] += count[i - 1]
+        i = len(lst) - 1
+        while i >= 0:
+            index = lst[i] // exp
+            output[count[index % 10] - 1] = lst[i]
+            count[index % 10] -= 1
+            i -= 1
+        i = 0
+        for i in range(len(lst)):
+            lst[i] = output[i]
+
+    max_num = max(lst)
+    exp = 1
+    while max_num // exp > 0:
+        counting_sort(lst, exp)
+        exp *= 10
+
+def tim_sort(lst):
+    return sorted(lst)
+
+if __name__ == '__main__':
+    input_sizes = list(range(100, 25000, 500))
+    sort_algorithms = {
+        'bubble_sort': bubble_sort,
+        'selection_sort': selection_sort,
+        'insertion_sort': insertion_sort,
+        'merge_sort': merge_sort,
+        'heap_sort': heap_sort,
+        'quick_sort': quick_sort,
+        'radix_sort': radix_sort
+    }
+
+    sort_times = {algo: [average_sort_time(sort_algorithms[algo], generate_random_list(i)) for i in tqdm(input_sizes, desc=algo)] for algo in sort_algorithms}
+
+    for sort in sort_times:
+        plt.plot(input_sizes, sort_times[sort], label=sort.replace('_', ' ').title())
+
+    plt.legend(loc='lower right')
+    plt.xlabel('List Size')
+    plt.ylabel('Time (Seconds)')
+    plt.show()

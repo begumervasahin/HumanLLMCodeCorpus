@@ -1,0 +1,77 @@
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+class Ui_KeyDialog(object):
+    def setupUi(self, KeyDialog):
+        # Set up the dialog window
+        KeyDialog.setObjectName("KeyDialog")
+        KeyDialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        KeyDialog.resize(261, 138)
+        
+        # Set up the vertical layout
+        self.verticalLayout = QtWidgets.QVBoxLayout(KeyDialog)
+        self.verticalLayout.setObjectName("verticalLayout")
+        
+        # Add label for password entry
+        self.label = QtWidgets.QLabel(KeyDialog)
+        self.label.setObjectName("label")
+        self.label.setText("Enter Your Password:")
+        self.verticalLayout.addWidget(self.label)
+        
+        # Add line edit for password input
+        self.lineEdit = QtWidgets.QLineEdit(KeyDialog)
+        self.lineEdit.setObjectName("lineEdit")
+        self.lineEdit.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.verticalLayout.addWidget(self.lineEdit)
+        
+        # Add label to show/hide password
+        self.label_show = QtWidgets.QLabel(KeyDialog)
+        self.label_show.setObjectName("label_show")
+        self.label_show.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.label_show.setText("<html><head/><body><p><a href=\"ShowPassword\">Show Password</a></p></body></html>")
+        self.verticalLayout.addWidget(self.label_show)
+        
+        # Add spacer item
+        spacerItem = QtWidgets.QSpacerItem(20, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.verticalLayout.addItem(spacerItem)
+        
+        # Add dialog button box
+        self.buttonBox = QtWidgets.QDialogButtonBox(KeyDialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
+        
+        # Connect signals and slots
+        self.retranslateUi(KeyDialog)
+        self.buttonBox.accepted.connect(KeyDialog.accept)
+        self.buttonBox.rejected.connect(KeyDialog.reject)
+        self.label_show.linkActivated['QString'].connect(KeyDialog.show_password)    
+        QtCore.QMetaObject.connectSlotsByName(KeyDialog)
+
+    def retranslateUi(self, KeyDialog):
+        # Translate dialog window and label texts
+        _translate = QtCore.QCoreApplication.translate
+        KeyDialog.setWindowTitle(_translate("KeyDialog", "Password"))
+        self.label.setText(_translate("KeyDialog", "Enter Your Password:"))
+        self.label_show.setText(_translate("KeyDialog", "<html><head/><body><p><a href=\"ShowPassword\">Show Password</a></p></body></html>"))
+
+class KeyDialog(QtWidgets.QDialog):
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_KeyDialog()
+        self.ui.setupUi(self)
+
+    @QtCore.pyqtSlot(str)
+    def show_password(self, password):
+        # Slot to show/hide password based on label click
+        if self.ui.lineEdit.echoMode() == QtWidgets.QLineEdit.Password:
+            self.ui.lineEdit.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.ui.lineEdit.setEchoMode(QtWidgets.QLineEdit.Password)
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    key_dialog = KeyDialog()
+    key_dialog.show()
+    sys.exit(app.exec_())

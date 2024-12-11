@@ -1,0 +1,87 @@
+import time
+from elliptic_curve import EllipticCurve
+from point_addition import PointAddition
+
+def point_doubling(a, b, x, y, field_modulus):
+    """
+    Perform point doubling on an elliptic curve.
+    """
+    curve = EllipticCurve(a, b)
+    x_new, y_new = curve.sum_ee(x, y, field_modulus)
+    return x_new, y_new
+
+def point_addition(a, b, x1, y1, x2, y2, field_modulus, index):
+    """
+    Perform point addition on an elliptic curve.
+    """
+    addition = PointAddition(a, b)
+    x_new, y_new = addition.sum_ee(x1, y1, x2, y2, field_modulus)
+    return x_new, y_new
+
+def ayse():
+    """
+    Perform Ayse's operations for key exchange.
+    """
+    alpha = 2
+    generator_point = key_exchange(alpha, verbose=True)
+    print(f"Ayse publishes {alpha}P: {generator_point}")
+    print("-------------------------------------------")
+    shared_secret_point = bora(generator_point)
+    shared_key = diffie_hellman(shared_secret_point, alpha)
+    print("Ayse's derived key:", shared_key)
+
+def bora(generator_point):
+    """
+    Perform Bora's operations for key exchange.
+    """
+    beta = 5
+    generator_point_bora = key_exchange(beta, verbose=True)
+    print(f"Bora publishes {beta}P: {generator_point_bora}")
+    print("-------------------------------------------")
+    shared_secret_point = diffie_hellman(generator_point, beta)
+    print("Bora's derived key:", shared_secret_point)
+    return shared_secret_point
+
+def key_exchange(k, verbose=False):
+    """
+    Perform key exchange between parties.
+    """
+    a, b = 0, 1
+    base_point = (7, 5)
+    field_modulus = 11
+    generator_point = (1, 1)
+    generator_point = point_doubling(a, b, generator_point[0], generator_point[1], field_modulus)
+    if verbose:
+        print("  P:", base_point)
+    for i in range(3, k + 1):
+        if verbose:
+            print(f"{i-1}P", generator_point)
+        if base_point[0] > generator_point[0]:
+            generator_point = point_addition(a, b, generator_point[0], generator_point[1], base_point[0], base_point[1], field_modulus, i)
+        elif base_point[0] < generator_point[0]:
+            generator_point = point_addition(a, b, base_point[0], base_point[1], generator_point[0], generator_point[1], field_modulus, i)
+    if verbose:
+        print("-------------------------------------------")
+    return generator_point
+
+def diffie_hellman(shared_secret_point, k):
+    """
+    Perform the Diffie-Hellman key exchange.
+    """
+    a, b = 0, 1
+    base_point = shared_secret_point
+    field_modulus = 11
+    generator_point = point_doubling(a, b, base_point[0], base_point[1], field_modulus)
+    for i in range(1, k - 1):
+        if base_point[0] > generator_point[0]:
+            generator_point = point_addition(a, b, generator_point[0], generator_point[1], base_point[0], base_point[1], field_modulus, i)
+        elif base_point[0] < generator_point[0]:
+            generator_point = point_addition(a, b, base_point[0], base_point[1], generator_point[0], generator_point[1], field_modulus, i)
+        print(generator_point)
+    return generator_point
+
+if __name__ == "__main__":
+    timestamp1 = time.time()
+    ayse()
+    timestamp2 = time.time()
+    print("Execution time: %.2f seconds" % (timestamp2 - timestamp1))

@@ -1,0 +1,49 @@
+import pickle
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectPercentile, f_classif
+
+def preprocess(words_file="../tools/word_data.pkl", authors_file="../tools/email_authors.pkl"):
+    """
+    This function preprocesses email data for classification.
+
+    Args:
+    - words_file (str): Path to the file containing email texts.
+    - authors_file (str): Path to the file containing author labels.
+
+    Returns:
+    - features_train_transformed (numpy.ndarray): Transformed training features.
+    - features_test_transformed (numpy.ndarray): Transformed testing features.
+    - labels_train (numpy.ndarray): Training labels.
+    - labels_test (numpy.ndarray): Testing labels.
+    """
+    # Load author labels
+    with open(authors_file, "rb") as authors_file_handler:
+        authors = pickle.load(authors_file_handler)
+
+    # Load email texts
+    with open(words_file, "rb") as words_file_handler:
+        word_data = pickle.load(words_file_handler)
+
+    # Split data into training and testing sets
+    features_train, features_test, labels_train, labels_test = train_test_split(word_data, authors,
+                                                                                 test_size=0.1,
+                                                                                 random_state=42)
+
+    # Vectorize email texts into TF-IDF matrix
+    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, stop_words='english')
+    features_train_transformed = vectorizer.fit_transform(features_train)
+    features_test_transformed = vectorizer.transform(features_test)
+
+    # Select most important features
+    selector = SelectPercentile(f_classif, percentile=10)
+    selector.fit(features_train_transformed, labels_train)
+    features_train_transformed = selector.transform(features_train_transformed).toarray()
+    features_test_transformed = selector.transform(features_test_transformed).toarray()
+
+    # Print number of emails for each author in training set
+    print("No. of Chris training emails:", np.sum(labels_train))
+    print("No. of Sara training emails:", len(labels_train) - np.sum(labels_train))
+
+    return features_train_transformed, features_test_transformed, labels_train, labels_test

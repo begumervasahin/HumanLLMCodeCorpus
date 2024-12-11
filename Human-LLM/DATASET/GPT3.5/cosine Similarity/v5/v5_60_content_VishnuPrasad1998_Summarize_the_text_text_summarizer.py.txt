@@ -1,0 +1,80 @@
+import nltk
+from nltk.corpus import stopwords
+from nltk.cluster.util import cosine_distance
+import numpy as np
+import networkx as nx
+
+def read_article(file_name):
+    """
+    Read the content of a text file and split it into sentences.
+    """
+    with open(file_name, "r") as file:
+        filedata = file.read()
+    # Split the text into sentences
+    sentences = [sentence.split() for sentence in filedata.split(". ")]
+    sentences.pop()  # Remove the last empty sentence
+    return sentences
+
+def sentence_similarity(sent1, sent2, stopwords=None):
+    """
+    Compute the cosine similarity between two sentences.
+    """
+    if stopwords is None:
+        stopwords = []
+    # Convert words to lowercase
+    sent1 = [w.lower() for w in sent1]
+    sent2 = [w.lower() for w in sent2]
+    all_words = list(set(sent1 + sent2))
+    # Initialize vectors for sentence representation
+    vector1 = [0] * len(all_words)
+    vector2 = [0] * len(all_words)
+    # Update vectors with word counts
+    for w in sent1:
+        if w in stopwords:
+            continue
+        vector1[all_words.index(w)] += 1
+    for w in sent2:
+        if w in stopwords:
+            continue
+        vector2[all_words.index(w)] += 1
+    # Compute cosine distance between the two vectors
+    return 1 - cosine_distance(vector1, vector2)
+
+def build_similarity_matrix(sentences, stop_words):
+    """
+    Build a similarity matrix based on cosine similarity between sentences.
+    """
+    similarity_matrix = np.zeros((len(sentences), len(sentences)))
+    for idx1, sent1 in enumerate(sentences):
+        for idx2, sent2 in enumerate(sentences):
+            if idx1 != idx2:
+                similarity_matrix[idx1][idx2] = sentence_similarity(sent1, sent2, stop_words)
+    return similarity_matrix
+
+def generate_summary(file_name, top_n=5):
+    """
+    Generate a summary of the text file using the PageRank algorithm.
+    """
+    nltk.download("stopwords")
+    # Get English stopwords
+    stop_words = set(stopwords.words('english'))
+    summarize_text = []
+    sentences = read_article(file_name)
+    # Build similarity matrix
+    similarity_matrix = build_similarity_matrix(sentences, stop_words)
+    # Convert similarity matrix to a graph
+    sentence_similarity_graph = nx.from_numpy_array(similarity_matrix)
+    # Compute scores using PageRank algorithm
+    scores = nx.pagerank(sentence_similarity_graph)
+    # Sort sentences based on scores
+    ranked_sentences = sorted(((scores[i], s) for i, s in enumerate(sentences)), reverse=True)
+    print("Indexes of top ranked sentences order are", ranked_sentences)
+    # Select top-ranked sentences for summary
+    for i in range(top_n):
+        summarize_text.append(" ".join(ranked_sentences[i][1]))
+    # Write the summary to a file
+    with open("summary.txt", "w") as file:
+        file.write("\n".join(summarize_text))
+
+# Generate a summary for the provided text file with 2 sentences
+generate_summary("test.txt", 2)

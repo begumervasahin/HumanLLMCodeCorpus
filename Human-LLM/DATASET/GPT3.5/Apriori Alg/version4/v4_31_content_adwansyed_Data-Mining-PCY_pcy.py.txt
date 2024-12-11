@@ -1,0 +1,92 @@
+import time
+import itertools
+
+# Global variables
+pairs_hashtable = {}
+frequent_pairs = {}
+num_buckets = 10
+num_baskets = 10
+support_threshold = 0.2
+bitmap = [0] * num_buckets
+
+# Hash function for frequent pairs hash table
+def hash_pair(n1, n2):
+    return ((n1 * n1) + (n2 * n2)) % num_buckets
+
+# PCY algorithm
+def pcy(baskets, threshold, start_time):
+    # Pass 1: Generate singletons with counts
+    singletons = {}
+    for transaction in baskets:
+        for item in transaction.split():
+            singletons[item] = singletons.get(item, 0) + 1
+
+    # Prune frequent single items from singletons
+    frequent_single_items = {key: count for key, count in singletons.items() if count > len(baskets) * threshold}
+
+    # Store frequent singletons for data manipulation on list
+    frequent_singletons = list(frequent_single_items.keys())
+
+    # Generate pairs and update pairs hashtable
+    for key in itertools.combinations(frequent_singletons, 2):
+        hash_value = hash_pair(int(key[0]), int(key[1]))
+        pairs_hashtable[hash_value] = pairs_hashtable.get(hash_value, 0) + 1
+
+    # Between passes: Update bitmap based on pairs hashtable
+    for key in sorted(pairs_hashtable.keys()):
+        if pairs_hashtable[key] >= 2:
+            bitmap[key] = 1
+
+    # Pass 2: Generate frequent pairs
+    for i in range(len(frequent_singletons)):
+        for j in range(i + 1, len(frequent_singletons)):
+            hash_value = hash_pair(int(frequent_singletons[i]), int(frequent_singletons[j]))
+            if bitmap[hash_value] > 0:
+                candidate_pair = frequent_singletons[i] + ", " + frequent_singletons[j]
+                frequent_pairs[candidate_pair] = frequent_pairs.get(candidate_pair, 0) + 1
+
+    # Print frequent pairs and time taken
+    print(frequent_pairs)
+    print(" ")
+    print(time.time() - start_time, ": Generated frequent pairs")
+
+# Function to run PCY on a file with designated baskets and record timestamps
+def run(threshold, num_baskets, file_name):
+    dataset_file = file_name
+    num_lines = sum(1 for line in open(dataset_file))
+    print("Number of lines: ", num_lines)
+
+    basket_size = num_lines / num_baskets
+    print("Basket size: ", basket_size)
+
+    list_of_baskets = []
+    basket = []
+
+    count = 0 # Counter
+    basket_count = 0
+    with open(dataset_file) as file:
+        for line in file:
+            basket.append(line)
+            if count > basket_size:
+                list_of_baskets.append(basket)
+                basket.clear()
+                basket.append(line)
+                basket_count += 1
+                count = 0
+            count += 1
+        list_of_baskets.append(basket)
+        basket_count += 1
+    print("Number of baskets: ", len(list_of_baskets))
+
+    total_time = 0
+    for i in range(len(list_of_baskets)):
+        # Start the clock
+        start = time.time()
+        pcy(list_of_baskets[i], threshold, start)
+        end = time.time()
+        print("Time taken in seconds for basket %d: " % (i), end - start)
+        total_time += (end - start)
+    print("Total time taken to run: ", total_time)
+
+# Running PCY algorithm
+run(support_threshold, num_baskets, "retail.dat")

@@ -1,0 +1,55 @@
+import numpy as np
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from app.src.spam_classify import HAM_DATA, SPAM_DATA, load_email, TEST_DATA
+from app.src.import_data import crawl_data
+
+# Crawling data
+crawl_data()
+crawl_data(test=True)
+
+# Limiting the number of emails
+LIMIT = 2000
+
+# Initializing TfidfVectorizer
+vectorizer = TfidfVectorizer('english')
+
+# Loading emails
+ham_emails = [email for email in load_email(HAM_DATA, limit=LIMIT)]
+spam_emails = [email for email in load_email(SPAM_DATA, limit=LIMIT)]
+test_emails = [email for email in load_email(TEST_DATA)]
+
+# Concatenating ham and spam emails
+X = np.array(ham_emails + spam_emails)
+Y = np.array([0] * len(ham_emails) + [1] * len(spam_emails))
+
+# Preparing feature matrix
+X_prepared = vectorizer.fit_transform(X)
+
+# Splitting data into training and testing sets
+X_train, X_test, Y_train, Y_test = train_test_split(
+    X_prepared, Y, test_size=0.2, random_state=42)
+
+# Initializing Multinomial Naive Bayes classifier
+mnb = MultinomialNB(alpha=.2)
+
+# Training the classifier
+mnb.fit(X_train, Y_train)
+
+# Preparing test data
+X_tests = np.array(test_emails)
+Y_tests = np.array([1] * len(test_emails))
+
+# Transforming test data
+X_test_prepared = vectorizer.transform(X)
+
+# Predicting on the prepared data
+result = mnb.predict(X_prepared)
+
+# Calculating accuracy score
+score = accuracy_score(Y, result)
+
+# Printing the accuracy score
+print("Accuracy Score:", score)
