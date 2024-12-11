@@ -1,0 +1,66 @@
+import RPi.GPIO as GPIO
+from time import sleep
+
+class Vibrators:
+    def __init__(self):
+        # Define GPIO pins for the left and right vibrators
+        self.left_pin = 12
+        self.right_pin = 13
+
+        # Set GPIO mode and configure pins as output
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.left_pin, GPIO.OUT)
+        GPIO.setup(self.right_pin, GPIO.OUT)
+
+        # Initialize PWM objects for the left and right vibrators
+        self.left_pwm = GPIO.PWM(self.left_pin, 100)
+        self.right_pwm = GPIO.PWM(self.right_pin, 100)
+
+        # Start PWM with an initial duty cycle of 0 (OFF)
+        self.left_pwm.start(0)
+        self.right_pwm.start(0)
+
+        # Define PWM duty cycle levels
+        self.DUTY_CYCLE_HIGH = 100
+        self.DUTY_CYCLE_MID = 50
+        self.DUTY_CYCLE_OFF = 0
+
+        # Define vibration profiles with corresponding left and right duty cycles
+        self.profiles = {
+            "NO CHANGE": [self.DUTY_CYCLE_OFF, self.DUTY_CYCLE_OFF],
+            "LEFT": [self.DUTY_CYCLE_MID, self.DUTY_CYCLE_OFF],
+            "MORE LEFT": [self.DUTY_CYCLE_HIGH, self.DUTY_CYCLE_OFF],
+            "RIGHT": [self.DUTY_CYCLE_OFF, self.DUTY_CYCLE_MID],
+            "MORE RIGHT": [self.DUTY_CYCLE_OFF, self.DUTY_CYCLE_HIGH]
+        }
+
+    # Method to set the magnitude of the left vibrator
+    def set_left_vibration(self, magnitude):
+        self.left_pwm.ChangeDutyCycle(magnitude)
+
+    # Method to set the magnitude of the right vibrator
+    def set_right_vibration(self, magnitude):
+        self.right_pwm.ChangeDutyCycle(magnitude)
+
+    # Method to set the vibration profile
+    def set_profile(self, profile):
+        if profile in self.profiles:
+            left_mag, right_mag = self.profiles[profile]
+            self.set_left_vibration(left_mag)
+            self.set_right_vibration(right_mag)
+        else:
+            print("Unsupported Profile")
+
+if __name__ == "__main__":
+    # Create an instance of the Vibrators class
+    vibrators = Vibrators()
+
+    # Set the profile to LEFT for 3 seconds
+    vibrators.set_profile("LEFT")
+    sleep(3)
+
+    # Set the profile back to NO CHANGE
+    vibrators.set_profile("NO CHANGE")
+
+    # Clean up GPIO resources
+    GPIO.cleanup()

@@ -1,0 +1,308 @@
+import sys
+import csv
+import argparse
+import json
+import os
+from collections import namedtuple
+from itertools import combinations, chain
+
+# Metadata
+__version__ = '1.1.1'
+__author__ = 'Yu Mochizuki'
+__author_email__ = 'ymoch.dev@gmail.com'
+
+# Define named tuples for clarity
+SupportRecord = namedtuple('SupportRecord', ['items', 'support'])
+OrderedStatistic = namedtuple('OrderedStatistic', ['items_base', 'items_add', 'confidence', 'lift'])
+RelationRecord = namedtuple('RelationRecord', SupportRecord._fields + ('ordered_statistics',))
+
+class TransactionManager:
+    """
+    Transaction manager class.
+    """
+
+    def __init__(self, transactions):
+        """
+        Initialize TransactionManager.
+
+        Arguments:
+            transactions: An iterable of transactions, e.g., [['A', 'B'], ['B', 'C']].
+        """
+        self.__num_transactions = 0
+        self.__items = []
+        self.__transaction_index_map = {}
+
+        # Populate transaction index map
+        for transaction in transactions:
+            self.add_transaction(transaction)
+
+    def add_transaction(self, transaction):
+        """
+        Add a transaction to the manager.
+
+        Arguments:
+            transaction: A transaction as an iterable object, e.g., ['A', 'B'].
+        """
+        for item in transaction:
+            if item not in self.__transaction_index_map:
+                self.__items.append(item)
+                self.__transaction_index_map[item] = set()
+            self.__transaction_index_map[item].add(self.__num_transactions)
+        self.__num_transactions += 1
+
+    def calc_support(self, items):
+        """
+        Calculate support for a set of items.
+
+        Arguments:
+            items: Items as an iterable object, e.g., ['A', 'B'].
+
+        Returns:
+            Support value as a float.
+        """
+        if not items:
+            return 1.0
+        if not self.__num_transactions:
+            return 0.0
+
+        # Calculate support based on transaction index map
+        sum_indexes = None
+        for item in items:
+            indexes = self.__transaction_index_map.get(item)
+            if indexes is None:
+                return 0.0
+            if sum_indexes is None:
+                sum_indexes = indexes
+            else:
+                sum_indexes = sum_indexes.intersection(indexes)
+
+        return float(len(sum_indexes)) / self.__num_transactions
+
+    def initial_candidates(self):
+        """
+        Generate initial candidates.
+
+        Returns:
+            List of initial candidates.
+        """
+        return [frozenset([item]) for item in self.__items]
+
+    @staticmethod
+    def create(transactions):
+        """
+        Create a TransactionManager instance.
+
+        Arguments:
+            transactions: List of transactions.
+
+        Returns:
+            TransactionManager instance.
+        """
+        if isinstance(transactions, TransactionManager):
+            return transactions
+        return TransactionManager(transactions)
+
+def create_next_candidates(prev_candidates, length):
+    """
+    Generate next candidates.
+
+    Arguments:
+        prev_candidates: Previous candidates.
+        length: Length of the next candidates.
+
+    Returns:
+        List of next candidates.
+    """
+    item_set = set()
+    for candidate in prev_candidates:
+        item_set |= set(candidate)
+    items = sorted(item_set)
+
+    tmp_next_candidates = (frozenset(x) for x in combinations(items, length))
+
+    if length < 3:
+        return list(tmp_next_candidates)
+
+    next_candidates = [
+        candidate for candidate in tmp_next_candidates
+        if all(frozenset(x) in prev_candidates for x in combinations(candidate, length - 1))
+    ]
+    return next_candidates
+
+def gen_support_records(transaction_manager, min_support, **kwargs):
+    """
+    Generate support records.
+
+    Arguments:
+        transaction_manager: TransactionManager instance.
+        min_support: Minimum support value.
+
+    Keyword Arguments:
+        max_length: Maximum length of relations.
+
+    Yields:
+        SupportRecord instances.
+    """
+    max_length = kwargs.get('max_length')
+
+    candidates = transaction_manager.initial_candidates()
+    length = 1
+    while candidates:
+        relations = set()
+        for relation_candidate in candidates:
+            support = transaction_manager.calc_support(relation_candidate)
+            if support < min_support:
+                continue
+            candidate_set = frozenset(relation_candidate)
+            relations.add(candidate_set)
+            yield SupportRecord(candidate_set, support)
+        length += 1
+        if max_length and length > max_length:
+            break
+        candidates = create_next_candidates(relations, length)
+
+def gen_ordered_statistics(transaction_manager, record):
+    """
+    Generate ordered statistics.
+
+    Arguments:
+        transaction_manager: TransactionManager instance.
+        record: SupportRecord instance.
+
+    Yields:
+        OrderedStatistic instances.
+    """
+    items = record.items
+    for combination_set in combinations(sorted(items), len(items) - 1):
+        items_base = frozenset(combination_set)
+        items_add = frozenset(items.difference(items_base))
+        confidence = record.support / transaction_manager.calc_support(items_base)
+        lift = confidence / transaction_manager.calc_support(items_add)
+        yield OrderedStatistic(items_base, items_add, confidence, lift)
+
+def filter_ordered_statistics(ordered_statistics, **kwargs):
+    """
+    Filter ordered statistics.
+
+    Arguments:
+        ordered_statistics: Iterable of OrderedStatistic instances.
+
+    Keyword Arguments:
+        min_confidence: Minimum confidence value.
+        min_lift: Minimum lift value.
+
+    Yields:
+        Filtered OrderedStatistic instances.
+    """
+    min_confidence = kwargs.get('min_confidence', 0.0)
+    min_lift = kwargs.get('min_lift', 0.0)
+
+    for ordered_statistic in ordered_statistics:
+        if ordered_statistic.confidence < min_confidence or ordered_statistic.lift < min_lift:
+            continue
+        yield ordered_statistic
+
+def apriori(transactions, **kwargs):
+    """
+    Execute Apriori algorithm.
+
+    Arguments:
+        transactions: Iterable of transactions.
+
+    Keyword Arguments:
+        min_support: Minimum support value.
+        min_confidence: Minimum confidence value.
+        min_lift: Minimum lift value.
+        max_length: Maximum length of the relation.
+
+    Yields:
+        RelationRecord instances.
+    """
+    min_support = kwargs.get('min_support', 0.1)
+    min_confidence = kwargs.get('min_confidence', 0.0)
+    min_lift = kwargs.get('min_lift', 0.0)
+    max_length = kwargs.get('max_length', None)
+
+    if min_support <= 0:
+        raise ValueError('Minimum support must be > 0')
+
+    transaction_manager = TransactionManager.create(transactions)
+    support_records = gen_support_records(transaction_manager, min_support, max_length=max_length)
+
+    for support_record in support_records:
+        ordered_statistics = list(filter_ordered_statistics(gen_ordered_statistics(transaction_manager, support_record), min_confidence=min_confidence, min_lift=min_lift))
+        if not ordered_statistics:
+            continue
+        yield RelationRecord(support_record.items, support_record.support, ordered_statistics)
+
+def parse_args(argv):
+    """
+    Parse command line arguments.
+
+    Arguments:
+        argv: List of command line arguments.
+
+    Returns:
+        Parsed arguments.
+    """
+    output_funcs = {'json': dump_as_json}
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s {0}'.format(__version__))
+    parser.add_argument('input', metavar='inpath', nargs='*', help='Input transaction file (default: stdin)', type=argparse.FileType('r'), default=[sys.stdin])
+    parser.add_argument('-o', '--output', metavar='outpath', help='Output file (default: stdout)', type=argparse.FileType('w'), default=sys.stdout)
+    parser.add_argument('-l', '--max-length', metavar='int', help='Max length of relations (default: infinite)', type=int, default=None)
+    parser.add_argument('-s', '--min-support', metavar='float', help='Minimum support ratio (must be > 0, default: 0.1)', type=float, default=0.1)
+    parser.add_argument('-c', '--min-confidence', metavar='float', help='Minimum confidence (default: 0.5)', type=float, default=0.5)
+    parser.add_argument('-t', '--min-lift', metavar='float', help='Minimum lift (default: 0.0)', type=float, default=0.0)
+    parser.add_argument('-f', '--out-format', metavar='str', help='Output format (json; default: json)', type=str, choices=output_funcs.keys(), default='json')
+    args = parser.parse_args(argv)
+    args.output_func = output_funcs[args.out_format]
+    return args
+
+def load_transactions(input_file, **kwargs):
+    """
+    Load transactions from a file.
+
+    Arguments:
+        input_file: Input file.
+
+    Keyword Arguments:
+        delimiter: Transaction delimiter.
+
+    Yields:
+        Transaction lists.
+    """
+    delimiter = kwargs.get('delimiter', '\t')
+    for transaction in csv.reader(input_file, delimiter=delimiter):
+        yield transaction if transaction else ['']
+
+def dump_as_json(record, output_file):
+    """
+    Dump relation record as JSON.
+
+    Arguments:
+        record: RelationRecord instance.
+        output_file: File to output.
+    """
+    def default_func(value):
+        if isinstance(value, frozenset):
+            return sorted(value)
+        raise TypeError(repr(value) + " is not JSON serializable")
+
+    converted_record = record._replace(ordered_statistics=[x._asdict() for x in record.ordered_statistics])
+    json.dump(converted_record._asdict(), output_file, default=default_func, ensure_ascii=False)
+    output_file.write(os.linesep)
+
+def main(**kwargs):
+    """
+    Main function to execute Apriori algorithm.
+    """
+    args = parse_args(sys.argv[1:])
+    transactions = load_transactions(chain(*args.input), delimiter='\t')
+    result = apriori(transactions, max_length=args.max_length, min_support=args.min_support, min_confidence=args.min_confidence)
+    for record in result:
+        args.output_func(record, args.output)
+
+if __name__ == '__main__':
+    main()

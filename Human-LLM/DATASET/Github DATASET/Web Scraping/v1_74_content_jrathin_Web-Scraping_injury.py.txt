@@ -1,0 +1,28 @@
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+
+def injuryScrap():
+    url = 'https://www.online-betting.me.uk/germany-bundesliga-injuries-and-suspensions.php'
+
+    # Use requests to get the initial HTML content
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Extracting injury information directly from HTML content
+    injury_table = soup.find('div', {'id': 'main-content'}).find('div', {'class': 'injuries-table-container'}).find('table', {'class': 'injurytable'})
+    
+    # Collecting injury data into a list
+    injury_list = []
+    for row in injury_table.find_all('tr')[1:]:  # Start from index 1 to skip the header row
+        columns = row.find_all('td')
+        team = columns[0].text.strip()
+        player = columns[1].text.strip()
+        injury_list.append({'team': team, 'player': player})
+
+    return injury_list
+
+# Example usage
+injuries = injuryScrap()
+for injury in injuries:
+    print(injury)

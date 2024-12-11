@@ -1,0 +1,32 @@
+import socket
+import random
+
+# Establish a socket connection
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+SERVER_HOST = '127.0.0.1'
+SERVER_PORT = 5050
+client_socket.connect((SERVER_HOST, SERVER_PORT))
+
+# Receive prime number (q) and primitive root (alpha) from the server
+q = int(client_socket.recv(1024))
+alpha = int(client_socket.recv(1024))
+
+# Generate a random private key (Xb)
+private_key_b = random.randint(1, q)
+
+# Calculate public key (Yb) using the Diffie-Hellman key exchange formula
+public_key_b = pow(alpha, private_key_b, q)
+print("Generated Public Key (Yb):", public_key_b)
+
+# Send Yb to the server
+client_socket.send(str(public_key_b).encode())
+
+# Receive Ya from the server
+public_key_a = int(client_socket.recv(1024))
+
+# Calculate the shared symmetric key (Kb) using the received Ya and Xb
+shared_key_b = pow(public_key_a, private_key_b, q)
+print("Shared Symmetric Key (Kb):", shared_key_b)
+
+# Close the connection
+client_socket.close()

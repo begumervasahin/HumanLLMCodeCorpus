@@ -1,0 +1,53 @@
+# Import necessary libraries
+from LSBSteg import LSBSteg  # Assuming LSBSteg class is implemented in the LSBSteg module
+import cv2  # OpenCV library for image processing
+from flask import Flask, render_template, request  # Flask for creating web application
+import numpy as np  # NumPy for array manipulation
+
+# Create a Flask application
+app = Flask(__name__, instance_relative_config=True)
+app.config['DEBUG'] = True  # Enable debug mode
+app.config['SECRET_KEY'] = 'secret_xxx'  # Secret key for session security
+
+# Route for the homepage
+@app.route('/')
+def index():
+    return render_template("index.html")  # Render the HTML template for the homepage
+
+# Function to encode text into an image
+def encode_text_into_image(file, text):
+    img_array = np.fromstring(file.read(), np.uint8)  # Convert the image file into a NumPy array
+    image = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)  # Decode the image
+    steg = LSBSteg(image)  # Create an LSBSteg object
+    encoded_image = steg.encode_text(text)  # Encode the text into the image
+    cv2.imwrite("my_new_image.png", encoded_image)  # Save the encoded image
+    return "berhasil menyisipkan"  # Success message
+
+# Route for encoding text into an image
+@app.route('/api/encode', methods=['POST'])
+def encode():
+    if request.method == 'POST':  # Check if the request method is POST
+        file = request.files['file_gambar']  # Get the uploaded image file
+        text = request.form['text']  # Get the text to be encoded
+        message = encode_text_into_image(file, text)  # Encode text into the image
+        return render_template("index.html", pesan=message)  # Render the homepage with success message
+
+# Function to decode text from an image
+def decode_text_from_image(file):
+    img_array = np.fromstring(file.read(), np.uint8)  # Convert the image file into a NumPy array
+    image = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)  # Decode the image
+    steg = LSBSteg(image)  # Create an LSBSteg object
+    decoded_text = steg.decode_text().decode("utf-8")  # Decode the text from the image
+    return decoded_text
+
+# Route for decoding text from an image
+@app.route('/api/decode', methods=['POST'])
+def decode():
+    file = request.files['file_gambar']  # Get the uploaded image file
+    decoded_message = decode_text_from_image(file)  # Decode text from the image
+    print(decoded_message)  # Print the decoded message
+    return render_template("index.html", pesan=decoded_message)  # Render the homepage with the decoded message
+
+# Main block to run the Flask application
+if __name__ == '__main__':
+    app.run()  # Run the Flask application

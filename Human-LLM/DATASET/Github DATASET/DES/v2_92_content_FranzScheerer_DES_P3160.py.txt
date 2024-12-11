@@ -1,0 +1,165 @@
+import random
+import hashlib
+
+# Function to write a number to a file
+def write_number(number, filename):
+    with open(filename, 'wb') as file:
+        while number > 0:
+            byte = number & 0xFF
+            number >>= 8
+            file.write(bytes([byte]))
+
+# Function to read a number from a file
+def read_number(filename):
+    with open(filename, 'rb') as file:
+        number = 0
+        for byte in reversed(file.read()):
+            number = (number << 8) ^ byte
+    return number
+
+# Convert hexadecimal text to integer
+def hex_text_to_number(hex_text):
+    res = 0
+    for char in hex_text:
+        if '0' <= char <= '9':
+            res = (res << 4) + ord(char) - ord('0')
+        elif 'a' <= char <= 'f':
+            res = (res << 4) + ord(char) - ord('a') + 10
+        elif 'A' <= char <= 'F':
+            res = (res << 4) + ord(char) - ord('A') + 10
+    return res
+
+# Calculate modular inverse
+def inverse(b, m):
+    s, t, a = 0, 1, m
+    while b != 1:
+        q, a, b = a // b, b, a % b
+        s, t = t, s - q * t
+    if t < 0:
+        t += m
+    return t
+
+# Hash function using SHA-256
+def hash_sha256(x):
+    digest = hashlib.sha256(x.encode(encoding='UTF-8')).hexdigest()
+    res = 0
+    for char in digest:
+        res = (res << 8) ^ ord(char)
+    return res
+
+# Generate point P on elliptic curve
+def generate_point(x, a, b):
+    while pow(x ** 3 + a * x + b, (prime - 1) // 2, prime) != 1:
+        x += 1
+    y = pow(x ** 3 + a * x + b, (prime + 1) // 4, prime)
+    return [x % prime, y % prime]
+
+# Add two points on elliptic curve
+def add_points(P, Q):
+    x1, x2, y1, y2 = P[0], Q[0], P[1], Q[1]
+    while x1 < x2:
+        x1 += prime
+    if x1 == x2:
+        s = ((3 * (x1 ** 2) + a) * inverse(2 * y1, prime)) % prime
+    else:
+        s = ((y1 - y2) * inverse(x1 - x2, prime)) % prime
+    xr = s ** 2 - x1 - x2
+    yr = s * (x1 - xr) - y1
+    return [xr % prime, yr % prime]
+
+# Multiply a point on elliptic curve by a scalar
+def multiply_point(P, n):
+    resP = P
+    if n < 0:
+        resP[1] = prime - resP[1]
+        n = -n
+    PP = resP
+    isFirst = True
+    while n > 0:
+        if n & 1 != 0:
+            resP = PP if isFirst else add_points(resP, PP)
+            isFirst = False
+        PP = add_points(PP, PP)
+        n //= 2
+    return resP
+
+# Verify signature using ECDSA
+def verify_ecdsa(G, s, Y, e, message):
+    si = inverse(s[0], n4)
+    hh = hash_sha256(message + str(s[1]))
+    u1 = (si * hh) % n4
+    u2 = (si * s[1]) % n4
+    return add_points(multiply_point(G, u1), multiply_point(Y, u2))[0] == s[1]
+
+# ECDSA signature generation
+def sign_ecdsa(G, message, x):
+    k = hash_sha256(message + 'ecdsa')
+    R = multiply_point(G, k)
+    hh = hash_sha256(message + str(R[0]))
+    s = (inverse(k, n4) * (hh + R[0] * x)) % n4
+    return [s, R[0]]
+
+# Verify signature using Schnorr
+def verify_schnorr(G, s, Y, e, message):
+    return e == hash_sha256(str(add_points(multiply_point(G, s), multiply_point(Y, e))[0]) + message)
+
+# Schnorr signature generation
+def sign_schnorr(G, message, x):
+    k = hash_sha256(message + 'kk2')
+    R = multiply_point(G, k)
+    e = hash_sha256(str(R[0]) + message)
+    return [(k - x * e) % n4, e]
+
+# Constants
+prime = hex_text_to_number("05 177B8A2A 0FD6A4FF 55CDA06B 0924E125 F86CAD9B")
+a = hex_text_to_number("04 3182D283 FCE38807 30C9A2FD D3F60165 29A166AF")
+b = hex_text_to_number("02 0C61E945 9E53D887 1BCAADC2 DFC8AD52 25228035")
+n4 = hex_text_to_number("05 177B8A2A 0FD6A4FF 55CCA7B8 A1E21C88 BD53B2C1")
+
+# Generate a point on the elliptic curve
+xx = 1
+while pow(xx ** 3 + a * xx + b, (prime - 1) // 2, prime) != 1:
+    xx += 1
+yy = pow(xx ** 3 + a * xx + b, (prime + 1) // 4, prime)
+P = [xx, yy]
+
+# Read message from file
+with open(sys.argv[1], 'r') as f:
+    message = f.read()
+
+# Read public key and signature from files
+y = [read_number('y0'), read_number('y1')]
+sig = [read_number('s0'), read_number('s1')]
+
+# Print public key and signature
+print("Public key X:", y[0] % prime)
+print("Public key Y:", y[1] % prime)
+print("Signature X:", sig[0])
+print("Signature Y:", sig[1])
+print()
+
+# Verify the signature
+print("Verification of signature:", verify_schnorr(P, sig, y, sig[1], message))
+
+# Generate and verify ECDSA signature
+x = random.randint(2, n4 - 1)
+ydsa = multiply_point(P, x)
+ecdsa_sig = sign_ecdsa(P, message, x)
+print("Verification of ECDSA signature:", verify_ecdsa(P, ecdsa_sig, ydsa, ecdsa_sig[1], message))
+
+# Generate and write Schnorr signature
+private_key = hash_sha256('kk1_' + str(random.randint(2, n4 - 1)))
+schnorr_sig = sign_schnorr(P, message, private_key)
+write_number(schnorr_sig[0], 's0')
+write_number(schnorr_sig[1], 's1')
+
+# Additional security checks
+bit_length = 0
+while 2 ** bit_length < n4:
+    bit_length += 1
+
+print("\nMore security checks")
+print("Bit length:", bit_length)
+print("\nCheck prime:", pow(7, prime - 1, prime) == 1)
+print("Prime order:", pow(7, n4 - 1, n4) == 1)
+print("Period:", P == multiply_point(P, n4 + 1))

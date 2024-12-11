@@ -1,0 +1,41 @@
+import numpy as np
+import pandas as pd
+import os
+from scipy.stats import norm
+from scipy.special import erfinv
+
+# Define file paths
+base_path = os.path.dirname(__file__)
+data_file = os.path.join(base_path, 'IndexData.csv')
+corr_file = os.path.join(base_path, 'IndexCorrelations.csv')
+
+# Read data from CSV file and drop any rows with missing values
+data = pd.read_csv(data_file).dropna()
+
+# Extract relevant columns for analysis
+index_columns = ['Economic', 'Personal', 'Social']
+X = data[index_columns].copy()
+
+# Standardize the data by subtracting the mean
+X_standardized = X - X.mean()
+
+# Perform Singular Value Decomposition (SVD)
+U, S, VT = np.linalg.svd(X_standardized.T / np.sqrt(X_standardized.shape[0] - 1))
+
+# Project the data onto the principal components
+projection = np.dot(U.T, X_standardized.T).T
+
+# Create a combined index by taking the negative of the first principal component and centering it around 5
+combined_index = -projection[:, 0]
+combined_index += (5 - combined_index.mean())
+data['Combined'] = combined_index
+
+# Sort the data by the combined index in descending order
+sorted_data = data.set_index('Countries (2014)').sort_values('Combined', ascending=False)
+
+# Save the sorted data to a new CSV file
+sorted_data.to_csv(data_file)
+
+# Calculate and save the correlation matrix of the data
+correlation_matrix = data.corr()
+correlation_matrix.to_csv(corr_file)

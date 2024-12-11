@@ -1,0 +1,34 @@
+import os
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, padding
+from cryptography.hazmat.primitives.asymmetric import rsa, serialization
+
+# Get the directory path where the script resides
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+# Load the private key from the PEM file
+private_key_file = 'private.pem'
+with open(os.path.join(dir_path, private_key_file), 'rb') as key_file:
+    private_key = serialization.load_pem_private_key(
+        key_file.read(),  # Read the contents of the PEM file
+        password=None,    # No password protection for the private key
+        backend=default_backend()
+    )
+
+# Load the encrypted message from a file
+encrypted_message_file = 'encrypted-message.enc'
+with open(os.path.join(dir_path, encrypted_message_file), 'rb') as encrypted_file:
+    encrypted_message = encrypted_file.read()
+
+# Decrypt the encrypted message using RSA-OAEP padding
+plaintext = private_key.decrypt(
+    encrypted_message,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),  # Mask Generation Function
+        algorithm=hashes.SHA256(),                     # Hash function for OAEP
+        label=None                                     # No additional data for label
+    )
+).decode('utf-8')  # Decode the decrypted bytes into UTF-8 string
+
+# Print the decrypted plaintext
+print("Decrypted message:\n", plaintext)

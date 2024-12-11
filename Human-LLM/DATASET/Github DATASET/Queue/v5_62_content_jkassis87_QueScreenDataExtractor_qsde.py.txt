@@ -1,0 +1,66 @@
+import requests
+import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+
+# Retrieve ticket data from API
+API_URL = 'http://pbx02.apdcsy1.digitalpacific.com.au/tickethistory_api.php'
+API_USER = 'X'
+API_PASSWORD = '5rsMThTeZ22p3MqGpz2xRPGY5hAWrwmx'
+
+response = requests.get(API_URL, auth=(API_USER, API_PASSWORD))
+ticketdata = json.loads(response.text)
+
+# Flatten the ticket data
+ticketvalue = []
+for key, value in ticketdata.items():
+    if isinstance(value, dict):
+        ticketvalue.extend(value.values())
+    else:
+        ticketvalue.append(value)
+
+# Authenticate with Google Sheets API
+SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+CREDS_FILE = 'client_secret.json'
+
+creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE, SCOPE)
+client = gspread.authorize(creds)
+
+# Prepare current date information
+now = datetime.now()
+daynow = now.day
+yearmonth = f"{now.year}-{now.month}"
+
+# Open or create the spreadsheet for the current month
+sh = client.open('qsde_init')
+if now.day == 1:
+    sh = client.create(yearmonth)
+    sh.share('gaetano.egisto@hostopia.com.au', perm_type='user', role='writer')
+else:
+    sh = client.open(yearmonth)
+
+# Add a new worksheet for the current day
+worksheet = sh.add_worksheet(title=str(daynow), rows="17", cols="25")
+
+# Import CSV template into the worksheet
+csv_template = open('qsdetemplate.csv', 'r').read()
+sh_id = sh.id
+client.import_csv(sh_id, csv_template)
+
+# Update worksheet with ticket data
+row, col = 2, 2
+ticket_count = 0
+for value in ticketvalue:
+    if ticket_count < 11:
+        worksheet.update_cell(row, col, value)
+        row += 1
+        ticket_count += 1
+    else:
+        row, col = 2, col + 1
+        worksheet.update_cell(row, col, value)
+        ticket_count = 0
+
+# Exit the script
+import sys
+sys.exit()

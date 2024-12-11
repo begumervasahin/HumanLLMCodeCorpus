@@ -1,0 +1,56 @@
+import socket
+import rsa_encryption as rsa  # Assuming rsa_encryption.py contains the RSA encryption functions
+import sys
+import argparse
+
+# Setting up command-line argument parsing
+parser = argparse.ArgumentParser()
+parser.add_argument("-l", "--length", type=int, help="Minimum number of bits required to represent a symbol (default: 128)", default=128)
+args = parser.parse_args()
+
+# Checking if the provided length is feasible
+primes = rsa.primes  # Assuming rsa.primes contains a list of prime numbers
+if args.length < 128:
+    print("Error: At least a value of 128 is required to represent all ASCII characters uniquely.")
+    sys.exit()
+elif args.length > primes[-1] * primes[-2]:
+    print("Error: Using primes higher than 293 (length > 82919) is outside the scope of this project.")
+    sys.exit()
+
+# Generating RSA keys based on the provided length
+n, e, d = rsa.keygen(args.length)
+
+# Establishing a socket connection
+s = socket.socket()
+host = socket.gethostname()
+port = 60000
+s.connect((host, port))
+
+# Sending a message to the server
+s.send("Hello server!")
+
+# Receiving a file from the server
+filename = "received_file.txt"
+with open(filename, 'wb') as f:
+    print('File opened')
+    while True:
+        print('Receiving data...')
+        data = s.recv(1024)
+        if not data:
+            break
+        f.write(data)
+
+# Closing the file after receiving data
+f.close()
+
+# Decrypting the received file using RSA
+rsa.decode(filename, n, d)
+
+# Printing a success message
+print('Successfully received the file')
+
+# Closing the socket connection
+s.close()
+
+# Printing a message indicating the closure of the connection
+print('Connection closed')

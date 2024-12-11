@@ -1,0 +1,47 @@
+import urllib.request
+from bs4 import BeautifulSoup
+
+# Define the URL to scrape
+url = 'http://cimaclub.com/'
+
+# Open a connection to the URL and read its HTML content
+with urllib.request.urlopen(url) as response:
+    html_content = response.read()
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(html_content, "html.parser")
+
+# Find all the movie elements on the page
+movies = soup.find_all("div", class_="movie")
+
+# Define the name of the file to save the data
+file_name = "todayHomepage.csv"
+
+# Open the file in write mode
+with open(file_name, "w") as file:
+    # Write headers to the CSV file
+    headers = "title, description, category, view, movieUrl\n"
+    file.write(headers)
+    
+    # Loop through each movie element found on the page
+    for movie in movies:
+        # Extract movie details
+        title = movie.find("div", class_="boxcontentFilm").h2.text
+        description = movie.find("div", class_="boxcontentFilm").p.text
+        category = movie.find("span", class_="category").text
+        view = movie.find("span", class_="views").text
+        movie_url = movie.a["href"]
+
+        # Print information about the movie
+        print("Title:", title)
+        print("Description:", description)
+        print("Category:", category)
+        print("Views:", view)
+        print("Movie URL:", movie_url)
+
+        # Write movie details to the CSV file
+        file.write(f"{title.replace(',', ' ')}, {description.replace(',', ' ')}, "
+                   f"{category.replace(',', ' ')}, {view.replace(',', ' ')}, {movie_url.replace(',', ' ')}\n")
+
+# Notify the user that the operation is complete
+print("Data has been successfully written to", file_name)

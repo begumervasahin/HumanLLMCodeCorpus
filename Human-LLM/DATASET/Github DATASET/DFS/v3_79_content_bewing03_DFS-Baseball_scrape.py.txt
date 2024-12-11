@@ -1,0 +1,47 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+# Function to scrape MLB probable pitchers data
+def scrape_mlb_pitchers():
+    mlb_url = "http://mlb.mlb.com/news/probable_pitchers/index.jsp?c_id=mlb"
+    mlb_response = requests.get(mlb_url)
+    mlb_soup = BeautifulSoup(mlb_response.content, 'lxml')
+    pitchers = mlb_soup.find_all('a')
+    del pitchers[:243]  # Remove unwanted elements
+
+    stopwords = ['x', '\n\n', '', 'Facebook', 'Twitter', 'Google Plus', 'Terms of Use', 'Career stats',
+                 'Privacy Policy (updated January 20, 2016)', 'MLB.TV', 'About Our Ads', 'At Bat with Audio',
+                 'Legal Notices', 'Back To Top', 'Contact Us', 'View MLB.com in English', 'En Español']
+
+    # Filter out stopwords
+    filtered_pitchers = [pitcher.text for pitcher in pitchers if pitcher.text not in stopwords]
+    return filtered_pitchers
+
+# Function to scrape Fangraphs data
+def scrape_fangraphs():
+    fangraphs_url = "https://www.fangraphs.com/leaders.aspx?pos=all&stats=bat&lg=all&qual=y&type=8&season=2017&month=0&season1=2017&ind=0&team=0&rost=0&age=0&filter=&players=0&page=1_50"
+    fangraphs_response = requests.get(fangraphs_url)
+    fangraphs_soup = BeautifulSoup(fangraphs_response.content, 'lxml')
+    table = fangraphs_soup.find_all('table', id="LeaderBoard1_dg1_ctl00")
+    df = pd.read_html(str(table))[0]
+
+    # Drop the last row
+    df.drop(df.tail(1).index, inplace=True)
+    return df
+
+# Main function
+def main():
+    # Scrape MLB probable pitchers data
+    mlb_pitchers = scrape_mlb_pitchers()
+    print("Today's Starting Pitchers:")
+    for pitcher in mlb_pitchers:
+        print(pitcher)
+
+    # Scrape Fangraphs data
+    fangraphs_data = scrape_fangraphs()
+    print("\nFangraphs Data:")
+    print(fangraphs_data)
+
+if __name__ == "__main__":
+    main()

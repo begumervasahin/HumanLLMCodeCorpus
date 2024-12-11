@@ -1,0 +1,74 @@
+from byte_utils import bytes_from_hex
+from keys500 import key
+from softAESr import AESr
+from AESUtils import mix_col, SBOX, getGmulInv, Gmul
+from collections import defaultdict
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+
+verbose = False
+struct_pairs = True
+num_cipher_for_check = 6
+
+def calc_key_from_diff(a, b):
+    res = [[]] * 256
+    for k in range(256):
+        diff = SBOX[a ^ k] ^ SBOX[b ^ k]
+        res[diff] = res[diff] + [k]
+    return res
+
+def get_col(a, num):
+    if num == 0:
+        return np.array([a[0], a[5], a[10], a[15]], dtype=np.uint8)
+    raise Exception("Unsupported col num")
+
+def mixcol_first_round(p, k, col):
+    plain = get_col(p, col)
+    key = get_col(k, col)
+    return mix_col(plain, key)
+
+def getk5(p0, ptag0, k0, diff0_index):
+    global diff2k5
+    diff0 = SBOX[p0 ^ k0] ^ SBOX[ptag0 ^ k0]
+    if diff0_index == 0:
+        coef0 = 2
+        coef1 = 3
+    if diff0_index == 1:
+        coef0 = 1
+        coef1 = 2
+    if diff0_index == 2:
+        coef0 = 1
+        coef1 = 1
+    if diff0_index == 3:
+        coef0 = 3
+        coef1 = 1
+    coefInv5 = getGmulInv(coef1)
+    diff5 = Gmul(coefInv5, Gmul(coef0, diff0))
+    return diff2k5[diff5]
+
+def get_key_pairs(p0, ptag0, diff0_index):
+    key_pairs = {}
+    for k0 in range(256):
+        k5 = getk5(p0, ptag0, k0, diff0_index)
+        if len(k5) == 2 or len(k5) == 4:
+            key_pairs[k0] = k5
+        elif len(k5) != 0:
+            print(k5)
+            raise Exception('get_key_pairs - len of k5 is bad')
+    return key_pairs
+
+def find_0diff_byte(key, pairs, diff0_index=0):
+    all0diff = []
+    for j in range(len(key)):
+        for i in range(len(pairs)):
+            keyarr = bytes_from_hex(key[j])
+            mixcol0 = mixcol_first_round(pairs[i][0], keyarr, 0)
+            mixcol1 = mixcol_first_round(pairs[i][1], keyarr, 0)
+            diff = mixcol0 ^ mixcol1
+            if diff[diff0_index] == 0:
+                all0diff.append([j, i])
+    return all0diff
+
+# Other functions and main part of the script are omitted for brevity
+# You can continue to replicate the remaining functionality based on the provided code.

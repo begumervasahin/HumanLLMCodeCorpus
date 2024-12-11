@@ -1,0 +1,69 @@
+class Brain:
+    def __init__(self, memory_limit, cleaning_rate):
+        """
+        Initialize the Brain object with given memory limit and cleaning rate.
+
+        Args:
+            memory_limit (int): Maximum memory capacity of the brain.
+            cleaning_rate (float): Cleaning rate as a fraction of the memory capacity.
+        """
+        self.memory = {}             # Dictionary to store memories
+        self.usage_count = {}        # Dictionary to store the usage count of each memory
+        self.memory_limit = memory_limit  # Maximum memory capacity of the brain
+        self.cleaning_rate = cleaning_rate      # Cleaning rate as a fraction of the memory capacity
+
+    def add_memory(self, name, value):
+        """
+        Add a new memory to the brain.
+
+        Args:
+            name (str): Name of the memory.
+            value (int): Value associated with the memory.
+        """
+        name = str(name)  # Ensure name is a string
+        value = int(value)  # Ensure value is an integer
+
+        # If the memory capacity is exceeded, clean up the memory
+        if len(self.memory) >= self.memory_limit:
+            self.clean_memory()
+
+        # Add the new memory to the brain
+        self.memory[name] = value
+        self.usage_count[name] = 1  # Initialize the usage count for the new memory
+
+    def recall_memory(self, name):
+        """
+        Retrieve a memory from the brain.
+
+        Args:
+            name (str): Name of the memory to be retrieved.
+
+        Returns:
+            int: Value of the memory if found, otherwise -1.
+        """
+        if name in self.memory:
+            # If the memory exists, update its usage count and return its value
+            self.usage_count[name] += 1
+            return self.memory[name]
+        else:
+            # If the memory does not exist, return -1
+            return -1
+
+    def clean_memory(self):
+        """Clean up the least used memories from the brain."""
+        print("Cleaning called")
+        # Calculate the number of memories to be cleaned based on the cleaning rate
+        num_to_clean = int(self.memory_limit * self.cleaning_rate)
+
+        # Remove the least used memories until the desired cleaning rate is achieved
+        for _ in range(num_to_clean):
+            least_used_entry = min(self.usage_count.items(), key=lambda x: x[1])
+            self.memory.pop(least_used_entry[0])
+            self.usage_count.pop(least_used_entry[0])
+
+# Example usage
+brain = Brain(memory_limit=100, cleaning_rate=0.5)
+brain.add_memory("A", 10)
+brain.add_memory("B", 20)
+print(brain.recall_memory("A"))
+print(brain.recall_memory("C"))

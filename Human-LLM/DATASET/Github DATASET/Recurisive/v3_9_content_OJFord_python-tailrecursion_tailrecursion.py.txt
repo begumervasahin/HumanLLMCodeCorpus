@@ -1,0 +1,59 @@
+from functools import wraps
+from typing import Callable, Dict, Generic, Tuple, Type, TypeVar, Union, cast
+
+__all__ = ('Recursion', 'tail_recursive')
+
+# Define type variables
+VT = TypeVar('VT')
+KT = TypeVar('KT')
+RT = TypeVar('RT')
+
+# Define type alias for tail-recursive function
+TailRecFunction = Callable[..., RT]
+
+# Define a special type to indicate a value that is not explicitly set by the user
+class NotSet(type):
+    """Indicates a value that is not explicitly set by the user."""
+    pass
+
+# Define a custom exception for recursion
+class Recursion(BaseException, Generic[VT, KT]):
+    """Indicate a recursive call to the function from which this was raised."""
+    def __init__(self, *args: VT, **kwargs: KT) -> None:
+        """Set the values used for the recursive call."""
+        super().__init__()
+        self.args = args
+        self.kwargs = kwargs
+
+# Function to call a function with its raised Recursion args until it returns
+def virtual_recurse(func: TailRecFunction, *args: VT, **kwargs: KT) -> RT:
+    """Call a function with its raised Recursion args until it returns."""
+    result: Union[Type[NotSet], RT] = NotSet
+    while result is NotSet:
+        try:
+            result = func(*args, **kwargs)
+        except Recursion as next_call:
+            args = cast(Tuple[VT, ...], next_call.args)
+            kwargs = cast(Dict[str, KT], next_call.kwargs)
+    return cast(RT, result)
+
+# Decorator to make a function tail recursive
+def tail_recursive(func: TailRecFunction) -> TailRecFunction:
+    """Decorate a function as tail recursive, permitting `raise Recursion`."""
+    @wraps(func)
+    def _trampolined(*args, **kwargs):
+        return virtual_recurse(func, *args, **kwargs)
+    return _trampolined
+
+# Example usage:
+@tail_recursive
+def factorial(n: int, acc: int = 1) -> int:
+    """Calculate factorial recursively."""
+    if n == 0:
+        return acc
+    else:
+        raise Recursion(n - 1, acc * n)
+
+if __name__ == "__main__":
+    result = factorial(5)
+    print("Factorial of 5:", result)

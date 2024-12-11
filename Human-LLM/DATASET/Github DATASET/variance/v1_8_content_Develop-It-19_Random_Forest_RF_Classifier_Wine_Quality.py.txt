@@ -1,0 +1,55 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+from google.colab import drive
+
+# Mount Google Drive
+drive.mount('/content/gdrive')
+
+# Read the dataset
+wine = pd.read_csv('/content/gdrive/My Drive/Colab Notebooks/RedWine/winequality-red.csv')
+
+# Display the contents of the dataset
+print(wine.head())
+
+# Define bins and group names for wine quality
+bins = (2, 6.5, 8)
+group_names = ["bad", "good"]
+wine["quality"] = pd.cut(wine["quality"], bins=bins, labels=group_names)
+
+# Encode wine quality labels
+label_quality = LabelEncoder()
+wine["quality"] = label_quality.fit_transform(wine["quality"])
+
+# Display the counts of each quality category
+print(wine["quality"].value_counts())
+
+# Plot the count of wine quality categories
+sns.countplot(wine["quality"])
+
+# Separate features (X) and target variable (y)
+X = wine.drop("quality", axis=1)
+y = wine["quality"]
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize features by removing the mean and scaling to unit variance
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+# Train the Random Forest Classifier
+rfc = RandomForestClassifier(n_estimators=200)
+rfc.fit(X_train, y_train)
+
+# Make predictions on the test set
+pred_rfc = rfc.predict(X_test)
+
+# Print classification report
+print(classification_report(y_test, pred_rfc))

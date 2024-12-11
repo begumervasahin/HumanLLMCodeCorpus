@@ -1,0 +1,89 @@
+# Import necessary libraries
+from datetime import datetime
+from bs4 import BeautifulSoup
+import numpy as np
+import pandas as pd
+import os
+import time
+
+# Define function to scrape flight data
+def flight_scraper(terminal, journey, driver):
+    # Get today's date
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    # Initialize lists to store flight information
+    journies = []
+    types = []
+    stopovers = []
+    airlines = []
+    airline_logos = []
+    flight_numbers = []
+    statuses = []
+    scheduled_times = []
+    estimated_times = []
+    
+    # Construct URL based on terminal, journey, and date
+    url = "https://www.sydneyairport.com.au/flights/?query=&flightType=" + journey + "&terminalType=" + terminal + "&date=" + today + "&sortColumn=scheduled_time&ascending=true&showAll=true"
+    
+    # Print status message
+    print("Getting data for {}_{} flights".format(terminal, journey))
+    
+    # Load the URL in the provided driver (assumed to be a web driver)
+    driver.get(url)
+    
+    # Parse the HTML content of the page
+    html_soup = BeautifulSoup(driver.page_source, "html.parser")
+    
+    # Find all flight containers on the page
+    flight_containers = html_soup.find_all("div", attrs={"class": "flight-card"})[2:]
+    
+    # Loop through each flight container to extract information
+    for container in flight_containers:
+        # Append the type of flight
+        types.append('static/images/{}_{}.png'.format(terminal, journey))
+        
+        # Append the journey destination
+        journies.append(container.find("div", attrs={"class": "destination-name"}).text)
+        
+        # Append stopover information if available, otherwise '-'
+        if container.find("div", attrs={"class": "city-via"}) is not None:
+            stopovers.append(container.find("div", attrs={"class": "city-via"}).text)
+        else:
+            stopovers.append("-")
+        
+        # Append airline name
+        airlines.append(container.find("span", attrs={"class": "with-image"}).text)
+        
+        # Append airline logo URL
+        airline_logos.append("https://www.sydneyairport.com.au" + container.img['src'])
+        
+        # Append flight number
+        flight_numbers.append(container.find("div", attrs={"class": "heading-medium"}).text)
+        
+        # Append flight status
+        statuses.append(container.find("div", attrs={"class": "status"}).text)
+        
+        # Append scheduled time (only the first 5 characters)
+        scheduled_times.append(container.find("div", attrs={"class": "large-scheduled-time"}).text[0:5])
+        
+        # Append estimated time (only the first 5 characters)
+        estimated_times.append(container.find("div", attrs={"class": "estimated-time"}).text[0:5])
+    
+    # Compile all flight information into a dictionary
+    flights = {
+        'Type': types,
+        'Journey': journies,
+        'Stopover': stopovers,
+        'Airline': airlines,
+        'Logo': airline_logos,
+        'Flight number': flight_numbers,
+        'Status': statuses,
+        'Scheduled time': scheduled_times,
+        'Estimated time': estimated_times
+    }
+    
+    # Print completion message
+    print("Finished getting data for {}_{} flights".format(terminal, journey))
+    
+    # Return the dictionary containing flight information
+    return flights

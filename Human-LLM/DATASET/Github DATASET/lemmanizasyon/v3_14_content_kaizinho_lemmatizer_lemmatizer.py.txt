@@ -1,0 +1,56 @@
+import re
+import json
+
+def lemmatize(sentence, word_list):
+    """
+    Lemmatize a sentence using a given word list.
+    
+    Args:
+        sentence (str): The sentence to lemmatize.
+        word_list (dict): A dictionary containing words and their lemmas.
+        
+    Returns:
+        str: The lemmatized sentence.
+    """
+    lemmatized_sentence = " ".join(word_list.get(word, word) for word in sentence.split())
+    return lemmatized_sentence.strip()
+
+def extract_words(raw_data_file, filename="data/swedish_words.json"):
+    """
+    Extract words and their lemmas from raw data and store them in a JSON file.
+    
+    Args:
+        raw_data_file (str): The path to the raw data file.
+        filename (str): The name of the JSON file to store the extracted data.
+    """
+    # Regular expression patterns for extracting data
+    type_pattern = r"===(Verb|Substantiv|Adjektiv|Adverb|Konjuktion|Pronomen|R‰kneord|Interjektion|Konjugation)==="
+    word_pattern = r"'''([a-zA-ZÂ‰ˆ≈ƒ÷]+)'''"
+    lemma_pattern = r"'''([a-zA-ZÂ‰ˆ≈ƒ÷]+)''' \(([^)]+)\)"
+    
+    data = {}  # Dictionary to store extracted data
+    current_type = None  # Variable to keep track of the current type
+    
+    # Open the raw data file and process each line
+    with open(raw_data_file, "r", encoding='utf-8') as input_file:
+        for line in input_file:
+            type_match = re.match(type_pattern, line)
+            word_match = re.match(word_pattern, line)
+            lemma_match = re.match(lemma_pattern, line)
+            
+            if type_match:
+                current_type = type_match.group(1)
+            elif word_match and current_type:
+                word = word_match.group(1)
+                data.setdefault(current_type, {})[word] = ""
+            elif lemma_match and current_type:
+                word = lemma_match.group(1)
+                lemma = lemma_match.group(2)
+                data.setdefault(current_type, {})[word] = lemma
+    
+    # Write the extracted data to a JSON file
+    with open(filename, "w", encoding='utf-8') as output_file:
+        json.dump(data, output_file, ensure_ascii=False, indent=4)
+
+# Example usage:
+extract_words("raw_data_file.txt", "swedish_words.json")

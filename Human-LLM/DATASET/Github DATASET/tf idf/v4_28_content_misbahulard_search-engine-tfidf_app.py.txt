@@ -1,0 +1,53 @@
+# Import necessary modules
+from flask import Flask, render_template, request
+from forms import SearchForm
+import math
+from tfidf import search as Searching
+
+# Initialize Flask app
+app = Flask(__name__)
+app.secret_key = 'development'
+
+# Route for the home page
+@app.route("/")
+def index():
+    # Create a search form
+    form = SearchForm()
+    # Render the index.html template with the search form
+    return render_template("index.html", form=form)
+
+# Route for handling search requests
+@app.route("/search")
+def search():
+    # Create a search form
+    form = SearchForm()
+    
+    # Get the search query from the request arguments
+    query = request.args.get('keyword')
+    
+    # Determine the current page number
+    if not request.args.get('page'):
+        page = 1
+    else:
+        page = int(request.args.get('page'))
+    
+    # Perform the search using the TF-IDF algorithm
+    data = Searching.search_for(query)
+    
+    # Calculate the length of the search results
+    data_length = len(data)
+    
+    # Define pagination parameters
+    pagination_size = 5
+    start = (page - 1) * pagination_size
+    end = min(page * pagination_size, data_length)
+    
+    # Calculate the total number of pages
+    total = math.ceil(data_length / pagination_size)
+    
+    # Render the search.html template with search results and pagination information
+    return render_template("search.html", form=form, data=data, keyword=query, page=page, start=start, end=end, total=total)
+
+# Run the Flask app
+if __name__ == '__main__':
+   app.run(debug=True)

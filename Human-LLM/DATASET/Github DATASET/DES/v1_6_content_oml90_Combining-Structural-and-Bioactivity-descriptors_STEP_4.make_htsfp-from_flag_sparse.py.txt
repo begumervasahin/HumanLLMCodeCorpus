@@ -1,0 +1,64 @@
+import pandas as pd
+import time
+import argparse
+import numpy as np
+import os
+from scipy.sparse import coo_matrix, save_npz
+
+print('---'*30)
+start = time.time()
+ap = argparse.ArgumentParser(description='Takes refined hts data and generates a flag based fingerprint')
+ap.add_argument('-a', action="store", dest='annotation_data', required=True, help='Path to annotation file')
+ap.add_argument('-i', action="store", dest='hts_data', required=True, help='Path to refined hts data')
+ap.add_argument('-o', action="store", dest='outpath', default='htsfp_gen_out/', help='Optional: set output path for fingerprint file')
+ap.add_argument('-t', action="store", dest='threshold', default=20000, type=int, help='Optional: threshold for minimum number of compounds per assay')
+args = ap.parse_args()
+
+if args.hts_data[-1] != '/':
+    args.hts_data = args.hts_data + '/'
+
+cid2smi_file = 'C:/CESFP_project/CID2smi_pubchem.txt'
+
+if not os.path.exists(args.outpath):
+    os.makedirs(args.outpath)
+
+outpath = args.outpath + 'htsfp_t' + str(args.threshold)
+
+print('loading annotation file...')
+statsdf = pd.read_csv(args.annotation_data, sep='\t')
+assay_selection = statsdf.loc[statsdf['count'] >= args.threshold]['assay'].values
+print('Number of assays containing at least', args.threshold, 'Assays:', len(assay_selection))
+print(time.time() - start)
+print('loading CID 2 smiles file...')
+cid2smi = {}
+with open(cid2smi_file, 'r') as f:
+    for line in f:
+        linels = line.strip().split('\t')
+        cid2smi[linels[0]] = linels[1]
+print(time.time() - start)
+print('Creating empty dict...')
+main_cmpd_dict = {}
+for cmpd in cid2smi:
+    main_cmpd_dict[cmpd] = [0] * len(assay_selection)
+print('done.')
+print('dimensions of htsfp:\t{} x {}'.format(len(main_cmpd_dict), len(assay_selection)))
+print(time.time() - start)
+print('Filling dict with flag values...')
+idx = -1
+Alength = len(assay_selection)
+miss_cid = 0
+for assay in assay_selection:
+    idx += 1
+    if idx % 10 == 0:
+        print('... {}%'.format(round((idx + 1) / Alength * 100), 0), end='\r')
+    assay_file = args.hts_data + assay
+    with open(assay_file, 'r') as f:
+        j = 0
+        for line in f:
+            j += 1
+            if j == 1:
+                continue
+            line_list = line.strip().split('\t')
+            Cid = line_list[0]
+            flag = line_list[1]
+            if flag not in ['A', 'N

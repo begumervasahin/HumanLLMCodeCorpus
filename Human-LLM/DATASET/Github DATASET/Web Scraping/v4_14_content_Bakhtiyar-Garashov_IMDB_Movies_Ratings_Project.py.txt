@@ -1,0 +1,115 @@
+import tkinter as tk
+from tkinter import *
+from tkinter import messagebox, ttk
+import requests
+from bs4 import BeautifulSoup
+import re
+
+try:
+    # Fetching data from IMDb website
+    url = "http://www.imdb.com/chart/top"
+    headers = {'Accept-Language': 'en-US,en;'}
+    response = requests.get(url, headers=headers)
+    html_content = response.content
+    soup = BeautifulSoup(html_content, "html.parser")
+    movie_names = soup.find_all("td", {"class": "titleColumn"})
+    ratings = soup.find_all("td", {"class", "ratingColumn imdbRating"})
+
+    # Initializing tkinter main window
+    main_window = Tk()
+    main_window.geometry("700x350")
+    main_window.title("IMDB Movies and Ratings Application")
+
+    # Main label
+    main_label = Label(main_window, text="Welcome to IMDB Movies and Ratings Application!", pady=130)
+    main_label.pack()
+
+    # Function to format and write all movies data to a file
+    def write_to_file():
+        myfile = open('movies.txt', 'w')
+        myfile.write("/* IMDB Movies and Ratings Application. */\n /* Author: Bakhtiyar Garashov */\n")
+        for name, rating in all_movies.items():
+            myfile.write("{} {}\n".format(name, rating))
+        myfile.close()
+
+    # Function to display all movies and their ratings
+    def display_all_movies():
+        main_label.pack_forget()
+
+        # Configuring Treeview widget to display movies and ratings
+        list_all = ttk.Treeview(main_window)
+        list_all["columns"] = ("rating",)
+        list_all.heading("#0", text="Movie")
+        list_all.heading("rating", text="IMDB Rating")
+
+        # Populating Treeview with movie data
+        for name, rating in zip(movie_names, ratings):
+            name = name.text.strip().replace('\n', '')
+            rating = rating.text.strip().replace('\n', '')
+            year = re.findall('\((.*?)\)', name)[0]
+            only_name = name.split("(")[0].strip()
+            list_all.insert('', 'end', text=only_name, values=(rating, year))
+
+        # Adding scrollbar to Treeview
+        vsb = ttk.Scrollbar(main_window, orient="vertical", command=list_all.yview)
+        vsb.pack(side='right', fill='y')
+        list_all.configure(yscrollcommand=vsb.set)
+        list_all.pack(side=tk.BOTTOM, fill=tk.Y)
+
+        # Button to write data to file
+        write_button = Button(main_window, text="Write to File", command=write_to_file)
+        write_button.pack(side='bottom', pady=15)
+
+    # Function to search for a specific movie
+    def search_movie():
+        main_label.pack_forget()
+        search_label = Label(main_window, text="Enter movie name to find", padx=10)
+        search_label.pack()
+        user_input = Entry(main_window, width='30')
+        user_input.pack(side='left', ipady=7, ipadx=5, padx=5)
+
+        # Function to find a specific movie
+        def find_specific_movie():
+            movie_name = user_input.get().strip()
+            if movie_name in all_movies:
+                rating, year = all_movies[movie_name]
+                messagebox.showinfo("Movie Found", f"Movie Name: {movie_name}\nYear: {year}\nIMDB Rating: {rating}")
+            else:
+                messagebox.showerror("Movie Not Found", f"No matching information found for '{movie_name}'")
+
+        # Button to trigger movie search
+        search_button = Button(main_window, text="Find Movie", command=find_specific_movie)
+        search_button.pack(side='right', padx=20)
+
+    # Function to display about information
+    def display_about_info():
+        about_label = Label(main_window, text="This small application is developed for a course project\n"
+                                               "Contact: bakhtiyar.garashov@ut.ee\nVersion 1.0")
+        about_label.pack()
+
+    # Creating menu bar
+    def create_menu(win_name):
+        menubar = Menu(win_name)
+        menubar.add_command(label="Get All Movies", command=display_all_movies)
+        menubar.add_command(label="Find Movie by Name", command=search_movie)
+        menubar.add_command(label="About", command=display_about_info)
+        menubar.add_command(label="Exit", command=win_name.destroy)
+        return menubar
+
+    # Adding menu to main window
+    main_window.config(menu=create_menu(main_window))
+
+    # Function to center the window on the screen
+    def center_window(win):
+        win.update_idletasks()
+        width = win.winfo_width()
+        height = win.winfo_height()
+        x = (win.winfo_screenwidth() // 2) - (width // 2)
+        y = (win.winfo_screenheight() // 2) - (height // 2)
+        win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+
+    center_window(main_window)
+    main_window.mainloop()
+
+except Exception as e:
+    print(e)

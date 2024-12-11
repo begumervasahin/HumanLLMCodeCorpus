@@ -1,0 +1,62 @@
+import os
+import sys
+import uuid
+import base64
+from tornado import web
+from tornado.options import options
+from tornado.httpserver import HTTPServer
+from raven.contrib.tornado import AsyncSentryClient
+
+# Define the static path for serving static files
+STATIC_PATH = os.path.join(sys.path[0], 'static')
+
+# Define URL patterns and corresponding handlers
+URLS = [
+    (
+        r'android\.ktvsky\.com',
+        (r'/(.*\.txt)', web.StaticFileHandler, {'path': STATIC_PATH}),
+        # Add additional URL patterns and handler mappings here
+    )
+]
+
+class Application(web.Application):
+    def __init__(self):
+        # Define Tornado application settings
+        settings = {
+            'xsrf_cookies': False,
+            'compress_response': True,
+            'debug': options.debug,
+            'static_path': STATIC_PATH,
+            'cookie_secret': base64.b64encode(uuid.uuid3(uuid.NAMESPACE_DNS, 'android').bytes),
+            'sentry_url': 'https://781b50a7bc3148e2ae48e590b3bb7233:07dffa57c3c14738a54b23433d2abe37@sentry.ktvsky.com/23' if not options.debug else ''
+        }
+
+        # Initialize Tornado application with settings
+        web.Application.__init__(self, **settings)
+
+        # Add URL handlers
+        for spec in URLS:
+            host = '.*$'
+            handlers = spec[1:]
+            self.add_handlers(host, handlers)
+
+def run():
+    # Create an instance of the Tornado application
+    app = Application()
+
+    # Initialize Sentry client if not in debug mode
+    if not options.debug:
+        app.sentry_client = AsyncSentryClient(app.settings['sentry_url'])
+
+    # Create an HTTP server instance
+    http_server = HTTPServer(app, xheaders=True)
+
+    # Listen on the specified port
+    http_server.listen(options.port)
+
+    # Print a message indicating the server is running
+    print('Server is running on port %d' % options.port)
+
+# Entry point of the script
+if __name__ == "__main__":
+    run()

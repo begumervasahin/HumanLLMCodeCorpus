@@ -1,0 +1,106 @@
+import os
+import sys
+import getopt
+from Crypto import Random
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+
+class AESFileEncryptor:
+    def __init__(self):
+        self.encryption_key = None
+
+    def generate_key_from_password(self, password):
+        """Generate an AES key from the given password."""
+        self.encryption_key = SHA256.new(password.encode()).digest()
+
+    def pad_data(self, data):
+        """Pad data to be a multiple of AES block size."""
+        return data + b"\0" * (AES.block_size - len(data) % AES.block_size)
+
+    def encrypt_data(self, data):
+        """Encrypt data using AES in CBC mode."""
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.encryption_key, AES.MODE_CBC, iv)
+        return iv + cipher.encrypt(self.pad_data(data))
+
+    def decrypt_data(self, data):
+        """Decrypt data using AES in CBC mode."""
+        iv = data[:AES.block_size]
+        cipher = AES.new(self.encryption_key, AES.MODE_CBC, iv)
+        return cipher.decrypt(data[AES.block_size:]).rstrip(b"\0")
+
+    def process_file(self, filename, operation):
+        """Encrypt or decrypt a file."""
+        read_mode, write_mode, file_suffix, action = {
+            'encrypt': ('rb', 'wb', '.enc', 'Encrypting'),
+            'decrypt': ('rb', 'wb', '', 'Decrypting'),
+        }[operation]
+
+        with open(filename, read_mode) as file:
+            file_data = file.read()
+
+        if operation == 'encrypt':
+            processed_data = self.encrypt_data(file_data)
+            new_filename = filename + file_suffix
+        else:
+            processed_data = self.decrypt_data(file_data)
+            new_filename = filename.replace('.enc', '')
+
+        with open(new_filename, write_mode) as file:
+            file.write(processed_data)
+
+        os.remove(filename)
+        print(f"{action} {filename} -> {new_filename}")
+
+    def process_all_files(self, operation):
+        """Process all files in the directory and subdirectories according to the operation."""
+        for root, _, files in os.walk("."):
+            for file in files:
+                if operation == 'encrypt' or (operation == 'decrypt' and file.endswith('.enc')):
+                    file_path = os.path.join(root, file)
+                    if file_path != sys.argv[0]:  # Skip the script file itself
+                        self.process_file(file_path, operation)
+        print(f"All files {operation}ed successfully.")
+
+    @staticmethod
+    def display_usage():
+        """Print usage instructions."""
+        print("Usage: python script.py -p <password> [-e <filename> | -d <filename> | -E | -D]")
+        print("Options:")
+        print("  -p, --password <password>   Specify the password for encryption/decryption")
+        print("  -e, --encrypt <filename>    Encrypt the specified file")
+        print("  -d, --decrypt <filename>    Decrypt the specified file")
+        print("  -E                          Encrypt all files in the current directory and subdirectories")
+        print("  -D                          Decrypt all files in the current directory and subdirectories")
+
+    def run(self):
+        """Main entry point for parsing arguments and executing commands."""
+        try:
+            opts, _ = getopt.getopt(sys.argv[1:], "hp:e:d:ED", ["help", "password=", "encrypt=", "decrypt="])
+        except getopt.GetoptError as err:
+            print(err)
+            self.display_usage()
+            sys.exit(2)
+
+        if not opts:
+            self.display_usage()
+            sys.exit(2)
+
+        for opt, arg in opts:
+            if opt in ("-h", "--help"):
+                self.display_usage()
+                sys.exit()
+            elif opt in ("-p", "--password"):
+                self.generate_key_from_password(arg)
+            elif opt in ("-e", "--encrypt") and self.encryption_key:
+                self.process_file(arg, 'encrypt')
+            elif opt in ("-d", "--decrypt") and self.encryption_key:
+                self.process_file(arg, 'decrypt')
+            elif opt == "-E" and self.encryption_key:
+                self.process_all_files('encrypt')
+            elif opt == "-D" and self.encryption_key:
+                self.process_all_files('decrypt')
+
+if __name__ == "__main__":
+    file_encryptor = AESFileEncryptor()
+    file_encryptor.run()

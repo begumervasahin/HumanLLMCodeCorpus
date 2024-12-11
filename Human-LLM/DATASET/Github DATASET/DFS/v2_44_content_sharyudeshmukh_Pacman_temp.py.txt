@@ -1,0 +1,35 @@
+from util import manhattanDistance
+
+def evaluateGameState(currentGameState, successorGameState):
+    # Get Pacman's position, food layout, ghost states, and scared times
+    pacmanPos = currentGameState.getPacmanPosition()
+    foodLayout = currentGameState.getFood()
+    ghostStates = currentGameState.getGhostStates()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+
+    # Get the list of food positions and next ghost positions
+    foodPositions = foodLayout.asList()
+    nextGhostPositions = successorGameState.getGhostPositions()
+
+    # Calculate the distance to the nearest food and ghost
+    minFoodDistance = min(manhattanDistance(food, pacmanPos) for food in foodPositions)
+    minGhostDistance = min(manhattanDistance(ghost, pacmanPos) for ghost in nextGhostPositions)
+
+    # Evaluate game state based on win, lose, or remaining food
+    if currentGameState.isWin():
+        return 100000
+    if currentGameState.isLose():
+        return -100000
+    if len(foodPositions) == 0:
+        return 1000000
+
+    # Calculate the score based on Pacman's score, capsules, food distance, and ghost distance
+    score = currentGameState.getScore() * 5
+    score += len(currentGameState.getCapsules()) * 5
+    score -= minFoodDistance * 2
+
+    return score
+
+# Example usage:
+# Call evaluateGameState with appropriate arguments
+# result = evaluateGameState(currentGameState, successorGameState)

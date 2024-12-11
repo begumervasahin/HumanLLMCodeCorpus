@@ -1,0 +1,32 @@
+import textwrap
+import conversion
+import permutations
+import misc
+
+def encrypt(text, key):
+    binary_text = misc.text_to_bits(text)
+    binary_text = textwrap.wrap(binary_text, 64)
+    last_text_part = binary_text[-1]
+    binary_text[-1] = last_text_part + '0' * (64 - len(last_text_part))
+    subkeys = conversion.primary_key_to_subkeys(key)
+    
+    for part_num, part in enumerate(binary_text):
+        part = permutations.permutation(part, "initial")
+        lpt, rpt = part[:32], part[32:]        
+        for i in range(16):
+            lpt, rpt = rpt, misc.binary_addition(lpt, function(rpt, subkeys[i]), 32)
+        binary_text[part_num] = permutations.permutation(rpt + lpt, "inverse") 
+    return ''.join(binary_text)
+
+def function(rpt, subkey):
+    rpt = permutations.permutation(rpt, "expansion")
+    rpt = misc.XOR(rpt, subkey)
+    rpt = permutations.sBox_permutation(rpt)
+    rpt = permutations.permutation(rpt, "pBox")
+    return rpt
+
+# Example usage
+text = "Hello, World!"
+key = "123456789ABCDEF0"  # Example key
+encrypted_text = encrypt(text, key)
+print("Encrypted text:", encrypted_text)

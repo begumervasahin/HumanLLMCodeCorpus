@@ -1,0 +1,46 @@
+import os
+import json
+import urllib.request
+import time
+import random
+
+# Define paths and constants
+PATH = 'path_to_images'
+BRANDS = ['nike', 'jordan', 'adidas', 'other']
+PLACEHOLDER_PATH = 'path_to_placeholder_image'
+
+
+def download_images():
+    # Iterate over each brand
+    for brand in BRANDS:
+        # Open the corresponding JSON file for the brand
+        with open('{}.json'.format(brand)) as file:
+            data = json.load(file)
+            # Iterate over each item in the data
+            for key, value in data.items():
+                # Prepare the name and image link
+                name = key.replace('/', '-').replace('?', '').strip()
+                img_link = data[key]['image']
+                # Check if the image is already saved
+                if name + '.jpg' in os.listdir(PATH):
+                    print('Already Saved: ' + name)
+                    continue  # Move to the next iteration if image already saved
+                else:
+                    # Save the image to static directory
+                    if 'Placeholder' in img_link.split('-'):
+                        # Save a placeholder image
+                        with open(PLACEHOLDER_PATH, 'rb') as placeholder:
+                            with open('static/{}.jpg'.format(name), 'wb') as f:
+                                f.write(placeholder.read())
+                        print('Placeholder')
+                    else:
+                        # Download the image from the provided URL
+                        with open('static/{}.jpg'.format(name), 'wb') as f:
+                            f.write(urllib.request.urlopen(img_link).read())
+                        print(key)
+                    # Mimic human-like behavior by introducing random delays
+                    time.sleep(1 / (random.randint(1, 100) * 10000))
+
+
+if __name__ == "__main__":
+    download_images()

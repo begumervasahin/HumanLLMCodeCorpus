@@ -1,0 +1,79 @@
+import os
+import imageio
+import numpy as np
+import matplotlib.pyplot as plt
+
+class SortingVisualizer:
+    def __init__(self):
+        self.img = []
+        self.fig = plt.figure()
+        plt.ion()
+        self.count = 0
+        self.path = 'sort_animations/'
+        self._create_directory(self.path)
+
+    def _create_directory(self, directory):
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+
+    def merge_sort(self, sequence, start, end):
+        if end - start < 2:
+            return
+        mid = (end - start) // 2
+        self.merge_sort(sequence, start, start + mid)
+        self.merge_sort(sequence, start + mid, end)
+        self.merge(start, mid, end, sequence)
+
+    def merge(self, start, mid, end, sequence):
+        i, j = start, start + mid
+        while i < start + mid and j < end:
+            if sequence[i] < sequence[j]:
+                i += 1
+            else:
+                sequence.insert(i, sequence[j])
+                j += 1
+                sequence.pop(j)
+                self._draw(sequence, 'MERGE SORT')
+
+    def quick_sort(self, sequence, low, high):
+        if low >= high:
+            return
+        pivot = sequence[high]
+        left, right = low, high - 1
+        while left <= right:
+            while left <= right and sequence[left] < pivot:
+                left += 1
+            while left <= right and sequence[right] > pivot:
+                right -= 1
+            if left <= right:
+                sequence[left], sequence[right] = sequence[right], sequence[left]
+                left, right = left + 1, right - 1
+        sequence[left], sequence[high] = sequence[high], sequence[left]
+        if left != high:
+            self._draw(sequence, 'QUICK SORT')
+        self.quick_sort(sequence, low, left - 1)
+        self.quick_sort(sequence, left + 1, high)
+
+    def _draw(self, sequence, algorithm_name):
+        if len(sequence):
+            self.count += 1
+            plt.clf()
+            plt.bar(range(len(sequence)), sequence, width=0.3, color='purple')
+            plt.title(algorithm_name)
+            plt.savefig(os.path.join(self.path, str(self.count)))
+            plt.pause(0.01)
+
+    def get_gif(self):
+        filenames = os.listdir(self.path)
+        filenames.sort(key=lambda x: int(x[:-4]))
+        for filename in filenames:
+            filepath = os.path.join(self.path, filename)
+            self.img.append(imageio.imread(filepath))
+        imageio.mimsave('sort.gif', self.img, fps=8)
+
+if __name__ == '__main__':
+    initial_sequence = [100 - k for k in range(100)]
+    sorter = SortingVisualizer()
+    sorter.quick_sort(list(initial_sequence), 0, len(initial_sequence) - 1)
+    # Call other sorting methods similarly
+    sorter.get_gif()

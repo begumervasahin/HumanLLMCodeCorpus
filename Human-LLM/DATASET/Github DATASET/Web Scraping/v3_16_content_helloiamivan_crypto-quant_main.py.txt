@@ -1,0 +1,84 @@
+import pandas as pd
+import csv
+import time
+import matplotlib.pyplot as plt
+from cryptofolio import Portfolio
+from cryptoscreener import screenUniverse
+
+# Load coin data
+coin_data = pd.read_csv('input/clean_coindata.csv')
+coin_data['Date'] = pd.to_datetime(coin_data['Date'], infer_datetime_format=True)
+coin_data.set_index('Date', inplace=True)
+
+# Read parameters from CSV
+with open('parameters.csv', 'r') as file:
+    parameters = dict(csv.reader(file))
+
+# Convert parameter values to appropriate types
+backtest_mode = parameters.get('Backtest Mode', 'false').lower() == 'true'
+min_market_cap = float(parameters.get('Minimum Market Cap', 0))
+minimum_listing_period = float(parameters.get('Minimum Listing Period', 0)) + float(parameters.get('Offset', 0))
+circulating_pct = float(parameters.get('Circulating Percentage', 0))
+min_exchanges = float(parameters.get('Minimum Exchange Listing', 0))
+min_weight = float(parameters.get('Minimum Weight', 0))
+max_weight = float(parameters.get('Maximum Weight', 0))
+return_freq = int(parameters.get('Offset', 0))
+lookback_window = int(parameters.get('Lookback Window', 0))
+
+# Initialize portfolio
+portfolio = Portfolio({}, 0.0)
+
+# Set initial investment
+initial_investment = 1.0
+
+# Get unique dates
+dates = pd.to_datetime(coin_data.index.unique())
+
+# Perform backtest or optimization
+if backtest_mode:
+    start_backtest = pd.to_datetime(parameters.get('Start Date'))
+    dates = dates[dates >= start_backtest]
+    for date in dates:
+        latest_prices = coin_data.loc[date, 'Close'].to_dict()
+        if not portfolio.getPositions():
+            universe = list(latest_prices.keys())
+            for coin in universe:
+                weight = 1.0 / len(universe)
+                quantity = (initial_investment * weight) / latest_prices[coin]
+                portfolio.buy(coin, quantity)
+        if is_rebalance_date(date, 'monthly') and portfolio.getPositions():
+            universe = screenUniverse(date - pd.DateOffset(days=1), min_market_cap, minimum_listing_period, circulating_pct, min_exchanges)
+            coins_to_remove = parameters.get('Coins To Omit', '').split(';')
+            universe = [coin for coin in universe if coin not in coins_to_remove]
+            if len(universe) < 2:
+                weights = {'bitcoin': 1.0}
+            else:
+                weights = portfolio.getMVOptimizedWeights(date - pd.DateOffset(days=1), universe, min_weight, max_weight, return_freq, 'monthly', lookback_window)
+            for coin in universe:
+                weight = weights.get(coin, 1.0 / len(portfolio.getPositions()))
+                quantity = portfolio.getValue(latest_prices) * weight / latest_prices[coin]
+                if coin in portfolio.getPositions():
+                    portfolio.sell(coin, portfolio.getPositions()[coin])
+                portfolio.buy(coin, quantity)
+        index_level = portfolio.getValue(latest_prices)
+        index_levels.append(index_level)
+    index_levels_log = [log(price, 10) for price in index_levels]
+    results = pd.DataFrame({'Dates': dates, 'Index Level': index_levels, 'Log Index Level': index_levels_log})
+    results.to_csv(f'results/backtestResults_{time.time()}.csv', index=False)
+    plt.plot_date(dates, index_levels_log, '-')
+    plt.title('Backtest Result')
+    plt.gcf().autofmt_xdate()
+    plt.show()
+else:
+    print(f'Performing optimization for {parameters["Start Date"]}....')
+    universe_selection_date = pd.to_datetime(parameters['Start Date'])
+    universe = screenUniverse(universe_selection_date, min_market_cap, minimum_listing_period, circulating_pct, min_exchanges)
+    coins_to_remove = parameters.get('Coins To Omit', '').split(';')
+    universe = [coin for coin in universe if coin not in coins_to_remove]
+    print('Final weights:')
+    weights = portfolio.getMVOptimizedWeights(universe_selection_date, universe, min_weight, max_weight, return_freq, 'monthly', lookback_window)
+    print('Optimization successful! Writing results to final_weights.csv')
+    with open('results/final_weights.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(weights.keys())
+        writer.writerow(weights.values())

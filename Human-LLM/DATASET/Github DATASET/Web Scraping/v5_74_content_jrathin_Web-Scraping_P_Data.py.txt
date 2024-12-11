@@ -1,0 +1,80 @@
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+
+def start():
+    # Initialize a Chrome webdriver
+    browser = webdriver.Chrome('chromedriver.exe')
+    
+    # URL of the website to scrape
+    base_url = 'http://www.footballsquads.co.uk/ger/2017-2018/'
+    
+    # Specific tag for German Bundesliga
+    tag = 'gerbun.htm'
+    
+    # Combine base URL and tag
+    url = base_url + tag
+    
+    # Get the HTML content of the page
+    browser.get(url)
+    html = browser.page_source
+    
+    # Parse the HTML using BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # Find the main div tag
+    main_div = soup.find("div", {"id": "main"})
+    
+    # Find all the team headings within the main div
+    team_headings = main_div.find_all('h5')
+    
+    # List to store player details
+    player_list = []
+    
+    # Iterate through each team
+    for team_heading in team_headings:
+        # Extract team name
+        team_name = team_heading.text
+        
+        # Visit the team's page
+        team_url = base_url + team_heading.find("a").get("href")
+        browser.get(team_url)
+        
+        # Get the HTML content of the team's page
+        team_html = browser.page_source
+        team_soup = BeautifulSoup(team_html, "html.parser")
+        
+        # Find the main div tag of the team's page
+        team_main_div = team_soup.find("div", {"id": "main"})
+        
+        # Find all tables within the main div
+        tables = team_main_div.find_all('table')
+        
+        # Find the table containing player details
+        player_table = tables[0].find('tbody')
+        
+        # Find all rows within the player table
+        player_rows = player_table.find_all('tr')
+        
+        # Iterate through each row
+        for player_row in player_rows[1:]:  # Start from index 1 to skip header row
+            # Extract player details
+            player_data = player_row.find_all('td')
+            try:
+                # Check if player details are present
+                if player_data[1].text.strip():
+                    player_info = [
+                        player_data[1].text.strip(),  # Player name
+                        player_data[2].text.strip(),  # Player position
+                        player_data[3].text.strip(),  # Player nationality
+                        team_name  # Team name
+                    ]
+                    player_list.append(player_info)
+            except IndexError:
+                break  # Exit loop if an exception occurs (e.g., empty row)
+    
+    # Close the webdriver
+    browser.quit()
+    
+    # Return the list of player details
+    return player_list

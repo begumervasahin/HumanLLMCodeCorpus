@@ -1,0 +1,64 @@
+from queue import PriorityQueue
+from pprint import pprint
+
+# Assume grid_helper.py contains the necessary functions for grid operations
+# and pathfinding algorithms like heuristic_distance, get_neighbors, generate_grid_empty, find_path, and draw_path
+
+# Sample functions to mimic grid_helper.py behavior
+def generate_grid_empty():
+    return [[0 for _ in range(10)] for _ in range(10)]
+
+def heuristic_distance(current_pos, end, type="m"):
+    if type == "m":
+        return abs(end[0] - current_pos[0]) + abs(end[1] - current_pos[1])
+    elif type == "e":
+        return ((end[0] - current_pos[0]) ** 2 + (end[1] - current_pos[1]) ** 2) ** 0.5
+
+def get_neighbors(grid, x, y):
+    neighbors = []
+    for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < len(grid) and 0 <= ny < len(grid[0]) and grid[nx][ny] == 0:
+            neighbors.append((nx, ny))
+    return neighbors
+
+def find_path(start, end, came_from):
+    path = []
+    current = end
+    while current != start:
+        path.append(current)
+        current = came_from[current]
+    path.append(start)
+    path.reverse()
+    return path
+
+def draw_path(path, grid):
+    for x, y in path:
+        grid[x][y] = 1
+
+def find_path_greedy(grid, start, end):
+    pq = PriorityQueue()
+    pq.put((0, start))
+    came_from = {start: None}
+    while not pq.empty():
+        current_pos = pq.get()[1]
+        if current_pos == end:
+            break
+        neighbors = get_neighbors(grid, current_pos[0], current_pos[1])
+        for neighbor in neighbors:
+            if neighbor not in came_from:
+                priority = heuristic_distance(neighbor, end, type="m")
+                pq.put((priority, neighbor))
+                came_from[neighbor] = current_pos
+    return came_from
+
+def init():
+    initial_grid = generate_grid_empty()
+    start, end = (0, 0), (8, 8)
+    came_from = find_path_greedy(initial_grid, start, end)
+    path = find_path(start, end, came_from)
+    draw_path(path, initial_grid)
+    pprint(initial_grid)
+
+if __name__ == "__main__":
+    init()

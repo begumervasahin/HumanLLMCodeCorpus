@@ -1,0 +1,84 @@
+# Define the winning combinations
+winning_combinations = [(0, 1, 2), (3, 4, 5), (6, 7, 8),
+                        (0, 3, 6), (1, 4, 7), (2, 5, 8),
+                        (0, 4, 8), (2, 4, 6)]
+
+def game_state(board):
+    """
+    Determine the state of the game.
+
+    Args:
+    - board (list): The current state of the tic-tac-toe board.
+
+    Returns:
+    - int: The state of the game:
+           1 if player 1 wins,
+           -1 if player 2 wins,
+           -2 if the game is ongoing,
+           0 if it's a draw.
+    """
+    for combination in winning_combinations:
+        if board[combination[0]] == 1 and board[combination[1]] == 1 and board[combination[2]] == 1:
+            return 1  # Player 1 wins
+        if board[combination[0]] == -1 and board[combination[1]] == -1 and board[combination[2]] == -1:
+            return -1  # Player 2 wins
+    if 0 in board:
+        return -2  # Game is ongoing
+    return 0  # It's a draw
+
+def search(board, player, turn):
+    """
+    Search for the best move using minimax algorithm.
+
+    Args:
+    - board (list): The current state of the tic-tac-toe board.
+    - player (int): The current player (-1 for player 1, 1 for player 2).
+    - turn (int): The current turn number.
+
+    Returns:
+    - list: The best move and its corresponding value.
+    """
+    state = game_state(board)
+    if state != -2:
+        return state * player, -1
+    best_moves = [-2]
+    for cell in range(len(board)):
+        if board[cell] == 0:
+            board[cell] = player
+            value = -search(board, -player, turn + 1)[0]
+            if value > best_moves[0]:
+                best_moves = [value, cell]
+            elif value == best_moves[0]:
+                best_moves.append(cell)
+            board[cell] = 0
+    return best_moves
+
+def print_board(board):
+    """Print the current state of the tic-tac-toe board."""
+    for i in range(0, 9, 3):
+        print(board[i:i+3])
+
+# Initialize the board and player
+board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+player = 1
+
+# Find the best move
+result = search(board, player, 0)
+winner = result[0] * player
+
+# Determine the starting player
+if player == 1:
+    print("Player 1 starts.")
+elif player == -1:
+    print("Player 2 starts.")
+
+# Announce the result of the game
+if winner == 0:
+    print("It's a draw!")
+else:
+    winner_number = int(winner * -0.5 + 1.5)
+    print("Player", winner_number, "wins!")
+
+# Provide the best move for the player
+if winner != -player:
+    print("You can play on", result[1] + 1)

@@ -1,0 +1,119 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from numpy.linalg import eig
+from sklearn.decomposition import PCA
+from sklearn.linear_model import SGDClassifier
+
+def load_data():
+    testing_df = pd.read_csv('./usps.test', header=None)
+    training_df = pd.read_csv('./usps.train', header=None)
+    validate_df = pd.read_csv('./usps.valid', header=None)
+    return testing_df, training_df, validate_df
+
+def extract_features_labels(testing_df, training_df, validate_df):
+    X_testing, y_testing = testing_df.iloc[:, 1:], testing_df.iloc[:, 0]
+    X_training, y_training = training_df.iloc[:, 1:], training_df.iloc[:, 0]
+    X_validate, y_validate = validate_df.iloc[:, 1:], validate_df.iloc[:, 0]
+    return X_testing, y_testing, X_training, y_training, X_validate, y_validate
+
+def convert_to_numpy_arrays(X_testing, y_testing, X_training, y_training, X_validate, y_validate):
+    X_test, X_train, X_valid = np.array(X_testing), np.array(X_training), np.array(X_validate)
+    y_test, y_train, y_valid = np.array(y_testing), np.array(y_training), np.array(y_validate)
+    return X_test, X_train, X_valid, y_test, y_train, y_valid
+
+def calculate_covariance_matrix(X_train):
+    covariance_matrix = np.matmul(X_train.transpose(), X_train)
+    return covariance_matrix
+
+def calculate_eigenvalues_eigenvectors(covariance_matrix):
+    eigen_values, eigen_vectors = eig(covariance_matrix)
+    eig_pairs = [(np.abs(eigen_values[i]), eigen_vectors[:, i]) for i in range(len(eigen_values))]
+    eig_pairs.sort(key=lambda x: x[0], reverse=True)
+    return eig_pairs
+
+def plot_eigenvectors(eig_pairs):
+    plt.figure(figsize=(10, 10))
+    for i in range(16):
+        mat = eig_pairs[i][1].reshape(16, 16)
+        plt.subplot(4, 4, i+1)
+        plt.imshow(mat)
+    plt.show()
+
+def perform_pca(X_train, variance_ratio):
+    pca = PCA(variance_ratio)
+    X_pca = pca.fit_transform(X_train)
+    return pca, X_pca
+
+def find_number_of_components(pca, variance_threshold):
+    num_components = np.argmax(np.cumsum(pca.explained_variance_ratio_) >= variance_threshold)
+    return num_components
+
+def calculate_prediction_error(alpha, X_train_transformed, X, y_true):
+    clf = SGDClassifier(alpha=alpha, loss='hinge', penalty='l2', max_iter=1000, tol=-np.infty).fit(X_train_transformed, y_train)
+    y_predict = clf.predict(X)
+    error = np.mean(y_predict != y_true)
+    return error
+
+def main():
+    # Load data
+    testing_df, training_df, validate_df = load_data()
+
+    # Extract features and labels
+    X_testing, y_testing, X_training, y_training, X_validate, y_validate = extract_features_labels(testing_df, training_df, validate_df)
+
+    # Convert data to numpy arrays
+    X_test, X_train, X_valid, y_test, y_train, y_valid = convert_to_numpy_arrays(X_testing, y_testing, X_training, y_training, X_validate, y_validate)
+
+    # Calculate covariance matrix and eigenvalues
+    covariance_matrix = calculate_covariance_matrix(X_train)
+    eig_pairs = calculate_eigenvalues_eigenvectors(covariance_matrix)
+
+    # Plot first 16 eigenvectors
+    plot_eigenvectors(eig_pairs)
+
+    # PCA analysis
+    pca, X_train_pca = perform_pca(X_train, None)
+    cumulative_variance = np.cumsum(np.round(pca.explained_variance_ratio_, decimals=3) * 100)
+    plt.grid()
+    plt.title('PCA Analysis')
+    plt.ylabel('% Variance Explained')
+    plt.xlabel('Number of Principal Components')
+    plt.plot(cumulative_variance, color='k')
+    plt.show()
+
+    # Perform PCA with different variance ratios
+    pca_70, X_train_pca_70 = perform_pca(X_train, 0.7)
+    pca_80, X_train_pca_80 = perform_pca(X_train, 0.8)
+    pca_90, X_train_pca_90 = perform_pca(X_train, 0.9)
+
+    # Find the number of components for 70%, 80%, and 90% variance explained
+    k70 = find_number_of_components(pca_70, 0.7)
+    k80 = find_number_of_components(pca_80, 0.8)
+    k90 = find_number_of_components(pca_90, 0.9)
+
+    # Define alpha values for SGDClassifier
+    alpha_values = [0.0001, 0.001, 0.01, 0.1]
+
+    # Validation error
+    validation_error = {}
+    for alpha in alpha_values:
+        validation_error[f'k70_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_70[:, :k70], X_valid, y_valid)
+        validation_error[f'k80_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_80[:, :k80], X_valid, y_valid)
+        validation_error[f'k90_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_90[:, :k90], X_valid, y_valid)
+
+    print('Validation Error:')
+    print(validation_error)
+
+    # Test error
+    test_error = {}
+    for alpha in alpha_values:
+        test_error[f'k70_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_70[:, :k70], X_test, y_test)
+        test_error[f'k80_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_80[:, :k80], X_test, y_test)
+        test_error[f'k90_{alpha}'] = calculate_prediction_error(alpha, X_train_pca_90[:, :k90], X_test, y_test)
+
+    print('Test Error:')
+    print(test_error)
+
+if __name__ == "__main__":
+    main()

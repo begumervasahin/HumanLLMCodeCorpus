@@ -1,0 +1,77 @@
+from itertools import combinations
+import sys
+
+
+def redirect_input_output(input_file, output_file):
+    """Redirect standard input and output to specified files."""
+    sys.stdin = open(input_file, 'r')
+    sys.stdout = open(output_file, 'w')
+
+
+def is_item_in_transaction(item, transaction):
+    """Check if item is present in the transaction."""
+    return item in transaction
+
+
+def calculate_itemset_counts(items, transactions):
+    """Calculate counts for itemsets in transactions."""
+    counts = {}
+
+    for i in range(1, len(items) + 1):
+        item_combinations = combinations(items, i)
+
+        for combination in item_combinations:
+            for transaction in transactions:
+                transaction_items = transaction.split()
+                all_items_present = all(is_item_in_transaction(item, transaction_items) for item in combination)
+
+                if all_items_present:
+                    key = ','.join(combination)
+                    counts[key] = counts.get(key, 0) + 1
+
+    return counts
+
+
+def filter_itemset_counts(itemset_counts, minimum_support):
+    """Filter itemset counts based on minimum support."""
+    return {key: value for key, value in itemset_counts.items() if value >= minimum_support}
+
+
+def generate_association_rules(itemset_counts):
+    """Generate association rules from itemset counts."""
+    highest_length = max(len(itemset) for itemset in itemset_counts)
+
+    while highest_length > 1:
+        for key, value in itemset_counts.items():
+            if len(key) == highest_length:
+                subsets = [key[i:i + highest_length - 2] for i in range(len(key) - highest_length + 3)]
+
+                for subset in subsets:
+                    confidence = value / itemset_counts.get(subset, 1)
+                    print(f"{subset} => {key} : {confidence}")
+
+        highest_length -= 1
+
+
+def run_apriori():
+    """Run the Apriori algorithm."""
+    content = sys.stdin.readlines()
+    transaction_count = int(content[0])
+    minimum_support = int(content[-1])
+
+    transactions = [content[i].split() for i in range(1, transaction_count + 1)]
+    items = sorted(set(item for transaction in transactions for item in transaction))
+
+    itemset_counts = calculate_itemset_counts(items, transactions)
+    filtered_counts = filter_itemset_counts(itemset_counts, minimum_support)
+    generate_association_rules(filtered_counts)
+
+
+def main():
+    """Main function."""
+    redirect_input_output('apriori.txt', 'output.txt')
+    run_apriori()
+
+
+if __name__ == "__main__":
+    main()

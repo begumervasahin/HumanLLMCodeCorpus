@@ -1,0 +1,64 @@
+import os
+import sys
+import uuid
+import base64
+from tornado import web
+from tornado.options import options
+from tornado.httpserver import HTTPServer
+from raven.contrib.tornado import AsyncSentryClient
+
+# Define the path to the static files
+STATIC_PATH = os.path.join(sys.path[0], 'static')
+
+# Define URL patterns and corresponding handlers
+URLS = [
+    (
+        r'android\.ktvsky\.com',
+        (r'/(.*\.txt)', web.StaticFileHandler, {'path': STATIC_PATH}),
+        # Add your URL patterns and corresponding handlers here
+    )
+]
+
+# Define the Tornado Application class
+class Application(web.Application):
+    def __init__(self):
+        # Define Tornado application settings
+        settings = {
+            'xsrf_cookies': False,
+            'compress_response': True,
+            'debug': options.debug,
+            'ui_modules': uimodules,  # Assuming uimodules is imported correctly
+            'ui_methods': uimethods,  # Assuming uimethods is imported correctly
+            'static_path': STATIC_PATH,
+            'cookie_secret': base64.b64encode(uuid.uuid3(uuid.NAMESPACE_DNS, 'android').bytes),
+            'sentry_url': 'https://781b50a7bc3148e2ae48e590b3bb7233:07dffa57c3c14738a54b23433d2abe37@sentry.ktvsky.com/23' if not options.debug else ''
+        }
+
+        # Initialize Tornado application with settings
+        super().__init__(**settings)
+
+        # Add URL handlers
+        for host, *handlers in URLS:
+            self.add_handlers(host, handlers)
+
+# Define a function to run the application
+def run():
+    # Create an instance of the Tornado application
+    app = Application()
+
+    # Initialize the Sentry client if not in debug mode
+    if not options.debug:
+        app.sentry_client = AsyncSentryClient(app.settings['sentry_url'])
+
+    # Create an HTTP server instance
+    http_server = HTTPServer(app, xheaders=True)
+
+    # Listen on the specified port
+    http_server.listen(options.port)
+
+    # Print a message indicating that the server is running
+    print(f'Server is running on port {options.port}')
+
+# Entry point of the script
+if __name__ == "__main__":
+    run()

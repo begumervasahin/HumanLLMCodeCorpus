@@ -1,0 +1,46 @@
+import os
+from utils import *
+import matplotlib.pyplot as plt
+
+# Define constants and mappings
+MODEL_PATH = "run_model/"
+MODEL_NAMES = ["linear", "rf10"]
+TITLE_NAMES = {"linear": "Ordinary Linear Regression", "rf10": "Random Forest"}  
+KS_VALUES = [10, 100, 500, 1000, 2000]
+PROJECTION_NAMES = {
+    "RP": "RP",
+    "PCA": "PCA",
+    "SPCA": "SPCA",
+    "SSPCA": "SSPCA"
+}
+
+# Main loop to process each model
+for model_name in MODEL_NAMES:
+    # Create a new figure for each model
+    plt.figure()
+    
+    # Iterate over each projection algorithm
+    for projection_name in PROJECTION_NAMES:
+        # Load scores for the current model and projection
+        scores = np.loadtxt(os.path.join(MODEL_PATH, f"{model_name}__{projection_name}.txt"))
+        
+        # Plot the scores
+        plt.semilogx(KS_VALUES, scores[1:], plt_styles[projection_name], label=PROJECTION_NAMES[projection_name], mew=0)
+    
+    # Print raw data performance for the current model
+    print(f"Raw data performance with {model_name}: {scores[0]}")
+    
+    # Plot raw data performance for models other than "linear"
+    if model_name != "linear":
+        plt.plot([10, 2000], [scores[0], scores[0]], "--", color="gray", label="raw")
+    
+    # Add legend, title, labels, and adjust plot settings
+    plt.legend(loc=0)
+    plt.title(TITLE_NAMES[model_name])
+    plt.xticks(KS_VALUES, KS_VALUES)
+    plt.xlim(8, 2500)
+    plt.ylabel("RMSE")
+    plt.xlabel("k")
+    
+    # Save the plot as a PDF file
+    plt.savefig(f"{model_name}.pdf", bbox_inches="tight")

@@ -1,0 +1,48 @@
+# Import necessary libraries
+import json
+import jieba.posseg as pseg  # Import jieba for Chinese word segmentation
+from pyspark import SparkContext  # Import SparkContext for Spark operations
+
+# Initialize SparkContext
+sc = SparkContext(appName='CutDocument')
+
+# Function to tokenize and filter words
+def cut(text):
+    # Tokenize the text using jieba
+    seg_list = list(pseg.cut(text))
+    # Define a list of acceptable word types
+    allowed_types = ["n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng", "s", "f", "v", "vd", "vn", "vf",
+                     "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"]
+    # Filter out words based on their types
+    filtered_list = filter(lambda word_flag: word_flag[1] in allowed_types, seg_list)
+    # Encode the filtered words to UTF-8
+    encoded_list = map(lambda word_flag: word_flag[0].encode("utf-8"), filtered_list)
+    return encoded_list
+
+# Function to write the processed items to a file
+def output(items):
+    filename = "/vagrant/vocabulary/mominal.txt"  # Define the output file path
+    joined_items = " ".join(items)  # Join the items into a single string
+    with open(filename, "a+") as fo:  # Open the file in append mode
+        fo.write(joined_items)  # Write the joined items to the file
+        fo.write("\n")  # Add a newline character
+    # No need to explicitly close the file, as it's done automatically using 'with' statement
+
+# Function to filter stop words
+def filter_stopword(word_list):
+    return filter(lambda word: word not in stopWordRdd, word_list)
+
+# Define the path to the source file
+src_file = '/vagrant/data/data.txt'
+
+# Read the source file and extract content
+rdd = sc.textFile(src_file).map(lambda x: json.loads(x)['content'])
+
+# Read stop words file and collect into a list
+stopWordRdd = sc.textFile("stop_words.txt").map(lambda x: x.encode("utf-8")).collect()
+
+# Tokenize, filter, and write the processed items to the output file
+result = rdd.map(cut).map(filter_stopword).foreach(output)
+
+# Stop SparkContext
+sc.stop()

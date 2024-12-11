@@ -1,0 +1,86 @@
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+
+def scrape_player_info():
+    # Set up the Chrome webdriver
+    browser = webdriver.Chrome('chromedriver.exe')
+    
+    # URL of the main page
+    main_url = 'http://www.footballsquads.co.uk/ger/2017-2018/'
+    
+    # Subpage tag
+    subpage_tag = 'gerbun.htm'
+    
+    # Visit the main page
+    browser.get(main_url + subpage_tag)
+    
+    # Extract the HTML content of the main page
+    main_page_html = browser.page_source
+    
+    # Parse the HTML content
+    main_page_soup = BeautifulSoup(main_page_html, "html.parser")
+    
+    # Find the main content div
+    main_div = main_page_soup.find_all("div", {"id": "main"})
+    
+    # Find all the team headings within the main content div
+    team_headings = main_div[0].find_all('h5')
+    
+    player_list = []  # List to store player information
+    
+    # Loop through each team
+    for team_heading in team_headings:
+        team_name = team_heading.text  # Get the team name
+        
+        # Extract the URL of the team's page
+        team_url = main_url + team_heading.find("a").get("href")
+        
+        # Visit the team's page
+        browser.get(team_url)
+        
+        # Extract the HTML content of the team's page
+        team_page_html = browser.page_source
+        
+        # Parse the HTML content
+        team_page_soup = BeautifulSoup(team_page_html, "html.parser")
+        
+        # Find the main content div
+        team_main_div = team_page_soup.find_all("div", {"id": "main"})
+        
+        # Find all the tables within the main content div
+        team_tables = team_main_div[0].find_all('table')
+        
+        # Find all the rows within the first table (containing player information)
+        player_rows = team_tables[0].find('tbody').find_all('tr')
+        
+        # Loop through each player row starting from index 1 (excluding header row)
+        for player_row in player_rows[1:]:
+            player_info = []  # Temporary list to store player information
+            
+            # Find all the columns within the player row
+            player_columns = player_row.find_all('td')
+            
+            try:
+                # Check if the second column has text (ignoring empty rows)
+                if player_columns[1].text:
+                    player_info.append(player_columns[1].text)  # Player name
+                    player_info.append(player_columns[2].text)  # Player position
+                    player_info.append(player_columns[3].text)  # Player date of birth
+                    player_info.append(team_name)  # Team name
+                    player_list.append(player_info)  # Append the player information to the list
+            except:
+                break  # Break the loop if an exception occurs
+        
+    # Close the webdriver
+    browser.quit()
+    
+    # Return the list of player information
+    return player_list
+
+# Call the function to scrape player information
+player_list = scrape_player_info()
+
+# Print the player list
+for player_info in player_list:
+    print(player_info)

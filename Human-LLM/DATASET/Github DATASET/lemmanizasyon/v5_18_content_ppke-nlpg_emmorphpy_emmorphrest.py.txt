@@ -1,0 +1,65 @@
+# Import necessary functions from the xtsv module
+from xtsv import pipeline_rest_api, singleton_store_factory
+
+def define_tasks():
+    """Define tasks for stemming, analyzing, and dstemming using EmMorphPy."""
+    em_morph_stem = (
+        'emmorphpy.emmorphpy',  # Module path
+        'EmMorphPy',             # Class name
+        'stem',                  # Method name
+        (),                      # Arguments tuple (empty here)
+        {
+            'task': 'stem',               # Task type
+            'source_fields': {'form'},    # Source field(s)
+            'target_fields': ['anas']     # Target field(s)
+        }
+    )
+
+    em_morph_analyze = (
+        'emmorphpy.emmorphpy',
+        'EmMorphPy',
+        'analyze',
+        (),
+        {
+            'task': 'analyze',
+            'source_fields': {'form'},
+            'target_fields': ['anas']
+        }
+    )
+
+    em_morph_dstem = (
+        'emmorphpy.emmorphpy',
+        'EmMorphPy',
+        'dstem',
+        (),
+        {
+            'task': 'dstem',
+            'source_fields': {'form'},
+            'target_fields': ['anas']
+        }
+    )
+
+    return [em_morph_stem, em_morph_analyze, em_morph_dstem]
+
+def setup_pipeline():
+    """Set up the REST API for the pipeline."""
+    tools = define_tasks()
+
+    # Set up the REST API configuration
+    api_config = {
+        'conll_comments': False,                            # CoNLL comments flag
+        'singleton_store': singleton_store_factory(),       # Singleton store
+        'form_title': 'emMorph demo',                      # Form title
+        'form_type': 'radio',                               # Form type (radio buttons)
+        'doc_link': 'https://github.com/ppke-nlpg/emmorphpy' # Documentation link
+    }
+
+    # Create the REST API for the pipeline
+    app = pipeline_rest_api('emMorph', tools, {}, **api_config)
+
+    return app
+
+if __name__ == '__main__':
+    # Run the application if this script is executed directly
+    pipeline_app = setup_pipeline()
+    pipeline_app.run(debug=False)  # Run the app (debug mode is set to False)

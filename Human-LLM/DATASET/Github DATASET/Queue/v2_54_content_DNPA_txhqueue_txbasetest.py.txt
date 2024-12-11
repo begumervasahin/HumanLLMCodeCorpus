@@ -1,0 +1,63 @@
+import datetime
+from twisted.internet import reactor
+from twisted.internet.task import LoopingCall, deferLater
+from txhqueue import TxHysteresisQueue as HysteresisQueue
+
+# Global variables for counting events
+consume_count = 0
+low_water_count = 0
+high_water_count = 0
+
+# Callback function for low water mark
+def low_watermark(dropcount):
+    global low_water_count
+    low_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} Low water mark reached, re-activating HysteresisQueue. Drop count = {dropcount}")
+
+# Callback function for high water mark
+def high_watermark(okcount):
+    global high_water_count
+    high_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} High water mark reached, de-activating HysteresisQueue. OK count = {okcount}")
+
+# Callback function for flow statistics
+def flow_statistics(obj):
+    print("Flow Statistics:", obj)
+
+# Function to produce data into the queue
+def produce(h_queue):
+    h_queue.put("har")
+
+# Function to consume data from the queue
+def consume(h_queue):
+    global consume_count
+    global low_water_count
+    global high_water_count
+
+    def consume_callback(msg):
+        nonlocal consume_count
+        consume_count += 1
+        if consume_count == 1000:
+            print("Done consuming 1000 entries from the queue")
+            if high_water_count != 3:
+                print("WARNING: Expected 3 high water events, received", high_water_count)
+            if low_water_count != 3:
+                print("WARNING: Expected 3 low water events, received", low_water_count)
+            reactor.stop()
+        deferLater(reactor, 0.047, consume, h_queue)
+
+    h_queue.get(consume_callback)
+
+# Initializing HysteresisQueue and LoopingCall
+H_QUEUE = HysteresisQueue(low=5, high=25, highwater=high_watermark, lowwater=low_watermark,
+                           flowstat_cb=flow_statistics, flowstat_interval=10)
+LOOPING_CALL = LoopingCall(produce, H_QUEUE)
+
+# Starting the LoopingCall and consuming
+LOOPING_CALL.start(0.044)
+consume(H_QUEUE)
+
+print("Starting the base test for TxHysteresisQueue. This should take about a minute.")
+reactor.run()

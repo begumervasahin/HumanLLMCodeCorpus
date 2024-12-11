@@ -1,0 +1,56 @@
+import threading
+import random
+import time
+from quicksort import quickSort
+from merge import merge
+
+class SortingThread(threading.Thread):
+    def __init__(self, thread_id, name, array, low, high):
+        super().__init__()
+        self.thread_id = thread_id
+        self.name = name
+        self.array = array
+        self.low = low
+        self.high = high
+        self.result = []
+
+    def run(self):
+        quickSort(self.array, self.low, self.high)
+        self.result = self.array[self.low:self.high + 1]
+
+class MergingThread(threading.Thread):
+    def __init__(self, thread_id, name, array, low, high, processes):
+        super().__init__()
+        self.thread_id = thread_id
+        self.name = name
+        self.array = array
+        self.low = low
+        self.high = high
+        self.processes = processes
+        self.result = []
+
+    def run(self):
+        mid = self.low + (self.high - self.low) // 2
+        if self.processes == 2:
+            t1 = SortingThread(self.thread_id + 1, f"SortingThread-{self.thread_id + 1}", self.array, self.low, mid)
+            t2 = SortingThread(self.thread_id + 2, f"SortingThread-{self.thread_id + 2}", self.array, mid + 1, self.high)
+        else:
+            t1 = MergingThread(self.thread_id + 1, f"MergingThread-{self.thread_id + 1}", self.array, self.low, mid, self.processes // 2)
+            t2 = MergingThread(self.thread_id + 2, f"MergingThread-{self.thread_id + 2}", self.array, mid + 1, self.high, self.processes // 2)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        self.result = merge(t1.result, t2.result)
+
+if __name__ == '__main__':
+    processes = 32
+    array = list(range(0, 1000000))
+    random.shuffle(array)
+    start_time = time.time()
+    merge_thread = MergingThread(1, f"MergingThread-1", array, 0, len(array) - 1, processes)
+    merge_thread.start()
+    merge_thread.join()
+    end_time = time.time()
+    print(f"End time: {end_time}")
+    print(f"Execution time: {end_time - start_time} seconds")

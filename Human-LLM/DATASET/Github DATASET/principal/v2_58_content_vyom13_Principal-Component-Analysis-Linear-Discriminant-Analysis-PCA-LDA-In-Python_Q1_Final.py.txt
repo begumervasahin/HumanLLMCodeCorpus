@@ -1,0 +1,103 @@
+import numpy as np
+from numpy import genfromtxt
+from numpy import linalg as LA
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Load data
+data_1 = genfromtxt("C:/Users/vyoms/Desktop/dataset_1.csv", delimiter=",")
+data = data_1[1:, :]
+data_V1 = data_1[1:, 0]
+data_V2 = data_1[1:, 1]
+
+# Scatter plot V2 vs V1
+plt.scatter(data_V1[:30], data_V2[:30], marker='o', color='purple', alpha=0.5, label='Class 1')
+plt.scatter(data_V1[30:60], data_V2[30:60], marker='o', color='orange', alpha=0.5, label='Class 2')
+plt.xlabel('V1')
+plt.ylabel('V2')
+plt.title('Scatter Plot of V2 vs V1')
+plt.legend()
+plt.show()
+
+# Principal Component Analysis (PCA)
+def perform_pca(x):
+    column_mean = np.mean(x, axis=0)
+    x_mean_centered = x - column_mean
+    covariance_matrix = np.cov(x_mean_centered, rowvar=False)
+    eigen_values, eigen_vectors = LA.eig(covariance_matrix)
+    sorted_indices = np.argsort(eigen_values)[::-1]
+    eigen_values = eigen_values[sorted_indices]
+    eigen_vectors = eigen_vectors[:, sorted_indices]
+    pca_scores = np.matmul(x_mean_centered, eigen_vectors)
+    pca_results = {'data': x,
+                   'mean_centered_data': x_mean_centered,
+                   'PC_variance': eigen_values,
+                   'loadings': eigen_vectors,
+                   'scores': pca_scores}
+    return pca_results
+
+pca_results = perform_pca(data)
+
+# Plot regression using PCA loadings
+plt.title('Regression Plot Using PCA Loadings')
+plt.scatter(data_V1[:30], data_V2[:30], marker='o', color='purple', alpha=0.5, label='Class 1')
+plt.scatter(data_V1[30:60], data_V2[30:60], marker='o', color='orange', alpha=0.5, label='Class 2')
+plt.plot([0, 100 * pca_results['loadings'][0, 0]], [0, 100 * pca_results['loadings'][1, 0]],
+         color='blue', linewidth=3, label='Principal Component 1')
+plt.xlabel('V1')
+plt.ylabel('V2')
+plt.xlim(0, 40)
+plt.ylim(0, 40)
+plt.legend()
+plt.show()
+
+# Linear Discriminant Analysis (LDA)
+df = pd.read_csv('C:/Users/vyoms/Desktop/dataset_1.csv', header=None)
+df = df.iloc[1:, :].astype(float)
+df1 = df.iloc[:30, :]
+df2 = df.iloc[30:, :]
+mean_all = df.mean().values.reshape(1, -1)
+mean_1 = df1.mean().values.reshape(1, -1)
+mean_2 = df2.mean().values.reshape(1, -1)
+within_class_scatter = np.dot((df1 - mean_1).T, (df1 - mean_1)) + np.dot((df2 - mean_2).T, (df2 - mean_2))
+between_class_scatter = len(df1) * np.dot((mean_1 - mean_all).T, (mean_1 - mean_all)) + \
+                        len(df2) * np.dot((mean_2 - mean_all).T, (mean_2 - mean_all))
+eig_vals, eig_vecs = np.linalg.eig(np.dot(np.linalg.inv(within_class_scatter), between_class_scatter))
+W = eig_vecs[:, np.argmax(eig_vals)]
+lda_project = np.dot(df, W)
+
+# Plot LDA projection
+plt.figure()
+plt.title('LDA Projection')
+plt.scatter(lda_project[:30], np.zeros(30), marker='o', color='purple', alpha=0.5, label='Class 1')
+plt.scatter(lda_project[30:], np.zeros(30), marker='o', color='orange', alpha=0.5, label='Class 2')
+plt.xlabel('LD1')
+plt.ylabel('')
+plt.legend()
+plt.show()
+
+# Calculate PCA variance
+pca_variance = np.var(pca_results['scores'], axis=0)
+total_pca_variance = np.sum(pca_variance)
+percent_variance_explained = pca_variance / total_pca_variance * 100
+
+# Print PCA variance explained by each component
+for i, pc_variance in enumerate(percent_variance_explained, start=1):
+    print(f"PC{i} explains: {pc_variance:.2f}% variance")
+
+# Calculate covariance between PCA scores
+covariance_pc1_pc2 = np.cov(pca_results['scores'][:, 0], pca_results['scores'][:, 1])
+PC1_variance = np.var(pca_results['scores'][:, 0])
+PC2_variance = np.var(pca_results['scores'][:, 1])
+
+print("Covariance between PC1 and PC2:", covariance_pc1_pc2)
+print("Variance of PC1:", PC1_variance)
+print("Variance of PC2:", PC2_variance)
+
+# Plot scree plot
+plt.figure()
+plt.title('Scree Plot')
+plt.scatter(pca_results['scores'][:, 0], pca_results['scores'][:, 1], color='blue')
+plt.xlabel('PC1 Scores')
+plt.ylabel('PC2 Scores')
+plt.show()

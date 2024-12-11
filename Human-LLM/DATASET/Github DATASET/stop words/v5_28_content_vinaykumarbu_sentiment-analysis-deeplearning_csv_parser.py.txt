@@ -1,0 +1,54 @@
+import re
+from tqdm import tqdm
+
+# File paths
+input_file_path = "twitter-sentiment-dataset/sentiment-dataset.csv"
+positive_output_file_path = "twitter-sentiment-dataset/tw-data.pos"
+negative_output_file_path = "twitter-sentiment-dataset/tw-data.neg"
+
+# Open input and output files
+try:
+    input_file = open(input_file_path, "r")
+    positive_output_file = open(positive_output_file_path, "w")
+    negative_output_file = open(negative_output_file_path, "w")
+except IOError:
+    print("Failed to open file")
+    quit()
+
+# Read lines from the CSV dataset
+csv_lines = input_file.readlines()
+
+# Iterate over each line in the dataset
+for line in tqdm(csv_lines):
+    # Split the line by commas, considering only the first three occurrences
+    parts = line.split(",", 3)
+    
+    # Extract tweet text and remove leading/trailing whitespaces
+    tweet = parts[3].strip()
+    processed_tweet = ''
+    
+    # Process each word in the tweet
+    for word in tweet.split():
+        # Replace mentions with <NAME/>
+        if re.match('^.*@.*', word):
+            word = '<NAME/>'
+        # Replace links with <LINK/>
+        if re.match('^.*http://.*', word):
+            word = '<LINK/>'
+        # Handle HTML entities
+        word = word.replace('&quot;', '\"').replace('&amp;', '&').replace('&gt;', '>').replace('&lt;', '<')
+        processed_tweet = ' '.join([processed_tweet, word])  # Reconstruct the tweet with processed words
+    
+    # Remove leading/trailing whitespaces and add newline
+    processed_tweet = processed_tweet.strip() + '\n'
+    
+    # Write the processed tweet to the appropriate file based on sentiment label
+    if parts[1].strip() == '1':
+        positive_output_file.write(processed_tweet)
+    else:
+        negative_output_file.write(processed_tweet)
+
+# Close all opened files
+input_file.close()
+positive_output_file.close()
+negative_output_file.close()

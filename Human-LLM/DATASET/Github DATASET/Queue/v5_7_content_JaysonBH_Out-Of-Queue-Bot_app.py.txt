@@ -1,0 +1,132 @@
+import os
+import json
+from flask import Flask, request, redirect
+from pymongo import MongoClient
+import slack
+from slackbot import SlackBot
+from roster import Roster
+from tasks import choose_command, processEvent
+
+# Load environment variables
+client_id = os.environ.get("SLACK_CLIENT_ID")
+client_secret = os.environ.get("SLACK_CLIENT_SECRET")
+oauth_scope = os.environ.get("SLACK_SCOPE")
+CONNECT_STRING = os.environ.get("CONNECT_STRING")
+ZOOM_MONGO = os.environ.get("ZOOM_MONGO")
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Connect to MongoDB
+client = MongoClient(CONNECT_STRING)
+db = client.queue
+employees = db.employees
+
+zoomDBClient = MongoClient(ZOOM_MONGO)
+zdb = zoomDBClient.zoom
+zoomUsers = zdb.users
+
+s = SlackBot()
+
+# Define commands and privileged users
+COMMANDS = {"list", "listall", "run", "runall", "refresh", "test", "zoom"}
+PRIVILEGED_COMMANDS = {"listall", "runall"}
+PRIVILEGED_USERS = {"UF57DA49F", "U054G9J88", "U26R8ML07"}
+
+# Handle 404 error
+@app.errorhandler(404)
+def page_not_found(e):
+    return "Command not found"
+
+# Pre-installation route
+@app.route("/", methods=["GET"])
+def pre_install():
+    name = request.args.get('name', '').split(' ')
+    first_name = name[0]
+    last_name = name[-1]
+    if len(name) == 3:
+        first_name += '+' + name[1]
+    auth_url = f"https://slack.com/oauth/authorize?scope={oauth_scope}&client_id={client_id}&state={first_name}+{last_name}"
+    return f'<a href="{auth_url}">Authorize App (you will be redirected to Slack)</a>'
+
+# Post-installation route
+@app.route("/finish_auth", methods=["GET", "POST"])
+def post_install():
+    auth_code = request.args.get('code')
+    name = request.args.get('state', '').split(' ')
+    first_name = name[0]
+    if len(name) == 3:
+        last_name = name[2]
+        first_name += ' ' + name[1]
+    else:
+        last_name = name[1]
+    client = slack.WebClient(token="")
+    response = client.oauth_access(
+        client_id=client_id,
+        client_secret=client_secret,
+        code=auth_code
+    )
+    person = {
+        'access_token': response['access_token'],
+        'user_id': response['user_id'],
+    }
+    employees.update(
+        {'first_name': first_name, 'last_name': last_name},
+        {'$set': person},
+        upsert=False
+    )
+    r = Roster("password.json", "EAST")
+    r.setOutOfQueue()
+    completed = employees.find_one({'first_name': first_name, 'last_name': last_name})
+    choose_command.apply_async(args=("run", response['user_id']), queue="commands")
+    return "Auth complete! You will receive a notification on your Out of Queue day, and your status will be updated! \n\n Please check out"
+
+# Execute command route
+@app.route("/command", methods=["POST"])
+def execCommand():
+    user_id = request.form.get("user_id")
+    command = request.form.get("text")
+    if command not in COMMANDS:
+        return flask.redirect(404)
+    if command in PRIVILEGED_COMMANDS and user_id not in PRIVILEGED_USERS:
+        return "You are not authorized to use this command. Please reach out in"
+    choose_command.apply_async(args=(command, user_id), queue="commands")
+    return "Executing command."
+
+# Handle events route
+@app.route("/events", methods=["POST"])
+def events():
+    r = request.get_json()
+    print(r)
+    processEvent.apply_async(args=(r,), queue="events")
+    return "received event"
+
+# Zoom route
+@app.route("/zoom", methods=["POST"])
+def zoom():
+    r = request.get_json()
+    if r['event'] in ('meeting.participant_joined', 'meeting.participant_left'):
+        cur_user = r['payload']['object']['participant'].get('id')
+        if cur_user:
+            update_query = {'zoomID': cur_user}
+            if r['event'] == 'meeting.participant_joined':
+                update_query['$inc'] = {'num_meetings': 1}
+                message = f"{r['payload']['object']['participant']['user_name']} just joined a zoom meeting."
+            else:
+                update_query['num_meetings'] = {'$gt': 0}
+                update_query['$inc'] = {'num_meetings': -1}
+                message = f"{r['payload']['object']['participant']['user_name']} just left a zoom meeting."
+            match = zoomUsers.update_one(update_query)
+            if match.matched_count != 0:
+                print(f"\033[96m {message} \033[00m")
+                s.slackBotUser.chat.post_message(
+                    channel='YOUR_CHANNEL',
+                    text=message,
+                    username='Availability Bot',
+                    link_names=1,
+                    as_user=True
+                )
+    return "received event"
+
+if __name__ == "__main__":
+    app.run()

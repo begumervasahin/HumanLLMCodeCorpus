@@ -1,0 +1,67 @@
+class Solution:
+    def search_rotated_array(self, nums, target):
+        # Function to find the index of the pivot point in a rotated sorted array
+        def find_pivot(start, end, nums):
+            mid = start + (end - start) // 2
+
+            # Check if the array length is less than 3
+            if len(nums) < 3:
+                return start
+
+            # Check if mid is the pivot point
+            if nums[mid] < nums[mid - 1] and nums[mid] < nums[mid + 1]:
+                return mid
+            # Check if mid + 1 is the pivot point
+            elif nums[mid] > nums[mid - 1] and nums[mid] > nums[mid + 1]:
+                return mid
+            # Continue searching in the right half
+            elif nums[mid] > nums[len(nums) - 1]:
+                return find_pivot(mid, len(nums), nums)
+            # Continue searching in the left half
+            elif nums[mid] < nums[0]:
+                return find_pivot(start, mid, nums)
+            else:
+                return -1  # No pivot found
+
+        # Function to perform binary search
+        def binary_search(start, end, target, nums):
+            mid = start + (end - start) // 2
+
+            if target == nums[mid]:
+                return mid
+
+            # Check if there are only two elements left in the sub-array
+            if end - start < 3:
+                if target == nums[start]:
+                    return start
+                elif target == nums[end]:
+                    return end
+                else:
+                    return -1
+
+            # Continue searching in the right half
+            elif target > nums[mid]:
+                return binary_search(mid, end, target, nums)
+            # Continue searching in the left half
+            else:
+                return binary_search(start, mid, target, nums)
+
+        pivot_index = find_pivot(0, len(nums) - 1, nums)
+
+        if pivot_index == -1:
+            # If no pivot point found, perform binary search on the entire array
+            return binary_search(0, len(nums) - 1, target, nums)
+        else:
+            # Perform binary search on the appropriate half based on pivot point
+            index_left_half = binary_search(0, pivot_index - 1, target, nums)
+            if index_left_half != -1:
+                return index_left_half
+            else:
+                return binary_search(pivot_index, len(nums) - 1, target, nums)
+
+# Example usage:
+solution = Solution()
+nums = [4, 5, 6, 7, 0, 1, 2]
+target = 0
+result = solution.search_rotated_array(nums, target)
+print("Index of target in rotated array:", result)

@@ -1,0 +1,44 @@
+def find_root(vertex, root_ids):
+    """
+    Find the root of a vertex in the disjoint set.
+    """
+    if root_ids[vertex] == vertex:
+        return vertex
+    else:
+        # Path compression: update the root of each vertex along the path
+        while root_ids[vertex] != vertex:
+            root_ids[vertex] = root_ids[root_ids[vertex]]
+            vertex = root_ids[vertex]
+        return vertex
+
+def union(u, v, root_ids):
+    """
+    Perform union operation on two vertices.
+    """
+    u_root = find_root(u, root_ids)
+    v_root = find_root(v, root_ids)
+    # Union by rank: attach the root of the smaller tree to the root of the larger tree
+    root_ids[v_root] = root_ids[u_root]
+
+def kruskal(V, E, graph_edges):
+    """
+    Implement Kruskal's algorithm to find the minimum spanning tree weight.
+    """
+    min_weight = 0
+    # Sort edges by weight
+    graph_edges = sorted(graph_edges, key=lambda x: x[2])
+    root_ids = list(range(V + 1))
+    for u, v, weight in graph_edges:
+        if find_root(u, root_ids) != find_root(v, root_ids):
+            # If the vertices are not in the same set, add the edge to the minimum spanning tree
+            min_weight += weight
+            union(u, v, root_ids)
+    return min_weight
+
+if __name__ == "__main__":
+    # Input
+    V, E = map(int, input().split())
+    graph_edges = [list(map(int, input().split())) for _ in range(E)]
+
+    # Output the weight of the minimum spanning tree
+    print(kruskal(V, E, graph_edges)))

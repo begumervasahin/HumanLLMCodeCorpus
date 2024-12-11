@@ -1,0 +1,50 @@
+import queue
+from mymap import myMap
+from modules import showResultWithAttr, showStep, aweSomeSort
+
+def UCS(start, goal):
+    # Initialize the queue with the starting city
+    q = queue.deque()
+    q.append(start)
+    
+    # Initialize the dictionary to store previous city and total cost
+    previous = {city: {'from': None, 'total_cost': 0} for city in myMap.keys()}
+    
+    # Counter to track the number of iterations
+    counter = 0
+    
+    while True:
+        counter += 1
+        showStep(counter, q, previous)
+        
+        # Get the current city from the queue
+        curCity = q.popleft()
+        curCityTotalCost = previous[curCity]['total_cost']
+        
+        if curCity != goal:
+            # Explore neighbors of the current city
+            for city, attrs in myMap[curCity].items():
+                cityTotalCost = previous[city]['total_cost']
+                totalCost = attrs['cost'] + curCityTotalCost
+                
+                # Update the previous city and total cost if the new path is cheaper
+                if previous[city]['from'] is None or totalCost < cityTotalCost:
+                    if city in q:
+                        q.remove(city)
+                    q.append(city)
+                    previous[city]['from'] = curCity
+                    previous[city]['total_cost'] = totalCost
+        else:
+            # Goal city reached, show the result
+            showResultWithAttr(previous, start, goal)
+            return True
+        
+        # Check if the queue is empty
+        if len(q) == 0:
+            break
+        
+        # Sort the queue based on some criteria (not specified in the provided code)
+        q = queue.deque(aweSomeSort(q, previous))
+    
+    # Goal city not reachable
+    return False

@@ -1,0 +1,47 @@
+import pandas as pd
+
+# Load the prediction data from the CSV file
+prediction_data = pd.read_csv("y_prediction_bts.csv").values
+predictions = list(prediction_data)
+
+# Initialize lists to store start and end times of segments
+segment_start_times = []
+segment_end_times = []
+
+# Iterate through the prediction data
+idx = 0
+while idx < len(predictions) - 1:
+    count = 0
+    most_dynamic_count = 0
+
+    # Check if the prediction is 0.5 or 1
+    if predictions[idx] == 0.5 or predictions[idx] == 1:
+        start_idx = idx
+
+        # Count consecutive 0.5 or 1 predictions
+        while predictions[idx] == 0.5 or predictions[idx] == 1:
+            idx += 1
+            count += 1
+
+            # Count the number of 1 predictions
+            if predictions[idx] == 1:
+                most_dynamic_count += 1
+
+        end_idx = idx
+
+        # If the segment is longer than 3 and contains at least one 1 prediction
+        if count > 3 and most_dynamic_count > 0:
+            segment_start_times.append(start_idx)
+            segment_end_times.append(end_idx)
+
+    idx += 1
+
+# Create DataFrames for start and end times
+start_times_df = pd.DataFrame(segment_start_times, columns=["Start Time"])
+end_times_df = pd.DataFrame(segment_end_times, columns=["End Time"])
+
+# Concatenate start and end time DataFrames
+time_data = pd.concat([start_times_df, end_times_df], axis=1)
+
+# Write time data to a new CSV file
+time_data.to_csv("timedata_bts.csv", mode='w', index=False)

@@ -1,0 +1,54 @@
+# Importing necessary libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
+# Read the dataset
+dataset = pd.read_csv('Position_Salaries.csv')
+
+# Extract features and target variable
+X = dataset.iloc[:, 1:2].values
+y = dataset.iloc[:, 2].values
+
+# Initialize variables for finding the best degree
+best_degree = 1
+min_mse = float('inf')
+
+# Find the best degree for polynomial regression
+for degree in range(1, 11):
+    # Create polynomial features
+    poly_reg = PolynomialFeatures(degree=degree)
+    X_poly_temp = poly_reg.fit_transform(X)
+    
+    # Fit polynomial regression model
+    poly_reg.fit(X_poly_temp, y)
+    lin_reg = LinearRegression()
+    lin_reg.fit(X_poly_temp, y)
+    
+    # Predict target variable
+    y_pred = lin_reg.predict(X_poly_temp)
+    
+    # Calculate Mean Squared Error (MSE)
+    mse = np.mean((y_pred - y) ** 2)
+    
+    # Update best degree if current MSE is smaller
+    if mse < min_mse:
+        min_mse = mse
+        best_degree = degree
+
+# Apply polynomial regression with the best degree
+poly_reg = PolynomialFeatures(degree=best_degree)
+X_poly = poly_reg.fit_transform(X)
+poly_reg.fit(X_poly, y)
+lin_reg = LinearRegression()
+lin_reg.fit(X_poly, y)
+
+# Visualize the results
+plt.scatter(X, y, color='red')
+plt.plot(X, lin_reg.predict(poly_reg.fit_transform(X)), color='blue')
+plt.title('Truth or Bluff (Polynomial Regression)')
+plt.xlabel('Position level')
+plt.ylabel('Salary')
+plt.show()

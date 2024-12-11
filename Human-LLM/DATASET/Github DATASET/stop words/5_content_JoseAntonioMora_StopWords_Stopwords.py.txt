@@ -1,0 +1,26 @@
+import codecs
+import win_unicode_console
+from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize
+win_unicode_console.enable()
+archivo = codecs.open('texto.txt', 'r', encoding='utf-8')
+texto = ""
+for linea in archivo:
+    linea = linea.strip()
+    texto = texto + " " + linea
+tokens = sent_tokenize(texto)
+print "\nEl texto contine {} sentencias.\nComenzando de 0 hasta {}\n".format(len(tokens), len(tokens) - 1)
+numero_sentencia = input("Ingresa en numero de sentencia: ")
+if(numero_sentencia > 0 and numero_sentencia < len(tokens)):
+    print "\n[Sentencia " + str(numero_sentencia) + "] -> " + tokens[numero_sentencia], '\n'
+    word_tokens = []
+    for token in tokens:
+        word_tokens.append(word_tokenize(token))
+    n = 0
+    for tok in word_tokens[numero_sentencia]:
+        print "Token " + str(n) + " -> " + tok
+        n = n + 1
+    print "\nTotal de tokens por palabras de la sentencia {} son: {} Tokens".format(numero_sentencia, len(word_tokens[numero_sentencia]))
+    print "\nTotal de sentencias: {}".format(len(tokens) - 1)
+else:
+    print "\n\nNumero de sentencia no valido"

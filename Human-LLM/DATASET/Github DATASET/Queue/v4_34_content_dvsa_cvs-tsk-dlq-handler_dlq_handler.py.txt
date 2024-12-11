@@ -1,0 +1,72 @@
+import json
+import logging
+import base64
+import boto3
+import datetime
+import os
+from aws_xray_sdk.core import patch_all, xray_recorder
+from boto3_type_annotations.lambda_ import Client as LambdaClient
+from pathlib import Path
+from typing import List, Dict
+
+# Initialize AWS X-Ray tracing
+patch_all()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# AWS Lambda handler function
+@xray_recorder.capture('invoke')
+def handler(event, context):
+    # Initialize Lambda client
+    lambda_client: LambdaClient = boto3.client('lambda')
+    
+    # Extract records from the event
+    records: List[Dict] = event.get('Records')
+    
+    # Extract source queue information
+    sqs_arn: str = records[0].get('eventSourceARN')
+    source_queue = sqs_arn.split(':')[5]
+    source_environment = source_queue.rsplit('-', 1)[1]
+    
+    # Get current time
+    current_time = f"{datetime.datetime.utcnow().isoformat(timespec='minutes')}Z"
+    
+    # Prepare payload for notification lambda
+    payload = {
+        'message_type': 'email',
+        'to': os.getenv('TO_EMAIL'),
+        'template_id': os.getenv('TEMPLATE_ID'),
+        'template_vars': {
+            'source_queue': source_queue,
+            'source_environment': source_environment
+        },
+        'attachment': base64.b64encode(json.dumps(records, indent=2).encode('utf-8', errors='strict')).decode("utf-8", "strict"),
+        'attachment_name': f'{source_queue}_dead_messages_{current_time}.json'
+    }
+    
+    # Invoke notification lambda
+    lambda_name = os.getenv('NOTIFY_LAMBDA_NAME')
+    resp = lambda_client.invoke(FunctionName=lambda_name, Payload=json.dumps(payload))
+    
+    # Check for errors
+    if resp.get('FunctionError') is not None:
+        raise RuntimeError(f'{lambda_name} failed to notify with {payload}')
+    else:
+        return resp['Payload'].read()
+
+# Main function for testing
+if __name__ == '__main__':
+    import argparse
+    
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--event', help='Path to event json file', type=Path)
+    args = parser.parse_args()
+    
+    # Load event data from file
+    with open(args.event) as event_file:
+        evt = json.load(event_file)
+    
+    # Call the Lambda handler function with the event data and an empty context
+    handler(evt, {})

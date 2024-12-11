@@ -1,0 +1,93 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import AES
+
+# Block size for AES encryption
+BLOCK_SIZE = 16
+
+# Function to pad the message to a multiple of the block size
+def pad_message(message):
+    padding_length = BLOCK_SIZE - len(message) % BLOCK_SIZE
+    padding = chr(padding_length) * padding_length
+    return message + padding
+
+# Function to unpad the message
+def unpad_message(padded_message):
+    padding_length = ord(padded_message[-1])
+    return padded_message[:-padding_length]
+
+class AESAlgorithm:
+    def __init__(self):
+        pass
+
+    def encrypt(self, message, symmetric_key):
+        """
+        Encrypt a message using AES algorithm.
+
+        Args:
+            message (str): The message to be encrypted.
+            symmetric_key (str): The symmetric key used for encryption.
+
+        Returns:
+            bytes: The encrypted message.
+        """
+        # Pad the message to a multiple of the block size
+        padded_message = pad_message(message)
+
+        # Generate the key by hashing the symmetric key
+        hashed_key = hashlib.sha256(symmetric_key.encode('utf-8')).digest()
+
+        # Generate a random initialization vector (IV)
+        iv = Random.new().read(AES.block_size)
+
+        # Create AES cipher object in CBC mode with the generated key and IV
+        cipher = AES.new(hashed_key, AES.MODE_CBC, iv)
+
+        # Encrypt the padded message
+        encrypted_message = cipher.encrypt(padded_message)
+
+        # Combine the IV and encrypted message, then encode in base64
+        return base64.b64encode(iv + encrypted_message)
+
+    def decrypt(self, encrypted_message, symmetric_key):
+        """
+        Decrypt an encrypted message using AES algorithm.
+
+        Args:
+            encrypted_message (bytes): The encrypted message.
+            symmetric_key (str): The symmetric key used for decryption.
+
+        Returns:
+            str: The decrypted message.
+        """
+        # Decode the base64 encoded encrypted message
+        encrypted_message = base64.b64decode(encrypted_message)
+
+        # Extract the IV from the encrypted message
+        iv = encrypted_message[:AES.block_size]
+
+        # Generate the key by hashing the symmetric key
+        hashed_key = hashlib.sha256(symmetric_key.encode('utf-8')).digest()
+
+        # Create AES cipher object in CBC mode with the generated key and IV
+        cipher = AES.new(hashed_key, AES.MODE_CBC, iv)
+
+        # Decrypt the message and remove padding
+        decrypted_message = cipher.decrypt(encrypted_message[AES.block_size:])
+        return unpad_message(decrypted_message)
+
+# Create an instance of AESAlgorithm
+aes_algorithm = AESAlgorithm()
+
+# Define the plaintext message and symmetric key
+plain_text = "Hello World"
+symmetric_key = "63757843836583645936548364836"
+
+# Encrypt the plaintext message and print the result
+encrypted_text = aes_algorithm.encrypt(plain_text, symmetric_key)
+print("Encrypted Text:", encrypted_text.decode())
+
+# Decrypt the encrypted message and print the result
+decrypted_text = aes_algorithm.decrypt(encrypted_text, symmetric_key)
+print("Decrypted Text:", decrypted_text.decode())

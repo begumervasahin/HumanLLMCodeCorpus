@@ -1,0 +1,37 @@
+import urllib.request
+from bs4 import BeautifulSoup
+import songline
+
+def get_province_temperature(province_id):
+    try:
+        url = f'https://www.tmd.go.th/province.php?id={province_id}'
+        
+        with urllib.request.urlopen(url) as response:
+            page_html = response.read()
+
+        soup = BeautifulSoup(page_html, 'html.parser')
+
+        temperature = soup.find('td', class_='strokeme').text
+        province_name = soup.find('span', class_='title').text.replace('Â ', '')
+
+        print(f'Province: {province_name}, Temperature: {temperature}')
+        
+        message_text = f'Province: {province_name}, Temperature: {temperature}'
+        return message_text
+    
+    except Exception as e:
+        print('Error:', e)
+        return 'No Result'
+
+def main():
+    songline_token = 'Your_Songline_Token_Here'
+    messenger = songline.Sendline(songline_token)
+
+    province_id = 2  # Change this to the desired province ID
+    province_temperature = get_province_temperature(province_id)
+
+    if province_temperature != 'No Result':
+        messenger.sendtext(province_temperature)
+
+if __name__ == "__main__":
+    main()

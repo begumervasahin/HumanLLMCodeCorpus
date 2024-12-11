@@ -1,0 +1,51 @@
+import nltk
+from textblob import TextBlob as tb
+import json
+
+# Download necessary nltk data
+nltk.download('punkt')
+
+class TfIdf:
+    def __init__(self, corpusPath):
+        self.corpusPath = corpusPath
+        self.corpus = []  # List to store documents in the corpus
+        self.wordDfDict = {}  # Dictionary to store word document frequencies
+
+    def setup(self):
+        # Load data from JSON files specified in corpusPath
+        for path in self.corpusPath:
+            with open(path, 'r') as file:
+                data = json.load(file)
+                self.corpus.extend(data)  # Extend corpus with documents from the file
+        self.calculateWordFrequency()
+
+    def buildCorpus(self, content):
+        # Create a TextBlob object from the concatenated content of the document
+        return tb(' '.join(content))
+
+    def calculateWordFrequency(self):
+        # Iterate through each document in the corpus
+        for document in self.corpus:
+            content = document['content']
+            # Build TextBlob object from document content
+            blob = self.buildCorpus(content)
+            # Iterate through unique words in the document
+            for word in set(blob.words):
+                # Update word document frequency dictionary
+                self.wordDfDict[word] = self.wordDfDict.get(word, 0) + 1
+
+    def writeToFile(self, filename="stop-words.txt", top_n=102):
+        # Write the top n words with highest document frequency to a file
+        with open(filename, 'w') as outFile:
+            # Sort word document frequency dictionary by value (frequency) in descending order
+            for key, val in sorted(self.wordDfDict.items(), key=lambda x: x[1], reverse=True)[:top_n]:
+                outFile.write(key + '\n')  # Write word to file
+
+# Paths to JSON files containing the corpus
+corpusPath = ["udayavani.json"]
+# Create TfIdf object
+t = TfIdf(corpusPath)
+# Perform setup to process the corpus
+t.setup()
+# Write the top words to a file
+t.writeToFile()

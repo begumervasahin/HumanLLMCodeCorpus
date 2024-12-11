@@ -1,0 +1,51 @@
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from matplotlib import pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage, cophenet, maxdists
+from scipy.spatial.distance import pdist
+
+# Load the dataset
+file = 'Flagdata.csv'
+df = pd.read_csv(file)
+
+# Standardize the data
+scaler = StandardScaler()
+scaler.fit(df)
+data = scaler.transform(df)
+
+# Perform hierarchical clustering
+z = linkage(data, "average")
+
+# Calculate the cophenetic correlation coefficient
+c, coph_dists = cophenet(z, pdist(data))
+print('Cophenet Correlation coefficient = ', c)
+print('Cophenet pairwise distances = ', coph_dists)
+print("1st Cluster is ", z[0])
+
+# Calculate the maximum pairwise distances
+m = maxdists(z)
+print("Distance Array ", m)
+
+# Plot the dendrogram
+plt.figure(figsize=(30, 15))
+plt.title('Dendrogram for Flag data')
+plt.xlabel('Sample Index')
+plt.ylabel('Distance')
+dendrogram(
+    z,
+    leaf_rotation=90.,
+    leaf_font_size=10.,
+)
+plt.show()
+
+# Plot the truncated dendrogram
+plt.figure(figsize=(20, 10))
+dendrogram(
+    z,
+    truncate_mode='lastp',
+    p=12,
+    leaf_rotation=90.,
+    leaf_font_size=12.,
+    show_contracted=True,
+)
+plt.show()

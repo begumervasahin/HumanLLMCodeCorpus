@@ -1,0 +1,110 @@
+import numpy as np
+import math
+from ROOT import *
+
+# Load and preprocess data
+def load_data(file_path):
+    data = np.loadtxt(file_path, delimiter=",")
+    X = data[:, :21].astype(float)
+    Y = data[:, 21]
+    return X, Y
+
+def separate_events(X, Y):
+    signals = X[Y == 1]
+    backgrounds = X[Y == 0]
+    return signals, backgrounds
+
+def calculate_covariance_matrix(signals, backgrounds):
+    s_sum = np.sum(signals, axis=0)
+    b_sum = np.sum(backgrounds, axis=0)
+    limit = min(len(signals), len(backgrounds))
+    cov_matrix = np.zeros((len(signals[0]), len(signals[0])))
+
+    for i in range(len(signals[0])):
+        for j in range(len(signals[0])):
+            cov_ij = np.dot((signals[:, i] - s_sum[i]), (backgrounds[:, j] - b_sum[j])) / (limit - 1)
+            cov_matrix[i][j] = cov_ij
+
+    return cov_matrix
+
+def write_matrix_to_file(matrix, file_path):
+    with open(file_path, 'w') as file:
+        for row in matrix:
+            file.write(','.join(map(str, row)) + '\n')
+
+def plot_matrix(matrix, title, file_path):
+    gROOT.SetBatch()
+    gStyle.SetOptStat(0)
+    gStyle.SetPadLeftMargin(0.14)
+    gStyle.SetTitleOffset(1.4, "y")
+    gStyle.SetPaintTextFormat("0.2e")
+    hist = TH2D("", "", 21, 0, 21, 21, 0, 21)
+
+    for i in range(len(matrix)):
+        for j in range(len(matrix[0])):
+            hist.SetBinContent(j + 1, len(matrix) - i, matrix[i][j])
+
+    hist.Draw("text")
+    hist.SetTitle(title)
+    gPad.Update()
+    cv = TCanvas("cv", "", 10, 10, 2300, 1000)
+    cv.Print(file_path)
+
+def perform_pca(cov_matrix):
+    eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+    return eigenvalues, eigenvectors
+
+def plot_eigenvectors(eigenvalues, eigenvectors, dim_names, file_path):
+    hist = TH2D("", "", 21, 0, 21, 22, 0, 22)
+
+    for i, (value, vector) in enumerate(zip(eigenvalues, eigenvectors)):
+        for j, component in enumerate(vector):
+            hist.SetBinContent(j + 1, len(eigenvalues) - i, component)
+
+        hist.SetBinContent(i + 1, len(eigenvalues), value)
+        hist.GetXaxis().SetBinLabel(i + 1, dim_names[i])
+        hist.GetYaxis().SetBinLabel(len(eigenvalues) - i, dim_names[i])
+
+    hist.GetYaxis().SetBinLabel(len(eigenvalues), "eigs")
+    hist.Draw("text")
+    hist.SetTitle("Full Eigenvectors")
+    cv = TCanvas("cv", "", 10, 10, 2300, 1000)
+    cv.Print(file_path)
+
+# Main code
+train_file = "../Higgs13TeV_train_118_130_ggh.csv"
+X_train, Y_train = load_data(train_file)
+
+dimensions = len(X_train[0])
+dim_names = ["l1 p_{T}", "l2 p_{T}", "l3 p_{T}", "l4 p_{T}", "j1 p_{T}", "j2 p_{T}", "Njets"]
+
+signals, backgrounds = separate_events(X_train, Y_train)
+cov_matrix = calculate_covariance_matrix(signals, backgrounds)
+
+n_covariances = math.factorial(dimensions) / (math.factorial(dimensions - 2) * 2)
+print(f"You have {dimensions} dimensions resulting in {n_covariances} covariance matrices.")
+
+write_matrix_to_file(cov_matrix, 'full_covariance_matrix.txt')
+plot_matrix(cov_matrix, "Full Covariance Matrix", "plots/Full_covariance_matrix.png")
+
+eigenvalues, eigenvectors = perform_pca(cov_matrix)
+plot_eigenvectors(eigenvalues, eigenvectors, dim_names, "plots/Full_eigenvectors.png")
+
+transposed_eigenvectors = np.transpose(eigenvectors)
+sorted_indexes = np.argsort(eigenvalues)[::-1]
+sorted_eigenvectors = [transposed_eigenvectors[index] for index in sorted_indexes]
+
+with open('full_eigenvectors.txt', 'w') as file:
+    for vector in sorted_eigenvectors:
+        file.write(','.join(map(str, vector)) + '\n')
+
+# Project dataset through eigenvectors space
+projected_dataset = np.dot(X_train - np.mean(X_train, axis=0), sorted_eigenvectors)
+
+# Load and project test data
+test_file = "../Higgs13TeV_test_118_130_ggh.csv"
+X_test = np.loadtxt(test_file, delimiter=",")
+pX_test = np.dot(X_test - np.mean(X_train, axis=0), sorted_eigenvectors)
+
+# Plot projected test data
+# (code for plotting projected test data omitted for brevity)

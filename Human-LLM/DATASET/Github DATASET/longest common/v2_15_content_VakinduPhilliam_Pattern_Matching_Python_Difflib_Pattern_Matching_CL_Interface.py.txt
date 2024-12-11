@@ -1,0 +1,55 @@
+import sys
+import os
+import difflib
+import argparse
+from datetime import datetime, timezone
+
+def file_last_modified_time(path):
+    # Get the last modified time of the file and convert it to a human-readable format
+    modified_time = datetime.fromtimestamp(os.stat(path).st_mtime, timezone.utc)
+    return modified_time.astimezone().isoformat()
+
+def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Command line tool for generating file diffs in various formats")
+    parser.add_argument('-c', action='store_true', default=False, help='Produce a context format diff (default)')
+    parser.add_argument('-u', action='store_true', default=False, help='Produce a unified format diff')
+    parser.add_argument('-m', action='store_true', default=False, help='Produce HTML side by side diff (can use -c and -l in conjunction)')
+    parser.add_argument('-n', action='store_true', default=False, help='Produce a ndiff format diff')
+    parser.add_argument('-l', '--lines', type=int, default=3, help='Set number of context lines (default 3)')
+    parser.add_argument('fromfile', help='Original file path')
+    parser.add_argument('tofile', help='Modified file path')
+    options = parser.parse_args()
+
+    # Extract arguments
+    num_context_lines = options.lines
+    from_file_path = options.fromfile
+    to_file_path = options.tofile
+    from_file_modified_time = file_last_modified_time(from_file_path)
+    to_file_modified_time = file_last_modified_time(to_file_path)
+
+    # Read contents of the files
+    with open(from_file_path) as from_file:
+        from_lines = from_file.readlines()
+    with open(to_file_path) as to_file:
+        to_lines = to_file.readlines()
+
+    # Choose the appropriate diff generation method based on the specified options
+    if options.u:
+        # Generate unified diff
+        generated_diff = difflib.unified_diff(from_lines, to_lines, from_file_path, to_file_path, from_file_modified_time, to_file_modified_time, n=num_context_lines)
+    elif options.n:
+        # Generate ndiff
+        generated_diff = difflib.ndiff(from_lines, to_lines)
+    elif options.m:
+        # Generate HTML side-by-side diff
+        generated_diff = difflib.HtmlDiff().make_file(from_lines, to_lines, from_file_path, to_file_path, context=options.c, numlines=num_context_lines)
+    else:
+        # Generate context diff
+        generated_diff = difflib.context_diff(from_lines, to_lines, from_file_path, to_file_path, from_file_modified_time, to_file_modified_time, n=num_context_lines)
+
+    # Output the generated diff
+    sys.stdout.writelines(generated_diff)
+
+if __name__ == '__main__':
+    main()

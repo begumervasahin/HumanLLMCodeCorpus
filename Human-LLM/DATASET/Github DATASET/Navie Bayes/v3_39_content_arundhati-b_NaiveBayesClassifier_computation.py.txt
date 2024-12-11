@@ -1,0 +1,56 @@
+import pandas as pd
+from naive_bayes import loocv, et
+
+def load_dataset(file_path, x_columns, y_column):
+    data = pd.read_csv(file_path, header=None)
+    X = data.iloc[:, x_columns].values.tolist()
+    y = data.iloc[:, y_column].values.tolist()
+    return X, y
+
+def process_et(x_train, x_test, y_train, y_test):
+    classes = set(y_train)
+    accuracy = et(x_train, x_test, y_train, y_test, classes)
+    return accuracy
+
+def process_loocv(x, y):
+    classes = set(y)
+    accuracy = loocv(x, y, classes)
+    return accuracy
+
+def main():
+    datasets = [
+        {"name": "Tic-tac-toe Endgame", "train": "tic-tac-toe.data", "test": None, "x_cols": range(0, 9), "y_col": 9},
+        {"name": "SPECT heart Dataset", "train": "SPECT.train", "test": "SPECT.test", "x_cols": range(1, 23), "y_col": 0},
+        {"name": "Soybean (small)", "train": "soybean-small.data", "test": None, "x_cols": range(0, 35), "y_col": 35},
+        {"name": "Shuttle landing control", "train": "shuttle-landing-control.data", "test": None, "x_cols": range(0, 9), "y_col": 9},
+        {"name": "Monks-1", "train": "monks-1.train", "test": "monks-1.test", "x_cols": range(2, 8), "y_col": 1},
+        {"name": "Monks-2", "train": "monks-2.train", "test": "monks-2.test", "x_cols": range(2, 8), "y_col": 1},
+        {"name": "Monks-3", "train": "monks-3.train", "test": "monks-3.test", "x_cols": range(2, 8), "y_col": 1}
+    ]
+
+    dataset_accuracies = []
+
+    for dataset in datasets:
+        train_file_path = dataset["train"]
+        test_file_path = dataset["test"]
+        x_columns = dataset["x_cols"]
+        y_column = dataset["y_col"]
+        
+        x_train, y_train = load_dataset(train_file_path, x_columns, y_column)
+        x_test, y_test = load_dataset(test_file_path, x_columns, y_column) if test_file_path else (None, None)
+
+        if test_file_path:
+            accuracy = process_et(x_train, x_test, y_train, y_test)
+        else:
+            accuracy = process_loocv(x_train, y_train)
+        
+        dataset_accuracies.append({"Dataset": dataset["name"], "Accuracy(%)": accuracy})
+
+    # Convert list of dictionaries to DataFrame
+    df_dataset_accuracies = pd.DataFrame(dataset_accuracies)
+
+    # Save results to a CSV file
+    df_dataset_accuracies.to_csv("Data.csv", index=False)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,71 @@
+import cv2
+import pyzbar.pyzbar as pyzbar
+
+# Function to decode and display barcodes in an image
+def decodeDisplay(image):
+    # Decode barcodes in the image
+    barcodes = pyzbar.decode(image)
+    
+    # Iterate through detected barcodes
+    for barcode in barcodes:
+        # Extract barcode location
+        (x, y, w, h) = barcode.rect
+        
+        # Draw a rectangle around the barcode
+        cv2.rectangle(image, (x, y), (x + w, y + h), (225, 225, 225), 2)
+        
+        # Decode barcode data and type
+        barcodeData = barcode.data.decode("utf-8")
+        barcodeType = barcode.type
+        
+        # Create text to display barcode data and type
+        text = "{} ({})".format(barcodeData, barcodeType)
+        
+        # Add text to the image
+        cv2.putText(image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                    .5, (225, 225, 225), 2)
+        
+        # Return the image and decoded barcode data
+        return image, barcodeData
+    
+    # If no barcode is found, return the image and an empty string
+    return image, ""
+
+# Function to detect barcodes using the camera
+def detect():
+    # Initialize the camera
+    camera = cv2.VideoCapture(0)
+    
+    # Continuously capture frames from the camera
+    while True:
+        # Read a frame from the camera
+        ret, frame = camera.read()
+        
+        # Convert the frame to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Decode and display barcodes in the frame
+        im, content = decodeDisplay(gray)
+        
+        # Display the frame
+        cv2.imshow("camera", im)
+        
+        # Check if barcode content is detected
+        if content != '':
+            break
+        
+        # Check for 'q' key press to quit
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            break
+    
+    # Release the camera and close all windows
+    camera.release()
+    cv2.destroyAllWindows()
+    
+    # Return the detected barcode content
+    return content
+
+# Entry point of the program
+if __name__ == '__main__':
+    # Call the detect function to start barcode detection
+    content = detect()

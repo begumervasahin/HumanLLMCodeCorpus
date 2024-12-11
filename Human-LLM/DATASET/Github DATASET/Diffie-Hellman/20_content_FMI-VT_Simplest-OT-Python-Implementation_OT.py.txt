@@ -1,0 +1,79 @@
+from Crypto.Cipher import AES
+import hashlib
+import random
+import sys
+import Crypto
+from ecc import getcurvebyname
+from array import array
+import socket
+from socket import *
+host="127.168.2.75"
+port=4446
+s=socket(AF_INET, SOCK_STREAM)
+s.bind((host,port))
+s.listen(1)
+print( "Listening for connections.. ")
+q,addr=s.accept()
+data=raw_input("Enter data to be send:  ")
+q.send(data)
+s.close()
+host = "127.168.2.75"
+port=4446
+s=socket(AF_INET, SOCK_STREAM)
+s.connect((host,port))
+msg=s.recv(1024)
+print ("Message from server : " + msg.strip().decode('ascii'))
+s.close()
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+var = [1]*10
+i=0
+for i in range(10):
+        var[i] = input("Please enter something: ").ljust(32)
+        print("You entered " + str(var[i]))
+curve=getcurvebyname("ed25519")
+print (str(curve))
+print("curve order=",curve.curve_order)
+print ("G=",curve.G)
+g=curve.G
+f=(int(curve.G.x),int(curve.G.y))
+print ("point with int x and y f=",f)
+a=random.randint(1,2**255-19)
+b=random.randint(1,2**255-19)
+Alice=(g.__mul__(a))
+c=2
+if (len(sys.argv)>1):
+	c=int(sys.argv[1])
+print ('g: ',g)
+print ('Alice value: ',Alice)
+print ('a (Alice random): ',a)
+print ('b (Bob random): ',b)
+if (c==0):
+	Bob=(g.__mul__(b))
+else:
+	Bob=(Alice.__mul__(c)).__add__(g.__mul__(b))
+print ("Alice=", Alice)
+print ("Bob=", Bob)
+k=[1]*10
+for i in range (10):
+        k[i]=hashlib.blake2s()
+        k[i].update(str((Bob.__add__(Alice.__neg__().__mul__(i))).__mul__(a)).encode())
+        k[i]=k[i].digest()
+cipher=[1]*10
+for i in range (10):
+        cipher[i]= AES.new(k[i], AES.MODE_ECB)
+print ('\nAlice calculates these keys')
+en=[1]*10
+for i in range (10):
+ en[i]=cipher[i].encrypt(var[i])
+print ('\nBob calculates this key:')
+m=hashlib.blake2s()
+m.update(str(Alice.__mul__(b)).encode())
+Bob_key=m.digest()
+print ('Bob key: ',Bob_key)
+cipher1 = AES.new(Bob_key, AES.MODE_ECB)
+message=[1]*10
+for i in range (10):
+        message[i]=cipher1.decrypt(en[i])
+print ('\nBob decrypts the messages:')
+for i in range (10):
+        print ("message:", message [i])

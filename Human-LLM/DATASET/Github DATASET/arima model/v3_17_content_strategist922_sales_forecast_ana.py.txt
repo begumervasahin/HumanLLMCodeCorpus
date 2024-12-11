@@ -1,0 +1,165 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import adfuller as ADF
+from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+# Define file paths
+INPUT_FILE = 'data/sales_by_item.xlsx'
+OUTPUT_PATH = 'result/'
+FORECAST_OUTPUT_FILE = os.path.join(OUTPUT_PATH, 'forecast.xlsx')
+MODEL_OUTPUT_FILE = os.path.join(OUTPUT_PATH, 'model.xlsx')
+
+# Read data
+sales_data = pd.read_excel(INPUT_FILE).T
+sales_data.index = pd.to_datetime(sales_data.index)
+
+# Separate data for analysis, testing, and prediction
+data_for_analysis = sales_data.iloc[:-12, :]
+data_for_testing = sales_data.iloc[-12:-7, :]
+data_for_prediction = sales_data.iloc[-7: -1, :]
+
+# Perform exploratory data analysis (EDA)
+EDA_OUTPUT_FOLDER = 'eda_fig/'
+os.makedirs(EDA_OUTPUT_FOLDER, exist_ok=True)
+
+def plot_and_save(data, save_path):
+    data.plot(figsize=(10, 8))
+    plt.title(data.name)
+    plt.xlabel('Date')
+    plt.ylabel('Sales Quantity')
+    plt.savefig(save_path, dpi=200)
+    plt.close()
+
+for column in data_for_analysis.columns:
+    output_path = os.path.join(EDA_OUTPUT_FOLDER, f'{column}.png')
+    plot_and_save(data_for_analysis[column], output_path)
+
+# Check stationarity and difference data if necessary
+DIFFERENCES = {}
+P_VALUES_ADF = {}
+for column in data_for_analysis.columns:
+    adf_result = ADF(data_for_analysis[column])
+    diff_count = 0
+    P_VALUES_ADF[column] = adf_result[1]
+    while adf_result[1] >= .05:
+        try:
+            diff_count += 1
+            adf_result = ADF(data_for_analysis[column].diff(diff_count).dropna())
+            P_VALUES_ADF[column] = adf_result[1]
+        except:
+            diff_count = -1
+    DIFFERENCES[column] = diff_count
+
+new_products = [k for (k, v) in P_VALUES_ADF.items() if np.isnan(v) or v == 0.0]
+current_products = [x for x in sales_data.columns if x not in new_products]
+
+# Plot ACF and PACF
+ACF_PACF_OUTPUT_FOLDER = 'acf_pacf_fig/'
+os.makedirs(ACF_PACF_OUTPUT_FOLDER, exist_ok=True)
+
+def plot_acf_pacf(data, savefig=False, savename=''):
+    lag = len(data) - 1
+    fig = plt.figure(figsize=(10, 8))
+    ax1 = fig.add_subplot(211)
+    fig = sm.graphics.tsa.plot_acf(data, lags=lag, ax=ax1)
+    ax2 = fig.add_subplot(212)
+    fig = sm.graphics.tsa.plot_pacf(data, lags=lag, ax=ax2)
+    if not savefig:
+        plt.show()
+    else:
+        plt.savefig(savename, dpi=200)
+        plt.close()
+
+for column in current_products:
+    diff_value = DIFFERENCES[column]
+    if diff_value == 0:
+        data = data_for_analysis[column]
+    else:
+        data = data_for_analysis[column].diff(diff_value).dropna()
+    save_path = os.path.join(ACF_PACF_OUTPUT_FOLDER, f'{column}_diff_{diff_value}.png')
+    plot_acf_pacf(data, True, save_path)
+
+# Determine optimal ARIMA parameters using BIC
+NUM_PRODUCTS = len(current_products)
+NUM_MODELS_TO_CHECK = int(NUM_PRODUCTS / 10)
+P_MAX = Q_MAX = NUM_MODELS_TO_CHECK
+
+bic_values = {}
+for column in current_products:
+    print('Working on %s' % column)
+    diff_value = DIFFERENCES[column]
+    data = data_for_analysis[column].astype(float)
+    bic_matrix = []
+    for p in range(P_MAX + 1):
+        tmp = []
+        for q in range(Q_MAX + 1):
+            try:
+                tmp.append(ARIMA(data, (p, diff_value, q)).fit().bic)
+            except:
+                tmp.append(np.nan)
+        bic_matrix.append(tmp)
+    bic_values[column] = bic_matrix
+    print('-' * 80)
+
+# Manually check models with empty BIC
+models_to_manually_check = []
+for column in current_products:
+    data = pd.DataFrame(bic_values[column])
+    if int(data.isnull().sum().sum()) == (NUM_MODELS_TO_CHECK + 1) ** 2:
+        print('%s is empty and should be manually checked. ' % column)
+        models_to_manually_check.append(column)
+
+models_to_run = [x for x in current_products if x not in models_to_manually_check]
+
+# Determine optimal p and q for each model
+p_q_values = {}
+for column in models_to_run:
+    data = pd.DataFrame(bic_values[column])
+    p, q = data.stack().idxmin()
+    p_q_values[column] = [p, q]
+
+# Save ARIMA parameters to Excel
+parameters_df = pd.DataFrame({column: pd.Series([p_val, DIFFERENCES[column], q_val]) for column, (p_val, q_val) in p_q_values.items()})
+parameters_df.to_excel(MODEL_OUTPUT_FILE)
+
+# Fit ARIMA models and check model validity
+model_validity = {}
+fitted_models = {}
+for column in models_to_run:
+    try:
+        arima_model = ARIMA(data_for_analysis[column].astype(float), tuple(parameters_df[column])).fit()
+        predicted_values = arima_model.predict()
+        residuals = pd.Series(predicted_values) - data_for_analysis[column]
+        lb_test_statistic, p_value = acorr_ljungbox(residuals, lags=1)
+        num_lags_rejected = (p_value < 0.05).sum()
+        if num_lags_rejected > 0:
+            model_validity[column] = False
+            models_to_manually_check.append(column)
+        else:
+            model_validity[column] = True
+            fitted_models[column] = arima_model
+    except:
+        model_validity[column] = False
+        models_to_manually_check.append(column)
+
+models_to_run = [x for x in current_products if x not in models_to_manually_check]
+
+# Make forecasts
+forecast_results = {}
+forecast_start_date = pd.Timestamp(np.datetime64('2017-01'))
+forecast_end_date = pd.Timestamp(np.datetime64('2017-12'))
+
+for column in models_to_run:
+    arima_model = fitted_models[column]
+    forecast_values = arima_model.predict(start=forecast_start_date, end=forecast_end_date)
+    forecast_results[column] = forecast_values
+
+# Save forecasts as Excel
+writer = pd.ExcelWriter(FORECAST_OUTPUT_FILE)
+for column, forecast_data in forecast_results.items():
+    forecast_data.to_excel(writer, sheet_name=column)
+writer.save()

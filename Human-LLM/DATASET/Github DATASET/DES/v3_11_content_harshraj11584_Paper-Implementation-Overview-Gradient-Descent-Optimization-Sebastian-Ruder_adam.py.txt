@@ -1,0 +1,94 @@
+import numpy as np
+from sympy import *
+
+# Enable pretty printing
+init_printing()
+
+def adam(cost_function, f):
+    # Print the input cost function and its derivative
+    print("Cost function f(x) =", cost_function)
+    derivative = diff(cost_function, x)
+    print("Derivative df(x)/dx =", derivative)
+
+    # Get user inputs for initial parameters
+    initial_approximation = float(input("Enter initial approximation: "))
+    error_tolerance = float(input("Enter error tolerance: "))
+    learning_rate = float(input("Enter learning rate: "))
+
+    # Print initial values and start Adam optimization
+    print("Starting Adam")
+    print("Initial approximation x0 =", initial_approximation)
+    print("f(x0) =", f(initial_approximation))
+
+    iterations = 0
+    xk = initial_approximation
+    previous_x = 0.0
+    m0 = 0.0
+    mk = 0.0
+    v0 = 0.0
+    vk = 0.0
+    beta1 = 0.9
+    beta2 = 0.999
+    epsilon = 10**-8
+
+    # Adam optimization loop
+    while True:
+        iterations += 1
+        previous_x = xk
+        x0 = xk
+        m0 = mk
+        v0 = vk
+
+        derivative_value = lambdify(x, derivative, "numpy")(xk)
+        gradient = derivative_value
+        mk = beta1 * m0 + (1 - beta1) * gradient
+        vk = beta2 * v0 + (1 - beta2) * (gradient**2)
+        mc_k = mk / (1 - beta1**iterations)
+        vc_k = vk / (1 - beta2**iterations)
+
+        xk = xk - learning_rate * mc_k / ((vc_k**0.5) + epsilon)
+
+        # Check convergence criteria
+        if abs(N(xk - x0)) < error_tolerance or abs(N(xk - previous_x)) < 0.1 * error_tolerance:
+            break
+
+    # Print optimization results
+    print("Number of Iterations =", iterations)
+    print("Minima is at =", xk)
+    print("Minimum value of Cost Function =", f(xk))
+
+# Define symbol x
+x = Symbol('x')
+
+# Print syntax constraints for the cost function
+print("""
+Syntax Constraints for entering function:
+- x**y means x raised to the power of y
+- Function must be an algebraic combination of one or more of the following:
+    p(x)      Polynomials
+    exp(x)    Mathematical constant e (2.71828...) raised to power x
+    pi        Mathematical constant 3.14159...
+    log(x)    Natural Logarithm
+    acos(x)   Arc cosine of x
+    asin(x)   Arc sine of x
+    atan(x)   Arc tangent of x
+    cos(x)    Cosine of x
+    sin(x)    Sine of x
+    tan(x)    Tangent of x
+    acosh(x)  Inverse hyperbolic cosine of x
+    asinh(x)  Inverse hyperbolic sine of x
+    atanh(x)  Inverse hyperbolic tangent of x
+    cosh(x)   Hyperbolic cosine of x
+    sinh(x)   Hyperbolic cosine of x
+    tanh(x)   Hyperbolic tangent of x
+""")
+
+# Get user input for the cost function and convert it to symbolic expression
+user_input = input("Enter cost function f(x): ").strip()
+cost_function = sympify(user_input)
+
+# Convert symbolic expression to a function that can be evaluated numerically
+f = lambdify(x, cost_function, "numpy")
+
+# Call the Adam optimization function
+adam(cost_function, f)

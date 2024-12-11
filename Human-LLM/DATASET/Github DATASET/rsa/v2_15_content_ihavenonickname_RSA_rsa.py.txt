@@ -1,0 +1,78 @@
+# Define a class for RSA key representation
+class RSAKey():
+    def __init__(self, exponent, mod):
+        # Initialize RSA key with exponent and modulus
+        self.exponent = exponent
+        self.mod = mod
+    
+    # Method to encrypt a value using the RSA key
+    def encrypt(self, value):
+        # Perform modular exponentiation to encrypt the value
+        return pow(value, self.exponent, self.mod)
+
+# Function to calculate the modular inverse
+def modinv(u, v):
+    # Initialize variables for iterative process
+    u1 = 1
+    u3 = u
+    v1 = 0
+    v3 = v
+    is_even_iter = False
+    
+    # Iterate until v3 becomes zero
+    while v3:
+        # Calculate quotient and remainder
+        q = u3 // v3
+        t3 = u3 % v3
+        t1 = u1 + q * v1
+        
+        # Update variables for next iteration
+        u1 = v1
+        v1 = t1
+        u3 = v3
+        v3 = t3
+        is_even_iter = not is_even_iter
+    
+    # If u3 is not 1, return 0 (no modular inverse exists)
+    if u3 != 1:
+        return 0
+    
+    # Calculate the modular inverse based on the iteration
+    if is_even_iter:
+        return v - u1
+    return u1
+
+# Function to generate RSA public and private keys
+def generate_rsa_keys(p, q):
+    # Calculate Euler's totient function
+    phi = (p - 1) * (q - 1)
+    n = p * q  # Compute modulus
+    e = 65537  # Choose public exponent (typically a prime)
+    d = modinv(e, phi)  # Calculate private exponent
+    
+    # Create RSA public and private keys
+    public_key = RSAKey(exponent=e, mod=n)
+    private_key = RSAKey(exponent=d, mod=n)
+    
+    return public_key, private_key
+
+# Main function to demonstrate RSA encryption and decryption
+def main():
+    # Generate RSA keys with prime numbers 23 and 29
+    public_key, private_key = generate_rsa_keys(23, 29)
+    original_value = 42  # Original value to be encrypted
+    
+    # Encrypt the original value using the public key
+    encrypted = public_key.encrypt(original_value)
+    
+    # Decrypt the encrypted value using the private key
+    decrypted = private_key.encrypt(encrypted)
+    
+    # Print original, encrypted, and decrypted values
+    print("Original:", original_value)
+    print("Encrypted:", encrypted)
+    print("Decrypted:", decrypted)
+
+# Entry point of the script
+if __name__ == '__main__':
+    main()

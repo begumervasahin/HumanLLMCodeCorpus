@@ -1,0 +1,54 @@
+# Import necessary libraries
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel    
+
+# Read data from CSV file
+data_path = "/home/nikita/Downloads/sample-data.csv"
+data = pd.read_csv(data_path)
+
+# Initialize TF-IDF Vectorizer
+tfidf_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0, stop_words='english')
+
+# Fit and transform the TF-IDF matrix
+tfidf_matrix = tfidf_vectorizer.fit_transform(data['description'])
+
+# Compute cosine similarities between items
+cosine_similarities = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+# Dictionary to store results
+results = {}
+
+# Iterate through each item
+for idx, row in data.iterrows():
+    # Get indices of most similar items
+    similar_indices = cosine_similarities[idx].argsort()[:-100:-1]
+    
+    # Store similar items along with their cosine similarity scores
+    similar_items = [(cosine_similarities[idx][i], data['id'][i]) for i in similar_indices]
+    
+    # Store results in the dictionary
+    results[row['id']] = similar_items[1:]
+
+# Print done message
+print('Recommendation system setup is complete!')
+
+# Function to retrieve item description based on its ID
+def get_item_description(item_id):
+    return data.loc[data['id'] == item_id]['description'].tolist()[0].split(' - ')[0]
+
+# Function to recommend similar items
+def recommend_similar_items(item_id, num_recommendations):
+    # Print recommendation message
+    print("Recommending " + str(num_recommendations) + " products similar to " + get_item_description(item_id) + "...")
+    print("-------")
+    
+    # Get recommended items
+    recommended_items = results[item_id][:num_recommendations]
+    
+    # Print recommended items along with their scores
+    for rec in recommended_items:
+        print("Recommended: " + get_item_description(rec[1]) + " (score:" + str(rec[0]) + ")")
+
+# Example of recommending similar items for a specific item
+recommend_similar_items(item_id=11, num_recommendations=5)

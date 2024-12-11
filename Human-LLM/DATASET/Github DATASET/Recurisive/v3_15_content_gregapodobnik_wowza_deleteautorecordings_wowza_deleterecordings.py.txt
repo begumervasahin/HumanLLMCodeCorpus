@@ -1,0 +1,41 @@
+import os
+import fnmatch
+import logging
+
+# Constants
+WOWZA_RECORDING_PATH = "/path/to/wowza/recording/dir"
+EXCESSIVE_RECORDING_PATTERNS = ["*_240p*.mp4", "*_360p*.mp4", "*_480p*.mp4", "*_720p*.mp4", "*_1080p*.mp4"]
+LOG_FILE_PATH = '/var/log/wowza_delete_recordings.log'
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s %(message)s', filename=LOG_FILE_PATH, level=logging.INFO)
+
+def delete_excessive_recordings(directory, patterns):
+    """
+    Deletes excessive recordings in the specified directory based on the given patterns.
+
+    Args:
+        directory (str): The directory path where recordings are stored.
+        patterns (list): List of file patterns to match against for identifying excessive recordings.
+    """
+    files_to_delete = []
+
+    # Traverse the directory and identify files matching the specified patterns
+    for root, _, filenames in os.walk(directory):
+        for pattern in patterns:
+            for filename in fnmatch.filter(filenames, pattern):
+                files_to_delete.append(os.path.join(root, filename))
+
+    # Check if there are any files to delete
+    if not files_to_delete:
+        logging.info("No excessive recordings found.")
+    else:
+        # Delete each identified file
+        for file_path in files_to_delete:
+            os.remove(file_path)
+            logging.info("Deleted file: %s", file_path)
+
+    logging.info("Script execution completed.")
+
+if __name__ == "__main__":
+    delete_excessive_recordings(WOWZA_RECORDING_PATH, EXCESSIVE_RECORDING_PATTERNS)

@@ -1,0 +1,52 @@
+import numpy as np
+from sklearn.cluster import KMeans
+
+# Function to compute the bounding box of the data
+def bounding_box(data):
+    xmin, xmax = min(data, key=lambda a: a[0])[0], max(data, key=lambda a: a[0])[0]
+    ymin, ymax = min(data, key=lambda a: a[1])[1], max(data, key=lambda a: a[1])[1]
+    return (xmin, xmax), (ymin, ymax)
+
+# Function to compute the compactness of a clustering
+def compactness(data, centers, labels):
+    k_sum = 0.0
+    for i in range(len(data)):
+        cluster_num = labels.item(i)
+        k_sum += np.linalg.norm(centers[cluster_num] - data[i]) ** 2
+    return k_sum
+
+# Function to perform Gap Statistics for determining optimal number of clusters
+def gap_kmeans(data, k_range=30, sample_trials=10, print_results=True):
+    num_data, num_features = data.shape
+    data_extrema = [[min(data[:, dim]), max(data[:, dim])] for dim in range(num_features)]
+    gap_values = np.zeros(k_range)
+    sd_values = np.zeros(k_range)
+    
+    for k in range(k_range):
+        k_clusters = KMeans(n_clusters=(k + 1))
+        labels = k_clusters.fit_predict(data)
+        k_compactness = np.log(compactness(data, k_clusters.cluster_centers_, labels))
+        
+        trial_compactness = np.zeros(sample_trials)
+        for trial in range(sample_trials):
+            samples = np.zeros((num_data, num_features))
+            for sample in range(num_data):
+                samples[sample] = [np.random.uniform(data_extrema[dim][0], data_extrema[dim][1])
+                                   for dim in range(num_features)]
+            sample_labels = k_clusters.fit_predict(samples)
+            trial_compactness[trial] = np.log(compactness(samples, k_clusters.cluster_centers_, sample_labels))
+        
+        gap_values[k] = sum(trial_compactness - k_compactness) ** 2 / sample_trials
+        wbar = sum(trial_compactness) / sample_trials
+        sd = np.sqrt(sum((trial_compactness - wbar) ** 2) / sample_trials)
+        sd_values[k] = np.sqrt(1 + 1 / sample_trials) * sd
+        
+        if print_results:
+            if k > 0:
+                print("Gap value at", k, "clusters:", gap_values[k - 1])
+                print("Need to beat", gap_values[k] - sd_values[k - 1])
+        
+        if k > 0 and gap_values[k - 1] > gap_values[k] - sd_values[k - 1]:
+            return labels
+    
+    return labels

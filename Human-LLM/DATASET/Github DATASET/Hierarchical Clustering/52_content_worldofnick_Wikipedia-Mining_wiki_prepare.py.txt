@@ -1,0 +1,28 @@
+from nltk.corpus import stopwords
+from nltk import word_tokenize
+import nltk
+from sklearn.feature_extraction.text import CountVectorizer, TfidTransformer
+import glob
+def word_kgram(text, k):
+	grams = ngrams(text, k)
+	gram_set = set()
+	for gram in grams:
+		gram_set.add(' '.join(gram))
+	return gram_set
+def vectorizeArticle(text):
+	words = nltk.word_tokenize(text)
+	stops = set(stopwords.words("english"))
+	filtered_article = [word for word in words if word not in stops]
+	count = CountVectorizer()
+	bagOfWords = count.fit_transform(text, ngram_range=(3,3))
+	tfidf = TfidTransformer()
+	return tfidf.fit_transform(bagOfWords).toarray()
+def saveSet(kgrams, articleName):
+	f = open('%s_kgrams.txt' % articleName, "w")
+	f.write(",".join(map(lambda x: str(x), kgrams)))
+	f.close()
+textFiles = glob.glob('/somePath/*.txt')
+for filename in textFiles:
+	file = open(filename)
+	articleKgrams = vectorizeArticle(file.read())
+	saveSet(articleKgrams, filename)

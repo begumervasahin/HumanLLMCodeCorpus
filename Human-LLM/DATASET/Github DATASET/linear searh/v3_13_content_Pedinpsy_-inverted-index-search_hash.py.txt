@@ -1,0 +1,104 @@
+import math
+
+class Content:
+    def __init__(self, key, value):
+        self.value = [value]  # Initialize value as a list with a single element
+        self.key = key
+
+class HashTable:
+    def __init__(self, size, key_limit, hash_method="division", collision_method='linear'):
+        self.array = [None] * size  # Initialize array with None values
+        self.size = size
+        self.key_limit = key_limit
+        self.count = 0
+        self.keys = []
+
+        # Determine hash function and collision resolution function based on parameters
+        self.hash_func = self.get_value_multiplication if hash_method == 'multiplication' else self.get_value_division
+        self.collision_func = self.get_quadratic_value if collision_method == 'quadratic' else self.get_linear_value
+
+    def insert_value(self, key, value):
+        if len(key) < self.key_limit:
+            return False  # Key length does not meet the limit        
+
+        count = 0
+        numeric_key = self.hash_func(key)
+
+        # Add key to keys list if it's not already present
+        if key not in self.keys:
+            self.keys.append(key)
+
+        while True:
+            obj = Content(key, value)
+            if self.array[numeric_key] is not None:
+                if self.array[numeric_key].key != key:
+                    # Resolve collision using collision resolution function
+                    numeric_key = self.collision_func(numeric_key, count)
+                    count += 1
+                else:
+                    # Key matches, append value to existing content   
+                    self.array[numeric_key].value.append(value)       
+                    break
+            else:
+                # Insert new content at the calculated numeric key    
+                self.array[numeric_key] = obj
+                self.count += 1
+                break
+
+        return True
+
+    def get_value(self, key):
+        if len(key) < self.key_limit:
+            return None  # Key length does not meet the limit
+
+        count = 0
+        numeric_key = self.hash_func(key)
+
+        # Check if the content at numeric key is None
+        if self.array[numeric_key] is None:
+            return None
+
+        while True:
+            if self.array[numeric_key] is None:
+                return None  # Content at numeric key is None
+            if self.array[numeric_key].key == key:
+                return self.array[numeric_key].value  # Return value if key matches
+            else:
+                # Resolve collision using collision resolution function
+                numeric_key = self.collision_func(numeric_key, count) 
+                count = (count + 1) % self.size
+
+        return None
+
+    # Hash function using division method
+    def get_value_division(self, key):
+        numeric_key = sum(ord(char) for char in key[:self.key_limit]) % self.size
+        return numeric_key
+
+    # Hash function using multiplication method
+    def get_value_multiplication(self, key):
+        a = (math.sqrt(5) - 1) / 2
+        numeric_key = sum(ord(char) for char in key[:self.key_limit])
+        numeric_key = math.floor(math.pow(2, 2) * ((a * numeric_key) % 1))
+        return int(numeric_key)
+
+    # Quadratic collision resolution function
+    def get_quadratic_value(self, key, count):
+        index = (key + count * count) % self.size
+        return index
+
+    # Linear collision resolution function
+    def get_linear_value(self, key, adictionator):
+        return (key + adictionator) % self.size
+
+
+# Example usage:
+if __name__ == "__main__":
+    hashtable = HashTable(10, 5)  # Create a hash table with size 10 and key limit 5
+    hashtable.insert_value("apple", "fruit")
+    hashtable.insert_value("banana", "fruit")
+    hashtable.insert_value("carrot", "vegetable")
+
+    print(hashtable.get_value("apple"))  # Output: ['fruit']
+    print(hashtable.get_value("banana"))  # Output: ['fruit']
+    print(hashtable.get_value("carrot"))  # Output: ['vegetable']  

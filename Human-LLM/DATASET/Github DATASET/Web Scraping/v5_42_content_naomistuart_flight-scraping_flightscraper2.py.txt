@@ -1,0 +1,53 @@
+from datetime import datetime
+from bs4 import BeautifulSoup
+
+def scrape_flights(terminal, journey, driver):
+    # Get today's date
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    # Initialize lists to store flight information
+    flights = {
+        'Type': [],
+        'Journey': [],
+        'Stopover': [],
+        'Airline': [],
+        'Logo': [],
+        'Flight number': [],
+        'Status': [],
+        'Scheduled time': [],
+        'Estimated time': []
+    }
+    
+    # Construct URL based on terminal, journey, and date
+    url = f"https://www.sydneyairport.com.au/flights/?query=&flightType={journey}&terminalType={terminal}&date={today}&sortColumn=scheduled_time&ascending=true&showAll=true"
+    
+    # Print status message
+    print(f"Getting data for {terminal}_{journey} flights")
+    
+    # Load the URL in the provided driver
+    driver.get(url)
+    
+    # Parse the HTML content of the page
+    html_soup = BeautifulSoup(driver.page_source, "html.parser")
+    
+    # Find all flight containers on the page
+    flight_containers = html_soup.find_all("div", class_="flight-card")[2:]
+    
+    # Loop through each flight container to extract information
+    for container in flight_containers:
+        # Append flight information to respective lists
+        flights['Type'].append(f'static/images/{terminal}_{journey}.png')
+        flights['Journey'].append(container.find("div", class_="destination-name").text)
+        stopover = container.find("div", class_="city-via")
+        flights['Stopover'].append(stopover.text if stopover else "-")
+        flights['Airline'].append(container.find("span", class_="with-image").text)
+        flights['Logo'].append("https://www.sydneyairport.com.au" + container.img['src'])
+        flights['Flight number'].append(container.find("div", class_="heading-medium").text)
+        flights['Status'].append(container.find("div", class_="status").text)
+        flights['Scheduled time'].append(container.find("div", class_="large-scheduled-time").text[:5])
+        flights['Estimated time'].append(container.find("div", class_="estimated-time").text[:5])
+    
+    # Print completion message
+    print(f"Finished getting data for {terminal}_{journey} flights")
+    
+    return flights

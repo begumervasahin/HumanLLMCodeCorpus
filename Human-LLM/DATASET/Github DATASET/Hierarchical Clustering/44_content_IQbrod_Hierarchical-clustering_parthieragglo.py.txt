@@ -1,0 +1,106 @@
+class Group():
+	def __init__(self,col,sim,ind, node):
+		self.elem = col
+		self.sim = sim
+		self.ind = ind
+		self.node = node
+	def __str__(self):
+		return str(self.elem)+" => "+str(self.sim)+" ("+str(self.ind)+")"
+class Node():
+	def __init__(self, val=" ", left=None, right=None):
+		self.val = val
+		self.left = left
+		self.right = right
+	def basicDisplay(self):
+		''' Inspired by : https://stackoverflow.com/questions/1894846/printing-bfs-binary-tree-in-level-order-with-specific-formatting'''
+		myString = "\n"
+		curLevel = [self]
+		while curLevel:
+			nextLevel = []
+			for elem in curLevel:
+				''' ADD PADDING BETWEEN ELEMENTS '''
+				myString += str(elem.val)+" "
+				if elem.left:
+					nextLevel.append(elem.left)
+				if elem.right:
+					nextLevel.append(elem.right)
+			myString += "\n"
+			curLevel = nextLevel
+		return myString
+	def __nonzero__(self):
+		return self.val != " "
+	def __str__(self):
+		curLevel = [self]
+		out = []
+		while curLevel:
+			out.append(" ".join([str(node.val) for node in curLevel]))
+			if any(node for node in curLevel):
+				children = []
+				for node in curLevel:
+					if (node.val != " "):
+						for subnode in (node.left,node.right):
+							children.append(subnode if subnode else Node())
+					else:
+						children.append(node)
+				curLevel = children
+			else:
+				break
+		return ("\n"+"\n".join(out))
+repMatrix = [[10 ,  6 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0],
+			[6 ,  10 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0],
+			[0 ,  0 ,  10 ,  5 ,  3 ,  3 ,  1 ,  1 ,  0],
+			[0 ,  0 ,  5 ,  10 ,  1 ,  2 ,  1 ,  1 ,  0],
+			[0 ,  0 ,  3 ,  1 ,  10 ,  4 ,  1 ,  2 ,  0],
+			[0 ,  0 ,  3 ,  2 ,  4 ,  10 ,  1 ,  4 ,  0],
+			[0 ,  0 ,  1 ,  1 ,  1 ,  1 ,  10 ,  1 ,  0],
+			[0 ,  0 ,  1 ,  1 ,  2 ,  4 ,  1 ,  10 ,  0],
+			[0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  10]]
+print "Representation Matrix:"
+for i in range(0,len(repMatrix)):
+	print repMatrix[i]
+print
+'''Remove Self Similarity'''
+worMatrix = repMatrix
+for i in range(len(repMatrix)):
+	worMatrix[i][i] = -1
+'''Creation of differents clusters'''
+groups = []
+for i in range(len(repMatrix)):
+	g = Group([i],max(worMatrix[i]),worMatrix[i].index(max(worMatrix[i])),Node([i]))
+	groups.append(g)
+for i in range(len(repMatrix)-1):
+	mx = -1
+	index = [-1,-1]
+	for j,gr in zip(range(len(groups)),groups):
+		if mx < gr.sim:
+			mx = gr.sim
+			index = [j,gr.ind]
+	print "Found max: "+str(mx)+" @"+str(index)
+	gindex = [index[0],-1]
+	for j in range(len(groups)):
+		if index[1] in groups[j].elem:
+			gindex[1] = j
+	dest = groups[gindex[0]]
+	source = groups[gindex[1]]
+	for el in source.elem:
+		for el2 in dest.elem:
+			worMatrix[el][el2] = -1
+			worMatrix[el2][el] = -1
+	disp = dest.elem
+	dest.elem = dest.elem+source.elem
+	dest.node = Node(dest.elem,dest.node,source.node)
+	groups.remove(source)
+	for g in groups:
+		if (g.ind in source.elem):
+			g.ind = index[0]
+	mx = -1
+	indx = -1
+	for e in dest.elem:
+		for i in range(len(worMatrix)):
+			if worMatrix[e][i] > mx:
+				mx = worMatrix[e][i]
+				indx = i
+	dest.ind = indx
+	dest.sim = mx
+	print "Merged "+str(gindex)+":  "+str(disp)+" & "+str(source.elem)
+print(groups[0].node)

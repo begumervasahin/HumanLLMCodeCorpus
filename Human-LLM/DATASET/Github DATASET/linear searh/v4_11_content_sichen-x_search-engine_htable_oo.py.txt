@@ -1,0 +1,98 @@
+class HashTable:
+    def __init__(self, size=31):
+        """Initialize a hash table with a list of buckets."""
+        self.nbuckets = size
+        self.the_table = [[] for _ in range(self.nbuckets)]
+
+    def hashcode(self, o):
+        """
+        Return a hashcode for strings and integers; return None for other types.
+        For integers, return the integer value.
+        For strings, use the formula h = h*31 + ord(c) for all characters.
+        """
+        if isinstance(o, int):
+            return o
+        elif isinstance(o, str):
+            h = 0
+            for char in o:
+                h = h * 31 + ord(char)
+            return h
+        else:
+            return None
+
+    def buckets_str(self):
+        """
+        Return a string representing the various buckets of this table.
+        Each bucket contains key-value pairs separated by commas.
+        """
+        output = ""
+        for i, bucket in enumerate(self.the_table):
+            output += str(i).zfill(4) + '->'
+            for key, value in bucket:
+                output += str(key) + ':' + str(value) + ', '
+            output = output.rstrip(', ') + '\n'
+        return output
+
+    def __str__(self):
+        """
+        Return a string representation of the hash table similar to a Python dict.
+        """
+        output = '{'
+        for bucket in self.the_table:
+            for key, value in bucket:
+                output += str(key) + ':' + str(value) + ', '
+        output = output.rstrip(', ') + '}'
+        return output
+
+    def put(self, key, value):
+        """
+        Add a key-value pair to the hash table.
+        If the key already exists, update its value.
+        """
+        bucket_index = self.hashcode(key) % len(self.the_table)
+        bucket = self.the_table[bucket_index]
+        for i, (k, v) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, v | value)  # Update value if key exists
+                return
+        bucket.append((key, value))  # Add new key-value pair if key doesn't exist
+
+    def get(self, key):
+        """
+        Retrieve the value associated with the given key.
+        Return None if the key is not found.
+        """
+        bucket_index = self.hashcode(key) % len(self.the_table)
+        bucket = self.the_table[bucket_index]
+        for k, v in bucket:
+            if k == key:
+                return v
+        return None
+
+    def bucket_indexof(self, key):
+        """
+        Return the element within a specific bucket as a string.
+        """
+        bucket_index = self.hashcode(key) % len(self.the_table)
+        bucket = self.the_table[bucket_index]
+        output = '{'
+        for k, v in bucket:
+            output += str(k) + ':' + str(v) + ', '
+        output = output.rstrip(', ') + '}'
+        return output
+
+    def __getitem__(self, key):
+        return self.get(key)
+
+    def __setitem__(self, key, value):
+        self.put(key, value)
+
+if __name__ == '__main__':
+    # Test cases
+    h = HashTable()
+    h['a'] = 34
+    print(h['a'])
+    table = HashTable(5)
+    for i in range(1, 11):
+        table.put(i, i)
+    print(table.bucket_indexof(0))

@@ -1,0 +1,62 @@
+import sys
+
+class VariancePlugin:
+    def input(self, filename):
+        # Store the input file name
+        self.myfile = filename
+
+    def run(self):
+        # Open the input file
+        with open(self.myfile, 'r') as filestuff:
+            # Read the first line containing bacteria names
+            firstline = filestuff.readline()
+            # Parse bacteria names into a list
+            self.bacteria = firstline.strip().split(',')
+            # Remove any empty strings from the list
+            if '\"\"' in self.bacteria:
+                self.bacteria.remove('\"\"')
+            # Calculate the number of bacteria
+            self.n = len(self.bacteria)
+            # Initialize a list to store data for each bacteria
+            self.ADJ = [[] for _ in range(self.n)]
+            # Read the rest of the lines containing data for each bacteria
+            for line in filestuff:
+                # Parse data for each bacteria
+                contents = line.strip().split(',')
+                # Add data to the corresponding bacteria's list
+                for j in range(len(contents) - 1):
+                    value = float(contents[j + 1])
+                    self.ADJ[j].append(value)
+
+    def output(self, filename):
+        # Open the output file
+        with open(filename, 'w') as filestuff2:
+            # Write header for the output file
+            filestuff2.write("Element\tVariance\n\n")
+            # Initialize a list to store calculated variances
+            variances = []
+            # Calculate variance for each bacteria and store it with the bacteria name
+            for i in range(self.n):
+                if len(self.ADJ[i]) != 0:
+                    # Calculate mean value for the current bacteria
+                    mean = sum(self.ADJ[i]) / len(self.ADJ[i])
+                    # Calculate variance for the current bacteria
+                    variance = sum((mean - x) ** 2 for x in self.ADJ[i]) / len(self.ADJ[i])
+                    # Store variance and bacteria name in a tuple
+                    variances.append((variance, self.bacteria[i]))
+            # Sort variances in descending order
+            variances.sort(reverse=True)
+            # Write variances and corresponding bacteria names to the output file
+            for variance, element in variances:
+                filestuff2.write(f"{element}\t{variance}\n")
+
+# Example usage
+if __name__ == "__main__":
+    # Create an instance of the VariancePlugin class
+    plugin = VariancePlugin()
+    # Provide the input file name
+    plugin.input("data.txt")
+    # Process the input file
+    plugin.run()
+    # Provide the desired output file name
+    plugin.output("output.txt")

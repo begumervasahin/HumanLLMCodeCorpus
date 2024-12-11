@@ -1,0 +1,115 @@
+from ast import literal_eval
+import pickle
+import socket
+import sys
+import threading
+import time
+
+SLEEP_TIME = 5
+ROUTING_NODE = sys.argv[1]
+ROUTING_TABLE_CHANGED = True
+
+# Load initial routing table from file
+with open(ROUTING_NODE, 'rb') as file:
+    NODE_ROUTING_TABLE = pickle.load(file)
+
+ROUTING_TABLE = dict(NODE_ROUTING_TABLE)
+print('Node routing table:')
+print(ROUTING_TABLE)
+
+TIMER_START = time.time()
+
+def monitor_routing_table():
+    global ROUTING_NODE, NODE_ROUTING_TABLE, ROUTING_TABLE_CHANGED, ROUTING_TABLE, TIMER_START
+
+    while True:
+        with open(ROUTING_NODE, 'rb') as file:
+            file_stream = pickle.load(file)
+
+        if file_stream != NODE_ROUTING_TABLE:
+            NODE_ROUTING_TABLE = dict(file_stream)
+            print('Updated node routing table:', NODE_ROUTING_TABLE)
+
+            # Update routing table based on changes in file_stream
+            for route in ROUTING_TABLE:
+                if route in file_stream:
+                    ROUTING_TABLE[route] = file_stream[route]
+
+            print('Current routing table:', ROUTING_TABLE)
+            print('Time elapsed since start:', time.time() - TIMER_START)
+            ROUTING_TABLE_CHANGED = True
+
+        time.sleep(SLEEP_TIME)
+
+def send_routing_table():
+    global ROUTING_NODE, ROUTING_TABLE_CHANGED, ROUTING_TABLE
+
+    with open('connections', 'r') as json_file:
+        routing_paths = literal_eval(json_file.read())
+    print(routing_paths)
+
+    time.sleep(SLEEP_TIME)
+
+    try:
+        while True:
+            if ROUTING_TABLE_CHANGED:
+                for route_node in routing_paths[ROUTING_NODE]:
+                    client_socket = socket.socket()
+                    port = 12345
+                    client_socket.connect((route_node, port))
+                    client_socket.settimeout(None)
+                    byte_stream = pickle.dumps(ROUTING_TABLE)
+                    client_socket.send(byte_stream)
+                    client_socket.close()
+                ROUTING_TABLE_CHANGED = False
+    except Exception as e:
+        print(str(e))
+
+def receive_routing_table():
+    global ROUTING_NODE, ROUTING_TABLE_CHANGED, TIMER_START, ROUTING_TABLE
+
+    with open('connections', 'r') as json_file:
+        node_connections = literal_eval(json_file.read())
+    print(node_connections)
+
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        port = 12345
+        print(port)
+        server_socket.bind(('', port))
+        server_socket.listen(12)
+
+        while True:
+            connection, address = server_socket.accept()
+            print('Connection from', address)
+
+            byte_stream = connection.recv(1024)
+            routes = pickle.loads(byte_stream)
+            source = node_connections[ROUTING_NODE][address[0]]
+
+            if source in ROUTING_TABLE:
+                cost = ROUTING_TABLE[source]
+                for neighbour in routes:
+                    if neighbour not in ROUTING_TABLE:
+                        ROUTING_TABLE[neighbour] = routes[neighbour] + cost
+                        ROUTING_TABLE_CHANGED = True
+                    elif routes[neighbour] + cost < ROUTING_TABLE[neighbour]:
+                        ROUTING_TABLE[neighbour] = routes[neighbour] + cost
+                        ROUTING_TABLE_CHANGED = True
+
+                if ROUTING_TABLE_CHANGED:
+                    print('\n')
+                    print('Updated routing costs from', source, ':', ROUTING_TABLE)
+                    print('Time elapsed since start (ms):', time.time() - TIMER_START)
+
+            connection.close()
+
+    except Exception as e:
+        print(str(e))
+
+if __name__ == '__main__':
+    print('Routing node:', ROUTING_NODE)
+    threading.Thread(target=receive_routing_table).start()
+    threading.Thread(target=send_routing_table).start()
+    threading.Thread(target=monitor_routing_table).start()
+    input()  # Wait for input to keep the main thread alive

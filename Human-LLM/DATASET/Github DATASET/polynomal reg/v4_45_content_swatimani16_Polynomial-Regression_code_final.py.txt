@@ -1,0 +1,52 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generating some sample data
+N = 1000  # Number of points for plotting smooth curves
+sample_points = 10  # Number of sample points
+x = np.linspace(0, 1, sample_points)  # Equally spaced sample points between 0 and 1
+noise = np.random.normal(0, 0.3, sample_points)  # Adding some noise to the sample points
+t = np.sin(2 * np.pi * x) + noise  # Target values with added noise
+
+# Function to calculate predicted y values given input x, weights W, and polynomial degree M
+def predict_y(x, W, M):
+    Y = np.array([W[i] * (x ** i) for i in range(M + 1)])  # Compute individual terms of polynomial
+    return Y.sum()  # Summing up all terms to get the predicted y value
+
+# Function to calculate weights using linear regression given input x, target values t, and polynomial degree M
+def calculate_weights(x, t, M):
+    A = np.zeros((M + 1, M + 1))  # Initialize matrix A
+    for i in range(M + 1):
+        for j in range(M + 1):
+            A[i, j] = (x ** (i + j)).sum()  # Fill in matrix A
+    T = np.array([((x ** i) * t).sum() for i in range(M + 1)])  # Compute T vector
+    return np.linalg.solve(A, T)  # Solve for weights
+
+# Trying different polynomial degrees
+for M in [0, 1, 3, 9]:
+    W = calculate_weights(x, t, M)  # Calculate weights
+    y_estimate = [predict_y(i, W, M) for i in x]  # Predict y values for sample points
+    # Plotting
+    plt.plot(x, y_estimate, 'r-')  # Plot estimated curve
+    plt.plot(x, t, 'bo')  # Plot sample points
+    plt.plot(x, np.sin(2 * np.pi * x), 'g-')  # Plot true sine curve
+    plt.show()
+
+# Function to compute design matrix
+def compute_design_matrix(x, M):
+    return x[:, None] ** np.arange(M + 1)
+
+M = 9  # Polynomial degree
+lam = 1  # Regularization parameter
+phi_x = compute_design_matrix(x, M)  # Compute design matrix
+S_0 = phi_x.T.dot(phi_x) + lam * np.eye(M + 1)  # Compute S_0 matrix
+y_0 = t.dot(phi_x)  # Compute y_0 vector
+coeff = np.linalg.solve(S_0, y_0)[::-1]  # Solve for coefficients of polynomial
+f = np.poly1d(coeff)  # Generate polynomial function
+xx = np.linspace(0, 1, N)  # Equally spaced points for smooth curve
+# Plotting
+fig, ax = plt.subplots()
+ax.plot(x, t, 'bo')  # Plot sample points
+ax.plot(xx, np.sin(2 * np.pi * xx), 'g-')  # Plot true sine curve
+ax.plot(xx, f(xx), 'r-')  # Plot estimated curve
+plt.show()

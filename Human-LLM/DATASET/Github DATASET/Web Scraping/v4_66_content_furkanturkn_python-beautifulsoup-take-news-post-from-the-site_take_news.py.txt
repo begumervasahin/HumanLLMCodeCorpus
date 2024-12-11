@@ -1,0 +1,133 @@
+import requests
+from bs4 import BeautifulSoup
+import urllib.request
+import collections
+import os
+import errno
+import datetime
+from unidecode import unidecode
+
+print("BBC News" + "\n")
+
+# Loop to fetch news articles
+for article_count in range(60):
+    try:
+        # Paths and URLs
+        base_path = "C:/Users/Administrator/Desktop/Haberler/BBC_News/"
+        bbc_world_url = "http://feeds.bbci.co.uk/news/world/rss.xml"
+        bbc_tech_url = "http://feeds.bbci.co.uk/news/technology/rss.xml"
+        bbc_politics_url = "http://feeds.bbci.co.uk/news/politics/rss.xml"
+
+        # Fetching data from BBC RSS feeds
+        r_world = requests.get(bbc_world_url)
+        r_tech = requests.get(bbc_tech_url)
+        r_politics = requests.get(bbc_politics_url)
+
+        # Parsing XML data
+        soup_world = BeautifulSoup(r_world.content, "xml")
+        soup_tech = BeautifulSoup(r_tech.content, "xml")
+        soup_politics = BeautifulSoup(r_politics.content, "xml")
+
+        items_world = soup_world.findAll('item')
+        items_tech = soup_tech.findAll('item')
+        items_politics = soup_politics.findAll('item')
+
+        # Aggregate news items from different categories
+        world_list = []
+        for i in range(20):
+            world_list.append(items_world[i].contents[5].text)
+            world_list.append(items_politics[i].contents[5].text)
+            world_list.append(items_tech[i].contents[5].text)
+
+        # Fetching individual article URL
+        article_url = world_list[article_count]
+        article_id = article_url[-8:]
+        print('Article ID: ' + article_id)
+
+        # Fetching article content
+        r_article_content = requests.get(article_url)
+        soup_article = BeautifulSoup(r_article_content.content, "html.parser")
+
+        # Extracting images and metadata
+        image_list = []
+        alt_text_list = []
+        wp_category = "World"
+
+        # Parsing article content for images
+        image_all = soup_article.findAll("span", {"class": "image-and-copyright-container"})
+        for i in range(len(image_all)):
+            if i % 2 == 0:
+                img_px = str(image_all[i - 1])
+                img_px = img_px.split('height="')
+                img_px = int(img_px[1].split('"')[0])
+                if img_px > 200:
+                    img_src = str(image_all[i - 1]).split('src="')[1].split('"')[0]
+                    alt_text = str(image_all[i - 1]).split('alt="')[1].split('"')[0]
+                    if alt_text != "BBC Stories logo":
+                        image_list.append(img_src)
+                        alt_text_list.append(alt_text)
+            else:
+                continue
+
+        # Extracting thumbnail image
+        thumbnail_img = soup_article.findAll('img', {"class": "js-image-replace"})
+        if thumbnail_img:
+            image_list.append(thumbnail_img[0]['src'])
+            alt_text_list.append(thumbnail_img[0]['alt'])
+
+        # Extracting article description
+        description = soup_article.find("meta", {"name": "description"}).get("content")
+        wp_description = description
+
+        # Extracting article text
+        article_text = soup_article.find("div", {"class": "story-body__inner"})
+        if article_text:
+            article_text = article_text.findAll(['p', 'h2'])
+        else:
+            continue
+
+        # Extracting article title
+        title = soup_article.find("h1", {"class": "story-body__h1"})
+        if title:
+            wp_title = title.text
+        else:
+            wp_title = ""
+
+        # Creating directory structure
+        article_directory = base_path + article_id + "/"
+        if not os.path.exists(os.path.dirname(article_directory)):
+            os.makedirs(os.path.dirname(article_directory))
+
+        # Downloading images
+        for i in range(len(image_list)):
+            urllib.request.urlretrieve(image_list[i], article_directory + "image_" + str(i) + ".jpg")
+
+        # Processing article text for word count and tags
+        stopwords = set()
+        wordcount = {}
+        for word in article_text.lower().split():
+            word = word.strip(".,:!?*â€œâ€˜")
+            if word not in stopwords:
+                wordcount[word] = wordcount.get(word, 0) + 1
+
+        # Generating tags and keywords
+        sorted_wordcount = sorted(wordcount.items(), key=lambda x: x[1], reverse=True)
+        keywords = [word for word, _ in sorted_wordcount[:1]]
+        tags = ','.join([word for word, _ in sorted_wordcount[:7]])
+
+        # Cleaning article title for file naming
+        wp_title = wp_title.replace(":", "").replace("<", "").replace(">", "").replace("*", "").replace("?", "").replace("/", "").replace("|", "").replace('"', '')
+
+        # Writing article content to file
+        with open(article_directory + "Content.txt", "w", encoding='utf-8') as file:
+            file.write(f"{wp_title}<--->{wp_description}<--->{keywords}<--->{tags}<--->{wp_category}<--->{','.join(alt_text_list)}")
+
+        # Remove directory if empty
+        if not os.listdir(article_directory):
+            os.rmdir(article_directory)
+
+    except Exception as e:
+        print("Error occurred:", e)
+        if not os.listdir(article_directory):
+            os.rmdir(article_directory)
+        continue

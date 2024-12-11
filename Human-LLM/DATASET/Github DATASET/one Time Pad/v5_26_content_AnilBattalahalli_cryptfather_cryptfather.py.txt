@@ -1,0 +1,74 @@
+import logging
+import binascii
+import argparse
+import itertools
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
+# Define the encryption key
+ENCRYPTION_KEY = '%^*%'
+
+def start(bot, update):
+    """
+    Handler function for the /start command.
+    Replies to the user with an encrypted or decrypted message based on the input.
+    """
+    user_message = update.message.text
+
+    # Check if the message starts with a '~' indicating it's encrypted
+    if user_message.startswith('~'):
+        decrypted_message = decrypt_message(user_message)
+        bot.sendMessage(chat_id=update.message.chat.id, text=decrypted_message)
+    else:
+        encrypted_message = encrypt_message(user_message)
+        bot.sendMessage(chat_id=update.message.chat.id, text=encrypted_message)
+
+def encrypt_message(message):
+    """
+    Encrypts the given message using the XOR encryption algorithm with the provided key.
+    Returns the encrypted message.
+    """
+    hex_message = binascii.hexlify(message.encode('utf-8')).decode('utf-8')
+    encrypted_message = xor_strings(hex_message, ENCRYPTION_KEY)
+    encrypted_hex = binascii.hexlify(encrypted_message.encode()).decode()
+    return "~" + encrypted_hex
+
+def decrypt_message(ciphertext):
+    """
+    Decrypts the given ciphertext using the XOR encryption algorithm with the provided key.
+    Returns the decrypted message.
+    """
+    ciphertext = ciphertext[1:]  # Remove the leading '~'
+    ciphertext = binascii.unhexlify(ciphertext.encode()).decode()
+    decrypted_message = xor_strings(ciphertext, ENCRYPTION_KEY)
+    return binascii.unhexlify(decrypted_message.encode('utf-8')).decode('utf-8')
+
+def xor_strings(a, b):
+    """
+    Performs XOR operation on two strings a and b.
+    Returns the result of the XOR operation.
+    """
+    return ''.join([chr(ord(x) ^ ord(y)) for x, y in zip(a, itertools.cycle(b))])
+
+def main():
+    """
+    Main function to initialize and start the Telegram bot.
+    """
+    updater = Updater("TOKEN")  # Initialize the bot updater with the Telegram API token
+    dp = updater.dispatcher  # Get the dispatcher to register handlers
+
+    # Register command handlers
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help))
+
+    # Register message handler for text messages
+    dp.add_handler(MessageHandler([Filters.text], start))
+
+    # Start the bot polling for updates
+    updater.start_polling()
+
+    # Keep the bot running until Ctrl-C is pressed
+    updater.idle()
+
+# Check if the script is being run as the main program
+if __name__ == '__main__':
+    main()

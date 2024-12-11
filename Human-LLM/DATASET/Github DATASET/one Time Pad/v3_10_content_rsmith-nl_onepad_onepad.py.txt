@@ -1,0 +1,123 @@
+import argparse
+import base64
+import bz2
+import logging
+import sys
+
+__version__ = "2017.06.04"
+
+def main(argv):
+    """
+    Entry point for onepad.
+    Arguments:
+        argv: command line arguments
+    """
+    setup_logging()
+    args = parse_arguments(argv)
+    data, key = read_files(args.datafile, args.keyfile)
+    process_data(args, data, key)
+
+def setup_logging():
+    """Setup logging configuration."""
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+
+def parse_arguments(argv):
+    """
+    Parse command line arguments.
+    Arguments:
+        argv: command line arguments
+    Returns:
+        Parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="Encrypt or decrypt data using a key file.")
+    parser.add_argument("-v", "--version", action="version", version=__version__)
+    parser.add_argument("cmd", type=str, choices=["enc", "dec"], help="Action to perform: 'enc' for encryption, 'dec' for decryption.")
+    parser.add_argument("datafile", type=str, help="Name of the data file.")
+    parser.add_argument("keyfile", type=str, help="Name of the key file.")
+    return parser.parse_args(argv)
+
+def read_files(datafile, keyfile):
+    """
+    Read data and key files.
+    Arguments:
+        datafile: Name of the data file
+        keyfile: Name of the key file
+    Returns:
+        Data and key read from files
+    """
+    try:
+        with open(datafile, "rb") as data_file:
+            data = data_file.read()
+        with open(keyfile, "rb") as key_file:
+            key = unwrap(key_file.read())
+    except IOError as e:
+        logging.error("Failed to read input files: {}".format(e))
+        sys.exit(1)
+    return data, key
+
+def process_data(args, data, key):
+    """
+    Process data based on the command.
+    Arguments:
+        args: Parsed command line arguments
+        data: Data to process
+        key: Key for encryption/decryption
+    """
+    if args.cmd == "dec":
+        data = unwrap(data)
+    else:
+        data = compress_data(data)
+
+    if len(data) > len(key):
+        logging.error("Message is longer than the key.")
+        sys.exit(2)
+
+    result = bytes([i ^ j for i, j in zip(data, key)])
+
+    if args.cmd == "enc":
+        result = bytes(encode(result), "utf-8")
+    else:
+        result = decompress_data(result)
+
+    print(result.decode("utf-8"))
+
+def unwrap(data):
+    """
+    Decode a formatted base64 keystring or an encrypted string.
+    Arguments:
+        data: Bytes to decode.
+    Returns:
+        The decoded input.
+    """
+    data = bytes([b for b in data if b not in b" \r\n"])
+    return base64.b64decode(data)
+
+def compress_data(data):
+    """Compress data using bz2."""
+    return bz2.compress(data)[10:]
+
+def decompress_data(data):
+    """Decompress data using bz2."""
+    return bz2.decompress(b"BZh91AY&SY" + data)
+
+def encode(data, chunk_len=6, line_len=78):
+    """
+    Encode data with base64 and format it.
+    Arguments:
+        data: String to be encoded.
+        chunk_len: Number of bytes in a chunk, defaults to 6.
+        line_len: Length of a line, defaults to 78 characters.
+    Returns:
+        The base64 encoded data.
+    """
+    length = len(data)
+    n = int(line_len // (4 * chunk_len / 3))
+    chunks = [
+        base64.b64encode(data[j : j + chunk_len]).decode("ascii")
+        for j in range(0, length, chunk_len)
+    ]
+    lines = [" ".join(chunks[i : i + n]) for i in range(0, len(chunks), n)]
+    return "\n".join(lines)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

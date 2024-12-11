@@ -1,0 +1,3 @@
+import glob
+glob.glob('*.gif')
+glob.glob('.c*')

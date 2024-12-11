@@ -1,0 +1,70 @@
+def encrypt_message(message, exponent, modulus):
+    """Encrypt a message using RSA encryption.
+
+    Args:
+        message (str): The message to encrypt.
+        exponent (int): The exponent value (e) in RSA encryption.
+        modulus (int): The modulus value (n) in RSA encryption.
+
+    Returns:
+        list: A list of encrypted blocks.
+    """
+    padded_message = _pad_message_to_length_multiple(message)
+    encrypted_blocks = [_encrypt_block(block, exponent, modulus) for block in _split_into_blocks(padded_message)]
+    return encrypted_blocks
+
+def _pad_message_to_length_multiple(message, block_size=3):
+    """Pad the message to make its length a multiple of the block size.
+
+    Args:
+        message (str): The original message to pad.
+        block_size (int, optional): The size of each block. Defaults to 3.
+
+    Returns:
+        str: The padded message.
+    """
+    while len(message) % block_size != 0:
+        message += " "
+    return message
+
+def _split_into_blocks(message, block_size=3):
+    """Split the message into blocks of a given size.
+
+    Args:
+        message (str): The message to split.
+        block_size (int, optional): The size of each block. Defaults to 3.
+
+    Returns:
+        list: A list of message blocks.
+    """
+    return [message[i:i + block_size] for i in range(0, len(message), block_size)]
+
+def _encrypt_block(block, exponent, modulus):
+    """Encrypt a single block of the message.
+
+    Args:
+        block (str): The block to encrypt.
+        exponent (int): The exponent value (e) in RSA encryption.
+        modulus (int): The modulus value (n) in RSA encryption.
+
+    Returns:
+        int: The encrypted block.
+    """
+    block_value = sum((ord(char) * (1000 ** idx) for idx, char in enumerate(reversed(block))))
+    return pow(block_value, exponent, modulus)
+
+def main():
+    """The main function to run the RSA encryption program."""
+    while True:
+        message = input("Enter a message here (or enter 'quit' to quit): ")
+        if message.lower() == "quit":
+            break
+
+        n = int(input("Enter the modulus value (n): "))
+        e = int(input("Enter the exponent value (e): "))
+
+        encrypted_message = encrypt_message(message, e, n)
+        print("Encrypted message:", encrypted_message)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,139 @@
+import sys
+import getopt
+import logging
+import pip
+import os
+
+def install_package(package_name):
+    """
+    Installs the required Python package using pip.
+    """
+    if not has_sudo_privileges():
+        print("Permission denied. Please use sudo to install the package.")
+        return False
+    
+    try:
+        logging.info(f"Installing {package_name} using pip.")
+        pip.main(['install', package_name])
+        return True
+    except Exception as e:
+        logging.error(f"Error occurred during installation of {package_name} using pip: {e}")
+        return False
+
+def has_sudo_privileges():
+    """
+    Checks if the user has sudo privileges.
+    """
+    return hasattr(sys, 'real_prefix') or os.getuid() == 0
+
+def perform_imports():
+    """
+    Performs necessary imports for the module.
+    """
+    install_missing_packages(['nltk', 'langdetect', 'textract'])
+
+def install_missing_packages(package_names):
+    """
+    Installs missing Python packages using pip.
+    """
+    for package_name in package_names:
+        try:
+            __import__(package_name)
+        except ImportError:
+            logging.warning(f"{package_name.capitalize()} library not found. Installing {package_name} using pip...")
+            if not install_package(package_name):
+                logging.error(f"Failed to install {package_name}. Please install it manually.")
+                exit(1)
+
+def is_pdf(file_name):
+    """
+    Checks if the file is a PDF.
+    """
+    return file_name.lower().endswith('.pdf')
+
+def remove_stopwords(in_file, out_file=None):
+    """
+    Reads the input text from a PDF file, detects the language, removes stopwords, and writes the processed text to a file.
+    """
+    if not is_pdf(in_file):
+        logging.warning("Input file is not a PDF.")
+        return None
+
+    from textract import process
+    from langdetect import detect
+    from nltk import wordpunct_tokenize
+    from nltk.corpus import stopwords
+
+    text = process(in_file).decode('UTF-8')
+    logging.debug(f"Successfully read text from {in_file}.")
+    language = detect(text)
+    logging.debug(f"Detected language: {language}")
+    tokens = wordpunct_tokenize(text)
+
+    try:
+        stop_words = stopwords.words(language)
+    except LookupError:
+        logging.error("Unable to find data for nltk.corpus. Please download NLTK data.")
+        import nltk
+        nltk.download()
+        stop_words = stopwords.words(language)
+
+    filtered_text = ' '.join([word for word in tokens if word.lower() not in stop_words])
+
+    if out_file is None:
+        out_file = in_file[:-3] + 'txt'
+
+    with open(out_file, 'w+') as output_file:
+        output_file.write(filtered_text)
+
+    return True
+
+def parse_arguments(argv):
+    """
+    Parses command-line arguments.
+    """
+    try:
+        opts, args = getopt.getopt(argv, "hi:o:", ["help", "infile=", "outfile="])
+    except getopt.GetoptError:
+        print("Use stopword_removal -h for usage information.")
+        sys.exit(-2)
+
+    infile, outfile = None, None
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            print_help_message()
+            sys.exit()
+        elif opt in ('-i', '--infile'):
+            infile = arg
+        elif opt in ('-o', '--outfile'):
+            outfile = arg
+
+    if not infile:
+        print("Use stopword_removal -h for usage information.")
+        sys.exit(2)
+
+    return infile, outfile
+
+def print_help_message():
+    """
+    Prints usage information.
+    """
+    print('Usage:')
+    print('stopword_removal -i <input_pdf_file> -o <output_text_file>')
+    print('stopword_removal --infile <input_pdf_file> --outfile <output_text_file>')
+
+def main(argv):
+    """
+    Main function handling input and output arguments and performing stopword removal operations.
+    """
+    infile, outfile = parse_arguments(argv)
+    perform_imports()
+    if remove_stopwords(infile, outfile):
+        print("Successfully removed stop words.")
+        sys.exit(0)
+    else:
+        print("Operation not completed successfully.")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

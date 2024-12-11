@@ -1,0 +1,41 @@
+import time
+import pika
+
+def process_message(channel, method, properties, body):
+    """
+    Process received messages.
+
+    Args:
+        channel: Channel object.
+        method: Delivery information.
+        properties: Message properties.
+        body: Message body.
+    """
+    message = body.decode()
+    print(" [x] Received message:", message)
+    processing_time = message.count('.')
+    time.sleep(processing_time)
+    print(" [x] Message processing complete")
+
+def establish_connection():
+    """Establish connection to RabbitMQ server."""
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    return connection.channel()
+
+def declare_queue(channel):
+    """Declare the queue to consume messages from."""
+    channel.queue_declare(queue='hello')
+
+def start_consuming(channel):
+    """Set up consumer and start consuming messages."""
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.basic_consume(queue='hello', on_message_callback=process_message, auto_ack=True)
+    channel.start_consuming()
+
+def main():
+    channel = establish_connection()
+    declare_queue(channel)
+    start_consuming(channel)
+
+if __name__ == "__main__":
+    main()

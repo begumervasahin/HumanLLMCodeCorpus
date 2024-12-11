@@ -1,0 +1,38 @@
+import subprocess
+from utils import create_folder_if_not_exists
+
+# List to store subprocesses and log files
+procs = []
+log_files = []
+
+# Define the path for logs
+log_path = './results/logs/'
+# Ensure the log folder exists
+create_folder_if_not_exists(log_path)
+
+# Define prefix for log files
+prefixes = ['regular_value_network', '10_value_networks']
+
+# Loop through prefixes to run subprocesses
+for prefix in prefixes:
+    # Open a log file with write mode and append to the list
+    log_file = open(log_path + prefix, 'w')
+    log_files.append(log_file)
+    
+    # Define the command to run as a subprocess
+    command = f'python3 load_balance_actor_critic_train.py \
+--num_workers 10 --service_rates 0.15 0.25 0.35 0.45 0.55 0.65 0.75 0.85 0.95 1.05 \
+--result_folder ./results/{prefix}/ \
+--model_folder ./results/parameters/{prefix}/'
+
+    # Run the subprocess with stdout and stderr redirected to the log file
+    p = subprocess.Popen(command, stdout=log_file, stderr=log_file, shell=True)
+    procs.append(p)
+
+# Wait for all subprocesses to finish
+for p in procs:
+    p.wait()
+
+# Close all log files
+for f in log_files:
+    f.close()

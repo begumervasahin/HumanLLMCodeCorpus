@@ -1,0 +1,68 @@
+import pandas as pd
+import re
+
+test_bins_dict = {}
+
+def preprocess_train(structure_file, df, num_of_intervals):
+    attribute_dict = set_attribute_dict(structure_file)
+    df_no_missing_vals = deal_with_missing_values(df, attribute_dict)
+    df_final = perform_discretization(attribute_dict, df_no_missing_vals, num_of_intervals)
+    return df_final
+
+def preprocess_test(structure_file, df):
+    attribute_dict = set_attribute_dict(structure_file)
+    df_no_missing_vals = deal_with_missing_values(df, attribute_dict)
+    df_final = perform_discretization_for_test(test_bins_dict, df_no_missing_vals)
+    return df_final
+
+def set_attribute_dict(structure_file):
+    attribute_dict = {}
+    for line in structure_file:
+        splited_line = re.split('\s', line)
+        if splited_line[2] == "NUMERIC":
+            value_type = "N"
+        else:
+            value_type = "C"
+        attribute_dict[splited_line[1]] = value_type
+    return attribute_dict
+
+def deal_with_missing_values(df, attribute_dict):
+    for key in attribute_dict:
+        if attribute_dict[key] == "N":
+            df[key].fillna(df.groupby("class")[key].transform("mean"), inplace=True)
+    for key in attribute_dict:
+        if attribute_dict[key] == "C":
+            df[key] = df[key].fillna(df[key].mode()[0])
+    return df
+
+def binning(col, num_bins, key):
+    global test_bins_dict
+    min_val = col.min()
+    max_val = col.max()
+    cut_points = []
+    w = (max_val - min_val) / num_bins
+    for i in range(0, num_bins-1):
+        if (min_val + (i+1)*w) != min_val and (min_val + (i+1)*w) != max_val:
+            cut_points.append(min_val + (i+1)*w)
+    break_points = [min_val] + cut_points + [max_val]
+    global labels
+    labels = range(len(cut_points) + 1)
+    test_bins_dict_value = [break_points, labels]
+    test_bins_dict[key] = test_bins_dict_value
+    col_bin = pd.cut(col, bins=break_points, labels=labels, include_lowest=True)
+    return col_bin
+
+def binning_test(col, break_points, labels):
+    col_bin = pd.cut(col, bins=break_points, labels=labels, include_lowest=True)
+    return col_bin
+
+def perform_discretization(attribute_dict, df, num_of_intervals):
+    for key in attribute_dict:
+        if attribute_dict[key] == "N":
+            df[key] = binning(df[key], num_of_intervals, key)
+    return df
+
+def perform_discretization_for_test(test_bins_dict, df):
+    for key in test_bins_dict:
+        df[key] = binning_test(df[key], test_bins_dict[key][0], test_bins_dict[key][1])
+    return df

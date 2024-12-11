@@ -1,0 +1,84 @@
+import pymysql
+import re
+from wordfreqcount import get_words
+
+# Establishing a connection to the database
+conn = pymysql.connect(host='localhost', user='I339493', password='test123', db='ml_features_en')
+cursor = conn.cursor()
+
+# Function to calculate word frequency in English sentences
+def word_freq(sents_list: list):
+    word_freq = {}
+    f_word = []
+
+    # Iterating through each sentence in the list
+    for sentence in sents_list:
+        sentence = str(sentence)
+
+        # Removing a specific phrase from sentences if present
+        if "(Read more about how we rate cars.)" in sentence:
+            sentence = sentence.replace("(Read more about how we rate cars.)", "")
+
+        sentence = sentence.lower()
+
+        # Removing punctuation from the sentence
+        punctuation = '[,，。.!?:"@'
+        sentence = str(re.sub(punctuation, '', sentence))
+
+        # Iterating through each word in the sentence
+        for word in sentence.split(" "):
+            if word in f_word:
+                word_freq[word] += 1
+            else:
+                word_freq[word] = 1
+                f_word.append(word)
+    return word_freq
+
+# Function to calculate word frequency in English sentences from the database
+def en_freq():
+    sql = "select data from RAW_DATA"
+    cursor.execute(sql)
+    result = list(cursor.fetchall())
+    cursor.close()
+    conn.close()
+
+    # Calculating word frequency using the word_freq function
+    word_freq_dict = word_freq(result)
+
+    # Sorting the word frequency dictionary
+    word_freq_sort = sorted(word_freq_dict.items(), key=lambda x: x[1], reverse=True)
+    index = 1
+
+    # Writing the sorted word frequency to a text file
+    with open('./word_freq_en_v2.txt', 'w') as f:
+        for (key, value) in word_freq_sort:
+            line = str(index) + " : " + key + " : " + str(value) + "\n"
+            index += 1
+            f.write(line)
+
+# Function to fetch Chinese translations from the database and write them to a file
+def cn_freq():
+    sql = "select translate from RAW_DATA"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    index = 1
+
+    # Writing Chinese translations to a text file
+    with open('./cn_translations.txt', 'w') as f:
+        for line in result:
+            if index % 10000 == 0:
+                print(index)
+            f.write(line[0] + '\n')
+            index += 1
+    cursor.close()
+    conn.close()
+
+if __name__ == '__main__':
+    # Processing Chinese translations from a file
+    with open('./cn_translations.txt', 'r', encoding='utf8') as f:
+        k_list = get_words(f.read())
+
+    # Writing Chinese words to a text file
+    with open('./word_freq_cn_v1.txt', 'w') as f:
+        for k in k_list:
+            f.write(k + '\n')

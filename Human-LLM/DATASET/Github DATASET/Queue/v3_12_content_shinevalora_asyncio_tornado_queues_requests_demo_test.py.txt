@@ -1,0 +1,70 @@
+import re
+import logging
+import asyncio
+import time
+import aiohttp
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s: %(message)s")
+
+# Define headers for the HTTP requests
+headers = {'User-Agent': 'Mozilla/5.0'}
+
+# Function to fetch data from the website
+async def fetch_data(session, page):
+    url = f"https://movie.douban.com/top250?start={page}&filter="
+    async with session.get(url, headers=headers) as response:
+        return await response.text()
+
+# Function to parse HTML data and write it to a file
+async def parse_data(html, file):
+    # Regular expression pattern to extract movie information
+    pattern = re.compile(r'<em class="">(.*?)</em>.*?<img width="100" alt="(.*?)" src=".*?" class="">.*?<p class="">(.*?)</p>.*?<span class="rating_num" property="v:average">(.*?)</span>.*?<span>(.*?)人评价</span>.*?<span class="inq">(.*?)</span>', re.S)
+    all_patterns = re.findall(pattern, html)
+    
+    # Iterate over all matches found in the HTML content
+    for item in all_patterns:
+        rank, title, text, score, number, comments = item[0], item[1], item[2].replace("\n                            ", " ").replace("&nbsp;&nbsp;&nbsp;", " ").replace("&nbsp;", " ").replace("\n                        ", " "), item[3], item[4], item[5]
+        contents = text.split(" ")
+        director, actors, year, country, categories = contents[0], contents[1], contents[2], contents[3], contents[-1]
+        
+        # Write movie information to the file
+        file.write(f"{rank},{title},{director},{actors},{year},{country},{categories},{score},{number},{comments}\n")
+        
+        # Log the movie information
+        logging.info(f"Rank: {rank}, Title: {title}, Director: {director}, Actors: {actors}, Year: {year}, Country: {country}, Categories: {categories}, Score: {score}, Number: {number}, Comments: {comments}")
+
+# Function to get data from the website
+async def get_data():
+    # Open a client session
+    async with aiohttp.ClientSession() as session:
+        # Open a file to write the movie information
+        async with open('douban_top250.txt', 'a', encoding='utf-8') as file:
+            file.write('Rank,Title,Director,Actors,Year,Country,Categories,Score,Number,Comments\n')
+            
+            # Fetch data for each page (25 movies per page)
+            for page in range(0, 250, 25):
+                html = await fetch_data(session, page)
+                
+                # Log the page number and length of the HTML content
+                logging.info(f"Page: {page}")
+                logging.info(f"HTML Content Length: {len(html)}")
+                
+                # Parse the HTML content and write to the file
+                await parse_data(html, file)
+
+# Main function to run the program
+async def main():
+    start_time = time.time()
+    
+    # Run the function to get data
+    await get_data()
+    
+    end_time = time.time()
+    
+    # Log the total time consumed
+    logging.info(f"Total Time Consumed: {end_time - start_time} s")
+
+if __name__ == '__main__':
+    # Run the main function using asyncio
+    asyncio.run(main())

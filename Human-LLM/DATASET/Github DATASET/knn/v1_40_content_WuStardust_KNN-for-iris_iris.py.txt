@@ -1,0 +1,44 @@
+from numpy import loadtxt, zeros, tile, argsort, sum, sqrt
+import operator
+
+def main():
+    features, labels = loadDataSet()
+    testFeatures = zeros((30, 4))
+    testLabels = zeros(30)
+    trainFeatures = zeros((120, 4))
+    trainLabels = zeros(120)
+    for i in range(3):
+        testFeatures[i * 10: i * 10 + 10] = features[i * 50: i * 50 + 10]
+        testLabels[i * 10: i * 10 + 10] = labels[i * 50: i * 50 + 10]
+        trainFeatures[i * 10: i * 10 + 40] = features[i * 50: i * 50 + 40]
+        trainLabels[i * 10: i * 10 + 40] = labels[i * 50: i * 50 + 40]
+    errorCount = 0
+    for i in range(30):
+        classifierResult = classifierKNN(testFeatures[i], trainFeatures, trainLabels, 5)
+        print("the classifier came back with: %d, the real answer is : %d" % (classifierResult, testLabels[i]))
+        if classifierResult != testLabels[i]:
+            errorCount += 1
+    print("the total error rate is: %f" % (errorCount / float(30)))
+
+def loadDataSet():
+    iris = loadtxt(open("./Iris.csv", "rb"), delimiter=",", skiprows=1)
+    features = iris[:, 1:5]
+    labels = iris[:, 5].astype(int)
+    return features, labels
+
+def classifierKNN(inX, dataSet, labels, k):
+    dataSetSize = dataSet.shape[0]
+    diffMat = tile(inX, (dataSetSize, 1)) - dataSet
+    sqDiffMat = diffMat**2
+    sqDistance = sqDiffMat.sum(axis=1)
+    distance = sqDistance**0.5
+    sortedDistIndicies = argsort(distance)
+    classCount = {}
+    for i in range(k):
+        voteIlabel = labels[sortedDistIndicies[i]]
+        classCount[voteIlabel] = classCount.get(voteIlabel, 0) + 1
+    sortedClassCount = sorted(classCount.items(), key=operator.itemgetter(1), reverse=True)
+    return sortedClassCount[0][0]
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,143 @@
+from Shape import Shape
+import newick
+
+class PhyloTree(Shape):
+    """
+    Represents a phylogenetic tree, inheriting properties from the Shape class.
+    """
+
+    def __init__(self, leaf=None, children=None):
+        """
+        Initialize a PhyloTree instance.
+        
+        Parameters:
+        - leaf: The label of the leaf node.
+        - children: List of child nodes.
+        """
+        super().__init__(children)
+        self.leaf = leaf
+        assert not self.is_leaf or (leaf is not None)
+
+    def shape(self):
+        """
+        Get the shape associated with the PhyloTree.
+        
+        Returns:
+        - Shape instance.
+        """
+        if self.is_leaf:
+            return Shape(None)
+        else:
+            return Shape([x.shape() for x in self.children])
+
+    def to_newick_tuple(self):
+        """
+        Get the simplified Newick tuple representation of the PhyloTree.
+        
+        Returns:
+        - Tuple representing Newick code.
+        """
+        if self.is_leaf:
+            return self.leaf
+        else:
+            return tuple(x.to_newick_tuple() for x in self.children)
+
+    def leaves(self):
+        """
+        Generate the labels of the leaves in the PhyloTree.
+        
+        Yields:
+        - Leaf labels.
+        """
+        if self.is_leaf:
+            yield self.leaf
+        else:
+            for x in self.children:
+                for l in x.leaves():
+                    yield l
+
+    def labels(self):
+        """
+        Get a list of labels present in the PhyloTree.
+        
+        Returns:
+        - List of labels sorted in lexicographical order.
+        """
+        return sorted(list(self.leaves()))
+
+    def is_phylo(self):
+        """
+        Check if the PhyloTree is phylogenetic (no repeated leaves).
+        
+        Returns:
+        - True if phylogenetic, False otherwise.
+        """
+        L = self.labels()
+        for i in range(1, len(L)):
+            if L[i] == L[i - 1]:
+                return False
+        return True
+
+def from_newick(newick_str):
+    """
+    Create a PhyloTree instance from a Newick formatted string.
+    
+    Parameters:
+    - newick_str: Newick formatted string.
+    
+    Returns:
+    - PhyloTree instance.
+    """
+    return newick_node_to_tree(newick.loads(newick_str)[0])
+
+def from_newick_list(newick_list):
+    """
+    Create a list of PhyloTree instances from a list of Newick formatted strings.
+    
+    Parameters:
+    - newick_list: List of Newick formatted strings.
+    
+    Returns:
+    - List of PhyloTree instances.
+    """
+    return [newick_node_to_tree(n) for n in newick.loads(newick_list)]
+
+def newick_node_to_tree(node):
+    """
+    Convert a Node object from newick module to a PhyloTree instance.
+    
+    Parameters:
+    - node: Node object.
+    
+    Returns:
+    - PhyloTree instance.
+    """
+    if not bool(node.descendants):
+        return PhyloTree(node.name, None)
+    return PhyloTree(None, sorted([newick_node_to_tree(x) for x in node.descendants]))
+
+def trees_from_file(file_path, encoding='utf8', strip_comments=False, **kwargs):
+    """
+    Load PhyloTree instances from a Newick formatted file.
+    
+    Parameters:
+    - file_path: Path to the Newick formatted file.
+    - encoding: File encoding.
+    - strip_comments: Flag to strip comments from the file.
+    - kwargs: Additional keyword arguments passed to newick.read function.
+    
+    Returns:
+    - List of PhyloTree instances.
+    """
+    tree_nodes = newick.read(file_path, encoding, strip_comments, **kwargs)
+    return [newick_node_to_tree(node) for node in tree_nodes]
+
+def main():
+    # Example usage
+    tree_str = "(A, (B, C));"
+    phylo_tree = from_newick(tree_str)
+    print("Labels:", phylo_tree.labels())
+    print("Is phylogenetic:", phylo_tree.is_phylo())
+
+if __name__ == "__main__":
+    main()

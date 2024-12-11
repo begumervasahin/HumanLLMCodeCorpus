@@ -1,0 +1,77 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
+from datetime import datetime
+import pandas as pd
+
+def flight_scraper(terminal, journey):
+    # Get today's date
+    today = datetime.today().strftime('%Y-%m-%d')
+
+    # Initialize lists to store flight data
+    journeys = []
+    types = []
+    stopovers = []
+    airlines = []
+    airline_logos = []
+    flight_numbers = []
+    statuses = []
+    scheduled_times = []
+    estimated_times = []
+
+    # Set up WebDriver
+    chrome_driver = ChromeDriverManager().install()
+    service = Service(chrome_driver)
+    driver = webdriver.Chrome(service=service)
+
+    # Construct URL
+    url = f"https://www.sydneyairport.com.au/flights/?query=&flightType={journey}&terminalType={terminal}&date={today}&sortColumn=scheduled_time&ascending=true&showAll=true"
+    print(f"Getting data for {terminal}_{journey} flights")
+
+    # Retrieve webpage
+    driver.get(url)
+    html_soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    # Find flight containers
+    flight_containers = html_soup.find_all("div", attrs={"class": "flight-card"})[2:]
+
+    # Extract flight data
+    for container in flight_containers:
+        types.append(f'static/images/{terminal}_{journey}.png')
+        journeys.append(container.find("div", attrs={"class": "destination-name"}).text)
+        
+        stopover_elem = container.find("div", attrs={"class": "city-via"})
+        stopovers.append(stopover_elem.text if stopover_elem else "-")
+        
+        airlines.append(container.find("span", attrs={"class": "with-image"}).text)
+        airline_logos.append("https://www.sydneyairport.com.au" + container.img['src'])
+        flight_numbers.append(container.find("div", attrs={"class": "heading-medium"}).text)
+        statuses.append(container.find("div", attrs={"class": "status"}).text)
+        scheduled_times.append(container.find("div", attrs={"class": "large-scheduled-time"}).text[0:5])
+        estimated_times.append(container.find("div", attrs={"class": "estimated-time"}).text[0:5])
+
+    flights = {
+        'Type': types,
+        'Journey': journeys,
+        'Stopover': stopovers,
+        'Airline': airlines,
+        'Logo': airline_logos,
+        'Flight number': flight_numbers,
+        'Status': statuses,
+        'Scheduled time': scheduled_times,
+        'Estimated time': estimated_times
+    }
+
+    print(f"Finished getting data for {terminal}_{journey} flights")
+
+    # Quit WebDriver
+    driver.quit()
+
+    return flights
+
+# Example usage:
+terminal = "example_terminal"
+journey = "example_journey"
+flights_data = flight_scraper(terminal, journey)
+print(pd.DataFrame(flights_data))

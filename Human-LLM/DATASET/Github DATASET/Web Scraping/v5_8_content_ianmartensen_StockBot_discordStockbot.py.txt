@@ -1,0 +1,53 @@
+import discord
+import requests
+from bs4 import BeautifulSoup
+
+# Create the Discord client
+client = discord.Client()
+
+async def send_help_message(channel):
+    """Send a help message to the specified channel."""
+    help_msg = (
+        "Hello! Currently, the only active command is `!price <Ticker>` "
+        "which displays the current price of a stock."
+    )
+    await channel.send(help_msg)
+
+async def send_stock_price(channel, ticker):
+    """Fetch and send the stock price for the specified ticker to the channel."""
+    try:
+        url = f"https://finance.yahoo.com/quote/{ticker}"
+        response = requests.get(url)
+        response.raise_for_status()  # Check for HTTP request errors
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        price_element = soup.find(class_="Trsdu(0.3s) Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(b)")
+        if price_element:
+            price = price_element.text
+            await channel.send(f"The stock price for {ticker.upper()} is ${price} currently.")
+        else:
+            await channel.send("Sorry, I couldn't find the stock price.")
+    except requests.RequestException:
+        await channel.send("Sorry, I couldn't retrieve stock data. Please try again later.")
+
+@client.event
+async def on_message(message):
+    """Handle incoming messages."""
+    if message.author == client.user:
+        return  # Ignore bot's own messages
+
+    content = message.content.lower()
+    if content in ['!help', '!commands']:
+        await send_help_message(message.channel)
+    elif content.startswith('!price'):
+        ticker = content.split(' ')[1]
+        await send_stock_price(message.channel, ticker)
+
+@client.event
+async def on_ready():
+    """Prints a message when the bot is ready."""
+    print(f'Logged in as {client.user.name} (ID: {client.user.id})')
+    print('------')
+
+# Run the bot (replace 'your_token_here' with your actual Discord bot token)
+client.run('your_token_here')

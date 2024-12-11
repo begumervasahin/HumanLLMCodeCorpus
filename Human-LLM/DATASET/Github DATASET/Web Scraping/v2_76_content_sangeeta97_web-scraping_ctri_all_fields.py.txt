@@ -1,0 +1,70 @@
+import pandas as pd
+import numpy as np
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+import multiprocessing as mp
+
+# Generate list of trial IDs and corresponding URLs
+trial_ids = list(range(1, 34000))
+urls = [f"http://ctri.nic.in/Clinicaltrials/pmaindet2.php?trialid={trial_id}&EncHid=&userName=CTRI" for trial_id in trial_ids]
+
+# Create a DataFrame to store trial IDs and URLs
+df = pd.DataFrame({'number': trial_ids, 'url': urls})
+
+# Regular expression pattern to remove unwanted characters
+pattern = re.compile(r'\\[nrt]')
+
+# Function to extract information from a given URL
+def extract_info(url):
+    extracted_info = []
+    try:
+        # Fetch webpage content
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        table = soup.find('table')
+
+        # Extract relevant information from the table
+        ctri_number = re.findall(r'(?sm)(?<=CTRI Number)[^A-Za-z]*(\w+\W+.*)(?=Last Modified On:)', table.text)
+        last_modified = re.findall(r'(?sm)(?<=Last Modified On:)[^A-Za-z]*(\w+\W+.*)(?=Post Graduate Thesis)', table.text)
+        post_grad_thesis = re.findall(r'(?sm)(?<=Post Graduate Thesis)[^A-Za-z]*(\w+\W+.*)(?=Type of Trial)', table.text)
+        
+        # Append extracted information to the list
+        extracted_info.append('%;'.join([str(ctri_number), str(last_modified), str(post_grad_thesis)]))
+        
+        # Sleep to avoid overwhelming the server
+        time.sleep(2)
+    except Exception as e:
+        print(f"An error occurred for URL: {url}, Error: {e}")
+        extracted_info.append('no_value')
+    finally:
+        return extracted_info
+
+# Function to process a batch of URLs
+def process_urls(batch_urls):
+    batch_results = []
+    for url in batch_urls:
+        batch_results.append(extract_info(url))
+    return batch_results
+
+if __name__ == "__main__":
+    # Determine number of processes based on CPU count
+    num_processes = mp.cpu_count()
+    
+    # Split URLs into batches for multiprocessing
+    url_batches = np.array_split(df['url'].tolist(), num_processes)
+    
+    # Create a multiprocessing Pool
+    with mp.Pool(processes=num_processes) as pool:
+        # Map URL batches to the processing function
+        results = pool.map(process_urls, url_batches)
+    
+    # Flatten the results list
+    flat_results = [item for sublist in results for item in sublist]
+    
+    # Add extracted information to the DataFrame
+    df['all'] = flat_results
+    
+    # Write DataFrame to Excel file
+    df.to_excel('results_29May.xlsx', index=False)

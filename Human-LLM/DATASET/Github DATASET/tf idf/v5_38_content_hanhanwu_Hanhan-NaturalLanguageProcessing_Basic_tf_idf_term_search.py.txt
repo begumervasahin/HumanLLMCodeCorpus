@@ -1,0 +1,60 @@
+import nltk
+import json
+
+def load_json(file_path):
+    """Load JSON data from a file."""
+    with open(file_path, 'r') as file:
+        return json.load(file)
+
+def extract_activities(data):
+    """Extract lowercase content of each activity."""
+    return [activity['object']['content'].lower().split() for activity in data if activity['object']['content'] != '']
+
+def calculate_activity_scores(activities, query_terms, text_collection):
+    """Calculate TF-IDF scores for each activity."""
+    relevant_activities = []
+    for activity_index, activity_content in enumerate(activities):
+        score = sum(text_collection.tf_idf(term.lower(), activity_content) for term in query_terms)
+        if score > 0:
+            relevant_activities.append({
+                'score': score,
+                'title': data[activity_index]['title'],
+                'url': data[activity_index]['url']
+            })
+    return relevant_activities
+
+def print_relevant_activities(relevant_activities):
+    """Print relevant activities along with their titles, URLs, and scores."""
+    for activity in relevant_activities:
+        print('Title:', activity['title'])
+        print('URL:', activity['url'])
+        print('Score:', activity['score'])
+        print()
+
+def main():
+    # Specify the path to the JSON file containing Google+ posts
+    json_file_path = '[change to your googleplus_posts.json location]'
+    
+    # Load the data from the JSON file
+    data = load_json(json_file_path)
+    
+    # Define the query terms to search for
+    query_terms = ['mobile']
+    
+    # Extract the content of each activity and convert it to lowercase
+    activities = extract_activities(data)
+    
+    # Create a TextCollection object from the activities
+    text_collection = nltk.TextCollection(activities)
+    
+    # Calculate TF-IDF scores for each activity and identify relevant activities
+    relevant_activities = calculate_activity_scores(activities, query_terms, text_collection)
+    
+    # Sort the relevant activities based on their scores in descending order
+    relevant_activities.sort(key=lambda activity: activity['score'], reverse=True)
+    
+    # Print the relevant activities
+    print_relevant_activities(relevant_activities)
+
+if __name__ == '__main__':
+    main()

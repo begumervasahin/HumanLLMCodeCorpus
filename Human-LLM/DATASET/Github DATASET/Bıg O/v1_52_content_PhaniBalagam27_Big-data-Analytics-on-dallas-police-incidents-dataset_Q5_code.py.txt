@@ -1,0 +1,42 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import HiveContext
+from subprocess import call
+
+conf = SparkConf().setAppName("Q2")
+sc = SparkContext(conf=conf)
+sqlContext = HiveContext(sc)
+
+# Load the CSV file into a DataFrame
+df = sqlContext.read.load('pxb161930/Police_Incidents.csv', format='com.databricks.spark.csv', header='true', inferSchema='true', parserLib='univocity')
+
+# Columns to drop
+dl = ['Incident Number w/ Year', 'Watch', 'Call (911) Problem', 'Type of Incident', 'Penalty Class', 'Type of Location', 'Type of Property', 'Street Block', 'Street Direction', 'Street Name', 'Incident Address', 'City', 'X Coordinate', 'Y Coordinate', 'Reporting Area', 'Beat', 'Division', 'Sector', 'Council District', 'Target Area Action Grids', 'Community','Ending Date/Time', 'Map Date', 'Date of Report', 'Date incident created', 'Offense Entered Time', 'Offense Entered  Date/Time', 'Call Date Time','Call Dispatch Date Time', 'Complainant Age', 'Complainant Age at Offense', 'Complainant Home Address', 'Complainant Zip Code', 'Complainant City', 'Complainant Business Name', 'Complainant Business Address', 'Investigating Unit 1', 'Investigating Unit 2', 'Offense Status', 'Victim Injury Description', 'Victim Condition', 'RMS Code', 'Offense Code CC', 'CJIS Code', 'Penal Code', 'UCR Offense Name', 'Modus Operandi (MO)', 'Hate Crime', 'Gang Related Offense', 'Drug Related Incident']
+
+# Select columns not in dl
+df11 = df.select([column for column in df.columns if column not in dl])
+
+# Replace spaces in column names with underscores
+newdf = df11.toDF(*(c.replace(' ', '_') for c in df11.columns))
+
+# Remove slashes from column names
+ndf = newdf.toDF(*(c.replace('/', '') for c in newdf.columns))
+
+# Remove parentheses from column names
+sdf = ndf.toDF(*(c.replace('(', '') for c in ndf.columns))
+
+# Remove parentheses from column names
+adf = sdf.toDF(*(c.replace(')', '') for c in sdf.columns))
+
+# Replace double underscores with single underscore in column names
+ddf = adf.toDF(*(c.replace('__', '_') for c in adf.columns))
+
+# Drop existing table if exists and create a new table
+sqlContext.sql("DROP TABLE IF EXISTS default.q5data")
+ddf.registerTempTable("q5data")
+sqlContext.sql("CREATE TABLE q5table AS SELECT * FROM q5data")
+
+# Export data to a local directory as CSV
+args = ["hive", "-e", "INSERT OVERWRITE LOCAL DIRECTORY '/root/q5data' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM q5table"]
+call(args)
+
+sc.stop()

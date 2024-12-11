@@ -1,0 +1,53 @@
+import re
+
+def extract_replacements(grammar):
+    syntax_re = r"""(?mx)
+        ^(?:
+          (?: (?P<comment> \
+          (?: (?P<blank>   \s*  ) (?: \n | $ )  ) |
+          (?: (?P<rule>    (?P<pat> .+? ) \s+ -> \s+ (?P<term> \.)? (?P<repl> .+) ) )
+        )$
+        """
+    return [(matchobj.group('pat'), matchobj.group('repl'), bool(matchobj.group('term')))
+            for matchobj in re.finditer(syntax_re, grammar)
+            if matchobj.group('rule')]
+
+def replace(text, replacements):
+    while True:
+        for pat, repl, term in replacements:
+            if pat in text:
+                text = text.replace(pat, repl, 1)
+                if term:
+                    return text
+                break
+        else:
+            return text
+
+grammar1 = """\
+A -> apple
+B -> bag
+S -> shop
+T -> the
+the shop -> my brother
+a never used -> .terminating rule
+"""
+
+grammar5 = '''\
+A0 -> 1B
+0A1 -> C01
+1A1 -> C11
+0B0 -> A01
+1B0 -> A11
+B1 -> 1B
+0C0 -> B01
+1C0 -> B11
+0C1 -> H01
+1C1 -> H11
+'''
+
+text1 = "I bought a B of As from T S."
+text5 = '000000A000000'
+
+if __name__ == '__main__':
+    replacements = extract_replacements(grammar5)
+    print(replace(text5, replacements) == '00011H1111000')

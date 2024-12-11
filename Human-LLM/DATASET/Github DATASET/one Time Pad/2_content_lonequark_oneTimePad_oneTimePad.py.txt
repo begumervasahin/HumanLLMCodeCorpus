@@ -1,0 +1,73 @@
+import random
+import os
+accept = range(32, 127)
+def stringToASCII(string, accept):
+	listOut = []
+	for char in string:
+		num = ord(char)
+		if num in accept:
+			listOut.append(num)
+	return listOut
+def ASCIIToString(listIn):
+	stringOut = ""
+	for num in listIn:
+		stringOut = stringOut + chr(num)
+	return stringOut
+def encrypt():
+	print('Write your message. ASCII characters 32-126 accepted.')
+	plain = raw_input("> ")
+	print('Name your ciphertext output file, excluding .txt extension. For example: message1')
+	print('The corresponding key will be the name with "key" appended. For example: message1key')
+	fileName = raw_input("> ")
+	plainASCII = stringToASCII(plain, accept)
+	key = []
+	for num in range(0,len(plainASCII)):
+		key.append(random.choice(accept))
+	cipherASCII = []
+	for i in range(0,len(plainASCII)):
+		encrypted = ( ( (plainASCII[i] - accept[0]) + (key[i] - accept[0] ) % len(accept)) + accept[0]
+		cipherASCII.append(encrypted)
+	cipher = ASCIIToString(cipherASCII)
+	key = ASCIIToString(key)
+	newfileName = fileName + ".txt"
+	file = open(newfileName,"w")
+	file.write(cipher)
+	file.close()
+	keyFile = fileName + "key.txt"
+	file = open(keyFile,"w")
+	file.write(key)
+	file.close()
+def decrypt():
+	print('Enter the name of the ciphertext file, excluding the extension.\n (For example: message1 for message1.txt)')
+	cipherFile = raw_input('> ')
+	print('Enter the name of the key file, excluding the extension.\n (For example: message1key for message1key.txt')
+	keyFile = raw_input('> ')
+	file = open(cipherFile + ".txt","r")
+	cipher = file.read()
+	file.close()
+	file = open(keyFile + ".txt","r")
+	key = file.read()
+	file.close()
+	cipherASCII = stringToASCII(cipher, accept)
+	keyASCII = stringToASCII(key, accept)
+	plainASCII = []
+	for i in range(0,len(cipherASCII)):
+		decrypted = ( ( (cipherASCII[i] - accept[0]) - (keyASCII[i] - accept[0]) ) % len(accept)) + accept[0]
+		plainASCII.append(decrypted)
+	plain = ASCIIToString(plainASCII)
+	plainFileName = cipherFile + "plain.txt"
+	file = open(plainFileName,"w")
+	file.write(plain)
+	file.close()
+while True:
+	print('Choose a mode:\n (1) Encrypt a message\n (2) Decrypt files\n (3) Quit')
+	mode = int(raw_input('> '))
+	if mode == 1:
+		encrypt()
+		print('Encryption successful.\n\n')
+	elif mode == 2:
+		decrypt()
+		print('Decryption successful. Remember that the spaces are gone!\n\n')
+	else:
+		print('Goodbye.')
+		break

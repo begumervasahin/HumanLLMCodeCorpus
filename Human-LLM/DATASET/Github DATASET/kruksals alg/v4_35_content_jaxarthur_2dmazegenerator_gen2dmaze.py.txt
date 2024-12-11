@@ -1,0 +1,106 @@
+import math
+import random
+
+class Cell:
+    def __init__(self, position, typ, id=None):
+        self.position = position
+        self.typ = typ
+        self.id = id
+
+def generate(width, height):
+    internal_width = width * 2 + 1
+    internal_height = height * 2 + 1
+    walls = gen_walls(internal_width, internal_height)
+    blocks = gen_blocks(internal_width, internal_height)
+    cells = gen_cells(internal_width, internal_height)
+    new_walls = []
+    
+    while len(blocks) > 0:
+        current_block = blocks[random.randint(0, len(blocks) - 1)]
+        cell1, cell2 = get_neighbors(current_block, cells)
+        
+        if cell1.id == cell2.id:
+            new_walls.append(Cell(current_block.position, 0))
+            blocks.remove(current_block)
+        else:
+            old_id = cell2.id
+            new_id = cell1.id
+            
+            for cel in cells:
+                if cel.id == old_id:
+                    cel.id = new_id
+            blocks.remove(current_block)
+    
+    raw_output = [cel.position for cel in walls]
+    raw_output.extend([cel.position for cel in new_walls])
+    
+    output = [[0 for _ in range(internal_width)] for _ in range(internal_height)]
+    
+    for position in raw_output:
+        output[position[1]][position[0]] = 1
+    
+    return output
+
+def gen_walls(width, height):
+    output = []
+    
+    for x in range(width):
+        for y in range(height):
+            if x == 0 or y == 0 or x == width - 1 or y == height - 1:
+                output.append(Cell((x, y), 0))
+            elif x % 2 == 0 and y % 2 == 0:
+                output.append(Cell((x, y), 0))
+    
+    return output
+
+def gen_blocks(width, height):
+    output = []
+    
+    for x in range(width):
+        for y in range(height):
+            if x == 0 or y == 0 or x == width - 1 or y == height - 1:
+                pass
+            elif x % 2 == 1 and y % 2 == 0:
+                output.append(Cell((x, y), 1))
+            elif x % 2 == 0 and y % 2 == 1:
+                output.append(Cell((x, y), 1))
+    
+    return output
+
+def gen_cells(width, height):
+    output = []
+    current_num = 0
+    
+    for x in range(width):
+        for y in range(height):
+            if x == 0 or y == 0 or x == width - 1 or y == height - 1:
+                pass
+            elif x % 2 == 1 and y % 2 == 1:
+                output.append(Cell((x, y), 2, current_num))
+                current_num += 1
+    
+    return output
+
+def search_cells(x, y, cells):
+    position = (x, y)
+    
+    for cel in cells:
+        if cel.position == position:
+            return cel
+    
+    return None
+
+def get_neighbors(current_block, cells):
+    neighbor_cells = [
+        search_cells(current_block.position[0], current_block.position[1] + 1, cells),
+        search_cells(current_block.position[0], current_block.position[1] - 1, cells),
+        search_cells(current_block.position[0] + 1, current_block.position[1], cells),
+        search_cells(current_block.position[0] - 1, current_block.position[1], cells)
+    ]
+    
+    neighbor_cells = [n for n in neighbor_cells if n is not None]
+    
+    return neighbor_cells[0], neighbor_cells[1]
+
+if __name__ == "__main__":
+    print(generate(5, 6))

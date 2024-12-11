@@ -1,0 +1,77 @@
+import socket
+import logging
+import select
+import signal
+import sys
+import os
+import time
+import json
+import base64
+from aes_main import CBCMode, AES
+from aes_utils import _str_roundto16
+from trans import *
+
+# Configuration
+g_key_128 = "1234567812345678"
+g_IV = "1234567812345678"
+g_pktcount = 0
+MAX_UDP_BUFFER = 8192
+LOG_DIR = './logs/'
+
+def setup_logging():
+    """Set up logging for the UDP server."""
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    cur_date = time.strftime("%Y%m%d")
+    logging.basicConfig(filename=os.path.join(LOG_DIR, f'udp_server_{cur_date}.log'),
+                        level=logging.INFO,
+                        format='[%(asctime)s] %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+
+def log_message(message):
+    """Log a message to the server log."""
+    logging.info(message)
+
+def user_exit(signum, frame):
+    """Gracefully handle exit signals."""
+    log_message(f"Received signal: {signum}; Total packets received: {g_pktcount}")
+    sys.exit(1)
+
+def simple_udp_server_binder(bind_ip, bind_port):
+    """Bind the server to the specified IP and port."""
+    try:
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_socket.bind((bind_ip, bind_port))
+        log_message(f"Server bound to {bind_ip}:{bind_port}")
+        return listen_socket
+    except socket.error as e:
+        log_message(f"Server bind error: {e}")
+        sys.exit(1)
+
+def simple_udp_server_worker(listen_socket):
+    """A simple UDP server worker to process incoming messages."""
+    global g_pktcount
+    if listen_socket is None:
+        log_message("Server socket error")
+        sys.exit(1)
+    while True:
+        message, client_addr = listen_socket.recvfrom(MAX_UDP_BUFFER)
+        if message:
+            g_pktcount += 1
+            log_message(f"Packet {g_pktcount} received from {client_addr}")
+
+def udp_packet_decrypt(data_str):
+    """Decrypt the received UDP packet."""
+    if data_str is None:
+        return
+    b64de_str = base64.b64decode(data_str)
+    decryptor = CBCMode(AES(g_key_128), g_IV)
+    decrypted_str = decryptor.decrypt(b64de_str)
+    return decrypted_str
+
+if __name__ == "__main__":
+    setup_logging()
+    signal.signal(signal.SIGINT, user_exit)
+    server_socket = simple_udp_server_binder("127.0.0.1", 8888)
+    simple_udp_server_worker(server_socket)

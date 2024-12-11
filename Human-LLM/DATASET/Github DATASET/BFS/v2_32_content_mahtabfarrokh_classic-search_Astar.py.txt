@@ -1,0 +1,81 @@
+class AStar:
+    def __init__(self, initial_state, actions, result, goal_test, get_cost, heuristic):
+        # Initialize open list, closed list, result list, visited nodes list, and other parameters
+        self.f = []         # Open list (priority queue)
+        self.e = []         # Closed list (explored nodes)
+        self.res = []       # Result list
+        self.visited = []   # List to track visited nodes
+        self.initial_state = initial_state   # Function to generate the initial state
+        self.actions = actions               # Function to get available actions for a node
+        self.result = result                 # Function to get the result of applying an action to a node
+        self.goal_test = goal_test           # Function to test if a node is a goal state
+        self.get_cost = get_cost             # Function to calculate the cost of reaching a node
+        self.heuristic = heuristic           # Heuristic function
+        self.max_memory = 0                  # Variable to track maximum memory usage
+
+    def search(self):
+        # Main A* search algorithm
+        while self.f:
+            # Find the node with the lowest f value in the open list
+            self.max_memory = max(self.max_memory, len(self.f) + len(self.e))
+            x = self.f[0]
+            minv = x[1]
+            path = x[0]
+            udru = x[2]
+            heur = x[3]
+            for v in self.f:
+                if v[1] + v[3] < minv + heur:
+                    minv = v[1]
+                    path = v[0]
+                    udru = v[2]
+                    heur = v[3]
+            node = path[-1]
+
+            # Remove nodes with higher f values if a better path to the same node is found
+            for v in self.f:
+                p = v[0]
+                if p[-1] == node and v[1] + v[3] > minv + heur:
+                    self.f.remove(v)
+
+            # Check if the goal is reached
+            if self.goal_test(node):
+                return [udru, path, minv, heur]
+
+            # Remove the current node from the open list and add it to the closed list
+            self.f.remove([path, minv, udru, heur])
+            if node not in self.e:
+                self.e.append(node)
+
+            # Expand the current node and add its neighbors to the open list
+            for act in self.actions(node):
+                v = self.result(node, act)
+                if v not in self.e:
+                    c = self.get_cost(path[0], v) + minv
+                    heur = self.heuristic(v)
+                    path2 = path + [v]
+                    udru2 = udru + [act]
+                    self.f.append([path2, c, udru2, heur])
+                    if v not in self.visited:
+                        self.visited.append(v)
+
+    def search_astar(self):
+        # Perform A* search starting from the initial state
+        start = self.initial_state()
+        self.f = [[[start], 0, [], 0]]
+        self.e = []
+        self.res = []
+        p = self.search()
+        # Print path and other statistics if a solution is found
+        if not p:
+            print("There is no path")
+        else:
+            print("Path found:")
+            print(p[0])
+            print("Number of visited nodes:", len(self.visited))
+            print("Number of nodes in closed list:", len(self.e))
+            print("Max memory usage:", self.max_memory)
+            print("Path cost:", p[2] + p[3])
+
+# Example usage:
+# Define your initial state, actions, result function, goal test function, cost function, and heuristic function
+# Then create an instance of AStar and call search_astar method

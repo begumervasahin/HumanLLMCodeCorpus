@@ -1,0 +1,84 @@
+import os
+from toyecc import getcurvebyname, ECPrivateKey
+
+# Get the elliptic curve
+curve = getcurvebyname("secp521r1")
+
+def find_point_on_curve(curve, msg, msg_width_bits):
+    """
+    Find a point on the curve corresponding to the given message.
+
+    Args:
+        curve: Elliptic curve.
+        msg (bytes): Message to be converted.
+        msg_width_bits (int): Width of the message in bits.
+
+    Returns:
+        tuple: Number of trials and the corresponding point on the curve.
+    """
+    int_message = int.from_bytes(msg, byteorder="little")
+    for i in range(100):
+        try_message = int_message | (i << msg_width_bits)
+        point = curve.getpointwithx(try_message)
+        if point:
+            point = point[0]
+            break
+    return i + 1, point
+
+def elgamal_encrypt(recipient_pubkey, msg, msg_width_bits):
+    """
+    Encrypts a message using ElGamal encryption.
+
+    Args:
+        recipient_pubkey: Public key of the recipient.
+        msg (bytes): Message to be encrypted.
+        msg_width_bits (int): Width of the message in bits.
+
+    Returns:
+        tuple: Encrypted ciphertext.
+    """
+    # Generate a random key
+    k = ECPrivateKey.generate(curve)
+    C1 = k.pubkey.point
+    C2 = k.scalar * recipient_pubkey.point
+    # Find a point on the curve corresponding to the message
+    trials, P_m = find_point_on_curve(curve, msg, msg_width_bits=msg_width_bits)       
+    ciphertext = C1, C2 + P_m
+    return ciphertext
+
+def elgamal_decrypt(recipient_privkey, ciphertext, msg_width_bits):
+    """
+    Decrypts an ElGamal ciphertext.
+
+    Args:
+        recipient_privkey: Private key of the recipient.
+        ciphertext (tuple): Encrypted ciphertext.
+        msg_width_bits (int): Width of the message in bits.
+
+    Returns:
+        bytes: Decrypted plaintext message.
+    """
+    C1, C2 = ciphertext
+    Cp = C1 * recipient_privkey.scalar
+    P_m = C2 + (-Cp)
+    int_message = int(P_m.x) & ((1 << msg_width_bits) - 1)
+    msg = int.to_bytes(int_message, byteorder="little", length=(msg_width_bits + 7) // 8)
+    return msg
+
+# Generate private and public keys
+privkey = ECPrivateKey.generate(curve)
+pubkey = privkey.pubkey
+
+# Define the message
+message = b"foobar"
+print("Message:", message)
+
+# Encrypt the message
+ciphertext = elgamal_encrypt(pubkey, message, msg_width_bits=256)
+print("Ciphertext:")
+print("    C1 =", ciphertext[0])
+print("    C2 =", ciphertext[1])
+
+# Decrypt the ciphertext
+plaintext = elgamal_decrypt(privkey, ciphertext, msg_width_bits=256)
+print("Plaintext:", plaintext)

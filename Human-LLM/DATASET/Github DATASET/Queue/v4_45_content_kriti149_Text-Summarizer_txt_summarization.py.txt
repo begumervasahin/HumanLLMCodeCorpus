@@ -1,0 +1,62 @@
+# Importing necessary libraries
+import bs4 as bs
+import urllib.request
+import re
+import nltk
+import heapq
+
+# Downloading NLTK resources
+nltk.download('stopwords')
+nltk.download('punkt')
+
+# Fetching the source content from a Wikipedia page
+source = urllib.request.urlopen('https://en.wikipedia.org/wiki/Global_warming').read()
+soup = bs.BeautifulSoup(source, 'lxml')
+
+# Extracting text from paragraphs
+text = ""
+for paragraph in soup.find_all('p'):
+    text += paragraph.text
+
+# Preprocessing the text
+text = re.sub(r'\[[0-9]*\]', ' ', text)
+text = re.sub(r'\s+', ' ', text)
+clean_text = text.lower()
+clean_text = re.sub(r'\W', ' ', clean_text)
+clean_text = re.sub(r'\d', ' ', clean_text)
+clean_text = re.sub(r'\s+', ' ', clean_text)
+
+# Tokenizing sentences
+sentences = nltk.sent_tokenize(text)
+
+# Tokenizing words and calculating word frequencies
+word2count = {}
+for word in nltk.word_tokenize(clean_text):
+    if word not in nltk.corpus.stopwords.words('english'):
+        if word not in word2count.keys():
+            word2count[word] = 1
+        else:
+            word2count[word] += 1
+
+# Normalizing word frequencies
+for word in word2count.keys():
+    word2count[word] = word2count[word] / max(word2count.values())
+
+# Calculating sentence scores based on word frequencies
+sent2score = {}
+for sentence in sentences:
+    for word in nltk.word_tokenize(sentence.lower()):
+        if word in word2count.keys():
+            if len(sentence.split(' ')) < 25:
+                if sentence not in sent2score.keys():
+                    sent2score[sentence] = word2count[word]
+                else:
+                    sent2score[sentence] += word2count[word]
+
+# Selecting top 5 sentences with highest scores
+best_sentences = heapq.nlargest(5, sent2score, key=sent2score.get)
+
+# Printing the best sentences
+print('------------------------------------------------------------')
+for sentence in best_sentences:
+    print(sentence)

@@ -1,0 +1,49 @@
+from ecc import EllipticCurve, Point
+
+def generate_keys(prime_field_size: int, coefficient_a: int, coefficient_b: int, generator_point: tuple, private_key: int) -> Point:
+    """
+    Generates keys according to the Diffie Hellman Algorithm
+    Args:
+        prime_field_size (int): Size of the prime field
+        coefficient_a (int): Coefficient of x^1 in the Elliptic Curve
+        coefficient_b (int): Coefficient of x^0 in the Elliptic Curve
+        generator_point (tuple): Generator Point on the curve (x, y)
+        private_key (int): Private Key
+    Returns:
+        Generated key (Point object).
+    """
+    elliptic_curve = EllipticCurve(coefficient_a, coefficient_b, prime_field_size)
+    generator = Point(elliptic_curve, generator_point[0], generator_point[1], "Generator")
+    generated_point = generator * private_key
+    return generated_point
+
+if __name__ == '__main__':
+    # Parameters
+    prime_field_size = 37
+    coefficient_a = 7
+    coefficient_b = 3
+    generator_point = (2, 5)
+    alice_private_key = 4
+    bob_private_key = 7
+
+    # Generate Elliptic Curve and Generator Point
+    ecc = EllipticCurve(coefficient_a, coefficient_b, prime_field_size)
+    Generator = Point(ecc, generator_point[0], generator_point[1], "Generator")
+
+    # Generate Alice's and Bob's public keys
+    alice_public_key = generate_keys(prime_field_size, coefficient_a, coefficient_b, generator_point, alice_private_key)
+    alice_public_key.name = "Alice Public Key"
+    
+    bob_public_key = generate_keys(prime_field_size, coefficient_a, coefficient_b, generator_point, bob_private_key)
+    bob_public_key.name = "Bob Public Key"
+
+    # Compute shared secret
+    shared_secret_bob = alice_public_key * bob_private_key
+    shared_secret_alice = bob_public_key * alice_private_key
+
+    # Verify shared secret equality
+    assert shared_secret_alice == shared_secret_bob
+    shared_secret_alice.name = "Shared Secret"
+
+    # Plot points
+    ecc.plot_points([Generator, alice_public_key, bob_public_key, shared_secret_alice])

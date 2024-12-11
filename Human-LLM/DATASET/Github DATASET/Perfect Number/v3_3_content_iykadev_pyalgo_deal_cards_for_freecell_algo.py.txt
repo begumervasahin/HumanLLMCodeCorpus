@@ -1,0 +1,52 @@
+import random
+
+def linear_congruential_generator(seed=1):
+    """
+    Generate a random number generator using the Linear Congruential Generator algorithm.
+
+    Parameters:
+        seed (int): The seed value for the generator.
+
+    Yields:
+        int: The next pseudo-random number in the sequence.
+    """
+    max_int32 = (1 << 31) - 1
+    seed = seed & max_int32
+    while True:
+        seed = (seed * 214013 + 2531011) & max_int32
+        yield seed >> 16
+
+def deal_cards(seed):
+    """
+    Deal cards from a deck using a given seed.
+
+    Parameters:
+        seed (int): The seed for shuffling the deck.
+
+    Returns:
+        list: The shuffled deck of cards.
+    """
+    num_cards = 52
+    cards = list(range(num_cards - 1, -1, -1))
+    rnd = linear_congruential_generator(seed)
+    for i, r in zip(range(num_cards), rnd):
+        j = (num_cards - 1) - r % (num_cards - i)
+        cards[i], cards[j] = cards[j], cards[i]
+    return cards
+
+def display_deck(cards):
+    """
+    Display the shuffled deck of cards.
+
+    Parameters:
+        cards (list): The shuffled deck of cards.
+    """
+    card_names = ["A23456789TJQK"[c // 4] + "CDHS"[c % 4] for c in cards]
+    for i in range(0, len(cards), 8):
+        print(" ", " ".join(card_names[i: i + 8]))
+
+if __name__ == '__main__':
+    seed = int(input("Enter seed: "))  # Input seed from the user
+    print("Hand", seed)
+    deck = deal_cards(seed)
+    display_deck(deck)

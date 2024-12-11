@@ -1,0 +1,255 @@
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from copy import deepcopy
+import csv
+
+# Function to calculate standard deviation of distances
+def standard_deviation(distances):
+    std = np.std(np.array(distances))
+    print("Mean Distance: ", np.mean(np.array(distances)))
+    print("Minimum Distance: ", np.min(np.array(distances)))
+    print("Maximum Distance: ", np.max(np.array(distances)))
+    print("Standard Deviation of Distances: ", std)
+    return std
+
+# Function to project a point onto a line
+def projPointOnLine(point, line_2pt):
+    line = [1, 1, 1, 1]
+    line[0] = line_2pt[0]
+    line[1] = line_2pt[1]
+    line[2] = line_2pt[2] - line_2pt[0]
+    line[3] = line_2pt[3] - line_2pt[1]
+    vx = line[2]
+    vy = line[3]
+    dx = point[0] - line[0]
+    dy = point[1] - line[1]
+    tp = (dx * vx + dy * vy) / (vx * vx + vy * vy)
+    point[0] = line[0] + tp * vx
+    point[1] = line[1] + tp * vy
+    return [point[0], point[1]]
+
+# Function to calculate distance between two trajectory segments
+def tp_distance(L1, L2):
+    w1, w2, w3, w4 = 1.0, 1.0, 1.0, 1.0
+    Dspeed = abs((length(L1) / L1[0][2]) - (length(L2) / L2[0][2]))
+    if length(L1) > length(L2):
+        temp = deepcopy(L2)
+        L2 = deepcopy(L1)
+        L1 = deepcopy(temp)
+    point1 = [L2[0][0], L2[0][1]]
+    line_2pt1 = [L1[0][0], L1[0][1], L1[1][0], L1[1][1]]
+    proj1 = projPointOnLine(point1, line_2pt1)
+    point2 = [L1[0][0], L1[0][1]]
+    line_2pt2 = [L2[0][0], L2[0][1], L2[1][0], L2[1][1]]
+    proj2 = projPointOnLine(point2, line_2pt2)
+    six, siy, eix, eiy = L1[0][0], L1[0][1], L1[1][0], L1[1][1]
+    sjx, sjy, ejx, ejy = L2[0][0], L2[0][1], L2[1][0], L2[1][1]
+    lper1 = np.linalg.norm([sjy - proj1[1], sjx - proj1[0]])
+    lper2 = np.linalg.norm([siy - proj2[1], six - proj2[0]])
+    Dper = (math.pow(lper1, 2) + math.pow(lper2, 2)) / (lper1 + lper2)
+    lpar1 = min(np.linalg.norm([siy - proj1[1], six - proj1[0]]),
+                np.linalg.norm([eiy - proj1[1], eix - proj1[0]]))
+    lpar2 = min(np.linalg.norm([siy - proj2[1], six - proj2[0]]),
+                np.linalg.norm([eiy - proj2[1], eix - proj1[0]]))
+    Dpar = min(lpar1, lpar2)
+    x1 = ejx - sjx
+    y1 = ejy - sjy
+    x2 = eix - six
+    y2 = eiy - siy
+    inner_product = x1 * x2 + y1 * y2
+    costheta = inner_product / (np.linalg.norm([x1, y1]) * np.linalg.norm([x2, y2]))
+    if costheta < -1:
+        costheta = -1
+    elif costheta > 1:
+        costheta = 1
+    angle = math.acos(costheta)
+    if angle < (math.pi / 2):
+        Dang = math.sin(angle) * length(L2)
+    else:
+        Dang = length(L2)
+    return w1 * Dper + w2 * Dpar + w3 * Dang + w4 * Dspeed
+
+# Function to calculate length of a trajectory segment
+def length(segment):
+    sx, sy, ex, ey = segment[0][0], segment[0][1], segment[1][0], segment[1][1]
+    return np.linalg.norm([ex - sx, ey - sy])
+
+# Function to calculate Modified Dynamic Length for a trajectory partition
+def mdl_par(t, s, e):
+    pfactor = 2
+    ld = length([t[s], t[e]])
+    x1, y1, x2, y2 = t[s][0], t[s][1], t[e][0], t[e][1]
+    Dx, Dy = x2 - x1, y2 - y1
+    D = np.linalg.norm([Dx, Dy])
+    d = 0
+    for i in range(s, e):
+        x0, y0 = t[i][0], t[i][1]
+        di = math.fabs((Dy * x0 - Dx * y0 + x2 * y1 - y2 * x1) / D)
+        d = d + di
+    ldh = d / pfactor
+    mdl = ld + ldh
+    return mdl
+
+# Function to calculate Dynamic Length for a trajectory partition
+def mdl_nopar(t, s, e):
+    tlen = 0
+    for i in range(s, e):
+        tlen = tlen + length([t[i], t[i + 1]])
+    return tlen
+
+# Function to partition trajectories
+def mdl_partition(t):
+    cp = [t[0]]
+    si, l = 1, 1
+    while si + l <= len(t):
+        ci = si + l
+        cost_par = mdl_par(t, si, ci)
+        cost_nopar = mdl_nopar(t, si, ci)
+        if cost_par > cost_nopar:
+            cp.append(t[ci - 1])
+            si, l = ci - 1, 1
+        else:
+            l = l + 1
+    cp.append(t[-1])
+
+# Function to create trajectory segments
+def partition(T):
+    L = []
+    for p in T:
+        for i in range(len(T[p]) - 1):
+            segment = [T[p][i], T[p][i + 1]]
+            L.append([segment, p, 0])
+    return L
+
+# Function to calculate total density of trajectory segments
+def TotalDensity(T, L, D):
+    distances = []
+    for Li in L:
+        CTR_count = 0
+        for p in T:
+            if p != Li[1]:
+                matchLen = 0
+                for i in range(len(T[p]) - 1):
+                    segment = [T[p][i], T[p][i + 1]]
+                    dist = tp_distance(Li[0], segment)
+                    if not math.isnan(dist):
+                        distances.append(dist)
+    sd = standard_deviation(distances)
+    tdensity = 0
+    for Li in L:
+        distances = []
+        for p in T:
+            if p != Li[1]:
+                for i in range(len(T[p]) - 1):
+                    segment = [T[p][i], T[p][i + 1]]
+                    dist = tp_distance(Li[0], segment)
+                    distances.append(dist)
+                tdensity = tdensity + (len([d for d in distances if d <= sd]) + 1)
+    return tdensity, sd
+
+# Function to detect outliers in trajectory segments
+def detect(T, L, D, P):
+    outlier_count = 0
+    c = 0
+    totaldensity, sd = TotalDensity(T, L, D)
+    for Li in L:
+        distances = []
+        CTR_count = 0
+        for p in T:
+            if p != Li[1]:
+                matchLen = 0
+                for i in range(len(T[p]) - 1):
+                    segment = [T[p][i], T[p][i + 1]]
+                    dist = tp_distance(Li[0], segment)
+                    distances.append(dist)
+                    if dist < D:
+                        matchLen = matchLen + length(segment)
+                if matchLen > length(Li[0]):
+                    CTR_count = CTR_count + 1
+        density = (len([d for d in distances if d <= sd]) + 1) * len(L)
+        if (CTR_count * totaldensity) / density < P * len(T):
+            Li[2] = 1
+            outlier_count += 1
+        c = c + 1
+    return L, outlier_count
+
+# Function to mark outliers in trajectories
+def mark(T, L, F):
+    otraj = []
+    for p in T:
+        outliers = [Li[0] for Li in L if (Li[2] == 1 and Li[1] == p)]
+        olen, tlen = 0, 0
+        for seg in outliers:
+            olen = olen + length(seg)
+        for i in range(len(T[p]) - 1):
+            segment = [T[p][i], T[p][i + 1]]
+            tlen = tlen + length(segment)
+        if olen / tlen > F:
+            otraj.append(p)
+    return otraj
+
+# Function to perform trajectory outlier detection
+def traod(T, D, P, F):
+    print("Partition Phase Begins ...")
+    L = partition(T)
+    print("Partition Done !")
+    print("Total Number of t-partitions: ", len(L))
+    print("Outlying t-partition Detection Phase Begins ...")
+    L, outlier_count = detect(T, L, D, P)
+    print("Outlying t-partition Detection Done !")
+    print("Number of Outlying t-partitions: ", outlier_count, " of ", len(L))
+    print("Outlying Trajectory Detection Phase Begins ...")
+    otraj = mark(T, L, F)
+    print("Outlying Trajectory Detection Phase Done !")
+    print("Number of Outlying Trajectories: ", len(otraj), " of ", len(T))
+    return otraj
+
+# Function to convert time to a fractional representation
+def gettime(tr):
+    return ((int(tr[0:2]) * 3600) + (int(tr[3:5]) * 60) + (int(tr[6:8]))) / 86400.0
+
+# Function to parse trajectory data from a CSV file
+def trajectory(filename, N):
+    trajectory = {}
+    csvfile = open(filename, newline='')
+    data = csv.reader(csvfile, delimiter=' ', quotechar='|')
+    t1, m1, x1, y1, p1 = -1, '', -1, -1, -1
+    P = 0
+    for row in data:
+        r = ', '.join(row).split(";")
+        t2, m2, x2, y2, p2 = gettime((r[0].split('T')[1])[:-4]), r[1], int(int(r[2]) / 67), int(int(r[3]) / 67), int(
+            r[4])
+        if (p1 == p2 and t1 != t2):
+            if trajectory[P][len(trajectory[P]) - 1][0] != x2 or trajectory[P][len(trajectory[P]) - 1][1] != y2:
+                trajectory[P].append([x2, y2, t2])
+        if p1 != p2:
+            P = P + 1
+            if not P <= N:
+                break
+            trajectory[P] = [[x2, y2, t2]]
+        t1, m1, p1, x1, y1 = t2, m2, p2, x2, y2
+    return trajectory
+
+# Function to plot a trajectory
+def plot_trajectory(traj, p):
+    x, y, t = [], [], []
+    for point in traj:
+        x.append(point[0])
+        y.append(point[1])
+    fig = plt.figure()
+    plt.plot(x, y)
+    fig.suptitle('TRAJECTORY ID: ' + str(p))
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.show()
+    fig.savefig('Results/' + str(p) + '.png')
+
+# Example usage
+filename = 'data/csv/al_position2013-02-06.csv'
+T = trajectory(filename, 10)
+O = traod(T, 37, 0.01, 0.4)
+print("Outliers: ", O)
+for p in T:
+    plot_trajectory(T[p], p)

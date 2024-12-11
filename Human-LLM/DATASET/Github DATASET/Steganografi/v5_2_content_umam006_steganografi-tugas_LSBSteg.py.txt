@@ -1,0 +1,172 @@
+import cv2
+import docopt
+import numpy as np
+
+class SteganographyException(Exception):
+    """Custom exception class for steganography-related errors."""
+    pass
+
+class LSBSteg():
+    """Class implementing LSB (Least Significant Bit) Steganography."""
+
+    def __init__(self, image):
+        """Initialize LSBSteg object."""
+        self.image = image
+        self.height, self.width, self.nbchannels = image.shape
+        self.size = self.width * self.height
+        self.maskONEValues = [1, 2, 4, 8, 16, 32, 64, 128]
+        self.maskONE = self.maskONEValues.pop(0)
+        self.maskZEROValues = [254, 253, 251, 247, 239, 223, 191, 127]
+        self.maskZERO = self.maskZEROValues.pop(0)
+        self.curwidth = 0
+        self.curheight = 0
+        self.curchan = 0
+
+    def put_binary_value(self, bits):
+        """Embed binary data into the image using LSB technique."""
+        for bit in bits:
+            val = list(self.image[self.curheight, self.curwidth])
+            if int(bit) == 1:
+                val[self.curchan] |= self.maskONE
+            else:
+                val[self.curchan] &= self.maskZERO
+            self.image[self.curheight, self.curwidth] = tuple(val)
+            self._move_to_next_slot()
+
+    def _move_to_next_slot(self):
+        """Move to the next available pixel."""
+        if self.curchan == self.nbchannels - 1:
+            self.curchan = 0
+            if self.curwidth == self.width - 1:
+                self.curwidth = 0
+                if self.curheight == self.height - 1:
+                    self.curheight = 0
+                    if self.maskONE == 128:
+                        raise SteganographyException("No available slot remaining (image filled)")
+                    else:
+                        self.maskONE = self.maskONEValues.pop(0)
+                        self.maskZERO = self.maskZEROValues.pop(0)
+                else:
+                    self.curheight += 1
+            else:
+                self.curwidth += 1
+        else:
+            self.curchan += 1
+
+    def read_bit(self):
+        """Read a single bit from the image."""
+        val = self.image[self.curheight, self.curwidth][self.curchan]
+        val = int(val) & self.maskONE
+        self._move_to_next_slot()
+        return "1" if val > 0 else "0"
+
+    def read_byte(self):
+        """Read a byte (8 bits) from the image."""
+        return self.read_bits(8)
+
+    def read_bits(self, num_bits):
+        """Read a specified number of bits from the image."""
+        bits = ""
+        for _ in range(num_bits):
+            bits += self.read_bit()
+        return bits
+
+    def byteValue(self, value):
+        """Convert an integer value to binary of specified size."""
+        return self.binary_value(value, 8)
+
+    def binary_value(self, value, bitsize):
+        """Convert an integer value to binary of specified size, padding with zeros if necessary."""
+        binary = bin(value)[2:]
+        if len(binary) > bitsize:
+            raise SteganographyException("Binary value larger than the expected size")
+        return binary.zfill(bitsize)
+
+    def encode_text(self, text):
+        """Encode text message into the image."""
+        length = len(text)
+        binary_length = self.binary_value(length, 16)
+        self.put_binary_value(binary_length)
+        for char in text:
+            ascii_value = ord(char)
+            self.put_binary_value(self.byteValue(ascii_value))
+        return self.image
+
+    def decode_text(self):
+        """Decode text message from the image."""
+        length_bits = self.read_bits(16)
+        length = int(length_bits, 2)
+        decoded_text = ""
+        for _ in range(length):
+            byte = self.read_byte()
+            decoded_text += chr(int(byte, 2))
+        return decoded_text
+
+    def encode_image(self, image_to_hide):
+        """Encode an image into another image using LSB."""
+        width = image_to_hide.width
+        height = image_to_hide.height
+        if self.size < width * height * image_to_hide.channels:
+            raise SteganographyException("Carrier image not big enough to hold all the data for steganography")
+        bin_width = self.binary_value(width, 16)
+        bin_height = self.binary_value(height, 16)
+        self.put_binary_value(bin_width)
+        self.put_binary_value(bin_height)
+        for h in range(height):
+            for w in range(width):
+                for chan in range(image_to_hide.channels):
+                    pixel_value = image_to_hide[h, w][chan]
+                    self.put_binary_value(self.byteValue(int(pixel_value)))
+        return self.image
+
+    def decode_image(self):
+        """Decode an image from another image using LSB."""
+        width = int(self.read_bits(16), 2)
+        height = int(self.read_bits(16), 2)
+        decoded_image = np.zeros((width, height, 3), np.uint8)
+        for h in range(height):
+            for w in range(width):
+                for chan in range(decoded_image.channels):
+                    pixel_value = list(decoded_image[h, w])
+                    pixel_value[chan] = int(self.read_byte(), 2)
+                    decoded_image[h, w] = tuple(pixel_value)
+        return decoded_image
+
+    def encode_binary(self, data):
+        """Encode binary data into the image."""
+        data_length = len(data)
+        if self.size < data_length + 64:
+            raise SteganographyException("Carrier image not big enough to hold all the data for steganography")
+        self.put_binary_value(self.binary_value(data_length, 64))
+        for byte in data:
+            byte = byte if isinstance(byte, int) else ord(byte)
+            self.put_binary_value(self.byteValue(byte))
+        return self.image
+
+    def decode_binary(self):
+        """Decode binary data from the image."""
+        data_length_bits = self.read_bits(64)
+        data_length = int(data_length_bits, 2)
+        decoded_data = b""
+        for _ in range(data_length):
+            decoded_data += chr(int(self.read_byte(), 2)).encode("utf-8")
+        return decoded_data
+
+def main():
+    """Main function."""
+    args = docopt.docopt(__doc__, version="0.2")
+    input_file = args["--in"]
+    output_file = args["--out"]
+    input_image = cv2.imread(input_file)
+    steganographer = LSBSteg(input_image)
+    if args['encode']:
+        data_to_hide = open(args["--file"], "rb").read()
+        result = steganographer.encode_binary(data_to_hide)
+        cv2.imwrite(output_file, result)
+    elif args["decode"]:
+        decoded_data = steganographer.decode_binary()
+        with open(output_file, "wb") as f:
+            f.write(decoded_data)
+
+if __name__ == "__main__":
+    main()

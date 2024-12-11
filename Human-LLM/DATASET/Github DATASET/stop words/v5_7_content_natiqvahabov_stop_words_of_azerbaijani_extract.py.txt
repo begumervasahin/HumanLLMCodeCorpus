@@ -1,0 +1,55 @@
+import urllib.request as urllib2
+from bs4 import BeautifulSoup
+from collections import Counter
+from nltk.tokenize import RegexpTokenizer
+
+# Function to fetch URLs and titles of selected articles from the Wikipedia page
+def fetch_article_info(page_url):
+    page = urllib2.urlopen(page_url)
+    soup = BeautifulSoup(page, 'html.parser')
+    articles_section = soup.find('div', class_='mw-parser-output').find('tr').find_next('tr')
+
+    article_info = []
+    for td in articles_section.find_all('td'):
+        for link in td.find_all('a'):
+            if link.get('title'):
+                article_url = 'https://az.wikipedia.org' + link['href']
+                article_title = link.get('title')
+                article_info.append((article_title, article_url))
+    return article_info
+
+# Function to tokenize the content of a Wikipedia article
+def tokenize_article_content(article_url):
+    page_single = urllib2.urlopen(article_url)
+    soup_single = BeautifulSoup(page_single, 'html.parser')
+    content = soup_single.find('div', class_='mw-parser-output').get_text()
+
+    tokenizer = RegexpTokenizer(r'\w+')
+    tokenized_text = tokenizer.tokenize(content)
+    return tokenized_text
+
+# Main function to process articles and write token counts to file
+def process_articles(article_info_list, output_file):
+    tokenized_final = []
+
+    for idx, (article_title, article_url) in enumerate(article_info_list, start=1):
+        print("Processing article", idx, ":", article_title)
+        tokenized_text = tokenize_article_content(article_url)
+        tokenized_final += tokenized_text
+
+    token_counter = Counter(tokenized_final)
+
+    with open(output_file, 'a') as file:
+        file.write(str(token_counter))
+
+if __name__ == "__main__":
+    # URL of the Wikipedia page containing selected articles
+    wiki_page_url = "https://az.wikipedia.org/wiki/Vikipediya:Se%C3%A7ilmi%C5%9F_m%C9%99qal%C9%99l%C9%99r"
+    # Output file for token counts
+    output_file = 'stopwordsAZE.txt'
+
+    # Fetch article URLs and titles
+    article_info_list = fetch_article_info(wiki_page_url)
+
+    # Process articles and write token counts to file
+    process_articles(article_info_list, output_file)

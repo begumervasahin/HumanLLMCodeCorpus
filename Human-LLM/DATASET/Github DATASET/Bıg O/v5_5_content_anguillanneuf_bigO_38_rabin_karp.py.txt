@@ -1,0 +1,58 @@
+def rabin_karp_search(text, substring):
+    # Initialize an empty list to store the indices where the substring is found
+    found_indices = []
+
+    # Define the prime number and the number of characters in the ASCII character set
+    prime = 101
+    character_set_size = 128
+
+    # Calculate the lengths of the text and the substring
+    text_length = len(text)
+    substring_length = len(substring)
+
+    # Compute the value of h: d^(m-1) % q
+    h = pow(character_set_size, substring_length - 1) % prime
+
+    # Compute the hash values of the substring and the initial substring of the text
+    substring_hash = calculate_hash(substring, prime, character_set_size)
+    text_hash = calculate_hash(text[:substring_length], prime, character_set_size)
+
+    # Iterate through the text to find matches using the Rabin-Karp algorithm
+    for i in range(text_length - substring_length + 1):
+        # Check if the hash values of the substring and the current text window match
+        if substring_hash == text_hash:
+            # If the hash values match, compare the actual substrings to confirm the match
+            if text[i:i + substring_length] == substring:
+                found_indices.append(i)  # Store the index where the match is found
+                print("Substring found at index:", i)  # Print the index where the substring is found
+
+        # Update the text hash for the next window
+        if i < text_length - substring_length:
+            text_hash = update_hash(text_hash, text[i], text[i + substring_length], h, prime, character_set_size)
+
+    return found_indices  # Return the list of indices where the substring is found
+
+
+def calculate_hash(string, prime, character_set_size):
+    # Initialize the hash value
+    hash_value = 0
+
+    # Calculate the hash value for the given string
+    for char in string:
+        hash_value = (hash_value * character_set_size + ord(char)) % prime
+
+    return hash_value
+
+
+def update_hash(old_hash, old_char, new_char, h, prime, character_set_size):
+    # Update the hash value based on the old and new characters
+    new_hash = (old_hash - ord(old_char) * h) % prime
+    new_hash = (new_hash * character_set_size + ord(new_char)) % prime
+
+    return new_hash if new_hash >= 0 else new_hash + prime
+
+
+# Example usage
+text = 'Get bit; set bit; clear bit; update bit'
+substring = 'bit'
+print("Indices of substring found using Rabin-Karp algorithm:", rabin_karp_search(text, substring))

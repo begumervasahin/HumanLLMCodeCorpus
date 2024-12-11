@@ -1,0 +1,63 @@
+import matplotlib.pyplot as plt
+import os
+from scipy.optimize import curve_fit
+
+# Define the function for the cubic curve fit
+def cubic_curve(x, a, b, c, d):
+    return a * x ** 3 + b * x ** 2 + c * x + d
+
+# Function to retrieve data from files in a folder    
+def get_data():
+    x_values = []
+    y_values = []
+
+    # Get folder name from user input
+    folder_name = input('Enter the folder name:\n')   
+    folder_path = os.path.join(os.getcwd(), folder_name) 
+
+    # Iterate over files in the folder
+    for filename in os.listdir(folder_path):
+        if filename != '.DS_Store':  # Exclude system files
+            print(f"Processing file: {filename}")
+            with open(os.path.join(folder_path, filename), 'r') as file:
+                for line in file:
+                    precision, recall = map(float, line.split())
+                    x_values.append(recall)
+                    y_values.append(precision)
+
+    # Curve fitting to obtain parameters
+    parameters, _ = curve_fit(cubic_curve, x_values, y_values)
+    a, b, c, d = parameters
+
+    # Generate interpolated data points
+    x_interpolated = []
+    y_interpolated = []
+    current_recall = 0
+    while current_recall <= 1:
+        x_interpolated.append(current_recall)
+        y_interpolated.append(cubic_curve(current_recall, a, b, c, d))
+        current_recall += 0.2
+
+    return x_interpolated, y_interpolated
+
+# Get data for Vector Space Model and Fuzzy Retrieval Model
+recall_vs, precision_vs = get_data()
+recall_fr, precision_fr = get_data()
+
+# Plotting
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision vs Recall')
+
+# Plot for Vector Space Model
+plt.plot(recall_vs, precision_vs, label='Vector Space Model', color='blue')
+plt.scatter(recall_vs, precision_vs, color='blue')  # Blue markers for data points
+
+# Plot for Fuzzy Retrieval Model
+plt.plot(recall_fr, precision_fr, label='Fuzzy Retrieval Model', color='red')
+plt.scatter(recall_fr, precision_fr, color='red')  # Red markers for data points
+
+plt.legend()
+plt.axis([0.0, 1.0, 0.0, 1.0])  # Set axis limits     
+plt.grid(True)  # Enable grid
+plt.show()

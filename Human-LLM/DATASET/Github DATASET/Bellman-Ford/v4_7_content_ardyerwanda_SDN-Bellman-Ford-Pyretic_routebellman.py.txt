@@ -1,0 +1,171 @@
+from multiprocessing import Lock
+import copy
+import time
+from pyretic.lib.query import *
+from pyretic.core import *
+from pyretic.lib.corelib import *
+from pyretic.lib.std import *
+
+# Global lock
+display_lock = Lock()
+
+def build_dictionary(source_ip, destination_ip, path):
+    """
+    Constructs a dictionary representing the path from source to destination.
+    """
+    return {source_ip: {destination_ip: path}}
+
+class BuildPath:
+    """
+    Represents a path-building mechanism using Bellman-Ford algorithm.
+    """
+
+    def __init__(self, topology, source_switch, destination_switch, destination_port, weighted_graph=None):
+        self.topology = topology
+        self.source_switch = source_switch
+        self.destination_switch = destination_switch
+        self.destination_port = destination_port
+        self.weighted_graph = weighted_graph
+        print("<<<>>>")
+        print("Topology:", self.topology)
+        print("Source Switch:", self.source_switch)
+        print("Destination Switch:", self.destination_switch)
+        print("Destination Port:", self.destination_port)
+        print("Weighted Graph:", self.weighted_graph)
+        print("<<<>>>")
+
+    def bellman_ford_routing(self):
+        """
+        Executes the Bellman-Ford algorithm to find the shortest path.
+        """
+        path_list = []
+        pred, total_cost = self.bellman_ford_algorithm(self.topology, str(self.source_switch), self.weighted_graph)  
+        if pred:
+            v = self.destination_switch
+            print("Source: Node", self.source_switch)
+            print("Destination: Node", self.destination_switch)
+            while v != self.source_switch:
+                path_list.append(Location(pred[v], self.topology[pred[v]][v][pred[v]]))   
+                v = pred[v]
+            print("Path list <<switch[port]>>:")
+            for a in reversed(path_list):
+                print(a, "->", end="")
+            print(Location(self.destination_switch, self.destination_port))
+            path_list.append(Location(self.destination_switch, self.destination_port))
+            print("Total cost:", total_cost)
+        return path_list
+
+    def bellman_ford_algorithm(self, graph, source, weighted_graph=None, huge=1e30000):
+        """
+        Implements the Bellman-Ford algorithm.
+        """
+        the_clock0 = time.time()
+        pred = {}
+        pred_indic = {}
+        route_table = {}
+        route_table2 = {}
+        route = {}
+
+        if weighted_graph is None:
+            for rt in graph.edge:
+                route_table[rt] = {}
+                for u in graph.edge:
+                    route_table[rt][u] = {}
+                    route[u] = {}
+                    for v in graph.edge:
+                        if u == rt and graph.has_edge(u, v):
+                            route[u][v] = 1
+                            route[u][u] = 0
+                        elif u == v == rt:
+                            route[u][v] = 0
+                        else:
+                            route[u][v] = huge
+                        route_table[rt][u][v] = route[u][v]
+                print("Table node", rt, ":")
+                print(route_table[rt])
+                print("")
+            route_table2 = copy.deepcopy(route_table)
+        else:
+            route_table = copy.deepcopy(weighted_graph)
+            route_table2 = copy.deepcopy(weighted_graph)
+            for rt in graph.edge:
+                print("Table node", rt, ":")
+                print(route_table[rt])
+
+        for k in graph.edge:
+            pred_indic[k] = huge
+
+        same_table = False
+        while not same_table:
+            same_indic = 0
+            for x in graph.edge:
+                for y in graph.edge:
+                    for z in graph.edge:
+                        if graph.has_edge(x, y) and (route_table[x][x][z] < route_table[y][x][z]):
+                            route_table[y][x][z] = copy.deepcopy(route_table[x][x][z])    
+                            route_table[y][y][z] = min(route_table[y][y][z], route_table[y][y][x] + route_table[y][x][z])
+                            same_indic += 1
+            print("<<<<<<UPDATE>>>>>>")
+            for rt in graph.edge:
+                print("Table node", rt, ":")
+                for rt2 in graph.edge:
+                    print(rt2, " to ", route_table[rt][rt2])
+                    print(rt2, " ke ", route_table2[rt][rt2])
+                    for rt3 in graph.edge:
+                        if rt3 == self.source_switch and (route_table[rt][rt2][rt3] + route_table2[rt][rt][rt2]) < pred_indic[rt] and (rt != rt2):
+                            pred[rt] = rt2
+                            pred_indic[rt] = copy.deepcopy(route_table[rt][rt2][rt3] + route_table2[rt][rt][rt2])
+                        if rt == self.source_switch and rt3 == self.destination_switch and rt == rt2:
+                            total_cost = route_table[rt][rt2][rt3]
+                print(" ")
+
+            if same_indic == 0:
+                same_table = True
+
+        print("Pred:", pred)
+        print("Execution Time:", time.time() - the_clock0)
+        return pred, total_cost
+
+class BuildFlowTable(DynamicPolicy):
+    """
+    Represents a flow table builder based on given dictionary.
+    """
+    def __init__(self, dictionary, weight=None):
+        self.weight = weight
+        self.switch = None
+        self.port = None
+        self.forward = drop
+        self.dictionary = dictionary
+        self.topology = drop
+        super(BuildFlowTable, self).__init__()
+
+    def set_network(self, network):
+        if network is not None:
+            for sip in self.dictionary.keys():
+                for dip in self.dictionary[sip].keys():
+                    for loc in self.dictionary[sip][dip]:
+                        self.forward = if_(match(switch=loc.switch, srcip=sip, dstip=dip), fwd(loc.port_no), self.forward)
+            self.policy = self.forward
+
+# Example usage
+def main():
+    # Define the topology, switches, destination switch, and destination port
+    topology = {}  # Define your topology
+    source_switch = "switch1"
+    destination_switch = "switch2"
+    destination_port = 2
+
+    # Build a dictionary
+    dictionary = build_dictionary("10.0.0.1", "10.0.0.2", ["switch1[1]", "switch2[2]"])
+
+    # Build path and execute Bellman-Ford routing
+    builder = BuildPath(topology, source_switch, destination_switch, destination_port)
+    path_list = builder.bellman_ford_routing()
+
+    # Build flow table
+    flow_table = BuildFlowTable(dictionary)
+    flow_table.set_network(topology)
+    return flow_table
+
+if __name__ == "__main__":
+    main()

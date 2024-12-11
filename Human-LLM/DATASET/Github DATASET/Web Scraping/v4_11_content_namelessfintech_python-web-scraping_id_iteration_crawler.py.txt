@@ -1,0 +1,56 @@
+import itertools
+import urllib.request
+from urllib.error import URLError, HTTPError, ContentTooShortError
+
+def download(url, num_retries=2, user_agent='wswp', charset='utf-8'):
+    # Displaying the URL being downloaded
+    print('Downloading:', url)
+    
+    # Creating a request object with specified user-agent
+    request = urllib.request.Request(url)
+    request.add_header('User-agent', user_agent)
+    
+    try:
+        # Attempting to open the URL
+        resp = urllib.request.urlopen(request)
+        
+        # Checking content charset
+        cs = resp.headers.get_content_charset()
+        if not cs:
+            cs = charset
+        
+        # Reading and decoding the response content
+        html = resp.read().decode(cs)
+    
+    except (URLError, HTTPError, ContentTooShortError) as e:
+        # Handling download errors
+        print('Download error:', e.reason)
+        html = None
+        
+        # Retry download if specified
+        if num_retries > 0:
+            if hasattr(e, 'code') and 500 <= e.code < 600:
+                return download(url, num_retries - 1)
+    
+    return html
+
+def crawl_site(url, max_errors=5):
+    num_errors = 0
+    # Iterating over pages infinitely
+    for page in itertools.count(1):
+        # Generating page URL
+        page_url = '{}{}'.format(url, page)
+        
+        # Downloading page content
+        html = download(page_url)
+        
+        # Handling download errors
+        if html is None:
+            num_errors += 1
+            if num_errors == max_errors:
+                break
+        else:
+            num_errors = 0
+
+# Starting the crawl from a specified URL
+crawl_site('http://example.webscraping.com/view/-')

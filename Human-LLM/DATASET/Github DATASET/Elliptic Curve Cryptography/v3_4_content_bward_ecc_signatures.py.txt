@@ -1,0 +1,93 @@
+import number_theory as nt
+from random import randint
+
+def generate_elgamal_signature(message, key, private_key):      
+    # Extracting key parameters
+    prime_modulus, generator = key[0], key[1]
+
+    # Generating a random number for signature
+    while True:
+        random_num = randint(2, prime_modulus - 2)
+        if nt.euclid(random_num, prime_modulus - 1) == 1:       
+            break
+
+    # Calculating signature components
+    s_1 = pow(generator, random_num, prime_modulus)
+    s_2 = ((message - private_key * s_1) * nt.mod_mult_inv(random_num, prime_modulus - 1)) % (prime_modulus - 1)
+
+    # Ensuring s_2 is not zero
+    if s_2 == 0:
+        print('Try again')
+        return None
+
+    return s_1, s_2
+
+def verify_elgamal_signature(message, key, signature):
+    # Extracting key parameters and signature components
+    s_1, s_2 = signature[0], signature[1]
+    prime_modulus, generator, public_key = key[0], key[1], key[2]
+
+    # Verifying the signature equation
+    if pow(generator, message, prime_modulus) == (pow(public_key, s_1, prime_modulus) * pow(s_1, s_2, prime_modulus)) % prime_modulus:
+        return True
+
+    return False
+
+def generate_dsa_signature(message, key, private_key):
+    # Extracting key parameters
+    prime_order, generator = key[0], key[1]
+
+    # Generating a random number for signature
+    random_num = randint(2, prime_order - 1)
+
+    # Calculating signature components
+    s_1 = pow(generator, random_num, prime_order)
+    s_2 = ((message + private_key * s_1) * nt.mod_mult_inv(random_num, prime_order)) % prime_order
+
+    return s_1, s_2
+
+def verify_dsa_signature(message, key, signature):
+    # Extracting key parameters and signature components
+    s_1, s_2 = signature[0], signature[1]
+    prime_order, generator, public_key = key[0], key[1], key[2] 
+
+    # Calculating values for verification
+    v_1 = message * nt.mod_mult_inv(s_2, prime_order) % prime_order
+    v_2 = s_1 * nt.mod_mult_inv(s_2, prime_order) % prime_order 
+
+    # Verifying the signature equation
+    if (pow(generator, v_1, prime_order) * pow(public_key, v_2, prime_order)) % prime_order == s_1:
+        return True
+
+    return False
+
+# Example usage:
+# ElGamal Key Generation
+prime_modulus = 23
+generator = 5
+private_key = 6
+public_key = pow(generator, private_key, prime_modulus)
+elgamal_key = (prime_modulus, generator, public_key)
+
+# ElGamal Signature
+message = 9
+elgamal_signature = generate_elgamal_signature(message, elgamal_key, private_key)
+print("ElGamal Signature:", elgamal_signature)
+
+# ElGamal Verification
+print("ElGamal Verification:", verify_elgamal_signature(message, elgamal_key, elgamal_signature))
+
+# DSA Key Generation
+prime_order = 11
+generator = 2
+private_key = 3
+public_key = pow(generator, private_key, prime_order)
+dsa_key = (prime_order, generator, public_key)
+
+# DSA Signature
+message = 7
+dsa_signature = generate_dsa_signature(message, dsa_key, private_key)
+print("DSA Signature:", dsa_signature)
+
+# DSA Verification
+print("DSA Verification:", verify_dsa_signature(message, dsa_key, dsa_signature))

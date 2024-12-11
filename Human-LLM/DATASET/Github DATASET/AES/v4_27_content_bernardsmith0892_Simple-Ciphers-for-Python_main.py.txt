@@ -1,0 +1,81 @@
+import os
+import argparse
+import secrets
+import sys
+import SDES
+import SAES
+import modes
+
+def main():
+    SUPPORTED_CIPHERS = ('sdes', 'saes')
+
+    parser = argparse.ArgumentParser(
+        description="Encrypt or decrypt a file using Simplified DES (SDES) or Simplified AES (SAES) cipher.",
+        epilog="Example usage:\n"
+               f"Encryption: python3.8 {sys.argv[0]} SAES cbc -iv 100 --encrypt 0xab plaintext.txt ciphertext.saes\n"
+               f"Decryption: python3.8 {sys.argv[0]} SAES cbc -iv 100 --decrypt 0xab ciphertext.saes plaintext.txt --concurrent\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument('cipher', type=str, help='The cipher algorithm to use. [SDES, SAES]')
+    parser.add_argument('mode', type=str, help='The cipher mode to use. [ECB, CBC, CTR]')
+    parser.add_argument('--encrypt', '-e', default=False, action='store_true', help='Encrypt the file.')
+    parser.add_argument('--decrypt', '-d', default=False, action='store_true', help='Decrypt the file.')
+    parser.add_argument('-iv', '--nonce', type=int, default=None, help='IV or nonce value to use.')
+    parser.add_argument('key', type=str, help='The cipher key to use. Example: 1010101010 or 0xff')
+    parser.add_argument('input_filename', type=str, help='The file to process.')
+    parser.add_argument('output_filename', type=str, help='The file to store the results into.')
+    parser.add_argument('-s', '--chunk_size', type=int, default=65536, help='The byte-size of chunks to process the files in. Defaults to 65536.')
+    parser.add_argument('--concurrent', '-c', default=False, action='store_true', help='Process file with multiple threads, if possible.')
+    parser.add_argument('--max_workers', '-w', type=int, default=None, help='Maximum number of workers to use for multiprocessing. (Defaults to the number of processors on the machine)')
+
+    args = parser.parse_args()
+
+    cipher = args.cipher.lower()
+    mode = args.mode.lower()
+
+    if cipher not in SUPPORTED_CIPHERS:
+        print(f"'{cipher}' cipher is not supported! Please use one of the following: {SUPPORTED_CIPHERS}")
+        exit()
+
+    if cipher == 'sdes':
+        key = int(args.key, 2)
+        blocksize = 1
+        F = SDES.F
+    elif cipher == 'saes':
+        key = int(args.key, 16)
+        blocksize = 2
+        F = SAES.F
+        if args.chunk_size % 2 != 0:
+            print(f"Chunk size ({args.chunk_size}) cannot be an odd-number when using SAES!")
+            exit()
+
+    if mode not in modes.SUPPORTED_MODES:
+        print(f"'{mode}' mode is not supported! Please use one of the following: {modes.SUPPORTED_MODES}")
+        exit()
+
+    if args.encrypt == args.decrypt and (mode == 'ecb' or mode == 'cbc'):
+        print("Must specify whether to encrypt or decrypt when using ECB or CBC mode!")
+        exit()
+
+    encrypt = args.encrypt
+
+    if args.nonce is None and mode != 'ecb':
+        if not encrypt and mode != 'ctr':
+            print("Must specify an IV or nonce value when decrypting in non-ECB mode!")
+            exit()
+        else:
+            iv = secrets.randbits(8 * blocksize)
+            print(f"IV/nonce generated is {iv}!")
+    else:
+        iv = args.nonce
+
+    if mode == "ecb":
+        modes.ecb_file(args.input_filename, args.output_filename, key, F, encrypt, blocksize, args.chunk_size, args.concurrent, args.max_workers)
+    elif mode == "cbc":
+        modes.cbc_file(args.input_filename, args.output_filename, key, iv, F, encrypt, blocksize, args.chunk_size, args.concurrent, args.max_workers)
+    elif mode == "ctr":
+        modes.ctr_file(args.input_filename, args.output_filename, key, iv, F, blocksize, args.chunk_size, args.concurrent, args.max_workers)
+
+if __name__ == "__main__":
+    main()

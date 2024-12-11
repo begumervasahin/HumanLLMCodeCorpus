@@ -1,0 +1,84 @@
+import random
+import sys
+
+def main():
+    # Generate random prime numbers p and q
+    p = generate_prime(1, 2**8)
+    q = generate_prime(1, 2**8)
+
+    # Calculate n and Euler's totient function phi
+    n = p * q
+    phi = (p - 1) * (q - 1)
+
+    # Choose random integer e coprime with phi
+    e = generate_coprime(phi)
+
+    # Calculate d, the modular multiplicative inverse of e modulo phi
+    d = modular_inverse(e, phi)
+
+    # Print the generated key pair
+    print(f"p = {p}\nq = {q}\nn = {n}\nphi = {phi}\ne = {e}\nd = {d}")
+
+    # Check for command-line arguments for encryption/decryption
+    if len(sys.argv) >= 3:
+        choice = sys.argv[1]
+        message = int(sys.argv[2])
+        if choice in ("enc", "e"):
+            print(f"Message = {message}\nEncrypted = {encrypt(message, e, n)}")
+        elif choice in ("dec", "d"):
+            print(f"Ciphertext = {message}\nDecrypted = {decrypt(message, d, n)}")
+    else:
+        print("Please provide arguments for encryption/decryption.")
+
+def generate_prime(start, end):
+    # Generate a random prime number within the specified range
+    while True:
+        num = random.randint(start, end)
+        if is_prime(num):
+            return num
+
+def generate_coprime(phi):
+    # Generate a random integer e coprime with phi
+    while True:
+        e = random.randint(2, phi - 1)
+        if gcd(e, phi) == 1:
+            return e
+
+def is_prime(num):
+    # Check if a number is prime
+    if num <= 1:
+        return False
+    for i in range(2, int(num**0.5) + 1):
+        if num % i == 0:
+            return False
+    return True
+
+def gcd(a, b):
+    # Calculate the greatest common divisor (gcd) of two numbers
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def modular_inverse(e, phi):
+    # Calculate the modular multiplicative inverse of e modulo phi
+    d = extended_gcd(e, phi)[1]
+    return d % phi
+
+def extended_gcd(a, b):
+    # Extended Euclidean algorithm to find gcd and modular inverse
+    if a == 0:
+        return b, 0, 1
+    else:
+        gcd, x, y = extended_gcd(b % a, a)
+        return gcd, y - (b // a) * x, x
+
+def encrypt(message, e, n):
+    # Encrypt the message using RSA encryption algorithm
+    return pow(message, e, n)
+
+def decrypt(ciphertext, d, n):
+    # Decrypt the ciphertext using RSA decryption algorithm
+    return pow(ciphertext, d, n)
+
+if __name__ == "__main__":
+    main()

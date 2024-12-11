@@ -1,0 +1,48 @@
+import pandas as pd
+import numpy as np
+import preprocess
+from linear_regression import Regression_Model
+import performance_analysis
+
+if __name__ == '__main__':
+    # Load the data
+    data = pd.read_csv("3D_spatial_network.txt", header=None, usecols=[1, 2, 3])
+    
+    # Split the features and target variable
+    x1 = data.iloc[:, 0]
+    x2 = data.iloc[:, 1]
+    Y = data.iloc[:, 2]
+    
+    # Convert data to numpy arrays
+    x1 = np.asarray(x1)
+    x2 = np.asarray(x2)
+    Y = np.asarray(Y)
+    
+    # Normalize the features and target variable
+    x1_normalized = preprocess.normalize(x1)
+    x2_normalized = preprocess.normalize(x2)
+    Y_normalized = preprocess.normalize(Y)
+    
+    # Set the degree of the polynomial features
+    degree = 1
+    
+    # Split the data into training, testing, and validation sets
+    x1_Train, x1_Test, x1_Val, x2_Train, x2_Test, x2_Val, Y_Train, Y_Test, Y_Val = preprocess.train_test_val_split(x1_normalized, x2_normalized, Y)
+    
+    # Generate feature matrix for training data
+    featureMatrix = preprocess.generate_feature_matrix(x1_Train, x2_Train, degree)
+    
+    # Create a regression model
+    model = Regression_Model(featureMatrix, Y_Train)
+    
+    # Perform batch gradient descent to train the model
+    cost, alphas = model.batch_gradient_descent()
+    
+    # Generate feature matrix for testing data
+    testFeatureMatrix = preprocess.generate_feature_matrix(x1_Test, x2_Test, degree)
+    
+    # Make predictions on the testing data
+    predicted = model.hypothesis_function(testFeatureMatrix, model.theta)
+    
+    # Evaluate the performance of the model
+    performance_analysis.get_performance_info(Y_Test, predicted, degree, model.theta, 'Batch Gradient Descent')

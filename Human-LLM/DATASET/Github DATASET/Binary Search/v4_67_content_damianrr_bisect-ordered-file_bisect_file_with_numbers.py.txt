@@ -1,0 +1,73 @@
+import os
+
+def bisect_big_file_looking_for_number(file_obj, search_number):
+    """
+    This function performs binary search in an ordered file to find a number.
+    It splits the file into two parts, reads lines until it finds a newline,
+    and checks the value of that line. Based on the comparison, it narrows
+    down the search to the appropriate part of the file. The process continues
+    iteratively until the number is found or not. The function returns a dict
+    with the result (True/False) and the position of the line for seeking.
+
+    Args:
+    - file_obj: File object of the ordered file to be searched.
+    - search_number: The number to search for in the file.
+
+    Returns:
+    - Dict with keys 'result' and 'position', or False if number not found.
+    
+    Examples:
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 5)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 100000000)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 0)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    print(bisect_big_file_looking_for_number(file, 59953))
+    {'position': 348612, 'result': '59953'}
+    """
+    file_size = os.fstat(file_obj.fileno()).st_size
+    low = 0
+    high = file_size
+    search_number = int(search_number)
+
+    while high - low > 1:
+        middle = (high + low) // 2
+        file_obj.seek(middle)
+        last_pos = file_obj.tell()
+
+        while file_obj.read(1) != '\n':
+            pass
+
+        line = file_obj.readline()
+
+        if not line:
+            file_obj.seek(last_pos)
+            file_obj.seek(-1, 1)
+
+            while file_obj.read(1) != '\n':
+                file_obj.seek(-2, 1)
+
+            line = file_obj.readline()
+
+        number_in_line = int(line)
+
+        if search_number < number_in_line:
+            high = middle
+        elif search_number > number_in_line:
+            low = middle
+        else:
+            return {"result": line.replace("\n", ""), "position": file_obj.tell()}
+
+    return False
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

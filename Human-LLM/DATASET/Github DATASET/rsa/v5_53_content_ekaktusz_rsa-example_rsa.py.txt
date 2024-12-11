@@ -1,0 +1,59 @@
+import random
+import decimal_string
+import prime
+
+# Helper function to calculate the greatest common divisor (GCD)
+def calculate_gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+# Helper function to check if two numbers are coprime
+def are_coprime(a, b):
+    return calculate_gcd(a, b) == 1
+
+# Extended Euclidean Algorithm to find modular inverse
+def extended_euclidean_algorithm(a, b):
+    x, y = a, b
+    t0, t1 = 0, 1
+
+    while y != 0:
+        quotient = x // y
+        remainder = x % y
+        t = (t0 - quotient * t1) % a
+        x, y = y, remainder
+        t0, t1 = t1, t
+
+    return t0
+
+# Function to generate public and private keys for RSA encryption
+def generate_rsa_keys():
+    # Generate two random prime numbers
+    prime_size = 512  # Size of primes in bits
+    p, q = prime.generate_two_random_prime(prime_size)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+
+    # Choose a random integer e such that 1 < e < phi and e is coprime with phi
+    e = random.randrange(2, phi)
+    while not are_coprime(e, phi):
+        e = random.randrange(2, phi)
+
+    # Calculate the modular inverse of e modulo phi
+    d = extended_euclidean_algorithm(phi, e)
+
+    return ((e, n), (d, n))
+
+# Function to encrypt plaintext using RSA
+def rsa_encrypt(public_key, plaintext):
+    e, n = public_key
+    plaintext_number = decimal_string.text_to_integer(plaintext)
+    ciphertext = pow(plaintext_number, e, n)
+    return ciphertext
+
+# Function to decrypt ciphertext using RSA
+def rsa_decrypt(private_key, ciphertext):
+    d, n = private_key
+    plaintext_number = pow(ciphertext, d, n)
+    plaintext = decimal_string.integer_to_text(plaintext_number)
+    return plaintext

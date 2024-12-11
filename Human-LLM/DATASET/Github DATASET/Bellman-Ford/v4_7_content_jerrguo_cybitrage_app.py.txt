@@ -1,0 +1,58 @@
+from flask import Flask, render_template, request
+
+# Importing custom module for weighted graph operations
+from graph.weighted_graph import weighted_graph
+
+import time
+
+# List of supported currencies
+support_currs = ['EUR', 'USD', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD', 'GBP', 'SEK', 'NOK', 'MXN', 'TRY', 'ZAR', 'CNH', 'XAU', 'XAG']
+support_currs_string = ', '.join(support_currs)  # Convert list to comma-separated string
+
+app = Flask(__name__)  # Initialize Flask app
+
+@app.route('/', methods=['GET', 'POST'])
+def currencies():
+    currencies_string = ""  # Initialize variable to hold selected currencies
+    opportunity_string = ""  # Initialize variable to hold arbitrage opportunity information
+    temp_list = []  # Initialize temporary list for currency input
+    opportunities = []  # Initialize list for arbitrage opportunities
+
+    if request.method == 'POST':
+        # Process form submission
+        currencies_string = request.form['currs']  # Get currency input from form
+        currencies_string = currencies_string.upper().replace(" ", "")  # Convert to uppercase and remove spaces
+        temp_list = currencies_string.split(',')  # Split input into individual currencies
+        curr_list = []  # Initialize list for valid currencies
+        
+        # Filter out unsupported currencies
+        for currency in temp_list:
+            if currency in support_currs:
+                curr_list.append(currency)
+                
+        curr_list = list(set(curr_list))  # Remove duplicates
+        currencies_string = ', '.join(curr_list)  # Convert list to comma-separated string
+
+        # Check if at least two valid currencies are selected
+        if len(curr_list) > 1:
+            graph = weighted_graph(curr_list)  # Create weighted graph with selected currencies
+            opportunities = graph.show_arbitrage_opportunities()  # Find arbitrage opportunities
+            time_epoch = graph.get_time()  # Get current time from graph
+            time_string = time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(time_epoch))  # Format time
+            
+            # Construct arbitrage opportunity message
+            if len(opportunities) == 0:
+                opportunity_string = "No arbitrage opportunity (" + time_string + ")"
+            else:
+                opp_string = ' -> '.join(opportunities[0])
+                opportunity_string = opp_string + ' at ' + time_string
+        else:
+            opportunity_string = "No arbitrage opportunity available with less than two currencies..."
+    else:
+        opportunity_string = "No arbitrage opportunity available with less than two currencies..."
+
+    # Render template with processed data
+    return render_template('home.html', currencies=currencies_string, support_currs=support_currs_string, opportunity=opportunity_string)
+
+if __name__ == '__main__':
+    app.run(debug=True)  # Run Flask app in debug mode

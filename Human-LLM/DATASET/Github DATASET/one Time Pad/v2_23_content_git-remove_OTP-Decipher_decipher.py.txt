@@ -1,0 +1,41 @@
+import argparse
+
+def read_input():
+    ciphertext_set = []
+    ciphertext_num = int(input("Enter the number of ciphertexts: "))
+    for _ in range(ciphertext_num):
+        ciphertext_set.append(input("Enter the ciphertext: "))
+    return ciphertext_set
+
+def initialize_plaintext_set(ciphertext_set):
+    plaintext_set = ['*' * (len(ciphertext) // 2) for ciphertext in ciphertext_set]
+    return plaintext_set
+
+def detect_flaw(text_index1, text_index2, plaintext_set):
+    for i in range(len(plaintext_set[text_index1])):
+        if plaintext_set[text_index1][i] != '*' and plaintext_set[text_index2][i] != '*' and plaintext_set[text_index1][i] != plaintext_set[text_index2][i]:
+            plaintext_set[text_index1] = plaintext_set[text_index1][:i] + '*' + plaintext_set[text_index1][i+1:]
+            plaintext_set[text_index2] = plaintext_set[text_index2][:i] + '*' + plaintext_set[text_index2][i+1:]
+
+def main():
+    parser = argparse.ArgumentParser(description='Process argument full.')
+    parser.add_argument('--full', type=int, help='whether display all possible characters or not, default is 0')
+    args = parser.parse_args()
+    full_output = args.full if args.full is not None else 0
+
+    ciphertext_set = read_input()
+    plaintext_set = initialize_plaintext_set(ciphertext_set)
+
+    if len(ciphertext_set) < 2:
+        raise Exception("One-time pad is secure if only one ciphertext is observed!")
+
+    for i in range(len(ciphertext_set)):
+        for j in range(i + 1, len(ciphertext_set)):
+            detect_flaw(i, j, plaintext_set)
+
+    print("Plaintext possibilities:")
+    for i, plaintext in enumerate(plaintext_set):
+        print(f"Ciphertext {i + 1}: {plaintext}")
+
+if __name__ == "__main__":
+    main()

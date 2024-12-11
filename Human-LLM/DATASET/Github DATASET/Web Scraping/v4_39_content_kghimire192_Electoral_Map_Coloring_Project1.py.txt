@@ -1,0 +1,89 @@
+import csv
+from bs4 import BeautifulSoup
+
+def colorize_svg(svg_file, data_dictionary, party):
+    '''Colorizes the SVG map based on the data from the provided dictionary'''
+    style_description = 'font-size:12px;fill-rule:nonzero;stroke:'
+    fill_color = ''
+    
+    with open(svg_file, 'r') as fin:
+        svg_data = fin.read()
+        soup = BeautifulSoup(svg_data, "html.parser")
+        paths = soup.findAll('path')
+        
+        for p in paths:
+            if p['id'] not in ["State_Lines", "separator"]:
+                for fips_key in data_dictionary:
+                    if p['id'] == fips_key:
+                        if party == 'Democrat':
+                            if data_dictionary[fips_key] == 'Hillary Clinton':
+                                fill_color = '#0000FF'  # Blue color for Hillary Clinton
+                            elif data_dictionary[fips_key] == 'Bernie Sanders':
+                                fill_color = '#FF0000'  # Red color for Bernie Sanders
+                            else:
+                                fill_color = '#808080'  # Gray color for other candidates
+                        elif party == 'Republican':
+                            if data_dictionary[fips_key] == 'Donald Trump':
+                                fill_color = '#FF0000'  # Red color for Donald Trump
+                            elif data_dictionary[fips_key] == 'Ted Cruz':
+                                fill_color = '#0000FF'  # Blue color for Ted Cruz
+                            elif data_dictionary[fips_key] == 'Marco Rubio':
+                                fill_color = '#00FF00'  # Green color for Marco Rubio
+                            elif data_dictionary[fips_key] == 'John Kasich':
+                                fill_color = '#FFFF00'  # Yellow color for John Kasich
+                            elif data_dictionary[fips_key] == 'Ben Carson':
+                                fill_color = '#800080'  # Purple color for Ben Carson
+                            else:
+                                fill_color = '#808080'  # Gray color for other candidates
+                                
+                        p['style'] = style_description + fill_color
+        with open(f'{party.lower()}_map.svg', mode='w') as out_svg:
+             print(soup.prettify(), file=out_svg)
+
+def read_from_csv_file():
+    '''Reads from the given CSV file and creates dictionaries for both Republican and Democratic parties'''
+    fips = ''
+    party_name = ''
+    candidate_name = ''
+    num_votes = ''
+    dict_democrat = {}
+    dict_republican = {}
+    
+    with open('primary_results.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=",")
+        
+        for row in reader:
+            if len(row[3]) > 7 or row[3] == 'fips':
+                continue
+                
+            if fips == '':
+                fips = row[3]
+                num_votes = row[6]
+                candidate_name = row[5]
+                party_name = row[4]
+            elif fips == row[3] and party_name == row[4]:
+                if int(num_votes) < int(row[6]):
+                    num_votes = row[6]
+                    candidate_name = row[5]
+            elif fips != row[3] and fips != '':
+                fips = fips.strip('.0')
+                if len(fips) < 5:
+                    fips = '0'*(5 - len(fips)) + fips
+                if party_name == 'Republican':
+                    dict_republican[fips] = candidate_name
+                elif party_name == 'Democrat':
+                    dict_democrat[fips] = candidate_name
+                fips = row[3]
+                num_votes = row[6]
+                candidate_name = row[5]
+                party_name = row[4]
+    
+    colorize_svg('counties.svg', dict_democrat, 'Democrat')
+    colorize_svg('counties.svg', dict_republican, 'Republican')
+
+def main():
+    '''The main function'''
+    read_from_csv_file()
+
+if __name__ == '__main__':
+    main()

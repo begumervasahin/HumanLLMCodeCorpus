@@ -1,0 +1,65 @@
+import tweepy
+import json
+
+# Twitter API credentials
+consumer_key = 'No3XJW8ccIOtCRsF4LXGENziy'
+consumer_secret = 'LMN57iFjDOVC165rZY0bqwZDLyWqXU0dlmp2eo34jCccbMzgYq'
+access_token = '838112658-iwEy6pxUEWNXjfCsolJhgHx02uOhUOzKCfskt4tI'
+access_token_secret = 'lOCyySzJwipR8mV1IwpZ6WvbQDoAMeZVQBR6LhpWrB5i8'
+
+# Open a file to store tweets
+file = open('tweets.txt', 'a')
+
+# Custom StreamListener class to handle tweets
+class PrintListener(tweepy.StreamListener):
+    def on_data(self, data):
+        try:
+            # Convert the received data into a JSON object        
+            tweet = json.loads(data)
+
+            # Extract the text of the tweet
+            tweet_text = tweet.get('text', '').encode('ascii', 'ignore').decode('utf-8')
+
+            # Check if the tweet is not a retweet
+            if not tweet_text.startswith('RT'):
+                print_and_write_tweet(tweet_text)
+
+        except Exception as e:
+            print_error(e)
+
+    def on_error(self, status):
+        print_error(status)
+
+def print_and_write_tweet(tweet_text):
+    """
+    Print the tweet text and write it to the file.
+    """
+    print(tweet_text)
+    file.write(tweet_text + '\n')
+
+def print_error(error):
+    """
+    Print an error message.
+    """
+    print("Error:", error)
+
+if __name__ == '__main__':
+    try:
+        # Authenticate with Twitter using the provided credentials
+        auth = tweepy.OAuthHandler(consumer_key, consumer_secret) 
+        auth.set_access_token(access_token, access_token_secret)  
+
+        # Create an instance of the custom StreamListener class   
+        listener = PrintListener()
+
+        # Create a stream that listens to tweets
+        stream = tweepy.Stream(auth, listener)
+
+        # Filter tweets containing the keyword 'padmavati'        
+        print('Listening for tweets containing "padmavati"...')   
+        stream.filter(track=['padmavati'])
+
+    except KeyboardInterrupt:
+        # Close the file and stop the stream if the program is interrupted
+        file.close()
+        stream.disconnect()

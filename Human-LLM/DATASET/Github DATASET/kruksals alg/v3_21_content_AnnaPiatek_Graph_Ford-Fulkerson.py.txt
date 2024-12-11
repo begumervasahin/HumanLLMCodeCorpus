@@ -1,0 +1,103 @@
+import graphviz as gv
+
+class Edge:
+    def __init__(self, node_0, node_1, capacity):
+        self.node_0 = node_0
+        self.node_1 = node_1
+        self.capacity = capacity
+        self.flow = 0
+
+class Graph:
+    def __init__(self):
+        self.edges = []
+
+    def add_edge(self, start, end, capacity):
+        self.edges.append(Edge(start, end, capacity))
+        return self
+
+    def nodes(self):
+        return list(set([edge.node_0 for edge in self.edges] + [edge.node_1 for edge in self.edges]))
+
+    def neighbors(self, node):
+        return [edge for edge in self.edges if edge.node_0 == node]
+
+    def print_edges(self):
+        return [[edge.node_0, edge.node_1, edge.flow, edge.capacity] for edge in self.edges]
+
+    def find_path(self, start_node, end_node):
+        antecedents = {node: 0 for node in self.nodes()}
+        visited_nodes = [start_node]
+        visited_edges = []
+        path_found = False
+
+        while not path_found:
+            for node in visited_nodes:
+                neighbors = self.neighbors(node)
+                for edge in neighbors:
+                    if edge not in visited_edges and edge.node_1 not in visited_nodes and edge.node_0 != end_node and edge.capacity != edge.flow:
+                        antecedents[edge.node_1] = edge.node_0
+                visited_edges.extend(neighbors)
+                visited_nodes.extend([edge.node_0 for edge in neighbors] + [edge.node_1 for edge in neighbors if edge.node_1 not in visited_nodes])
+                if end_node in visited_nodes:
+                    path_found = True
+                    break
+
+        node = end_node
+        path = []
+        max_flow = 0
+
+        while antecedents[node] != 0:
+            for edge in self.edges:
+                if edge.node_1 == node and edge.node_0 == antecedents[node]:
+                    path.insert(0, edge)
+                    node = edge.node_0
+
+        min_capacity_edge = min(path, key=lambda x: x.capacity - x.flow)
+        min_capacity = min_capacity_edge.capacity - min_capacity_edge.flow
+
+        for edge in path:
+            edge.flow += min_capacity
+
+        max_flow += min_capacity
+
+        return [path, max_flow]
+
+def visualize_graph(graph, paths, total_flow, max_flows):
+    Drawing = gv.Digraph(format='png')
+    for edge in graph.print_edges():
+        Drawing.edge(str(edge[0]), str(edge[1]), '0/%s' % (str(edge[3])), color='black')
+
+    for path, _ in paths:
+        for edge in path:
+            if edge.node_0 in graph.nodes() and edge.node_1 in graph.nodes():
+                Drawing.edge(edge.node_0, edge.node_1, str('%s/%s' % (str(edge.flow), str(edge.capacity))), color='red')
+
+    for i in range(len(paths)):
+        Drawing = gv.Digraph(format='png')
+        Drawing = apply_styles(Drawing, styles)
+        styles['graph']['label'] = str('minimum %s,max flow %s' % (paths[i][1], max_flows[i]))
+        for edge in graph.print_edges():
+            if [edge[0], edge[1]] in [edge.node_0, edge.node_1 for edge in paths[i][0]]:
+                new_edge = next((e for e in paths[i][0] if e.node_0 == edge[0] and e.node_1 == edge[1]), None)
+                wei = str('%s/%s' % (str(new_edge.flow), str(new_edge.capacity)))
+                Drawing.edge(edge[0], edge[1], wei, color='red')
+            else:
+                Drawing.edge(edge[0], edge[1], str('0/%s' % edge[3]), color='black')
+        Drawing.render(view=True, filename=str(i))
+
+if __name__ == "__main__":
+    graph = Graph()
+    graph.add_edge('Start', 'B', 5).add_edge('Start', 'C', 4).add_edge('C', 'B', 6)
+    graph.add_edge('B', 'E', 4).add_edge('C', 'E', 4).add_edge('E', 'Sink', 7).add_edge('C', 'Sink', 4)
+
+    paths = []
+    total_flow = 0
+    max_flows = []
+
+    for _ in range(3):
+        path, flow = graph.find_path('Start', 'Sink')
+        paths.append((path, flow))
+        total_flow += flow
+        max_flows.append(total_flow)
+
+    visualize_graph(graph, paths, total_flow, max_flows)

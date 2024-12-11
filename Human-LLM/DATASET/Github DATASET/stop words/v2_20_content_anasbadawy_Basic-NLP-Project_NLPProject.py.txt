@@ -1,0 +1,86 @@
+import csv
+import nltk
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+from nltk.collocations import BigramCollocationFinder
+from nltk.metrics import BigramAssocMeasures
+from string import punctuation
+from collections import Counter
+
+# Download NLTK resources if not already downloaded
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
+
+# Read reviews data from CSV file
+with open('reviews.csv', 'r') as csv_file:
+    csv_reader = csv.reader(csv_file)
+    next(csv_reader)  # Skip header
+    reviews = [line[3] for line in csv_reader]
+
+# Initialize Porter Stemmer and stopwords
+stemmer = PorterStemmer()
+stop_words = set(stopwords.words('english'))
+
+# Tokenize, stem, and filter stopwords for each review
+tokenized_reviews = [word_tokenize(review) for review in reviews]
+stemmed_reviews = [[stemmer.stem(word) for word in tokens] for tokens in tokenized_reviews]
+filtered_reviews = [[word for word in stems if word not in stop_words] for stems in stemmed_reviews]
+
+# Function to preprocess text: tokenization, removal of stopwords and punctuation
+def preprocess_text(text):
+    tokens = word_tokenize(text)
+    filtered_words = [word for word in tokens if word not in stop_words and word not in punctuation]
+    return filtered_words
+
+# Concatenate all reviews text
+all_reviews_text = ' '.join(reviews)
+
+# Get most common words in the reviews
+most_common_words = Counter(preprocess_text(all_reviews_text)).most_common(10)
+
+# Function to extract n-grams from text
+def extract_ngrams(text, n):
+    words = preprocess_text(text)
+    return list(zip(*[words[i:] for i in range(n)]))
+
+# Get most common bigrams in the reviews
+bigrams = extract_ngrams(all_reviews_text, 2)
+most_common_bigrams = Counter(bigrams).most_common(10)
+
+# Function to score bigrams based on likelihood ratio
+def score_bigrams(bigrams):
+    bgm = BigramAssocMeasures()
+    finder = BigramCollocationFinder.from_documents([bigrams])
+    scored = finder.score_ngrams(bgm.likelihood_ratio)
+    return scored
+
+# Get scored bigrams in the reviews
+scored_bigrams = score_bigrams(bigrams)
+sorted_scored_bigrams = [bigram for bigram, score in scored_bigrams]
+
+# Function to count POS tags in the reviews
+def count_pos_tags(text):
+    tagged_text = nltk.pos_tag(word_tokenize(text))
+    tag_fd = nltk.FreqDist(tag for (_, tag) in tagged_text)
+    return tag_fd.most_common()
+
+# Get most common POS tags in the reviews
+most_common_tags = count_pos_tags(all_reviews_text)
+
+# Function to find words with specific POS tag in the reviews
+def find_words_with_tag(text, pos_tag):
+    tagged_text = nltk.pos_tag(word_tokenize(text))
+    return [word for word, tag in tagged_text if tag == pos_tag]
+
+# Get pronouns from the reviews
+pronouns = find_words_with_tag(all_reviews_text, 'PRP')
+
+# Print results
+print("Most Common Words:", most_common_words)
+print("Most Common Bigrams:", most_common_bigrams)
+print("Scored Bigrams:", sorted_scored_bigrams)
+print("Most Common POS Tags:", most_common_tags)
+print("Pronouns:", pronouns)

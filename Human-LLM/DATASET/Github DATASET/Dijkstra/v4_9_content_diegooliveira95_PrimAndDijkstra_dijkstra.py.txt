@@ -1,0 +1,73 @@
+import heapq
+from graph import Vertex, Graph
+
+def shortest_path(v, path):
+    """
+    Recursively constructs the shortest path from the start vertex to vertex v.
+
+    Parameters:
+        v (Vertex): The current vertex.
+        path (list): List to store the shortest path.
+    """
+    if v.previous:
+        path.append(v.previous.get_id())
+        shortest_path(v.previous, path)
+
+def dijkstra_shortest_paths(graph, start):
+    """
+    Applies Dijkstra's algorithm to find the shortest paths from a given start vertex.
+
+    Parameters:
+        graph (Graph): The graph containing vertices and edges.
+        start (Vertex): The starting vertex for the shortest paths.
+    """
+    start.set_distance(0)
+    unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph]
+    heapq.heapify(unvisited_queue)
+
+    while unvisited_queue:
+        current_distance, current_vertex = heapq.heappop(unvisited_queue)
+        current_vertex.set_visited()
+
+        for next_vertex in current_vertex.adjacent:
+            if next_vertex.visited:
+                continue
+            new_distance = current_vertex.get_distance() + current_vertex.get_weight(next_vertex)
+            if new_distance < next_vertex.get_distance():
+                next_vertex.set_distance(new_distance)
+                next_vertex.set_previous(current_vertex)
+
+        # Clear the unvisited queue
+        while unvisited_queue:
+            heapq.heappop(unvisited_queue)
+
+        # Reconstruct unvisited queue with unvisited vertices
+        unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph if not vertex.visited]
+        heapq.heapify(unvisited_queue)
+
+# Example usage:
+if __name__ == "__main__":
+    # Create a graph
+    graph = Graph()
+    graph.add_vertex('A')
+    graph.add_vertex('B')
+    graph.add_vertex('C')
+    graph.add_vertex('D')
+    graph.add_vertex('E')
+
+    # Add edges to the graph
+    graph.add_edge('A', 'B', 1)
+    graph.add_edge('A', 'C', 3)
+    graph.add_edge('B', 'D', 2)
+    graph.add_edge('C', 'D', 2)
+    graph.add_edge('B', 'E', 4)
+    graph.add_edge('D', 'E', 1)
+
+    # Apply Dijkstra's algorithm to find the shortest paths
+    dijkstra_shortest_paths(graph, graph.get_vertex('A'))
+
+    # Retrieve the target vertex and print the shortest path
+    target_vertex = graph.get_vertex('E')
+    shortest_path_list = [target_vertex.get_id()]
+    shortest_path(target_vertex, shortest_path_list)
+    print(shortest_path_list[::-1])  # Print the shortest path

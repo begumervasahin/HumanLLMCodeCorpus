@@ -1,0 +1,85 @@
+import sympy as sp
+import scipy.sparse as sps
+import numpy as np
+import sympy as sym
+from Frobenius_Tools import HigmanTrace
+from HopfConstructions_Functions import CreateBasisVectors
+
+def ChangeBasis(A, U, UI):
+    # Convert U and UI to sparse matrices
+    U = sps.csr_matrix(U.tolist())
+    UI = sps.csr_matrix(UI.tolist())
+
+    # Handle different types of algebraic structures
+    if 'Algebra' in A._type:
+        mult = U.dot(A.mult.dot(sps.kron(UI, UI)))
+    elif 'Module' in A._type:
+        ring_dim = A.ring.dim
+        action = U.dot(A.action)
+        ring_id = sps.identity(ring_dim, format='csr')
+        action = U.dot(action.dot(sps.kron(ring_id, UI)))
+    elif A._type in ['HopfAlgebra', 'BiAlgebra', 'CoAlgebra']:
+        comult = sps.kron(U, U).dot(A.comult.dot(UI))
+        counit = A.counit.dot(UI)
+    else:
+        raise ValueError("Unknown algebraic structure type: {}".format(A._type))        
+
+    # Create new algebraic structure objects based on the type
+    if A._type == 'Algebra':
+        out = Algebra(A.name, A.element_names, mult)
+    elif A._type == 'CoAlgebra':
+        out = CoAlgebra(A.name, A.element_names, comult, counit)
+    elif A._type == 'BiAlgebra':
+        out = BiAlgebra(A.name, A.element_names, mult, comult, counit)
+    elif A._type == 'HopfAlgebra':
+        antipode = U.dot(A.antipode.dot(UI))
+        out = HopfAlgebra(A.name, A.element_names, mult, comult, counit, antipode)      
+        if A.int_flag != 'no':
+            A.Input_Integral(U.dot(A.Integral))
+    elif A._type == 'Module':
+        out = Module(A.name, A.element_names, A.ring, action)
+        if A._type == 'ModuleAlgebra':
+            out = ModuleAlgebra(A.name, A.element_names, A.ring, action, mult)
+
+    # Handle the casimir flag if applicable
+    if 'Algebra' in A._type and A.casimir_flag != 'no':
+        out.Input_Casimir(sps.kron(U, U).dot(A.casimir))
+
+    return out
+
+def Center(A):
+    dim = A.dim
+    V_temp = CreateBasisVectors(dim)
+    V = [vector.tolist() for vector in V_temp]
+
+    higman_trace = HigmanTrace(A)
+    higman_trace = sym.Matrix(higman_trace.toarray())
+    image = higman_trace.transpose().rref()[0]
+    rref_matrix = [row for row in image.tolist() if row != [0] * dim]
+    center_dim = len(rref_matrix)
+
+    change_of_basis = []
+    past_index = 0
+    complement = []
+    for vector in rref_matrix:
+        current_index = vector.index(1)
+        complement.extend(range(past_index + 1, current_index))
+        change_of_basis.append(vector)
+        past_index = current_index
+
+    complement.extend(range(current_index + 1, dim))
+    for index in complement:
+        change_of_basis.append(V[index])
+
+    U = np.transpose(np.array(change_of_basis, dtype=complex))
+    UI = np.linalg.inv(U)
+
+    return [U, UI, center_dim]
+
+# Example usage:
+# Assuming you have defined appropriate classes like Algebra, CoAlgebra, BiAlgebra, HopfAlgebra, Module, ModuleAlgebra,
+# and functions like Input_Integral, Input_Casimir, and others used in the provided code.
+
+# A = YourAlgebraOrOtherObject()
+# U, UI, center_dim = Center(A)
+# new_A = ChangeBasis(A, U, UI)

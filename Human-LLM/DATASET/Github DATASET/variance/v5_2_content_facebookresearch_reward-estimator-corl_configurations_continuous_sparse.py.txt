@@ -1,0 +1,45 @@
+# Define constants
+GAMES = ['Hopper-v2', 'HalfCheetah-v2', 'Walker2d-v2', 'Reacher-v2']
+SEEDS = [62, 43, 97, 104, 123, 1003, 554, 221, 11, 992]
+NOISE_VALUES = [0.6, 0.7, 0.8, 0.9, 0.95]
+
+# Define configurations for different algorithms
+ALGORITHMS = [
+    ([0.0, .99], "PPO+", False, False, False, False),
+    ([.99], "PPO", False, False, False, False),
+    ([0.0, .99], "PPO+RP", True, False, False, True)
+]
+
+# Generate unique run IDs based on combinations of games, seeds, noise, and algorithms
+RUN_IDS = []
+for seed in SEEDS:
+    for game in GAMES:
+        for noise_value in NOISE_VALUES:
+            for (gamma_values, name, rp, use_s, use_s_a, use_s_a_sprime) in ALGORITHMS:
+                RUN_IDS.append((seed, game, gamma_values, name, rp, noise_value, use_s, use_s_a, use_s_a_sprime))
+
+# Function to load parameters for each run
+def load_params(args):
+    # Extract parameters based on the run index
+    (args.seed, args.env_name, args.gamma, args.name, args.reward_predictor,
+     args.reward_epsilon, args.use_s, args.use_s_a, args.use_s_a_sprime) = RUN_IDS[args.run_index]
+
+    # Define log directory and save directory
+    args.log_dir = f"{args.log_dir}{args.env_name}_{args.seed}_{args.name}SN{args.reward_epsilon}"
+    args.save_dir = args.log_dir
+
+    # Set default parameters
+    args.algo = 'ppo'
+    args.use_gae = True
+    args.log_interval = 1
+    args.vis_interval = 1
+    args.num_steps = 2048
+    args.num_processes = 1
+    args.entropy = 0.0
+    args.lr = 3e-4
+    args.value_loss_coef = 1
+    args.ppo_epoch = 10
+    args.rp_burn_in = 100
+    args.lr_rp = args.lr
+    args.num_stack = 1
+    args.num_frames = 1000000

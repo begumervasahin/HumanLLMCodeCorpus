@@ -1,0 +1,86 @@
+# Function to store data in a file
+def store_data(file_path, data):
+    with open(file_path, 'w') as file:
+        # Write each key-value pair to the file
+        for key, value in data.items():
+            file.write(f"{key}: {value}\n")
+
+# Class definition for the dictionary
+class Dictionary:
+    # Constants for indices
+    DF = 0
+    IDF = 1
+    TERMID = 0
+    TERM_OFFSET = 1
+
+    # Constructor to initialize the dictionary
+    def __init__(self, file_path):
+        # Initialize an empty dictionary to store terms and their properties
+        self.terms = {}
+        # Store the file path where the data will be saved
+        self.file_path = file_path
+        # Initialize a variable to keep track of the total number of documents
+        self.total_num_documents = 0
+
+    # Method to check if a term is present in the dictionary
+    def has_term(self, term):
+        return term in self.terms
+
+    # Method to get the term ID for a given term
+    def get_term_id(self, term):
+        return self.terms[term][Dictionary.TERMID]
+
+    # Method to add a new term to the dictionary
+    def add_term(self, term, term_id):
+        # Initialize the term with document frequency 1 and the provided term ID
+        self.terms[term] = [1, term_id]
+
+    # Method to retrieve all terms in the dictionary
+    def get_terms(self):
+        return self.terms
+
+    # Method to increment the document frequency of a term
+    def increment_df(self, term):
+        # If the term already exists, increment its document frequency, else initialize it with frequency 1
+        if term in self.terms:
+            self.terms[term][Dictionary.DF] += 1
+        else:
+            self.terms[term] = [1, None]
+
+    # Method to set the IDF (Inverse Document Frequency) for a term
+    def set_idf(self, term, idf):
+        # Set the IDF value for the term
+        self.terms[term][Dictionary.IDF] = idf
+
+    # Method to set the offset for a term
+    def set_offset(self, term, offset):
+        # Set the offset value for the term
+        self.terms[term][Dictionary.TERM_OFFSET] = offset
+
+    # Method to save the dictionary data to disk
+    def save_to_disk(self):
+        # Call the store_data function to save the data to the specified file
+        store_data(self.file_path, self.terms)
+
+# Example usage of the Dictionary class
+if __name__ == "__main__":
+    # Initialize a Dictionary object with the specified file path
+    dictionary = Dictionary("terms_data.txt")
+
+    # Add terms and their corresponding term IDs to the dictionary
+    terms = ["apple", "banana", "orange"]
+    for idx, term in enumerate(terms):
+        dictionary.add_term(term, idx)
+
+    # Increment document frequencies for each term
+    for term in terms:
+        dictionary.increment_df(term)
+
+    # Set IDF for a specific term
+    dictionary.set_idf("apple", 0.5)
+
+    # Set offset for a specific term
+    dictionary.set_offset("apple", 100)
+
+    # Save the dictionary data to disk
+    dictionary.save_to_disk()

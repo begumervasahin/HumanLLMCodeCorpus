@@ -1,0 +1,85 @@
+from ExampleGroup_Functions import *
+from HopfClass import HopfAlgebra
+import numpy as np
+import scipy.sparse as sps
+from itertools import product
+
+def create_dihedral_group_mult_matrix(n):
+    """
+    Creates a matrix representing the multiplication operation for a dihedral group.
+
+    Args:
+        n (int): The order of the dihedral group.
+
+    Returns:
+        sps.csr_matrix: The sparse matrix representing the multiplication operation.
+    """
+    dim = 2 * n
+    mult = np.zeros((dim, dim**2), dtype=complex)
+    for i, j, k, l in product(range(n), [0, 1], repeat=2):
+        mult[2 * ((i + ((-1) ** j) * k) % n) + (j + l) % 2, dim * (i * 2 + j) + 2 * k + l] = 1
+    mult_sparse = sps.csr_matrix(mult, dtype=complex)
+    return mult_sparse
+
+def create_dihedral_group_antipode(n):
+    """
+    Creates the antipode matrix for a dihedral group.
+
+    Args:
+        n (int): The order of the dihedral group.
+
+    Returns:
+        sps.csr_matrix: The sparse matrix representing the antipode operation.
+    """
+    dim = 2 * n
+    antipode = np.zeros((dim, dim), dtype=complex)
+    for i, j in product(range(n), [0, 1]):
+        antipode[2 * (((-1) ** (j + 1) * i) % n) + j, i * 2 + j] = 1
+    antipode_sparse = sps.csr_matrix(antipode, dtype=complex)
+    return antipode_sparse
+
+def generate_dihedral_group_element_names(n, ele_name_g, ele_name_x):
+    """
+    Generates element names for a dihedral group.
+
+    Args:
+        n (int): The order of the dihedral group.
+        ele_name_g (str): The prefix for the group elements.
+        ele_name_x (str): The prefix for the reflection elements.
+
+    Returns:
+        list: A list of element names.
+    """
+    element_names = [f"{ele_name_g}^{i}{ele_name_x}^{j}" for i in range(n) for j in [0, 1]]
+    return element_names
+
+def create_dihedral_group(n, element_name_g, element_name_x):
+    """
+    Constructs a Hopf algebra for a dihedral group.
+
+    Args:
+        n (int): The order of the dihedral group.
+        element_name_g (str): The prefix for the group elements.
+        element_name_x (str): The prefix for the reflection elements.
+
+    Returns:
+        HopfAlgebra: The Hopf algebra object representing the dihedral group.
+    """
+    dim = 2 * n
+    mult = create_dihedral_group_mult_matrix(n)
+    comult = Group_Comult_Matrix(dim)  # Assuming Group_Comult_Matrix is defined elsewhere
+    counit = Group_Counit(dim)        # Assuming Group_Counit is defined elsewhere
+    intg = Group_Integral(dim)        # Assuming Group_Integral is defined elsewhere
+    antipode = create_dihedral_group_antipode(n)
+    name = f"D_{n}"
+    element_names = generate_dihedral_group_element_names(n, element_name_g, element_name_x)
+    dihedral_group = HopfAlgebra(name, element_names, mult, comult, counit, antipode)
+    dihedral_group.Input_Integral(intg)
+    return dihedral_group
+
+# Example usage
+n = 3
+element_name_g = 'g'
+element_name_x = 'x'
+dihedral_group = create_dihedral_group(n, element_name_g, element_name_x)
+print(dihedral_group)

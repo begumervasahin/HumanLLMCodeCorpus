@@ -1,0 +1,77 @@
+import dash
+import plotly.graph_objs as go
+import dash_core_components as dcc
+import dash_html_components as html
+import numpy as np
+import pandas as pd
+import mysql.connector
+from datetime import datetime as dt
+import statistics
+from sklearn.metrics import mean_squared_error
+import csv
+from bs4 import BeautifulSoup
+from goose3 import Goose
+
+# Function to calculate percentage change
+def calculate_percentage_change(values):
+    percentage_changes = []
+    for i in range(-1, -100, -1):
+        percentage_changes.append(((values[i] - values[i-1]) / values[i-1]) * 100)
+    return percentage_changes
+
+# Function to calculate percentage of opposite trends
+def calculate_opposite_trends(base_changes, comparison_changes):
+    count = 0
+    for i in range(len(base_changes)):
+        if base_changes[i] * comparison_changes[i] < 0:
+            count += 1
+    return (count / len(base_changes)) * 100
+
+# Establish database connection
+cnx = mysql.connector.connect(user='student', password='cs336student',
+                              host='cs336.ckksjtjg2jto.us-east-2.rds.amazonaws.com',
+                              database='CryptoNews')
+
+# Fetching currency names from the database
+currency_data = pd.read_sql("SELECT DISTINCT currency_name FROM CryptoNews.Value", cnx)
+currency_list = currency_data.iloc[:, 0].values.tolist()
+
+# Fetching Bitcoin values as a baseline
+bitcoin_values_df = pd.read_sql("SELECT quote FROM CryptoNews.Value WHERE currency_name='Bitcoin'", cnx)
+bitcoin_values = bitcoin_values_df.iloc[:, 0].values.tolist()
+bitcoin_changes = calculate_percentage_change(bitcoin_values)
+
+# Initializing list to store final results
+final_results = [["Crypto Currency", "Volatility", "Mean Square Error", "Opposite Trend %", "Outlier Score"]]
+
+# Looping through each currency
+for currency_name in currency_list:
+    # Fetching values for each currency
+    currency_values_df = pd.read_sql(f"SELECT quote FROM CryptoNews.Value WHERE currency_name='{currency_name}'", cnx)
+    currency_values = currency_values_df.iloc[:, 0].values.tolist()
+
+    # Skipping currencies with less than 100 values
+    if len(currency_values) < 101:
+        continue
+
+    # Calculate percentage change
+    currency_changes = calculate_percentage_change(currency_values)
+
+    # Calculate statistics
+    volatility = statistics.stdev(currency_changes)
+    mean_squared_error_value = mean_squared_error(bitcoin_changes, currency_changes)
+    opposite_trends_percentage = calculate_opposite_trends(bitcoin_changes, currency_changes)
+
+    # Calculate outlier score
+    outlier_score = (volatility * 0.1) + (mean_squared_error_value * 0.45) + (opposite_trends_percentage * 0.45)
+
+    # Append results to final list
+    temp_result = [currency_name, volatility, mean_squared_error_value, opposite_trends_percentage, outlier_score]
+    final_results.append(temp_result)
+
+# Writing results to CSV file
+with open("outlier.csv", 'w', newline='') as csv_file:
+    csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+    csv_writer.writerows(final_results)
+
+print("Output generated in outlier.csv")

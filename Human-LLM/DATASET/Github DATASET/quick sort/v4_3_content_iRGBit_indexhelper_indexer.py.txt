@@ -1,0 +1,78 @@
+import sys
+import string
+from collections import Counter
+
+# Define global variables
+languages = ['EN', 'DE']
+mylang = 0
+defaultFile = 'files/sample.txt'
+defaultStopWords = f'stopwords/stop_words_{languages[mylang]}.txt'
+defaultOut = 'out.txt'
+
+def main():
+    # Get user input for language selection
+    print(f"Select Language from the following: {concat(languages)} - default is EN: ")
+    slang = input().upper()
+
+    if slang in languages:
+        si = languages[languages.index(slang)]
+        yourStopWords = f'stopwords/stop_words_{si}.txt'
+        print(f"Parsing your text with the {si} stopwords")
+    else:
+        yourStopWords = defaultStopWords
+        print("Not a valid language. Assuming English...")
+
+    # Get user input for output file name
+    sout = input(f"Select name of output text file (default is {defaultOut}): ")
+
+    if sout == "":
+        yourOut = defaultOut
+    elif sout.endswith('.txt'):
+        yourOut = sout
+    else:
+        yourOut = sout + '.txt'
+
+    print(f"Printing your results to {yourOut}.")
+
+    if len(sys.argv) > 2:
+        print("\nUsage: python indexer.py <yourFile>")
+        print(f"If no arguments are given {defaultFile} and {defaultStopWords} will be used as default files\n")
+        sys.exit()
+    elif len(sys.argv) == 2:
+        yourFile = sys.argv[1]
+    elif len(sys.argv) == 1:
+        yourFile = defaultFile
+
+    print(f'Using {yourFile} as file and {yourStopWords} as stop word reference, printing to {yourOut}.\n')
+    index_them(yourFile, yourStopWords, yourOut)
+
+def concat(alist):
+    outputstring = ""
+    for a in alist:
+        outputstring = outputstring + " " + a
+    return outputstring
+
+def index_them(yourFile, yourStopWords, yourOut):
+    punct = set(string.punctuation)
+    with open(yourFile, 'r') as f:
+        bookWords = f.read().decode("unicode-escape").encode("ascii", "ignore").lower().split()
+        bookWords = [el.rstrip(string.punctuation).lstrip(string.punctuation) for el in bookWords]
+
+    with open(yourStopWords, 'r') as f:
+        stopWords = f.read().decode("utf-8-sig").encode("utf-8").splitlines()
+
+    finalWords = [x for x in bookWords if x not in stopWords]
+
+    topWords = Counter(finalWords)
+    frequence = sum(topWords.values())
+
+    frequent = frequence / len(topWords)
+    tops = {k: v for (k, v) in topWords.items() if v >= frequent}
+    final = sorted(tops.items(), key=lambda x: x[0])
+
+    with open(yourOut, 'w+') as outFile:
+        for x in range(len(final)):
+            print(f'{final[x][0]}: {final[x][1]}', file=outFile)
+
+if __name__ == '__main__':
+    main()

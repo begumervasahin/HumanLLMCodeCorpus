@@ -1,0 +1,38 @@
+from sys import getsizeof
+
+class CompressedGene:
+    def __init__(self, gene: str) -> None:
+        """Compresses a gene sequence."""
+        self._compress(gene)
+
+    def _compress(self, gene: str) -> None:
+        """Compresses the gene sequence into a bit string."""
+        self.bit_string: int = 1  # Start with a sentinel
+        for nucleotide in gene.upper():
+            self.bit_string <<= 2
+            if nucleotide in "ACGT":
+                self.bit_string |= {"A": 0b00, "C": 0b01, "G": 0b10, "T": 0b11}[nucleotide]
+            else:
+                raise ValueError(f"Invalid Nucleotide: {nucleotide}")
+
+    def decompress(self) -> str:
+        """Decompresses the gene sequence from the bit string."""
+        gene: str = ""
+        for i in range(self.bit_string.bit_length() - 1, 0, -2):
+            bits: int = self.bit_string >> i & 0b11
+            gene += {0b00: "A", 0b01: "C", 0b10: "G", 0b11: "T"}[bits]
+        return gene[::-1]
+
+    def __str__(self) -> str:
+        """Return the decompressed gene sequence."""
+        return self.decompress()
+
+if __name__ == "__main__":
+    original: str = "TAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATATAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATA"
+    print("Original size: {} bytes".format(getsizeof(original)))
+
+    compressed: CompressedGene = CompressedGene(original)
+    print("Compressed size: {} bytes".format(getsizeof(compressed.bit_string)))
+
+    print(compressed)
+    print("Original is the same as decompressed: {}".format(original == compressed.decompress()))

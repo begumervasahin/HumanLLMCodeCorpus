@@ -1,0 +1,67 @@
+import network_1
+import link_1
+import threading
+from time import sleep
+
+router_queue_size = 0
+simulation_time = 2
+
+if __name__ == '__main__':
+    # Create a list to hold all network objects
+    objects = []
+
+    # Create two hosts
+    host1 = network_1.Host('H1')
+    objects.append(host1)
+
+    host2 = network_1.Host('H2')
+    objects.append(host2)
+
+    # Configure routers and add them to the object list
+    cost_d_ra = {'H1': {0: 1}, 'RB': {1: 1}}
+    router_a = network_1.Router(name='RA', cost_D=cost_d_ra, max_queue_size=router_queue_size)
+    objects.append(router_a)
+
+    cost_d_rb = {'H2': {1: 3}, 'RA': {0: 1}}
+    router_b = network_1.Router(name='RB', cost_D=cost_d_rb, max_queue_size=router_queue_size)
+    objects.append(router_b)
+
+    # Create a link layer
+    link_layer = link_1.LinkLayer()
+    objects.append(link_layer)
+
+    # Add links to connect hosts and routers
+    link_layer.add_link(link_1.Link(host1, 0, router_a, 0))    
+    link_layer.add_link(link_1.Link(router_a, 1, router_b, 0))  
+    link_layer.add_link(link_1.Link(router_b, 1, host2, 0))    
+
+    # Create threads for each network object and start them     
+    threads = []
+    for obj in objects:
+        threads.append(threading.Thread(name=obj.__str__(), target=obj.run))
+
+    for thread in threads:
+        thread.start()
+
+    # Send routes from router A and wait for convergence        
+    router_a.send_routes(1)
+    sleep(simulation_time)
+
+    # Print converged routing tables
+    print("Converged routing tables")
+    for obj in objects:
+        if isinstance(obj, network_1.Router):
+            obj.print_routes()
+
+    # Send a message from host 1 to host 2 and wait
+    host1.udt_send('H2', 'MESSAGE_FROM_H1')
+    sleep(simulation_time)
+
+    # Stop all threads
+    for obj in objects:
+        obj.stop = True
+
+    for thread in threads:
+        thread.join()
+
+    print("All simulation threads joined")

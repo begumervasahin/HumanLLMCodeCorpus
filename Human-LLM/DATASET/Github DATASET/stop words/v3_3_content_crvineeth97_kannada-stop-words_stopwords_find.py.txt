@@ -1,0 +1,51 @@
+import nltk
+import json
+from textblob import TextBlob as tb
+
+# Download necessary nltk data
+nltk.download('punkt')
+
+class TfIdf:
+    def __init__(self, corpus_paths):
+        self.corpus_paths = corpus_paths
+        self.corpus = []
+        self.word_df_dict = {}
+
+    def setup(self):
+        # Load data from JSON files specified in corpus_paths
+        for path in self.corpus_paths:
+            with open(path, 'r') as file:
+                data = json.load(file)
+                self.corpus.extend(data)  # Extend corpus with documents from the file
+        self.calculate_word_frequency()
+
+    def build_corpus(self, content):
+        # Create a TextBlob object from the concatenated content of the document
+        return tb(' '.join(content))
+
+    def calculate_word_frequency(self):
+        # Iterate through each document in the corpus
+        for document in self.corpus:
+            content = document['content']
+            # Build TextBlob object from document content
+            blob = self.build_corpus(content)
+            # Iterate through unique words in the document
+            for word in set(blob.words):
+                # Update word document frequency dictionary
+                self.word_df_dict[word] = self.word_df_dict.get(word, 0) + 1
+
+    def write_to_file(self, filename="stop-words.txt", top_n=102):
+        # Write the top n words with highest document frequency to a file
+        with open(filename, 'w') as out_file:
+            # Sort word document frequency dictionary by value (frequency) in descending order
+            for key, val in sorted(self.word_df_dict.items(), key=lambda x: x[1], reverse=True)[:top_n]:
+                out_file.write(key + '\n')  # Write word to file
+
+# Paths to JSON files containing the corpus
+corpus_paths = ["udayavani.json"]
+# Create TfIdf object
+tfidf = TfIdf(corpus_paths)
+# Perform setup to process the corpus
+tfidf.setup()
+# Write the top words to a file
+tfidf.write_to_file()

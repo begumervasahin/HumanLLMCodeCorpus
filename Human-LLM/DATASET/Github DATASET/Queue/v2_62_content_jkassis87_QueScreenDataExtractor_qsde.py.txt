@@ -1,0 +1,89 @@
+import requests
+import json
+from flatten_dict import flatten
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+import sys
+
+def get_ticket_data_from_api(username, password):
+    """Fetch ticket data from the API."""
+    try:
+        response = requests.get('http://pbx02.apdcsy1.digitalpacific.com.au/tickethistory_api.php', auth=(username, password))
+        if response.status_code == 200:
+            return json.loads(response.text)
+        else:
+            print(f"Failed to fetch ticket data. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error fetching ticket data: {e}")
+        return None
+
+def authenticate_google_sheets(credentials_file):
+    """Authenticate with Google Sheets using service account credentials."""
+    try:
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
+        return gspread.authorize(creds)
+    except Exception as e:
+        print(f"Error authenticating with Google Sheets: {e}")
+        return None
+
+def main():
+    # Credentials for accessing ticket data
+    ruser = 'X'
+    rpass = '5rsMThTeZ22p3MqGpz2xRPGY5hAWrwmx'
+
+    # Get ticket data from API
+    ticket_data = get_ticket_data_from_api(ruser, rpass)
+    if not ticket_data:
+        sys.exit("Exiting script due to failure in fetching ticket data.")
+
+    # Flatten the ticket data
+    flattened_ticket_data = flatten(ticket_data)
+    ticket_values = list(flattened_ticket_data.values())
+
+    # Authenticate with Google Sheets
+    client = authenticate_google_sheets('client_secret.json')
+    if not client:
+        sys.exit("Exiting script due to failure in authenticating with Google Sheets.")
+
+    # Get current date information
+    now = datetime.now()
+    day_now = now.day
+    year_month = f"{now.year}-{now.month}"
+
+    # Open or create a Google Sheets spreadsheet
+    sh = client.open('qsde_init')
+    if now.day == 1:
+        sh = client.create(year_month)
+        sh.share('gaetano.egisto@hostopia.com.au', perm_type='user', role='writer')
+    else:
+        sh = client.open(year_month)
+    worksheet = sh.add_worksheet(title=str(day_now), rows="17", cols="25")
+
+    # Import CSV template
+    csv_template = open('qsdetemplate.csv', 'r').read()
+    sh_id = sh.id
+    client.import_csv(sh_id, csv_template)
+
+    # Update the worksheet with ticket data
+    row = 2
+    col = 2
+    ticket_count = 0
+    for value in ticket_values:
+        if ticket_count < 11:
+            worksheet.update_cell(row, col, value)
+            row += 1
+            ticket_count += 1
+        elif ticket_count == 11:
+            row = 2
+            col += 1
+            worksheet.update_cell(row, col, value)
+            ticket_count = 0
+
+    # Exit the script
+    sys.exit()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,77 @@
+import sys
+import string
+from collections import Counter
+
+# List of supported languages
+SUPPORTED_LANGUAGES = ['EN', 'DE']
+DEFAULT_LANGUAGE = 'EN'
+
+# Default file paths and output file name
+DEFAULT_FILE_PATH = 'files/sample.txt'
+DEFAULT_STOP_WORDS_PATH = 'stopwords/stop_words_%s.txt' % DEFAULT_LANGUAGE
+DEFAULT_OUTPUT_FILE = 'out.txt'
+
+def main():
+    # Prompt user to select a language
+    selected_language = prompt_language_selection()
+
+    # Determine stop words based on the selected language or use English by default
+    stop_words_path = determine_stop_words_path(selected_language)
+
+    # Prompt user to enter the output file name
+    output_file_path = prompt_output_file_name()
+
+    # Determine the file to be processed
+    your_file = determine_input_file()
+
+    # Process the file and generate the index
+    print 'Using %s as file and %s as stop word reference, printing to %s.' % (
+        your_file, stop_words_path, output_file_path)
+    print
+    index_file(your_file, stop_words_path, output_file_path)
+
+def prompt_language_selection():
+    language_prompt = "Select Language from the following (%s - default is %s): " % (
+        ' '.join(SUPPORTED_LANGUAGES), DEFAULT_LANGUAGE)
+    selected_language = raw_input(language_prompt).upper()
+    return selected_language if selected_language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+
+def determine_stop_words_path(selected_language):
+    return 'stopwords/stop_words_%s.txt' % selected_language if selected_language in SUPPORTED_LANGUAGES else DEFAULT_STOP_WORDS_PATH
+
+def prompt_output_file_name():
+    output_file_prompt = "Select name of output text file (default is %s): " % DEFAULT_OUTPUT_FILE
+    output_file_name = raw_input(output_file_prompt)
+    output_file_name = output_file_name if output_file_name.endswith('.txt') else output_file_name + '.txt'
+    return output_file_name if output_file_name else DEFAULT_OUTPUT_FILE
+
+def determine_input_file():
+    return sys.argv[1] if len(sys.argv) > 1 else DEFAULT_FILE_PATH
+
+def index_file(your_file, stop_words_path, output_file_path):
+    # Read the file content and tokenize words
+    book_words = open(your_file).read().decode("unicode-escape").encode("ascii", "ignore").lower().split()
+    book_words = [word.strip(string.punctuation) for word in book_words]
+
+    # Read stop words
+    stop_words = open(stop_words_path).read().decode("utf-8-sig").encode("utf-8").splitlines()
+
+    # Remove stop words and count word occurrences
+    final_words = [word for word in book_words if word not in stop_words]
+    top_words = Counter(final_words)
+
+    # Calculate word frequency
+    total_words_count = sum(top_words.values())
+    frequent_occurrence_threshold = total_words_count / len(top_words)
+
+    # Filter out less frequent words
+    frequent_words = {key: value for key, value in top_words.iteritems() if value >= frequent_occurrence_threshold}
+    sorted_frequent_words = sorted(frequent_words.items(), key=lambda x: x[0])
+
+    # Write the index to the output file
+    with open(output_file_path, 'w+') as output_file:
+        for word, count in sorted_frequent_words:
+            output_file.write('%s: %s\n' % (word, count))
+
+if __name__ == '__main__':
+    main()

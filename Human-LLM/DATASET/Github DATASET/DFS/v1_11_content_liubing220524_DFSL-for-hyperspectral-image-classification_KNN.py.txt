@@ -1,0 +1,48 @@
+import time
+import numpy as np
+import scipy.io as sio
+from sklearn.neighbors import KNeighborsClassifier
+import input_data
+import pickle
+
+start_time = time.time()
+num_labeled = 5
+
+# Read data
+dataSet = input_data.read_data_sets('I_feature.h5', num_labeled)
+train_data = dataSet.train.images
+train_label = dataSet.train.labels
+test_data = dataSet.test.images
+test_label = dataSet.test.labels
+
+# Train KNN classifier
+print('Train...')
+clf = KNeighborsClassifier(n_neighbors=1)
+clf.fit(train_data, train_label)
+
+# Print scores
+print('Training score: %f' % clf.score(train_data, train_label))
+print('Testing score: %f' % clf.score(test_data, test_label))
+
+# Measure time
+end_time = time.time()
+print('Time taken:', end_time - start_time)
+
+# Predict labels
+label_img = clf.predict(test_data)
+
+# Load ground truth indices
+with open('./gt_I.data', 'rb') as f:
+    gt_index = pickle.load(f)
+
+m = 145
+n = 145
+final_result = np.zeros((m, n), dtype=np.int8)
+final_result = final_result.reshape(m * n)
+
+# Map predicted labels to final result
+final_result[gt_index] = label_img + 1
+final_result = final_result.reshape(m, n)
+
+# Save result
+sio.savemat('I-25.mat', {'final_result': final_result})

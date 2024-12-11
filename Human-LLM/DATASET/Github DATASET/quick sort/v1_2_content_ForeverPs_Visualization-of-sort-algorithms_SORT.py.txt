@@ -1,0 +1,78 @@
+import os
+import imageio
+import numpy as np
+import matplotlib.pyplot as plt
+
+class Sort(object):
+    def __init__(self):
+        self.img = []
+        self.fig = plt.figure()
+        plt.ion()
+        self.count = 0
+        self.path = 'sort_animations/'
+        if not os.path.lexists(self.path):
+            os.mkdir(self.path)
+    
+    def merge_sort(self, s, start, end):
+        if end - start < 2:
+            return
+        m = (end - start) // 2
+        self.merge_sort(s, start, start + m)
+        self.merge_sort(s, start + m, end)
+        self.merge(start, m, end, s)
+    
+    def merge(self, start, m, end, s):
+        i, j = start, start + m
+        while i < start + m and j < end:
+            if s[i] < s[j]:
+                i += 1
+            else:
+                s.insert(i, s[j])
+                j += 1
+                s.pop(j)
+                self.draw(s, 'MERGE SORT')
+    
+    def quick_sort(self, s, a, b):
+        if a >= b:
+            return
+        base = s[b]
+        left, right = a, b - 1
+        while left <= right:
+            while left <= right and s[left] < base:
+                left += 1
+            while left <= right and s[right] > base:
+                right -= 1
+            if left <= right:
+                s[left], s[right] = s[right], s[left]
+                left, right = left + 1, right - 1
+        s[left], s[b] = s[b], s[left]
+        if left != b:
+            self.draw(s, 'QUICK SORT')
+        self.quick_sort(s, a, left - 1)
+        self.quick_sort(s, left + 1, b)
+    
+    # Implement other sorting algorithms similarly
+    
+    def draw(self, s, fun):
+        if len(s):
+            self.count += 1
+            plt.clf()
+            plt.bar(range(len(s)), s, width=0.3, color='purple')
+            plt.title(fun)
+            plt.savefig(os.path.join(self.path, str(self.count)))
+            plt.pause(0.01)
+    
+    def get_gif(self):
+        name = os.listdir(self.path)
+        name.sort(key=lambda x: int(x[:-4]))
+        for ele in name:
+            path = os.path.join(self.path, ele)
+            self.img.append(imageio.imread(path))
+        imageio.mimsave('sort.gif', self.img, fps=8)
+
+if __name__ == '__main__':
+    s = [100 - k for k in range(100)]
+    p = Sort()
+    p.quick_sort(list(s), 0, len(s) - 1)
+    # Call other sorting methods similarly
+    p.get_gif()

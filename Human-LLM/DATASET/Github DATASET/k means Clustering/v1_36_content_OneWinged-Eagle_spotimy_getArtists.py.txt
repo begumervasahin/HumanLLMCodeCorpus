@@ -1,0 +1,35 @@
+from json import dump
+import spotipy
+import spotipy.util as util
+from time import perf_counter
+from typing import Any, List
+from sys import stderr
+import config
+
+try:
+    token = util.prompt_for_user_token(config.username, config.scope,
+                                       config.client_id, config.client_secret,
+                                       config.redirect_uri)
+    sp = spotipy.Spotify(token)
+except:
+    print(f"Token is not accessible for {config.username}", file=stderr)
+
+def retrieve_artists() -> List[Any]:
+    artists = []
+    last_artist_id = None
+    while True:
+        items = sp.current_user_followed_artists(50, last_artist_id)["artists"]["items"]
+        if len(items) == 0:
+            break
+        last_artist_id = items[-1]["id"]
+        artists.extend(items)
+    return artists
+
+print("Start retrieving artists...")
+start_time = perf_counter()
+artists = retrieve_artists()
+elapsed = perf_counter() - start_time
+print(f"Retrieved {len(artists)} artists in {elapsed:.2f}s.")
+
+with open("json/artists.json", "w") as outfile:
+    dump(artists, outfile)

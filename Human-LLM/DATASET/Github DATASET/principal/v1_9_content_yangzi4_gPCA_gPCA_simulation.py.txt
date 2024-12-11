@@ -1,0 +1,136 @@
+import os
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy import array, arange, diag, eye, hstack, sqrt, zeros, savetxt, save, load, mean, around
+
+def main():
+    D_range_ = range(1, 5)
+    Dest, Pval, save_data = 1, 1, 0
+    gen_seed_list = range(25)
+    n_s = float(len(gen_seed_list))
+    alpha_range = arange(0, 1.01, 0.1)
+    
+    if 1:
+        plt.close('all')
+        svfg = 1
+        plot_Dest(13, 16, 3, 0.1, svfg, '', '(a)', 1)
+        plot_Pval(13, 16, 3, 0.1, svfg, '', '(b)', 1)
+
+def plot_Dest(p1, p2, p3, p4, svfg_=0, v_='', optn=0, lgnd=0):
+    param_list = [1, 2, 3, 4]
+    for param in param_list:
+        grp_N, M = p1, p2
+        K = p3
+        D_t = param
+        sigma_ = p4
+    vals_m = np.zeros((len(param_list), len(alpha_range), 6))
+    for g_seed in gen_seed_list:
+        vals_m += load('Dest%s(%dx%d)x%d_D%ds%d_%d.npy' % (
+            v_, grp_N, M, K, D_t, sigma_*100, g_seed))
+    vals = vals_m/n_s
+    vals_sd = np.zeros((len(param_list), len(alpha_range), 6))
+    for g_seed in gen_seed_list:
+        load_ = load('Dest%s(%dx%d)x%d_D%ds%d_%d.npy' % (
+            v_, grp_N, M, K, D_t, sigma_*100, g_seed))
+        vals_sd += (load_ - vals)**2
+    vals2 = vals_sd/n_s
+    for i in range(0, 6):
+        print('\t'.join(list(around(np.mean(vals[:, :, i], axis=0), 2).astype(str))))
+    ftsz1, ftsz2, ftsz3 = 16, 16, 16
+    plt.figure()
+    plt.subplot(1, 1, 1)
+    plt.plot(alpha_range, np.mean(vals[:, :, 0], axis=0), 'cv', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 1], axis=0), 'c^', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 2], axis=0), 'bs', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 3], axis=0), 'ro', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 4], axis=0), 'gd', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 5], axis=0), 'k*', ms=12)
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 0], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 0], axis=0))/np.sqrt(n_s), color='c', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 1], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 1], axis=0))/np.sqrt(n_s), color='c', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 2], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 2], axis=0))/np.sqrt(n_s), color='b', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 3], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 3], axis=0))/np.sqrt(n_s), color='r', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 4], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 4], axis=0))/np.sqrt(n_s), color='g', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 5], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 5], axis=0))/np.sqrt(n_s), color='k', ms=12)      
+    plt.plot(alpha_range, np.mean(vals[:, :, 0], axis=0), 'c--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 1], axis=0), 'c--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 2], axis=0), 'b--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 3], axis=0), 'r--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 4], axis=0), 'g--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 5], axis=0), 'k--', ms=12)
+    plt.xlabel(r'$\alpha$', fontsize=ftsz2)
+    plt.ylim(-0.1, 1.1)
+    if lgnd:
+        plt.legend(['gPCA', 'JIVE', 'LP', 'BIC', 'KG', 'KN'], loc='upper left', fontsize=ftsz3)
+    plt.title('%s: Proportion of correct rank selections' % optn, fontsize=ftsz1) 
+    if svfg_:
+        plt.savefig('Dest%s(%dx%d)x%d_D%ds%d_all%d.png' % (v_, grp_N, M, K, 
+            D_t, sigma_*100, gen_seed_list[-1]), format='png', bbox_inches='tight')   
+    plt.show()
+
+def plot_Pval(p1, p2, p3, p4, svfg_=0, v_='', optn=0, lgnd=0):
+    param_list = [1, 2, 3, 4]
+    for param in param_list:
+        grp_N, M = p1, p2
+        K = p3
+        D_t = param
+        sigma_ = p4
+    vals_m = np.zeros((len(param_list), len(alpha_range), 6))
+    for g_seed in gen_seed_list:
+        vals_m += load('Pval%s(%dx%d)x%d_D%ds%d_%d.npy' % (
+            v_, grp_N, M, K, D_t, sigma_*100, g_seed))
+    vals = vals_m/n_s
+    vals_sd = np.zeros((len(param_list), len(alpha_range), 6))
+    for g_seed in gen_seed_list:
+        load_ = load('Pval%s(%dx%d)x%d_D%ds%d_%d.npy' % (
+            v_, grp_N, M, K, D_t, sigma_*100, g_seed))
+        vals_sd += (load_ - vals)**2
+    vals2 = np.sqrt(vals_sd/n_s)
+    for i in range(0, 6):
+        print('\t'.join(list(around(np.mean(vals[:, :, i], axis=0), 2).astype(str))))
+    ftsz1, ftsz2, ftsz3 = 16, 16, 16
+    plt.figure()
+    plt.subplot(1, 1, 1)
+    plt.plot(alpha_range, np.mean(vals[:, :, 0], axis=0), 'cv', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 1], axis=0), 'c^', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 2], axis=0), 'bs', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 3], axis=0), 'ro', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 4], axis=0), 'gd', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 5], axis=0), 'k*', ms=12)
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 0], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 0], axis=0))/np.sqrt(n_s), color='c', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 1], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 1], axis=0))/np.sqrt(n_s), color='c', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 2], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 2], axis=0))/np.sqrt(n_s), color='b', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 3], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 3], axis=0))/np.sqrt(n_s), color='r', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 4], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 4], axis=0))/np.sqrt(n_s), color='g', ms=12)      
+    plt.errorbar(alpha_range, np.mean(vals[:, :, 5], axis=0),
+        yerr=np.sqrt(np.mean(vals2[:, :, 5], axis=0))/np.sqrt(n_s), color='k', ms=12)      
+    plt.plot(alpha_range, np.mean(vals[:, :, 0], axis=0), 'c--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 1], axis=0), 'c--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 2], axis=0), 'b--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 3], axis=0), 'r--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 4], axis=0), 'g--', ms=12)
+    plt.plot(alpha_range, np.mean(vals[:, :, 5], axis=0), 'k--', ms=12)
+    plt.xlabel(r'$\alpha$', fontsize=ftsz2)
+    plt.ylim(-0.1, 1.1)
+    if lgnd:
+        plt.legend([r'$\alpha$', r'$p_{\alpha 1}$',  r'$p_{\alpha 2}$',      
+            r'$\alpha$', r'$p_{\alpha 1}$',  r'$p_{\alpha 2}$'], loc='upper left', fontsize=ftsz3)
+    plt.title('%s: alpha, p_alpha1, p_alpha2' % optn, fontsize=ftsz1)
+    if svfg_:
+        plt.savefig('Pval%s(%dx%d)x%d_D%ds%d_all%d.png' % (v_, grp_N, M, K, 
+            D_t, sigma_*100, gen_seed_list[-1]), format='png', bbox_inches='tight')   
+    plt.show()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,239 @@
+import os
+import datetime
+import logging
+import pathlib as pl
+import re
+from typing import Union, TypeVar
+from exifread import process_file
+import click
+
+PathLike = Union[str, bytes, pl.Path]
+T = TypeVar('T')
+Maybe = Union[T, None]
+
+# Setup logging
+logger = logging.getLogger(__name__)
+if not logger.hasHandlers():
+    logger.addHandler(logging.StreamHandler())
+
+# Define commonly used suffixes for image files
+IMAGE_SUFFIXES = ('.jpg', '.jpeg')
+
+# Define date format pattern
+DATE_PATTERN = r'(?P<year>\d{4})(.|\s+)?(?P<month>\d{2})(.|\s+)?(?P<day>\d{2})'
+
+# Add custom methods to the pathlib.Path class
+def _copy(self, target: PathLike):
+    import shutil
+    assert self.is_file()
+    shutil.copy(self, target)
+
+pl.Path.copy = _copy
+
+# Define public functions
+def sort_directory(source_path: PathLike, target_path: PathLike=None,
+                   remove_empty: bool=True, recursive=True, copy=False):
+    # Convert input paths to pathlib.Path objects if not already
+    source_path = pl.Path(str(source_path))
+    if not target_path:
+        target_path = source_path
+    target_path = pl.Path(str(target_path))
+
+    # Ensure source and target paths are directories
+    assert source_path.is_dir()
+    assert target_path.is_dir()
+
+    # Log sorting process
+    log_sorting_process(source_path, target_path, remove_empty, recursive, copy)
+
+    # Define glob pattern for file search
+    glob_pattern = '**/*.*' if recursive else '*.*'
+
+    # Initialize sets to track sorted files and directories to delete
+    sorted_files = set()
+    directories_to_delete = set()
+
+    # Iterate over files in the source directory
+    for file in source_path.glob(glob_pattern):
+        if file not in sorted_files:
+            new_file = sort_file(file, target_path, copy=copy)
+            if new_file:
+                sorted_files.add(new_file)
+            if remove_empty and is_empty_dir(file.parent):
+                directories_to_delete.add(file.parent)
+
+    # Remove empty directories if required
+    delete_empty_directories(directories_to_delete)
+
+    logger.info('='*20 + '\nSorting photos in "%s" completed successfully!',
+                source_path)
+
+def sort_file(path: pl.Path, target_path: PathLike, copy=False) -> Maybe[pl.Path]:
+    # Convert input path to pathlib.Path object if not already
+    path = pl.Path(str(path))
+
+    # Extract file date from metadata or filename
+    date = get_file_date(path)
+
+    # Determine new path for the file based on its date
+    new_path = determine_new_path(path, target_path, date)
+
+    # Handle file operations based on the new path
+    handle_file_operations(path, new_path, copy)
+
+    return new_path
+
+# Define utility functions
+
+# Function to log the sorting process details
+def log_sorting_process(source_path, target_path, remove_empty, recursive, copy):
+    logger.info('='*20)
+    if source_path == target_path:
+        logger.info('Sorting photos in "%s"', source_path)
+    else:
+        logger.info('Sorting photos in "%s". Outputting to "%s"',
+                source_path, target_path)
+    logger.debug('remove-empty: %s', remove_empty)
+    logger.debug('recursive: %s', recursive)
+    logger.debug('copy: %s', copy)
+    logger.info('='*20)
+
+# Function to check if a directory is empty
+def is_empty_dir(path: pl.Path):
+    return sum(1 for _ in path.iterdir()) == 0 if path.is_dir() else False
+
+# Function to delete empty directories
+def delete_empty_directories(directories_to_delete):
+    for directory in directories_to_delete:
+        logger.info('Removing empty directories')
+        if is_empty_dir(directory):
+            logger.debug('Removing empty directory: %s', directory)
+            directory.rmdir()
+
+# Function to determine the new path for a file based on its date
+def determine_new_path(path: pl.Path, target_path: pl.Path, date: Maybe[datetime.date]):
+    if date:
+        new_path = (target_path / date.strftime('%Y') / date.strftime('%Y-%m')
+                    / date.strftime('%Y-%m-%d') / path.name)
+    else:
+        new_path = target_path / 'Unknown_Date' / path.name
+    return new_path
+
+# Function to handle file operations based on the new path
+def handle_file_operations(path: pl.Path, new_path: pl.Path, copy: bool):
+    if new_path != path:
+        create_directory_if_not_exists(new_path.parent)
+        handle_existing_file(new_path, path, copy)
+    else:
+        logger.debug('File already sorted.')
+
+# Function to create a directory if it does not exist
+def create_directory_if_not_exists(directory):
+    if not directory.exists():
+        logger.debug('Creating new directory: %s', directory)
+        directory.mkdir(parents=True)
+
+# Function to handle an existing file at the new path
+def handle_existing_file(new_path, path, copy):
+    if new_path.exists():
+        new_path = handle_existing_file_conflict(new_path)
+    perform_file_operation(path, new_path, copy)
+
+# Function to handle conflicts with an existing file at the new path
+def handle_existing_file_conflict(new_path):
+    backup_path = get_backup_path(new_path)
+    logger.warning('File "%s" already exists in "%s". Saving as "%s" instead.',
+                   new_path.name, new_path.parent, backup_path.name)
+    return backup_path
+
+# Function to get the backup path for a file
+def get_backup_path(path: pl.Path):
+    backup_count = 0
+    new_path = make_path_with_backup_count(path, backup_count)
+
+    while new_path.exists():
+        backup_count += 1
+        new_path = make_path_with_backup_count(path, backup_count)
+
+    return new_path
+
+# Function to make a new path with backup count
+def make_path_with_backup_count(path: pl.Path, count: int):
+    return path.with_name(f'{path.stem}_{count}{path.suffix}')
+
+# Function to perform file operation (copy or move)
+def perform_file_operation(path, new_path, copy):
+    if copy:
+        logger.info('Copying "%s" to "%s"', new_path.name, new_path.parent)
+        path.copy(new_path)
+    else:
+        logger.info('Moving "%s" to "%s"', new_path.name, new_path.parent)
+        path.rename(new_path)
+
+# Function to extract the date from a file's metadata or filename
+def get_file_date(path: pl.Path) -> Maybe[datetime.date]:
+    return (get_file_date_from_metadata(path)
+            or get_file_date_from_filename(path))
+
+# Function to extract the date from a file's metadata
+def get_file_date_from_metadata(path: pl.Path) -> Maybe[datetime.date]:
+    if path.suffix.lower() in IMAGE_SUFFIXES:
+        date_tag_names = ('EXIF DateTimeOriginal', 'EXIF DateTimeDigitized',
+                          'Image DateTime')
+        tags = load_tags(path)
+        for tag in date_tag_names:
+            if tag in tags:
+                date_str = tags[tag].values
+                dt = datetime.datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+                return dt.date()
+    return None
+
+# Function to extract the date from a file's filename
+def get_file_date_from_filename(path: pl.Path) -> Maybe[datetime.date]:
+    match = re.search(DATE_PATTERN, path.name)
+    if match:
+        date_kwargs = {k: int(v) for k, v in match.groupdict().items()}
+        try:
+            return datetime.date(**date_kwargs)
+        except ValueError:
+            return None
+    else:
+        return None
+
+# Function to load tags from a file's metadata
+def load_tags(path: pl.Path) -> dict:
+    with open(path, 'rb') as image_file:
+        return process_file(image_file)
+
+# Command-line interface using Click
+@click.command()
+@click.option('--copy/--move', '-c/-m', 'copy', default=False)
+@click.option('--output', '-o', 'target_path',
+              default=None,
+              type=click.Path(file_okay=False,
+                              dir_okay=True,
+                              writable=True,
+                              readable=True,
+                              resolve_path=True))
+@click.option('--remove-empty/--no-remove-empty', '-e/-E', default=True)
+@click.option('--logger-level', '-l',
+              default='info',
+              type=click.Choice(['debug', 'info', 'warning', 'error',
+                                 'critical']))
+@click.option('--recursive/--no-recursive', '-r/-R', default=True)
+@click.argument('source_path', type=click.Path(exists=True,
+                                               file_okay=False,
+                                               dir_okay=True,
+                                               writable=True,
+                                               readable=True,
+                                               resolve_path=True))
+def cli(source_path, target_path, remove_empty, copy, recursive, logger_level):
+    logger.setLevel(getattr(logging, logger_level.upper()))
+    sort_directory(source_path=source_path,
+                   target_path=target_path,
+                   remove_empty=remove_empty,
+                   recursive=recursive,
+                   copy=copy)
+
+if __name__ == "__main__":
+    cli()

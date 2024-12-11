@@ -1,0 +1,50 @@
+def to_str(s):
+    return s and chr(int(s[:2], base=16)) + to_str(s[2:]) or ''
+
+def strxor(a, b):
+    if len(a) > len(b):
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a[:len(b)], b)])
+    else:
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b[:len(a)])])
+
+def show_msgs(str_ciphers, str_chg_cipher):
+    chg_msg = 'Hackers should be judged by their acting, not bogus criteria.'
+    xor_key = strxor(str_chg_cipher, chg_msg)
+    for str_cipher in str_ciphers:
+        print(strxor(str_cipher, xor_key))
+    print(chg_msg)
+
+if __name__ == '__main__':
+    cipher_text = []
+    with open('msg', 'r') as f:
+        for line in f:
+            temp = ''.join(line.split())
+            cipher_text.append(temp)
+    
+    chg_cipher_text = open('msg_challenge', 'r').read()
+    chg_cipher_text = ''.join(chg_cipher_text.split())
+    
+    str_cipher_text = []
+    for text in cipher_text:
+        str_cipher_text.append(to_str(text))
+    
+    str_chg_cipher_text = to_str(chg_cipher_text)
+    
+    results = []
+    for i in range(len(str_chg_cipher_text)):
+        chars = []
+        for j in range(len(str_cipher_text)):
+            len_cipher_j = len(str_cipher_text[j])
+            if i >= len_cipher_j:
+                continue
+            char = (chr(ord(str_cipher_text[j][i:i + 1]) ^ ord(str_chg_cipher_text[i:i + 1])))
+            if 'A' <= char <= 'z':
+                new_char = chr(ord(char) ^ ord(' '))
+                if new_char not in chars:
+                    chars.append(new_char)
+        results.append(chars)
+    
+    for chg_char in results:
+        print(chg_char)
+    
+    show_msgs(str_cipher_text, str_chg_cipher_text)

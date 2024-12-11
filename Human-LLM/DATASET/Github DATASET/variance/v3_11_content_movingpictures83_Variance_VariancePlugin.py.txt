@@ -1,0 +1,46 @@
+class VariancePlugin:
+    def __init__(self):
+        self.filename = None
+        self.bacteria = []
+        self.data = []
+
+    def input(self, filename):
+        """Store the input file name."""
+        self.filename = filename
+
+    def parse_input(self):
+        """Parse input file to extract bacteria names and corresponding data."""
+        with open(self.filename, 'r') as file:
+            lines = file.readlines()
+            # Extract bacteria names
+            self.bacteria = lines[0].strip().split(',')
+            self.bacteria = [bacterium for bacterium in self.bacteria if bacterium != '""']
+            # Extract data for each bacteria
+            for line in lines[1:]:
+                data_for_bacteria = [float(value) for value in line.strip().split(',')[1:]]
+                self.data.append(data_for_bacteria)
+
+    def calculate_variance(self, data):
+        """Calculate variance for a given set of data."""
+        mean = sum(data) / len(data)
+        variance = sum((mean - value) ** 2 for value in data) / len(data)
+        return variance
+
+    def output(self, filename):
+        """Write bacteria names and their corresponding variances to an output file."""
+        with open(filename, 'w') as file:
+            file.write("Element\tVariance\n\n")
+            variances = []
+            for i in range(len(self.bacteria)):
+                if self.data[i]:
+                    variance = self.calculate_variance(self.data[i])
+                    variances.append((variance, self.bacteria[i]))
+            variances.sort(reverse=True)
+            for variance, bacterium in variances:
+                file.write(f"{bacterium}\t{variance}\n")
+
+if __name__ == "__main__":
+    plugin = VariancePlugin()
+    plugin.input("data.txt")
+    plugin.parse_input()
+    plugin.output("output.txt")

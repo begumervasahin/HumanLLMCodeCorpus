@@ -1,0 +1,44 @@
+import json
+import networkx as nx
+
+class GraphBuilder:
+    """
+    Helper class for creating and working with networkx graphs        
+    """
+
+    @staticmethod
+    def build_graph_from_file(filename):
+        """
+        Creates a graph from a given JSON file
+
+        :param filename: The JSON source file of the graph
+        :return: A networkx graph created from the given file
+        """
+        # Create an empty graph object
+        graph = nx.Graph()
+
+        # Open the JSON file and load its content
+        with open(filename, 'r') as file:
+            raw_data = json.load(file)
+
+        # Extract nodes, neighbors, and weights from the raw data     
+        nodes_data = raw_data.get("nodes", [])  # Ensure nodes exist, otherwise default to an empty list
+
+        # Iterate through each node in the data
+        for node_data in nodes_data:
+            # Get the name of the node
+            node_name = node_data.get("name")
+
+            # Get the list of neighbors and their corresponding weights
+            neighbors = node_data.get("neighbors", [])
+            weights = node_data.get("weights", [])
+
+            # Iterate through each neighbor of the node
+            for neighbor, weight in zip(neighbors, weights):
+                # Add the node to the graph if it's not already present
+                graph.add_node(node_name)
+
+                # Add the edge between the current node and its neighbor with the specified weight
+                graph.add_edge(node_name, neighbor, weight=weight)
+
+        return graph  # Return the constructed graph

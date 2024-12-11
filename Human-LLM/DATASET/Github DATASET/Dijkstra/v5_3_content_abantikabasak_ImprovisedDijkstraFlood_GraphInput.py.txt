@@ -1,0 +1,60 @@
+import csv
+import math
+
+def calculate_distance(node1, node2):
+    """Calculate the distance between two nodes."""
+    x1, y1 = node1
+    x2, y2 = node2
+    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)       
+    return distance
+
+def process_input_file(input_filename):
+    """Process the input file and return node list and dictionary."""
+    node_list = []
+    node_dict = {}
+    index = 1
+    
+    with open(input_filename, 'r') as edge_input:
+        edge_reader = csv.reader(edge_input)
+        for line in edge_reader:
+            elements = line[0].split()
+            Node1 = (float(elements[1]), float(elements[2]))
+            Node2 = (float(elements[4]), float(elements[5]))
+
+            for node in [Node1, Node2]:
+                if node not in node_list:
+                    node_list.append(node)
+                    node_dict[node] = index
+                    index += 1
+
+    return node_list, node_dict
+
+def write_node_file(node_list, output_filename):
+    """Write node information to a CSV file."""
+    with open(output_filename, 'w') as node_file:
+        node_writer = csv.writer(node_file)
+        for index, (x, y) in enumerate(node_list, start=1):
+            node_writer.writerow([index, x, y])
+
+def write_edge_file(node_dict, input_filename, output_filename):
+    """Write edge information to a CSV file."""
+    with open(input_filename, 'r') as edge_input, \
+         open(output_filename, 'w') as edge_file:
+        
+        edge_reader = csv.reader(edge_input)
+        edge_writer = csv.writer(edge_file)
+
+        for line in edge_reader:
+            elements = line[0].split()
+            Node1 = (float(elements[1]), float(elements[2]))
+            Node2 = (float(elements[4]), float(elements[5]))
+
+            edge_writer.writerow([node_dict[Node1], node_dict[Node2], int(elements[8]), calculate_distance(Node1, Node2)])
+            edge_writer.writerow([node_dict[Node2], node_dict[Node1], int(elements[8]), calculate_distance(Node1, Node2)])
+
+# Process input file
+node_list, node_dict = process_input_file("q_result.csv")
+
+# Write node and edge files
+write_node_file(node_list, "bnk_node.csv")
+write_edge_file(node_dict, "q_result.csv", "bnk_edge.csv")

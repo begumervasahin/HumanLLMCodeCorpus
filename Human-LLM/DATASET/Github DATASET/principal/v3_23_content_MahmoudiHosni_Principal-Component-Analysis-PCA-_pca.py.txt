@@ -1,0 +1,58 @@
+from sklearn import svm
+from sklearn import decomposition
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from PIL import Image
+import os
+
+# Function to load images and preprocess data
+def load_data(directory):
+    data = []
+    labels = []
+    
+    # Iterate through files in the directory
+    for filename in os.listdir(directory):
+        # Exclude files with '.pgm' extension
+        if '.pgm' not in filename:
+            # Open image file
+            with Image.open(os.path.join(directory, filename)) as image:
+                # Convert image data into a list
+                image_data = list(image.getdata())
+                # Transpose the data and append to the list
+                transposed_data = np.transpose(image_data)
+                data.append(transposed_data)
+                # Generate labels based on the directory structure
+                label = int(filename.split('_')[0]) - 1  # Assuming filenames are in format 'label_number.pgm'
+                labels.append(label)
+    
+    return data, labels
+
+def main():
+    # Define the directory containing image files
+    data_directory = "/home/hosni/Downloads/faces/"
+
+    # Load data and labels
+    data, labels = load_data(data_directory)
+
+    # Perform PCA decomposition
+    pca = decomposition.PCA(n_components=165)
+    transformed_data = pca.fit_transform(data)
+
+    # Split data into train and test sets
+    x_train, x_test, y_train, y_test = train_test_split(transformed_data, labels, test_size=0.33)
+
+    # Initialize SVM classifier
+    svm_classifier = svm.SVC(kernel='linear', C=1, decision_function_shape='ovr')
+
+    # Train the classifier
+    svm_classifier.fit(x_train, y_train)
+
+    # Make predictions
+    predictions = svm_classifier.predict(x_test)
+
+    # Calculate accuracy
+    accuracy = accuracy_score(y_test, predictions)
+    print("Accuracy:", accuracy)
+
+if __name__ == "__main__":
+    main()

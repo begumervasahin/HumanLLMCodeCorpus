@@ -1,0 +1,45 @@
+import rsa
+import gmpy2
+
+class RSA:
+    def __init__(self):
+        pass
+
+    def generate_prime(self, bits):
+        return rsa.prime.getprime(bits)
+
+    def calculate_e(self, phi):
+        return phi - 1
+
+    def generate_keys(self, bits):
+        p = self.generate_prime(bits)
+        q = self.generate_prime(bits)
+        n = p * q
+        phi = (p - 1) * (q - 1)
+        e = self.calculate_e(phi)
+        d = int(gmpy2.invert(e, phi).digits())
+        return d, (n, e)
+
+    def encrypt(self, e, n, message):
+        message_bytes = message.encode('utf-8')
+        message_int = int.from_bytes(message_bytes, byteorder='little')
+        encrypted_message = pow(message_int, e, n)
+        return encrypted_message
+
+    def decrypt(self, d, n, encrypted_message):
+        decrypted_message_int = pow(encrypted_message, d, n)
+        decrypted_message_bytes = decrypted_message_int.to_bytes((decrypted_message_int.bit_length() + 7) // 8, byteorder='little')
+        decrypted_message = decrypted_message_bytes.decode('utf-8')
+        return decrypted_message
+
+if __name__ == "__main__":
+    bits = int(input('Enter the number of bits in the keys: '))
+    rsa_instance = RSA()
+    d, (n, e) = rsa_instance.generate_keys(bits)
+    
+    message = input('Write your message here: ')
+    encrypted_message = rsa_instance.encrypt(e, n, message)
+    print('Encrypted message:', encrypted_message)
+    
+    decrypted_message = rsa_instance.decrypt(d, n, encrypted_message)
+    print('The decrypted message is:', decrypted_message)

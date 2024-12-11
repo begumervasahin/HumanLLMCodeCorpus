@@ -1,0 +1,50 @@
+# Open the file containing estimated data
+with open("results/estimated_datafile.js") as file:
+    lines = file.readlines()
+    # Extract values for g and b from the last two lines
+    g = float(lines[-2].strip().split("=")[1])
+    b = float(lines[-1].strip().split("=")[1])
+
+# Define functions for estimating real, fastest, and slowest times
+def estimate_real(x):
+    return b * (g ** x)
+
+def estimate_fastest(x):
+    return (210 * (x ** 2) + 1060 * x - 1410) * (10 ** -9)
+
+def estimate_slowest(x):
+    return (2650 * (x ** 3) + 1060 * x - 1410) * (10 ** -9)
+
+# Create dictionaries to store all times for real, fastest, and slowest scenarios
+all_times_real = {}
+all_times_slowest = {}
+all_times_fastest = {}
+
+# Set the highest value for x
+highest = 2048
+
+# Calculate times for different values of x
+for x in range(4, highest + 4, 4):
+    all_times_real[x] = estimate_real(x)
+    all_times_slowest[x] = estimate_slowest(x)
+    all_times_fastest[x] = estimate_fastest(x)
+
+# Write the calculated data to a new file for quantum data
+with open("results/quantum_datafile.js", "w") as file:
+    # Write estimated extended data
+    file.write("estimated_extended_data=[\n")
+    for x in range(4, highest + 4, 4):
+        file.write('{"bits": ' + str(x) + ', "time": ' + str(all_times_real[x]) + '},\n')
+    file.write("];\n")
+
+    # Write fastest data
+    file.write("fastest_data=[\n")
+    for x in range(4, highest + 4, 4):
+        file.write('{"bits": ' + str(x) + ', "time": ' + str(all_times_fastest[x]) + '},\n')
+    file.write("];\n")
+
+    # Write slowest data
+    file.write("slowest_data=[\n")
+    for x in range(4, highest + 4, 4):
+        file.write('{"bits": ' + str(x) + ', "time": ' + str(all_times_slowest[x]) + '},\n')
+    file.write("];\n")

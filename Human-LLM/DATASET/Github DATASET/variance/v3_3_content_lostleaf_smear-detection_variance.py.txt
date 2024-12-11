@@ -1,0 +1,50 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import glob
+import sys
+import os
+
+def calculate_variance(file_paths):
+    # Read the first image to initialize variables
+    first_image = cv2.imread(file_paths[0], cv2.IMREAD_GRAYSCALE)
+    img_sum = np.zeros_like(first_image, dtype=np.float64)
+    img_sqr_sum = np.zeros_like(first_image, dtype=np.float64)
+    
+    # Iterate over all image files
+    for file_path in file_paths:
+        # Read the image and convert it to float64 for accurate calculations
+        image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE).astype(np.float64)        
+        img_sum += image  # Accumulate pixel values
+        img_sqr_sum += image ** 2  # Accumulate squared pixel values
+    
+    # Calculate the mean and variance
+    num_images = len(file_paths)
+    mean = img_sum / num_images
+    variance = img_sqr_sum / num_images - (mean ** 2)
+    
+    return variance
+
+def main(argv):
+    # Check if the correct number of arguments is provided
+    if len(argv) != 2:
+        print("Usage: python %s [folder of images]" % argv[0])
+        sys.exit(1)
+    
+    # Get the path to the folder containing images
+    folder_path = argv[1]
+    
+    # Calculate the variance of images in the specified folder
+    variance = calculate_variance(glob.glob(os.path.join(folder_path, "*.jpg")))
+    
+    # Display the variance image
+    plt.imshow(variance, cmap='gray')
+    plt.colorbar()
+    plt.show()
+    
+    # Save the variance matrix as a NumPy array
+    folder_name = os.path.basename(folder_path.rstrip('/'))  # Get folder name without trailing slash
+    np.save(f"{folder_name}_variance.npy", variance)
+
+if __name__ == '__main__':
+    main(sys.argv)

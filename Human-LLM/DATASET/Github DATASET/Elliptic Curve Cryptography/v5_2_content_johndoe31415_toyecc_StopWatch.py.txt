@@ -1,0 +1,71 @@
+import time
+
+class StopWatch:
+    def __init__(self, component=None, noisy=False):
+        """Initialize the stopwatch with an optional component name and noise flag."""
+        self.component = component
+        self.noisy = noisy
+        self.reset()
+
+    @property
+    def finish_time(self):
+        """Property to get the finish time."""
+        return self._finish_time
+
+    def stop(self):
+        """Stop the stopwatch and calculate the elapsed time."""
+        self._finish_time = time.time() - self._start_time
+        return self.finish_time
+
+    def finish(self):
+        """Stop the stopwatch and print the elapsed time if noisy flag is set."""
+        self._finish_time = self.stop()
+        if self.noisy:
+            print(f"{self.component} took {self}")
+
+    def reset(self):
+        """Reset the stopwatch."""
+        self._finish_time = None
+        self._start_time = time.time()
+
+    def __str__(self):
+        """Format the elapsed time for human-readable output."""
+        elapsed_time = self.stop()
+        if elapsed_time < 1:
+            return f"{round(1000 * elapsed_time)} ms"
+        elif elapsed_time < 10:
+            return f"{elapsed_time:.1f} sec"
+        else:
+            elapsed_seconds = round(elapsed_time)
+            if elapsed_seconds < 60:
+                return f"{elapsed_seconds} sec"
+            elif elapsed_seconds < 3600:
+                return f"{elapsed_seconds // 60}:{elapsed_seconds % 60:02d} m:s"
+            elif elapsed_seconds < 86400:
+                return f"{elapsed_seconds // 3600}:{(elapsed_seconds % 3600) // 60:02d}:{elapsed_seconds % 60:02d} h:m:s"
+            else:
+                days = elapsed_seconds // 86400
+                elapsed_seconds %= 86400
+                hours = elapsed_seconds // 3600
+                elapsed_seconds %= 3600
+                minutes = elapsed_seconds // 60
+                seconds = elapsed_seconds % 60
+                return f"{days}-{hours}:{minutes:02d}:{seconds:02d} d-h:m:s"
+
+    def __enter__(self):
+        """Context manager entry point, reset the stopwatch."""
+        self.reset()
+
+    def __exit__(self, type, value, traceback):
+        """Context manager exit point, finish the stopwatch."""
+        self.finish()
+
+if __name__ == "__main__":
+    # Example usage
+    x = StopWatch("foobar", True)
+    time.sleep(0.1)
+    x.finish()
+    print("Finish time:", x.finish_time)
+
+    with StopWatch("foobar2", True):
+        time.sleep(0.1)

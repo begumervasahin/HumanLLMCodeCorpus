@@ -1,0 +1,44 @@
+def hex_to_str(hex_str):
+    """Convert a hexadecimal string to ASCII."""
+    return ''.join(chr(int(hex_str[i:i+2], 16)) for i in range(0, len(hex_str), 2))
+
+def str_xor(a, b):
+    """Perform XOR operation between two strings."""
+    return ''.join(chr(ord(x) ^ ord(y)) for x, y in zip(a, b))
+
+def decrypt_messages(cipher_texts, challenge_cipher_text):
+    """Decrypt the cipher texts using XOR with the challenge cipher text."""
+    challenge_msg = 'Hackers should be judged by their acting, not bogus criteria.'
+    xor_key = str_xor(challenge_cipher_text, challenge_msg)
+    for cipher_text in cipher_texts:
+        print(str_xor(cipher_text, xor_key))
+    print(challenge_msg)
+
+if __name__ == '__main__':
+    cipher_texts = []
+    with open('msg', 'r') as f:
+        for line in f:
+            cipher_texts.append(''.join(line.split()))
+
+    with open('msg_challenge', 'r') as f:
+        challenge_cipher_text = ''.join(f.read().split())
+
+    str_cipher_texts = [hex_to_str(text) for text in cipher_texts]
+    str_challenge_cipher_text = hex_to_str(challenge_cipher_text)
+
+    results = []
+    for i in range(len(str_challenge_cipher_text)):
+        chars = []
+        for j in range(len(str_cipher_texts)):
+            if i < len(str_cipher_texts[j]):
+                char = chr(ord(str_cipher_texts[j][i]) ^ ord(str_challenge_cipher_text[i]))
+                if 'A' <= char <= 'z':
+                    new_char = chr(ord(char) ^ ord(' '))
+                    if new_char not in chars:
+                        chars.append(new_char)
+        results.append(chars)
+
+    for chg_char in results:
+        print(chg_char)
+
+    decrypt_messages(str_cipher_texts, str_challenge_cipher_text)

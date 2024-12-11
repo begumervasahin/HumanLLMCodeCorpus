@@ -1,0 +1,80 @@
+import pymysql
+import re
+
+# Function to establish a connection to the MySQL database
+def connect_to_database():
+    return pymysql.connect(host='localhost', user='I339493', password='test123', db='ml_features_en')
+
+# Function to execute a query and fetch data from the database
+def fetch_data_from_db(query):
+    try:
+        conn = connect_to_database()
+        with conn.cursor() as cursor:
+            cursor.execute(query)
+            result = cursor.fetchall()
+        return result
+    finally:
+        conn.close()
+
+# Function to clean and split a sentence into words
+def clean_and_split_sentence(sentence):
+    # Convert the sentence to lowercase
+    sentence = sentence.lower()
+    # Define a regular expression pattern to remove punctuation
+    punctuation = r'[,\，。.!?:"@]'
+    # Remove punctuation from the sentence
+    sentence = re.sub(punctuation, '', sentence)
+    # Split the sentence into words and return as a list
+    return sentence.split()
+
+# Function to calculate word frequency from a list of sentences
+def calculate_word_frequency(sents_list):
+    # Initialize an empty dictionary to store word frequencies
+    word_freq = {}
+    # Iterate over each sentence in the list
+    for sentence in sents_list:
+        # Remove a specific phrase if present in the sentence
+        if "(Read more about how we rate cars.)" in sentence:
+            sentence = sentence.replace("(Read more about how we rate cars.)", "")
+        # Split the cleaned sentence into words
+        for word in clean_and_split_sentence(sentence):
+            # Update word frequency count in the dictionary
+            if word not in word_freq:
+                word_freq[word] = 0
+            word_freq[word] += 1
+    return word_freq
+
+# Function to write word frequencies to a file
+def write_word_frequencies_to_file(word_freq, filepath):
+    # Sort the word frequencies in descending order
+    word_freq_sort = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+    # Write the sorted word frequencies to the specified file
+    with open(filepath, 'w', encoding='utf-8') as f:
+        for index, (key, value) in enumerate(word_freq_sort, 1):
+            f.write(f"{index} : {key} : {value}\n")
+
+# Function to handle English word frequency calculation
+def en_freq():
+    # SQL query to fetch English data from the database
+    sql = "SELECT data FROM RAW_DATA"
+    # Fetch data from the database
+    result = fetch_data_from_db(sql)
+    # Extract sentences from the fetched data
+    sents_list = [row[0] for row in result]
+    # Calculate word frequency from the extracted sentences
+    word_freq = calculate_word_frequency(sents_list)
+    # Write word frequencies to a file
+    write_word_frequencies_to_file(word_freq, './word_freq_en_v2.txt')
+
+# Function as a placeholder for Chinese word frequency functionality
+def cn_freq_placeholder():
+    # Placeholder for the Chinese frequency functionality
+    pass
+
+# Main entry point of the script
+if __name__ == '__main__':
+    # Call the function to calculate English word frequencies
+    en_freq()
+    # Assuming the wordfreqcount and get_words are available and implement as required
+    # Call the function for Chinese frequency functionality
+    # cn_freq_placeholder()

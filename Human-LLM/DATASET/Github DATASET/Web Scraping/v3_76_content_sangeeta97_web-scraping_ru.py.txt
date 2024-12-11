@@ -1,0 +1,79 @@
+import pandas as pd
+import numpy as np
+from multiprocessing.dummy import Pool as ThreadPool
+import multiprocessing as mp
+from requests.exceptions import RequestException
+import requests
+from bs4 import BeautifulSoup
+from time import sleep
+
+# Configure requests to ignore verifying the SSL certificate
+requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
+
+# Load URLs from an Excel file
+df_urls = pd.read_excel('eunew1.xlsx')
+
+def fetch_and_parse_url(url):
+    """
+    Fetches the content from the URL and parses specific data using BeautifulSoup.
+    Retries fetching up to three times in case of ConnectionErrors.
+
+    Args:
+        url (str): The URL to fetch and parse.
+
+    Returns:
+        list: A list of parsed text from HTML <td> elements with class "third".
+    """
+    attempts = 3
+    timeout = 2  # seconds to wait before retrying
+
+    for attempt in range(attempts):
+        try:
+            response = requests.get(url, verify=False)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            break
+        except RequestException:
+            if attempt < attempts - 1:
+                sleep(timeout)
+            else:
+                raise
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    parsed_data = [td.text.strip().splitlines() for td in soup.find_all("td", class_="third", limit=8)]
+    return parsed_data
+
+def parallel_process(urls, function, num_threads):
+    """
+    Executes a function in parallel using multiple threads.
+
+    Args:
+        urls (list): A list of URLs to process.
+        function (function): The function to execute in parallel.
+        num_threads (int): The number of threads to use.
+
+    Returns:
+        list: The results from applying the function to each URL.
+    """
+    with ThreadPool(num_threads) as pool:
+        results = pool.map(function, urls)
+    return results
+
+if __name__ == "__main__":
+    # Determine the number of threads based on the number of CPUs
+    num_threads = mp.cpu_count()
+
+    # Extract URLs from the DataFrame
+    url_list = df_urls['url'].tolist()
+
+    # Scrape data from URLs in parallel
+    scraped_data = parallel_process(url_list, fetch_and_parse_url, num_threads)
+
+    # Create a DataFrame from the scraped data
+    df_scraped = pd.DataFrame(np.array(scraped_data), columns=['data'])
+
+    # Merge the original DataFrame with the scraped data
+    df_final = pd.concat([df_urls, df_scraped], axis=1)
+
+    # Save the final DataFrame to an Excel file
+    df_final.to_excel('results_oct.xlsx', index=False)

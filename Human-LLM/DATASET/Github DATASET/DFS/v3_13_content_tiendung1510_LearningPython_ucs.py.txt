@@ -1,0 +1,44 @@
+import queue
+from mymap import myMap
+from modules import showResultWithAttr, showStep
+
+def uniform_cost_search(start, goal):
+    # Initialize priority queue with starting city
+    priority_queue = queue.PriorityQueue()
+    priority_queue.put((0, start))
+
+    # Initialize dictionary to store previous city and total cost
+    previous = {city: {'from': None, 'total_cost': float('inf')} for city in myMap.keys()}
+    previous[start] = {'from': None, 'total_cost': 0}
+
+    counter = 0
+
+    # Main loop for Uniform Cost Search
+    while not priority_queue.empty():
+        counter += 1
+        showStep(counter, priority_queue.queue, previous)
+
+        # Get the city with the lowest total cost from the priority queue
+        cur_cost, cur_city = priority_queue.get()
+
+        # If the current city is not the goal city, explore its neighbors
+        if cur_city != goal:
+            for next_city, attrs in myMap[cur_city].items():
+                total_cost = cur_cost + attrs['cost']
+                # Update total cost and previous city if the new path is cheaper
+                if total_cost < previous[next_city]['total_cost']:
+                    previous[next_city]['from'] = cur_city
+                    previous[next_city]['total_cost'] = total_cost
+                    priority_queue.put((total_cost, next_city))
+        else:
+            # Goal city reached, show the result
+            showResultWithAttr(previous, start, goal)
+            return True
+
+    # Goal city not reachable
+    return False
+
+# Example usage:
+start_city = 'A'
+goal_city = 'B'
+uniform_cost_search(start_city, goal_city)

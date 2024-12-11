@@ -1,0 +1,100 @@
+import random
+
+class Node:
+    def __init__(self, data):
+        """Initialize a node with data."""
+        self.data = data
+        self.left = None
+        self.right = None
+        self.priority = random.random()
+
+    def __str__(self):
+        """Return a string representation of the node's data."""
+        return str(self.data)
+
+class TreapSet:
+    def __init__(self):
+        """Initialize an empty TreapSet."""
+        self.root = None
+        self.count = 0
+
+    def left_rotate(self, node):
+        """Rotate the subtree to the left."""
+        new_parent = node.right
+        tmp = new_parent.left
+        new_parent.left = node
+        new_parent.left.right = tmp
+        return new_parent
+
+    def right_rotate(self, node):
+        """Rotate the subtree to the right."""
+        new_parent = node.left
+        tmp = new_parent.right
+        new_parent.right = node
+        new_parent.right.left = tmp
+        return new_parent
+
+    def add(self, e):
+        """Insert an element into the tree."""
+        self.count += 1
+        if self.root is None:
+            self.root = Node(e)
+        else:
+            self.root = self._add(e, self.root)
+
+    def _add(self, e, ref_node):
+        """Add an element recursively to the subtree rooted at ref_node."""
+        if ref_node is None:
+            return Node(e)
+        elif e < ref_node.data:
+            ref_node.left = self._add(e, ref_node.left)
+            if ref_node.left.priority > ref_node.priority:
+                return self.right_rotate(ref_node)
+        else:
+            ref_node.right = self._add(e, ref_node.right)
+            if ref_node.right.priority > ref_node.priority:
+                return self.left_rotate(ref_node)
+        return ref_node
+
+    def __contains__(self, element):
+        """Check if the element is in the tree."""
+        return self._contains(self.root, element)
+
+    def _contains(self, ref_node, element):
+        """Check if the element is in the subtree rooted at ref_node."""
+        if ref_node is None:
+            return False
+        elif ref_node.data == element:
+            return True
+        if element < ref_node.data:
+            return self._contains(ref_node.left, element)
+        elif element > ref_node.data:
+            return self._contains(ref_node.right, element)
+        else:
+            return False
+
+    def height(self):
+        """Get the height of the tree."""
+        return self._height(self.root)
+
+    def _height(self, node):
+        """Get the height of the subtree rooted at node."""
+        if node is None:
+            return 0
+        else:
+            return 1 + max(self._height(node.left), self._height(node.right))
+
+    def __len__(self):
+        """Get the number of items in the tree."""
+        return self.count
+
+# Example usage:
+if __name__ == "__main__":
+    treap_set = TreapSet()
+    treap_set.add(5)
+    treap_set.add(3)
+    treap_set.add(7)
+    print("Contains 3:", 3 in treap_set)
+    print("Contains 6:", 6 in treap_set)
+    print("Height of tree:", treap_set.height())
+    print("Number of items:", len(treap_set))

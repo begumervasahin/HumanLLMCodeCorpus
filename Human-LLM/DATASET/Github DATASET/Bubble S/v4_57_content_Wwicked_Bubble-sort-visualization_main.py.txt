@@ -1,0 +1,187 @@
+import pygame
+import random
+import time
+
+class Configuration:
+    def __init__(self):
+        self.window_size = (1280, 720)
+        self.window_title = "Bubble sort visualization"
+        self.array_items = 25
+        self.array_range = (0, 50)
+        self.fps = 20
+        self.minimum_height = 0
+        self.maximum_height = self.window_size[1] - round(self.window_size[1] / 10)
+        self.offset_x = 5
+        self.offset_y = 5
+        self.offset_y_top = 0
+        self.close_after_sort = False
+        self.font_render = True
+        if self.font_render:
+            self.render_iterations_only = False
+            self.font_vertical = False
+            self.font_type = "Arial"
+            self.font_bold = True
+            self.font_size = 14
+            self.font = None
+            self.offset_y_top = round(self.font_size * 3)
+        self.colors = {
+            "background": (140, 140, 140),
+            "neutral_line": (220, 220, 220),
+            "higher_line": (20, 200, 20),
+            "background_iterations": (40, 40, 40),
+            "numbers": (160, 0, 0),
+            "highlight_numbers": (20, 200, 20),
+            "error_message": (200, 0, 0)
+        }
+
+class Visualization:
+    def __init__(self, config):
+        self.config = config
+        self.array = []
+        self.array_index = 0
+        self.array_length = 0
+        self.array_sorted = False
+        self.sort_count = 0
+        self.highlight = 0
+        self.iterations = 0
+        self.start_time = 0
+        self.end_time = 0
+        self.create_array()
+        self.setup()
+        self.loop()
+
+    def setup(self):
+        pygame.init()
+        self.window = pygame.display.set_mode(self.config.window_size)
+        pygame.display.set_caption(self.config.window_title)
+        self.clock = pygame.time.Clock()
+        self.setup_font()
+
+    def setup_font(self):
+        if not self.config.font_render:
+            return
+        self.config.font = pygame.font.SysFont(self.config.font_type, self.config.font_size)
+        self.config.font.set_bold(self.config.font_bold)
+
+    def create_array(self):
+        self.array = [random.randint(self.config.array_range[0], self.config.array_range[1]) for _ in range(self.config.array_items)]
+        self.array_length = len(self.array)
+
+    def get_line_width(self):
+        return round((self.config.window_size[0] / self.array_length) / 2)
+
+    def get_line_x(self, line_index, width):
+        return round((self.config.window_size[0] / self.array_length) * line_index) + self.config.offset_x + round(width / 2)
+
+    def get_line_y(self):
+        return self.config.window_size[1] - self.config.offset_y
+
+    def get_line_color(self, line_index):
+        if line_index == self.highlight:
+            return self.config.colors["higher_line"]
+        return self.config.colors["neutral_line"]
+
+    def get_line_end_y(self, line_index):
+        if self.array[line_index]:
+            return self.config.maximum_height - (self.config.maximum_height * (self.array[line_index] / self.config.array_range[1])) + self.config.offset_y_top
+        else:
+            return self.config.window_size[1] - self.config.minimum_height - self.config.offset_y_top
+
+    def draw_background(self):
+        self.window.fill(self.config.colors["background"])
+
+    def draw_iterations(self):
+        text = self.config.font.render(f"Iterations: {self.iterations}", True, self.config.colors["background_iterations"])
+        self.draw_text(text, round(self.config.window_size[0] / 2) + self.config.offset_x - round(text.get_width() / 2), round(self.config.window_size[1] / 2))
+
+    def draw_horizontal_numbers(self, line_index, x):
+        text = self.config.font.render(str(self.array[line_index]), True, self.config.colors["highlight_numbers"] if self.highlight == line_index else self.config.colors["numbers"])
+        self.draw_text(text, x - round(text.get_width() / 2), text.get_height())
+
+    def draw_vertical_numbers(self, line_index, x):
+        plain_text = str(self.array[line_index])
+        for i, char in enumerate(plain_text):
+            temp_text = self.config.font.render(char, True, self.config.colors["numbers"])
+            self.window.blit(temp_text, (x, 0 + (text.get_height() * i)))
+
+    def draw_time_elapsed(self):
+        text = self.config.font.render("Time elapsed: %0.2f" % (self.array_sorted and self.end_time - self.start_time or time.time() - self.start_time), True, self.config.colors["background_iterations"])
+        self.draw_text(text, round(self.config.window_size[0] / 2) + self.config.offset_x - round(text.get_width() / 2), round(self.config.window_size[1] / 2) + text.get_height())
+
+    def draw_error(self, message):
+        text = self.config.font.render(f"ERROR: {message}", True, self.config.colors["error_message"])
+        self.draw_text(text, 0, 0)
+
+    def loop(self):
+        self.start_time = time.time()
+        while True:
+            self.clock.tick(self.config.fps)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.quit()
+            if not self.array_sorted:
+                if self.array_index == self.array_length - 1:
+                    self.array_index = 0
+                if self.sort_count > self.array_length:
+                    self.finish()
+                    if self.config.close_after_sort:
+                        break
+                self.sort()
+            self.draw()
+            pygame.display.update()
+
+    def draw(self):
+        self.draw_background()
+        for iterator in range(self.array_length):
+            width = self.get_line_width()
+            x = self.get_line_x(iterator, width)
+            y = self.get_line_y()
+            color = self.get_line_color(iterator)
+            end_y = self.get_line_end_y(iterator)
+            self.draw_line(x, y, end_y, width, color)
+            if not self.config.font_render:
+                continue
+            self.draw_iterations()
+            if not self.config.render_iterations_only:
+                if self.config.font_vertical:
+                    self.draw_vertical_numbers(iterator, x)
+                else:
+                    self.draw_horizontal_numbers(iterator, x)
+                self.draw_time_elapsed()
+
+    def draw_line(self, x, y, end_y, width, color):
+        pygame.draw.line(self.window, color, (x, y), (x, end_y), width)
+
+    def draw_text(self, text, x, y, vertical=False, plain_text=""):
+        if vertical:
+            for i, char in enumerate(plain_text):
+                temp_text = self.config.font.render(char, True, self.config.colors["numbers"])
+                self.window.blit(temp_text, (x, y + (text.get_height() * i)))
+        else:
+            self.window.blit(text, (x, y))
+
+    def sort(self):
+        if self.array_length <= 1:
+            self.draw_error(f"Invalid array length ({len(self.array)})")
+            self.quit()
+        self.highlight = self.array_index + 1
+        if self.array[self.array_index] > self.array[self.array_index + 1]:
+            self.array[self.array_index], self.array[self.array_index + 1] = self.array[self.array_index + 1], self.array[self.array_index]
+            self.sort_count = 0
+        else:
+            self.sort_count += 1
+        self.array_index += 1
+        self.iterations += 1
+
+    def quit(self):
+        pygame.quit()
+        quit()
+
+    def finish(self):
+        self.array_sorted = True
+        self.end_time = time.time()
+        print(f"Finished in {self.iterations + 1} iterations.\nTime elapsed: {int(self.end_time - self.start_time)}")
+
+if __name__ == "__main__":
+    config = Configuration()
+    visual = Visualization(config)

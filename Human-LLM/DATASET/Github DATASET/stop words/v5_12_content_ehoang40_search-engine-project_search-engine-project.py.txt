@@ -1,0 +1,100 @@
+import glob
+
+def all_lowercase(words_list):
+    """Convert all strings in a list to lowercase."""
+    return [word.lower() for word in words_list]
+
+def check_length(s_phrase):
+    """Check the length of a search phrase."""
+    return sum(len(element) for element in s_phrase)
+
+def get_files_in_directory():
+    """Get all .txt filenames in the current directory."""
+    file_names = glob.glob('./*.txt')
+    file_names = [file_name[2:] for file_name in file_names]
+    print(f"There are {len(file_names)} .txt files in this directory.")
+    return file_names
+
+def get_phrase(stop_list, punc_symbols):
+    """Prompt for and get a valid search query."""
+    while True:
+        search = input("Enter the phrase to search: ").split()
+        if any(char.isdigit() for word in search for char in word):
+            print("The query cannot contain stand-alone digits. Please try again.")
+            continue
+        search = remove_punctuation(search, punc_symbols)
+        search = remove_stopwords(search, stop_list)
+        if check_length(search) >= 1:
+            return search
+        print("The query must contain at least one alphabetic character. Please try again.")
+
+def get_stop_words():
+    """Get the list of stop words."""
+    with open("StopWords.csv", "r") as stop_file:
+        stop_list = [line.rstrip() for line in stop_file]
+    return all_lowercase(stop_list)
+
+def process_all_files(all_files, search_phrase, punctuation, stop_words):
+    """Search all .txt files in the current directory."""
+    for file_name in all_files:
+        with open(file_name, "r") as current_file:
+            process_file(file_name, current_file, search_phrase, punctuation, stop_words)
+
+def process_file(name_file, afile, search_phrase, punctuation, stop_words):
+    """Search a specific file for the search query."""
+    occurrences = 0
+    for line in afile:
+        words = line.split()
+        words = remove_punctuation(words, punctuation)
+        words = remove_stopwords(words, stop_words)
+        words = all_lowercase(words)
+        index = 0
+        for word in words:
+            if search_phrase[index] == word:
+                index += 1
+            if index == len(search_phrase):
+                occurrences += 1
+                index = 0
+    print(f"File {name_file} has {occurrences} occurrences of the phrase {search_phrase}")
+
+def process_some_files(all_files, search_phrase, punctuation, stop_words):
+    """Search a specified number of files."""
+    while True:
+        number_files = int(input("How many files do you want to search in? ")) 
+        if 0 <= number_files <= len(all_files):
+            break
+        print(f"The number of files must be between 0 and {len(all_files)}.")
+    for _ in range(number_files):
+        while True:
+            file_name = input("Enter the file name with extension: ")
+            if file_name.endswith(".txt") and file_name in all_files:
+                break
+            print("We can only search in existing .txt files.")
+        with open(file_name, "r") as current_file:
+            process_file(file_name, current_file, search_phrase, punctuation, stop_words)
+
+def remove_punctuation(for_cleaning, punc_list):
+    """Remove punctuation from a phrase."""
+    return [word.rstrip("".join(punc_list)) for word in for_cleaning]
+
+def remove_stopwords(to_clean, stop_words):
+    """Remove stop words from a phrase."""
+    return [word for word in to_clean if word not in stop_words]
+
+def main():
+    print(__doc__)
+    punctuation = [".", ",", ":", ";", "!", "?"]
+    stop_words = get_stop_words()
+    choice1 = "Yes"
+    while choice1 == "Yes":
+        search_phrase = get_phrase(stop_words, punctuation)
+        files = get_files_in_directory()
+        choice2 = input("Do you want to search all .txt files in the current folder? If so, type \"Yes\": ")
+        if choice2 == "Yes":
+            process_all_files(files, search_phrase, punctuation, stop_words)
+        else:
+            process_some_files(files, search_phrase, punctuation, stop_words)
+        choice1 = input("Do you want to search again? If so, type \"Yes\": ")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,129 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import warnings
+import itertools
+from statsmodels.tsa.seasonal import seasonal_decompose
+import statsmodels.api as sm
+from pyramid.arima import auto_arima
+from statsmodels.tsa.stattools import adfuller
+
+# Read the data
+data = pd.read_csv("AirPassengers.csv")
+data["Month"] = pd.to_datetime(data["Month"])
+data.set_index("Month", inplace=True)
+passenger_data = pd.Series(data["#Passengers"])
+
+# Function to perform stationary test
+def stationary_test(timeseries):
+    rolling_mean = timeseries.rolling(12).mean()
+    rolling_std = timeseries.rolling(12).std()
+
+    plt.plot(timeseries, color="blue", label="Original")
+    plt.plot(rolling_mean, color="red", label="Rolling Mean")
+    plt.plot(rolling_std, color="black", label="Rolling Std")
+    plt.legend(loc='best')
+    plt.title("Original, Rolling Mean, and Standard Deviation")
+    plt.show()
+
+    print("Results of Dickey-Fuller Test:")
+    DF_test = adfuller(timeseries, autolag='AIC')
+    results = pd.Series(DF_test[0:4], index=['Test Statistic', 'P-value', '#Lags Used', 'Number of Observations Used'])
+    for key, value in DF_test[4].items():
+        results['Critical Value (%s)' % key] = value
+    print(results)
+
+    if DF_test[1] < 0.05:
+        print("We reject the null hypothesis.")
+        print("Data is stationary.")
+    else:
+        print("We fail to reject the null hypothesis.")
+        print("Data is non-stationary.")
+
+# Perform stationary tests
+stationary_test(passenger_data)
+
+# Log transformation
+passenger_data_log = np.log(passenger_data)
+
+# Perform stationary tests on log transformed data
+stationary_test(passenger_data_log)
+
+# Differencing
+passenger_data_diff = passenger_data_log - passenger_data_log.shift()
+passenger_data_diff.dropna(inplace=True)
+
+# Perform stationary tests on differenced data
+stationary_test(passenger_data_diff)
+
+# Seasonal decomposition
+decomposition = seasonal_decompose(passenger_data_log)
+decomposition.plot()
+plt.show()
+
+# Auto ARIMA
+auto_arima_model = auto_arima(passenger_data, start_p=2, d=1, start_q=2, max_p=5, max_d=5, max_q=5, start_P=0,
+                              D=1, start_Q=1, max_P=5, max_D=5, max_Q=5, seasonal=True, stationary=False, m=12,
+                              trace=True, suppress_warnings=True, stepwise=True, information_criterion="aic",
+                              error_action="ignore")
+
+auto_arima_model.summary()
+
+# Split data into train and test sets
+train_data = passenger_data.loc["1949-01-01":"1958-12-31"]
+test_data = passenger_data.loc["1959-01-01":]
+
+# Fit the model
+auto_arima_model.fit(train_data)
+
+# Make predictions
+predictions = auto_arima_model.predict(n_periods=24)
+
+# Calculate Mean Squared Error
+mse = ((predictions - test_data) ** 2).mean()
+print('The Mean Squared Error of our forecasts is {}'.format(round(mse, 2)))
+
+# Plot predictions
+predictions = pd.DataFrame(predictions, index=test_data.index, columns=["Predictions"])
+pd.concat([test_data, predictions], axis=1).plot()
+plt.show()
+
+# SARIMAX Parameter Selection
+p = d = q = range(0, 3)
+Non_seasonal_pdq = list(itertools.product(p, d, q))
+Seasonal_PDQ = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
+warnings.filterwarnings("ignore")
+
+best_result = [0, 0, 10000000]
+for param in Non_seasonal_pdq:
+    for param_seasonal in Seasonal_PDQ:
+        try:
+            sarimax_model = sm.tsa.statespace.SARIMAX(passenger_data, order=param, seasonal_order=param_seasonal,
+                                                      enforce_stationarity=False, enforce_invertibility=False)
+            sarimax_results = sarimax_model.fit()
+            print('ARIMA{} x {} - AIC: {}'.format(param, param_seasonal, sarimax_results.aic))
+            if sarimax_results.aic < best_result[2]:
+                best_result = [param, param_seasonal, sarimax_results.aic]
+        except:
+            continue
+
+print('\nBest Result:', best_result)
+
+# Fit the model with best parameters
+best_sarimax_model = sm.tsa.statespace.SARIMAX(passenger_data, order=(best_result[0][0], best_result[0][1], best_result[0][2]),
+                                                seasonal_order=(best_result[1][0], best_result[1][1], best_result[1][2],
+                                                                best_result[1][3]), enforce_stationarity=False,
+                                                enforce_invertibility=False)
+best_sarimax_results = best_sarimax_model.fit()
+
+# Make predictions
+best_predictions = best_sarimax_results.predict(start=test_data.index[0], end=test_data.index[-1], dynamic=True)
+
+# Calculate Mean Squared Error
+mse = ((best_predictions - test_data) ** 2).mean()
+print('The Mean Squared Error of our forecasts is {}'.format(round(mse, 2)))
+
+# Plot predictions
+best_predictions = pd.DataFrame(best_predictions, index=test_data.index, columns=["Predictions"])
+pd.concat([test_data, best_predictions], axis=1).plot()
+plt.show()

@@ -1,0 +1,98 @@
+import urllib.request
+from bs4 import BeautifulSoup
+import ssl
+from wordcloud import WordCloud
+import threading
+from time import time
+
+# Suppress SSL certificate verification warnings
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+# Define the URL to scrape data from
+url = 'https://www.cia.gov/library/publications/the-world-factbook/'
+
+def fetch_webpage(url):
+    print("Opening the file connection...")
+    try:
+        with urllib.request.urlopen(url, context=ssl_context) as response:
+            html = response.read().decode()
+            print(f"Reading done. Total {len(html)} characters read.")
+            return html
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def extract_country_info(html):
+    country_codes = []
+    country_names = []
+
+    soup = BeautifulSoup(html, 'html.parser')
+    for tag in soup.find_all('option'):
+        country_codes.append(tag.get('value')[5:7])
+        country_names.append(tag.text)
+
+    # Remove the first element which is not needed
+    country_codes.pop(0)
+    country_names.pop(0)
+
+    return country_codes, country_names
+
+def scrape_country_data(country_codes, country_names, urlbase):
+    productos_Agricolas = ""
+    productos_Industriales = ""
+    listAgricola = []
+    lisIndustrial = []
+
+    for i in range(1, len(country_names) // 2):
+        try:
+            country_html = country_codes[i] + '.html'
+            url_to_get = urlbase + country_html
+            html = fetch_webpage(url_to_get)
+            if html:
+                soup = BeautifulSoup(html, 'html.parser')
+
+                # Extract agriculture products
+                for j in soup.find_all('div', id="field-agriculture-products"):
+                    for tag in j:
+                        for pro in tag:
+                            productos_Agricolas += pro
+                            listAgricola.append(pro)
+
+                # Extract industrial products
+                for m in soup.find_all('div', id="field-industries"):
+                    for tag in m:
+                        for ind in tag:
+                            productos_Industriales += ind
+                            lisIndustrial.append(ind)
+        except Exception as e:
+            print(f"Error: {e}")
+
+    return productos_Agricolas, productos_Industriales, listAgricola, lisIndustrial
+
+def main():
+    # Fetch webpage
+    html = fetch_webpage(url)
+    if not html:
+        return
+
+    # Extract country information
+    country_codes, country_names = extract_country_info(html)
+    urlbase = 'https://www.cia.gov/library/publications/the-world-factbook/geos/'
+
+    # Scrape data from country-specific pages
+    productos_Agricolas, productos_Industriales, listAgricola, lisIndustrial = scrape_country_data(country_codes, country_names, urlbase)
+
+    # Generate word clouds
+    A = " ".join(listAgricola)
+    I = " ".join(lisIndustrial)
+    agricultural_wordcloud = WordCloud(width=800, height=800, background_color='white', min_font_size=10).generate(productos_Agricolas + A)
+    industrial_wordcloud = WordCloud(width=800, height=800, background_color='white', min_font_size=10).generate(productos_Industriales + I)
+
+    # Save word clouds to files
+    agricultural_wordcloud.to_file('primerparaleloagricola.png')
+    industrial_wordcloud.to_file('primerparaleloindustrial.png')
+
+if __name__ == "__main__":
+    main()

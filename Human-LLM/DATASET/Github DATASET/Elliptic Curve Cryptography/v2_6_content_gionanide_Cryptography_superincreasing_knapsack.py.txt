@@ -1,0 +1,119 @@
+from random import randint
+
+# Constants
+char_per_block = 2
+N = 8 * char_per_block
+mmi = 87177
+SIK = [1, 4, 6, 12, 25, 50, 103, 205, 409, 820, 1639, 3276, 6554, 13106, 26212, 52425]
+GK = [89, 356, 534, 1068, 2225, 4450, 9167, 18245, 36401, 72980, 41023, 81868, 59066, 13106, 26212, 52513]
+
+# Function to find the greatest common divisor of two numbers
+def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+# Function to check if two numbers are coprime
+def coprime(a, b):
+    return gcd(a, b) == 1
+
+# Function to choose random values for m and n
+def choose_m_n():
+    sum_i = sum(SIK)
+    m = randint(41, 100)
+    n = 0
+    while n < sum_i:
+        if coprime(m, sum_i + 1):
+            n = sum_i + 1
+    return m, n
+
+# Function to build the general knapsack
+def build_general_knapsack(m, n, SIK):
+    GK = []
+    for ai in SIK:
+        GK.append((ai * m) % n)
+    return GK
+
+# Function to find the modulo multiplicative inverse
+def modulo_multiplicative_inverse(A, M):
+    gcd, x, y = extended_euclid_gcd(A, M)
+    if x < 0:
+        x += M
+    return x
+
+# Function to find the extended Euclidean GCD
+def extended_euclid_gcd(a, b):
+    s = 0; old_s = 1
+    t = 1; old_t = 0
+    r = b; old_r = a
+    while r != 0:
+        quotient = old_r / r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    return [old_r, old_s, old_t]
+
+# Function to convert character to ASCII binary
+def str2ascii(x):
+    x = ord(x)
+    binary = "{0:b}".format(x)
+    if len(binary) <= 7:
+        binary = '0' * (8 - len(binary)) + binary
+    return binary
+
+# Function to encrypt a single character
+def encrypt_N_char(chars):
+    bin_chars = ""
+    for i in range(len(chars)):
+        bin_chars = str2ascii(chars[i])[::-1] + bin_chars
+    return sum([int(x) * y for x, y in zip(list(bin_chars), GK)])
+
+# Function to decrypt a single character
+def decrypt_N_char(number):
+    res = ""
+    d = (number * mmi) % n
+    for sik_i in SIK[::-1]:
+        if d >= sik_i:
+            res = "1" + res
+            d -= sik_i
+        else:
+            res = "0" + res
+    res = res[::-1]
+    char1, char2 = chr(bit2Str(res[:8])), chr(bit2Str(res[8:]))
+    return char1 + char2
+
+# Function to convert binary to integer
+def bit2Str(bitstring):
+    out = 0
+    for bit in list(bitstring):
+        out = (out << 1) | int(bit)
+    return out
+
+# Function to encrypt multiple characters
+def encrypt_mh(message):
+    msg = []
+    encrypted = []
+    if len(message) % char_per_block != 0:
+        message += " " * (char_per_block - len(message) % char_per_block)
+    for i in range(0, len(message), char_per_block):
+        msg.append(message[i:i + char_per_block])
+    for chars in msg:
+        encrypted.append(encrypt_N_char(chars))
+    return encrypted
+
+# Function to decrypt multiple characters
+def decrypt_mh(crypto_list):
+    plaintext = ""
+    for num in crypto_list:
+        plaintext += decrypt_N_char(num)
+    return plaintext
+
+# Example usage
+print(decrypt_mh(encrypt_mh("ciao, io mi chiamo francesco ")))
+
+# Reading from file
+fin = open("encrypted", "r").readlines()
+text = ""
+for i in fin:
+    text += decrypt_mh([int(i, 16)])
+print(text)

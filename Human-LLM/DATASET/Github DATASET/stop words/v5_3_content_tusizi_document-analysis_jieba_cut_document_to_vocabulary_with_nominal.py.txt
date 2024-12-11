@@ -1,0 +1,54 @@
+import json
+import jieba.posseg as pseg
+from pyspark import SparkContext
+
+# Initialize SparkContext
+sc = SparkContext(appName='CutDocument')
+
+# Function to tokenize and filter words
+def tokenize_and_filter(text):
+    # Tokenize the text using jieba
+    seg_list = list(pseg.cut(text))
+    
+    # Define a list of acceptable word types
+    allowed_types = ["n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng", 
+                     "s", "f", "v", "vd", "vn", "vf", "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"]
+    
+    # Filter out words based on their types
+    filtered_list = filter(lambda word_flag: word_flag[1] in allowed_types, seg_list)
+    
+    # Encode the filtered words to UTF-8
+    encoded_list = map(lambda word_flag: word_flag[0].encode("utf-8"), filtered_list)
+    
+    return encoded_list
+
+# Function to write the processed items to a file
+def write_to_file(items, filename):
+    # Join the items into a single string
+    joined_items = " ".join(items)
+    
+    # Write the joined items to the file
+    with open(filename, "a+") as fo:
+        fo.write(joined_items)
+        fo.write("\n")
+
+# Function to filter stop words
+def filter_stopwords(word_list, stop_words):
+    return filter(lambda word: word not in stop_words, word_list)
+
+# Define the paths to the source and stop words files
+src_file = '/vagrant/data/data.txt'
+stop_words_file = 'stop_words.txt'
+
+# Read the stop words file and collect into a list
+stop_words = sc.textFile(stop_words_file).map(lambda x: x.encode("utf-8")).collect()
+
+# Read the source file and extract content
+rdd = sc.textFile(src_file).map(lambda x: json.loads(x)['content'])
+
+# Tokenize, filter, and write the processed items to the output file
+result = rdd.map(tokenize_and_filter).map(lambda x: filter_stopwords(x, stop_words)) \
+            .foreach(lambda x: write_to_file(x, "/vagrant/vocabulary/mominal.txt"))
+
+# Stop SparkContext
+sc.stop()

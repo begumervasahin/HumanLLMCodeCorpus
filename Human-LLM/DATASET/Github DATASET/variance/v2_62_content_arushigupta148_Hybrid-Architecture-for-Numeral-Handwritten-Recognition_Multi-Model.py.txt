@@ -1,0 +1,50 @@
+import pandas as pd
+from sklearn.externals import joblib
+
+# Load trained models
+random_forest_model = joblib.load('Random_Forest.pkl')
+neural_network_model = joblib.load('Neural_Network.pkl')
+
+# Load test data
+test_data = pd.read_csv("Test_Data_Table.csv")
+actual_labels = test_data.label
+test_data = test_data.drop(test_data.columns[0], axis=1)
+test_data = test_data.drop(labels=['label'], axis=1)
+
+# Load preprocessed training data
+preprocessed_training_data = pd.read_csv("Data_Table_Preprocessed.csv")
+preprocessed_training_data = preprocessed_training_data.drop(preprocessed_training_data.columns[0], axis=1)
+
+# Prepare final test data to match model input format
+final_test_data = pd.DataFrame()
+for column in preprocessed_training_data.columns:
+    final_test_data[column] = test_data[column]
+
+# Initialize counters for evaluation
+correct_predictions = 0
+no_predictions = 0
+incorrect_predictions = 0
+
+# Iterate over test samples
+for i in range(10000):
+    # Prepare single-sample test data
+    single_sample_test_data = pd.DataFrame(columns=final_test_data.columns)
+    single_sample_test_data.loc[0] = final_test_data.loc[i]
+    actual_label = actual_labels.loc[i]
+    
+    # Make predictions using both models
+    prediction_nn = neural_network_model.predict(single_sample_test_data)
+    prediction_rf = random_forest_model.predict(single_sample_test_data)
+    
+    # Update counters based on predictions
+    if prediction_nn == prediction_rf == actual_label:
+        correct_predictions += 1
+    elif prediction_nn != prediction_rf:
+        no_predictions += 1
+    elif prediction_nn == prediction_rf != actual_label:
+        incorrect_predictions += 1
+    
+    # Print evaluation metrics
+    print("Correct Predictions: ", correct_predictions)
+    print("No Predictions: ", no_predictions)
+    print("Incorrect Predictions: ", incorrect_predictions)

@@ -1,0 +1,86 @@
+import numpy as np
+from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.neighbors import NearestNeighbors
+import kmeans
+
+# Function to compute pairwise Euclidean distances between two matrices
+def euclidean_distance_matrix(X, Y):
+    """
+    Compute the pairwise Euclidean distance between two matrices.
+    
+    Parameters:
+        X (numpy.ndarray): NxD matrix.
+        Y (numpy.ndarray): MxD matrix.
+        
+    Returns:
+        numpy.ndarray: NxM Euclidean distance matrix.
+    """
+    return euclidean_distances(X, Y)
+
+# Function to compute the Gaussian kernel similarity of a distance matrix
+def gaussian_kernel_similarity(distance_matrix, sigma):
+    """
+    Compute the Gaussian kernel similarity of the given distance matrix.
+    
+    Parameters:
+        distance_matrix (numpy.ndarray): A NxN distance matrix.
+        sigma (float): The width of the Gaussian kernel.
+        
+    Returns:
+        numpy.ndarray: NxN similarity matrix.
+    """
+    return np.exp(-np.square(distance_matrix) / (2 * np.square(sigma)))
+
+# Function to compute the m nearest neighbors similarity of a distance matrix
+def m_nearest_neighbors_similarity(distance_matrix, m):
+    """
+    Compute the m nearest neighbors similarity of the given distance matrix.
+    
+    Parameters:
+        distance_matrix (numpy.ndarray): A NxN distance matrix.
+        m (int): The number of nearest neighbors.
+        
+    Returns:
+        numpy.ndarray: NxN similarity matrix.
+    """
+    _, indices = NearestNeighbors(n_neighbors=m, metric='euclidean').fit(distance_matrix).kneighbors(distance_matrix)
+    nn = np.zeros(distance_matrix.shape)
+    np.put_along_axis(nn, indices, 1, axis=1)
+    nn += nn.T
+    nn[nn == 2] = 1
+    return nn
+
+# Function to perform spectral clustering
+def spectral_clustering(X, k, similarity_param, similarity_function=gaussian_kernel_similarity):
+    """
+    Perform spectral clustering on the data into k clusters using the specified similarity function.
+    
+    Parameters:
+        X (numpy.ndarray): A NxD data matrix.
+        k (int): The number of desired clusters.
+        similarity_param (float): Parameter for the similarity function (m for mnn, sigma for Gaussian kernel).
+        similarity_function (function): The similarity transformation of the data.
+        
+    Returns:
+        numpy.ndarray: Clustering labels.
+    """
+    # Compute the pairwise Euclidean distance matrix
+    distance_matrix = euclidean_distance_matrix(X, X)
+    
+    # Compute the similarity matrix based on the chosen similarity function
+    similarity_matrix = similarity_function(distance_matrix, similarity_param)
+    
+    # Compute the graph Laplacian
+    degree_matrix = np.diag(np.sum(similarity_matrix, axis=1))
+    inverse_sqrt_degree_matrix = np.diag(np.power(degree_matrix.diagonal(), -0.5))
+    laplacian_matrix = np.identity(X.shape[0]) - inverse_sqrt_degree_matrix.dot(similarity_matrix).dot(inverse_sqrt_degree_matrix)
+    
+    # Compute the eigenvectors corresponding to the smallest k eigenvalues
+    eigenvalues, eigenvectors = np.linalg.eig(laplacian_matrix)
+    indices = np.argpartition(eigenvalues, k)[:k]
+    smallest_eigenvectors = eigenvectors[:, indices]
+    
+    # Perform k-means clustering on the smallest eigenvectors
+    clustering_labels = kmeans.kmeans(smallest_eigenvectors, k)[0]
+    
+    return clustering_labels

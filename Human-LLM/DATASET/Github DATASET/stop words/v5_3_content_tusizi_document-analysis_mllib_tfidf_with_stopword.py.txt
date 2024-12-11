@@ -1,0 +1,48 @@
+import json
+import jieba
+from pyspark import SparkContext
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+
+# Function to calculate TF-IDF and save results to a file
+def calculate_tfidf_and_save(corpus):
+    # Initialize CountVectorizer and TfidfTransformer
+    vectorizer = CountVectorizer()
+    transformer = TfidfTransformer()
+    
+    # Calculate TF-IDF
+    tfidf_matrix = transformer.fit_transform(vectorizer.fit_transform(corpus))
+    
+    # Retrieve feature names (words) and TF-IDF weights
+    words = vectorizer.get_feature_names()
+    weights = tfidf_matrix.toarray()
+    
+    # Write TF-IDF values to a file
+    with open("/vagrant/vocabulary/mllib.txt", "a+") as file:
+        for doc_index in range(len(weights)):
+            for word_index in range(len(words)):
+                # Serialize word and its weight as JSON
+                word_weight_pair = json.dumps([words[word_index], weights[doc_index][word_index]], ensure_ascii=False)
+                
+                # Write to file
+                file.write(word_weight_pair.encode("utf-8"))
+            file.write("\n")
+
+# Initialize Spark Context
+sc = SparkContext(appName='DocumentsRewrite')
+
+# Read data from file and extract content
+rdd = sc.textFile('/vagrant/data/data.txt').map(lambda x: json.loads(x)['content'])
+
+# Tokenize and preprocess text data
+def tokenize_text(text):
+    words = jieba.cut(text, cut_all=True)
+    return " ".join(words)
+
+# Tokenize and preprocess each document
+corpus = rdd.map(tokenize_text).collect()
+
+# Calculate TF-IDF for the corpus and save results
+calculate_tfidf_and_save(corpus)
+
+# Stop the Spark Context
+sc.stop()

@@ -1,0 +1,53 @@
+import math
+from scipy import spatial
+
+def inverseDocumentFrequency(term, allDocuments):
+    """
+    Calculate the inverse document frequency of a term.
+    """
+    numDocumentsWithThisTerm = sum(1 for doc in allDocuments if term.lower() in doc.lower().split())
+    if numDocumentsWithThisTerm > 0:
+        return 1.0 + math.log(float(len(allDocuments)) / numDocumentsWithThisTerm)
+    else:
+        return 1.0
+
+def termFrequency(term, document):
+    """
+    Calculate the term frequency of a term in a document.
+    """
+    normalizedDocument = document.lower().split()
+    return normalizedDocument.count(term.lower()) / float(len(normalizedDocument))
+
+def getTFIDF(document, allDocuments):
+    """
+    Calculate TF-IDF scores for terms in a document.
+    """
+    terms = document.lower().split()
+    tfidfs = []
+    for term in terms:
+        tf = termFrequency(term, document)
+        idf = inverseDocumentFrequency(term, allDocuments)
+        tfidf = tf * idf
+        tfidfs.append(tfidf)
+    return tfidfs
+
+def cosineSimilarity(query, document):
+    """
+    Calculate cosine similarity between a query and a document.
+    """
+    paddingLen = abs(len(query) - len(document))
+    padding = [0] * paddingLen
+    if len(query) > len(document):
+        document.extend(padding)
+    elif len(document) > len(query):
+        query.extend(padding)
+    return 1 - spatial.distance.cosine(query, document)
+
+# Example usage
+doc1 = "This is a sample document."
+doc2 = "Another document with some more text."
+allDocs = [doc1, doc2]
+tfidf_doc1 = getTFIDF(doc1, allDocs)
+tfidf_doc2 = getTFIDF(doc2, allDocs)
+similarity = cosineSimilarity(tfidf_doc1, tfidf_doc2)
+print("Cosine Similarity:", similarity)

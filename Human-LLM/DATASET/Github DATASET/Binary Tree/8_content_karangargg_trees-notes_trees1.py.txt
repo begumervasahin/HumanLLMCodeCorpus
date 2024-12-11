@@ -1,0 +1,184 @@
+class BinaryTree:
+    def __init__(self,data):
+        self.data=data
+        self.left=None
+        self.right=None
+def Buildtreeleft():
+    rootdata=int(input())
+    if(rootdata==-1):
+        return None
+    root=BinaryTree(rootdata)
+    leftpart=Buildtreeleft()
+    rightpart=Buildtreeleft()
+    root.left=leftpart
+    root.right=rightpart
+    return root
+def printtreeleft(root):
+    if(root==None):
+        return
+    if(root.data!=-1):
+        print(root.data,end=":")
+    if(root.left!=None):
+        print(root.left.data,end=",")
+    else:
+        print("-1",end=",")
+    if(root.right!=None):
+        print(root.right.data,end="")
+    else:
+        print("-1",end="")
+    print()
+    printtreeleft(root.left)
+    printtreeleft(root.right)
+root=Buildtreeleft()
+printtreeleft(root)
+def count(root):
+    if(root==None):
+        return 0
+    v=count(root.left)
+    b=count(root.right)
+    return v+b+1
+v=count(root)
+v
+def preorder(root):
+    if(root==None):
+        return
+    print(root.data,end=" ")
+    preorder(root.left)
+    preorder(root.right)
+    return
+preorder(root)
+def inorder(root):
+    if(root==None):
+        return
+    inorder(root.left)
+    print(root.data,end=" ")
+    inorder(root.right)
+    return
+inorder(root)
+def postorder(root):
+    if(root==None):
+        return
+    postorder(root.left)
+    postorder(root.right)
+    print(root.data,end=" ")
+    return
+postorder(root)
+def height(root):
+    if(root==None):
+        return 0
+    leftsubheight=height(root.left)
+    rightsubheight=height(root.right)
+    if(leftsubheight>rightsubheight):
+        return leftsubheight+1
+    else:
+        return rightsubheight+1
+v=height(root)
+v
+def printingAtDepthK(root,k):
+    if(root==None):
+        return
+    if(k==0):
+        print(root.data)
+    printingAtDepthK(root.left,k-1)
+    printingAtDepthK(root.right,k-1)
+    return
+printingAtDepthK(root,2)
+def replaceNodeWithDepthK(root,count):
+    if(root==None):
+        return
+    if(root.left==None and root.right==None):
+        root.data=count
+        return root
+    else:
+        root.data=count
+    replaceNodeWithDepthK(root.left,count+1)
+    replaceNodeWithDepthK(root.right,count+1)
+replaceNodeWithDepthK(root,0)
+printtreeleft(root)
+def removeleaves(root):
+    if(root==None):
+        return
+    if(root.left==None and root.right==None):
+        return None
+    root.left=removeleaves(root.left)
+    root.right=removeleaves(root.right)
+    return root
+def mirror(root):
+    if(root==None):
+        return
+    if(root.left!=None and root.right!=None):
+        temp=root.left
+        root.left=root.right
+        root.right=temp
+    mirror(root.left)
+    mirror(root.right)
+    return root
+root1=mirror(root)
+printtreeleft(root1)
+class binary2:
+    def __init__(self,data):
+        self.data=data
+        self.left=None
+        self.right=None
+import queue
+q=queue.Queue()
+def takeinputlevelwise():
+    rootdata=int(input())
+    if(rootdata==-1 or rootdata<0):
+        return None
+    root=binary2(rootdata)
+    q.put(root)
+    while(not(q.empty())):
+        current=q.get()
+        print("enter the left child of :",current.data)
+        left=int(input())
+        if(left!=-1):
+            leftchild=binary2(left)
+            current.left=leftchild
+            q.put(leftchild)
+        print("enter the right child of :",current.data)
+        right=int(input())
+        if(right!=-1):
+            rightchild=binary2(right)
+            current.right=rightchild
+            q.put(rightchild)
+    return root
+def printlevelwise(root):
+    if(root==None):
+        return None
+    q.put(root)
+    while(not(q.empty())):
+        current=q.get()
+        print(current.data,end=":")
+        if(current.left!=None):
+            print(current.left.data,end=",")
+            q.put(current.left)
+        if(current.right!=None):
+            print(current.right.data,end="")
+            q.put(current.right)
+        print()
+root=takeinputlevelwise()
+printlevelwise(root)
+def postin(post,inor):
+    if(len(post)==0):
+        return None
+    rootdata=post[len(post)-1]
+    post.pop()
+    root=binary2(rootdata)
+    index=-1
+    for i in range(0,len(inor)):
+        if(inor[i]==root):
+            index=i
+            break
+    inorl=inor[0:index]
+    inorr=inor[index+1:]
+    postl=post[0:len(inorl)]
+    postr=post[len(inorl):]
+    left=postin(postl,inorl)
+    right=postin(postr,inorr)
+    root.left=left
+    root.right=right
+    return root
+def diameter(root,m,n):
+    if(root==None):
+        return None

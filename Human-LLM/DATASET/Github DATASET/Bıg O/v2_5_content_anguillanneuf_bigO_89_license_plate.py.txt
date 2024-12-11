@@ -1,0 +1,81 @@
+class TrieNode:
+    def __init__(self, char=None, state=None):
+        self.value = char
+        self.state = state
+        self.prev = None
+        self.next = None
+
+class TrieTree:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, trieNode):
+        if self.root is None:
+            self.root = trieNode
+            return
+        current_node = self.root
+        while current_node.next is not None:
+            current_node = current_node.next
+        current_node.next = trieNode
+        current_node.next.prev = current_node
+
+    def delete(self, trieNode):
+        if self.root is None:
+            raise Exception("There are no nodes left to delete!")
+        if trieNode.prev:
+            trieNode.prev.next = None
+        else:
+            self.root = None
+
+def create_char_count_dict(plate):
+    char_count_dict = {}
+    for char in plate:
+        char = char.lower()
+        if char.isalpha():
+            if char not in char_count_dict:
+                char_count_dict[char] = 1
+            else:
+                char_count_dict[char] += 1
+    return char_count_dict
+
+def update_char_count(char_count_dict, char):
+    char_count_dict = char_count_dict.copy()
+    if char in char_count_dict:
+        char_count_dict[char] -= 1
+    return char_count_dict
+
+def search_shortest_word(vocabulary, plate):
+    shortest_word = None
+    trie_tree = TrieTree()
+    plate_char_count = create_char_count_dict(plate)
+    for word in vocabulary:
+        char_count = plate_char_count.copy()
+        for char in word:
+            char_count = update_char_count(char_count, char)
+            if trie_tree.root is None:
+                trie_tree.insert(TrieNode(char, char_count))
+                current_node = trie_tree.root
+            else:
+                current_node = trie_tree.root
+                while current_node:
+                    if char == current_node.value:
+                        break
+                    current_node = current_node.next
+                if current_node is None:
+                    trie_tree.insert(TrieNode(char, char_count))
+                    current_node = trie_tree.root
+                else:
+                    current_node = current_node.next
+        if not any(v > 0 for v in char_count.values()):
+            if shortest_word is None:
+                shortest_word = word
+            elif len(shortest_word) > len(word):
+                shortest_word = word
+        print(word, shortest_word, char_count)
+    return shortest_word
+
+# Example usage
+vocabulary = ['enjoy', 'enjoying', 'joy', 'joyful', 'joyous', 'joyousness']
+license_plate = 'NY10NJ'
+shortest_word_found = search_shortest_word(vocabulary, license_plate)
+print("\nSolution...\nfor {} and {} is ...\n\n{}".format(vocabulary, license_plate, shortest_word_found))

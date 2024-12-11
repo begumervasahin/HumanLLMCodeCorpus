@@ -1,0 +1,102 @@
+import copy
+from Node import Node
+
+def find_minimum_spanning_trees(trees):
+    """
+    Finds the minimum spanning trees for each tree in the input list of trees.
+    Args:
+        trees (list): List of trees represented as lists of nodes.
+    Returns:
+        list: List containing the minimum spanning trees for each input tree.
+    """
+    minimum_spanning_trees = []
+
+    for tree in trees:
+        minimum_spanning_trees.append(run_sollins_on_tree(tree))
+
+    return minimum_spanning_trees
+
+def run_sollins_on_tree(tree):
+    """
+    Runs Sollin's algorithm to find the minimum spanning tree for the given tree.
+    Args:
+        tree (list): Tree represented as a list of nodes.
+    Returns:
+        list: Minimum spanning tree represented as a list of nodes.
+    """
+    subtrees = []
+    tree_to_mst = {}
+    mst_to_tree = {}
+
+    for node in tree:
+        temp_tree_node = list()
+        mst_node = copy.copy(node)
+        mst_node.adjList = {}
+        tree_to_mst[node] = mst_node
+        mst_to_tree[mst_node] = node
+        temp_tree_node.append(mst_node)
+        subtrees.append(temp_tree_node)
+
+    while len(subtrees) != 1:
+        subtrees = run_phase(subtrees, tree, tree_to_mst, mst_to_tree)
+
+    return subtrees.pop(0)
+
+def run_phase(subtrees, tree, tree_to_mst, mst_to_tree):
+    """
+    Executes a phase of Sollin's algorithm to merge subtrees.
+    Args:
+        subtrees (list): List of subtrees.
+        tree (list): Original tree.
+        tree_to_mst (dict): Mapping from tree nodes to MST nodes.
+        mst_to_tree (dict): Mapping from MST nodes to tree nodes.
+    Returns:
+        list: Updated list of subtrees after the phase.
+    """
+    for subtree in subtrees:
+        child = Node(0, 0, 0, {})
+        lowest_weight = -1
+        parent = Node(0, 0, 0, {})
+
+        for n in subtree:
+            tree_node = mst_to_tree[n]
+
+            for p in tree_node.adjList:
+                temp = tree_to_mst[p]
+
+                if temp not in subtree and (tree_node.adjList[p] < lowest_weight or lowest_weight == -1):
+                    lowest_weight = tree_node.adjList[p]
+                    child = temp
+                    parent = n
+
+        combine_components(subtrees, subtree, parent, child, lowest_weight)
+
+    return subtrees
+
+def combine_components(subtrees, subtree, parent, child, lowest_weight):
+    """
+    Combines two subtrees by connecting their parent and child nodes with the given weight.
+    Args:
+        subtrees (list): List of subtrees.
+        subtree (list): Subtree to be merged.
+        parent (Node): Parent node.
+        child (Node): Child node.
+        lowest_weight (float): Weight of the edge connecting parent and child.
+    Returns:
+        list: Updated list of subtrees after merging.
+    """
+    child_subtree = []
+
+    for sub in subtrees:
+        if child in sub:
+            child_subtree = sub
+
+    parent.adjList[child] = lowest_weight
+    child.adjList[parent] = lowest_weight
+
+    for y in subtree:
+        child_subtree.append(y)
+
+    subtrees.remove(subtree)
+
+    return subtrees

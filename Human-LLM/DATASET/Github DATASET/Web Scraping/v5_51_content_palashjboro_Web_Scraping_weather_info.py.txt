@@ -1,0 +1,48 @@
+# Importing necessary libraries
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+# Define the URL of the weather forecast page
+url = 'https://weather.com/en-IN/weather/tenday/l/8ecdb120c02061d6fe17ec5fd60155f9da5bb988e79dd6d6e3db71248dac9b61'
+
+# Fetching the webpage content
+response = requests.get(url)
+
+# Parsing the HTML content
+soup = BeautifulSoup(response.content, 'html.parser')
+
+# Finding the main weather forecast section
+main_section = soup.find(id='main-DailyForecast-1bbda948-59cc-4040-9a36-d9c1ed37a806')
+
+# Extracting specific weather data
+day_elements = main_section.find_all(class_='date-time')
+date_elements = main_section.find_all(class_='day-detail clearfix')
+temp_elements = main_section.find_all('td', class_='temp')
+desc_elements = main_section.find_all('td', class_='description')
+rain_elements = main_section.find_all('td', class_='precip')
+wind_elements = main_section.find_all('td', class_='wind')
+humi_elements = main_section.find_all('td', class_='humidity')
+
+# Extracting text from each element and storing in lists
+days = [item.get_text() for item in day_elements]
+dates = [item.get_text() for item in date_elements]
+temperatures = [item.get_text() for item in temp_elements]
+descriptions = [item.get_text() for item in desc_elements]
+rain_percipitations = [item.get_text() for item in rain_elements]
+winds = [item.get_text() for item in wind_elements]
+humidities = [item.get_text() for item in humi_elements]
+
+# Creating a DataFrame to store the weather information
+weather_info = pd.DataFrame({
+    'Day': days,
+    'Date': dates,
+    'Description': descriptions,
+    'Temperature': temperatures,
+    'Rain Percip': rain_percipitations,
+    'Wind': winds,
+    'Humidity': humidities
+})
+
+# Displaying the weather information DataFrame
+print(weather_info)

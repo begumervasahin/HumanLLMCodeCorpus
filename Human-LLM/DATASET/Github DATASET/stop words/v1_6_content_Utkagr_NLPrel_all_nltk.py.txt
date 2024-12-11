@@ -1,0 +1,116 @@
+import nltk
+import random
+import pickle
+import re
+from nltk.corpus import stopwords, state_union, gutenberg, wordnet, movie_reviews
+from nltk.tokenize import PunktSentenceTokenizer, word_tokenize, sent_tokenize
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+
+# Download necessary resources if not already downloaded
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('state_union')
+nltk.download('gutenberg')
+nltk.download('wordnet')
+nltk.download('movie_reviews')
+
+# Input sentence
+sentence = input("Enter a sentence: ")
+
+# Tokenization
+tokens = word_tokenize(sentence)
+
+# Removing stop words
+stop_words = set(stopwords.words("english"))
+filtered_tokens = [w for w in tokens if w not in stop_words]
+
+# Stemming
+ps = PorterStemmer()
+stemmed_words = [ps.stem(w) for w in filtered_tokens]
+
+# POS Tagging
+tagged_words = nltk.pos_tag(tokens)
+
+# Named Entity Recognition (NER)
+named_entities = nltk.ne_chunk(tagged_words)
+
+# Lemmatization
+lemmatizer = WordNetLemmatizer()
+lemmatized_words = [lemmatizer.lemmatize(w) for w in tokens]
+
+# Sample text for chunking
+train_text = state_union.raw("2005-GWBush.txt")
+sample_text = state_union.raw("2006-GWBush.txt")
+custom_sent_tokenizer = PunktSentenceTokenizer(train_text)
+tokenized = custom_sent_tokenizer.tokenize(sample_text)
+
+# Chunking
+def process_content():
+    try:
+        for i in tokenized:
+            words = word_tokenize(i)
+            tagged = nltk.pos_tag(words)
+            chunkGram = r"""Chunk: {<RB.?>*<VB.?>*<NNP>+<NN>?}"""  
+            chunkParser = nltk.RegexpParser(chunkGram)
+            chunked = chunkParser.parse(tagged)
+            # chunked.draw()  # Uncomment to visualize the chunks
+            print(chunked)
+    except Exception as e:
+        print(str(e))
+
+# Regex
+example_string = '''
+Jessica is 15 years old, and Daniel is 27 years old.
+Edward is 97, and his grandfather, Oscar, is 102.
+'''
+ages = re.findall(r'\d{1,3}', example_string)
+names = re.findall(r'[A-Z][a-z]*', example_string)
+print("Ages:", ages)
+print("Names:", names)
+
+# Wordnet
+syns = wordnet.synsets("program")
+print("Synsets:", syns)
+print("First lemma name:", syns[0].lemmas()[0].name())
+print("Definition:", syns[0].definition())
+print("Examples:", syns[0].examples())
+
+# Similarity
+w1 = wordnet.synset("ship.n.01")
+w2 = wordnet.synset("boat.n.01")
+similarity = w1.wup_similarity(w2)
+print("Similarity between 'ship' and 'boat':", similarity)
+
+# Movie reviews
+documents = [(list(movie_reviews.words(fileid)), category)
+             for category in movie_reviews.categories()
+             for fileid in movie_reviews.fileids(category)]
+random.shuffle(documents)
+
+all_words = nltk.FreqDist(w.lower() for w in movie_reviews.words())
+word_features = list(all_words.keys())[:3000]
+
+def find_features(document):
+    words = set(document)
+    features = {}
+    for w in word_features:
+        features[w] = (w in words)
+    return features
+
+featuresets = [(find_features(rev), category) for (rev, category) in documents]
+training_set = featuresets[:1900]
+testing_set = featuresets[1900:]
+
+# Naive Bayes Classifier
+classifier = nltk.NaiveBayesClassifier.train(training_set)
+print("Classifier accuracy percent:", (nltk.classify.accuracy(classifier, testing_set)) * 100)
+classifier.show_most_informative_features(15)
+
+# Saving and loading the classifier
+save_classifier = open("naivebayes.pickle", "wb")
+pickle.dump(classifier, save_classifier)
+save_classifier.close()
+
+classifier_f = open("naivebayes.pickle", "rb")
+classifier = pickle.load(classifier_f)
+classifier_f.close()

@@ -1,0 +1,42 @@
+from releash import *
+
+# Initialize Git push release target
+gitpush = ReleaseTargetGitPush()
+
+def add_vaex_package(name, path_prefix='vaex', distribution_name=None):
+    """Add a vaex package with specified name, path prefix, and distribution name."""
+    package_path = f"packages/{path_prefix}-{name}"
+    full_name = f"vaex-{name}"
+    import_name = full_name.replace('-', '_') if name != 'meta' else full_name
+    package = add_package(package_path, full_name, import_name, distribution_name=distribution_name)
+    return package
+
+def add_vaex_version_source(package, name, import_name, path_prefix='vaex'):
+    """Add version source for a vaex package with specified name, import name, and path prefix."""
+    version_path = f"{path_prefix}/{name}/_version.py"
+    return VersionSource(package, f"{{path}}/{version_path}")
+
+# Define package names and versions
+package_names = ['core', 'meta', 'viz', 'hdf5', 'server', 'astro', 'ui', 'jupyter', 'distributed', 'arrow', 'ml']
+
+# Iterate over packages and add version sources and release targets
+for name in package_names:
+    package = add_vaex_package(name)
+    import_name = 'vaex.' + name if name != 'arrow' else 'vaex_' + name
+    version_source = add_vaex_version_source(package, name, import_name)
+
+    # Define Git tag release target for each package
+    prefix = f"{name}-v" if name != 'arrow' else 'arrow-v'
+    msg = f"Release {{version}} of vaex-{name}"
+    gittag = ReleaseTargetGitTagVersion(version_source=version_source, prefix=prefix, msg=msg)
+    package.version_source = version_source
+
+    # Add version targets and release targets for each package
+    version_path = f"{name}" if name != 'arrow' else f"_{name}"
+    package.version_targets.append(VersionTarget(package, f"{{path}}/vaex/{version_path}/_version.py"))
+    package.release_targets.extend([gittag, ReleaseTargetSourceDist(package), gitpush])
+
+    # Add Conda-Forge release target for each package
+    feedstock_name = 'feedstock' if name == 'meta' else f"vaex-{name}-feedstock"
+    feedstock_path = '../feedstocks/' + feedstock_name
+    package.release_targets.append(ReleaseTargetCondaForge(package, feedstock_path))

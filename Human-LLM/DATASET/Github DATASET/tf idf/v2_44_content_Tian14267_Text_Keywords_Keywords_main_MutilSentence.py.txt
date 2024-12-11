@@ -1,0 +1,58 @@
+import numpy as np
+import time
+import Keywords_Algorithm as KA
+import keywords_tools as KT
+
+# Function to initialize prediction models
+def initialize_models():
+    # Initialize tools
+    tools = KT.Tools()
+    # Initialize TF-IDF model
+    tf_idf = KA.TFIDF(tools)
+    # Initialize TextRank model
+    tr = KA.TextRank(3, 0.85, 700, tools)
+    return tf_idf, tr, tools
+
+# Function to mix keywords from TF-IDF and TextRank
+def mix_keywords(tf_idf, tr, tools, file):
+    # Get keywords using TF-IDF
+    result_tf_idf, _ = tf_idf.Do_keywords(file)
+    # Get keywords using TextRank
+    result_tr, _ = tr.calculate_textrank(file)
+    # Method to mix keywords
+    method_num = "Weight_Cross"
+    mix_result = tools.Mix_algorithm(method_num, result_tf_idf, result_tr)
+
+if __name__ == '__main__':
+    # Path to the file
+    path = "./data/cnews.test.txt"
+    # Start time
+    start_time = time.time()
+    # Read lines from the file
+    with open(path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+        # Remove newline characters and create a list of lines
+        new_lines = [line.strip().replace('\n', '') for line in lines]
+    # Close the file
+    file.close()
+    
+    # Initialize prediction models
+    tf_idf, tr, tools = initialize_models()
+    
+    # Variable to store total characters
+    total_characters = 0
+    
+    # Loop through each line
+    for i, line in enumerate(new_lines):
+        # Count total characters
+        total_characters += len(line)
+        # Mix keywords for the line
+        mix_keywords(tf_idf, tr, tools, line)
+        print("Completed:", i)
+    
+    # End time
+    end_time = time.time()
+    
+    # Print total characters and total time taken
+    print("Total characters:", total_characters)
+    print("Total time taken:", (end_time - start_time))

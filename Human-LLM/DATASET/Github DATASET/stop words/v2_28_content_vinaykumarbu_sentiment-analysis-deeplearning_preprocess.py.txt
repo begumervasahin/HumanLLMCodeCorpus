@@ -1,0 +1,62 @@
+import string
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import enchant
+
+# Download NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
+
+# Initialize enchant dictionary for English words
+english_dict = enchant.Dict("en_US")
+
+# Set up stopwords
+stop_words = set(stopwords.words("english"))
+
+# Open output file
+output_file = open("new_preprocessed.txt", "a")
+
+# Open input file containing tweets
+with open('new_tweets.txt', 'r') as input_file:
+    # Process each tweet in the input file
+    for line in input_file:
+        # Extract the text of the tweet
+        tweet_text = line.split(',text:')[1]
+
+        # Convert text to lowercase
+        tweet_text_lowercase = tweet_text.lower()
+
+        # Remove digits and punctuation from the tweet text
+        cleaned_tweet_text = ''.join([char for char in tweet_text_lowercase if not char.isdigit() and char not in string.punctuation])
+
+        # Remove Twitter usernames and non-English words from the tweet text
+        clean_tweet_text = ""
+        for word in cleaned_tweet_text.split(' '):
+            if (not word.startswith('@') and len(word) > 2 and english_dict.check(word)):
+                clean_tweet_text += " " + word
+
+        # Tokenize the cleaned tweet text
+        tokenized_words = word_tokenize(clean_tweet_text)
+
+        # Filter out stopwords from the tokenized words
+        filtered_words = [word for word in tokenized_words if word not in stop_words]
+
+        # Lemmatize the filtered words
+        lemmatizer = WordNetLemmatizer()
+        lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_words]
+
+        # Tag parts of speech in the lemmatized words
+        tagged_words = nltk.tag.pos_tag(lemmatized_words)
+
+        # Filter out proper nouns from the tagged words
+        edited_words = [word for word, tag in tagged_words if tag != 'NNP' and tag != 'NNPS']
+
+        # Write the preprocessed tweet text to the output file
+        output_file.write(" ".join(edited_words) + "\n")
+
+# Close the output file
+output_file.close()

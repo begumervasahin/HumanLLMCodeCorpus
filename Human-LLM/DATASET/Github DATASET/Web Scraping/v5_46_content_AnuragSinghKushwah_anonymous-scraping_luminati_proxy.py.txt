@@ -1,0 +1,79 @@
+# Importing necessary modules
+from selenium import webdriver
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from common import get_public_ip  # Assuming get_public_ip is defined in a separate module
+import random
+
+def print_current_ip():
+    """Prints the current public IP address."""
+    print("Current IP Address: ", get_public_ip())
+
+def generate_super_proxy_url(username, password, port):
+    """Generates the super proxy URL with the provided credentials."""
+    session_id = random.random()
+    return 'http://%s-session-%s:%s@zproxy.luminati.io:%d' % (username, session_id, password, port)
+
+def configure_proxy(super_proxy_url):
+    """Configures the proxy settings."""
+    return Proxy({
+        'proxyType': ProxyType.MANUAL,
+        'httpProxy': super_proxy_url,
+        'ftpProxy': super_proxy_url,
+        'sslProxy': super_proxy_url,
+        'noProxy': ''
+    })
+
+def initialize_driver(browser, proxy):
+    """Initializes the Selenium WebDriver based on the selected browser."""
+    if browser == "Chrome":
+        # Configuring Chrome options with the proxy
+        options = webdriver.ChromeOptions()
+        options.add_argument('--proxy-server=%s' % super_proxy_url)
+        # Initializing Chrome driver
+        return webdriver.Chrome(
+            executable_path='Your Chromedriver Executable Path',
+            chrome_options=options)
+    elif browser == "Firefox":
+        # Initializing Firefox driver with the proxy
+        return webdriver.Firefox(executable_path="Your Geckodriver Executable path",
+                                  proxy=proxy)
+
+def print_new_ip(driver):
+    """Prints the new IP address obtained after browsing."""
+    ip_element = driver.find_element_by_xpath('//*[@id="collapse-menu"]/h3/a')
+    print("New IP Address: ", ip_element.text)
+
+# Main function
+def main():
+    print_current_ip()
+
+    # Defining username, password, and port for the proxy
+    username = 'Your User Name'
+    password = 'Your Password'
+    port = 22225
+
+    # Generating the super proxy URL
+    super_proxy_url = generate_super_proxy_url(username, password, port)
+    print("Super Proxy URL: ", super_proxy_url)
+
+    # Configuring the proxy settings
+    proxy = configure_proxy(super_proxy_url)
+
+    # Asking user to input their preferred browser
+    browser = input("Please enter your browser name (e.g., Chrome/Firefox): ")
+
+    # Initializing the driver based on the selected browser
+    driver = initialize_driver(browser, proxy)
+
+    # Opening a webpage to check the IP address
+    driver.get('https://www.whatismyip.org/')
+
+    # Printing the new IP address obtained after browsing
+    print_new_ip(driver)
+
+    # Quitting the driver
+    driver.quit()
+
+# Entry point of the script
+if __name__ == "__main__":
+    main()

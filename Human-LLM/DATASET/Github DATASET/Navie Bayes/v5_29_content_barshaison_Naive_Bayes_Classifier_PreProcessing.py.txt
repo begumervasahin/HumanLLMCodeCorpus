@@ -1,0 +1,67 @@
+import pandas as pd
+import re
+
+class DataPreprocessor:
+    def __init__(self):
+        self.test_bins_dict = {}
+
+    def preprocess(self, structure_file, df, num_of_intervals):
+        attribute_dict = self._set_attribute_dict(structure_file)
+        df_no_missing_vals = self._deal_with_missing_values(df, attribute_dict)
+        df_final = self._perform_discretization(attribute_dict, df_no_missing_vals, num_of_intervals)
+        return df_final
+
+    def preprocess_test(self, structure_file, df):
+        attribute_dict = self._set_attribute_dict(structure_file)
+        df_no_missing_vals = self._deal_with_missing_values(df, attribute_dict)
+        df_final = self._perform_discretization_for_test(df_no_missing_vals)
+        return df_final
+
+    def _set_attribute_dict(self, structure_file):
+        attribute_dict = {}
+        for line in structure_file:
+            splited_line = re.split('\s', line)
+            if splited_line[2] == "NUMERIC":
+                value_type = "N"
+            else:
+                value_type = "C"
+            attribute_dict[splited_line[1]] = value_type
+        return attribute_dict
+
+    def _deal_with_missing_values(self, df, attribute_dict):
+        for key, value_type in attribute_dict.items():
+            if value_type == "N":
+                df[key].fillna(df.groupby("class")[key].transform("mean"), inplace=True)
+            elif value_type == "C":
+                df[key] = df[key].fillna(df[key].mode()[0])
+        return df
+
+    def _binning(self, col, k, key):
+        min_val = col.min()
+        max_val = col.max()
+        cut_points = []
+        w = (max_val - min_val) / k
+        for i in range(0, k - 1):
+            if (min_val + (i + 1) * w) != min_val and (min_val + (i + 1) * w) != max_val:
+                cut_points.append(min_val + (i + 1) * w)
+        break_points = [min_val] + cut_points + [max_val]
+        labels = range(len(cut_points) + 1)
+        self.test_bins_dict[key] = [break_points, labels]
+        col_bin = pd.cut(col, bins=break_points, labels=labels, include_lowest=True)
+        return col_bin
+
+    def _perform_discretization(self, attribute_dict, df, num_of_intervals):
+        for key, value_type in attribute_dict.items():
+            if value_type == "N":
+                df[key] = self._binning(df[key], num_of_intervals, key)
+        return df
+
+    def _perform_discretization_for_test(self, df):
+        for key, bin_info in self.test_bins_dict.items():
+            df[key] = self._binning_test(df[key], bin_info[0], bin_info[1])
+        return df
+
+    @staticmethod
+    def _binning_test(col, break_points, labels):
+        col_bin = pd.cut(col, bins=break_points, labels=labels, include_lowest=True)
+        return col_bin

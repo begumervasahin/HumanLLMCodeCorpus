@@ -1,0 +1,74 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import numpy as np
+from time import sleep
+from random import randint
+
+# Empty lists to store data
+titles = []
+years = []
+time = []
+imdb_ratings = []
+metascores = []
+votes = []
+us_gross = []
+
+# Headers to mimic a browser request
+headers = {"Accept-Language": "en-US, en;q=0.5"}
+
+# Generate page numbers
+pages = np.arange(1, 1001, 50)
+
+# Loop through pages
+for page in pages:
+    # Get the page content
+    url = "https://www.imdb.com/search/title/?groups=top_1000&start=" + str(page) + "&ref_=adv_nxt"
+    response = requests.get(url, headers=headers)
+    
+    # Pause the loop for a random amount of time to avoid being blocked
+    sleep(randint(2, 10))
+
+    # Parse the content
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Find all movie containers
+    movie_div = soup.find_all('div', class_='lister-item mode-advanced')
+
+    # Extract data from each movie container
+    for container in movie_div:
+        titles.append(container.h3.a.text)
+        years.append(container.h3.find('span', class_='lister-item-year').text)
+        time.append(container.find('span', class_='runtime').text if container.p.find('span', class_='runtime') else '_')
+        imdb_ratings.append(float(container.strong.text))
+        metascores.append(container.find('span', class_='metascore').text if container.find('span', class_='metascore') else '-')
+        nv = container.find_all('span', attrs={'name': 'nv'})
+        votes.append(nv[0].text)
+        us_gross.append(nv[1].text if len(nv) > 1 else '-')
+
+# Create DataFrame from the collected data
+movies = pd.DataFrame({
+    'movie': titles,
+    'year': years,
+    'timeMin': time,
+    'imdb': imdb_ratings,
+    'metascore': metascores,
+    'votes': votes,
+    'us_grossMillions': us_gross
+})
+
+# Data cleaning and formatting
+movies['year'] = movies['year'].str.extract('(\d+)').astype(int)
+movies['timeMin'] = movies['timeMin'].str.extract('(\d+)').astype(int)
+movies['votes'] = movies['votes'].str.replace(',', '').astype(int)
+movies['metascore'] = movies['metascore'].str.extract('(\d+)')
+movies['metascore'] = pd.to_numeric(movies['metascore'], errors='coerce')
+movies['us_grossMillions'] = movies['us_grossMillions'].map(lambda x: x.lstrip('$').rstrip('M'))
+movies['us_grossMillions'] = pd.to_numeric(movies['us_grossMillions'], errors='coerce')
+
+# Save DataFrame to CSV file
+movies.to_csv('movie.csv', index=False)
+
+# Print DataFrame and data types
+print(movies.to_string())
+print(movies.dtypes)

@@ -1,0 +1,137 @@
+import os
+import io
+import re
+import numpy as np
+
+class LogisticRegression:
+    def __init__(self, trainHam_folder, trainSpam_folder, testHam_folder, testSpam_folder):
+        self.trainHam_folder = trainHam_folder
+        self.trainSpam_folder = trainSpam_folder
+        self.testHam_folder = testHam_folder
+        self.testSpam_folder = testSpam_folder
+        self.weights = {}
+        self.vocabulary = []
+        self.learning_rate = 0.0001
+        self.regularization_parameter = 5
+        self.file_data = []
+        self.stop_words = ["a", "about", "above", "after", "again", "against", "all", "am",
+                           "an", "and", "any", "are", "arent", "as", "at", "be", "because",
+                           "been", "before", "being", "below", "between", "both", "but",
+                           "by", "cant", "cannot", "could", "couldnt", "did", "didnt", "do",
+                           "does", "doesnt", "doing", "dont", "down", "during", "each", "few",
+                           "for", "from", "further", "had", "hadnt", "has", "hasnt", "have",
+                           "havent", "having", "he", "hed", "hell", "he", "her", "here", "here",
+                           "hers", "herself", "him", "himself", "his", "how", "hows", "i", "id",
+                           "ill", "i", "ie", "if", "in", "into", "is", "isnt", "it", "it", "its",
+                           "itself", "let", "me", "more", "most", "mustnt", "my", "myself", "no",
+                           "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought",
+                           "our", "ours", "ourselves", "out", "over", "own", "same", "shant",
+                           "she", "shed", "shell", "she", "should", "shouldnt", "so", "some",
+                           "such", "than", "that", "that", "the", "their", "theirs", "them",
+                           "themselves", "then", "there", "there", "these", "they", "theyd",
+                           "theyll", "theyre", "theye", "this", "those", "through", "to", "too",
+                           "under", "until", "up", "very", "was", "wasnt", "we", "wed", "well",
+                           "were", "wee", "werent", "what", "when", "where", "which", "while",
+                           "who", "whom", "why", "with", "wont", "would", "wouldnt", "you",
+                           "youd", "youll", "youre", "youve", "your", "yours", "yourself",
+                           "yourselves"]
+
+    def run(self):
+        self.build_vocabulary()
+        self.train_model()
+
+    def count_words(self, path, word_count):
+        with io.open(path, 'r', encoding='iso-8859-1') as file:
+            lines = file.readlines()
+            for line in lines:
+                words_only = re.sub("[^a-zA-Z0-9\s]", "", line).lower().split()
+                for word in words_only:
+                    if word not in self.stop_words:
+                        if word in word_count:
+                            word_count[word] += 1
+                        else:
+                            word_count[word] = 1
+
+    def build_vocabulary(self):
+        ham_word_count = {}
+        for filename in os.listdir(self.trainHam_folder):
+            self.count_words(os.path.join(self.trainHam_folder, filename), ham_word_count)
+
+        spam_word_count = {}
+        for filename in os.listdir(self.trainSpam_folder):
+            self.count_words(os.path.join(self.trainSpam_folder, filename), spam_word_count)
+
+        self.vocabulary = set(ham_word_count.keys()) | set(spam_word_count.keys())
+        self.weights = {word: 0.0 for word in self.vocabulary}
+
+    def process_file(self, file, classification):
+        word_count = {}
+        self.count_words(file, word_count)
+        self.file_data.append({'filename': file, 'tokens': word_count, 'class': classification})
+
+    def train_model(self):
+        for _ in range(500):
+            self.update_error()
+            self.update_weights()
+
+    def sigmoid(self, x):
+        denom = 1 + np.exp(-x)
+        return 1 / denom
+
+    def update_error(self):
+        for data in self.file_data:
+            tokens = data["tokens"]
+            value = 1
+            for token, count in tokens.items():
+                value += count * self.weights[token]
+            data["error"] = self.sigmoid(value)
+
+    def update_weights(self):
+        for token in self.weights.keys():
+            val = 0
+            for data in self.file_data:
+                tokens = data["tokens"]
+                true_value = data["class"]
+                if token in tokens:
+                    temp = true_value - data["error"]
+                    val += tokens[token] * temp
+            self.weights[token] += ((val * self.learning_rate) - (self.learning_rate * self.regularization_parameter * self.weights[token]))
+
+    def test(self):
+        ham_folder = os.listdir(self.testHam_folder)
+        ham_correct = 0
+        for filename in ham_folder:
+            ham_word_count = {}
+            self.count_words(os.path.join(self.testHam_folder, filename), ham_word_count)
+            value = sum(self.weights.get(token, 0) * count for token, count in ham_word_count.items())
+            result = self.sigmoid(value)
+            if result > 0.5:
+                ham_correct += 1
+        ham_accuracy = (ham_correct / len(ham_folder)) * 100
+        print("Ham accuracy is ", ham_accuracy)
+
+        spam_folder = os.listdir(self.testSpam_folder)
+        spam_correct = 0
+        for filename in spam_folder:
+            spam_word_count = {}
+            self.count_words(os.path.join(self.testSpam_folder, filename), spam_word_count)
+            value = sum(self.weights.get(token, 0) * count for token, count in spam_word_count.items())
+            result = self.sigmoid(value)
+            if result < 0.5:
+                spam_correct += 1
+        spam_accuracy = (spam_correct / len(spam_folder)) * 100
+        print("Spam accuracy is ", spam_accuracy)
+
+        total_accuracy = ((spam_correct + ham_correct) / (len(ham_folder) + len(spam_folder))) * 100
+        print("Total accuracy is ", total_accuracy)
+
+# Example usage:
+if __name__ == "__main__":
+    trainHam_folder = "train/ham"
+    trainSpam_folder = "train/spam"
+    testHam_folder = "test/ham"
+    testSpam_folder = "test/spam"
+
+    model = LogisticRegression(trainHam_folder, trainSpam_folder, testHam_folder, testSpam_folder)
+    model.run()
+    model.test()

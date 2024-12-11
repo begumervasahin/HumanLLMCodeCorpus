@@ -1,0 +1,29 @@
+import json
+import jieba
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+
+def tf_me(corpus):
+    vectorizer = CountVectorizer()
+    transformer = TfidfTransformer()
+    tfidf = transformer.fit_transform(vectorizer.fit_transform(corpus))        
+    words = vectorizer.get_feature_names()
+    weights = tfidf.toarray()
+    
+    with open("/vagrant/vocabulary/mllib.txt", "a+") as fo:
+        for i in range(len(weights)):
+            for j in range(len(words)):
+                r = json.dumps([words[j], weights[i][j]], ensure_ascii=False)        
+                fo.write(r)
+                fo.write("\n")
+
+def cut(x):
+    words = jieba.cut(x, cut_all=True)
+    return " ".join(words)
+
+if __name__ == "__main__":
+    corpus = [
+        "Your sample corpus here",
+        "Another sample document"
+    ]
+    tf_me(corpus)

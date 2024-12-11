@@ -1,0 +1,196 @@
+import os
+import requests
+from bs4 import BeautifulSoup as Soup
+import json
+import pandas as pd
+
+# Constants
+BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+CSV_FILE_PATH = os.path.join(BASE_DIRECTORY, 'data_csv.csv')
+JSON_FILE_PATH = os.path.join(BASE_DIRECTORY, 'data_json.json')
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+
+def make_request(url):
+    """
+    Makes a request to the specified URL and returns the response object.
+    """
+    headers = {'User-Agent': USER_AGENT}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # Raise an error for unsuccessful responses
+    return response
+
+def extract_product_data(product):
+    """
+    Extracts product data from a product container and returns a dictionary.
+    """
+    name = product.find('div', class_='product-card__titles').text.strip()
+    description = product.find('div', class_='product-card__subtitle').text.strip()
+    colors = product.find('div', class_='product-card__product-count').text.strip()
+    price = product.find('div', class_='product-price').text.strip()
+    image = product.find('img', {'src': re.compile('.jpg')})['src']
+    
+    return {
+        'name': name,
+        'description': description,
+        'colors': colors,
+        'price': price,
+        'image': image
+    }
+
+def scrape_product_data(url):
+    """
+    Scrapes product data from the specified URL and returns lists of CSV and JSON data.
+    """
+    try:
+        response = make_request(url)
+        page_soup = Soup(response.text, 'html.parser')
+        products = page_soup.find_all('div', class_='product-card__body')
+        
+        csv_data = []
+        json_data = []
+
+        for product in products:
+            product_data = extract_product_data(product)
+            csv_data.append([product_data['name'], product_data['description'], product_data['colors'], product_data['price'], url])
+            json_data.append(product_data)
+
+        return csv_data, json_data
+    except Exception as e:
+        print(f"Failed to scrape data from {url}: {e}")
+        return [], []
+
+def save_data_to_csv(csv_data):
+    """
+    Saves CSV data to a file.
+    """
+    columns = ['Name', 'Description', 'Colors', 'Price', 'Category']
+    df = pd.DataFrame(csv_data, columns=columns)
+    df.to_csv(CSV_FILE_PATH, index=False)
+
+def save_data_to_json(json_data):
+    """
+    Saves JSON data to a file.
+    """
+    with open(JSON_FILE_PATH, 'w') as json_file:
+        json.dump(json_data, json_file, indent=4)
+
+def main():
+    # URLs to scrape
+    urls = [
+        "https://www.nike.com/ma/en/w/mens-football-shoes-1gdj0znik1zy7ok",
+        "https://www.nike.com/ma/en/w/mens-jordan-shoes-37eefznik1zy7ok"
+    ]
+
+    all_csv_data = []
+    all_json_data = []
+
+    # Scrape data from each URL
+    for url in urls:
+        csv_data, json_data = scrape_product_data(url)
+        all_csv_data.extend(csv_data)
+        all_json_data.extend(json_data)
+
+    # Save data to files
+    save_data_to_csv(all_csv_data)
+    save_data_to_json(all_json_data)
+
+if __name__ == "__main__":
+    main()
+import os
+import requests
+from bs4 import BeautifulSoup as Soup
+import json
+import pandas as pd
+
+# Constants
+BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+CSV_FILE_PATH = os.path.join(BASE_DIRECTORY, 'data_csv.csv')
+JSON_FILE_PATH = os.path.join(BASE_DIRECTORY, 'data_json.json')
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+
+def make_request(url):
+    """
+    Makes a request to the specified URL and returns the response object.
+    """
+    headers = {'User-Agent': USER_AGENT}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # Raise an error for unsuccessful responses
+    return response
+
+def extract_product_data(product):
+    """
+    Extracts product data from a product container and returns a dictionary.
+    """
+    name = product.find('div', class_='product-card__titles').text.strip()
+    description = product.find('div', class_='product-card__subtitle').text.strip()
+    colors = product.find('div', class_='product-card__product-count').text.strip()
+    price = product.find('div', class_='product-price').text.strip()
+    image = product.find('img', {'src': re.compile('.jpg')})['src']
+    
+    return {
+        'name': name,
+        'description': description,
+        'colors': colors,
+        'price': price,
+        'image': image
+    }
+
+def scrape_product_data(url):
+    """
+    Scrapes product data from the specified URL and returns lists of CSV and JSON data.
+    """
+    try:
+        response = make_request(url)
+        page_soup = Soup(response.text, 'html.parser')
+        products = page_soup.find_all('div', class_='product-card__body')
+        
+        csv_data = []
+        json_data = []
+
+        for product in products:
+            product_data = extract_product_data(product)
+            csv_data.append([product_data['name'], product_data['description'], product_data['colors'], product_data['price'], url])
+            json_data.append(product_data)
+
+        return csv_data, json_data
+    except Exception as e:
+        print(f"Failed to scrape data from {url}: {e}")
+        return [], []
+
+def save_data_to_csv(csv_data):
+    """
+    Saves CSV data to a file.
+    """
+    columns = ['Name', 'Description', 'Colors', 'Price', 'Category']
+    df = pd.DataFrame(csv_data, columns=columns)
+    df.to_csv(CSV_FILE_PATH, index=False)
+
+def save_data_to_json(json_data):
+    """
+    Saves JSON data to a file.
+    """
+    with open(JSON_FILE_PATH, 'w') as json_file:
+        json.dump(json_data, json_file, indent=4)
+
+def main():
+    # URLs to scrape
+    urls = [
+        "https://www.nike.com/ma/en/w/mens-football-shoes-1gdj0znik1zy7ok",
+        "https://www.nike.com/ma/en/w/mens-jordan-shoes-37eefznik1zy7ok"
+    ]
+
+    all_csv_data = []
+    all_json_data = []
+
+    # Scrape data from each URL
+    for url in urls:
+        csv_data, json_data = scrape_product_data(url)
+        all_csv_data.extend(csv_data)
+        all_json_data.extend(json_data)
+
+    # Save data to files
+    save_data_to_csv(all_csv_data)
+    save_data_to_json(all_json_data)
+
+if __name__ == "__main__":
+    main()

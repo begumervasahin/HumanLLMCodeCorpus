@@ -1,0 +1,43 @@
+import networkx as nx
+from pqdict import PQDict
+
+def prim(G, start):
+    """
+    Function that takes a graph and a starting node, and returns a Minimum Spanning Tree (MST).
+    """
+    # Number of nodes to visit in the MST
+    stopN = G.number_of_nodes() - 1
+    # Initialize the current node as the starting node
+    current = start
+    # Set to keep track of visited nodes
+    closedSet = set()
+    # Priority queue to store edges and their weights
+    pq = PQDict()
+    # List to store edges in the MST
+    mst = []
+    
+    # Continue until all nodes are visited in the MST
+    while len(mst) < stopN:
+        # Iterate through neighbors of the current node
+        for node in G.neighbors(current):
+            # Check if the neighbor is not visited and the current node is not in the closed set
+            if node not in closedSet and current not in closedSet:
+                # Check if the edge is not already in the priority queue
+                if (current, node) not in pq and (node, current) not in pq:
+                    # Get the weight of the edge
+                    weight = G.edge[current][node]['weight']
+                    # Add the edge to the priority queue with its weight
+                    pq.additem((current, node), weight)
+        # Mark the current node as visited
+        closedSet.add(current)
+        # Pop the edge with the minimum weight from the priority queue
+        edge, weight = pq.popitem()
+        # Continue popping until an unvisited node is found
+        while edge[1] in closedSet:
+            edge, weight = pq.popitem()
+        # Add the edge to the MST
+        mst.append(edge)
+        # Update the current node
+        current = edge[1]
+    
+    return mst

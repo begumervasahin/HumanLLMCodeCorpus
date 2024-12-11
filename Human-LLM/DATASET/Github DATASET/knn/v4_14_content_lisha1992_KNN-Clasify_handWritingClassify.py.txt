@@ -1,0 +1,59 @@
+import numpy as np
+import os
+
+def KNNClassifier(unlabeled, dataSet, labels, k):
+    numSamples = dataSet.shape[0]
+    diff = np.tile(unlabeled, (numSamples, 1)) - dataSet
+    sqDiff = diff ** 2
+    sqDist = np.sum(sqDiff, axis=1)
+    distance = sqDist ** 0.5
+    sortedDistIndex = np.argsort(distance)
+    classCount = {}
+    for i in range(k):
+        voteLabel = labels[sortedDistIndex[i]]
+        classCount[voteLabel] = classCount.get(voteLabel, 0) + 1
+    maxCount = 0
+    for key, value in classCount.items():
+        if value > maxCount:
+            maxCount = value
+            maxIndex = key
+    return maxIndex
+
+def image2vector(fileName):
+    vector = np.zeros((1, 1024))
+    with open(fileName) as imgFile:
+        for i in range(32):
+            lineString = imgFile.readline()
+            for j in range(32):
+                vector[0, 32 * i + j] = int(lineString[j])
+    return vector
+
+def handwritingRecognitionTest():
+    handWriLabels = []
+    trainSampleList = os.listdir('/Users/ceciliaLee/Desktop/digits/trainingDigits')
+    trainSampleCount = len(trainSampleList)
+    trainMat = np.zeros((trainSampleCount, 1024))
+    
+    for i in range(trainSampleCount):
+        fileNameStr = trainSampleList[i]
+        fileStr = fileNameStr.split('.')[0]
+        classStr = int(fileStr.split('_')[0])
+        handWriLabels.append(classStr)
+        trainMat[i, :] = image2vector('/Users/ceciliaLee/Desktop/digits/trainingDigits/%s' % fileNameStr)
+    
+    testSampleList = os.listdir('/Users/ceciliaLee/Desktop/digits/testDigits')
+    lenTest = len(testSampleList)
+    errorCount = 0.0
+    
+    for i in range(lenTest):
+        fileNameStr = testSampleList[i]
+        fileStr = fileNameStr.split('.')[0]
+        classStr = int(fileStr.split('_')[0])
+        vectorForTest = image2vector('/Users/ceciliaLee/Desktop/digits/testDigits/%s' % fileNameStr)
+        classifiedResult = KNNClassifier(vectorForTest, trainMat, handWriLabels, 3)
+        print('The classified result by KNN is: %d, the actual class is: %d' % (classifiedResult, classStr))
+        if classifiedResult != classStr:
+            errorCount += 1
+            
+    print('\nThe total number of incorrectly classified samples is: %d' % errorCount)
+    print('\nThe error rate is: %f' % (errorCount / (lenTest * 0.1)))

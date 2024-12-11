@@ -1,0 +1,68 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import time
+
+# Start time measurement
+start_time = time.time()
+
+# Step 1: Read data from CSV
+data = pd.read_csv("housePriceDataset.csv")
+
+# Step 2: Extract squareMeter and price columns
+square_meter = data["squareMeter"]
+price = data["price"]
+
+# Step 3: Convert to numpy arrays
+square_meter = np.array(square_meter)
+price = np.array(price)
+
+# Step 4: Perform polynomial regression
+a, b, c, d = np.polyfit(square_meter, price, 3)
+
+# Step 5: Generate points for the polynomial curve
+z = np.arange(150)
+
+# Step 6: Plot the data points and the polynomial curve
+plt.scatter(square_meter, price)
+plt.plot(z, a*(z**3) + b*(z**2) + c*z + d)
+plt.xlabel('Square Meter')
+plt.ylabel('Price')
+plt.title('House Price Prediction')
+plt.show()
+
+# Step 7: Pause for user input - square meter guess
+print("Please, enter square meter (m2): ")
+m2_guess = float(input())
+
+# Step 8: Measure time taken for the first pause
+pause1_time = time.time()
+
+# Step 9: Calculate house price guess using the polynomial equation
+house_price_guess = a*(m2_guess**3) + b*(m2_guess**2) + c*m2_guess + d
+print("House Price Guess => $" + str(house_price_guess))
+
+# Step 10: Pause for user input - house price
+print("Please, enter house price ($): ")
+house_price = float(input())
+
+# Step 11: Measure time taken for the second pause
+pause2_time = time.time()
+
+# Step 12: Perform binary search to find the square meter for given house price
+low = 0
+high = 1000
+while low <= high:
+    mid = (low + high) / 2
+    guess_price = a*(mid**3) + b*(mid**2) + c*mid + d
+    if guess_price < house_price:
+        low = mid + 0.001
+    elif guess_price > house_price:
+        high = mid - 0.001
+    else:
+        print("Square Meter (m2) Guess => " + str(mid) + " m2")
+        break
+
+# Step 13: Measure total time taken and print
+total_time = (time.time() - pause2_time) + (pause2_time - pause1_time) + (pause1_time - start_time)
+print("{} Seconds".format(total_time))

@@ -1,0 +1,104 @@
+import csv
+from bs4 import BeautifulSoup
+
+def read_for_democrat_svg(democrat_dictionary):
+    '''Colorize the svg map based on the data from the democrat dictionary that has the winning candidate name in each county'''
+    fill_color = ''
+    style_description = 'font-size:12px;fill-rule:nonzero;stroke:'
+    with open('counties.svg', 'r') as fin:
+        svg_data = fin.read()
+        soup = BeautifulSoup(svg_data, "html.parser")
+        paths = soup.findAll('path')
+        for p in paths:
+            if p['id'] not in ["State_Lines", "separator"]:
+                for fips_key in democrat_dictionary:
+                    if p['id'] == fips_key:
+                        if democrat_dictionary[fips_key] == 'Hillary Clinton':
+                            fill_color = '#0000FF'  # Blue color for Hillary Clinton
+                        elif democrat_dictionary[fips_key] == 'Bernie Sanders':
+                            fill_color = '#00FF00'  # Green color for Bernie Sanders
+                        else:
+                            fill_color = '#FFFFFF'  # Default white color
+                        p['style'] = style_description + fill_color
+                    else:
+                        continue
+        with open('democrat_map.svg', mode='w') as out_svg:
+             print(soup.prettify(), file=out_svg)
+
+def read_for_republican_svg(republican_dictionary):
+    '''Colorize the svg map based on the data from the republican dictionary that has the winning candidate name in each county'''
+    fill_color = ''
+    style_description = 'font-size:12px;fill-rule:nonzero;stroke:'
+    with open('counties.svg', 'r') as fin:
+        svg_data = fin.read()
+        soup = BeautifulSoup(svg_data, "html.parser")
+        paths = soup.findAll('path')
+        for p in paths:
+            if p['id'] not in ["State_Lines", "separator"]:
+                for fips_key in republican_dictionary:
+                    if p['id'] == fips_key:
+                        if republican_dictionary[fips_key] == 'Donald Trump':
+                            fill_color = '#FF0000'  # Red color for Donald Trump
+                        elif republican_dictionary[fips_key] == 'Ted Cruz':
+                            fill_color = '#FFFF00'  # Yellow color for Ted Cruz
+                        elif republican_dictionary[fips_key] == 'Marco Rubio':
+                            fill_color = '#FFA500'  # Orange color for Marco Rubio
+                        elif republican_dictionary[fips_key] == 'John Kasich':
+                            fill_color = '#800080'  # Purple color for John Kasich
+                        elif republican_dictionary[fips_key] == 'Ben Carson':
+                            fill_color = '#008000'  # Dark green color for Ben Carson
+                        else:
+                            fill_color = '#FFFFFF'  # Default white color
+                        p['style'] = style_description + fill_color
+                    else:
+                        continue
+        with open('republican_map.svg', mode='w') as out_svg:
+            print(soup.prettify(), file=out_svg)
+
+def read_from_csv_file():
+    '''A function that reads from the given csv file, creates dictionaries for both republican and democratic party with
+    fips as the key and winning candidate name as the value. The function then calls two functions sending corresponding
+    dictionaries as arguments'''
+    fips = ''
+    party_name = ''
+    candidate_name = ''
+    num_votes = ''
+    dict_democrat = {}
+    dict_republican = {}
+    with open('primary_results.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=",")
+        for row in reader:
+            if len(row) < 7:
+                continue
+            if row[3] == 'fips':
+                continue
+            if (fips == ''):
+                fips = row[3]
+                num_votes = row[6]
+                candidate_name = row[5]
+                party_name = row[4]
+            elif fips == row[3] and party_name == row[4]:
+                if int(num_votes) < int(row[6]):
+                    num_votes = row[6]
+                    candidate_name = row[5]
+            elif fips != row[3] and fips != '':
+                fips = fips.strip('.0')
+                if len(fips) < 5:
+                    fips = '0'*(5 - len(fips)) + fips
+                if party_name == 'Republican':
+                   dict_republican[fips] = candidate_name
+                elif party_name == 'Democrat':
+                    dict_democrat[fips] = candidate_name
+                fips = row[3]
+                num_votes = row[6]
+                candidate_name = row[5]
+                party_name = row[4]
+    read_for_democrat_svg(dict_democrat)
+    read_for_republican_svg(dict_republican)
+
+def main():
+    '''The main() function'''
+    read_from_csv_file()
+
+if __name__ == '__main__':
+    main()

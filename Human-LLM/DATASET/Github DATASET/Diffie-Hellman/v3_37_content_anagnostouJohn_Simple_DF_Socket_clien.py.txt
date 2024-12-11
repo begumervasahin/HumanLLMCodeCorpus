@@ -1,0 +1,92 @@
+import socket
+import json
+from diffiehellman.diffiehellman import DiffieHellman
+
+def connect_to_server(server_ip, server_port):
+    """
+    Connects to the server with the specified IP address and port.
+
+    Args:
+        server_ip (str): The IP address of the server.
+        server_port (int): The port number of the server.
+
+    Returns:
+        socket.socket: The connected socket.
+    """
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.settimeout(5)
+
+    try:
+        server_socket.connect((server_ip, server_port))
+    except socket.error as e:
+        print("Error connecting to the server:", e)
+        return None
+
+    return server_socket
+
+def send_bob_public_key(server_socket, bob_public_key):
+    """
+    Sends Bob's public key to the server.
+
+    Args:
+        server_socket (socket.socket): The connected socket to the server.
+        bob_public_key (int): Bob's public key.
+    """
+    message = {"bob": bob_public_key}
+    server_socket.send(json.dumps(message).encode("utf-8"))
+
+def receive_alice_public_key(server_socket):
+    """
+    Receives Alice's public key from the server.
+
+    Args:
+        server_socket (socket.socket): The connected socket to the server.
+
+    Returns:
+        int: Alice's public key.
+    """
+    total_data = ""
+    while True:
+        try:
+            received_data = server_socket.recv(100)
+            if not received_data:
+                break
+            total_data += received_data.decode("utf-8")
+        except socket.error as e:
+            print("Error receiving message from the server:", e)
+            break
+
+    return json.loads(total_data)["alice"]
+
+def main():
+    # Define server details
+    server_ip = '192.168.168.184'
+    server_port = 8201
+
+    # Connect to the server
+    server_socket = connect_to_server(server_ip, server_port)
+    if not server_socket:
+        return
+
+    # Generate Bob's public key
+    bob = DiffieHellman()
+    bob.generate_public_key()
+    bob_public_key = bob.public_key
+
+    # Send Bob's public key to the server
+    send_bob_public_key(server_socket, bob_public_key)
+
+    # Receive Alice's public key from the server
+    alice_public_key = receive_alice_public_key(server_socket)
+
+    # Compute shared secret key
+    bob.generate_shared_secret(alice_public_key, echo_return_key=True)
+
+    # Print the shared secret key
+    print("Shared Secret Key:", bob.shared_key)
+
+    # Close the connection
+    server_socket.close()
+
+if __name__ == "__main__":
+    main()

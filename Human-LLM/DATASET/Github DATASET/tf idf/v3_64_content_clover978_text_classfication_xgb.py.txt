@@ -1,0 +1,57 @@
+import xgboost as xgb
+from sklearn.metrics import classification_report, confusion_matrix
+
+# Define file paths for training and testing data
+TRAIN_DATA_PATH = '/home/dxx/Backup/STUDY/syd/data/train.txt'
+TEST_DATA_PATH = '/home/dxx/Backup/STUDY/syd/data/test.txt'
+
+# Load the training and testing data
+dtrain = xgb.DMatrix(TRAIN_DATA_PATH)
+dtest = xgb.DMatrix(TEST_DATA_PATH)
+
+# Define XGBoost model parameters
+XGB_PARAMS = {
+    'silent': 0,
+    'max_depth': 10,
+    'eta': 0.1,
+    'subsample': 1.0,
+    'min_child_weight': 5,
+    'colsample_bytree': 0.2,
+    'objective': 'multi:softmax',
+    'num_class': 6
+}
+
+NUM_ROUNDS = 100  # Number of boosting rounds
+EVALS = [(dtrain, 'train')]  # Evaluation set
+
+def train_model():
+    """Train the XGBoost model."""
+    model = xgb.train(params=XGB_PARAMS, dtrain=dtrain, num_boost_round=NUM_ROUNDS, evals=EVALS)
+    # Save the trained model
+    model.save_model('xtrain.model')
+
+def test_model():
+    """Test the trained XGBoost model."""
+    # Load the trained XGBoost model
+    model = xgb.Booster()
+    model.load_model('xtrain.model')
+    # Make predictions on the test data
+    preds = model.predict(dtest)
+    labels = dtest.get_label()
+    # Write predictions to a file
+    with open('result.txt', 'w') as f:
+        for true_label, pred_label in zip(labels, preds):
+            f.write('True Label: {:d}\tPredicted Label: {:d}\n'.format(int(true_label), int(pred_label)))
+    # Evaluate the model
+    print("Classification Report:")
+    print(classification_report(labels, preds))
+    print("Confusion Matrix:")
+    print(confusion_matrix(labels, preds))
+
+def main():
+    """Main function to train and test the XGBoost model."""
+    train_model()
+    test_model()
+
+if __name__ == '__main__':
+    main()

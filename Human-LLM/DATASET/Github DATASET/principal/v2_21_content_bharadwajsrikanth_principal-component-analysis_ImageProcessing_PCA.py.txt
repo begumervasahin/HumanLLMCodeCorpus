@@ -1,0 +1,75 @@
+import cv2
+from PIL import Image
+from sklearn.feature_extraction import image
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the original image
+original_image = cv2.imread('clockwork-angels.jpg')
+
+# Convert the image to float64
+original_image = original_image.astype(np.float64)
+
+# Split the image into its RGB channels
+blue_channel, green_channel, red_channel = cv2.split(original_image)
+
+# Extract patches from the Red channel
+patch_size = (16, 16)
+patches = image.extract_patches_2d(red_channel, patch_size=patch_size)
+
+# Initialize a correlation matrix
+correlation_matrix = np.zeros((256, 256))
+
+# Compute the correlation matrix
+for index in range(1000):
+    # Convert patch to a column vector
+    patch_vector = np.array(patches[index]).reshape(256, 1)
+    
+    # Compute the outer product of the vector with itself
+    outer_product = patch_vector.dot(patch_vector.T)
+    
+    # Accumulate the outer product to the correlation matrix
+    correlation_matrix = np.add(correlation_matrix, outer_product)
+
+# Compute eigenvalues and eigenvectors of the correlation matrix
+eigenvalues, eigenvectors = np.linalg.eig(correlation_matrix)
+
+# Sort eigenvalues and corresponding eigenvectors
+sorted_indices = np.argsort(eigenvalues)[::-1]
+
+# Save top 64 eigenvectors as patches
+for i in range(64):
+    # Extract the eigenvector corresponding to the sorted index
+    sorted_eigenvector = eigenvectors[:, sorted_indices[i]]
+    
+    # Reshape eigenvector into a 2D patch
+    patch = np.reshape(sorted_eigenvector, patch_size)
+    
+    # Save the patch as an image
+    plt.imsave(f"Result{i}.png", patch.real, cmap='Greys')
+
+# Create a blank image to paste the patches onto
+result_image = Image.new('RGB', (142, 142), "white")
+
+# Paste patches onto the blank image
+y_coordinate = 0
+patch_index = 0
+
+for _ in range(8):
+    x_coordinate = 0
+    for _ in range(8):
+        # Open the saved patch image
+        patch_image = Image.open(f"Result{patch_index}.png")
+        patch_index += 1
+        
+        # Paste the patch onto the result image
+        result_image.paste(patch_image, (x_coordinate, y_coordinate))
+        
+        # Update x-coordinate for next patch
+        x_coordinate += 18
+    
+    # Update y-coordinate for next row of patches
+    y_coordinate += 18
+
+# Display the result image with patches
+result_image.show()

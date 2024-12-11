@@ -1,0 +1,118 @@
+import os
+import sys
+import hashlib
+import binascii
+from re import match
+from platform import system
+
+# List of files containing hashed passwords
+pwned_passwords_files = ['pwned-passwords-ordered-2.0.bin']
+
+# Length of SHA1 hash in bytes
+HASH_LENGTH = 20
+
+# Set to 1 to automatically detect SHA1 hash input, set to 0 otherwise
+DETECT_HASH = 1
+
+# Set to 1 for verbose output, set to 0 for minimal output
+VERBOSE = 0
+
+# Check if the system is Windows
+if system() == 'Windows':
+    WINDOWS = 1
+else:
+    WINDOWS = 0
+
+# Function to get the size of a file
+def get_file_size(filename):
+    return os.path.getsize(filename)
+
+# Function to search for a password in the list of hashed passwords
+def search_for_password(password):
+    try:
+        # Decode password based on the system encoding
+        if WINDOWS == 0:
+            password = password.decode('utf-8').encode('utf-8')
+        else:
+            password = password.decode('cp1252').encode('utf-8')
+    except:
+        password = password.encode('utf-8')
+
+    # Calculate the SHA1 hash of the password
+    pass_hash = hashlib.sha1(password).hexdigest().upper()
+
+    # Automatically detect if the input is a SHA1 hash
+    if DETECT_HASH == 1:
+        if len(password) == HASH_LENGTH * 2:
+            if match(r'^[a-fA-F0-9]+$', password.decode('utf-8')):
+                pass_hash = password.decode('utf-8').upper()
+
+    # Display verbose output
+    if VERBOSE > 0:
+        print("\nSearching for SHA1 hash: %s" % pass_hash)
+
+    # Iterate over each password file
+    for password_file in pwned_passwords_files:
+        if VERBOSE > 0:
+            print("Searching in: %s" % password_file)
+
+        try:
+            # Get the size of the password file
+            filesize = get_file_size(password_file)
+        except:
+            if VERBOSE > 0:
+                print("File not found: %s" % password_file)
+            return 1
+
+        # Calculate the number of hashes in the file
+        number_of_hashes = filesize // HASH_LENGTH
+
+        # Display verbose output
+        if VERBOSE > 1:
+            print("File size is: %s bytes, hash length is %s bytes, number of hashes is %s"
+                % (filesize, HASH_LENGTH, number_of_hashes))
+
+        # Binary search for the password hash in the file
+        pos_from = 0
+        pos_to = number_of_hashes
+
+        with open(password_file, "rb") as file:
+            while True:
+                current_pos = int((pos_to + pos_from) / 2)
+                file.seek(current_pos * HASH_LENGTH)
+                pwned_hash = binascii.hexlify(bytearray(file.read(HASH_LENGTH))).upper().decode('utf-8')
+
+                if VERBOSE > 1:
+                    print("Go to %s hash position" % current_pos)
+
+                # Check if the hash matches the password hash
+                if pwned_hash == pass_hash:
+                    if VERBOSE > 0:
+                        print("Found: '%s' as %s" % (password.decode('utf-8'), pwned_hash))
+                    return 0
+
+                # Break the loop if the search range is small
+                if abs(pos_to - pos_from) < 1:
+                    break
+
+                # Update the search range
+                if pwned_hash < pass_hash:
+                    pos_from = current_pos
+                    if abs(pos_to - pos_from) <= 1:
+                        pos_from = pos_to
+                else:
+                    pos_to = current_pos
+                    if abs(pos_to - pos_from) <= 1:
+                        pos_to = pos_from
+
+    # Display verbose output
+    if VERBOSE > 0:
+        print("Not found, all clear!")
+
+    return 1
+
+# Main function
+if len(sys.argv) == 2 and len(sys.argv[1]) > 0:
+    exit(search_for_password(sys.argv[1]))
+else:
+    print("\tUse:\n\t" + os.path.basename(__file__) + " [password|SHA1]")

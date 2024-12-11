@@ -1,0 +1,74 @@
+import numpy as np
+import cupy as cp
+
+# Define a constant for infinity
+INF = 1e6
+
+def floyd_warshall(W, n):
+    """
+    Applies the Floyd-Warshall algorithm to find the shortest paths between all pairs of vertices in a graph.
+
+    Args:
+        W (cupy.ndarray): The adjacency matrix representing the graph.
+        n (int): The number of vertices in the graph.
+
+    Returns:
+        cupy.ndarray: The shortest path distances between all pairs of vertices.        
+    """
+    # Initialize the distance matrix
+    d = cp.ones([n, n]) * INF
+
+    # Perform Floyd-Warshall algorithm
+    for k in range(n):
+        dk = cp.log(cp.dot(cp.exp(W[:, k].reshape(n, 1)), cp.exp(W[k, :].reshape(1, n))))
+        a = cp.sign(d - dk)
+        where_to = cp.where(a > 0)
+        d[where_to] = dk[where_to]
+
+    return d
+
+def generate_adjacency_matrix(n=4):
+    """
+    Generates a random adjacency matrix for a graph with `n` vertices.
+
+    Args:
+        n (int): The number of vertices in the graph.
+
+    Returns:
+        cupy.ndarray: The generated adjacency matrix.
+    """
+    # Generate a random binary matrix for connectivity
+    connectivity = np.random.binomial(1, 0.5, [n, n])
+    connectivity = np.triu(connectivity, 1)
+    connectivity += np.transpose(connectivity)
+    connectivity = cp.array(connectivity)
+
+    # Generate random weights for edges
+    weights = cp.array(np.random.exponential(scale=1, size=(n, n)))
+
+    # Apply connectivity matrix to weights and set non-connected vertices to infinity   
+    W = cp.multiply(connectivity, weights)
+    W = cp.array(np.triu(W.get(), 1))
+    W += cp.transpose(W)
+    W += (cp.ones([n, n]) - connectivity) * INF
+    cp.fill_diagonal(W, 0)
+
+    return W
+
+if __name__ == "__main__":
+    # Define the number of vertices
+    num_vertices = 4
+
+    # Generate adjacency matrix
+    adjacency_matrix = generate_adjacency_matrix(num_vertices)
+
+    # Display the adjacency matrix
+    print("Adjacency Matrix:")
+    print(adjacency_matrix)
+
+    # Apply Floyd-Warshall algorithm to find shortest paths
+    distances = floyd_warshall(adjacency_matrix, num_vertices)
+
+    # Display the shortest path distances
+    print("Distances:")
+    print(distances)

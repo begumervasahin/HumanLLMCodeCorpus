@@ -1,0 +1,173 @@
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+import pickle
+
+def create_shifted_matrix(data, lag):
+    """Shifts data by a given lag to create a new matrix.
+
+    Args:
+        data (np.array): Input data matrix.
+        lag (int): Time lag parameter.
+
+    Returns:
+        np.array: Shifted data matrix.
+    """
+    shifted_matrix = data[lag:]
+    for l in range(1, lag + 1):
+        shifted_matrix = np.hstack((shifted_matrix, data[lag - l:-l]))
+    return shifted_matrix
+
+def calculate_delta_matrix(data, time_diff):
+    """Calculates the difference matrix for a given time difference.
+
+    Args:
+        data (np.array): Input data.
+        time_diff (int): Time difference between samples.
+
+    Returns:
+        np.array: Difference matrix.
+    """
+    delta_matrix = data[time_diff:] - data[:-time_diff]
+    return delta_matrix
+
+def compute_dynamic_matrix(data, lag, time_diff):
+    """Computes the dynamic matrix part of the TS-PCA model.
+
+    Args:
+        data (np.array): Input data.
+        lag (int): Lag parameter of the model.
+        time_diff (int): Time difference parameter.
+
+    Returns:
+        np.array: Dynamic matrix A.
+    """
+    shifted_data = create_shifted_matrix(data, lag)
+    delta_X = calculate_delta_matrix(data, time_diff)
+    delta_shifted_X = calculate_delta_matrix(shifted_data, time_diff)
+    delta_X = delta_X[len(delta_X) - len(delta_shifted_X):]
+    
+    inv_matrix = np.linalg.inv(delta_shifted_X.T @ delta_shifted_X)
+    A = inv_matrix @ (delta_shifted_X.T @ delta_X)
+    return A
+
+def compute_hotellings_T2(principal_components, eigenvalues):
+    """Computes Hotelling's T2 metric.
+
+    Args:
+        principal_components (np.array): Score matrix (Principal Components).
+        eigenvalues (np.array): Corresponding eigenvalues.
+
+    Returns:
+        np.array: Hotelling's T2 metric.
+    """
+    T2 = np.zeros((principal_components.shape[0], 1))
+    for i in range(principal_components.shape[0]):
+        T2[i] = sum((principal_components[i, k] ** 2) / eigenvalues[k] for k in range(principal_components.shape[1]))
+    return T2
+
+def compute_SPE(principal_components):
+    """Computes the Squared Prediction Error (SPE).
+
+    Args:
+        principal_components (np.array): Score matrix of unused principal components.
+
+    Returns:
+        np.array: SPE metric.
+    """
+    SPE = np.array([np.sum(np.square(row)) for row in principal_components]).reshape(-1, 1)
+    return SPE
+
+def perform_pca(data):
+    """Performs PCA on the given data.
+
+    Args:
+        data (np.array): Preprocessed data (zero mean, unit variance).
+
+    Returns:
+        tuple: A tuple containing the score matrix, loading matrix, eigenvalues, and variance explained.
+    """
+    covariance_matrix = np.cov(data.T)
+    eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)
+    # Sort eigenvalues and eigenvectors
+    sorted_indices = eigenvalues.argsort()[::-1]
+    eigenvalues = eigenvalues[sorted_indices]
+    eigenvectors = eigenvectors[:, sorted_indices]
+    
+    variance_explained = [(i / sum(eigenvalues)) for i in eigenvalues]
+    score_matrix = data @ eigenvectors
+    return score_matrix, eigenvectors, eigenvalues, variance_explained
+
+def select_principal_components(score_matrix, eigenvalues, variance_explained, threshold):
+    """Selects principal components based on the explained variance threshold.
+
+    Args:
+        score_matrix (np.array): Score matrix from PCA.
+        eigenvalues (np.array): Eigenvalues from PCA.
+        variance_explained (list): Variance explained by each principal component.
+        threshold (float): Minimum variance to be explained by selected components.
+
+    Returns:
+        tuple: Score matrices of selected and remaining components, along with selected eigenvalues.
+    """
+    total_variance = 0
+    for i, variance in enumerate(variance_explained, start=1):
+        total_variance += variance
+        if total_variance >= threshold:
+            return score_matrix[:, :i], eigenvalues[:i], score_matrix[:, i:]
+
+class TSPCA:
+    def __init__(self):
+        self.scaler = StandardScaler()
+        self.q = None
+        self.D = None
+        self.A = None
+
+    def fit(self, data, q_max, D_max, verbose=False):
+        """Fits the TS-PCA model to the training data and finds optimal parameters.
+
+        Args:
+            data (pd.DataFrame or np.array): Training data.
+            q_max (int): Maximum lag value for parameter search.
+            D_max (int): Maximum time difference value for parameter search.
+            verbose (bool): If True, prints progress and parameter selection.
+        """
+        data = data.values if isinstance(data, pd.DataFrame) else data
+        optimal_q, optimal_D = self._find_optimal_parameters(data, q_max, D_max, verbose)
+        
+        self.q, self.D = optimal_q, optimal_D
+        shifted_data = create_shifted_matrix(data, self.q)
+        self.A = compute_dynamic_matrix(data[len(data) - len(shifted_data):], self.q, self.D)
+        residual_matrix = data[len(data) - len(shifted_data):] - (shifted_data @ self.A)
+        
+        self.scaler.fit(residual_matrix)
+        self._save_scaler()
+
+        if verbose:
+            print(f"Optimal parameters are Q: {self.q}, D: {self.D}")
+
+    def detect(self, data, variance_threshold):
+        """Detects anomalies in new data using the fitted TS-PCA model.
+
+        Args:
+            data (pd.DataFrame or np.array): New data for anomaly detection.
+            variance_threshold (float): Threshold for variance explained by selected principal components.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the Hotelling's T2 and SPE metrics.
+        """
+        data = data.values if isinstance(data, pd.DataFrame) else data
+        shifted_data = create_shifted_matrix(data, self.q)
+        residual_matrix = data[len(data) - len(shifted_data):] - (shifted_data @ self.A)
+        
+        self._load_scaler()
+        standardized_residuals = self.scaler.transform(residual_matrix)
+        
+        score_matrix, _, eigenvalues, variance_explained = perform_pca(standardized_residuals)
+        selected_scores, selected_eigenvalues, remaining_scores = select_principal_components(
+            score_matrix, eigenvalues, variance_explained, variance_threshold)
+        
+        T2_metrics = compute_hotellings_T2(selected_scores, selected_eigenvalues)
+        SPE_metrics = compute_SPE(remaining_scores)
+        
+        metrics_df = pd.DataFrame(np.concatenate((T2

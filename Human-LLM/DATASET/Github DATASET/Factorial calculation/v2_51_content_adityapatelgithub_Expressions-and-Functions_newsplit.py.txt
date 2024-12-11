@@ -1,0 +1,48 @@
+def tokenize_expression(expression):
+    """
+    Tokenizes an expression into individual elements like identifiers, numbers, and operators.
+    Yields tokens as they are identified, allowing for iteration over the result.
+    
+    Parameters:
+        expression (str): The expression to tokenize.
+    """
+    # Define single-character operators for easy reference.
+    operators = set('+-*/%()=<>!?;,:')
+    # Ensure expression termination by appending a semicolon.
+    expression += ";"
+    
+    position = 0  # Initialize cursor position.
+
+    # Process each character in the expression until the appended semicolon is reached.
+    while expression[position] != ";":
+        # Skip whitespace.
+        if expression[position].isspace():
+            position += 1
+        # Capture and yield alphabetic identifiers.
+        elif expression[position].isalpha():
+            start = position
+            while expression[position] not in operators and not expression[position].isspace():
+                position += 1
+            yield expression[start:position]
+        # Capture and yield numeric literals.
+        elif expression[position].isdigit():
+            start = position
+            while expression[position].isdigit():
+                position += 1
+            yield expression[start:position]
+        # Handle two-character logical operators ('==', '!=', '<=', '>=').
+        elif expression[position] in '=!<' and expression[position + 1] == '=':
+            yield expression[position:position + 2]
+            position += 2
+        else:
+            # Yield single character tokens/operators.
+            yield expression[position]
+            position += 1
+
+    # Yield the terminating semicolon as a token.
+    yield ";"
+
+# Example demonstrating how to use the tokenizer.
+example_expression = "if (a >= 12) { return a + 1; }"
+for token in tokenize_expression(example_expression):
+    print(token)

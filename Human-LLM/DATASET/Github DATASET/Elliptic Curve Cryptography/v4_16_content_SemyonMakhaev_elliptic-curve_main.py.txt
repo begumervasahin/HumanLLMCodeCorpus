@@ -1,0 +1,75 @@
+import sys
+from argparse import ArgumentParser
+from os.path import exists
+from lib import Computer, parse_number
+
+# Version of the program
+__version__ = '1.0'
+
+def main():
+    """Start the computation tools."""
+    input_file, output_file, debug = parse_args()
+    input_data = read_input(input_file)
+    curve_type, payload, coefficients, instructions = parse_input(input_data)
+    
+    computer = Computer(curve_type, payload, coefficients)
+    
+    for instruction in instructions:
+        if debug:
+            print('Instruction:', instruction)
+        computer.calculate(instruction)
+    
+    if debug:
+        print('Answer:', computer.cache)
+    
+    print('The result has been written in file `{}`'.format(output_file))
+    write_output(output_file, computer.cache)
+
+def parse_args():
+    """Parse command-line arguments."""
+    parser = ArgumentParser(prog='Elliptic curve',
+                            description='Program for elliptic curve points sum calculation',
+                            epilog='(c) Semen Makhaev, 2018. All rights reserved',
+                            usage='python3 main.py')
+    parser.add_argument('-i', '--input', type=str, default='input.txt',
+                        help='Input file path, default is `input.txt`')
+    parser.add_argument('-o', '--output', type=str, default='output.txt',
+                        help='Output file path, default is `output.txt`')
+    parser.add_argument('-d', '--debug', action='store_true', help="Debug mode")        
+    args = parser.parse_args()
+    return args.input, args.output, args.debug
+
+def read_input(file_path):
+    """Read the input file."""
+    if not exists(file_path):
+        print('Input file doesn\'t exist:', file_path)
+        sys.exit(1)
+    
+    with open(file_path, mode='r', encoding='utf-8') as input_file:
+        return list(map(str.strip, input_file))
+
+def write_output(file_path, data):
+    """Write the output to a file."""
+    lines = ['{} = {}'.format(key, data[key]) for key in data]
+    
+    with open(file_path, mode='w+', encoding='utf-8') as output_file:
+        output_file.write('\n'.join(lines))
+
+def parse_input(input_lines):
+    """Parse the input data."""
+    try:
+        curve_type = input_lines[0]
+        payload = parse_numbers(input_lines[1])
+        coefficients = parse_numbers(input_lines[2])
+        instructions = [line for line in input_lines[3:] if line.strip()]
+        return curve_type, payload, coefficients, instructions
+    except IndexError:
+        print('Input data is incorrect')
+        sys.exit(1)
+
+def parse_numbers(line):
+    """Parse the numbers from a line."""
+    return [parse_number(x) for x in line.split() if x]
+
+if __name__ == '__main__':
+    main()

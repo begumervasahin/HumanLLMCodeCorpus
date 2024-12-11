@@ -1,0 +1,79 @@
+import random
+
+class Graph:
+    """
+    Represents a graph data structure.
+
+    Attributes:
+        _adjacency_list (dict): Dictionary to store the adjacency list of the graph.
+        _is_weighted (bool): Indicates whether the graph is weighted.
+        _is_undirected (bool): Indicates whether the graph is undirected.
+    """
+
+    def __init__(self, is_undirected=False):
+        """
+        Initializes a new instance of the Graph class.
+
+        Args:
+            is_undirected (bool, optional): Indicates whether the graph is undirected. Defaults to False.
+        """
+        self._adjacency_list = {}
+        self._is_weighted = False
+        self._is_undirected = is_undirected
+
+    def vertices(self):
+        """Returns a list of vertices in the graph."""
+        return list(self._adjacency_list.keys())
+
+    def edges(self):
+        """Returns a list of edges in the graph."""
+        visited_edges = set()
+        edge_list = []
+        for vertex in self.vertices():
+            for adjacent_vertex in self.adjacent(vertex):
+                weight = self.weight((vertex, adjacent_vertex))
+                edge = (vertex, adjacent_vertex, weight)
+                edge_pair = (min(vertex, adjacent_vertex), max(vertex, adjacent_vertex))
+                if edge_pair not in visited_edges:
+                    edge_list.append(edge)
+                    visited_edges.add(edge_pair)
+        return edge_list
+
+    def adjacent(self, vertex):
+        """Returns a list of adjacent vertices for a given vertex."""
+        return list(self._adjacency_list.get(vertex, {}).keys())
+
+    def is_adjacent(self, origin, vertex):
+        """Checks if two vertices are adjacent."""
+        return vertex in self._adjacency_list.get(origin, {})
+
+    def add_vertex(self, vertex):
+        """Adds a vertex to the graph."""
+        if vertex not in self._adjacency_list:
+            self._adjacency_list[vertex] = {}
+
+    def add_edge(self, edge, weight=1):
+        """Adds an edge to the graph."""
+        vertex1, vertex2 = edge
+        self._adjacency_list[vertex1][vertex2] = weight
+        if self.is_undirected():
+            self._adjacency_list[vertex2][vertex1] = weight
+        self._is_weighted = self._is_weighted or weight != 1
+
+    def weight(self, edge):
+        """Returns the weight of an edge."""
+        vertex1, vertex2 = edge
+        return self._adjacency_list[vertex1].get(vertex2, None)
+
+    def random_vertex(self):
+        """Returns a random vertex from the graph."""
+        vertex_list = self.vertices()
+        return random.choice(vertex_list)
+
+    def is_weighted(self):
+        """Checks if the graph is weighted."""
+        return self._is_weighted
+
+    def is_undirected(self):
+        """Checks if the graph is undirected."""
+        return self._is_undirected

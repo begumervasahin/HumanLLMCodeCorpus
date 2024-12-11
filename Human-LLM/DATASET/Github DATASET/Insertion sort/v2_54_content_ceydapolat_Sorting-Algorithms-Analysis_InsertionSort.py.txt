@@ -1,0 +1,76 @@
+import createDataSets as cds
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+
+values = []
+times = []
+counts = []
+timesAve = np.zeros(5)
+
+def insertion_sort(arr):
+    """Sorts the array using the Insertion Sort algorithm."""
+    count = 1
+    for index in range(1, len(arr)):
+        current_value = arr[index]
+        position = index
+        x = 0
+        while position > 0 and arr[position - 1] > current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+            count += 1
+            x = 1
+        if x == 0:
+            count += 1
+        arr[position] = current_value
+    counts.append(count)
+
+def Insertion():
+    """Executes Insertion Sort on datasets."""
+    for f in cds.fileNames:
+        values.clear()
+        start = time.time()
+        with open(f, "r") as reader:
+            for value in reader.readlines():
+                values.append(int(value))
+        insertion_sort(values)
+        end = time.time()
+        times.append(end - start)
+    cds.generateAverageValues(times, timesAve)
+
+def generate_cases():
+    """Generates and displays sorting cases."""
+    global counts
+    arr_best = []
+    arr_ave = []
+    arr_worst = []
+    for i in range(len(counts)):
+        if i % 9 == 0:
+            arr_best.append(counts[i])
+        if i % 9 == 4:
+            arr_worst.append(counts[i])
+        if i % 9 == 1 or i % 9 == 2 or i % 9 == 3:
+            arr_ave.append(counts[i])
+
+    arr_ave2 = []
+    for i in range(len(arr_ave)):
+        x = (arr_ave[i] + arr_ave[i + 1] + arr_ave[i + 2]) / 3
+        i += 2
+        if len(arr_ave2) >= len(arr_ave) / 3:
+            break
+        arr_ave2.append(x)
+        x = 0
+
+    sizes = [200, 400, 600, 800, 1000]
+    plt.plot(sizes, arr_best, '-ro')
+    plt.plot(sizes, arr_ave2, '-bo')
+    plt.plot(sizes, arr_worst, '-go')
+    plt.legend(["Best Case", "Average Case", "Worst Case"])
+    plt.grid()
+    plt.xlabel("Sizes")
+    plt.ylabel("Counts")
+    plt.show()
+
+if __name__ == "__main__":
+    Insertion()
+    generate_cases()

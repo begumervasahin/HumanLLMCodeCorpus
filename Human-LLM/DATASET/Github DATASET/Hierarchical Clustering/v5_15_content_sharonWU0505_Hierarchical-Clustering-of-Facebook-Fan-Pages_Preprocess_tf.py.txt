@@ -1,0 +1,76 @@
+import os
+import sys
+import csv
+import re
+import jieba
+from tqdm import tqdm
+
+def preprocess_text(text):
+    """Preprocess text by removing URLs."""
+    return re.sub(r'^https?:\/\/.*[\r\n]*', '', text, flags=re.MULTILINE)
+
+def tokenize_text(text):
+    """Tokenize text using Jieba."""
+    return list(jieba.cut(text))
+
+def calculate_term_frequencies(tokens):
+    """Calculate term frequencies from a list of tokens."""
+    tfs = {}
+    for term in tokens:
+        tfs[term] = tfs.get(term, 0) + 1
+    return tfs
+
+def write_term_frequencies(tfs, page_name):
+    """Write term frequencies to a CSV file."""
+    with open(f'tfs/{page_name.replace("/", "")}.csv', 'w') as file:
+        writer = csv.writer(file)
+        for term, frequency in tfs.items():
+            writer.writerow([term, frequency])
+
+if __name__ == "__main__":
+    # Get the path to the directory containing posts from command-line arguments
+    posts_path = sys.argv[1]
+
+    # List all directories in the posts directory
+    dirs = os.listdir(posts_path)
+    dir_count = len(dirs)
+
+    # Iterate over each directory
+    for idx, directory in enumerate(dirs):
+        print(f'Progress: {idx + 1}/{dir_count}')
+        pages_path = os.path.join(posts_path, directory)
+
+        # Create a directory for storing TF files if it doesn't exist
+        if not os.path.isdir('tfs'):
+            os.makedirs('tfs')
+
+        # List all files in the current directory
+        pages = os.listdir(pages_path)
+
+        # Iterate over each file in the directory
+        for page_file in tqdm(pages):
+            # Dictionary to store term frequencies
+            tfs = {}
+
+            # Read the contents of the file
+            with open(os.path.join(pages_path, page_file), 'r') as file:
+                # Read the CSV content and remove null characters
+                csv_content = list(csv.reader((line.replace('\0', '') for line in file)))
+
+                # Check if there are at least two rows in the CSV
+                if len(csv_content) >= 2:
+                    # Get the page name from the second row
+                    page_name = csv_content[1][0]
+
+                    # Exclude the first row (header)
+                    csv_content = csv_content[1:]
+
+                    # Tokenize and preprocess text using Jieba and regular expressions
+                    tokens = [tokenize_text(preprocess_text(row[1])) for row in csv_content if len(row) >= 2]
+                    tokens = [token for sublist in tokens for token in sublist]
+
+                    # Calculate term frequencies
+                    tfs = calculate_term_frequencies(tokens)
+
+                    # Write term frequencies to a CSV file
+                    write_term_frequencies(tfs, page_name)

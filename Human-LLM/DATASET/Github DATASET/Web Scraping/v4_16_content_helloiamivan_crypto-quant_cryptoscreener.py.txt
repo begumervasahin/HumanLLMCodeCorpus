@@ -1,0 +1,51 @@
+import pandas as pd
+import json
+import urllib3
+
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def screenUniverse(universeSelectionDate, minMarketCap, minimumListingPeriod, circulatingPct, minExchanges):
+    # Load coin data
+    coindata = pd.read_csv('input/clean_coindata.csv')
+    
+    # Convert dates to datetime
+    coindata['Date'] = pd.to_datetime(coindata['Date'], infer_datetime_format=True)
+    
+    # Filter coins by date and minimum market cap
+    universe = coindata[(coindata['Date'] == universeSelectionDate) & (coindata['Marketcap'] >= minMarketCap)]
+    filter_mktcap = universe['Coin'].tolist()
+    
+    # Filter coins by minimum number of exchanges
+    exchanges = json.load(open('input/exchangesdata.json'))
+    filter_mktcap_glo = [coin for coin in filter_mktcap if len(exchanges[coin]) >= minExchanges]
+    
+    # Filter coins by minimum listing period
+    filter_mktcap_glo_lon = []
+    for coin in filter_mktcap_glo:
+        tempcoinframe = coindata[(coindata['Coin'] == coin)].dropna().copy()
+        startDate = tempcoinframe['Date'].min()
+        endDate = universeSelectionDate
+        daysInExistence = (endDate - startDate).days
+        if daysInExistence >= minimumListingPeriod:
+            filter_mktcap_glo_lon.append(coin)
+    
+    # Filter coins by volume
+    filter_mktcap_glo_lon_vol = []
+    http = urllib3.PoolManager()
+    for coin in filter_mktcap_glo_lon:
+        url = 'https://api.coinmarketcap.com/v1/ticker/' + coin
+        response = http.request('GET', url)
+        cleandata = json.loads(response.data)
+        circulatingSupply = float(cleandata[0]['available_supply'])
+        
+        tempcoinframe = coindata[(coindata['Coin'] == coin)].copy()       
+        tempcoinframe['TokenVolume'] = tempcoinframe['Volume'] / tempcoinframe['Close']
+        tempcoinframe = tempcoinframe.groupby(pd.Grouper(key='Date', freq='M')).sum()
+        tempcoinframe.drop(tempcoinframe.tail(1).index, inplace=True)
+        volList = tempcoinframe.tail(3)['TokenVolume'].tolist()
+        
+        if all(i >= circulatingSupply * circulatingPct for i in volList):
+            filter_mktcap_glo_lon_vol.append(coin)
+    
+    return filter_mktcap_glo_lon_vol

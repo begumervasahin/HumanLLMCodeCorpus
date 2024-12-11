@@ -1,0 +1,111 @@
+import math
+import urllib.request
+import json
+import re
+
+def download_exchange_rates():
+    """
+    Download exchange rates from the given URL.
+    """
+    graph = {}
+    url = "http://fx.priceonomics.com/v1/rates/?q=1"
+
+    with urllib.request.urlopen(url) as response:
+        jsrates = json.loads(response.read().decode())
+
+    pattern = re.compile("([A-Z]{3})_([A-Z]{3})")
+
+    for key, value in jsrates.items():
+        matches = pattern.match(key)
+        if matches:
+            from_rate = matches.group(1)
+            to_rate = matches.group(2)
+
+            if from_rate != to_rate:
+                if from_rate not in graph:
+                    graph[from_rate] = {}
+                graph[from_rate][to_rate] = -math.log(float(value))
+
+    return graph
+
+def initialize(graph, source):
+    """
+    Initialize distances and predecessors.
+    """
+    distances = {node: float('inf') for node in graph}
+    predecessors = {node: None for node in graph}
+    distances[source] = 0
+
+    return distances, predecessors
+
+def relax(node, neighbour, graph, distances, predecessors):
+    """
+    Relax the edge between node and neighbour.
+    """
+    if distances[neighbour] > distances[node] + graph[node][neighbour]:
+        distances[neighbour] = distances[node] + graph[node][neighbour]
+        predecessors[neighbour] = node
+
+def retrace_negative_loop(predecessors, start):
+    """
+    Retrace the negative loop in the graph.
+    """
+    arbitrage_loop = [start]
+    next_node = start
+
+    while True:
+        next_node = predecessors[next_node]
+        if next_node not in arbitrage_loop:
+            arbitrage_loop.append(next_node)
+        else:
+            arbitrage_loop.append(next_node)
+            arbitrage_loop = arbitrage_loop[arbitrage_loop.index(next_node):]
+            return arbitrage_loop
+
+def bellman_ford(graph, source):
+    """
+    Bellman-Ford algorithm to find arbitrage opportunities.
+    """
+    distances, predecessors = initialize(graph, source)
+
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            for neighbour in graph[node]:
+                relax(node, neighbour, graph, distances, predecessors)
+
+    for node in graph:
+        for neighbour in graph[node]:
+            if distances[neighbour] < distances[node] + graph[node][neighbour]:
+                return retrace_negative_loop(predecessors, source)
+
+    return None
+
+def find_arbitrage_opportunities():
+    """
+    Find and print arbitrage opportunities in the exchange rates.
+    """
+    paths = []
+    graph = download_exchange_rates()
+
+    for key in graph:
+        path = bellman_ford(graph, key)
+        if path and path not in paths:
+            paths.append(path)
+
+    for path in paths:
+        if not path:
+            print("No arbitrage opportunity found.")
+        else:
+            money = 100
+            print("Starting with {} in {}".format(money, path[0]))
+            for i, value in enumerate(path):
+                if i + 1 < len(path):
+                    start = path[i]
+                    end = path[i + 1]
+                    rate = math.exp(-graph[start][end])
+                    money *= rate
+                    print("{} to {} at {} = {}".format(start, end, rate, money))
+        print("\n")
+
+if __name__ == "__main__":
+    find_arbitrage_opportunities()

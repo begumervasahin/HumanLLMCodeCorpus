@@ -1,0 +1,52 @@
+def split_expression_into_tokens(expression):
+    """
+    Splits a given expression into tokens (identifiers, operators, and numbers) without requiring spaces
+    between them. Yields tokens one by one, acting as an iterator.
+
+    Parameters:
+        expression (str): The expression to be tokenized.
+    """
+    # List of recognized single character operators
+    operators = set('+-*/%()=<>!?;,:')
+    expression += ";"  # Append semicolon to mark the end
+
+    index = 0
+
+    while expression[index] != ";":
+        if expression[index].isspace():
+            # Skip whitespace
+            index += 1
+            continue
+
+        if expression[index].isalpha():
+            # Handle identifiers (alphabetic strings)
+            start = index
+            while index < len(expression) and expression[index] not in operators and not expression[index].isspace():
+                index += 1
+            yield expression[start:index]
+            continue
+
+        if expression[index].isdigit():
+            # Handle numbers
+            start = index
+            while index < len(expression) and expression[index].isdigit():
+                index += 1
+            yield expression[start:index]
+            continue
+
+        # Handle two-character operators (==, !=, <=, >=)
+        if expression[index] in '=!<' and expression[index + 1] == '=':
+            yield expression[index:index + 2]
+            index += 2
+            continue
+
+        # Yield single-character operators and punctuation
+        yield expression[index]
+        index += 1
+
+    # Yield the appended semicolon as a token
+    yield ";"
+
+# Example use
+for token in split_expression_into_tokens("x = 10; if (x > 5) { x += 2; }"):
+    print(token)

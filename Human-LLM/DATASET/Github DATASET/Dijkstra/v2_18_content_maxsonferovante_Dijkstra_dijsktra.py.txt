@@ -1,0 +1,104 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+from heapq import heappush, heappop
+import timeit
+
+def draw_graph(graph, export=False, name='graph'):
+    # Create a temporary copy of the graph
+    tmp_graph = graph.copy()
+
+    # Assign labels to nodes for visualization
+    for node in tmp_graph.nodes():
+        tmp_graph.node[node]['label'] = node
+
+    # Generate positions for nodes using a spring layout
+    pos = nx.spring_layout(tmp_graph)
+
+    # Draw the graph with node labels
+    nx.draw(tmp_graph, pos)
+    node_labels = nx.get_node_attributes(tmp_graph, 'label')
+    nx.draw_networkx_labels(tmp_graph, pos, labels=node_labels)
+
+    # Save or show the graph
+    if export:
+        plt.savefig(name + '.png')
+    else:
+        plt.show()
+    plt.close()
+
+def dijkstra(graph, sources):
+    # Create a temporary copy of the graph
+    tmp_graph = graph.copy()
+
+    # Define heap operations
+    push = heappush
+    pop = heappop
+
+    # Initialize node attributes
+    for node in tmp_graph.nodes():
+        tmp_graph.node[node]['lambda'] = np.inf
+        tmp_graph.node[node]['pi'] = None
+
+    # Set source nodes' attributes
+    for source in sources:
+        tmp_graph.node[source]['lambda'] = 0
+
+    # Initialize priority queue and visited nodes list
+    q = []
+    visited = []
+
+    # Push nodes with their lambda values into the priority queue
+    for node in tmp_graph.nodes():
+        push(q, (tmp_graph.node[node]['lambda'], node))
+
+    # Dijkstra's algorithm main loop
+    while q:
+        u = pop(q)
+        u = u[1]
+        visited.append(u)
+        for v in tmp_graph.neighbors(u):
+            if v not in visited and tmp_graph.node[v]['lambda'] > (tmp_graph.node[u]['lambda'] + tmp_graph[u][v]['weight']):
+                q.remove((tmp_graph.node[v]['lambda'], v))
+                tmp_graph.node[v]['lambda'] = tmp_graph.node[u]['lambda'] + tmp_graph[u][v]['weight']
+                push(q, (tmp_graph.node[v]['lambda'], v))
+                tmp_graph.node[v]['pi'] = u
+
+    # Construct and return the resulting shortest path tree
+    shortest_path_tree = nx.Graph()
+    for u in tmp_graph.nodes():
+        shortest_path_tree.add_node(u)
+        if tmp_graph.node[u]['pi'] is not None:
+            shortest_path_tree.add_edge(u, tmp_graph.node[u]['pi'])
+            shortest_path_tree[u][tmp_graph.node[u]['pi']]['weight'] = tmp_graph[u][tmp_graph.node[u]['pi']]['weight']
+
+    return shortest_path_tree
+
+def read_weighted_adjacency_matrix(path):
+    # Read data from the adjacency matrix file
+    data = np.loadtxt(path)
+    rows, cols = np.where(data > 0)
+    edges = zip(rows, cols)
+
+    # Create a graph and assign weights to edges
+    g = nx.Graph(edges)
+    for u, v in zip(rows, cols):
+        g[u][v]['weight'] = data[u][v]
+
+    return g
+
+# Main script
+input_file = "adjacentes1.txt"
+graph = read_weighted_adjacency_matrix(input_file)
+source_nodes = []  # Add your source nodes here if needed
+execution_times = []
+
+# Run Dijkstra's algorithm multiple times and calculate average execution time
+for _ in range(10):
+    start_time = timeit.default_timer()
+    dijkstra(graph, source_nodes)
+    end_time = timeit.default_timer()
+    execution_times.append((end_time - start_time) / 10.0)
+
+# Print the sum of average execution times
+print(sum(execution_times))

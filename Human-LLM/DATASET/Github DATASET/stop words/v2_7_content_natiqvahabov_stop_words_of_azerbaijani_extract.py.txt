@@ -1,0 +1,65 @@
+import urllib.request as urllib2
+from bs4 import BeautifulSoup
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
+
+# Define the URL of the Wikipedia page containing links to selected articles
+wiki_page_url = "https://az.wikipedia.org/wiki/Vikipediya:Se%C3%A7ilmi%C5%9F_m%C9%99qal%C9%99l%C9%99r"
+
+# Function to scrape article URLs from the Wikipedia page
+def scrape_article_urls(url):
+    article_urls = []
+    # Open the URL and parse its HTML content
+    page = urllib2.urlopen(url)
+    soup = BeautifulSoup(page, 'html.parser')
+    # Find the table containing the links to articles
+    article_table = soup.find('table', class_='mw-content-ltr')
+    if article_table:
+        # Extract all links from the table
+        links = article_table.find_all('a')
+        # Iterate through each link and extract its URL
+        for link in links:
+            article_urls.append('https://az.wikipedia.org' + link['href'])
+    return article_urls
+
+# Function to tokenize text
+def tokenize_text(text):
+    # Use RegexpTokenizer to tokenize the text by matching word characters
+    tokenizer = RegexpTokenizer(r'\w+')
+    return tokenizer.tokenize(text)
+
+# Function to count token occurrences and write to file
+def count_and_write_to_file(tokens, filename):
+    # Count the occurrences of each token
+    token_counts = Counter(tokens)
+    # Write token counts to the specified file
+    with open(filename, 'a') as file:
+        for token, count in token_counts.items():
+            file.write(f"{token}: {count}\n")
+
+def main():
+    # Scrape article URLs from the Wikipedia page
+    article_urls = scrape_article_urls(wiki_page_url)
+
+    # Tokenize content of each article and concatenate tokens
+    tokenized_text = []
+    for i, url in enumerate(article_urls, start=1):
+        print(f"Processing article {i}/{len(article_urls)}")
+        # Open the URL of the article and parse its HTML content
+        page = urllib2.urlopen(url)
+        soup = BeautifulSoup(page, 'html.parser')
+        # Find the main content of the article
+        content_div = soup.find('div', class_='mw-parser-output')
+        if content_div:
+            # Extract text from the content and tokenize it
+            article_text = content_div.get_text()
+            tokens = tokenize_text(article_text)
+            # Add tokens to the list of tokenized text
+            tokenized_text.extend(tokens)
+
+    # Count token occurrences and write to file
+    count_and_write_to_file(tokenized_text, 'stopwordsAZE.txt')
+    print("Token counts written to file.")
+
+if __name__ == "__main__":
+    main()

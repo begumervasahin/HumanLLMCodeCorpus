@@ -1,0 +1,91 @@
+from queue import PriorityQueue
+
+class Node:
+    def __init__(self, data, frequency, leftChild=None, rightChild=None):
+        self.data = data
+        self.frequency = frequency
+        self.leftChild = leftChild
+        self.rightChild = rightChild
+
+    def __lt__(self, other):
+        return self.frequency < other.frequency
+
+    def __repr__(self):
+        return "Node: value ({}), frequency ({}), leftChild(), rightChild()\n".format(self.data, self.frequency)
+
+def initialize_priority_queue(string):
+    priority_queue = PriorityQueue()
+    unique_chars = set()
+    for char in string:
+        if char not in unique_chars:
+            priority_queue.put(Node(char, string.count(char)))
+            unique_chars.add(char)
+    return priority_queue
+
+def build_huffman_tree(priority_queue):
+    while priority_queue.qsize() > 1:
+        left_node = priority_queue.get()
+        right_node = priority_queue.get()
+        frequency = left_node.frequency + right_node.frequency
+        node = Node(None, frequency, left_node, right_node)
+        priority_queue.put(node)
+    return priority_queue.get()
+
+def create_hash_table(node, code="", hash_table=None):
+    if hash_table is None:
+        hash_table = {}
+    if node is not None:
+        if node.leftChild is None and node.rightChild is None:
+            hash_table[node.data] = code
+        else:
+            create_hash_table(node.leftChild, code + "0", hash_table)
+            create_hash_table(node.rightChild, code + "1", hash_table)
+    return hash_table
+
+def encode(string, hash_table):
+    encoded_string = ""
+    for char in string:
+        encoded_string += hash_table[char]
+    return encoded_string
+
+def decode(string, node):
+    global i
+    if node.leftChild is None and node.rightChild is None:
+        character = node.data
+        return character
+    if string[i] == "0":
+        i += 1
+        return decode(string, node.leftChild)
+    elif string[i] == "1":
+        i += 1
+        return decode(string, node.rightChild)
+
+# Read string from file
+with open('texteEncode.txt', 'r') as file:
+    string = file.read()
+
+# Initialize priority queue with characters and their frequencies
+priority_queue = initialize_priority_queue(string)
+
+# Build Huffman tree
+tree = build_huffman_tree(priority_queue)
+print(tree)
+
+# Create hash table for encoding
+hash_table = create_hash_table(tree)
+print(hash_table)
+
+# Encode the string using the hash table
+encoded_string = encode(string, hash_table)
+print(encoded_string)
+
+# Write encoded string back to file
+with open('texteEncode.txt', 'w') as file:
+    file.write(str(encoded_string))
+
+# Decode the encoded string
+i = 0
+decoded_string = ""
+while i < len(encoded_string):
+    decoded_string += decode(encoded_string, tree)
+print(decoded_string)

@@ -1,0 +1,76 @@
+import socket
+
+def print_header(text):
+    print("\n***********************")
+    print(f"*    {text}    *")
+    print("*     Key Exchange    *")
+    print("***********************")
+
+def input_parameters():
+    Prime = int(input("Input prime number: "))
+    Base = int(input("Input base number : "))
+    aliceSecret = int(input("Enter Alice Secret here:"))
+    bobSecret = int(input("Enter Bob Secret here:"))
+    return Prime, Base, aliceSecret, bobSecret
+
+def print_public_variables(Prime, Base):
+    print("-----------------------------------------")
+    print("Publicly Shared Variables:")
+    print(f"    Publicly Shared Prime: {Prime}")
+    print(f"    Publicly Shared Base:  {Base}")
+    print("-----------------------------------------")
+
+def calculate_public_keys(Prime, Base, aliceSecret, bobSecret):
+    A = (Base ** aliceSecret) % Prime
+    B = (Base ** bobSecret) % Prime
+    return A, B
+
+def print_public_transmissions(A, B):
+    print("\nAlice Sends Over Public Channel: ", A)
+    print("Bob Sends Over Public Channel:   ", B)
+    print("------------------------------------------")
+
+def calculate_shared_secrets(Prime, A, B, aliceSecret, bobSecret):
+    aliceSharedSecret = (B ** aliceSecret) % Prime
+    bobSharedSecret = (A ** bobSecret) % Prime
+    return aliceSharedSecret, bobSharedSecret
+
+def print_shared_secrets(aliceSharedSecret, bobSharedSecret):
+    print("Privately Calculated Shared Secret:")
+    print("    Alice Shared Secret: ", aliceSharedSecret)
+    print("    Bob Shared Secret:   ", bobSharedSecret)
+    print("------------------------------------------")
+
+def check_connection(aliceSharedSecret, bobSharedSecret):
+    if bobSharedSecret == aliceSharedSecret:
+        print("Connection established")
+    print("******************************************")
+
+def setup_server(aliceSharedSecret, bobSharedSecret):
+    server = socket.socket()
+    host = socket.gethostname()
+    port = 51125
+    server.bind((host, port))
+    server.listen(5)
+
+    while True:
+        client, addr = server.accept()
+        print('Got connection from', addr)
+        
+        # Send the shared secrets to the client
+        client.send(str(aliceSharedSecret) + str(bobSharedSecret))
+        client.close()
+
+def main():
+    print_header("Diffie Hellman Key Exchange")
+    Prime, Base, aliceSecret, bobSecret = input_parameters()
+    print_public_variables(Prime, Base)
+    A, B = calculate_public_keys(Prime, Base, aliceSecret, bobSecret)
+    print_public_transmissions(A, B)
+    aliceSharedSecret, bobSharedSecret = calculate_shared_secrets(Prime, A, B, aliceSecret, bobSecret)
+    print_shared_secrets(aliceSharedSecret, bobSharedSecret)
+    check_connection(aliceSharedSecret, bobSharedSecret)
+    setup_server(aliceSharedSecret, bobSharedSecret)
+
+if __name__ == "__main__":
+    main()

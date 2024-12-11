@@ -1,0 +1,52 @@
+import requests
+import json
+import os
+from bs4 import BeautifulSoup
+
+def top_scrape_list():
+    # Check if cache file exists
+    cache_file_path = "cache_file_for_task_1.json"
+    if os.path.isfile(cache_file_path):
+        # Load data from cache file if it exists
+        with open(cache_file_path, "r") as cache_file:
+            return json.load(cache_file)
+    else:
+        # If cache file doesn't exist, scrape data from IMDb website
+        endpoint = 'https://www.imdb.com/india/top-rated-indian-movies/'   
+        response = requests.get(endpoint)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find main content area
+        main_content = soup.find('div', class_='article')
+        movie_list_container = main_content.find('div', class_='lister')
+        movie_rows = movie_list_container.find('tbody', class_='lister-list').find_all('tr')
+
+        # Initialize variables
+        movies = []  # List to store movie details
+        unique_years = set()  # Set to store unique years
+
+        # Scrape movie data
+        for rank, movie_row in enumerate(movie_rows, start=1):
+            # Extract movie details
+            title_column = movie_row.find('td', class_='titleColumn')
+            title = title_column.find('a').text
+            year = int(title_column.find('span').text[1:5])  # Extract year and convert to integer
+            movie_url = "https://www.imdb.com" + title_column.find('a')['href']
+            rating = movie_row.find('td', class_='ratingColumn imdbRating').text.strip()
+
+            # Add unique year to set
+            unique_years.add(year)
+
+            # Create dictionary for movie details and append it to the movie list
+            movie_details = {'Title': title, 'Rank': rank, 'Year': year, 'URL': movie_url, 'Rating': rating}
+            movies.append(movie_details)
+
+        # Save the scraped data to cache file
+        with open(cache_file_path, "w") as cache_file:
+            json.dump(movies, cache_file)
+
+        # Return the scraped movie data
+        return movies
+
+# Call the function to scrape top-rated Indian movies
+movies = top_scrape_list()

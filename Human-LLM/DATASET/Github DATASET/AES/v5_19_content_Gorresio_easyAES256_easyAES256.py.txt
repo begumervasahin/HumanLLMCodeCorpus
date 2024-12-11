@@ -1,0 +1,113 @@
+import sys
+from hashlib import sha256
+from Crypto import Random
+from Crypto.Cipher import AES
+
+# AES block size for cipher object. AES uses a block size of 16 bytes.
+BLOCK_SIZE = 16
+
+def pad(s):
+    """
+    Pad the input string to ensure its length is a multiple of BLOCK_SIZE.
+
+    Args:
+    - s (str): Input string to pad.
+
+    Returns:
+    - str: Padded string.
+    """
+    padding_length = BLOCK_SIZE - (len(s) % BLOCK_SIZE)
+    padding = chr(padding_length) * padding_length
+    return s + padding
+
+def unpad(s):
+    """
+    Remove padding from the input string.
+
+    Args:
+    - s (str): Padded input string.
+
+    Returns:
+    - str: Unpadded string.
+    """
+    return s[:-ord(s[-1])]
+
+class AESCipher:
+    """
+    A class for AES encryption and decryption using CBC mode.
+    """
+    def __init__(self, key):
+        # Use SHA-256 over our key to ensure it's 256 bits long
+        self.key = sha256(key.encode('utf-8')).digest()
+
+    def encrypt(self, raw):
+        """
+        Encrypts a plaintext string.
+
+        Args:
+        - raw (str): Plaintext string to encrypt.
+
+        Returns:
+        - bytes: The encrypted data.
+        """
+        raw_padded = pad(raw)
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        return iv + cipher.encrypt(raw_padded.encode('utf-8'))
+
+    def decrypt(self, enc):
+        """
+        Decrypts an encrypted string.
+
+        Args:
+        - enc (bytes): Encrypted data.
+
+        Returns:
+        - str: The decrypted plaintext string.
+        """
+        iv = enc[:AES.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        return unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
+
+def print_usage_and_exit():
+    """
+    Prints the script usage and exits.
+    """
+    print("Usage: python script.py <encrypt|decrypt> <filename> <key>")
+    sys.exit(1)
+
+def main():
+    if len(sys.argv) != 4:
+        print_usage_and_exit()
+
+    action, filename, key = sys.argv[1:4]
+    if action not in ['encrypt', 'decrypt']:
+        print_usage_and_exit()
+
+    try:
+        with open(filename, 'rb') as file:
+            data = file.read()
+    except IOError:
+        print(f"Error reading file: {filename}")
+        sys.exit(1)
+
+    cipher = AESCipher(key)
+
+    if action == 'encrypt':
+        processed_data = cipher.encrypt(data.decode('utf-8'))
+        out_filename = f"{filename}.crypt"
+    else:  # Decrypt
+        processed_data = cipher.decrypt(data)
+        out_filename = filename.rsplit('.', 1)[0]
+
+    try:
+        with open(out_filename, 'wb') as file:
+            if action == 'decrypt':
+                processed_data = processed_data.encode('utf-8')
+            file.write(processed_data)
+    except IOError:
+        print(f"Error writing to file: {out_filename}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

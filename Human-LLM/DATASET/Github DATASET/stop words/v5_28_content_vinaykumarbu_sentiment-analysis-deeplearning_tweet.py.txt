@@ -1,0 +1,59 @@
+import json
+import re
+import sys
+import nltk
+from tweepy import Stream, OAuthHandler
+from tweepy.streaming import StreamListener
+
+# Twitter API credentials
+CONSUMER_KEY = "YOUR_CONSUMER_KEY"
+CONSUMER_SECRET = "YOUR_CONSUMER_SECRET"
+ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
+ACCESS_SECRET = "YOUR_ACCESS_SECRET"
+
+# Initialize NLTK
+nltk.download('words')
+english_words = set(nltk.corpus.words.words())
+
+class TweetListener(StreamListener):
+    def __init__(self, max_tweets=30):
+        super().__init__()
+        self.tweet_count = 0
+        self.max_tweets = max_tweets
+
+    def on_data(self, data):
+        tweet = json.loads(data)
+        self.process_tweet(tweet)
+        if self.tweet_count >= self.max_tweets:
+            sys.exit("Maximum number of tweets fetched.")
+
+    def process_tweet(self, tweet):
+        user_name = tweet["user"]["name"]
+        verified = tweet["user"]["verified"]
+        tweet_text = tweet.get("text", "")
+
+        # Extract full text if it's an extended tweet
+        if "extended_tweet" in tweet:
+            tweet_text = tweet["extended_tweet"]["full_text"]
+
+        # Clean tweet text and filter out non-English words
+        tweet_text = re.sub(r"[^A-Za-z0-9_@./]", "", tweet_text)
+
+        # Print and write tweet details to a file
+        with open("new_tweets.txt", "a") as output:
+            output.write(f'Username: {user_name}, Verified: {verified}, Text: {tweet_text}\n')
+        print(f'Username: {user_name}, Verified: {verified}, Text: {tweet_text}')
+        self.tweet_count += 1
+
+# Authenticate with Twitter API
+auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
+
+# Construct query string from command-line arguments
+query_string = " ".join(sys.argv[1:])
+print("Query String:", query_string)
+
+# Create Twitter stream
+tweet_listener = TweetListener()
+twitter_stream = Stream(auth, tweet_listener)
+twitter_stream.filter(languages=["en"], track=[query_string])

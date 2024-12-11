@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.optimize as op
+import nonlinear_mass_faster as nlm
+
+# Activate interactive mode for plotting
+plt.ion()
+plt.show()
+
+# Load power spectrum data
+pk_fiducial = np.loadtxt('pklin/default.txt')
+
+# Constants
+OMEGA_M = 0.3096  # Matter density parameter
+DELTA_C = 1.686    # Critical density threshold
+DISTANCE_RANGE = np.linspace(0, 5, int(4e4) + 1)
+KERNEL_GRID = np.linspace(0, 2, 100)
+KERNEL_STEP = KERNEL_GRID[1] - KERNEL_GRID[0]
+KERNEL_VALUES = KERNEL_GRID * KERNEL_GRID * nlm.kernel(KERNEL_GRID)
+CORRELATION_FUNCTION = nlm.pk_to_xi(pk_fiducial[:, 0], pk_fiducial[:, 1], DISTANCE_RANGE)
+INTERPOLATION_FUNCTION = lambda x: np.interp(x, DISTANCE_RANGE, CORRELATION_FUNCTION)
+REDSHIFT_VALUES = np.linspace(0, 6, 61)
+
+# Normalize power spectrum
+norm = np.interp(1.0, pk_fiducial[:, 0], pk_fiducial[:, 1], left=np.nan, right=np.nan)
+sigma2_norm = nlm.sigma2_prefactor(-2, norm)
+
+# Write results to file
+with open('fiducial_rnl.txt', 'w') as f:
+    for index, redshift in enumerate(REDSHIFT_VALUES):
+        # Compute growth factor
+        growth_factor = nlm.growth_factor(redshift, OMEGA_M)
+        
+        # Compute analytical nonlinear scale
+        rnl_analytic = op.brentq(lambda R: nlm.sigma_pl(sigma2_norm, -2, R) - DELTA_C / growth_factor, 0.01, 8.0)
+        
+        # Set starting point for numerical search
+        if redshift > 5 or rnl_analytic < 0:
+            start_point = 0.01
+        else:
+            start_point = rnl_analytic
+        
+        # Compute nonlinear scale using power spectrum
+        Rnl_fid = op.brentq(lambda R: nlm.sigma_Pk(R, pk_fiducial[:, 0], np.log(pk_fiducial[:, 0]),
+                                                   pk_fiducial[:, 1]) - DELTA_C / growth_factor, start_point, 5)
+        
+        # Write result to file
+        f.write('%.2f %15.10f\n' % (redshift, Rnl_fid))
