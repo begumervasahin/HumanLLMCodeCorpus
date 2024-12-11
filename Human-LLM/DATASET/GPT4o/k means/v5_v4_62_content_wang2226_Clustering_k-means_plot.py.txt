@@ -1,0 +1,48 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+import seaborn as sns
+
+# Set seaborn style
+sns.set()
+
+# Read data from CSV file
+file_path = "./yelp.csv"
+data = pd.read_csv(file_path, sep=',', quotechar='"', header=0)
+
+# Select relevant columns for clustering
+data = data[['latitude', 'longitude', 'reviewCount', 'checkins']]
+
+# Create feature matrix for clustering
+X = data[['latitude', 'longitude']].values
+
+# Set the number of clusters
+n_clusters = 4
+
+# Initialize and fit KMeans clustering model
+kmeans = KMeans(n_clusters=n_clusters)
+kmeans.fit(X)
+
+# Predict cluster labels and get centroids
+labels = kmeans.predict(X)
+centroids = kmeans.cluster_centers_
+
+# Print within-cluster sum of squares
+print(f"Within-cluster sum of squares: {kmeans.inertia_}")
+
+# Print centroids of each cluster
+for i, centroid in enumerate(centroids, start=1):
+    print(f"Centroid {i}: {centroid}")
+
+# Visualize the clustering results
+plt.figure(figsize=(10, 6))
+plt.scatter(X[:, 0], X[:, 1], c=labels, s=50, cmap='viridis', label='Data Points')
+plt.scatter(centroids[:, 0], centroids[:, 1], c='red', marker='*', s=200, alpha=0.5, label='Centroids')
+plt.title("Clustering of Yelp Data: Latitude vs. Longitude")
+plt.xlabel("Latitude")
+plt.ylabel("Longitude")
+plt.legend()
+plt.savefig('Latitude-Longitude.jpg')  # Save the plot as an image file
+plt.show()  # Display the plot

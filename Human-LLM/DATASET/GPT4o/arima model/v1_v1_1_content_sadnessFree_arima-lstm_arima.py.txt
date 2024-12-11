@@ -1,0 +1,63 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, to_datetime
+import statsmodels.tsa.stattools as st
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+def parser(x):
+    return to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+
+def mean_a_p_e(y_true, y_pred):
+    sum = 0
+    for i in range(len(y_true)):
+        sum += math.fabs(y_pred[i] - y_true[i]) / y_true[i]
+    return sum / len(y_true)
+
+# Load the dataset
+series = read_csv('/path/to/your/FEB15-2.csv', usecols=[2, 3], header=0, parse_dates=[0],
+                  index_col=0, squeeze=True, date_parser=parser)
+
+# Prepare data
+X = series.values
+X = X.astype('float32')
+start = 2000
+size = 1100
+test_size = 500
+line_test_size = 300
+windows_size = 10
+test_start = line_test_size + windows_size - 1
+
+# Split data into training and testing sets
+arima_train, arima_test = X[start:start + size], X[start + size:start + size + test_size]
+
+# Initialize variables
+history = [x for x in arima_train]
+predictions = list()
+
+# ARIMA modeling and prediction
+for t in range(len(arima_test)):
+    model = ARIMA(history, order=(4, 1, 0))
+    model_fit = model.fit()
+    output = model_fit.forecast()
+    yhat = output[0]
+    predictions.append(yhat)
+    obs = arima_test[t]
+    history.append(obs)
+    print('predicted=%f, expected=%f' % (yhat, obs))
+
+# Calculate evaluation metrics
+error = mean_squared_error(arima_test, predictions)
+mae = mean_absolute_error(arima_test, predictions)
+mape = mean_a_p_e(arima_test, predictions)
+print('ARIMA Test MAE: %.3f MSE: %.3f RMSE: %.3f MAPE: %.3f' % (mae, error, math.sqrt(error), mape))
+
+# Plotting
+plt.figure(figsize=(12, 6))
+plt.plot(arima_test[test_start:], '-', label="real flow")
+plt.plot(predictions[test_start:], '--', color='red', label="ARIMA")
+plt.legend(loc='upper right')
+plt.xlabel("period(15-minute intervals)")
+plt.ylabel("volume(vehicle/period)")
+plt.ylim(0, 800)
+plt.show()

@@ -1,0 +1,178 @@
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from random import randint, shuffle
+from time import time
+
+# Utility Functions
+def rand_list(n, low=0, high=100):
+    """Generate a list of random integers."""
+    return [randint(low, high) for _ in range(n)]
+
+def sort_time(sort_function, array):
+    """Measure the time taken to sort an array using the given sort function."""
+    shuffle(array)
+    start = time()
+    sort_function(array)
+    stop = time()
+    return stop - start
+
+def avg_sort_time(sort_function, array, trials=500):
+    """Calculate the average sort time over a number of trials."""
+    total_time = 0
+    for _ in range(trials):
+        total_time += sort_time(sort_function, array)
+    return total_time / trials
+
+def is_sorted(array):
+    """Check if the array is sorted."""
+    for i in range(1, len(array)):
+        if array[i] < array[i-1]:
+            return False
+    return True
+
+# Sorting Algorithms
+def insertion_sort(array):
+    for j in range(len(array)):
+        key, i = array[j], j - 1
+        while i >= 0 and array[i] > key:
+            array[i + 1], i = array[i], i - 1
+        array[i + 1] = key
+    return array
+
+def bubble_sort(array):
+    unsorted = True
+    j = len(array)
+    while unsorted:
+        unsorted = False
+        for i in range(1, j):
+            if array[i] < array[i-1]:
+                array[i], array[i-1] = array[i-1], array[i]
+                unsorted = True
+        j -= 1
+    return array
+
+def selection_sort(array):
+    for k in range(len(array)):
+        min_value, min_index = float('inf'), -1
+        for j in range(k, len(array)):
+            if array[j] < min_value:
+                min_value, min_index = array[j], j
+        array[k], array[min_index] = array[min_index], array[k]
+    return array
+
+def heap_sort(array):
+    def sift_down(array, parent, upto):
+        larger = 2 * parent + 1
+        while larger < upto:
+            if larger + 1 < upto and array[larger] < array[larger + 1]:
+                larger += 1
+            if array[larger] > array[parent]:
+                array[larger], array[parent] = array[parent], array[larger]
+                parent = larger
+                larger = 2 * parent + 1
+            else:
+                break
+
+    n = len(array)
+    for i in range(n // 2 - 1, -1, -1):
+        sift_down(array, i, n)
+    for i in range(n - 1, 0, -1):
+        array[0], array[i] = array[i], array[0]
+        sift_down(array, 0, i)
+    return array
+
+def merge_sort(array):
+    if len(array) > 1:
+        mid = len(array) // 2
+        left_half, right_half = array[:mid], array[mid:]
+        merge_sort(left_half)
+        merge_sort(right_half)
+
+        i = j = k = 0
+        while i < len(left_half) and j < len(right_half):
+            if left_half[i] < right_half[j]:
+                array[k] = left_half[i]
+                i += 1
+            else:
+                array[k] = right_half[j]
+                j += 1
+            k += 1
+        while i < len(left_half):
+            array[k] = left_half[i]
+            i += 1
+            k += 1
+        while j < len(right_half):
+            array[k] = right_half[j]
+            j += 1
+            k += 1
+    return array
+
+def quick_sort(array):
+    def quick_sort_helper(array, first, last):
+        if first < last:
+            split_point = partition(array, first, last)
+            quick_sort_helper(array, first, split_point - 1)
+            quick_sort_helper(array, split_point + 1, last)
+
+    def partition(array, first, last):
+        pivot, left_mark, right_mark = array[first], first + 1, last
+        done = False
+        while not done:
+            while left_mark <= right_mark and array[left_mark] <= pivot:
+                left_mark += 1
+            while right_mark >= left_mark and array[right_mark] >= pivot:
+                right_mark -= 1
+            if right_mark < left_mark:
+                done = True
+            else:
+                array[left_mark], array[right_mark] = array[right_mark], array[left_mark]
+        array[first], array[right_mark] = array[right_mark], array[first]
+        return right_mark
+
+    quick_sort_helper(array, 0, len(array) - 1)
+    return array
+
+def radix_sort(array):
+    mod, div = 10, 1
+    while True:
+        buckets = [[] for _ in range(10)]
+        for n in array:
+            buckets[(n % mod) // div].append(n)
+        mod, div = mod * 10, div * 10
+        if len(buckets[0]) == len(array):
+            return buckets[0]
+        array = [y for x in buckets for y in x]
+
+def tim_sort(array):
+    return sorted(array)
+
+if __name__ == '__main__':
+    input_sizes = [i for i in range(100, 25000, 500)]
+    sort_functions = {
+        'Bubble Sort': bubble_sort,
+        'Selection Sort': selection_sort,
+        'Insertion Sort': insertion_sort,
+        'Merge Sort': merge_sort,
+        'Heap Sort': heap_sort,
+        'Quick Sort': quick_sort,
+        'Radix Sort': radix_sort
+    }
+
+    sort_times = {}
+    for name, func in sort_functions.items():
+        if name in {'Bubble Sort', 'Selection Sort', 'Insertion Sort'}:
+            sort_times[name] = [sort_time(func, rand_list(size)) for size in tqdm(input_sizes[:10], desc=name)]
+        else:
+            sort_times[name] = [sort_time(func, rand_list(size)) for size in tqdm(input_sizes, desc=name)]
+
+    for name, times in sort_times.items():
+        if name in {'Bubble Sort', 'Selection Sort', 'Insertion Sort'}:
+            plt.plot(input_sizes[:10], times, label=name)
+        else:
+            plt.plot(input_sizes, times, label=name)
+
+    plt.legend(loc='lower right')
+    plt.ylabel('Time (seconds)')
+    plt.xlabel('List Size')
+    plt.title('Sorting Algorithm Performance')
+    plt.show()

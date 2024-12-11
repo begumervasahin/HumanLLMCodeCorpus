@@ -1,0 +1,84 @@
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import normalize
+import matplotlib.pyplot as plt
+
+def load_data(file_path):
+    """
+    Load the dataset from the given file path.
+
+    Args:
+        file_path (str): The path to the data file.
+
+    Returns:
+        tuple: A tuple containing the data and the correct labels.
+    """
+    data = []
+    correct_labels = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            line = line.strip().split(',')
+            features = [float(x) for x in line[:-1]]
+            label = int(line[-1])
+            data.append(features)
+            correct_labels.append(label)
+    return data, correct_labels
+
+def preprocess_data(data):
+    """
+    Normalize and reduce the dimensionality of the data using PCA.
+
+    Args:
+        data (list): The input data.
+
+    Returns:
+        np.ndarray: The transformed data after PCA.
+    """
+    X_normalized = normalize(data, axis=0)
+    pca = PCA(n_components=2)
+    X_reduced = pca.fit_transform(X_normalized)
+    return X_reduced
+
+def plot_clusters(X, correct_labels, n_clusters=3, no_of_subplots=4):
+    """
+    Plot the clusters for different linkage methods and the actual data.
+
+    Args:
+        X (np.ndarray): The input data.
+        correct_labels (list): The correct labels for the data.
+        n_clusters (int): The number of clusters.
+        no_of_subplots (int): The number of subplots to create.
+    """
+    plt.figure(figsize=(10, no_of_subplots))
+    plot_no = 0
+    for linkage in ['complete', 'average', 'ward', 'actual_data']:
+        if linkage == 'actual_data':
+            labels = correct_labels
+        else:
+            model = AgglomerativeClustering(linkage=linkage, n_clusters=n_clusters)
+            labels = model.fit_predict(X)
+        
+        plot_no += 1
+        plt.subplot(1, no_of_subplots, plot_no)
+        plt.scatter(X[:, 0], X[:, 1], c=labels)
+        plt.title(f'linkage={linkage}')
+    
+    plt.show()
+
+def main():
+    """
+    Main function to load data, preprocess it, and visualize clusters.
+    """
+    file_path = 'data/random_3_clusters.txt'
+    
+    # Load the data
+    data, correct_labels = load_data(file_path)
+    
+    # Preprocess the data
+    X = preprocess_data(data)
+    
+    # Plot the clusters
+    plot_clusters(X, correct_labels)
+
+if __name__ == "__main__":
+    main()

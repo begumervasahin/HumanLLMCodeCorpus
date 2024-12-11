@@ -1,0 +1,70 @@
+import sys
+import getopt
+import pandas as pd
+import os
+import time
+
+def get_option():
+    opts, args = getopt.getopt(sys.argv[1:], "hi:o:")
+    input_file = ""
+    output_file = ""
+    usage_message = "Usage:\n" \
+                    "Remove the sequences that contain 'N'\n" \
+                    "-i : input file\n" \
+                    "-o : output file\n"
+    
+    for opt, value in opts:
+        if opt == "-i":
+            input_file = value
+        elif opt == "-o":
+            output_file = value
+        elif opt == "-h":
+            return "", "", usage_message
+    
+    return input_file, output_file, ""
+
+def main(input_file, output_file):
+    sequences = []
+    
+    with open(input_file) as f:
+        for line in f:
+            if line.startswith(">"):
+                continue
+            sequences.append(line.strip())
+    
+    print(f"Total sequences: {len(sequences)}")
+    
+    sequence_counts = {}
+    
+    for seq in sequences:
+        if seq in sequence_counts:
+            sequence_counts[seq] += 1
+        else:
+            sequence_counts[seq] = 1
+    
+    print(f"Unique sequences: {len(sequence_counts)}")
+    
+    with open('tmp.txt', 'w') as temp_file:
+        for seq, count in sequence_counts.items():
+            temp_file.write(f"{seq}\t{count}\n")
+    
+    data = pd.read_csv('tmp.txt', sep='\t', names=['Sequence', 'Count'])
+    sorted_data = data.sort_values(by='Count', ascending=False)
+    sorted_data.to_csv(output_file, sep='\t', index=False)
+    
+    os.remove('tmp.txt')
+
+if __name__ == "__main__":
+    start_time = time.time()
+    
+    input_file, output_file, usage_message = get_option()
+    
+    if usage_message:
+        print(usage_message)
+    else:
+        if input_file and output_file:
+            main(input_file, output_file)
+            elapsed_time = time.time() - start_time
+            print(f"Time elapsed: {elapsed_time:.2f} seconds")
+        else:
+            print("Input and output files must be specified. Use -h for help.")

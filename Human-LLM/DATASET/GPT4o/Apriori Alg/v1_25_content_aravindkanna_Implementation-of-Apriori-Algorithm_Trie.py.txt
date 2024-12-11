@@ -1,0 +1,96 @@
+class TrieNode:
+    def __init__(self, count=1, name="root"):
+        self.child = {}
+        self.count = count
+        self.name = name
+
+    def insertNode(self, itemset, count):
+        """
+        Insert a node into the Trie.
+        """
+        f = self.child
+        for i in itemset:
+            if i in f:
+                f = f[i].child
+            else:
+                temp = TrieNode(count, i)
+                f[i] = temp
+                f = temp.child
+
+    def hasNode(self, itemset):
+        """
+        Check if a node exists in the Trie.
+        """
+        f = self.child
+        for i in itemset:
+            if i in f:
+                f = f[i].child
+            else:
+                return False
+        return True
+
+    def insertAll(self, FreqItemSets, counts):
+        """
+        Insert all frequent item sets into the Trie.
+        """
+        size = len(FreqItemSets)
+        for i in range(size):
+            self.insertNode(FreqItemSets[i], counts[i])
+
+    def printAll(self, prevStr=""):
+        """
+        Print all nodes in the Trie.
+        """
+        for i in self.child:
+            a = prevStr + i
+            print(a)
+            self.child[i].printAll(a + ",")
+
+    def getItemSets(self, prevList=[]):
+        """
+        Get all item sets from the Trie.
+        """
+        for i in self.child:
+            a = prevList + [i]
+            yield a
+            for j in self.child[i].getItemSets(a):
+                yield j
+
+    def getCount(self, itemSet):
+        """
+        Get the count of an item set in the Trie.
+        """
+        f = self.child
+        for i in itemSet:
+            fp = f[i]
+            f = f[i].child
+        return fp.count
+
+# Example usage
+if __name__ == "__main__":
+    # Creating a TrieNode instance
+    trie = TrieNode()
+
+    # Example frequent item sets and their counts
+    freqItemSets = [['A'], ['B'], ['A', 'B']]
+    counts = [3, 2, 1]
+
+    # Inserting all item sets into the Trie
+    trie.insertAll(freqItemSets, counts)
+
+    # Printing all nodes in the Trie
+    print("All nodes in the Trie:")
+    trie.printAll()
+
+    # Checking if a node exists
+    print("\nDoes ['A'] exist in the Trie?", trie.hasNode(['A']))
+    print("Does ['C'] exist in the Trie?", trie.hasNode(['C']))
+
+    # Getting item sets from the Trie
+    print("\nAll item sets in the Trie:")
+    for itemset in trie.getItemSets():
+        print(itemset)
+
+    # Getting the count of an item set
+    print("\nCount of ['A'] in the Trie:", trie.getCount(['A']))
+    print("Count of ['A', 'B'] in the Trie:", trie.getCount(['A', 'B']))

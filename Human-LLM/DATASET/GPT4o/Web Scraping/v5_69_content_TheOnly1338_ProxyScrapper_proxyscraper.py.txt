@@ -1,0 +1,83 @@
+import csv
+import requests
+from bs4 import BeautifulSoup
+
+# List to store scraped proxy data
+list_of_rows = []
+
+def save_proxy():
+    """Prompt the user for a filename and save the scraped proxy data to a CSV file."""
+    filename = input("File Name: ")
+    with open(filename + '.txt', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['IP', 'Port'])
+        for row in list_of_rows:
+            writer.writerow(row)
+    print("File Saved Successfully")
+
+def make_soup(url):
+    """Fetch the content of the given URL and return a BeautifulSoup object."""
+    response = requests.get(url)
+    print(f"{url} scraped successfully")
+    return BeautifulSoup(response.text, "lxml")
+
+def proxy_scrape(table):
+    """Scrape proxy data from the given table and store it in the list_of_rows."""
+    for row in table.find_all('tr'):
+        list_of_cells = []
+        for cell in row.find_all('td'):
+            text = cell.text.strip()  # Clean up the cell text
+            list_of_cells.append(text)
+        if list_of_cells:
+            list_of_rows.append(list_of_cells[:2])  # Only take the first two elements (IP and Port)
+
+def scrape_proxies(url):
+    """Scrape proxies from the given URL."""
+    soup = make_soup(url)
+    proxy_table = soup.find('table', attrs={'id': 'proxylisttable'})
+    if proxy_table:
+        proxy_scrape(proxy_table)
+    else:
+        print("Proxy table not found on the page.")
+
+def menu():
+    """Display the menu and return the user's choice."""
+    print("""
+   _______      ___      .______      .______       _______ .___________.___________.
+  /  _____|    /   \\     |   _  \\     |   _  \\     |   ____||           |           |
+ |  |  __     /  ^  \\    |  |_)  |    |  |_)  |    |  |__   `---|  |----`---|  |----`
+ |  | |_ |   /  /_\\  \\   |      /     |      /     |   __|      |  |        |  |     
+ |  |__| |  /  _____  \\  |  |\\  \\----.|  |\\  \\----.|  |____     |  |        |  |     
+  \\______| /__/     \\__\\ | _| `._____|| _| `._____||_______|    |__|        |__|     
+""")
+    print("Please Select A Source To Scrape From:")
+    print(" 1. http://sslproxies.org")
+    print(" 2. http://free-proxy-list.net")
+    print(" 3. http://us-proxy.org")
+    print(" 4. http://socks-proxy.net")
+    print(" 5. Exit")
+    choice = input("Option: ")
+    return int(choice)
+
+def main():
+    """Main function to run the proxy scraper."""
+    while True:
+        choice = menu()
+        if choice == 1:
+            scrape_proxies("https://www.sslproxies.org")
+        elif choice == 2:
+            scrape_proxies("https://free-proxy-list.net")
+        elif choice == 3:
+            scrape_proxies("https://us-proxy.org")
+        elif choice == 4:
+            scrape_proxies("https://socks-proxy.net")
+        elif choice == 5:
+            break
+        else:
+            print("Invalid choice!")
+        if 1 <= choice <= 4:
+            save_proxy()
+            break
+
+if __name__ == "__main__":
+    main()

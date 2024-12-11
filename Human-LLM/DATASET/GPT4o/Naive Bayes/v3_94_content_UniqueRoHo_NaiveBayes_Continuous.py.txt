@@ -1,0 +1,115 @@
+"""
+Created on Mon Oct 14 20:52:08 2019
+Author: Strange
+"""
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+def load_data(filepath):
+    """
+    Load dataset from a CSV file.
+
+    Parameters:
+    filepath (str): Path to the CSV file.
+
+    Returns:
+    np.array: Loaded data.
+    """
+    return np.loadtxt(open(filepath), delimiter=',', skiprows=1, dtype=float)
+
+def calculate_mean_std(data):
+    """
+    Calculate the mean and standard deviation for each feature in the dataset.
+
+    Parameters:
+    data (np.array): Dataset.
+
+    Returns:
+    tuple: A tuple containing lists of means, standard deviations, and the number of features.
+    """
+    feature_num = data.shape[1] - 1
+    means = []
+    stds = []
+
+    for i in range(feature_num):
+        feature_values = data[:, i]
+        means.append(np.mean(feature_values))
+        stds.append(np.std(feature_values))
+    
+    return means, stds, feature_num
+
+def gaussian_probability(x, mean, std):
+    """
+    Calculate the Gaussian probability density function for a given value.
+
+    Parameters:
+    x (float): Value to calculate the probability for.
+    mean (float): Mean of the feature.
+    std (float): Standard deviation of the feature.
+
+    Returns:
+    float: Gaussian probability.
+    """
+    exponent = np.exp(-(np.power(x - mean, 2)) / (2 * np.power(std, 2)))
+    return (1 / (np.sqrt(2 * np.pi) * std)) * exponent
+
+def calculate_class_probability(test_data, means, stds):
+    """
+    Calculate the probability of the data belonging to a class.
+
+    Parameters:
+    test_data (np.array): Data to calculate the probability for.
+    means (list): Means of the features.
+    stds (list): Standard deviations of the features.
+
+    Returns:
+    float: Probability of the data belonging to the class.
+    """
+    prob = 1
+    for i in range(len(means)):
+        prob *= gaussian_probability(test_data[i], means[i], stds[i])
+    return prob
+
+def predict_class(train_data, test_instance):
+    """
+    Predict the class of a test instance based on the training data.
+
+    Parameters:
+    train_data (np.array): Training data.
+    test_instance (np.array): Test instance.
+
+    Returns:
+    int: Predicted class label (0 or 1).
+    """
+    means, stds, _ = calculate_mean_std(train_data)
+    return calculate_class_probability(test_instance[:-1], means, stds)
+
+def main():
+    data_filepath = 'D:\\diabetes.csv'
+    data = load_data(data_filepath)
+
+    # Split data into training and testing sets
+    train_data, test_data = train_test_split(data, test_size=0.10)
+
+    # Separate training data by class
+    class1_data = train_data[train_data[:, -1] == 1.0]
+    class2_data = train_data[train_data[:, -1] == 0.0]
+
+    correct_count = 0
+
+    # Predict the class for each test instance
+    for test_instance in test_data:
+        prob_class1 = predict_class(class1_data, test_instance)
+        prob_class2 = predict_class(class2_data, test_instance)
+        predicted_label = 1 if prob_class1 > prob_class2 else 0
+        true_label = test_instance[-1]
+        if predicted_label == true_label:
+            correct_count += 1
+
+    # Calculate and print accuracy
+    accuracy = (correct_count / len(test_data)) * 100.0
+    print(f'Accuracy: {accuracy:.2f}%')
+
+if __name__ == "__main__":
+    main()

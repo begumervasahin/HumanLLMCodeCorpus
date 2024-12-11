@@ -1,0 +1,81 @@
+from collections import defaultdict
+
+def get_text(file_path):
+    """
+    Read the content of a file.
+
+    Parameters:
+        file_path (str): Path to the file.
+
+    Returns:
+        str: Content of the file.
+    """
+    with open(file_path, 'r') as file:
+        return file.read()
+
+def words(text):
+    """
+    Split text into words. This function assumes words are separated by whitespace.
+
+    Parameters:
+        text (str): Input text.
+
+    Returns:
+        list: List of words.
+    """
+    return text.split()
+
+def build_index(files):
+    """
+    Build an index mapping words to sets of document IDs.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+
+    Returns:
+        defaultdict: Mapping from word to set of document IDs.
+    """
+    if not files:
+        return None
+
+    index = defaultdict(set)
+    for doc_id, file_path in enumerate(files):
+        words_in_file = words(get_text(file_path))
+        for word in words_in_file:
+            index[word].add(doc_id)
+    return index
+
+def search_documents(files, index, terms):
+    """
+    Search for documents containing all terms.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+        index (defaultdict): Mapping from word to set of document IDs.
+        terms (list): List of strings to search for.
+
+    Returns:
+        list: Matching filenames.
+    """
+    if not (files and index and terms):
+        return None
+
+    term_sets = [index.get(term) for term in terms]
+    if any(term_set is None for term_set in term_sets):
+        return None
+
+    intersection_ids = set.intersection(*term_sets)
+    return [files[doc_id] for doc_id in intersection_ids]
+
+# Example usage:
+if __name__ == "__main__":
+    # Assuming you have some filenames in a list named `files`
+    files = ["file1.txt", "file2.txt", "file3.txt"]
+
+    # Create index
+    index = build_index(files)
+
+    # Search for terms
+    search_terms = ["term1", "term2"]
+    result = search_documents(files, index, search_terms)
+    print("Matching files:", result)

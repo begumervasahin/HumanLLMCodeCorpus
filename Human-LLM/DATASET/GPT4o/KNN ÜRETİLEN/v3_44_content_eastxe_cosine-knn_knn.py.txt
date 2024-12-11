@@ -1,0 +1,62 @@
+import heapq
+import numpy as np
+from sklearn.metrics.pairwise import pairwise_distances
+
+class CosineKNN:
+    def __init__(self, n_neighbors=5):
+        self.n_neighbors = n_neighbors
+
+    def fit(self, X, y):
+        """
+        Fit the model using X as training data and y as target values.
+
+        Parameters:
+        - X: Training data, array-like of shape (n_samples, n_features)
+        - y: Target values, array-like of shape (n_samples,)
+        """
+        self.data = np.array(X)
+        self.labels = np.array(y)
+
+    def predict(self, X):
+        """
+        Predict the class label for the provided data.
+
+        Parameters:
+        - X: Test data, array-like of shape (n_features,)
+
+        Returns:
+        - y_pred: Predicted class label
+        """
+        X = np.array(X).reshape(1, -1)
+        simtree = []
+        dist_dic = {}
+
+        for data_point in self.data:
+            sim = pairwise_distances(X, data_point.reshape(1, -1), metric='cosine')[0][0]
+            dist_dic[sim] = data_point
+            heapq.heappush(simtree, (sim, data_point))
+
+        nearest_labels = []
+        for _ in range(self.n_neighbors):
+            min_sim, vector = heapq.heappop(simtree)
+            idx = np.where((self.data == vector).all(axis=1))[0][0]
+            nearest_labels.append(self.labels[idx])
+
+        label_count = {}
+        for label in nearest_labels:
+            label_count[label] = label_count.get(label, 0) + 1
+
+        y_pred = max(label_count, key=label_count.get)
+        return y_pred
+
+if __name__ == '__main__':
+    knn = CosineKNN(n_neighbors=2)
+    X_train = [[0.5, 0.86], [0.86, 0.5], [-0.5, -0.86], [-0.86, -0.5]]
+    y_train = [1, 1, 0, 0]
+    knn.fit(X_train, y_train)
+
+    test_sample_1 = [0.7, 0.7]
+    test_sample_2 = [-0.7, -0.7]
+
+    print('Prediction for [0.7, 0.7]:', knn.predict(test_sample_1))
+    print('Prediction for [-0.7, -0.7]:', knn.predict(test_sample_2))

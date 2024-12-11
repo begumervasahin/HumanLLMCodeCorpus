@@ -1,0 +1,63 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import statistics
+import matplotlib.pyplot as plt
+
+# Initialize an empty list to store player heights
+heights_list = []
+
+# URL of the NFL players page
+url = "http://www.espn.com/nfl/players/_/position/s"
+
+# Fetch the HTML content of the page
+html = requests.get(url).content
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(html, 'html.parser')
+
+# Find the table containing player information
+table = soup.find('table', {'class': 'tablehead'})
+rows = table.findAll('tr')
+
+# Initialize an empty list to store player profile links
+links = []
+
+# Extract player profile links from the table
+for tr in rows:
+    cols = tr.findAll('td')
+    if cols:
+        atags = cols[0].findAll('a')
+        for atag in atags:
+            links.append(atag.get('href'))
+
+# Iterate through each player profile link
+for link in links:
+    player_html = requests.get(link).content
+    new_soup = BeautifulSoup(player_html, 'html.parser')
+    general_player_info = new_soup.find('ul', {'class': 'general-info'})
+    info_pieces = general_player_info.findAll('li')
+    
+    # Extract player height information
+    player_height = str(info_pieces[1])
+    height_feet = re.search(r"<li>(\d)\W\s", player_height).group(1)
+    height_inches = re.search(r"\s(\d+?)\W\W\s", player_height).group(1)
+    total_height_inches = int(height_feet) * 12 + int(height_inches)
+    
+    # Append the height to the heights list
+    heights_list.append(total_height_inches)
+    print(total_height_inches)
+
+# Calculate and print the standard deviation and mean of the player heights
+print("Standard Deviation:", statistics.pstdev(heights_list))
+print("Mean Height:", statistics.mean(heights_list))
+
+# Create intervals for the histogram bins
+bins_intervals = list(range(65, 80))
+
+# Plot the histogram of player heights
+plt.hist(heights_list, bins=bins_intervals)
+plt.xlabel('Height (inches)')
+plt.ylabel('Frequency')
+plt.title('Distribution of NFL Player Heights')
+plt.show()

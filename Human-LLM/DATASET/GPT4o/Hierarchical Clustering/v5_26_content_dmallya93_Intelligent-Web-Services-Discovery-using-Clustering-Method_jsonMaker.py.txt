@@ -1,0 +1,83 @@
+import os
+import json
+
+def load_cluster_names(filename="ClusterNames.csv"):
+    """
+    Reads cluster names from a CSV file and stores them in a dictionary.
+
+    Parameters:
+    filename (str): The path to the CSV file containing cluster names.
+
+    Returns:
+    dict: A dictionary mapping cluster IDs to their names.
+    """
+    cluster_names = {}
+    
+    with open(filename, "r") as file:
+        for line in file:
+            fields = line.strip().split(",")
+            if len(fields) == 2:
+                cluster_id, cluster_name = fields
+                cluster_names[cluster_id] = cluster_name
+    
+    return cluster_names
+
+def build_json_structure(input_file, cluster_names):
+    """
+    Builds a JSON structure based on the hierarchy data from a CSV file.
+
+    Parameters:
+    input_file (str): The path to the CSV file containing hierarchy data.
+    cluster_names (dict): A dictionary of cluster names.
+
+    Returns:
+    dict: A JSON-compatible dictionary representing the hierarchical data.
+    """
+    json_structure = {
+        "name": "Entire Dataset",
+        "children": []
+    }
+
+    with open(input_file, "r") as file:
+        for line in file:
+            fields = line.strip().split(",")
+            if len(fields) == 2:
+                parent_name, clusters_str = fields
+                cluster_ids = clusters_str.split()
+
+                children = [
+                    {"name": cluster_names.get(cluster_id, cluster_id), "size": 3000}
+                    for cluster_id in cluster_ids
+                ]
+                
+                json_structure["children"].append({
+                    "name": parent_name,
+                    "children": children
+                })
+    
+    return json_structure
+
+def save_json(data, output_file="newjson.json"):
+    """
+    Saves a JSON structure to a file.
+
+    Parameters:
+    data (dict): The JSON structure to save.
+    output_file (str): The path to the output JSON file.
+    """
+    with open(output_file, "w") as file:
+        json.dump(data, file, indent=4)
+
+def main():
+    # Load cluster names from the CSV file
+    cluster_names = load_cluster_names()
+    print("Cluster Names:", cluster_names)
+    
+    # Build the JSON structure from the hierarchy data
+    json_structure = build_json_structure("Hierarchies.csv", cluster_names)
+    
+    # Save the JSON structure to a file
+    save_json(json_structure)
+
+if __name__ == "__main__":
+    main()

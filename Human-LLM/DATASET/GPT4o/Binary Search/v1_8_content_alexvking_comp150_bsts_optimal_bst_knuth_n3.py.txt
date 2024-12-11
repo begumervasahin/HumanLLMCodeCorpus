@@ -1,0 +1,93 @@
+from BSTTree import BSTTree  # Assuming you have a BSTTree class defined in BSTTree.py
+
+def find_optimal_tree_ordering(beta_list, alpha_list, beta_len):
+    """
+    Compute the optimal binary search tree using dynamic programming.
+    """
+    # Initialize the expected cost and weight tables
+    exp_table = [[None for _ in range(beta_len + 1)]
+                 for _ in range(beta_len + 1)]
+    weight_table = [[None for _ in range(beta_len + 1)]
+                    for _ in range(beta_len + 1)]
+    root_table = [[None for _ in range(beta_len)] for _ in range(beta_len)]
+    
+    # Base cases for the dynamic programming table
+    for x in range(beta_len + 1):
+        exp_table[x][x] = alpha_list[x]
+        weight_table[x][x] = alpha_list[x]
+    
+    # Fill the tables using dynamic programming
+    for y in range(1, beta_len + 1):
+        for i in range(beta_len - y):
+            j = i + y
+            exp_table[i][j] = float("inf")
+            weight_table[i][j] = weight_table[i][j - 1] + beta_list[j - 1] + alpha_list[j]
+            
+            # Find the optimal root
+            for root in range(i, j):
+                t = exp_table[i][root] + exp_table[root + 1][j] + weight_table[i][j]
+                if t < exp_table[i][j]:
+                    exp_table[i][j] = t
+                    root_table[i][j - 1] = root
+    
+    return exp_table, root_table
+
+def print_table(table):
+    """
+    Print the dynamic programming table.
+    """
+    for row in table:
+        print(row)
+
+def construct_tree_inline(root_table, key_list):
+    """
+    Construct the optimal binary search tree from the root table and key list.
+    """
+    i, j = 0, len(root_table) - 1
+    root_index = root_table[i][j]
+    root = BSTTree(key_list[root_index])
+    
+    node_stack = []
+    if root_index + 1 <= j:
+        node_stack.append((root_index + 1, j, root))
+    if i <= root_index - 1:
+        node_stack.append((i, root_index - 1, root))
+    
+    while node_stack:
+        i, j, parent = node_stack.pop()
+        next_root = root_table[i][j]
+        node = BSTTree(key_list[next_root])
+        
+        if node.value < parent.value:
+            parent.left = node
+        else:
+            parent.right = node
+        
+        if next_root + 1 <= j:
+            node_stack.append((next_root + 1, j, node))
+        if i <= next_root - 1:
+            node_stack.append((i, next_root - 1, node))
+    
+    return root
+
+if __name__ == "__main__":
+    # Example usage
+    beta_list = [0.15, 0.10, 0.05, 0.10, 0.20]
+    alpha_list = [0.05, 0.10, 0.05, 0.05, 0.10, 0.05]
+    beta_len = len(beta_list)
+    key_list = ['A', 'B', 'C', 'D', 'E']
+    
+    # Find the optimal tree ordering
+    exp_table, root_table = find_optimal_tree_ordering(beta_list, alpha_list, beta_len)
+    
+    # Print the tables
+    print("Expected Cost Table:")
+    print_table(exp_table)
+    print("\nRoot Table:")
+    print_table(root_table)
+    
+    # Construct the tree inline
+    bst_root = construct_tree_inline(root_table, key_list)
+    
+    # bst_root now contains the root of the optimal BST
+    print("\nOptimal Binary Search Tree constructed.")

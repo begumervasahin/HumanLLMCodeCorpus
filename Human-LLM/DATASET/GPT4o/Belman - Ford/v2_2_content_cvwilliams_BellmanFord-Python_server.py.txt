@@ -1,0 +1,74 @@
+import pickle
+import socket
+import sys
+
+def print_table(table):
+    """Prints the routing table in a formatted manner."""
+    print("DESTINATION-------INTERFACE------LINKCOST")
+    for entry in table:
+        destination, interface, link_cost = entry
+        if interface == -1:
+            print(f"    {destination}            {interface}           {link_cost}")
+        elif interface == MAXINT:
+            print(f"    {destination}            inf            inf")
+        else:
+            print(f"    {destination}            {interface}            {link_cost}")
+
+def update_table(current_table, received_table):
+    """Updates the current table based on the received table."""
+    for i in range(len(current_table)):
+        for j in range(len(received_table)):
+            new_cost = current_table[i][2] + int(received_table[j][2])
+            if new_cost < received_table[i][2]:
+                received_table[i][2] = new_cost + 1
+    return received_table
+
+MAXINT = sys.maxsize
+table1 = [[0, 0, 1], [1, -1, 0], [2, 1, 1], [3, MAXINT, MAXINT]]
+
+print("Initial table:")
+print_table(table1)
+
+# Create a socket object
+server_socket = socket.socket()
+port = 57171
+host = ''
+
+# Bind the socket to the port
+try:
+    server_socket.bind((host, port))
+except socket.error as msg:
+    print(f'Bind failed. Error Code: {msg[0]} Message: {msg[1]}')
+    sys.exit()
+
+print('Socket bind complete')
+
+# Put the socket into listening mode
+server_socket.listen(1)
+
+# Establish connection with a client
+client_socket, addr = server_socket.accept()
+print(f'Got connection from {addr}')
+
+# Receive data from the client
+data = client_socket.recv(1024)
+table0 = pickle.loads(data)
+
+print("Current table:")
+print_table(table1)
+
+print("Received table:")
+print_table(table0)
+
+# Update the table based on received data
+updated_table = update_table(table1, table0)
+
+print("Updated table:")
+print_table(updated_table)
+
+# Send the updated table back to the client
+client_socket.send(pickle.dumps(updated_table))
+
+# Close the connection
+client_socket.close()
+server_socket.close()

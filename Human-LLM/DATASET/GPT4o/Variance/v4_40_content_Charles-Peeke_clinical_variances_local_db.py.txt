@@ -1,0 +1,66 @@
+import os
+import time
+import psycopg2
+import pandas as pd
+from dotenv import load_dotenv
+
+# Global variables for the connection
+conn = None
+
+def load_environment_variables():
+    """Load environment variables from .env file"""
+    load_dotenv()
+    return {
+        "hostname": os.getenv('hostname'),
+        "port": os.getenv('port'),
+        "database": os.getenv('database'),
+        "username": os.getenv('username'),
+        "password": os.getenv('password')
+    }
+
+def connect_to_database(env_vars):
+    """Establish a connection to the PostgreSQL database"""
+    return psycopg2.connect(
+        host=env_vars["hostname"],
+        port=env_vars["port"],
+        database=env_vars["database"],
+        user=env_vars["username"],
+        password=env_vars["password"]
+    )
+
+def get_data_from_table(table_name):
+    """Retrieve all data from a specified table"""
+    return pd.read_sql(f'SELECT * FROM {table_name}', con=conn)
+
+def join_tables(table1, table2):
+    """Perform a RIGHT JOIN on two tables using the 'nct_id' column"""
+    query = f"""
+    SELECT * FROM {table1}
+    RIGHT JOIN {table2} ON {table1}.nct_id = {table2}.nct_id
+    """
+    return pd.read_sql(query, con=conn)
+
+if __name__ == '__main__':
+    # Load environment variables
+    env_vars = load_environment_variables()
+
+    # Establish database connection
+    conn = connect_to_database(env_vars)
+
+    # Measure time for join operation
+    start_time = time.time()
+    results = join_tables('ctgov.studies', 'ctgov.keywords')
+    end_time = time.time()
+    print(f"Join operation time: {end_time - start_time} seconds")
+
+    # Measure time for a raw SQL join query
+    start_time = time.time()
+    pd.read_sql("""
+    SELECT * FROM ctgov.studies 
+    RIGHT JOIN ctgov.keywords ON ctgov.studies.nct_id = ctgov.keywords.nct_id
+    """, con=conn)
+    end_time = time.time()
+    print(f"Raw SQL join query time: {end_time - start_time} seconds")
+
+    # Close the database connection
+    conn.close()

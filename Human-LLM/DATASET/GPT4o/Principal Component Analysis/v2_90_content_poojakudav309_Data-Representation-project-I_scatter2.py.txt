@@ -1,0 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import sys
+
+def main():
+    if len(sys.argv) != 5:
+        print(f"{sys.argv[0]} takes 4 arguments. Not {len(sys.argv) - 1}")
+        sys.exit()
+
+    first, second, third, fourth = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+    # Load data
+    Xt = np.genfromtxt(first, delimiter=',')
+    y = np.genfromtxt(second, autostrip=True)
+
+    # Get dimensions and unique labels
+    m, n = Xt.shape
+    unique_labels = set(y)
+
+    # Calculate global mean
+    mu_global = np.mean(Xt, axis=0)
+
+    # Initialize between-class scatter matrix
+    B_class = np.zeros((n, n))
+
+    # Calculate between-class scatter matrix
+    for c in unique_labels:
+        class_data = Xt[y == c]
+        class_mean = np.mean(class_data, axis=0)
+        class_scatter = np.dot((class_mean - mu_global).reshape(-1, 1), (class_mean - mu_global).reshape(1, -1))
+        B_class += len(class_data) * class_scatter
+
+    # Eigen decomposition
+    evals, evecs = np.linalg.eigh(B_class)
+    idx = np.argsort(evals)[::-1]
+    evecs = evecs[:, idx]
+
+    # Select top r eigenvectors
+    r = 2
+    V_r = evecs[:, :r]
+
+    # Project data onto new feature space
+    result = np.dot(Xt, V_r)
+
+    # Plotting the results
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(result[:, 0], result[:, 1], c=y)
+    legend1 = ax.legend(*scatter.legend_elements(), title="Classes")
+    ax.add_artist(legend1)
+    plt.title("Maximize between class scatter")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    
+    with PdfPages('scatter_2_plot.pdf') as pdf:
+        pdf.savefig(fig)
+
+    # Save the results
+    np.savetxt(third, V_r.T, delimiter=',')
+    np.savetxt(fourth, result, delimiter=',')
+
+if __name__ == "__main__":
+    main()

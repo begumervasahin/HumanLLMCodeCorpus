@@ -1,0 +1,49 @@
+import pandas as pd
+
+# Load movie ratings data
+ratings_columns = ['user_id', 'movie_id', 'rating']
+ratings = pd.read_csv('u.data', sep='\t', names=ratings_columns, usecols=range(3))
+
+# Load movie information data
+movies_columns = ['movie_id', 'title']
+movies = pd.read_csv('u.item', sep='|', names=movies_columns, usecols=range(2))
+
+# Merge movie ratings with movie information
+merged_data = pd.merge(movies, ratings)
+
+# Create a pivot table of user ratings
+user_ratings_pivot = merged_data.pivot_table(index='user_id', columns='title', values='rating')
+
+# Calculate the correlation matrix for the movies based on user ratings
+movie_corr_matrix = user_ratings_pivot.corr(method='pearson', min_periods=100)
+
+# Specify the user ID for whom we want recommendations
+target_user_id = 2
+
+# Extract the target user's ratings
+target_user_ratings = user_ratings_pivot.loc[target_user_id].dropna()
+
+# Initialize a series to store similarity candidates
+similar_candidates = pd.Series(dtype=float)
+
+# Find similar movies based on the target user's ratings
+for movie in target_user_ratings.index:
+    # Get the list of similar movies for the current movie
+    movie_similarities = movie_corr_matrix[movie].dropna()
+    
+    # Scale the similarities by the user's rating for the current movie
+    movie_similarities = movie_similarities.map(lambda x: x * target_user_ratings[movie])
+    
+    # Append the scaled similarities to the candidate list
+    similar_candidates = similar_candidates.append(movie_similarities)
+
+# Aggregate and sort the similarity candidates
+similar_candidates = similar_candidates.groupby(similar_candidates.index).sum()
+similar_candidates.sort_values(inplace=True, ascending=False)
+
+# Filter out movies that the user has already rated
+recommended_movies = similar_candidates.drop(target_user_ratings.index, errors='ignore')
+
+# Print and export the top recommendations
+print(recommended_movies.head())
+recommended_movies.to_csv("filteredSims.csv")

@@ -1,0 +1,74 @@
+import cv2
+import cv2.aruco as aruco
+from nxt.motor import Motor, SynchronizedMotors
+from nxt.sensor import Light
+import tty
+import sys
+import termios
+import nxt.locator
+
+def get_single_char():
+    """
+    Capture a single character from the keyboard without waiting for Enter to be pressed.
+    """
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        char = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return char
+
+def control_robot():
+    """
+    Main function to control the LEGO Mindstorms robot using keyboard inputs.
+    """
+    try:
+        # Connect to the LEGO Mindstorms brick
+        brick = nxt.locator.find_one_brick(host='00:16:53:0F:0F:D8')
+
+        # Initialize motors and sensors
+        left_motor = Motor(brick, PORT_C)
+        right_motor = Motor(brick, PORT_A)
+        light_sensor = Light(brick, PORT_1, False)
+        
+        both_motors = SynchronizedMotors(left_motor, right_motor, 0)
+        right_turn_motors = SynchronizedMotors(left_motor, right_motor, 50)
+        left_turn_motors = SynchronizedMotors(right_motor, left_motor, 50)
+
+        print("Robot is ready to move.")
+        print("Connected to:", brick)
+
+        # Main control loop
+        user_input = ''
+        while user_input != 'q':
+            user_input = get_single_char()  # Get user input
+
+            # Read light sensor value
+            light_value = light_sensor.get_input_values()[0]
+            print("Light sensor value:", light_value)
+
+            # Perform actions based on user input
+            if user_input == 'w':
+                # Move forward
+                both_motors.turn(75, 360, True)
+            elif user_input == 's':
+                # Move backward
+                both_motors.turn(-75, 90, True)
+            elif user_input == 'a':
+                # Turn left
+                left_turn_motors.turn(75, 90, True)
+            elif user_input == 'd':
+                # Turn right
+                right_turn_motors.turn(75, 90, True)
+
+        print("Movement aborted.")
+
+    except nxt.locator.BrickNotFoundError:
+        print("No LEGO Mindstorms brick found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    control_robot()

@@ -1,0 +1,43 @@
+import sys
+import math
+
+def update(existingAggregate, newValue):
+    (count, mean, M2) = existingAggregate
+    count += 1
+    delta = newValue - mean
+    mean += delta / count
+    delta2 = newValue - mean
+    M2 += delta * delta2
+    return (count, mean, M2)
+
+def finalize(existingAggregate):
+    (count, mean, M2) = existingAggregate
+    if count < 2:
+        return (mean, float('nan'), float('nan'))
+    else:
+        variance = M2 / count
+        sampleVariance = M2 / (count - 1)
+        return (mean, variance, sampleVariance)
+
+S = [0, 0, 0]
+(last_key, value) = (None, 0.0)
+
+for line in sys.stdin:
+    (key, new_value) = line.strip().split('\t')
+    new_value = float(new_value)
+    
+    if last_key and key != last_key:
+        (average, P_Variance, S_Variance) = finalize(S)
+        S_Deviation = math.sqrt(P_Variance)
+        print(f'{last_key}\t{S_Deviation:.2f}')
+        (last_key, value) = (key, new_value)
+        S = [0, 0, 0]
+        S = update(S, value)
+    else:
+        (last_key, value) = (key, new_value)
+        S = update(S, value)
+
+if last_key:
+    (average, P_Variance, S_Variance) = finalize(S)
+    S_Deviation = math.sqrt(P_Variance)
+    print(f'{last_key}\t{S_Deviation:.2f}')

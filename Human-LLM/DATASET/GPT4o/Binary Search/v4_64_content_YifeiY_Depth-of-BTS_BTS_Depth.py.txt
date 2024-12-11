@@ -1,0 +1,70 @@
+import csv
+from random import shuffle
+
+class Tree:
+    """Represents a node in a binary search tree."""
+    def __init__(self, value=None, left=None, right=None):
+        self.value = value
+        self.left = left
+        self.right = right
+
+    def insert(self, x):
+        """Inserts a new value into the binary search tree."""
+        self._insert_recursive(x)
+
+    @staticmethod
+    def _insert_recursive(current, x):
+        """Recursively inserts a value into the correct position in the BST."""
+        if current is None:
+            return Tree(x)
+        elif x < current.value:
+            current.left = Tree._insert_recursive(current.left, x)
+        else:
+            current.right = Tree._insert_recursive(current.right, x)
+        return current
+
+    def height(self, tree=None):
+        """Calculates the height of the binary search tree."""
+        if tree is None:
+            return 0
+        return max(self.height(tree.left), self.height(tree.right)) + 1
+
+def generate_random_array(n):
+    """Generates a shuffled array of numbers from 0 to n-1."""
+    array = list(range(n))
+    shuffle(array)
+    return array
+
+def build_tree(arr):
+    """Builds a binary search tree from an array of values."""
+    tree = Tree(arr[0])
+    for value in arr[1:]:
+        tree.insert(value)
+    return tree
+
+def main():
+    print("n is the number of nodes in the Binary Search Tree")
+    print("h is the corresponding average height of 500 randomly generated samples\n")
+
+    results = [["Number of Nodes", "Average Height"]]
+    trials = 500
+
+    print("Generating results...")
+
+    for n in range(100, 1001, 100):
+        total_height = 0
+        for _ in range(trials):
+            arr = generate_random_array(n)
+            tree = build_tree(arr)
+            total_height += tree.height(tree)
+        
+        average_height = total_height / trials
+        results.append([n, average_height])
+        print(f"n = {n:4d}, h = {average_height:.3f}")
+
+    with open("results.csv", "w+", newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerows(results)
+
+if __name__ == "__main__":
+    main()

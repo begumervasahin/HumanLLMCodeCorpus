@@ -1,0 +1,82 @@
+"""
+Program Description:
+Combines output files and computes statistics for specific search terms.
+Created by: Skeleton by Billy Koech
+Date: Jan 4th, 2018
+Most Recent Update: [Date of the latest update]
+"""
+
+import re
+import numpy as np
+import os
+
+# Configuration
+pin_output_dir = "outputs/"
+combined_output_file = "combined.out"
+pin_specific_search_terms = [
+    "Total number of instructions executed",
+    "Number of load instructions",
+    "Number of store instructions",
+    "Number of branch instructions"
+]
+debugMode = False
+
+def combine_files(dir_with_files, name_for_output_file):
+    """
+    Combines all files in the specified directory into a single output file.
+    """
+    # Clear or create the output file
+    with open(name_for_output_file, 'w+') as out_f:
+        pass
+
+    # Open the output file for appending
+    with open(name_for_output_file, "a+") as out_f:
+        for root, _, files in os.walk(dir_with_files):
+            for file in files:
+                with open(os.path.join(root, file), "r") as in_f:
+                    if debugMode:
+                        print(f"Processing file: {in_f}")
+                    for line in in_f:
+                        out_f.write(line)
+
+def compute_std_and_mean(stat_file, search_terms):
+    """
+    Computes the standard deviation and mean for specified search terms in the stat file.
+    """
+    runtimes = {term: [] for term in search_terms}
+    
+    with open(stat_file, "r") as f:
+        for line in f:
+            for term in search_terms:
+                if term in line:
+                    numeric_value = int(re.findall(r"\d+", line)[0])
+                    if debugMode:
+                        print(f"Found value {numeric_value} for term: {term}")
+                    runtimes[term].append(numeric_value)
+
+    print("Parsing complete!")
+
+    output_str = ""
+    for term, values in runtimes.items():
+        std = np.std(values)
+        mean = np.mean(values)
+        output_str += f"{term} :\t{std},\t{mean}\n"
+
+    header = "Type of instruction: \t std, \t mean \n"
+    result = header + output_str
+    print(result)
+
+    return result
+
+def main():
+    """
+    Main function to combine files and compute statistics.
+    """
+    combine_files(pin_output_dir, combined_output_file)
+    stats_report = compute_std_and_mean(combined_output_file, pin_specific_search_terms)
+    
+    with open("pin_report.txt", "w+") as report:
+        report.write(stats_report)
+
+if __name__ == '__main__':
+    main()

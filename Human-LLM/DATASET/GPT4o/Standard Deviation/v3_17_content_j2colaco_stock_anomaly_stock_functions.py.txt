@@ -1,0 +1,86 @@
+import pandas as pd
+from pandas_datareader import data
+import datetime as dt
+
+def extract_stock_data(stock_symbols, start_date, end_date=dt.datetime.today().date()):
+    """
+    Extracts stock data from Yahoo Finance for a list of stock symbols within the specified date range.
+    
+    Parameters:
+    stock_symbols (list): List of stock ticker symbols.
+    start_date (str): The start date for data extraction in 'YYYY-MM-DD' format.
+    end_date (datetime.date): The end date for data extraction. Default is today's date.
+    
+    Returns:
+    DataFrame: A DataFrame containing the extracted stock data.
+    """
+    all_stock_data = pd.DataFrame()
+    
+    for stock in stock_symbols:
+        print(f'Extracting data for: {stock}')
+        
+        try:
+            stock_data = data.DataReader(stock, 'yahoo', start_date, end_date)
+            stock_data['ticker'] = stock
+            all_stock_data = pd.concat([all_stock_data, stock_data], axis=0)
+        except Exception as e:
+            print(f'{stock} did not work: {e}')
+    
+    return all_stock_data
+
+def moving_average(df, ma_column, window_size):
+    """
+    Calculates the moving average for a given column over a specified window size.
+    
+    Parameters:
+    df (DataFrame): The DataFrame containing stock data.
+    ma_column (str): The column for which the moving average is to be calculated.
+    window_size (int): The window size for the moving average.
+    
+    Returns:
+    DataFrame: The original DataFrame with an additional column for the moving average.
+    """
+    ma_series = df[ma_column].rolling(window=window_size).mean()
+    ma_column_name = f'{ma_column}_ma{window_size}'
+    df[ma_column_name] = ma_series
+    
+    return df
+
+def multiple_moving_averages(df, ma_column, split_column, window_size):
+    """
+    Applies moving average calculation to multiple stocks in the DataFrame.
+    
+    Parameters:
+    df (DataFrame): The DataFrame containing stock data.
+    ma_column (str): The column for which the moving average is to be calculated.
+    split_column (str): The column to split the data for multiple stocks (e.g., 'ticker').
+    window_size (int): The window size for the moving average.
+    
+    Returns:
+    DataFrame: A DataFrame with moving averages calculated for each stock.
+    """
+    all_stock_data = pd.DataFrame()
+    
+    for stock in df[split_column].unique():
+        stock_data = df[df[split_column] == stock].sort_values(by='Date')
+        stock_data_with_ma = moving_average(stock_data, ma_column, window_size)
+        all_stock_data = pd.concat([all_stock_data, stock_data_with_ma], axis=0)
+    
+    return all_stock_data
+
+if __name__ == "__main__":
+    # Define the stock symbols, start date, and end date
+    stock_symbols = ['AAPL', 'MSFT', 'GOOGL']
+    start_date = '2023-01-01'
+    end_date = dt.datetime.today().date()
+    
+    # Extract stock data
+    stock_data = extract_stock_data(stock_symbols, start_date, end_date)
+    
+    # Calculate 50-day moving averages for 'Close' prices
+    ma_column = 'Close'
+    window_size = 50
+    stock_data_with_ma = multiple_moving_averages(stock_data, ma_column, 'ticker', window_size)
+    
+    # Display the data with moving averages
+    print(stock_data_with_ma.tail())

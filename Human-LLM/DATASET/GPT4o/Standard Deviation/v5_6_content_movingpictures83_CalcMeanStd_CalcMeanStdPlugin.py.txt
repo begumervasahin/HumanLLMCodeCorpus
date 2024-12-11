@@ -1,0 +1,44 @@
+import math
+
+class CalcMeanStdPlugin:
+    def input(self, inputfile):
+        self.scores = self._read_scores_from_file(inputfile)
+
+    def _read_scores_from_file(self, inputfile):
+        with open(inputfile, 'r') as file:
+            lines = file.readlines()[1:]  # Skip header
+            return [float(line.split('\t')[1]) for line in lines]
+
+    def run(self):
+        self.mean = self._calculate_mean(self.scores)
+        self.std = self._calculate_std(self.scores, self.mean)
+
+    def _calculate_mean(self, scores):
+        return sum(scores) / len(scores)
+
+    def _calculate_std(self, scores, mean):
+        variance = sum((score - mean) ** 2 for score in scores) / len(scores)
+        return math.sqrt(variance)
+
+    def output(self, outputfile=None):
+        stats = self._generate_stats()
+        self._print_stats(stats)
+
+    def _generate_stats(self):
+        return {
+            "Two left": self.mean - 2 * self.std,
+            "One left": self.mean - self.std,
+            "Mean": self.mean,
+            "One right": self.mean + self.std,
+            "Two right": self.mean + 2 * self.std
+        }
+
+    def _print_stats(self, stats):
+        for key, value in stats.items():
+            print(f"[CalcMeanStdPlugin] {key}: {value}")
+
+# Usage example
+# plugin = CalcMeanStdPlugin()
+# plugin.input('data.txt')
+# plugin.run()
+# plugin.output()

@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue May 02 18:05:42 2017
+
+Author: Zhongjie Zhang
+
+This is an example for pyfpgrowth and fp2ar, demonstrating the use of FP-Growth for mining frequent patterns
+and forming association rules from these patterns.
+"""
+
+import pyfpgrowth as pyfp  # Import the package for FP-Growth
+import fp2ar  # Import the package to form association rules from frequent patterns
+import re  # Import the regular expression module to split strings and extract items from transactions
+
+def read_transaction_file(filename):
+    """
+    Reads a transactional dataset from a file.
+
+    :param filename: Name of the file containing the dataset
+    :return: List of transactions, where each transaction is a list of integers
+    """
+    transactions = []
+    with open(filename) as file:
+        content = file.readlines()  # Read all lines from the transactional dataset
+        for line in content:
+            # Split the dataset by spaces and newlines
+            items = re.split(r'\s+', line.strip())
+            transaction = [int(item) for item in items if item.isdigit()]
+            if transaction:
+                transactions.append(transaction)
+    return transactions
+
+# Read the transactional dataset and store it in the dataset
+# The dataset kosarak.dat can be downloaded from http://fimi.ua.ac.be/data/
+dataset = read_transaction_file("kosarak.dat")
+
+# Mine the dataset with a minimum support of 1%
+# After mining, there should be 383 frequent patterns
+min_support = 0.01
+frequent_patterns = pyfp.getFP(dataset, min_support)
+
+# Form the association rules from the frequent patterns
+# Parameters:
+# - Minimum confidence: 75%
+# - Minimum lift: 1
+# After running, there should be 431 association rules
+min_confidence = 0.75
+min_lift = 1
+association_rules = fp2ar.getAR(frequent_patterns, len(dataset), min_confidence, min_lift)
+
+# Example usage:
+# print(frequent_patterns)
+# print(association_rules)

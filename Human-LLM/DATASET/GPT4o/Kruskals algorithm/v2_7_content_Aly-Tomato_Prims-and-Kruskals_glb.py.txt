@@ -1,0 +1,98 @@
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+        self.rank = {}
+
+    def make_set(self, vertice):
+        """
+        Initialize the set for each vertex. Each vertex is its own parent initially, and the rank is set to 0.
+        """
+        self.parent[vertice] = vertice
+        self.rank[vertice] = 0
+
+    def find(self, vertice):
+        """
+        Find the root of the set containing the vertex with path compression.
+        
+        Parameters:
+            vertice: The vertex whose root is to be found.
+        
+        Returns:
+            The root vertex of the set containing the given vertex.
+        """
+        if self.parent[vertice] != vertice:
+            self.parent[vertice] = self.find(self.parent[vertice])  # Path compression
+        return self.parent[vertice]
+
+    def union(self, vertice1, vertice2):
+        """
+        Unite the sets that contain vertice1 and vertice2 using union by rank.
+        
+        Parameters:
+            vertice1: The first vertex.
+            vertice2: The second vertex.
+        """
+        root1 = self.find(vertice1)
+        root2 = self.find(vertice2)
+
+        if root1 != root2:
+            # Union by rank
+            if self.rank[root1] < self.rank[root2]:
+                self.parent[root1] = root2
+            else:
+                self.parent[root2] = root1
+                if self.rank[root1] == self.rank[root2]:
+                    self.rank[root1] += 1
+
+class KruskalMST:
+    def __init__(self, vertices, edges):
+        self.vertices = vertices
+        self.edges = sorted(edges, key=lambda x: x[2])  # Sort edges by weight
+        self.mst = []
+        self.cumulative_distance = 0
+        self.disjoint_set = DisjointSet()
+
+    def run(self):
+        """
+        Execute Kruskal's algorithm to find the Minimum Spanning Tree (MST).
+        """
+        for vertice in self.vertices:
+            self.disjoint_set.make_set(vertice)
+
+        for edge in self.edges:
+            v1, v2, weight = edge
+            if self.disjoint_set.find(v1) != self.disjoint_set.find(v2):
+                self.disjoint_set.union(v1, v2)
+                self.cumulative_distance += weight
+                self.mst.append((v1, v2, weight, self.cumulative_distance))
+
+    def print_mst(self):
+        """
+        Print the edges in the MST with their cumulative distances in a formatted manner.
+        """
+        header = f"{'Vertex 1':<15}{'Vertex 2':<15}{'Distance':<10}{'Cumulative Distance':<20}"
+        print("******************************************************************************")
+        print(header)
+        print("******************************************************************************")
+        for v1, v2, weight, cum_dist in self.mst:
+            print(f"{v1:<15}{v2:<15}{weight:<10}{cum_dist:<20}")
+
+if __name__ == "__main__":
+    # Define the vertices and edges of the graph
+    vertices = {'A', 'B', 'C', 'D', 'E'}
+    edges = [
+        ('A', 'B', 1),
+        ('A', 'C', 3),
+        ('B', 'C', 2),
+        ('B', 'D', 6),
+        ('C', 'D', 4),
+        ('C', 'E', 2),
+        ('D', 'E', 5)
+    ]
+
+    # Create an instance of KruskalMST and run the algorithm
+    kruskal = KruskalMST(vertices, edges)
+    kruskal.run()
+
+    # Print the results
+    kruskal.print_mst()

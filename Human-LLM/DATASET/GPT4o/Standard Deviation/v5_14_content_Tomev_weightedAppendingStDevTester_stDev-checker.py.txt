@@ -1,0 +1,61 @@
+import numpy as np
+from math import sqrt
+
+class WeightedStandardDeviationCounter:
+    def __init__(self):
+        self.sample_sum = 0
+        self.squared_samples_sum = 0
+        self.st_dev = 0
+        self.m = 0
+    
+    def update_standard_deviation(self, weight_modifier, new_sample):
+        # Handle the first sample separately to initialize variables
+        if self.st_dev == 0:
+            self.initialize_first_sample(new_sample)
+            return
+
+        # Update weights and sums with the new sample
+        self.m = self.m * weight_modifier + 1
+        self.squared_samples_sum = self.squared_samples_sum * weight_modifier + new_sample ** 2
+        self.sample_sum = self.sample_sum * weight_modifier + new_sample
+
+        # Calculate the variance and update the standard deviation
+        variance = (self.squared_samples_sum / (self.m - 1)) - (self.sample_sum ** 2) / (self.m * (self.m - 1))
+        self.st_dev = sqrt(variance)
+    
+    def initialize_first_sample(self, sample):
+        self.st_dev = 1
+        self.m = 1
+        self.sample_sum = sample
+        self.squared_samples_sum = sample ** 2
+
+def main():
+    # Parameters
+    sigma = 1
+    mean = 0
+    sample_size = 2000
+    weight_modifier = 0.99
+    seed = 1
+
+    # Set random seed for reproducibility
+    np.random.seed(seed)
+
+    # Generate samples from a normal distribution
+    samples = np.random.normal(mean, sigma, sample_size)
+
+    # Initialize WeightedStandardDeviationCounter
+    wsdc = WeightedStandardDeviationCounter()
+
+    # Open a file to write the standard deviation values
+    output_file = f"{weight_modifier}, {sample_size}.csv"
+    with open(output_file, "w") as file:
+        # Iterate over samples and update the standard deviation
+        for i, sample in enumerate(samples):
+            wsdc.update_standard_deviation(weight_modifier, sample)
+            # Write the current standard deviation to the file
+            file.write(f"{wsdc.st_dev}")
+            if i < sample_size - 1:
+                file.write(",")
+
+if __name__ == "__main__":
+    main()

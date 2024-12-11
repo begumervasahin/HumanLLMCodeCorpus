@@ -1,0 +1,14 @@
+from qr import QR
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+from time import sleep
+import cv2
+camera = PiCamera()
+qr = QR()
+while True:
+    sleep(0.5)
+    rawCapture = PiRGBArray(camera)
+    camera.capture(rawCapture, "bgr")
+    image = rawCapture.array
+    for f_x, f_y, data in qr.scan(image):
+        print(f_x, f_y, data)

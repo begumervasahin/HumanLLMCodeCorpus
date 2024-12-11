@@ -1,0 +1,49 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.layers import Input, LSTM, Dense
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+
+# Parameters for time series forecasting
+SEQUENCE_LENGTH = 168
+OUTPUT_SEQUENCE_LENGTH = 168
+TOTAL_SEQUENCE_LENGTH = 33600 + OUTPUT_SEQUENCE_LENGTH
+INPUT_DIMENSION = 1
+OUTPUT_DIMENSION = 1
+BATCH_SIZE = 16
+TRAINING_STEPS = 100
+LEARNING_RATE = 1e-3
+
+# SARIMA order parameters (p, d, q)
+P, D, Q = 24, 1, 2
+ORDER = (P, D, Q)
+
+# Generate synthetic data (replace with actual data loading)
+data = np.random.randn(TOTAL_SEQUENCE_LENGTH, INPUT_DIMENSION)
+
+# Prepare training data
+X_train = data[:33600]
+y_train = data[OUTPUT_SEQUENCE_LENGTH:]
+
+# Reshape data to fit LSTM input requirements (samples, time steps, features)
+X_train = X_train.reshape(-1, SEQUENCE_LENGTH, INPUT_DIMENSION)
+y_train = y_train.reshape(-1, OUTPUT_SEQUENCE_LENGTH, OUTPUT_DIMENSION)
+
+# Build the LSTM model
+def build_lstm_model(input_shape, output_length):
+    inputs = Input(shape=input_shape)
+    x = LSTM(50)(inputs)
+    outputs = Dense(output_length)(x)
+    return Model(inputs, outputs)
+
+model = build_lstm_model((SEQUENCE_LENGTH, INPUT_DIMENSION), OUTPUT_SEQUENCE_LENGTH)
+optimizer = Adam(learning_rate=LEARNING_RATE)
+model.compile(optimizer=optimizer, loss='mse')
+
+# Train the model
+model.fit(X_train, y_train, batch_size=BATCH_SIZE, epochs=TRAINING_STEPS)
+
+# Optionally save the trained model
+# model.save("sarima_model.h5")
+
+print("Model training complete.")

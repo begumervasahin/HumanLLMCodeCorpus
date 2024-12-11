@@ -1,0 +1,62 @@
+import logging
+import re
+from pymystem3 import Mystem
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s', handlers=[logging.StreamHandler()])
+logging.info("Loading Mystem")
+mystem = Mystem()
+logging.info("Mystem loaded")
+
+def parse_grammar(grammar):
+    """Extract and yield individual grammar options from a string."""
+    match = re.search(r'\(([^)]*)\)', grammar, re.IGNORECASE)
+    if match:
+        options = match.group(1)
+        for option in options.split('|'):
+            yield grammar.replace(f"({options})", option)
+    else:
+        yield grammar
+
+# File paths
+input_filepath = "data/test.txt"
+parsed_output_filepath = "data/pairs_with_grammar.tsv"
+relations_output_filepath = "data/relations.pairs.tsv"
+
+# Read input file and analyze text
+unique_lines = set()
+with open(input_filepath, "r") as input_file:
+    logging.info("File opened for reading")
+    for line in input_file:
+        analyzed_words = mystem.analyze(line)
+        for word in analyzed_words:
+            if 'analysis' in word:
+                for analysis in word['analysis']:
+                    for grammar in parse_grammar(analysis['gr']):
+                        line_entry = "\t".join([grammar, analysis['lex'], word['text'].lower()])
+                        unique_lines.add(line_entry.encode("utf-8") + b"\n")
+
+# Write analyzed data to output file
+with open(parsed_output_filepath, "w+") as parsed_output_file:
+    for line in unique_lines:
+        parsed_output_file.write(line.decode("utf-8"))
+
+# Read pairs from parsed output file and build relations
+grammar_relations = {}
+with open(parsed_output_filepath, "r") as parsed_output_file:
+    for line in parsed_output_file:
+        if line.strip():
+            description, lemma, form = line.strip().split("\t")
+            if description not in grammar_relations:
+                grammar_relations[description] = []
+            grammar_relations[description].append((lemma, form))
+logging.info("Pairs acquired")
+
+# Write relations to output file
+with open(relations_output_filepath, "w") as relations_output_file:
+    for description, pairs in grammar_relations.items():
+        for pair1 in pairs:
+            for pair2 in pairs:
+                if pair1 != pair2:
+                    relations_output_file.write("\t".join([pair1[0], pair1[1], pair2[0], pair2[1]]) + "\n")
+logging.info("Relations pairs acquired")

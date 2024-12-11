@@ -1,0 +1,67 @@
+import codecs
+import re
+
+def read_log_file(file_path):
+    """Reads the log file and returns its lines."""
+    with codecs.open(file_path, 'r', 'utf-8', 'ignore') as log_file:
+        return log_file.readlines()
+
+def write_reversed_log_file(lines, file_path):
+    """Writes the reversed log lines to a new file."""
+    with codecs.open(file_path, 'w+', 'utf-8', 'ignore') as result_log:
+        result_log.writelines(lines[::-1])
+
+def find_vvids(lines, pattern):
+    """Finds all VVIDs in the log lines and returns them along with their line numbers."""
+    vvid_list = []
+    vvid_line_numbers = []
+    for i, line in enumerate(lines):
+        match = re.search(pattern, line)
+        if match:
+            vvid_list.append(match.group())
+            vvid_line_numbers.append(i)
+    return vvid_list, vvid_line_numbers
+
+def find_cut_lines(vvid_list, vvid_line_numbers):
+    """Finds line numbers where VVID changes."""
+    cut_line_numbers = []
+    for i in range(1, len(vvid_list)):
+        if vvid_list[i] != vvid_list[i - 1]:
+            cut_line_numbers.append(vvid_line_numbers[i - 1])
+    return cut_line_numbers
+
+def main():
+    # Define the regex pattern to search for VVIDs
+    pattern = r'vvid=[A-Z0-9-]{36}'
+
+    # Read the original log file
+    log_lines = read_log_file('app.log')
+
+    # Write the reversed log lines to a new file
+    write_reversed_log_file(log_lines, 'app_convert.log')
+
+    # Get the reversed log lines
+    reversed_log_lines = log_lines[::-1]
+
+    # Print the total number of lines in the reversed log
+    print(f"All logfile lines: {len(reversed_log_lines)}\n")
+
+    # Find all VVIDs and their corresponding line numbers
+    vvid_list, vvid_line_numbers = find_vvids(reversed_log_lines, pattern)
+
+    # Print the total number of VVIDs found
+    print(f"The number of all VVIDs: {len(vvid_list)}\n")
+
+    # Print the line numbers and corresponding VVIDs
+    for line_number, vvid in zip(vvid_line_numbers, vvid_list):
+        print(line_number)
+        print(vvid)
+
+    # Find and print the line numbers where VVID changes
+    cut_line_numbers = find_cut_lines(vvid_list, vvid_line_numbers)
+    print("Cut line numbers where VVID changes:")
+    for cut_line in cut_line_numbers:
+        print(cut_line)
+
+if __name__ == "__main__":
+    main()

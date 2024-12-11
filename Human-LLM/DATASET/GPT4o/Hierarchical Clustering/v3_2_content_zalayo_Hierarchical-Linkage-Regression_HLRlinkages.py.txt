@@ -1,0 +1,97 @@
+import os
+import numpy as np
+from libHLR import linkages as link
+
+# Set input path and clustering parameters
+INPUT_PATH = './input/'
+LINK_TYPE = 'complete'
+DISTANCE_METRIC = 'manhattan'
+RADIUS = 40
+
+def load_data(file_path):
+    """
+    Loads data from a file into a numpy array.
+
+    Parameters:
+    file_path (str): The path to the file containing the data.
+
+    Returns:
+    np.ndarray: The data loaded as a numpy array.
+    """
+    with open(file_path) as file:
+        return np.array([[float(value) for value in line.split()] for line in file])
+
+def initialize_kx(input_path):
+    """
+    Loads or initializes the kx array, which assigns clusters to data points.
+
+    Parameters:
+    input_path (str): The directory where the kx file may be found.
+
+    Returns:
+    np.ndarray: The kx array.
+    """
+    kx_file_path = os.path.join(input_path, 'kx.txt')
+    if os.path.exists(kx_file_path):
+        return np.genfromtxt(kx_file_path)
+    else:
+        return np.ones(X.shape[0])
+
+def process_clusters(X, kx, K, x_link):
+    """
+    Processes each cluster to compute the linkages.
+
+    Parameters:
+    X (np.ndarray): The dataset.
+    kx (np.ndarray): The cluster assignments.
+    K (int): The number of clusters.
+    x_link (object): The linkage object for computing linkages.
+
+    Returns:
+    np.ndarray: An array containing the linkages for all clusters.
+    """
+    linkages = []
+
+    for j in range(K):
+        print(f'Processing linkage {j + 1} of {K}')
+        cluster_indices = np.where(kx[:last_index] == j + 1)
+        cluster_data = X[cluster_indices][0]  # Extract relevant data points
+        linkage_result = x_link.get(cluster_data)
+        linkages.append(linkage_result)
+
+    return np.hstack(linkages)
+
+def save_linkages(linkages, output_file):
+    """
+    Saves the linkage results to a file.
+
+    Parameters:
+    linkages (np.ndarray): The linkage results to be saved.
+    output_file (str): The path to the file where the results will be saved.
+    """
+    np.savetxt(output_file, linkages, fmt='%.8f', delimiter='\t', newline='\n')
+    print(f'Linkages saved to {output_file}')
+
+def main():
+    # Initialize the linkage object with the specified parameters
+    x_link = link(DISTANCE_METRIC, LINK_TYPE)
+    x_link.R = RADIUS
+
+    # Load the dataset
+    X = load_data(os.path.join(INPUT_PATH, 'X.txt'))
+
+    # Load or initialize the kx array
+    kx = initialize_kx(INPUT_PATH)
+
+    # Determine the number of clusters (K) from kx
+    last_index = len(kx) - 2
+    K = len(np.unique(kx[:last_index]))
+
+    # Process clusters and compute linkages
+    linkages = process_clusters(X, kx, K, x_link)
+
+    # Save the computed linkages to a file
+    save_linkages(linkages, os.path.join(INPUT_PATH, 'linkages.txt'))
+
+if __name__ == "__main__":
+    main()

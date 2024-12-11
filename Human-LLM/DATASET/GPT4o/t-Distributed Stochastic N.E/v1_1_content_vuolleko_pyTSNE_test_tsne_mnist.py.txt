@@ -1,0 +1,48 @@
+import time
+import data
+import tsne
+import bh_tsne
+import matplotlib.pyplot as plt
+
+def main():
+    start_time = time.time()
+
+    # Load the MNIST dataset
+    print("Loading data...")
+    filename_train_images = "MNIST/train-images.idx3-ubyte"
+    filename_train_labels = "MNIST/train-labels.idx1-ubyte"
+    images_train, labels_train = data.read_MNIST(filename_train_images, filename_train_labels)
+
+    # Limit the data to a subset for faster processing
+    n_samples = 1000
+    images_train = images_train[:n_samples] / 255.0  # Normalize images
+    labels_train = labels_train[:n_samples]
+
+    # Apply PCA to reduce dimensionality before t-SNE
+    images_train = tsne.get_pca_proj(images_train, n_components=30)
+
+    print(f"Done. Time elapsed: {time.time() - start_time:.2f} seconds")
+
+    # Set up for animation (if desired)
+    animate = False
+
+    if animate:
+        import matplotlib
+        matplotlib.use("Agg")
+
+    # Initialize and run t-SNE (or Barnes-Hut t-SNE)
+    vis = tsne.TSNE(max_iter=1000)
+    # Uncomment the next line to use Barnes-Hut t-SNE
+    # vis = bh_tsne.BH_TSNE(max_iter=500, bh_threshold=0.5)
+    vis.fit(images_train, animate=animate, labels=labels_train, anim_file="tsne_movie.mp4")
+
+    print(f"Total time: {time.time() - start_time:.2f} seconds")
+
+    # Plot the 2D embedding
+    if not animate:
+        fig, ax = plt.subplots()
+        vis.plot_embedding2D(labels_train, ax)
+        plt.show()
+
+if __name__ == "__main__":
+    main()

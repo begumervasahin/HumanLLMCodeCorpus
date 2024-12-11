@@ -1,0 +1,51 @@
+"""
+Created on Thu Sep 20 10:10:43 2018
+@author: Prachi Jain
+"""
+
+import pandas as pd
+
+# Load data from Excel and CSV files
+df2 = pd.read_excel("C:/Users/IMART/Downloads/Subcat_super_PMCAT.xlsx", sheet_name="Export Worksheet")
+df3 = pd.read_csv("C:/Users/IMART/Desktop/My_Data/Himanshu Stopwords/wordfrequencyfinal.csv")
+
+# Create an empty DataFrame for the merged data
+merged_df = pd.DataFrame(columns=['Subcat_ID', 'Stopwords'])
+
+# Get unique subcategory IDs from df2
+unique_subcats = df2['SUBCAT_ID'].unique()
+
+# Convert relevant columns to lowercase
+df3["HIGH FREQUENCY WORDS"] = df3["HIGH FREQUENCY WORDS"].str.lower()
+df2["GLCAT_MCAT_NAME"] = df2["GLCAT_MCAT_NAME"].str.lower()
+
+# Create a dictionary from df3 with 'SUBCAT ID' as keys and 'HIGH FREQUENCY WORDS' as values
+high_freq_dict = df3.set_index('SUBCAT ID')['HIGH FREQUENCY WORDS'].to_dict()
+
+# Initialize variables
+a, i, row = 0, 0, 0
+
+# Process the data
+while a < len(df3):
+    subcat_id = df3.iloc[a]["SUBCAT ID"]
+    
+    if subcat_id in unique_subcats:
+        concat_string = ""
+        
+        while i < len(df2) and df2.iloc[i]["SUBCAT_ID"] == subcat_id:
+            concat_string += df2.iloc[i]["GLCAT_MCAT_NAME"] + " "
+            i += 1
+
+        unique_words = set(concat_string.split())
+        stopwords = " ".join(unique_words) + " " + high_freq_dict[subcat_id]
+        
+        merged_df.loc[row] = [subcat_id, stopwords]
+        row += 1
+    else:
+        merged_df.loc[row] = [subcat_id, df3.iloc[a]["HIGH FREQUENCY WORDS"]]
+        row += 1
+    
+    a += 1
+
+# Save the merged DataFrame to a CSV file
+merged_df.to_csv("700subcatwisefinalstopwords.csv", index=False)

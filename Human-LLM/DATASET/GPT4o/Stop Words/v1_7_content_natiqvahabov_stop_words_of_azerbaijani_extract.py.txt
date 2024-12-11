@@ -1,0 +1,57 @@
+import urllib.request as urllib2
+from bs4 import BeautifulSoup
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
+
+def fetch_wiki_links(wiki_page_url):
+    wiki_links = []
+    wiki_titles = []
+    page = urllib2.urlopen(wiki_page_url)
+    soup = BeautifulSoup(page, 'html.parser')
+    div_mw_parser_output = soup.find('div', class_='mw-parser-output')
+    
+    # Get the table rows within the parser output div
+    trs = div_mw_parser_output.find_all('tr')
+    for tr in trs:
+        tds = tr.find_all('td')
+        for td in tds:
+            hrefs = td.find_all('a')
+            for href in hrefs:
+                if href.get('title'):
+                    wiki_links.append('https://az.wikipedia.org' + href['href'])
+                    wiki_titles.append(href.get('title'))
+    return wiki_links, wiki_titles
+
+def tokenize_wiki_pages(wiki_links):
+    tokenizer = RegexpTokenizer(r'\w+')
+    tokenized_final = []
+    for i, wiki in enumerate(wiki_links):
+        print(f"Processing {i+1}/{len(wiki_links)}: {wiki}")
+        page_single = urllib2.urlopen(wiki)
+        soup_single = BeautifulSoup(page_single, 'html.parser')
+        div_mw_parser_output_single = soup_single.find('div', class_='mw-parser-output')
+        content = div_mw_parser_output_single.get_text()
+        tokenized_text = tokenizer.tokenize(content)
+        tokenized_final.extend(tokenized_text)
+    return tokenized_final
+
+def save_counter_to_file(counter, filename):
+    with open(filename, 'w') as file:
+        file.write(str(counter))
+
+def main():
+    wiki_page_url = "https://az.wikipedia.org/wiki/Vikipediya:Se%C3%A7ilmi%C5%9F_m%C9%99qal%C9%99l%C9%99r"
+    wiki_links, wiki_titles = fetch_wiki_links(wiki_page_url)
+    
+    # For testing purposes, you can limit the number of links to process
+    wiki_links_test = [
+        'https://az.wikipedia.org/wiki/GRB_970508',
+        'https://az.wikipedia.org/wiki/G%C3%BCn%C9%99%C5%9F_sistemi'
+    ]
+    
+    tokenized_final = tokenize_wiki_pages(wiki_links_test)
+    counter = Counter(tokenized_final)
+    save_counter_to_file(counter, 'stopwordsAZE.txt')
+
+if __name__ == "__main__":
+    main()

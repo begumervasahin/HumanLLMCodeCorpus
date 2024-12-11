@@ -1,0 +1,155 @@
+from random import randrange
+from time import process_time
+
+# Prompt the user to enter a number within a specified range
+def number_prompt(lower_bound, upper_bound):
+    num = -1
+    while num < lower_bound or num > upper_bound:
+        num = int(input(f"Enter a number between {lower_bound} and {upper_bound}: "))      
+    return num
+
+# Prompt for comparison
+def compare_prompt():
+    return "Type 'l' if larger, 's' if smaller, 'c' if correct: "
+
+# Display the computer's guess
+def computer_says(cpu_guess):
+    print(f'Computer says: {cpu_guess}')
+
+# Calculate the midpoint
+def mid(lower, upper):
+    return (upper + lower) // 2
+
+# Get user input for adjustment
+def get_adjustment():
+    adjustment = '0'
+    while adjustment not in 'lsc':
+        adjustment = input(compare_prompt())[0]
+    return adjustment
+
+# Adjust the guessing range based on user feedback
+def make_adjustment(adjustment, cpu_guess, lower_bound, upper_bound):
+    if adjustment == 'l':
+        return [cpu_guess, upper_bound]
+    elif adjustment == 's':
+        return [lower_bound, cpu_guess]
+    elif adjustment == 'c':
+        return [lower_bound, upper_bound]
+    else:
+        return "Error\n"
+
+# Display the final result
+def found(cpu_guess, guesses):
+    print(f'Done! Your number is {cpu_guess}. Guessed in {guesses} attempts!')
+
+# Measure the time efficiency of a function
+def time_efficiency(func, *args):
+    start_time = process_time()
+    func(*args)
+    end_time = process_time()
+    return {
+        'start': start_time,
+        'end': end_time,
+        'total': end_time - start_time
+    }
+
+# Print the time report
+def print_time_report(time):
+    print(f"Starts at: {time['start']}\nEnds at: {time['end']}\nTime taken to execute the function: {time['total']}\n")
+
+# Sum up numbers from 1 to large_num
+def sum_up(large_num):
+    return int((large_num * (large_num + 1)) / 2)
+
+# Generate three random numbers between 0 and 9
+def get_three_random_numbers():
+    x = randrange(10)
+    y = randrange(10)
+    z = randrange(10)
+    return [x, y, z]
+
+# Prompt user to enter a number
+def prompt_for_num():
+    return int(input("Enter a number: "))
+
+# Get three guesses from the user
+def get_user_guesses():
+    x = prompt_for_num()
+    y = prompt_for_num()
+    z = prompt_for_num()
+    return [x, y, z]
+
+# Check if the user's guesses match the random numbers
+def check_for_win(user_numbers, rand_numbers):
+    return user_numbers == rand_numbers
+
+# Generate all possible 3-digit combinations (000 to 999)
+def all_1000_options():
+    options = []
+    for x in range(0, 1000):
+        while len(str(x)) < 3:
+            x = '0' + str(x)
+        options.append(str(x))
+    return options
+
+# Determine the worst-case number of guesses
+def worst_case_algorithm(options, three_random_numbers):
+    idx = 0
+    guesses = 1
+    while [int(i) for i in str(options[idx])] != three_random_numbers:
+        idx += 1
+        guesses += 1
+    return guesses
+
+# Determine the number of guesses in a random case
+def random_case_algorithm(three_random_numbers):
+    upper_constraint = 5000
+    guesses = 1
+    while (get_three_random_numbers() != three_random_numbers) and guesses < upper_constraint:
+        guesses += 1
+    return guesses
+
+# Main code execution starts here
+if __name__ == "__main__":
+    # Example of usage
+    lower_bound = 1
+    upper_bound = 100
+    user_number = number_prompt(lower_bound, upper_bound)
+    
+    guesses = 0
+    lower = lower_bound
+    upper = upper_bound
+    cpu_guess = mid(lower, upper)
+    
+    while True:
+        computer_says(cpu_guess)
+        adjustment = get_adjustment()
+        if adjustment == 'c':
+            guesses += 1
+            found(cpu_guess, guesses)
+            break
+        lower, upper = make_adjustment(adjustment, cpu_guess, lower, upper)
+        cpu_guess = mid(lower, upper)
+        guesses += 1
+
+    # Time efficiency example
+    large_num = 1000000
+    time_report = time_efficiency(sum_up, large_num)
+    print_time_report(time_report)
+
+    # Random numbers game
+    random_numbers = get_three_random_numbers()
+    user_guesses = get_user_guesses()
+    if check_for_win(user_guesses, random_numbers):
+        print("You win!")
+    else:
+        print("Try again!")
+
+    # Worst case algorithm
+    options = all_1000_options()
+    guesses = worst_case_algorithm(options, random_numbers)
+    print(f"Worst case guesses: {guesses}")
+
+    # Random case algorithm
+    guesses = random_case_algorithm(random_numbers)
+    print(f"Random case guesses: {guesses}")

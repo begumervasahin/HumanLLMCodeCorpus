@@ -1,0 +1,63 @@
+import numpy as np
+from numpy.linalg import eig
+from scipy.stats import chi2
+
+def gsis(snp_mat, qr_smy_mat, proj_mat):
+    """
+    Global sure independence screening (GSIS) procedure.
+
+    Parameters:
+        snp_mat (matrix): SNP data of shape (n, g)
+        qr_smy_mat (matrix): Common part in global test statistic of shape (n, n)
+        proj_mat (matrix): Projection matrix of shape (n, n)
+
+    Returns:
+        g_pv_log10 (vector): -log10 p-values for all SNPs
+        g_stat (vector): Global Wald test statistics for all SNPs
+    """
+    
+    # Get the dimensions of the SNP matrix
+    n, g = snp_mat.shape
+    
+    # Project the SNP matrix using the projection matrix
+    zx_mat = np.dot(proj_mat, snp_mat).T
+    
+    # Calculate the sum of squares of the projected SNP matrix
+    q_zx = np.sum(zx_mat * zx_mat, axis=1)
+    
+    # Avoid division by zero
+    q_zx[q_zx == 0] += 1e-6
+    
+    # Inverse of q_zx
+    inv_q_zx = q_zx ** (-1)
+    
+    # Eigen decomposition of the common part matrix
+    w, v = eig(qr_smy_mat)
+    w = np.real(w)
+    w[w < 0] = 0
+    
+    # Square root of the eigenvalues
+    w_diag = np.diag(w ** 0.5)
+    
+    # Calculate the square root of the common part matrix
+    sq_qr_smy_mat = np.dot(np.dot(v, w_diag), v.T)
+    sq_qr_smy_mat = np.real(sq_qr_smy_mat)
+    
+    # Calculate the global test statistics
+    g_stat = np.sum(np.dot(zx_mat, sq_qr_smy_mat) ** 2, axis=1) * inv_q_zx
+    
+    # Calculate moments of the test statistics
+    k1 = np.mean(g_stat)
+    k2 = np.var(g_stat)
+    k3 = np.mean((g_stat - k1) ** 3)
+    
+    # Parameters for the chi-squared distribution
+    a = k3 / (4 * k2)
+    b = k1 - 2 * k2 ** 2 / k3
+    d = 8 * k2 ** 3 / k3 ** 2
+    
+    # Calculate p-values and their -log10
+    g_pv = 1 - chi2.cdf((g_stat - b) / a, d)
+    g_pv_log10 = -np.log10(g_pv)
+    
+    return g_pv_log10, g_stat

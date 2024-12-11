@@ -1,0 +1,57 @@
+import nltk
+from nltk.tokenize import RegexpTokenizer
+from nltk.stem.porter import PorterStemmer
+from stop_words import get_stop_words
+from gensim import corpora, models
+import gensim
+
+# Download NLTK stopwords if not already present
+nltk.download('stopwords')
+
+# Initialize the tokenizer, stop words list, and the stemmer
+tokenizer = RegexpTokenizer(r'\w+')
+en_stop = get_stop_words('en')
+p_stemmer = PorterStemmer()
+
+# Sample documents
+doc_a = "Broccoli is good to eat. My brother likes to eat good broccoli, but not my mother."
+doc_b = "My mother spends a lot of time driving my brother around to baseball practice."
+doc_c = "Some health experts suggest that driving may cause increased tension and blood pressure."
+doc_d = "I often feel pressure to perform well at school, but my mother never seems to drive my brother to do better."
+doc_e = "Health professionals say that broccoli is good for your health."
+
+# Compile sample documents into a list
+doc_set = [doc_a, doc_b, doc_c, doc_d, doc_e]
+print("Document Set:\n", doc_set)
+
+# Tokenize, remove stop words, and stem the tokens
+texts = []
+for doc in doc_set:
+    # Convert document to lowercase
+    raw = doc.lower()
+    # Tokenize the document
+    tokens = tokenizer.tokenize(raw)
+    # Remove stop words from tokens
+    stopped_tokens = [token for token in tokens if token not in en_stop]
+    # Stem the tokens
+    stemmed_tokens = [p_stemmer.stem(token) for token in stopped_tokens]
+    # Add the processed tokens to the list
+    texts.append(stemmed_tokens)
+
+print("\nTokenized and Stemmed Texts:\n", texts)
+
+# Create a dictionary representation of the documents
+dictionary = corpora.Dictionary(texts)
+print("\nToken to ID Mapping:\n", dictionary.token2id)
+
+# Convert documents into the bag-of-words format
+corpus = [dictionary.doc2bow(text) for text in texts]
+print("\nCorpus (Document-Term Matrix):\n", corpus)
+
+# Generate the LDA model
+ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=2, id2word=dictionary, passes=20)
+
+# Print the topics
+print("\nLDA Model Topics:")
+for idx, topic in ldamodel.print_topics(num_topics=2, num_words=4):
+    print(f"Topic {idx}: {topic}")

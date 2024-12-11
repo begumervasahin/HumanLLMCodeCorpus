@@ -1,0 +1,59 @@
+import json
+import numpy as np
+import sys
+from datetime import datetime
+
+def validate(date):
+    """
+    Validates whether the entered date is in the correct format (YYYY-MM-DD).
+    """
+    try:
+        datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("The dates should be in the following format: YYYY-MM-DD")
+
+def args_validate(args):
+    """
+    Validates if the entered arguments are valid entries.
+    """
+    if len(args) != 4:
+        raise AssertionError("The number of arguments should be exactly 3.\n\n(Starting Date Ending Date Commodity Name)")
+    
+    validate(args[1])
+    validate(args[2])
+    
+    if args[3] not in ["gold", "silver"]:
+        raise ValueError("The third argument must be either 'silver' or 'gold'")
+
+def main():
+    args = sys.argv
+    args_validate(args)
+
+    commodity = args[3]
+    starting = args[1]
+    ending = args[2]
+
+    # Load the data from the JSON file
+    with open('result.json', 'r') as fp:
+        data = json.load(fp)
+
+    # Final validation of date range based on the dataset
+    all_keys = list(data[commodity].keys())
+    max_date = max(all_keys)
+    min_date = min(all_keys)
+    
+    if max_date < ending:
+        raise ValueError(f"Sorry! My maximum date is {max_date}")
+    
+    if min_date > starting:
+        raise ValueError(f"Sorry! My minimum date is {min_date}")
+
+    # Filter the keys within the specified date range
+    keys = [key for key in data[commodity] if starting <= key <= ending]
+    prices = [float(data[commodity][x]["Price"].replace(',', '')) for x in keys]
+
+    # Calculate and print the mean and variance
+    print(commodity, np.mean(prices), np.var(prices))
+
+if __name__ == "__main__":
+    main()

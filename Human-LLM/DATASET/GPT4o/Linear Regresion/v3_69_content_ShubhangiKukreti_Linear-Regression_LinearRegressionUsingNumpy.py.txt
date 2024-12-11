@@ -1,0 +1,214 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def predict(X, theta):
+    """
+    Predict the target values using the linear model parameters theta.
+    
+    Args:
+    X : numpy.ndarray
+        Feature matrix.
+    theta : numpy.ndarray
+        Parameters of the linear model.
+    
+    Returns:
+    numpy.ndarray
+        Predicted target values.
+    """
+    return X @ theta
+
+def compute_cost(X, y, theta):
+    """
+    Compute the cost function for linear regression.
+    
+    Args:
+    X : numpy.ndarray
+        Feature matrix.
+    y : numpy.ndarray
+        Target values.
+    theta : numpy.ndarray
+        Parameters of the linear model.
+    
+    Returns:
+    float
+        Computed cost.
+    """
+    m = len(y)
+    h = X @ theta
+    cost = (1 / (2 * m)) * np.sum((h - y) ** 2)
+    return cost
+
+def compute_gradient(X, y, theta):
+    """
+    Compute the gradient for linear regression.
+    
+    Args:
+    X : numpy.ndarray
+        Feature matrix.
+    y : numpy.ndarray
+        Target values.
+    theta : numpy.ndarray
+        Parameters of the linear model.
+    
+    Returns:
+    numpy.ndarray
+        Computed gradient.
+    """
+    m = len(y)
+    h = X @ theta
+    grad = (1 / m) * (X.T @ (h - y))
+    return grad
+
+def gradient_descent(X, y, num_params, alpha=0.02, iters=5000):
+    """
+    Perform gradient descent to optimize the linear model parameters.
+    
+    Args:
+    X : numpy.ndarray
+        Feature matrix.
+    y : numpy.ndarray
+        Target values.
+    num_params : int
+        Number of parameters to optimize.
+    alpha : float, optional
+        Learning rate (default is 0.02).
+    iters : int, optional
+        Number of iterations (default is 5000).
+    
+    Returns:
+    tuple
+        Optimized parameters and cost history.
+    """
+    cost_history = np.zeros(iters)
+    theta = np.zeros(num_params)
+    
+    for i in range(iters):
+        theta -= alpha * compute_gradient(X, y, theta)
+        cost_history[i] = compute_cost(X, y, theta)
+    
+    return theta, cost_history
+
+def normalize_data(x):
+    """
+    Normalize the feature matrix.
+    
+    Args:
+    x : numpy.ndarray
+        Feature matrix.
+    
+    Returns:
+    tuple
+        Normalized feature matrix and scaling factors.
+    """
+    scale = x.max(axis=0)
+    return x / scale, scale
+
+def split_data(X, y):
+    """
+    Split the data into training and testing sets.
+    
+    Args:
+    X : numpy.ndarray
+        Feature matrix.
+    y : numpy.ndarray
+        Target values.
+    
+    Returns:
+    tuple
+        Training and testing sets.
+    """
+    return X, y, X, y
+
+def main():
+    # Load data
+    data = np.loadtxt('stockprices.csv', usecols=(1, 2))
+    X = data[:, 0]
+    y = data[:, 1]
+    
+    # Plot original data
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.scatter(X, y, label='Data')
+    ax.set_xlabel('Amazon Stock Price')
+    ax.set_ylabel('Google Stock Price')
+    ax.set_title('Google Stock Price vs. Amazon Stock Price')
+    fig.savefig('graph.png')
+    
+    # Split and normalize data
+    X_train, y_train, X_test, y_test = split_data(X, y)
+    m = len(y)
+    X_train = np.column_stack((np.ones((m, 1)), X_train))
+    X_train_norm, X_scale = normalize_data(X_train)
+    y_train_norm, y_scale = normalize_data(y_train)
+    
+    # Test prediction function
+    print('Testing the prediction function ...')
+    theta = np.array([1, 2])
+    print('When x=[1,1] and theta is [1,2], prediction =', predict(np.ones(2), theta))
+    print('Approx expected prediction is 3')
+    print('When x=[[1,1],[5,5]] and theta is [1,2], prediction =', predict(np.array([[1, 1], [5, 5]]), theta))
+    print('Approx expected prediction is [3, 15]')
+    
+    input('Press Enter to continue...')
+    
+    # Test cost function
+    print('Testing the cost function ...')
+    theta = np.zeros(2)
+    print('When theta is zero, cost =', compute_cost(X_train_norm, y_train_norm, theta))
+    print('Approx expected cost value is 0.318')
+    
+    input('Press Enter to continue...')
+    
+    # Test gradient function
+    print('Testing the gradient function ...')
+    print('When theta is zero, gradient =', compute_gradient(X_train_norm, y_train_norm, theta))
+    print('Approx expected gradient value is [-0.79, -0.59]')
+    
+    input('Press Enter to continue...')
+    
+    # Run gradient descent
+    print('Running gradient descent ...')
+    theta, cost_history = gradient_descent(X_train_norm, y_train_norm, X_train_norm.shape[1])
+    print('After running gradient_descent(), theta =', theta)
+    print('Approx expected value is [0.34, 0.61]')
+    
+    # Make predictions
+    X_pred = np.linspace(X.min(), X.max(), 100)
+    X_pred = np.column_stack((np.ones((100, 1)), X_pred))
+    y_pred = predict(X_pred / X_scale, theta) * y_scale
+    
+    # Plot predictions
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.scatter(X_test, y_test, color='b', label='Test Data')
+    ax.plot(X_pred[:, 1], y_pred, 'r', label='Prediction')
+    ax.set_xlabel('Amazon Stock Price')
+    ax.set_ylabel('Google Stock Price')
+    ax.legend(loc=2)
+    fig.savefig('pred.png')
+    
+    # Plot cost history
+    fig2, ax2 = plt.subplots(figsize=(12, 8))
+    ax2.semilogy(cost_history, 'r')
+    ax2.set_xlabel('Iteration')
+    ax2.set_ylabel('Cost')
+    fig2.savefig('cost.png')
+    
+    # Plot cost function surface
+    fig3 = plt.figure()
+    ax3 = fig3.add_subplot(1, 1, 1, projection='3d')
+    n = 100
+    theta0, theta1 = np.meshgrid(np.linspace(-3, 3, n), np.linspace(-3, 2, n))
+    cost_surface = np.empty((n, n))
+    
+    for i in range(n):
+        for j in range(n):
+            cost_surface[i, j] = compute_cost(X_train_norm, y_train_norm, np.array([theta0[i, j], theta1[i, j]]))
+    
+    ax3.plot_surface(theta0, theta1, cost_surface)
+    ax3.set_xlabel('theta0')
+    ax3.set_ylabel('theta1')
+    ax3.set_zlabel('J(theta)')
+    fig3.savefig('J.png')
+
+if __name__ == '__main__':
+    main()

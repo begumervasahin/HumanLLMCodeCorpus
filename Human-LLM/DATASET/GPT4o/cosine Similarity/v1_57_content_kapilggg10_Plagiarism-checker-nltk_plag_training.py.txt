@@ -1,0 +1,87 @@
+import os
+import string
+from collections import Counter
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def get_tokenized(text):
+    """
+    Tokenize the input text.
+    
+    Args:
+        text (str): The text to tokenize.
+    
+    Returns:
+        list: A list of tokens.
+    """
+    return word_tokenize(text)
+
+def stemming(tokens, stemmer):
+    """
+    Perform stemming on a list of tokens.
+    
+    Args:
+        tokens (list): The list of tokens to stem.
+        stemmer (PorterStemmer): The stemmer to use.
+    
+    Returns:
+        list: A list of stemmed tokens.
+    """
+    return [stemmer.stem(token) for token in tokens]
+
+def preprocessing(text):
+    """
+    Preprocess the input text by tokenizing and stemming.
+    
+    Args:
+        text (str): The text to preprocess.
+    
+    Returns:
+        list: A list of preprocessed (tokenized and stemmed) words.
+    """
+    tokens = get_tokenized(text)
+    stemmer = PorterStemmer()
+    return stemming(tokens, stemmer)
+
+def training_tfs(directory_path):
+    """
+    Train a TF-IDF vectorizer on text files in the specified directory.
+    
+    Args:
+        directory_path (str): The path to the directory containing the text files.
+    
+    Returns:
+        TfidfVectorizer: The trained TF-IDF vectorizer.
+        scipy.sparse.csr.csr_matrix: The TF-IDF matrix.
+        list: The list of filenames.
+    """
+    file_contents = []
+    filenames = []
+    token_dictionary = {}
+    
+    for subdir, dirs, files in os.walk(directory_path):
+        for file in files:
+            file_path = os.path.join(subdir, file)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lowers = f.read().lower()
+                no_punctuation = lowers.translate(str.maketrans('', '', string.punctuation))
+                token_dictionary[file] = no_punctuation
+                file_contents.append(no_punctuation)
+                filenames.append(file)
+    
+    tfidf = TfidfVectorizer(tokenizer=preprocessing, stop_words='english')
+    tfs = tfidf.fit_transform(file_contents)
+    return tfidf, tfs, filenames
+
+if __name__ == "__main__":
+    # Specify the path to the directory containing the text files
+    directory_path = 'C:\\Users\\Kapil Goyal\\Desktop\\nlp_assignment\\files'
+    
+    # Train the TF-IDF vectorizer
+    tfidf_vectorizer, tfidf_matrix, files = training_tfs(directory_path)
+    
+    # Print the filenames and their corresponding TF-IDF vectors
+    print(f"Filenames: {files}")
+    print(f"TF-IDF Matrix: {tfidf_matrix.toarray()}")

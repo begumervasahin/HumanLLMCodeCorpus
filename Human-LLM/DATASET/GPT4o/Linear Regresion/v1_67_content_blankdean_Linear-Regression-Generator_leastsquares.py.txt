@@ -1,0 +1,85 @@
+import sys
+import csv
+
+def read_csv(filename):
+    """Read CSV file and return x and y arrays with headers."""
+    x_array = []
+    y_array = []
+    try:
+        with open(filename, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            headers = next(reader)
+            x_header, y_header = headers[0], headers[1]
+            for row in reader:
+                try:
+                    x_array.append(float(row[0]))
+                    y_array.append(float(row[1]))
+                except ValueError:
+                    print('  Error: A value in the file cannot be read.')
+                    sys.exit(0)
+        return x_array, y_array, x_header, y_header.strip()
+    except FileNotFoundError:
+        print('  Error: File could not be opened.')
+        sys.exit(0)
+
+def calculate_regression_params(x_array, y_array):
+    """Calculate and return slope (m), intercept (b), and regression error metrics."""
+    count = len(x_array)
+    x_avg = sum(x_array) / count
+    y_avg = sum(y_array) / count
+
+    m_num = sum((x - x_avg) * (y - y_avg) for x, y in zip(x_array, y_array))
+    m_den = sum((x - x_avg) ** 2 for x in x_array)
+    
+    m = m_num / m_den
+    b = y_avg - m * x_avg
+
+    estimates = [m * x + b for x in x_array]
+    errors = [abs(y - est) for y, est in zip(y_array, estimates)]
+    squared_errors = [(y - est) ** 2 for y, est in zip(y_array, estimates)]
+    
+    error_avg = round(sum(errors) / len(errors), 5)
+    mse = sum(squared_errors) / (count - 2)
+    regression_std_error = round(mse ** 0.5, 5)
+
+    return m, b, error_avg, regression_std_error
+
+def display_regression_line(m, b):
+    """Display the linear regression line equation."""
+    m_rounded = round(m, 5)
+    b_rounded = round(b, 5)
+    plus_minus = '+' if b_rounded >= 0 else ''
+    print(f'\n  The Linear Regression Line is y = {m_rounded}*x {plus_minus} {b_rounded}.')
+
+def predict(m, b, x_header, y_header):
+    """Predict y values based on user input."""
+    print('  System Ready to make predictions.')
+    print("  To quit, type 'exit' as the year.")
+    while True:
+        year = input(f'  Enter {x_header}: ')
+        if year.lower() == 'exit':
+            sys.exit(0)
+        try:
+            year = float(year)
+            prediction = round(m * year + b, 5)
+            print(f'  Prediction when {x_header} = {year} is {y_header} = {prediction}.')
+            print('  ________________________________')
+        except ValueError:
+            print('  Input could not be understood. Please try again.')
+
+def main():
+    """Main function to execute the script."""
+    print('\nWelcome to the Linear Regression Generator')
+    filename = input('Enter File Name Containing Data: ')
+    
+    x_array, y_array, x_header, y_header = read_csv(filename)
+    m, b, error_avg, regression_std_error = calculate_regression_params(x_array, y_array)
+
+    display_regression_line(m, b)
+    print(f'  Average Error for Known Values was +/- {error_avg}.')
+    print(f'  Regression Standard Error for Known Values was {regression_std_error}.')
+
+    predict(m, b, x_header, y_header)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,78 @@
+import numpy as np
+import joblib
+from matplotlib import pyplot as plt
+from sklearn.metrics import r2_score
+
+# Define file paths
+model_path = './model/'
+input_path = './input/'
+output_path = './output/'
+
+# Load linkage data from file
+def load_linkage_data(file_path):
+    with open(file_path) as file:
+        return np.array([[float(value) for value in line.split()] for line in file])
+
+# Load target values from file
+def load_target_values(file_path):
+    return np.genfromtxt(file_path)
+
+# Load the pre-trained regression model
+def load_model(model_file):
+    return joblib.load(model_file)
+
+# Predict using the loaded model
+def predict(model, data):
+    return model.predict(data)
+
+# Calculate the R^2 score
+def calculate_r2_score(true_values, predicted_values):
+    return r2_score(true_values, predicted_values)
+
+# Sort values based on target values
+def sort_values(target_values, predicted_values):
+    sorted_indices = np.argsort(target_values)
+    sorted_targets = np.sort(target_values)
+    sorted_predictions = [predicted_values[i] for i in sorted_indices]
+    return sorted_targets, sorted_predictions
+
+# Plot the results
+def plot_results(sorted_targets, sorted_predictions, r2_score):
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(len(sorted_targets)), sorted_predictions, marker='o', label='Predicted')
+    plt.plot(range(len(sorted_targets)), sorted_targets, 'r', label='Actual')
+    plt.text(5, 20, f'R$^2$ = {r2_score:.3f}', fontsize=20)
+    plt.legend()
+    plt.title('Predicted vs Actual Values')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Values')
+    plt.grid(True)
+    plt.show()
+
+# Save the sorted results to a file
+def save_results(output_file, sorted_predictions, sorted_targets):
+    output_data = np.vstack((sorted_predictions, sorted_targets)).T
+    np.savetxt(output_file, output_data, fmt='%.3f')
+
+# Main script execution
+def main():
+    # Load data and model
+    linkage_data = load_linkage_data(input_path + 'linkages.txt')
+    target_values = load_target_values(input_path + 'y.txt')
+    regression_model = load_model(model_path + 'regression_model.sav')
+    
+    # Predict and evaluate
+    predicted_values = predict(regression_model, linkage_data)
+    r2_score_value = calculate_r2_score(target_values, predicted_values)
+    print(f'R^2: test={r2_score_value:.3f}')
+    
+    # Sort and plot results
+    sorted_targets, sorted_predictions = sort_values(target_values, predicted_values)
+    plot_results(sorted_targets, sorted_predictions, r2_score_value)
+    
+    # Save output
+    save_results(output_path + 'output_test.txt', sorted_predictions, sorted_targets)
+
+# Run the main function
+if __name__ == "__main__":
+    main()

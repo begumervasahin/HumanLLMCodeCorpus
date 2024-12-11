@@ -1,0 +1,40 @@
+def new_split_iter(expr):
+    """
+    Divides a character string into individual tokens, which need not be separated by spaces (but can be!).
+    The results are returned in a manner similar to an iterator instead of creating a new data structure.
+
+    :param expr: The expression to be tokenized.
+    :yield: Tokens from the expression.
+    """
+    operators = ['+', '-', '*', '/', '%', '(', ')', '=', '<', '>', '!', '?', ':', ';', ',']
+    expr = expr + ";"  # Append a semicolon to handle the end of the expression
+    pos = 0
+
+    while expr[pos] != ";":
+        if expr[pos] == ' ':
+            pos += 1
+        elif expr[pos].isalpha():
+            temp = pos
+            while pos < len(expr) and expr[pos] not in operators and expr[pos] != ' ':
+                pos += 1
+            yield expr[temp:pos]
+        elif expr[pos].isdigit():
+            temp = pos
+            while pos < len(expr) and expr[pos].isdigit():
+                pos += 1
+            yield expr[temp:pos]
+        elif expr[pos] in ['=', '!', '<', '>'] and pos + 1 < len(expr) and expr[pos + 1] == '=':
+            yield expr[pos] + expr[pos + 1]
+            pos += 2
+        else:
+            yield expr[pos]
+            pos += 1
+
+    yield ";"  # Yield the end-of-expression token
+
+# Example usage
+if __name__ == "__main__":
+    expr = "a = 10 + b * (c - d) >= 5;"
+    tokens = list(new_split_iter(expr))
+    print("Tokens:", tokens)
+    # Output: Tokens: ['a', '=', '10', '+', 'b', '*', '(', 'c', '-', 'd', ')', '>=', '5', ';']

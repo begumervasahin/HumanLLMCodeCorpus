@@ -1,0 +1,59 @@
+import sys
+import json
+from getFile import getFile
+from filter import Filter
+from format import formatToLines
+from utils import dealArgs
+from writeFile import writeFile, writeCSV
+from getStats import getStats
+
+def get_and_filter(options):
+    """Get and filter words from file based on provided options."""
+    f = Filter(options)
+    words = getFile(options['file'], f.filter)
+    return words
+
+def run(args):
+    """Run the main process with given arguments."""
+    options = dealArgs(args).to_object()
+    words = get_and_filter(options)
+    stats = None
+    
+    if options['stats']:
+        stats = getStats(words)
+    elif options['format']:
+        words = formatToLines(words)
+    
+    if options['output']:
+        if options['csv']:
+            columns = ['Name']
+            if stats:
+                columns.append('Count')
+            writeCSV(stats if stats else words, options['output'], columns)
+        else:
+            output_data = json.dumps(stats if stats else words, indent=4)
+            writeFile(output_data, options['output'])
+        
+        print(f"\nThe requested data has been written to file {options['output']}.")
+    else:
+        display_data = '\n'
+        
+        if stats:
+            if len(stats) <= 1:
+                display_data += 'No stats to print.'
+            else:
+                display_data += 'STATS:\n'
+                for stat, value in stats.items():
+                    display_data += f'\n{stat}: {value}'
+        else:
+            if len(words) <= 1:
+                display_data += 'No words to print.'
+            else:
+                display_data += 'WORDS:\n'
+                for word in words:
+                    display_data += f'\n{word}'
+        
+        print(display_data)
+
+if __name__ == '__main__':
+    run(sys.argv)

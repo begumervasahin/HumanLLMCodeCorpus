@@ -1,0 +1,173 @@
+import sys
+import os
+from collections import defaultdict
+import operator
+
+# Output files
+PROBABILITIES_FILE = "result.txt"  # File containing symbol probabilities
+CODES_FILE = "codigos.txt"         # File to save Huffman codes
+COMPRESSED_FILE = "comprimido.dat" # Output compressed file
+
+# Input file to compress
+INPUT_FILE = sys.argv[2]
+
+def huffman_compressor():
+    # Load symbol probabilities
+    probabilities = load_probabilities(PROBABILITIES_FILE)
+
+    # Generate Huffman codes
+    huffman_codes = generate_huffman_codes(probabilities)
+    save_huffman_codes(huffman_codes, CODES_FILE)
+
+    # Encode the input text using Huffman codes and save it as a binary file
+    with open(INPUT_FILE, 'r') as infile, open(COMPRESSED_FILE, 'wb') as outfile:
+        text_content = infile.read().rstrip().lower()
+        encoded_text = encode_text(huffman_codes, text_content)
+        padded_encoded_text = pad_encoded_text(encoded_text)
+        binary_data = convert_to_binary_array(padded_encoded_text)
+        outfile.write(bytes(binary_data))
+
+    # Display compression statistics
+    display_compression_statistics(INPUT_FILE, COMPRESSED_FILE)
+
+def load_probabilities(filename):
+    """
+    Load the symbol probabilities from the given file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the file containing symbol probabilities.
+
+    Returns
+    -------
+    dict
+        A dictionary with symbols as keys and their respective probabilities as values.
+    """
+    probabilities = {}
+    with open(filename, 'r') as file:
+        for line in file:
+            symbol, probability = line.split("\t")
+            probability = float(probability.strip())
+            if symbol not in ["space", "salto"]:
+                probabilities[symbol] = probability
+    return probabilities
+
+def generate_huffman_codes(probabilities):
+    """
+    Generate Huffman codes for the given symbol probabilities.
+
+    Parameters
+    ----------
+    probabilities : dict
+        A dictionary with symbols as keys and their respective probabilities as values.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping each symbol to its Huffman code.
+    """
+    if len(probabilities) == 2:
+        return dict(zip(probabilities.keys(), ['0', '1']))
+    
+    sorted_probabilities = dict(sorted(probabilities.items(), key=operator.itemgetter(1)))
+    key1, key2 = list(sorted_probabilities.keys())[:2]
+    p1, p2 = sorted_probabilities.pop(key1), sorted_probabilities.pop(key2)
+    sorted_probabilities[key1 + key2] = p1 + p2
+
+    codes = generate_huffman_codes(sorted_probabilities)
+    combined_code = codes.pop(key1 + key2)
+    codes[key1], codes[key2] = combined_code + '0', combined_code + '1'
+    
+    return codes
+
+def save_huffman_codes(huffman_codes, filename):
+    """
+    Save the Huffman codes to a file.
+
+    Parameters
+    ----------
+    huffman_codes : dict
+        A dictionary mapping each symbol to its Huffman code.
+    filename : str
+        Path to the file where the Huffman codes will be saved.
+    """
+    with open(filename, "w") as file:
+        for symbol, code in huffman_codes.items():
+            symbol_display = "salto" if symbol == '\n' else symbol
+            file.write(f"{symbol_display}\t{code}\n")
+
+def encode_text(huffman_codes, text):
+    """
+    Encode the text using the given Huffman codes.
+
+    Parameters
+    ----------
+    huffman_codes : dict
+        A dictionary mapping each symbol to its Huffman code.
+    text : str
+        The text to encode.
+
+    Returns
+    -------
+    str
+        The encoded binary string.
+    """
+    return ''.join(huffman_codes[ch] for ch in text if ch in huffman_codes)
+
+def pad_encoded_text(encoded_text):
+    """
+    Pad the encoded text to make its length a multiple of 8.
+
+    Parameters
+    ----------
+    encoded_text : str
+        The binary string representing the encoded text.
+
+    Returns
+    -------
+    str
+        The padded binary string with padding information added.
+    """
+    padding_size = 8 - len(encoded_text) % 8
+    padding_info = f"{padding_size:08b}"
+    return padding_info + encoded_text + '0' * padding_size
+
+def convert_to_binary_array(padded_encoded_text):
+    """
+    Convert the padded binary string to a byte array.
+
+    Parameters
+    ----------
+    padded_encoded_text : str
+        The padded binary string.
+
+    Returns
+    -------
+    bytearray
+        A byte array representing the binary data.
+    """
+    return bytearray(int(padded_encoded_text[i:i+8], 2) for i in range(0, len(padded_encoded_text), 8))
+
+def display_compression_statistics(input_file, output_file):
+    """
+    Display the compression statistics for the input and output files.
+
+    Parameters
+    ----------
+    input_file : str
+        Path to the original input file.
+    output_file : str
+        Path to the compressed output file.
+    """
+    original_size = os.path.getsize(input_file) / (1024 * 1024.0)
+    compressed_size = os.path.getsize(output_file) / (1024 * 1024.0)
+    compression_ratio = (compressed_size / original_size) * 100
+
+    print(f"\n\nOriginal Text: {input_file} Size: {original_size:.2f} MB")
+    print(f"Compressed File: {output_file} Size: {compressed_size:.2f} MB")
+    print(f"File {input_file} compressed by {round(compression_ratio)}%")
+    print("Text successfully compressed!\n\n")
+
+if __name__ == "__main__":
+    huffman_compressor()

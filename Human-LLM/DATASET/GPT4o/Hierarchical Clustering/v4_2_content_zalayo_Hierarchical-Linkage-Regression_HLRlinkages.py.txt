@@ -1,0 +1,48 @@
+import os
+import numpy as np
+from libHLR import linkages as link
+
+# Set input path and clustering parameters
+input_path = './input/'
+link_type = 'complete'
+distance_metric = 'manhattan'
+R = 40
+
+# Initialize the linkage object with the specified parameters
+linkage_obj = link(distance_metric, link_type)
+linkage_obj.R = R
+
+# Load the dataset from the X.txt file
+x_file_path = os.path.join(input_path, 'X.txt')
+with open(x_file_path) as file:
+    X = np.array([[float(value) for value in line.split()] for line in file])
+
+# Check if kx.txt exists, and load it; otherwise, initialize kx to an array of ones
+kx_file_path = os.path.join(input_path, 'kx.txt')
+if os.path.exists(kx_file_path):
+    kx = np.genfromtxt(kx_file_path)
+else:
+    kx = np.ones(X.shape[0])
+
+# Determine the number of clusters (K) from kx
+last_index = len(kx) - 2
+num_clusters = len(np.unique(kx[:last_index]))
+
+# Initialize an array to store linkage results
+linkage_results = np.asarray([])
+
+# Process each cluster to compute the linkages
+for cluster_idx in range(num_clusters):
+    print(f'Processing linkage {cluster_idx + 1} of {num_clusters}')
+    indices = np.where(kx[:last_index] == cluster_idx + 1)
+    cluster_data = X[indices]
+    cluster_data = cluster_data[0]  # Reduce the dimension
+    linkage_result = linkage_obj.get(cluster_data)
+    linkage_results = np.concatenate((linkage_results, linkage_result))
+
+# Split the linkage results into K parts and save to a file
+linkage_results = np.hsplit(linkage_results, num_clusters)
+output_file = os.path.join(input_path, 'linkages.txt')
+np.savetxt(output_file, linkage_results, fmt='%.8f', delimiter='\t', newline='\n')
+
+print(f'Linkages saved to {output_file}')

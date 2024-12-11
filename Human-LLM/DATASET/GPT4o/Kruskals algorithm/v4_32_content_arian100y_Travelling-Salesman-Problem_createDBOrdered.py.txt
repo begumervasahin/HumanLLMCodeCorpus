@@ -1,0 +1,66 @@
+def partition(arr, low, high):
+    """
+    Partition the array for quicksort.
+    
+    Parameters:
+        arr: List of tuples to be partitioned.
+        low: The starting index of the segment of the array to be partitioned.
+        high: The ending index of the segment of the array to be partitioned.
+    
+    Returns:
+        The partition index where the pivot element is placed.
+    """
+    i = low - 1
+    pivot = arr[high][1]  # Pivot is the last element's second value (latitude)
+
+    for j in range(low, high):
+        if arr[j][1] <= pivot:  # Compare latitude values
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]  # Swap elements
+
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]  # Place pivot in correct position
+    return i + 1
+
+def quicksort(arr, low, high):
+    """
+    QuickSort algorithm to sort the array of tuples based on latitude values.
+    
+    Parameters:
+        arr: List of tuples to be sorted.
+        low: The starting index of the segment of the array to be sorted.
+        high: The ending index of the segment of the array to be sorted.
+    """
+    if low < high:
+        pi = partition(arr, low, high)  # Partition the array
+        quicksort(arr, low, pi - 1)     # Recursively sort the left segment
+        quicksort(arr, pi + 1, high)    # Recursively sort the right segment
+
+def main():
+    # Read the file and filter lines by location "LOS OLIVOS"
+    with open("db2.txt", encoding="utf-8") as file:
+        lines = []
+        for line in file:
+            data = line.strip().split(",")
+            if data[3] == "LOS OLIVOS":
+                latitude = float(data[5])
+                longitude = float(data[6])
+                lines.append((latitude, longitude))
+
+    # Sort the lines based on latitude using QuickSort
+    quicksort(lines, 0, len(lines) - 1)
+
+    # Print the sorted coordinates
+    for coord in lines:
+        print(coord)
+
+    # Write the sorted coordinates to a new file
+    with open("testSET4.txt", "w") as output_file:
+        for coord in lines:
+            output_file.write(f"{coord[0]},{coord[1]}\n")
+
+    # Print the number of filtered lines
+    print(f"Total coordinates: {len(lines)}")
+
+if __name__ == "__main__":
+    print("Sorting coordinates for LOS OLIVOS...")
+    main()

@@ -1,0 +1,47 @@
+from scraper import linkify, getLinks, getWords
+from algorithms import tf, getDocLinkStrength, sublinear_tf, augmented_tf, idf, tfidf
+
+def get_personality_keywords(name):
+    # Generate the link for the personality's page
+    pageLink = linkify(name)
+    
+    # Extract words and links from the page
+    wordList = getWords(pageLink)
+    linkList = getLinks(pageLink)
+    
+    # Calculate term frequency (TF) for the words on the page
+    tfDict = tf(wordList)
+    
+    # Get the document link strength using the links and TF dictionary
+    docLinks = getDocLinkStrength(linkList, tfDict)
+    
+    # Collect unique links for calculating TF-IDF
+    links_for_tf_idf = list(set(each[0] for each in docLinks))
+    
+    # Fetch words from the top 10 document links
+    dump = [getWords(linkify(each)) for each in links_for_tf_idf[:10]]
+    
+    # Calculate Inverse Document Frequency (IDF)
+    idfDict = idf(tfDict, dump)
+    
+    # Calculate TF-IDF
+    tfidfDict = tfidf(tfDict, idfDict)
+    
+    # Create a list of words with their TF-IDF values and sort it in descending order
+    tfidfList = sorted(tfidfDict.items(), key=lambda x: x[1], reverse=True)
+    
+    # Get keywords based on document link strength using TF-IDF values
+    keywords = getDocLinkStrength(linkList, tfidfDict)
+    
+    # Create a final list of unique keywords
+    finalKeywordList = list(set(each[0] for each in keywords))
+    
+    return finalKeywordList
+
+# Get the name of the personality from the user
+name = input("Enter the Name of Personality\n")
+
+# Get and print the final list of keywords
+finalKeywordList = get_personality_keywords(name)
+for keyword in finalKeywordList:
+    print(keyword)

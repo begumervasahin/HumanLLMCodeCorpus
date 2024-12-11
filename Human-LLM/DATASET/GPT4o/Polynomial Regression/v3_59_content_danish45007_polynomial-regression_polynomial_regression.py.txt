@@ -1,0 +1,66 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
+# Function to load the dataset
+def load_dataset(file_path):
+    dataset = pd.read_csv(file_path)
+    X = dataset.iloc[:, 1:2].values  # Extracting the position levels
+    y = dataset.iloc[:, 2].values    # Extracting the salaries
+    return X, y
+
+# Function to fit a Linear Regression model
+def fit_linear_regression(X, y):
+    linear_regressor = LinearRegression()
+    linear_regressor.fit(X, y)
+    return linear_regressor
+
+# Function to fit a Polynomial Regression model
+def fit_polynomial_regression(X, y, degree):
+    poly_features = PolynomialFeatures(degree=degree)
+    X_poly = poly_features.fit_transform(X)
+    poly_regressor = LinearRegression()
+    poly_regressor.fit(X_poly, y)
+    return poly_features, poly_regressor
+
+# Function to visualize the regression results
+def visualize_regression_results(X, y, model, model_type, poly_features=None, resolution=0.1):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(X, y, color='red')
+    
+    if model_type == 'linear':
+        plt.plot(X, model.predict(X), color='blue')
+        plt.title('Truth or Bluff (Linear Regression)')
+    elif model_type == 'polynomial':
+        X_grid = np.arange(min(X), max(X), resolution)
+        X_grid = X_grid.reshape((len(X_grid), 1))
+        plt.plot(X_grid, model.predict(poly_features.fit_transform(X_grid)), color='blue')
+        plt.title('Truth or Bluff (Polynomial Regression)')
+    
+    plt.xlabel('Position level')
+    plt.ylabel('Salary')
+    plt.show()
+
+# Load the dataset
+X, y = load_dataset('position_salaries.csv')
+
+# Fit Linear Regression model
+linear_model = fit_linear_regression(X, y)
+
+# Fit Polynomial Regression model with degree 4
+poly_features, poly_model = fit_polynomial_regression(X, y, degree=4)
+
+# Visualize Linear Regression results
+visualize_regression_results(X, y, linear_model, model_type='linear')
+
+# Visualize Polynomial Regression results
+visualize_regression_results(X, y, poly_model, model_type='polynomial', poly_features=poly_features)
+
+# Save the final plot to a file
+plt.savefig('position_salary.png')
+
+# Uncomment the following lines to make predictions
+# predicted_salary_linear = linear_model.predict([[6.5]])
+# predicted_salary_polynomial = poly_model.predict(poly_features.fit_transform([[6.5]]))

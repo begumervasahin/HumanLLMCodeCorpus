@@ -1,0 +1,79 @@
+import basicfunc
+
+class ElGamal:
+    def __init__(self, ec, g):
+        """
+        Initializes the ElGamal encryption system.
+
+        :param ec: Elliptic curve object
+        :param g: Generator point on the elliptic curve
+        """
+        assert ec.is_valid(g), "Generator point is not valid on the given elliptic curve."
+        self.ec = ec
+        self.g = g
+        self.n = ec.order(g)
+    
+    def generate_public_key(self, private_key):
+        """
+        Generates a public key from a private key.
+
+        :param private_key: Private key (integer)
+        :return: Public key (point on the curve)
+        """
+        return self.ec.mul(self.g, private_key)
+    
+    def encrypt(self, plaintext, public_key, random_int):
+        """
+        Encrypts a plaintext message.
+
+        :param plaintext: Plaintext message (point on the curve)
+        :param public_key: Public key (point on the curve)
+        :param random_int: Random integer
+        :return: Ciphertext (tuple of two points on the curve)
+        """
+        assert self.ec.is_valid(plaintext), "Plaintext point is not valid on the elliptic curve."
+        assert self.ec.is_valid(public_key), "Public key is not valid on the elliptic curve."
+        c1 = self.ec.mul(self.g, random_int)
+        c2 = self.ec.add(plaintext, self.ec.mul(public_key, random_int))
+        return c1, c2
+    
+    def decrypt(self, ciphertext, private_key):
+        """
+        Decrypts a ciphertext message.
+
+        :param ciphertext: Ciphertext (tuple of two points on the curve)
+        :param private_key: Private key (integer)
+        :return: Decrypted plaintext message (point on the curve)
+        """
+        c1, c2 = ciphertext
+        assert self.ec.is_valid(c1), "Ciphertext point c1 is not valid on the elliptic curve."
+        assert self.ec.is_valid(c2), "Ciphertext point c2 is not valid on the elliptic curve."
+        return self.ec.add(c2, self.ec.neg(self.ec.mul(c1, private_key)))
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize elliptic curve and generator point
+    ec = basicfunc.EllipticCurve()  # Replace with your elliptic curve class from basicfunc
+    g = ec.get_generator_point()    # Replace with the generator point for your curve
+    
+    elgamal = ElGamal(ec, g)
+    
+    # Private keys for Alice and Bob
+    alice_private_key = 123456789
+    bob_private_key = 987654321
+    
+    # Generate public keys
+    alice_public_key = elgamal.generate_public_key(alice_private_key)
+    bob_public_key = elgamal.generate_public_key(bob_private_key)
+    
+    # Encrypt a message
+    plaintext_message = ec.get_random_point()  # Replace with a random point on the curve representing the message
+    random_integer = 135792468  # Random integer for encryption
+    ciphertext = elgamal.encrypt(plaintext_message, bob_public_key, random_integer)
+    
+    # Decrypt the message
+    decrypted_message = elgamal.decrypt(ciphertext, bob_private_key)
+    
+    print(f"Original message: {plaintext_message}")
+    print(f"Encrypted message: {ciphertext}")
+    print(f"Decrypted message: {decrypted_message}")

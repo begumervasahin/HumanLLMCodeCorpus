@@ -1,0 +1,62 @@
+import numpy as np
+import time
+
+# Generate the percent correct and percent agreement models
+# Author: Bashar Awwad Shiekh Hasan
+# basharawwad.sh@gmail.com
+
+# Set the random seed for reproducibility based on the current time
+seed = int(time.time() // 10**8)
+np.random.seed(seed)
+
+# Define simulation parameters
+no_trials = 100
+no_simulations = 100
+ext_noise_mean = 0
+sd = 1
+
+# Create arrays of dprime and internal noise values to iterate over
+dprime_values = np.linspace(0, 10, 51)
+inoise_values = np.linspace(0, 10, 51)
+
+# Create a list of choice values for the number of classes
+choice_values = list(range(10, 1, -1))
+
+# Initialize arrays to store the results of percent correct and percent agreement
+percent_correct = np.zeros((9, len(dprime_values), len(inoise_values)))
+percent_agreement = np.zeros((9, len(dprime_values), len(inoise_values)))
+
+print("Shape of percent_correct array:", percent_correct.shape)
+
+# Loop through each choice value (number of classes)
+for afc in range(10, 1, -1):
+    print(f"Simulating {afc} classes")
+    
+    # Loop through each dprime value
+    for dprime_pointer, dprime in enumerate(dprime_values):
+        
+        # Loop through each internal noise value
+        for inoise_pointer, inoise in enumerate(inoise_values):
+            
+            percent_correct_temp = []
+            percent_agreement_temp = []
+            
+            # Run simulations for the current parameters
+            for _ in range(no_simulations):
+                noise_set = np.random.normal(ext_noise_mean, sd, (afc, no_trials))
+                noise_set[0, :] += dprime
+                noise_set = np.hstack((noise_set, noise_set))
+                noise_set += np.random.normal(size=noise_set.shape)
+                
+                response = np.argmax(noise_set, axis=0) == 0
+                percent_correct_temp.append(np.mean(response))
+                percent_agreement_temp.append(np.mean(response[:no_trials] == response[no_trials:2*no_trials]))
+            
+            # Store the mean results for the current parameters
+            percent_correct[afc - 2, dprime_pointer, inoise_pointer] = np.mean(percent_correct_temp)
+            percent_agreement[afc - 2, dprime_pointer, inoise_pointer] = np.mean(percent_agreement_temp)
+
+# Save the results to a .npz file
+np.savez("pc_pa_record", pc=percent_correct, pa=percent_agreement)
+
+print("Simulation completed and results saved to pc_pa_record.npz")

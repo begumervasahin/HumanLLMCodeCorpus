@@ -1,0 +1,120 @@
+import numpy as np
+import pandas as pd
+import sys
+import matplotlib.pyplot as plt
+
+# Function to compute the cost
+def compute_cost(X, y, theta):
+    errors = X @ theta.T - y
+    squared_errors = np.power(errors, 2)
+    return np.sum(squared_errors) / (2 * len(X))
+
+# Function to perform gradient descent
+def gradient_descent(X, y, theta, iters, alpha):
+    cost_history = np.zeros(iters)
+    for i in range(iters):
+        h = X @ theta.T
+        errors = h - y
+        gradient = (alpha / len(X)) * (X.T @ errors)
+        theta -= gradient.T
+        cost_history[i] = compute_cost(X, y, theta)
+    return cost_history, theta
+
+# Function to split data into training and test sets
+def get_training_test_data(data):
+    X = data.iloc[:, :-1]
+    X = np.concatenate([np.ones([X.shape[0], 1]), X], axis=1)
+    y = data.iloc[:, -1:].values
+    
+    split_index = int(len(X) * 0.8)
+    trainX, testX = X[:split_index, :], X[split_index:, :]
+    trainY, testY = y[:split_index, :], y[split_index:, :]
+    
+    return trainX, trainY, testX, testY
+
+# Function to compute the error
+def compute_error(predicted_y, actual_y):
+    difference = predicted_y - actual_y
+    squared_difference = difference.T @ difference
+    return np.sqrt(squared_difference[0, 0])
+
+# Function to compute regularized cost
+def compute_regularized_cost(X, y, theta, lamda):
+    cost = compute_cost(X, y, theta)
+    regularization_term = (lamda / (2 * len(X))) * np.sum(np.square(theta[:, 1:]))
+    return cost + regularization_term
+
+# Function to perform regularized gradient descent
+def gradient_descent_regularized(X, y, theta, iters, alpha, lamda):
+    cost_history = np.zeros(iters)
+    regularization_factor = 1 - (lamda * alpha / len(X))
+    regularization_matrix = np.concatenate(([1], np.ones(theta.shape[1] - 1) * regularization_factor))
+    
+    for i in range(iters):
+        h = X @ theta.T
+        errors = h - y
+        gradient = (alpha / len(X)) * (X.T @ errors)
+        theta *= regularization_matrix
+        theta -= gradient.T
+        cost_history[i] = compute_regularized_cost(X, y, theta, lamda)
+    
+    return cost_history, theta
+
+# Function to predict values
+def predict(X, theta):
+    return X @ theta.T
+
+# Main script
+if len(sys.argv) < 2:
+    print("Usage: python3 mvlr <filename>")
+    sys.exit()
+
+output_file = 'output.txt'
+with open(output_file, 'w') as f:
+    sys.stdout = f
+
+    filename = sys.argv[1]
+    data = pd.read_csv(filename)
+    data = (data - data.mean()) / data.std()
+
+    trainX, trainY, testX, testY = get_training_test_data(data)
+
+    iters = 1000
+    ALPHA = [0.0001, 0.001, 0.01, 0.1]
+    min_error = float('inf')
+    optimal_alpha = 0
+
+    # Gradient Descent for different alpha values
+    for alpha in ALPHA:
+        theta = np.zeros([1, trainX.shape[1]])
+        cost_history, trained_theta = gradient_descent(trainX, trainY, theta, iters, alpha)
+        
+        plt.plot(range(iters), cost_history, label=f'alpha={alpha}')
+        
+        predicted_y = predict(testX, trained_theta)
+        print(f"For alpha = {alpha}")
+        print(f"Theta: {trained_theta}")
+        error = compute_error(predicted_y, testY)
+        
+        if error < min_error:
+            min_error = error
+            optimal_alpha = alpha
+        
+        print(f"RMSE = {error}")
+
+    # Regularized Gradient Descent for different lambda values
+    LAMBDAS = [0, 1, 10, 100]
+    for lamda in LAMBDAS:
+        cost_history, regularized_theta = gradient_descent_regularized(trainX, trainY, theta, iters, optimal_alpha, lamda)
+        predicted_y_regularized = predict(testX, regularized_theta)
+        
+        print(f"After regularization with lambda = {lamda}")
+        print(f"Theta: {regularized_theta}")
+        error = compute_error(predicted_y_regularized, testY)
+        print(f"Error = {error}")
+
+    plt.title('Variation of Cost with iterations for different values of alpha')
+    plt.xlabel('Iterations')
+    plt.ylabel('Cost')
+    plt.legend()
+    plt.savefig('Cost_vs_iters.png')

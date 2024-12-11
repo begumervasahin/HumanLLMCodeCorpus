@@ -1,0 +1,129 @@
+import numpy as np
+import math
+import time
+from tqdm import tqdm
+
+class LogisticRegression:
+    """
+    Logistic Regression model implemented from scratch.
+    """
+    def __init__(self, learning_rate, input_size, train_x, train_y):
+        """
+        Initialize the Logistic Regression model.
+        
+        Parameters:
+        - learning_rate: Learning rate for gradient descent.
+        - input_size: The number of features in the input data.
+        - train_x: Training input data.
+        - train_y: Training output data.
+        """
+        self.learning_rate = learning_rate
+        self.input_size = input_size
+        self.train_x = train_x
+        self.train_y = train_y
+        self.weights = np.random.rand(input_size)
+        self.bias = 0
+    
+    def sigmoid(self, z):
+        """
+        Compute the sigmoid of z.
+        
+        Parameters:
+        - z: The input value.
+        
+        Returns:
+        - The sigmoid of z.
+        """
+        return 1 / (1 + math.exp(-z))
+    
+    def error_func(self, y_pred, y_true):
+        """
+        Compute the squared error between the predicted and true values.
+        
+        Parameters:
+        - y_pred: The predicted value.
+        - y_true: The true value.
+        
+        Returns:
+        - The squared error.
+        """
+        return (y_true - y_pred) ** 2
+    
+    def train(self, epochs):
+        """
+        Train the model using gradient descent.
+        
+        Parameters:
+        - epochs: The number of training iterations.
+        """
+        for _ in tqdm(range(epochs)):
+            for x, y_true in zip(self.train_x, self.train_y):
+                y_pred = self.predict(x)
+                for i in range(len(self.weights)):
+                    gradient = 2 * (y_pred - y_true) * y_pred * (1 - y_pred) * x[i]
+                    self.weights[i] -= self.learning_rate * gradient
+                self.bias -= self.learning_rate * 2 * (y_pred - y_true) * y_pred * (1 - y_pred)
+    
+    def predict(self, x):
+        """
+        Predict the output for a given input x.
+        
+        Parameters:
+        - x: The input data.
+        
+        Returns:
+        - The predicted output.
+        """
+        z = np.dot(x, self.weights) + self.bias
+        return self.sigmoid(z)
+    
+    def print_weights(self):
+        """
+        Print the weights and bias of the model.
+        """
+        print(f"Weights: {self.weights}, Bias: {self.bias}")
+
+def generate_training_data(size):
+    """
+    Generate training data.
+    
+    Parameters:
+    - size: The number of training examples.
+    
+    Returns:
+    - A tuple containing the input data (x) and output data (y).
+    """
+    x = []
+    y = []
+    for i in range(size):
+        y.append(1 / (1 + math.exp(-i * 2000)))
+        x.append([i])
+    return x, y
+
+def main():
+    print("Logistic Regression training is starting")
+    
+    # Generate training data
+    x, y = generate_training_data(1000)
+    
+    # Initialize and train the model
+    model = LogisticRegression(learning_rate=0.01, input_size=1, train_x=x, train_y=y)
+    model.print_weights()
+    
+    start_time = time.time()
+    model.train(epochs=100)
+    end_time = time.time()
+    
+    print("____________________")
+    model.print_weights()
+    
+    # Test the model
+    test_value = [1]
+    prediction = model.predict(test_value)
+    expected_value = 1 / (1 + math.exp(-1 * 2000))
+    print(f"Prediction for input {test_value}: {prediction}")
+    print(f"Expected value: {expected_value}")
+    print(f"Training time: {end_time - start_time} seconds")
+
+if __name__ == '__main__':
+    main()

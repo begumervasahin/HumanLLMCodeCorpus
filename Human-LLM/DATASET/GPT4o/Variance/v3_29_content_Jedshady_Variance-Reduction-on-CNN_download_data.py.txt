@@ -1,0 +1,75 @@
+import urllib.request
+import tarfile
+import os
+import sys
+import argparse
+
+def extract_tarfile(filepath):
+    """
+    Extracts the given tar.gz file.
+    
+    Parameters:
+    filepath (str): The path to the tar.gz file to be extracted.
+    """
+    if os.path.exists(filepath):
+        print('The tar file exists. Extracting it now...')
+        with tarfile.open(filepath, 'r') as tar:
+            tar.extractall('.')
+        print('Extraction complete!')
+        sys.exit(0)
+
+def check_dir_exists(dirpath):
+    """
+    Checks if the specified directory exists.
+    
+    Parameters:
+    dirpath (str): The path to the directory to check.
+    
+    Returns:
+    bool: True if the directory exists, False otherwise.
+    """
+    if os.path.exists(dirpath):
+        print(f'Directory {dirpath} exists. To redownload the files, remove the existing directory and {dirpath}.tar.gz')
+        return True
+    return False
+
+def download_and_extract(dirpath, gzfile, url):
+    """
+    Downloads and extracts the CIFAR-10 dataset if the directory does not exist.
+    
+    Parameters:
+    dirpath (str): The path to the directory to check or create.
+    gzfile (str): The name of the tar.gz file to be downloaded.
+    url (str): The URL to download the tar.gz file from.
+    """
+    if check_dir_exists(dirpath):
+        sys.exit(0)
+    
+    print(f'Downloading CIFAR-10 from {url}...')
+    urllib.request.urlretrieve(url, gzfile)
+    extract_tarfile(gzfile)
+    print('Download and extraction complete!')
+
+def main():
+    parser = argparse.ArgumentParser(description='Download CIFAR-10 datasets')
+    parser.add_argument(
+        'file_format',
+        type=str,
+        choices=['py', 'bin'],
+        help='Specify the format of the CIFAR-10 dataset to download: "py" for Python or "bin" for binary'
+    )
+    args = parser.parse_args()
+
+    if args.file_format == 'bin':
+        dirpath = 'cifar-10-batches-bin'
+        gzfile = 'cifar-10-binary.tar.gz'
+        url = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
+    else:
+        dirpath = 'cifar-10-batches-py'
+        gzfile = 'cifar-10-python.tar.gz'
+        url = 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+    
+    download_and_extract(dirpath, gzfile, url)
+
+if __name__ == '__main__':
+    main()

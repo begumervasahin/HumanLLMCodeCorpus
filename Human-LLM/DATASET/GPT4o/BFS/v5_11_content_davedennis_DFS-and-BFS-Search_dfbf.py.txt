@@ -1,0 +1,119 @@
+import sys
+
+def read_graph(filename, debug=False):
+    """
+    Read the graph from a file and store it in a dictionary.
+
+    Args:
+        filename (str): The name of the file containing the graph data.
+        debug (bool): Flag to print debug information.
+
+    Returns:
+        dict: A dictionary representing the graph.
+    """
+    graph = {}
+    with open(filename) as file:
+        for line in file:
+            line = line.strip().split()
+            if debug: 
+                print("Line:", line, "Length:", len(line))
+            if line:  # Skip empty lines
+                graph[line[0]] = ('white', line[1:])
+    return graph
+
+def dump_graph(graph):
+    """
+    Print the graph.
+
+    Args:
+        graph (dict): The graph to be printed.
+    """
+    print("Graph representation: nodeName (color, [adjacent nodes])")
+    for node in graph:
+        print(node, graph[node])
+
+def bfs(graph, start_node):
+    """
+    Perform a breadth-first search (BFS) on the graph.
+
+    Args:
+        graph (dict): The graph to be searched.
+        start_node (str): The starting node for BFS.
+
+    Returns:
+        list: A list of tuples where each tuple contains a node and its distance from the start node.
+    """
+    queue = [start_node]
+    graph[start_node] = ("black", graph[start_node][1], 0)  # Mark the start node as black with distance 0
+    bfs_result = [(start_node, 0)]
+
+    while queue:
+        node = queue.pop(0)
+        for neighbor in graph[node][1]:
+            if graph[neighbor][0] == "white":
+                graph[neighbor] = ('grey', graph[neighbor][1], graph[node][2] + 1)
+                bfs_result.append((neighbor, graph[neighbor][2]))
+                queue.append(neighbor)
+        graph[node] = ("black", graph[node][1])  # Mark the node as fully explored
+    return bfs_result
+
+def paint_all_white(graph):
+    """
+    Paint all nodes in the graph white.
+
+    Args:
+        graph (dict): The graph whose nodes are to be painted white.
+    """
+    for node in graph:
+        graph[node] = ('white', graph[node][1])
+
+def dfs(graph, node):
+    """
+    Perform a depth-first search (DFS) on the graph starting from the given node.
+
+    Args:
+        graph (dict): The graph to be searched.
+        node (str): The starting node for DFS.
+    """
+    graph[node] = ("grey", graph[node][1])
+    for neighbor in graph[node][1]:
+        if graph[neighbor][0] == "white":
+            dfs(graph, neighbor)
+        elif graph[neighbor][0] == "grey":
+            print(f"Cycle detected in node {neighbor}")
+    graph[node] = ("black", graph[node][1])
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: python script.py <graph_file> <root_node> [debug]")
+        sys.exit(1)
+
+    debug = len(sys.argv) > 3
+    graph = read_graph(sys.argv[1], debug)
+    root_node = sys.argv[2]
+
+    if debug:
+        dump_graph(graph)
+    
+    print("Root node:", root_node)
+
+    # Perform BFS
+    bfs_result = bfs(graph, root_node)
+    print("BFS Result:")
+    print(bfs_result)
+
+    if debug:
+        dump_graph(graph)
+    
+    # Reset all nodes to white
+    paint_all_white(graph)
+
+    if debug:
+        dump_graph(graph)
+    
+    # Perform DFS
+    print("DFS Result:")
+    dfs(graph, root_node)
+
+    if debug:
+        dump_graph(graph)

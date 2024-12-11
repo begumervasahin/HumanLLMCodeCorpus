@@ -1,0 +1,139 @@
+import argparse
+import functools
+import os
+import socketio
+import threading
+from qmgr import QueueManager
+
+# Set up command-line argument parsing
+parser = argparse.ArgumentParser(description='Karafun fair scheduler.')
+parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', help='Enable logging')
+parser.add_argument('--hide-singers', action='store_true', help='Hide who queued each song')
+parser.add_argument('channel', help='Karafun session ID')
+args = parser.parse_args()
+
+# Initialize SocketIO client
+sio = socketio.Client(logger=args.verbose)
+
+# Mutex for thread-safe operations
+mtx = threading.Lock()
+
+# Initialize QueueManager with the option to hide singers
+qm = QueueManager(args.hide_singers)
+
+def mlock(f):
+    """
+    Decorator to acquire a lock before executing the function and release it after.
+    """
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        with mtx:
+            return f(*args, **kwargs)
+    return inner
+
+@sio.event
+@mlock
+def connect():
+    """
+    Event handler for when the client connects to the server.
+    """
+    if args.verbose:
+        print('Connection established')
+    sio.emit('authenticate', {
+        'login': 'fair scheduler',
+        'channel': args.channel,
+        'role': 'participant',
+        'app': 'karafun',
+        'socket_id': None,
+    })
+
+@sio.event
+@mlock
+def loginAlreadyTaken():
+    """
+    Event handler for when the login is already taken.
+    """
+    if args.verbose:
+        print('Login already taken')
+    sio.emit('authenticate', {
+        'login': f'fair scheduler {os.getpid()}',
+        'channel': args.channel,
+        'role': 'participant',
+        'app': 'karafun',
+        'socket_id': None,
+    })
+
+@sio.event
+@mlock
+def permissions(data):
+    """
+    Event handler for when permissions are received from the server.
+    """
+    if args.verbose:
+        print('Permissions received:', data)
+
+@sio.event
+@mlock
+def preferences(data):
+    """
+    Event handler for when preferences are received from the server.
+    """
+    if args.verbose:
+        print('Preferences received:', data)
+    if not data.get('askSingerName'):
+        print('You must turn on "Ask singer\'s name when adding to queue" in the Karafun remote control settings for the scheduler to work.')
+        sio.disconnect()
+
+@sio.event
+@mlock
+def status(data):
+    """
+    Event handler for when status is received from the server.
+    """
+    if args.verbose:
+        print('Status received:', data)
+
+# Timer for handling queue actions
+queue_handle_timer = threading.Timer(999.0, lambda: None)
+
+@sio.event
+@mlock
+def queue(data):
+    """
+    Event handler for when queue data is received from the server.
+    """
+    if args.verbose:
+        print('Queue received:', data)
+    
+    @mlock
+    def handle():
+        action = qm.reconcile(data)
+        if action:
+            print('Sending:', action)
+            sio.emit(action[0], action[1])
+    
+    global queue_handle_timer
+    queue_handle_timer.cancel()
+    queue_handle_timer = threading.Timer(0.3, handle)
+    queue_handle_timer.start()
+
+@sio.event
+@mlock
+def serverUnreacheable():
+    """
+    Event handler for when the server is unreachable.
+    """
+    print('Server unreachable. Try restarting the Karafun App?')
+    sio.disconnect()
+
+@sio.event
+@mlock
+def disconnect():
+    """
+    Event handler for when the client disconnects from the server.
+    """
+    print('Disconnected from server.')
+
+# Connect to the Karafun server and start the SocketIO client
+sio.connect(f'https://www.karafun.com/socket.io/?remote=kf{args.channel}')
+sio.wait()

@@ -1,0 +1,113 @@
+import socket
+import threading
+from queue import Queue
+import spec
+
+# Server configuration
+HOST = spec.host
+PORT = int(spec.port)
+BACKLOG = 2  # Maximum number of queued connections
+
+def handle_client(client_socket, server_queue, client_id, clients):
+    """
+    Handles communication with a single client.
+
+    Parameters:
+    client_socket (socket.socket): The socket connected to the client.
+    server_queue (Queue): Queue for messages to be broadcast to other clients.
+    client_id (str): Unique identifier for the client.
+    clients (dict): Dictionary of all connected clients.
+    """
+    client_socket.setblocking(True)
+    buffer = ""
+
+    while True:
+        try:
+            # Receive data from the client
+            buffer += client_socket.recv(1024).decode("UTF-8")
+            messages = buffer.split("\n")
+
+            while len(messages) > 1:
+                message = messages[0]
+                buffer = "\n".join(messages[1:])
+                server_queue.put(f"{client_id} {message}")
+                messages = buffer.split("\n")
+
+        except Exception as e:
+            print(f"Error handling client {client_id}: {e}")
+            break
+
+def broadcast_messages(clients, server_queue):
+    """
+    Processes messages from the server queue and broadcasts them to clients.
+
+    Parameters:
+    clients (dict): Dictionary of all connected clients.
+    server_queue (Queue): Queue for incoming server messages.
+    """
+    while True:
+        message = server_queue.get()
+        sender_id, instruction, *details = message.split(" ")
+        details = " ".join(details)
+
+        # Broadcast message to all clients except the sender
+        if details:
+            for client_id, client_socket in clients.items():
+                if client_id != sender_id:
+                    broadcast_message = f"{instruction} {sender_id} {details}\n"
+                    client_socket.send(broadcast_message.encode())
+
+        server_queue.task_done()
+
+def run_server():
+    """
+    Initializes the server, accepts incoming connections, and manages threads.
+    """
+    # Set up the server socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        server_socket.bind((HOST, PORT))
+        server_socket.listen(BACKLOG)
+
+        print("Waiting for players...")
+
+        clients = {}
+        player_names = ["Player1", "Player2"]
+        server_queue = Queue(maxsize=100)
+
+        # Start the thread for processing and broadcasting server messages
+        threading.Thread(target=broadcast_messages, args=(clients, server_queue), daemon=True).start()
+
+        player_count = 0
+
+        while True:
+            try:
+                # Accept a new client connection
+                client_socket, _ = server_socket.accept()
+
+                if len(clients) >= len(player_names):
+                    print("Max players reached. Rejecting new connection.")
+                    client_socket.send("Max players reached. Try again later.\n".encode())
+                    client_socket.close()
+                    continue
+
+                # Assign a player ID and notify existing clients
+                player_id = player_names[player_count]
+                for existing_id in clients:
+                    clients[existing_id].send(f"PlayerJoined {player_id}\n".encode())
+                    client_socket.send(f"PlayerJoined {existing_id}\n".encode())
+
+                clients[player_id] = client_socket
+                client_socket.send(f"MyIDis {player_id}\n".encode())
+
+                print(f"Connection received from {player_id}")
+
+                # Start a thread to handle communication with the new client
+                threading.Thread(target=handle_client, args=(client_socket, server_queue, player_id, clients), daemon=True).start()
+
+                player_count += 1
+
+            except Exception as e:
+                print(f"Server error: {e}")
+
+if __name__ == '__main__':
+    run_server()

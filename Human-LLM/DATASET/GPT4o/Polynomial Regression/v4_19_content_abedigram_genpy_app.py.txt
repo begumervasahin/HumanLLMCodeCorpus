@@ -1,0 +1,80 @@
+import Ind
+import random
+import copy
+import numpy as np
+import matplotlib.pyplot as plt
+
+def crossover(parents):
+    child = Ind.Ind()
+    indices = random.sample(range(4), 2)
+    for i in indices:
+        child.cof[i] = parents[0].cof[i]
+    remaining_indices = [i for i in range(4) if i not in indices]
+    for i in remaining_indices:
+        child.cof[i] = parents[1].cof[i]
+    return child
+
+def mutation(individual, mutation_rate, sigma):
+    if random.random() <= mutation_rate:
+        noise = np.random.normal(0, sigma, 4)
+        individual.cof += noise
+    return individual
+
+def generate_new_population(population, mutation_rate, sigma, ys, xs):
+    pairs = [[copy.deepcopy(population[random.randrange(len(population))]), 
+              copy.deepcopy(population[random.randrange(len(population))])] 
+             for _ in range(len(population))]
+    
+    new_population = [crossover(pair) for pair in pairs]
+    new_population = [mutation(child, mutation_rate, sigma) for child in new_population]
+    
+    for individual in new_population:
+        individual.fit_ness(ys, xs)
+    
+    combined_population = population + new_population
+    combined_population.sort(key=lambda x: x.fitness, reverse=True)
+    
+    return combined_population[:len(population)]
+
+def main(gens, pop_size, mut_rate, sigma):
+    with open('input.csv', 'r') as f:
+        ys = [float(line.strip()) for line in f.readlines()]
+    
+    xs = [round(x * 0.1, 1) for x in range(100)]
+    
+    population = [Ind.Ind() for _ in range(pop_size)]
+    for individual in population:
+        individual.fit_ness(ys, xs)
+    
+    best_fitness = []
+    mean_fitness = []
+    worst_fitness = []
+    generations = []
+
+    for generation in range(gens):
+        population = generate_new_population(population, mut_rate, sigma, ys, xs)
+        
+        generations.append(generation)
+        best_fitness.append(population[0].fitness)
+        mean_fitness.append(np.mean([individual.fitness for individual in population]))
+        worst_fitness.append(population[-1].fitness)
+        
+        print(f'{generation + 1} - {population[0].fitness}')
+    
+    best_individual = population[0]
+    x_vals = np.linspace(0, 10, 100)
+    y_vals = sum(cof * (x_vals ** idx) for idx, cof in enumerate(best_individual.cof[::-1]))
+    
+    plt.plot(xs, ys, 'co', label='Data')
+    plt.plot(x_vals, y_vals, '-g', label='Best Fit')
+    plt.legend()
+    plt.show()
+    
+    plt.plot(generations, best_fitness, 'g^', label='Best')
+    plt.plot(generations, mean_fitness, 'co', label='Mean')
+    plt.plot(generations, worst_fitness, 'rs', label='Worst')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    main(gens=5000, pop_size=50, mut_rate=0.1, sigma=0.1)

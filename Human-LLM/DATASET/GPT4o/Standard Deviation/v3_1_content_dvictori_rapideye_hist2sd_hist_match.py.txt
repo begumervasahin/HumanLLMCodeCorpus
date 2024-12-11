@@ -1,0 +1,64 @@
+import argparse
+import numpy as np
+from osgeo import gdal
+from scipy.interpolate import interp1d
+
+def calculate_cdf(histogram):
+    """Calculate the cumulative distribution function (CDF) from a histogram."""
+    return np.cumsum(histogram) / float(sum(histogram))
+
+def create_transfer_function(ref_cdf, adj_cdf):
+    """Create a transfer function using inverse CDF interpolation."""
+    inv_cdf_func = interp1d(ref_cdf, np.arange(len(ref_cdf)), bounds_error=False, fill_value="extrapolate")
+    return lambda x: inv_cdf_func(adj_cdf[x])
+
+def perform_color_balance(reference_image, adjust_image, output_image):
+    """
+    Perform color balance using CDF matching.
+    
+    Parameters:
+    reference_image (str): Path to the reference image.
+    adjust_image (str): Path to the image to be adjusted.
+    output_image (str): Path to the output image.
+    """
+    ref = gdal.Open(reference_image)
+    adj = gdal.Open(adjust_image)
+    
+    if ref.RasterCount != adj.RasterCount:
+        print("Images have different number of bands.")
+        return
+    
+    num_bands = ref.RasterCount
+    driver = gdal.GetDriverByName('GTiff')
+    output_dataset = driver.CreateCopy(output_image, adj, 0, ['COMPRESS=LZW'])
+    
+    for b in range(num_bands):
+        ref_band = ref.GetRasterBand(b+1)
+        adj_band = adj.GetRasterBand(b+1)
+        
+        ref_hist = ref_band.GetHistogram()
+        adj_hist = adj_band.GetHistogram()
+        
+        ref_cdf = calculate_cdf(ref_hist)
+        adj_cdf = calculate_cdf(adj_hist)
+        
+        transfer_func = create_transfer_function(ref_cdf, adj_cdf)
+        
+        adjusted_band = transfer_func(adj_band.ReadAsArray().astype(int))
+        output_dataset.GetRasterBand(b+1).WriteArray(adjusted_band)
+    
+    ref = None
+    adj = None
+    output_dataset = None
+
+def main():
+    parser = argparse.ArgumentParser(description='Perform histogram matching between a reference image and an image to be adjusted.')
+    parser.add_argument("reference_image", help="Path to the reference image.")
+    parser.add_argument("adjust_image", help="Path to the image to be adjusted.")
+    parser.add_argument("output_image", help="Path to the output image.")
+    args = parser.parse_args()
+    
+    perform_color_balance(args.reference_image, args.adjust_image, args.output_image)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,85 @@
+import cv2
+import numpy as np
+import glob
+import os
+import matplotlib.pyplot as plt
+
+def process_singularity_index_images(base_dir, step_sizes):
+    """
+    Takes a time series of singularity index response images as input and produces 
+    a sliding window plot depicting how the CRV is changing over time.
+
+    Parameters:
+    - base_dir: The base directory containing the singularity index images.
+    - step_sizes: A list of step sizes for the sliding window.
+    
+    Notes:
+    - Files must be in .TIF format. Case sensitivity matters (.tif vs. .TIF).
+    - When using an image time series, file names must be in chronological order.
+    """
+    # Retrieve the list of PSI images in the directory
+    psi_images = sorted(glob.glob(os.path.join(base_dir, '**/*.TIF'), recursive=True))
+    
+    if not psi_images:
+        print("No .TIF files found in the specified directory.")
+        return
+    
+    print(f'Number of singularity index images: {len(psi_images)}')
+    
+    # Read the first image to determine its shape
+    first_image = cv2.imread(psi_images[0], cv2.IMREAD_UNCHANGED)
+    image_shape = first_image.shape
+    
+    for step_size in step_sizes:
+        number_sections = (len(psi_images) - step_size) + 1
+        print(f'\nStep size: {step_size}')
+        print(f'Number of windows: {number_sections}')
+        
+        # Initialize the PSI array for the sliding window
+        psi_array = np.zeros((step_size, *image_shape), dtype='float32')
+        averages = []
+        window_indices = list(range(number_sections))
+        
+        for window_start in range(number_sections):
+            for j in range(window_start, window_start + step_size):
+                psi_image = cv2.imread(psi_images[j], cv2.IMREAD_UNCHANGED)
+                psi_array[j - window_start] = psi_image
+            
+            channel_var = np.var(psi_array, axis=0)
+            avg_crv = np.mean(channel_var)
+            print(f'Window {window_start}: Average CRV = {avg_crv}')
+            averages.append(avg_crv)
+        
+        # Plot and save the results
+        plot_and_save_results(window_indices, averages, step_size, base_dir)
+    
+    print('Processing completed.')
+
+def plot_and_save_results(x_values, y_values, step_size, output_dir):
+    """
+    Plots and saves the sliding window results.
+
+    Parameters:
+    - x_values: The x-axis values for the plot.
+    - y_values: The y-axis values for the plot.
+    - step_size: The step size used for the sliding window.
+    - output_dir: The directory to save the plot.
+    """
+    plt.scatter(x_values, y_values)
+    plt.xlabel('Window Number')
+    plt.ylabel('Average CRV for Window Images')
+    plt.title(f'Sliding Window Plot (Step Size: {step_size})')
+    
+    output_tif = os.path.join(output_dir, f"demo_slidingwindow_{step_size}.TIF")
+    output_eps = os.path.join(output_dir, f"demo_slidingwindow_{step_size}.eps")
+    
+    plt.savefig(output_tif)
+    plt.savefig(output_eps, format='eps')
+    plt.close()
+
+# Define the base directory and step sizes for the sliding window
+base_dir = '/home/engrla/rivamap/SIESD related/SlidingWindow/demo_PSIs'
+step_sizes = range(15, 60, 5)
+
+# Process the images with the defined parameters
+process_singularity_index_images(base_dir, step_sizes)

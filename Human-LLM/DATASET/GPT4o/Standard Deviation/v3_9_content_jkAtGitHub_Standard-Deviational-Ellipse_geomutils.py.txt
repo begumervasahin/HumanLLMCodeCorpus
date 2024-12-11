@@ -1,0 +1,119 @@
+import numpy as np
+
+# Constants
+RADIUS_OF_EARTH = 6371.0088  # Radius of the Earth in kilometers
+KMS_TO_METERS = 1000.0
+METERS_TO_KILOMETERS = 0.001
+MILES_TO_KILOMETERS = 1.60934
+KILOMETERS_TO_MILES = 0.621371
+
+def gcd(loc1, loc2, radius=RADIUS_OF_EARTH * KMS_TO_METERS):
+    """
+    Calculate the great circle distance between two points on the Earth 
+    (specified in decimal degrees) using the Haversine formula.
+
+    Parameters
+    ----------
+    loc1 : tuple
+        (longitude, latitude) of the first location in decimal degrees
+    loc2 : tuple
+        (longitude, latitude) of the second location in decimal degrees
+    radius : float
+        Radius of the Earth (default is meters)
+
+    Returns
+    -------
+    float
+        Great circle distance between loc1 and loc2 in units of radius
+    """
+    lon1, lat1 = loc1
+    lon2, lat2 = loc2
+
+    d_lat = np.radians(lat2 - lat1)
+    d_lon = np.radians(lon2 - lon1)
+
+    lat1 = np.radians(lat1)
+    lat2 = np.radians(lat2)
+
+    a = np.sin(d_lat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(d_lon / 2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+
+    return radius * c
+
+def compare_float(a, b, relative_tolerance=0.00001, absolute_tolerance=0.00000001):
+    """
+    Compare two floating point numbers to see if they are approximately equal,
+    using relative and absolute tolerances.
+
+    Parameters
+    ----------
+    a : float
+        First float to be compared
+    b : float
+        Second float to be compared
+    relative_tolerance : float
+        Relative tolerance
+    absolute_tolerance : float
+        Absolute tolerance
+
+    Returns
+    -------
+    bool
+        True if the floats are approximately equal within the specified tolerances, False otherwise
+    """
+    try:
+        return abs(a - b) < absolute_tolerance + (relative_tolerance * abs(b))
+    except TypeError:
+        return False
+
+def convert_to_radians(degrees):
+    """
+    Convert degrees to radians.
+
+    Parameters
+    ----------
+    degrees : float
+        Angle in degrees
+
+    Returns
+    -------
+    float
+        Angle in radians
+    """
+    return np.pi / 180.0 * degrees
+
+def convert_to_degrees(radians):
+    """
+    Convert radians to degrees.
+
+    Parameters
+    ----------
+    radians : float
+        Angle in radians
+
+    Returns
+    -------
+    float
+        Angle in degrees
+    """
+    return 180.0 / np.pi * radians
+
+if __name__ == "__main__":
+    # Example usage
+    san_diego = (-117.1611, 32.7157)
+    austin = (-97.7431, 30.2672)
+
+    distance = gcd(san_diego, austin)
+    print(f"Great circle distance: {distance} meters")
+
+    a = 0.1 + 0.2
+    b = 0.3
+    print(f"Compare float: {compare_float(a, b)}")
+
+    degrees = 180.0
+    radians = convert_to_radians(degrees)
+    print(f"{degrees} degrees is {radians} radians")
+
+    radians = np.pi
+    degrees = convert_to_degrees(radians)
+    print(f"{radians} radians is {degrees} degrees")

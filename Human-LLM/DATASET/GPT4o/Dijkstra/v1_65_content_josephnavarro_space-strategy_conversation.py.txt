@@ -1,0 +1,97 @@
+class Text:
+    def __init__(self, text, scrollable=False):
+        """
+        Initialize a Text object.
+
+        Parameters:
+        text (str): The text to be displayed.
+        scrollable (bool): If True, the text is scrollable.
+        """
+        self.text = text
+        self.scrollable = scrollable
+        self.current = 0
+
+    def draw(self, surface, position):
+        """
+        Draw the text on the surface at the given position.
+
+        Parameters:
+        surface: The surface to draw on (could be a screen or any drawing context).
+        position (tuple): The (x, y) position to draw the text.
+        """
+        # Here we're assuming `surface` is a list where we append drawn text.
+        # In a real graphical application, you would use a graphics library method to draw text.
+        surface.append(f"Drawing '{self.text[self.current:]}' at {position}")
+
+class Conversation:
+    def __init__(self, strings, pos):
+        """
+        Initialize a Conversation object.
+
+        Parameters:
+        strings (list of str): The list of strings to include in the conversation.
+        pos (tuple): The (x, y) starting position for drawing text.
+        """
+        self.pos = pos
+        self.dialogue = []
+        self._format_dialogue(strings)
+        self.read = False
+        self.current = 0
+
+    def _format_dialogue(self, strings):
+        """
+        Format strings into chunks for dialogue.
+
+        Parameters:
+        strings (list of str): The list of strings to format.
+        """
+        string_part = []
+        count = 0
+
+        for x in range(len(strings)):
+            string_part.append(Text(strings[x], scrollable=True))
+            count += 1
+            if count >= 3 or x == len(strings) - 1:
+                n = len(string_part)
+                # Add empty text objects if needed to make the count 3
+                for i in range(3 - n):
+                    string_part.append(Text('', scrollable=True))
+                self.dialogue.append(string_part)
+                count = 0
+                string_part = []
+
+    def draw(self, surface, pos=None):
+        """
+        Draw the current dialogue on the surface.
+
+        Parameters:
+        surface: The surface to draw on.
+        pos (tuple): The (x, y) position to start drawing text. Defaults to self.pos.
+        """
+        if pos is None:
+            pos = self.pos
+        
+        count = 0
+        if len(self.dialogue) > 0:
+            for text in self.dialogue[self.current]:
+                text.draw(surface, (pos[0], pos[1] + count * 16))
+                if text.current < len(text.text):
+                    break
+                else:
+                    count += 1
+
+# Example usage
+if __name__ == "__main__":
+    # Example strings and position
+    strings = ["Hello!", "How are you?", "This is a long message that might span multiple lines.",
+               "This is another message.", "Final message here."]
+    position = (10, 20)
+    
+    # Create a conversation and draw it
+    conversation = Conversation(strings, position)
+    surface = []
+    conversation.draw(surface)
+    
+    # Print the surface to see the output
+    for item in surface:
+        print(item)

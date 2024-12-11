@@ -1,0 +1,90 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
+class SES(tf.keras.layers.Layer):
+    """
+    TensorFlow/Keras implementation of Simple Exponential Smoothing (SES).
+    The SES layer defines an alpha parameter as per the component form of SES.
+    Max and min constraint parameters limit the size of alpha between 0 and 1.
+
+    Reference:
+    Forecasting: Principles and Practice by Hyndman and George Athanasopoulos (https://otexts.com/fpp2/)
+    """
+    def __init__(self, min_constraint=0.01, max_constraint=0.5, **kwargs):
+        super(SES, self).__init__(**kwargs)
+        self.min_constraint = min_constraint
+        self.max_constraint = max_constraint
+
+    def build(self, input_shape):
+        self.alpha = self.add_weight(
+            name='alpha',
+            shape=(1,),
+            initializer=tf.keras.initializers.RandomUniform(0, 1),
+            regularizer=tf.keras.regularizers.L2(0.1),
+            constraint=tf.keras.constraints.MinMaxNorm(
+                min_value=self.min_constraint,
+                max_value=self.max_constraint
+            )
+        )
+
+    def call(self, inputs):
+        def ses(y, alpha, level):
+            """Apply simple exponential smoothing."""
+            forecast = level
+            updated_level = forecast + alpha * (y - forecast)
+            return forecast, updated_level
+
+        predictions = []
+        level = tf.reshape(inputs[0], (1,))
+        for t in range(1, tf.shape(inputs)[0]):
+            prediction, level = ses(inputs[t], self.alpha, level)
+            predictions.append(prediction)
+        return tf.concat(predictions, axis=0)
+
+def ses_loss(prediction, y):
+    return tf.reduce_mean(tf.square(y - prediction))
+
+def main():
+    # Generate synthetic time series data
+    y = np.log(np.arange(1, 300, 3)) + np.random.normal(0, 0.4, 100)
+    timeseries = tf.convert_to_tensor(y, dtype=tf.float32)
+
+    # Training parameters
+    training_epochs = 5
+    learning_rate = 0.01
+    optimizer = tf.keras.optimizers.Adam(learning_rate)
+    loss_history = []
+
+    # Initialize SES layer
+    ses_layer = SES(min_constraint=0.01, max_constraint=0.5)
+
+    # Training loop
+    print('--------------------- SES Training Loss --------------------')
+    for epoch in range(training_epochs):
+        with tf.GradientTape() as tape:
+            prediction = ses_layer(timeseries)
+            loss = ses_loss(prediction[:-1], timeseries[:-1])
+        loss_history.append(loss.numpy())
+        grads = tape.gradient(loss, ses_layer.trainable_weights)
+        optimizer.apply_gradients(zip(grads, ses_layer.trainable_weights))
+        print(f"MSE Loss at epoch {epoch}: {loss:.3f}, alpha: {ses_layer.alpha.numpy()[0]:.3f}")
+
+    # Final results
+    print(f"Final MSE loss: {loss:.3f}")
+    print(f"Alpha = {ses_layer.alpha.numpy()[0]:.3f}")
+
+    # Plotting results
+    pred = prediction.numpy()
+    plt.figure(figsize=(15, 8))
+    plt.title('Simple Exponential Smoothing Layer Results with Constrained Learned Parameter')
+    plt.plot(range(99), pred, label='Prediction')
+    plt.plot(range(99), timeseries[:-1], label='Actual')
+    plt.grid(True)
+    plt.legend()
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

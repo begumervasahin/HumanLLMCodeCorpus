@@ -1,0 +1,94 @@
+import json
+import time
+import requests
+
+# Headers for the API requests
+headers = {
+    'Content-Type': 'application/json',
+    'Ocp-Apim-Subscription-Key': 'b3f5d9f8d81046598dedc07a7541e2c9',
+}
+
+def documents_to_sentiments(docs):
+    """
+    Sends a list of documents to the Azure Text Analytics API for sentiment analysis.
+    
+    Parameters:
+    docs (list of str): List of documents to analyze.
+    
+    Returns:
+    dict: Contains the request body and the API response.
+    """
+    # Prepare the request body
+    request_body = {
+        'documents': [
+            {'id': str(i), 'text': doc} 
+            for i, doc in enumerate(docs) if doc
+        ]
+    }
+
+    # Send the request to the API
+    response = requests.post(
+        'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
+        headers=headers,
+        data=json.dumps(request_body)
+    )
+    
+    # Prepare and return the result
+    result = {
+        'body': request_body,
+        'result': response.json()
+    }
+    return result
+
+def documents_to_topics(docs):
+    """
+    Sends a list of documents to the Azure Text Analytics API for topic detection.
+    
+    Parameters:
+    docs (list of str): List of documents to analyze.
+    
+    Returns:
+    dict: Contains the request body and the API response.
+    """
+    # Prepare the request body
+    request_body = {
+        'stopWords': [],
+        'topicsToExclude': [],
+        'documents': [
+            {'id': str(i), 'text': doc}
+            for i, doc in enumerate(docs)
+        ]
+    }
+
+    # Send the initial request to the API
+    response = requests.post(
+        'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/topics',
+        headers=headers,
+        data=json.dumps(request_body)
+    )
+
+    # Get the operation location from the response headers
+    operation_location = response.headers['operation-location']
+    operation_path = operation_location[operation_location.index('.com') + 4:]
+    result = {'body': request_body}
+    
+    # Poll the operation status until it succeeds
+    while True:
+        time.sleep(5)  # Wait for 5 seconds before the next status check
+        status_response = requests.get(
+            'https://westus.api.cognitive.microsoft.com' + operation_path,
+            headers=headers
+        )
+        status_data = status_response.json()
+        
+        # Check if the operation has completed successfully
+        if 'status' in status_data and status_data['status'] == 'Succeeded':
+            result['result'] = status_data
+            break
+
+    return result
+
+# Example usage:
+documents = ["This is a sample document.", "Another document here.", ""]  # Add your documents here
+print(documents_to_sentiments(documents))
+print(documents_to_topics(documents))

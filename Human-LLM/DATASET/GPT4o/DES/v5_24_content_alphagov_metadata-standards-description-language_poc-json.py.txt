@@ -1,0 +1,91 @@
+import slang
+
+# Define constants for metadata and spreadsheets
+METADATA_FILE = "poc.slang"
+SPREADSHEETS = ["office-supplies-order.ods", "office-supplies-order.ods"]
+
+def render_value(cell):
+    """
+    Render the value of a cell based on its type.
+
+    Parameters
+    ----------
+    cell : slang.Cell
+        The cell to render.
+
+    Returns
+    -------
+    str or any
+        The rendered value of the cell.
+    """
+    if isinstance(cell.type, slang.slang_String):
+        return f"\"{cell.value()}\""
+    return cell.value()
+
+def render_json(result, row):
+    """
+    Render a row as a JSON object.
+
+    Parameters
+    ----------
+    result : any
+        The result of the extraction process.
+    row : list of slang.Cell
+        The row to render.
+
+    Returns
+    -------
+    bool
+        Always returns True.
+    """
+    print("  {")
+    for cell in row:
+        print(f"    \"{cell.name}\":\t{render_value(cell)},")
+    print("  },")
+    return True
+
+def process_spreadsheet(metadata, spreadsheet_path):
+    """
+    Process a single spreadsheet against the provided metadata.
+
+    Parameters
+    ----------
+    metadata : slang.Metadata
+        The metadata to validate against.
+    spreadsheet_path : str
+        The path to the spreadsheet to process.
+    """
+    print(f"Validating spreadsheet {spreadsheet_path} against metadata...")
+    with open(spreadsheet_path) as spreadsheet:
+        instance = metadata.validate(spreadsheet)
+        print("Extracting typed data from spreadsheet...")
+        print("[")
+        instance.extract(render_json)
+        print("]")
+
+def process_spreadsheets(metadata, spreadsheets):
+    """
+    Process the given spreadsheets against the provided metadata.
+
+    Parameters
+    ----------
+    metadata : slang.Metadata
+        The metadata to validate against.
+    spreadsheets : list of str
+        The list of spreadsheets to process.
+    """
+    for sheet in spreadsheets:
+        process_spreadsheet(metadata, sheet)
+
+def main():
+    """
+    Main function to read metadata and process the spreadsheets.
+    """
+    print(f"Reading metadata from {METADATA_FILE}...")
+    with open(METADATA_FILE) as metadata_file:
+        metadata = slang.slang(metadata_file)
+        metadata.parse()
+        process_spreadsheets(metadata, SPREADSHEETS)
+
+if __name__ == "__main__":
+    main()

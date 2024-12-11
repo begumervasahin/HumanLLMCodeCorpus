@@ -1,0 +1,68 @@
+import hashlib
+
+def main():
+    input_file_path = 'data/test/ftb1/ftb1u.tsv'
+    output_file_path = 'data/test/ftb1/ftb1u_sample.tsv'
+
+    # Read and process sentences from the input file
+    sentences = read_sentences_from_file(input_file_path)
+    sentences = split_text_into_sentences(sentences)
+
+    # Filter sentences based on SHA256 hash
+    filtered_sentences = filter_sentences_by_sha256(sentences)
+
+    # Report the number of filtered sentences
+    print(f'Sampled {len(filtered_sentences)} out of {len(sentences)} sentences')
+
+    # Write filtered sentences to the output file
+    write_sentences_to_file(output_file_path, filtered_sentences)
+
+    print(f'Wrote samples to {output_file_path}')
+
+def read_sentences_from_file(file_path):
+    """
+    Reads the content of the file and returns it as a list of lines.
+    """
+    with open(file_path, 'r') as file:
+        return file.readlines()
+
+def split_text_into_sentences(lines):
+    """
+    Splits a list of lines into sentences based on empty lines.
+    """
+    sentences = []
+    current_sentence = []
+
+    for line in lines:
+        stripped_line = line.strip()
+        if not stripped_line and current_sentence:
+            sentences.append(' '.join(current_sentence).strip())
+            current_sentence = []
+        else:
+            current_sentence.append(line.strip())
+
+    if current_sentence:
+        sentences.append(' '.join(current_sentence).strip())
+
+    return sentences
+
+def filter_sentences_by_sha256(sentences):
+    """
+    Filters sentences where the SHA256 hash starts with '0'.
+    """
+    filtered = []
+    for sentence in sentences:
+        hash_digest = hashlib.sha256(sentence.encode('utf-8')).hexdigest()
+        if hash_digest.startswith('0'):
+            filtered.append(sentence)
+    return filtered
+
+def write_sentences_to_file(file_path, sentences):
+    """
+    Writes the list of sentences to the specified file.
+    """
+    with open(file_path, 'w') as file:
+        file.write('\n'.join(sentences) + '\n')
+
+if __name__ == '__main__':
+    main()

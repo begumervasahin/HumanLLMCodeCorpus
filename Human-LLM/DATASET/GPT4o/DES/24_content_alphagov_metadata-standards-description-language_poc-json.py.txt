@@ -1,0 +1,24 @@
+import slang
+METADATA     = "poc.slang"
+SPREADSHEETS = ["office-supplies-order.ods", "office-supplies-order.ods"]
+def render_value(cell):
+    if isinstance(cell.type, slang.slang_String):
+        return ("\"%s\"" % cell.value())
+    else:
+        return cell.value()
+def render_json(result, row):
+    print("  {")
+    for c in row:
+        print("    \"%s\":\t%s," % (c.name, render_value(c)))
+    print("  },")
+    return True
+print("Reading metadata from %s..." % METADATA)
+metadata = slang.slang(open(METADATA))
+metadata.parse()
+for sheet in SPREADSHEETS:
+    print("Validating spreadsheet %s against metadata..." % sheet)
+    instance = metadata.validate(open(sheet))
+    print("Extracting typed data from spreadsheet...")
+    print("[")
+    instance.extract(render_json)
+    print("]")

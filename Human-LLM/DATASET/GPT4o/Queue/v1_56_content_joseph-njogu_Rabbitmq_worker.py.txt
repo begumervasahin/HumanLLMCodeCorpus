@@ -1,0 +1,24 @@
+import time
+import pika
+
+# Establish a connection to RabbitMQ server
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+
+# Declare a queue named 'hello'
+channel.queue_declare(queue='hello')
+
+# Define the callback function to handle messages from the queue
+def callback(ch, method, properties, body):
+    print(" [x] Received %r" % body)
+    time.sleep(body.count(b'.'))  # Simulate work by sleeping for each dot in the message
+    print(" [x] Done")
+
+# Set up the consumer to use the callback function
+channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=True)
+
+# Inform the user that the script is waiting for messages
+print(' [*] Waiting for messages. To exit press CTRL+C')
+
+# Start consuming messages from the queue
+channel.start_consuming()

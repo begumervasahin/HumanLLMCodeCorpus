@@ -1,0 +1,115 @@
+import numpy as np
+import scipy.stats as stats
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+
+def load_and_display_dataset():
+    """
+    Load the iris dataset and display basic information.
+    """
+    iris_dataset = load_iris()
+    print("\nIris Dataset Keys:")
+    print(iris_dataset.keys())
+
+    X = iris_dataset.data
+    y = iris_dataset.target
+
+    print("\nClass Labels are:")
+    print(iris_dataset.target_names)
+    num_classes = len(iris_dataset.target_names)
+    print(f"{num_classes} class labels")
+
+    num_samples, num_features = X.shape
+    print(f"\nWe have {num_samples} samples")
+    print(f"With {num_features} features each")
+
+    return X, y, num_classes, num_samples, num_features
+
+def split_and_display_data(X, y):
+    """
+    Split the data into training and test sets and display their sizes.
+    """
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+    num_train_samples = len(X_train)
+    num_test_samples = len(X_test)
+
+    print(f"\n{num_train_samples} samples in the training set")
+    print(f"{num_test_samples} samples in the test set")
+
+    return X_train, X_test, y_train, y_test, num_train_samples, num_test_samples
+
+def calculate_class_statistics(X_train, y_train, num_classes, num_features):
+    """
+    Calculate mean and standard deviation for each class.
+    """
+    mu_matrix = np.zeros((num_classes, num_features), dtype=float)
+    sigma_matrix = np.zeros((num_classes, num_features), dtype=float)
+
+    for class_index in range(num_classes):
+        class_samples = X_train[y_train == class_index]
+        mu_matrix[class_index] = class_samples.mean(axis=0)
+        sigma_matrix[class_index] = class_samples.std(axis=0)
+
+    return mu_matrix, sigma_matrix
+
+def calculate_class_likelihoods(y_train, num_classes, num_train_samples):
+    """
+    Calculate the likelihood of each class.
+    """
+    class_likelihoods = np.zeros(num_classes, dtype=float)
+    for class_index in range(num_classes):
+        class_likelihoods[class_index] = (y_train == class_index).sum() / num_train_samples
+    return class_likelihoods
+
+def calculate_log_probabilities(X_test, mu_matrix, sigma_matrix, class_likelihoods, epsilon=0.01):
+    """
+    Calculate log probabilities for each class given the test data.
+    """
+    num_test_samples = len(X_test)
+    num_classes = len(class_likelihoods)
+    num_features = X_test.shape[1]
+    
+    class_given_data_matrix = np.zeros((num_test_samples, num_classes), dtype=float)
+    
+    for i in range(num_test_samples):
+        for class_index in range(num_classes):
+            log_prob = np.log(class_likelihoods[class_index])
+            for feature_index in range(num_features):
+                log_prob += np.log(stats.norm.pdf(X_test[i, feature_index], 
+                                                  mu_matrix[class_index, feature_index], 
+                                                  sigma_matrix[class_index, feature_index]) + epsilon)
+            class_given_data_matrix[i, class_index] = log_prob
+    
+    return class_given_data_matrix
+
+def calculate_accuracy(class_given_data_matrix, y_test):
+    """
+    Calculate and display the accuracy of the model.
+    """
+    accuracy = (class_given_data_matrix.argmax(axis=1) == y_test).sum() / len(y_test)
+    print("\nProbability that the model predicts the correct class label:")
+    print(accuracy)
+    print()
+    return accuracy
+
+def main():
+    # Load and display dataset information
+    X, y, num_classes, num_samples, num_features = load_and_display_dataset()
+    
+    # Split data into training and test sets
+    X_train, X_test, y_train, y_test, num_train_samples, num_test_samples = split_and_display_data(X, y)
+    
+    # Calculate class statistics
+    mu_matrix, sigma_matrix = calculate_class_statistics(X_train, y_train, num_classes, num_features)
+    
+    # Calculate class likelihoods
+    class_likelihoods = calculate_class_likelihoods(y_train, num_classes, num_train_samples)
+    
+    # Calculate log probabilities for each class given the test data
+    class_given_data_matrix = calculate_log_probabilities(X_test, mu_matrix, sigma_matrix, class_likelihoods)
+    
+    # Calculate and display the accuracy of the model
+    calculate_accuracy(class_given_data_matrix, y_test)
+
+if __name__ == "__main__":
+    main()

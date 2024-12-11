@@ -1,0 +1,76 @@
+import numpy as np
+from numpy.polynomial.polynomial import Polynomial
+import pandas as pd
+import matplotlib.pyplot as plt
+import time
+
+def main():
+    # Read the data from the CSV file
+    data = pd.read_csv('CleanData.csv')
+    
+    # Drop unnecessary columns and rows
+    data.drop(['Unnamed: 0'], axis=1, inplace=True)
+    data.drop(data.index[[0, 1, 5, 9, 73, 74, 75, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719]], inplace=True)
+    
+    # Display basic information and statistics about the data
+    print(data.info())
+    print(data.describe())
+    
+    # Plotting setup
+    fig = plt.figure()
+    graph1 = fig.add_subplot(1, 1, 1)
+    
+    # Prepare the data
+    x = data['Decimal Date'].tolist()
+    a = data['Seasonally Adjusted CO2 (ppm)'].tolist()
+    
+    # Split the data into training and testing sets
+    x_train = x[0:600]
+    a_train = a[0:600]
+    x_test = x[601:703]
+    a_actual = a[601:703]
+    
+    # Degree of the polynomial
+    degree = 2
+    
+    # Polynomial fitting
+    startTime = time.time()
+    coef = np.polyfit(x_train, a_train, degree)
+    coefList = coef.tolist()
+    print(coefList)
+    
+    # Generate the training curve
+    training_curve = np.polyval(coef, x_train)
+    
+    # Plot the training data and the regression line
+    graph1.scatter(x_train, a_train, color='red', label='Seasonally Adjusted CO2 (ppm)')
+    graph1.plot(x_train, training_curve, color='blue', label='Regression Line')
+    graph1.legend(loc='upper left')
+    
+    # Calculate training error (MSE)
+    training_error = np.mean((a_train - training_curve) ** 2)
+    print("==================Error During training=======================")
+    print("MSE = ", training_error)
+    
+    # Make predictions on the test set
+    predicted_list = np.polyval(coef, x_test)
+    
+    # Calculate the prediction error (MSE)
+    prediction_error = np.mean((a_actual - predicted_list) ** 2)
+    endTime = time.time()
+    
+    # Display results
+    print("========================================================")
+    print("Approx execution time: ", endTime - startTime, "Seconds")
+    print("==================Prediction===========================")
+    for i in range(len(x_test)):
+        print(f"Predicted value of CO2 (in ppm) for Year: {x_test[i]} is {predicted_list[i]}")
+    print("==================Prediction Error=======================")
+    print("MSE FOR Prediction = ", prediction_error)
+    
+    # Show the plot
+    plt.show()
+
+# Run the main function
+if __name__ == "__main__":
+    main()

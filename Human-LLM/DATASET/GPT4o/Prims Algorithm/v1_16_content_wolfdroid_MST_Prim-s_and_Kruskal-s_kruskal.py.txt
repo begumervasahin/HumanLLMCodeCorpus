@@ -1,0 +1,90 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+
+def sortEdge(weighted_graph):
+    sort_graph = sorted(weighted_graph, key=lambda x: x[2])
+    return sort_graph
+
+def find(root, parent):
+    while root != parent[root]:
+        root = parent[root]
+    return root
+
+def union(parent, rootv, rootu, size):
+    if size[rootv] > size[rootu]:
+        parent[rootu] = rootv
+    elif size[rootv] < size[rootu]:
+        parent[rootv] = rootu
+    else:
+        parent[rootu] = rootv
+        size[rootv] += 1
+
+def kruskal(weighted_graph, vert_count):
+    listMST = []
+    sort_graph = sortEdge(weighted_graph)
+    parent = list(range(vert_count))
+    size = [0] * vert_count
+    encounter = 0
+    k = 0
+    while encounter < (vert_count - 1):
+        v, u, weight = sort_graph[k]
+        k += 1
+        rootu = find(v, parent)
+        rootv = find(u, parent)
+        if rootv != rootu:
+            encounter += 1
+            listMST.append([v, u, weight])
+            union(parent, rootv, rootu, size)
+    return listMST
+
+def dGraph(listMST, vert_list, vert_count):
+    G = nx.Graph()
+    for edge in listMST:
+        G.add_edge(vert_list[edge[0]], vert_list[edge[1]], weight=edge[2])
+    
+    pos = nx.spring_layout(G, k=20, iterations=150)
+    weights = nx.get_edge_attributes(G, 'weight')
+    
+    nx.draw(G, pos, with_labels=True, node_size=700, node_color='lightblue', font_size=10, font_weight='bold')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=weights)
+    plt.show()
+
+def main(file_name):
+    vert_set = set()
+    with open(file_name) as f:
+        for line in f:
+            column = line.strip().split(' ')
+            vert_set.add(column[0])
+            vert_set.add(column[1])
+
+    vert_list = list(vert_set)
+    vert_count = len(vert_set)
+
+    weighted_graph = []
+    with open(file_name) as f:
+        for line in f:
+            column = line.strip().split(' ')
+            weighted_graph.append([
+                vert_list.index(column[0]),
+                vert_list.index(column[1]),
+                int(column[2])
+            ])
+
+    listMST = kruskal(weighted_graph, vert_count)
+
+    total_weight = sum(edge[2] for edge in listMST)
+    print("The minimum spanning tree:")
+    for edge in listMST:
+        print(f"{vert_list[edge[0]]} to {vert_list[edge[1]]} = {edge[2]} units.")
+    print(f"Total weight: {total_weight} units.")
+
+    dGraph(listMST, vert_list, vert_count)
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <filename>")
+        sys.exit(1)
+
+    file_name = sys.argv[1]
+    main(file_name)

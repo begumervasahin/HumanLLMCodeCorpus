@@ -1,0 +1,49 @@
+import csv
+
+# Initialize variables
+station = 'ISRO0009_15F009(PRL..Ahmedabad)'
+AWS_Data = []
+rain = 0
+prev_time = 23
+err_neg = 0
+err_ex = 0
+err_mis = 0
+time = 0
+date = '05/31/2014'
+
+# Open the output file for writing
+with open('rain2016.csv', 'w+', newline='') as out_file:
+    file_out = csv.writer(out_file)
+    file_out.writerow(['@STATION_ID', 'LATITUDE', 'LONGITUDE', 'ALTITUDE(m)', 'TIME(GMT)', 'DATE(GMT)', 'AIR_TEMP(°C)',
+                       'WIND_SPEED(m/s)', 'WIND_DIRECTION(deg)', 'ATMO_PRESSURE(hpa)', 'HUMIDITY(%)', 'RAIN_FALL(mm)', 'ERROR'])
+
+    # Read the input file
+    with open('output2016.csv', 'r') as in_file:
+        reader = csv.reader(in_file, delimiter=',')
+        next(reader)  # Skip header row
+        for row in reader:
+            if float(row[11]) != 9999.9:
+                AWS_Data.append(row)
+
+    # Process the AWS data
+    for i in range(len(AWS_Data)):
+        if AWS_Data[i][5] == '05/31/2016':
+            prev_time = 23
+            rain = float(AWS_Data[i][11])
+            continue
+        temp = float(AWS_Data[i][11])
+        if rain - temp > 924:
+            AWS_Data[i][11] = temp + (1023 - rain)
+        else:
+            AWS_Data[i][11] = temp - rain
+        rain = temp
+        if float(AWS_Data[i][11]) < 0:
+            AWS_Data[i].append('Neg')
+            err_neg += 1
+        elif float(AWS_Data[i][11]) > 100:
+            AWS_Data[i].append('Excess')
+            err_ex += 1
+        file_out.writerow(AWS_Data[i])
+
+# Print the error counts
+print(err_neg, err_ex)

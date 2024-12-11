@@ -1,0 +1,56 @@
+import numpy as np
+import h5py
+
+# Define parameters
+frames = [100, 1000, 10000]
+exp_times = [0.001, 0.01, 0.1, 1]
+pix_rates = ['slow', 'fast']
+
+def calculate_statistics(data_chunk):
+    """Calculate mean, standard deviation, minimum, and maximum for a given data chunk."""
+    mean_val = np.mean(data_chunk, axis=0)
+    std_val = np.std(data_chunk, axis=0)
+    min_val = np.min(data_chunk, axis=0)
+    max_val = np.max(data_chunk, axis=0)
+    return mean_val, std_val, min_val, max_val
+
+def process_files(frame_count, exp_time, pix_rate, num_files):
+    """Process the HDF5 files and return aggregated statistics."""
+    mean_list, std_list, min_list, max_list = [], [], [], []
+    
+    for file_number in num_files:
+        file_name = f'{frame_count}_frames_{exp_time}_{pix_rate}_{file_number}'
+        with h5py.File(file_name, 'r') as fid:
+            data = fid['/entry/data']
+            mean_val, std_val, min_val, max_val = calculate_statistics(data[0:99])
+            mean_list.append(mean_val)
+            std_list.append(std_val)
+            min_list.append(min_val)
+            max_list.append(max_val)
+    
+    return mean_list, std_list, min_list, max_list
+
+def save_statistics(frame_count, exp_time, pix_rate, mean, std, min_val, max_val):
+    """Save the aggregated statistics to .npy files."""
+    np.save(f'mean_{frame_count}frames_{exp_time}s_{pix_rate}.npy', mean)
+    np.save(f'std_{frame_count}frames_{exp_time}s_{pix_rate}.npy', std)
+    np.save(f'min_{frame_count}frames_{exp_time}s_{pix_rate}.npy', min_val)
+    np.save(f'max_{frame_count}frames_{exp_time}s_{pix_rate}.npy', max_val)
+
+# Loop through each combination of frames, exposure time, and pixel rate
+for frame_count in frames:
+    for exp_time in exp_times:
+        for pix_rate in pix_rates:
+            chunks = frame_count // 100
+            num_files = ["%06d" % a for a in range(1, chunks + 1)]
+            
+            mean_list, std_list, min_list, max_list = process_files(frame_count, exp_time, pix_rate, num_files)
+            
+            # Calculate grand statistics
+            grand_mean = np.mean(mean_list)
+            grand_std = np.sqrt(sum([m**2 for m in std_list]) / chunks)
+            grand_min = np.min(min_list)
+            grand_max = np.max(max_list)
+            
+            # Save the grand statistics to files
+            save_statistics(frame_count, exp_time, pix_rate, grand_mean, grand_std, grand_min, grand_max)

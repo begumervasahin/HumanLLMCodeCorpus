@@ -1,0 +1,89 @@
+import numpy as np
+import scipy.sparse as sps
+from itertools import product
+from ExampleGroup_Functions import Group_Comult_Matrix, Group_Counit, Group_Integral
+from HopfClass import HopfAlgebra
+
+def generate_dihedral_mult_matrix(n):
+    """
+    Generate the multiplication matrix for a dihedral group of given order.
+
+    Parameters:
+    n (int): Order of the dihedral group.
+
+    Returns:
+    scipy.sparse.csr_matrix: Multiplication matrix in CSR format.
+    """
+    dim = 2 * n
+    mult = np.zeros((dim, dim**2), dtype=complex)
+    for i, j in product(range(n), [0, 1]):
+        for k, l in product(range(n), [0, 1]):
+            mult[2 * ((i + ((-1) ** j) * k) % n) + (j + l) % 2, dim * (i * 2 + j) + 2 * k + l] = 1
+    return sps.csr_matrix(mult, dtype=complex)
+
+def generate_dihedral_antipode_matrix(n):
+    """
+    Generate the antipode matrix for a dihedral group of given order.
+
+    Parameters:
+    n (int): Order of the dihedral group.
+
+    Returns:
+    scipy.sparse.csr_matrix: Antipode matrix in CSR format.
+    """
+    dim = 2 * n
+    antipode = np.zeros((dim, dim), dtype=complex)
+    for i, j in product(range(n), [0, 1]):
+        antipode[2 * (((-1) ** (j + 1) * i) % n) + j, i * 2 + j] = 1
+    return sps.csr_matrix(antipode, dtype=complex)
+
+def generate_dihedral_element_names(n, ele_name_g, ele_name_x):
+    """
+    Generate the element names for a dihedral group of given order.
+
+    Parameters:
+    n (int): Order of the dihedral group.
+    ele_name_g (str): Base name for the rotational elements.
+    ele_name_x (str): Base name for the reflection elements.
+
+    Returns:
+    list: List of element names.
+    """
+    return [f"{ele_name_g}^{i}{ele_name_x}^{j}" for i in range(n) for j in [0, 1]]
+
+def create_dihedral_group(n, ele_name_g, ele_name_x):
+    """
+    Create a dihedral group Hopf algebra of given order and element names.
+
+    Parameters:
+    n (int): Order of the dihedral group.
+    ele_name_g (str): Base name for the rotational elements.
+    ele_name_x (str): Base name for the reflection elements.
+
+    Returns:
+    HopfAlgebra: Hopf algebra representing the dihedral group.
+    """
+    # Generate necessary matrices for the dihedral group
+    mult_matrix = generate_dihedral_mult_matrix(n)
+    comult_matrix = Group_Comult_Matrix(2 * n)
+    counit_matrix = Group_Counit(2 * n)
+    integral_matrix = Group_Integral(2 * n)
+    antipode_matrix = generate_dihedral_antipode_matrix(n)
+
+    # Define the name and element names of the dihedral group
+    name = f"D_{n}"
+    element_names = generate_dihedral_element_names(n, ele_name_g, ele_name_x)
+
+    # Create the Hopf algebra for the dihedral group
+    dihedral_group = HopfAlgebra(name, element_names, mult_matrix, comult_matrix, counit_matrix, antipode_matrix)
+    dihedral_group.Input_Integral(integral_matrix)
+
+    return dihedral_group
+
+# Example usage
+if __name__ == "__main__":
+    n = 5  # Example order of the dihedral group
+    ele_name_g = "g"  # Example base name for rotational elements
+    ele_name_x = "x"  # Example base name for reflection elements
+    dihedral_group_instance = create_dihedral_group(n, ele_name_g, ele_name_x)
+    print(dihedral_group_instance)

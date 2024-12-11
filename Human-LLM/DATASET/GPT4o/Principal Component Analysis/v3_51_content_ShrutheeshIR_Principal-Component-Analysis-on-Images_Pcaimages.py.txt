@@ -1,0 +1,142 @@
+import cv2
+import os
+import numpy as np
+import scipy.linalg as sl
+import matplotlib.pyplot as plt
+
+def read_images(dir_name, max_images=3000, img_size=(64, 64)):
+    """
+    Reads images from a directory, converts them to grayscale, resizes them to the specified size,
+    and returns them as a list.
+    
+    Parameters:
+    dir_name (str): Directory containing the images.
+    max_images (int): Maximum number of images to read.
+    img_size (tuple): Desired image size (width, height).
+    
+    Returns:
+    list: List of processed images.
+    """
+    images = []
+    for i, file in enumerate(os.listdir(dir_name)):
+        if i >= max_images:
+            break
+        img_path = os.path.join(dir_name, file)
+        img = cv2.imread(img_path, 0)
+        if img is not None:
+            img = cv2.resize(img, img_size)
+            images.append(img)
+    return images
+
+def create_data_matrix(images):
+    """
+    Creates a data matrix from a list of images by flattening each image and stacking them row-wise.
+    
+    Parameters:
+    images (list): List of images.
+    
+    Returns:
+    numpy.ndarray: Data matrix where each row is a flattened image.
+    """
+    print("Creating data matrix", end=" ... ")
+    num_images = len(images)
+    img_shape = images[0].shape
+    data_matrix = np.zeros((num_images, img_shape[0] * img_shape[1]), dtype=np.float32)
+    
+    for i, image in enumerate(images):
+        data_matrix[i, :] = image.flatten()
+    
+    print("DONE")
+    return data_matrix
+
+def compute_eigenfaces(data_matrix, num_components=75):
+    """
+    Computes eigenfaces using the covariance matrix of the data matrix.
+    
+    Parameters:
+    data_matrix (numpy.ndarray): Data matrix where each row is a flattened image.
+    num_components (int): Number of principal components to retain.
+    
+    Returns:
+    tuple: Eigenvalues and the top eigenvectors.
+    """
+    covariance_matrix = np.cov(data_matrix, rowvar=False)
+    print(f"Covariance matrix shape: {covariance_matrix.shape}")
+    
+    eigenvalues, eigenvectors = sl.eig(covariance_matrix)
+    sorted_indices = eigenvalues.argsort()[::-1]
+    eigenvalues = eigenvalues[sorted_indices]
+    eigenvectors = eigenvectors[:, sorted_indices]
+    
+    top_eigenvectors = eigenvectors[:, :num_components].real
+    print(f"Eigenvectors shape: {top_eigenvectors.shape}")
+    
+    return eigenvalues, top_eigenvectors
+
+def reconstruct_image(eigenvectors, image_vector):
+    """
+    Reconstructs an image from its projection onto the eigen space.
+    
+    Parameters:
+    eigenvectors (numpy.ndarray): Top eigenvectors.
+    image_vector (numpy.ndarray): Flattened image vector.
+    
+    Returns:
+    numpy.ndarray: Reconstructed image.
+    """
+    projected_image = eigenvectors @ image_vector
+    reconstructed_image = eigenvectors.T @ projected_image
+    return reconstructed_image
+
+def normalize_image(image, max_value=255):
+    """
+    Normalizes the image for display.
+    
+    Parameters:
+    image (numpy.ndarray): Image to normalize.
+    max_value (int): Maximum value for normalization.
+    
+    Returns:
+    numpy.ndarray: Normalized image.
+    """
+    return image / max_value
+
+def main():
+    # Directory containing images
+    dir_name = "GImagesTrain/GoodImages"
+    
+    # Read images
+    images = read_images(dir_name)
+    
+    # Create data matrix
+    data_matrix = create_data_matrix(images)
+    
+    # Compute eigenfaces
+    _, eigenvectors = compute_eigenfaces(data_matrix)
+    
+    # Select one image and reshape for visualization
+    selected_image = data_matrix[250]
+    selected_image_matrix = np.matrix(selected_image).transpose()
+    original_image = selected_image_matrix.reshape(64, 64)
+    print(f"Original image shape: {original_image.shape}")
+    
+    # Reconstruct the image from the eigen space
+    reconstructed_image = reconstruct_image(eigenvectors, selected_image_matrix)
+    reconstructed_image = reconstructed_image.reshape(64, 64)
+    print(f"Reconstructed shape: {reconstructed_image.shape}")
+    
+    # Normalize images for display
+    normalized_reconstructed_image = normalize_image(reconstructed_image)
+    normalized_original_image = normalize_image(original_image)
+    
+    # Display the reconstructed and original images
+    plt.imshow(normalized_reconstructed_image, cmap='gray')
+    plt.title('Reconstructed Image')
+    plt.show()
+    
+    plt.imshow(normalized_original_image, cmap='gray')
+    plt.title('Original Image')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

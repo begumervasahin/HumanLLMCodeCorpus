@@ -1,0 +1,119 @@
+'''
+Il seguente codice necessita della libreria graphviz: https://pypi.org/project/graphviz/
+Usare uno dei seguenti comandi (a scelta) per installare su ambiente Linux:
+- apt-get install graphviz
+- pip install graphviz
+
+-------------------------------------------------------------------------------------------
+Pseudocodice della DFS_v1 temporale
+
+Grafo temporale:                G(V,E)
+Source vertex:                  s
+Tempo di inizio:                Ts
+Vettore dei tempi di visita:    delta
+
+Algoritmo DFS-v1:
+
+1) Inizializzo i 'delta(v) = inf', per ogni vertice 'v' in V
+
+2) Visito il primo vertice 's' e metto 'delta(s) = Ts'
+
+    a) Dopo la visita di ogni vertice 'u':
+        Definisco 'E(u, v)' come gli insiemi di archi '(u, v, t)', vicini di u e diretti verso v,
+        che non sono stati ancora attraversati e per cui 'delta(v) <= t'.
+
+        Se esiste un vertice 'v' tale che E(u, v) non è vuoto:
+            Attraverso l'arco 'e = (u, v, t)' dove 't = min{t : (u, v, t) appartiene ad E(u,v)}'
+            (attraverso l'arco con tempo minore)
+            (in questo caso andiamo al passo b)
+
+        Se non esiste un vertice 'v' tale che E(u, v) non è vuoto:
+            Se 'u' è il source vertex terminiamo la DFS,
+            altrimenti, consideriamo l'arco (up, u, t) che ci ha permesso di visitare 'u' e
+                        effettuiamo il backtrack visitando il predecessore 'up' di 'u'
+                        (in questo caso andiamo al passo a)
+            (torno al vertice precedente)
+
+    b) Dopo la visita di ogni arco (u, v, t):
+        Se 'delta(v) > t' impostiamo 'delta(v) = t' e visitiamo 'v'
+        altrimenti nulla
+        (in entrambi i casi vado al passo a)
+
+        (Il controllo 'delta(v) > t' è necessario per visitare solo nodi 'v' che hanno delta(v) = inf)
+
+- La DFS-v1 può essere fatta anche utilizzando il max come la DFS-v2
+
+- Complessità:
+    O ( |E| + |V| + X)
+
+    X = Per ogni nodo u, (numero di volte che u è visitato) * (grado in uscita di u)
+'''
+
+import sys
+from math import inf
+from temporal_graph import TemporalGraph
+from TreeNode import TreeNode
+from draw_tree import draw_tree
+
+# Set higher recursion limit
+sys.setrecursionlimit(10**6)
+
+def find_edge_with_min_time(edges):
+    """Trova l'arco con il tempo minimo tra quelli forniti."""
+    return min(edges, key=lambda edge: edge.time)
+
+def dfs_v1(current_node):
+    """Algoritmo DFS-v1 per attraversamento temporale del grafo."""
+    global current_tree_node
+    for neighbor in graph.get_neighbors(current_node):
+        # Il predecessore nella DFS non deve essere considerato come vicino
+        if neighbor == predecessor[current_tree_node.name]:
+            continue
+
+        # Filtra gli archi che non sono stati attraversati e che sono ancora attivi
+        edges = [edge for edge in graph.get_edge_neighbor(current_node, neighbor)
+                 if not edge.is_traversed and sigma[current_node] <= edge.time]
+
+        if edges:
+            edge_min = find_edge_with_min_time(edges)
+            edge_min.is_traversed = True
+
+            if sigma[edge_min.destination] > edge_min.time:
+                # Aggiorna albero DFS con un nuovo nodo
+                next_tree_node = TreeNode(edge_min.destination, edge_min.time)
+                predecessor[next_tree_node.name] = current_tree_node
+                current_tree_node.add_node(next_tree_node)
+                current_tree_node = next_tree_node
+
+                sigma[edge_min.destination] = edge_min.time
+                dfs_v1(edge_min.destination)
+
+    current_tree_node = predecessor[current_tree_node.name]
+
+# Definizione del grafo temporale
+graph = TemporalGraph()
+
+edges = [
+    ["a", "b", 1], ["a", "b", 6], ["b", "a", 8], ["b", "c", 4],
+    ["b", "c", 7], ["c", "b", 6], ["a", "f", 3], ["a", "f", 7],
+    ["f", "c", 5], ["f", "h", 2], ["f", "g", 8], ["g", "a", 9]
+]
+
+for edge in edges:
+    graph.add_edge(edge[0], edge[1], edge[2])
+
+# Inizializzazione delle variabili
+starting_time = 2
+V = graph.get_nodes()
+sigma = {node: inf for node in V}
+source = V[0]
+sigma[source] = starting_time
+tree_node_root = TreeNode(source, starting_time)
+predecessor = {node: None for node in V}
+current_tree_node = tree_node_root
+
+# Esecuzione della DFS-v1
+dfs_v1(source)
+
+# Disegna l'albero risultante
+draw_tree(tree_node_root, 'DFS_v1')

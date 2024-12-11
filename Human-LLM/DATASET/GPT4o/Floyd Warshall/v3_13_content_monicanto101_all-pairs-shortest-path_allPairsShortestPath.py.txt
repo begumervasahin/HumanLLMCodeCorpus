@@ -1,0 +1,143 @@
+import argparse
+import os
+import re
+import sys
+import cProfile
+import pstats
+import io
+
+# Argument parser setup
+parser = argparse.ArgumentParser(description='Calculate the shortest path between all pairs of vertices in a graph')
+parser.add_argument('--algorithm', default='a', choices=['a', 'b', 'f'],
+                    help='Algorithm: Select the algorithm to run, default is all. (a)ll, (b)ellman-ford only, or (f)loyd-warshall only')
+parser.add_argument('-v', '--verbose', action='store_true')
+parser.add_argument('--profile', action='store_true')
+parser.add_argument('filename', metavar='<filename>', help='Input file containing graph')
+
+# Regular expressions for parsing input
+GRAPH_RE = re.compile(r"(\d+)\s(\d+)")
+EDGE_RE = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+
+# Global variables for vertices and edges
+vertices = []
+edges = []
+
+def bellman_ford():
+    """Bellman-Ford algorithm for finding shortest paths."""
+    num_vertices = len(vertices)
+    path_pairs = []
+
+    for src in vertices:
+        dist = [float("inf")] * num_vertices
+        dist[src] = 0
+
+        for _ in range(num_vertices - 1):
+            for u in range(num_vertices):
+                for v in range(num_vertices):
+                    weight = float(edges[u][v])
+                    if dist[u] != float("inf") and dist[u] + weight < dist[v]:
+                        dist[v] = dist[u] + weight
+
+        path_pairs.append(dist)
+
+    for src in vertices:
+        if path_pairs[src][src] < 0:
+            return [[0, 0]]
+
+    return path_pairs
+
+def floyd_warshall():
+    """Floyd-Warshall algorithm for finding shortest paths."""
+    num_vertices = len(vertices)
+    dist = [[float("inf")] * num_vertices for _ in range(num_vertices)]
+
+    for u in range(num_vertices):
+        for v in range(num_vertices):
+            dist[u][v] = float(edges[u][v])
+        dist[u][u] = 0
+
+    for k in range(num_vertices):
+        for i in range(num_vertices):
+            for j in range(num_vertices):
+                if dist[i][j] > dist[i][k] + dist[k][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+
+    for src in vertices:
+        if dist[src][src] < 0:
+            return [[0, 0]]
+
+    return dist
+
+def read_file(filename):
+    """Read the graph from the input file."""
+    global vertices, edges
+
+    with open(filename, 'r') as infile:
+        line = infile.readline().strip()
+        graph_match = GRAPH_RE.match(line)
+        if not graph_match:
+            print(f"Error: {line} not properly formatted")
+            sys.exit(1)
+
+        num_vertices = int(graph_match.group(1))
+        vertices = list(range(num_vertices))
+        edges = [[float("inf")] * num_vertices for _ in range(num_vertices)]
+
+        for line in infile:
+            line = line.strip()
+            edge_match = EDGE_RE.match(line)
+            if edge_match:
+                source, sink, weight = map(int, edge_match.groups())
+                if source > num_vertices or sink > num_vertices:
+                    print(f"Error: Attempting to insert an edge between {source} and {sink} in a graph with {num_vertices} vertices")
+                    sys.exit(1)
+                edges[source - 1][sink - 1] = weight
+
+def matrix_equality(a, b):
+    """Check if two matrices are equal."""
+    if len(a) != len(b) or any(len(row_a) != len(row_b) for row_a, row_b in zip(a, b)):
+        return False
+
+    return all(a[i][j] == b[i][j] for i in range(len(a)) for j in range(len(a[i])))
+
+def profile_function(func, *args):
+    """Profile the given function."""
+    pr = cProfile.Profile()
+    pr.enable()
+    result = func(*args)
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+    ps.print_stats()
+    print(s.getvalue())
+    return result
+
+def main(filename, algorithm):
+    """Main function to execute the shortest path algorithms."""
+    read_file(filename)
+
+    if algorithm.lower() == 'b':
+        path_pairs = profile_function(bellman_ford) if args.profile else bellman_ford()
+
+    elif algorithm.lower() == 'f':
+        path_pairs = profile_function(floyd_warshall) if args.profile else floyd_warshall()
+
+    elif algorithm.lower() == 'a':
+        print('Running both algorithms')
+
+        path_pairs_bellman = profile_function(bellman_ford) if args.profile else bellman_ford()
+        path_pairs_floyd = profile_function(floyd_warshall) if args.profile else floyd_warshall()
+
+        if not matrix_equality(path_pairs_bellman, path_pairs_floyd):
+            print('Error: Floyd-Warshall and Bellman-Ford did not produce the same result')
+
+        path_pairs = path_pairs_bellman
+
+    output_file = os.path.splitext(filename)[0] + '_shortestPaths.txt'
+    with open(output_file, 'w') as f:
+        for row in path_pairs:
+            f.write(' '.join(map(str, row)) + '\n')
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args.filename, args.algorithm)

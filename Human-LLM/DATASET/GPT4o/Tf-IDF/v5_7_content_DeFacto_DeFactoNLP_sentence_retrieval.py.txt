@@ -1,0 +1,56 @@
+import os
+import json
+import codecs
+import nltk
+
+def get_relevant_sentences(relevant_docs, entities, wiki_split_docs_dir):
+    """
+    Extract relevant sentences from a list of documents.
+
+    Parameters:
+    relevant_docs (list): List of relevant document names (without file extensions).
+    entities (list): List of entities to check (not used in this function).
+    wiki_split_docs_dir (str): Directory path where the JSON documents are stored.
+
+    Returns:
+    list: List of dictionaries containing document id, line number, and sentence.
+    """
+    relevant_sentences = []
+
+    for doc_name in relevant_docs:
+        # Load the JSON file
+        file_path = os.path.join(wiki_split_docs_dir, f"{doc_name}.json")
+        with codecs.open(file_path, "r", "utf-8") as file:
+            doc_data = json.load(file)
+        
+        # Extract and process lines
+        lines = [line['content'].strip().replace("-LRB-", " ( ").replace("-RRB-", " ) ")
+                 for line in doc_data["lines"] if line['content'].strip()]
+
+        # Create a dictionary for each relevant sentence
+        for i, line in enumerate(lines):
+            relevant_sentences.append({
+                'id': doc_name,
+                'line_num': i,
+                'sentence': line
+            })
+
+    return relevant_sentences
+
+def get_sentence(wiki_doc_dir, doc_filename, sentence_id):
+    """
+    Retrieve a specific sentence from a document.
+
+    Parameters:
+    wiki_doc_dir (str): Directory path where the text documents are stored.
+    doc_filename (str): Document file name (without file extension).
+    sentence_id (int): The ID of the sentence to retrieve.
+
+    Returns:
+    str: The sentence corresponding to the given sentence_id.
+    """
+    file_path = os.path.join(wiki_doc_dir, f"{doc_filename}.txt")
+    with codecs.open(file_path, "r", "utf-8") as file:
+        lines = file.read().split("\n")
+
+    return lines[sentence_id].split("\t")[1]

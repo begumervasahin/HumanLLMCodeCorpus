@@ -1,0 +1,50 @@
+import os
+import pandas as pd
+import csv
+import re
+
+# Define constants
+DATA_DIR = "data"
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+# Load the CSV file into a pandas DataFrame
+df = pd.read_csv(MBTI_CLEAN_CSV_PATH)
+
+# Function to process posts for each letter in a personality dimension
+def process_posts_for_letter(df, letter):
+    posts = []
+
+    # Iterate over each row in the DataFrame
+    for _, row in df.iterrows():
+        # Check if the letter is in the personality type
+        if letter in row["type"]:
+            # Split the posts into individual posts
+            individual_posts = row["posts"].split("|||")
+
+            # Filter and collect posts
+            for post in individual_posts:
+                # Skip posts with URLs, empty posts, and posts with no alphabetic characters
+                if ("http" in post) or (post == "") or (post is None) or (not re.search("[a-zA-Z]", post)):
+                    continue
+                posts.append(post)
+    
+    return posts
+
+# Iterate over each personality dimension
+for dimension in DIMENSIONS:
+    letter_1, letter_2 = dimension
+
+    # Process posts for each letter in the dimension (e.g., "I" and "E" for "IE")
+    for letter in [letter_1, letter_2]:
+        # Get the posts for the current letter
+        posts = process_posts_for_letter(df, letter)
+
+        # Define the path for the output CSV file
+        output_csv_path = os.path.join(DATA_DIR, f"test_{letter}.csv")
+
+        # Write the posts to the CSV file
+        with open(output_csv_path, "w", newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for post in posts:
+                writer.writerow([post])

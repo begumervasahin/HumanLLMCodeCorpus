@@ -1,0 +1,58 @@
+from releash import *
+
+# Initialize Git push release target
+git_push_target = ReleaseTargetGitPush()
+
+# Add the main package vaex-core and set up its version source
+vaex_core = add_package("packages/vaex-core", "vaex-core")
+core_version_source = VersionSource(vaex_core, '{path}/vaex/core/_version.py')
+
+# Create Git tag for vaex-core
+core_git_tag = ReleaseTargetGitTagVersion(version_source=core_version_source, prefix='core-v')
+
+# Assign version source and targets to vaex-core
+vaex_core.version_source = core_version_source
+vaex_core.version_targets.append(VersionTarget(vaex_core, '{path}/vaex/core/_version.py'))
+
+# Add release targets for vaex-core
+vaex_core.release_targets.extend([
+    core_git_tag,
+    ReleaseTargetSourceDist(vaex_core),
+    ReleaseTargetCondaForge(vaex_core, '../feedstocks/vaex-core-feedstock')
+])
+
+# Define the list of additional packages
+package_names = [
+    'vaex-meta', 'vaex-viz', 'vaex-hdf5', 'vaex-server', 
+    'vaex-astro', 'vaex-ui', 'vaex-jupyter', 
+    'vaex-distributed', 'vaex-arrow', 'vaex-ml'
+]
+
+# Function to add and configure a package
+def configure_package(name, package_path, version_path, is_meta=False, is_arrow=False):
+    package = add_package(package_path, name, version_path, distribution_name='vaex' if is_meta else None)
+    version_source = VersionSource(package, version_path)
+    
+    # Create Git tag for the package
+    git_tag = ReleaseTargetGitTagVersion(version_source=version_source, prefix=f'{name}-v', msg=f'Release {{version}} of {name}')
+    
+    # Assign version source and targets
+    package.version_source = version_source
+    package.version_targets.append(VersionTarget(package, version_path))
+    
+    # Add release targets
+    package.release_targets.extend([
+        git_tag,
+        ReleaseTargetSourceDist(package),
+        git_push_target,
+        ReleaseTargetCondaForge(package, f'../feedstocks/{name}-feedstock' if not is_meta else '../feedstocks/vaex-feedstock')
+    ])
+
+# Configure each package
+for name in package_names:
+    if name == 'vaex-meta':
+        configure_package(name, f'packages/{name}', '{path}/vaex/meta/_version.py', is_meta=True)
+    elif name == 'vaex-arrow':
+        configure_package(name, f'packages/{name}', '{path}/vaex_arrow/_version.py', is_arrow=True)
+    else:
+        configure_package(name, f'packages/{name}', f'{path}/vaex/{name[5:]}/_version.py')

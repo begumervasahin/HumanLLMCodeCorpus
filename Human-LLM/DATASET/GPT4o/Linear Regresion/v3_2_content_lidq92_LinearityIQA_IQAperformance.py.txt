@@ -1,0 +1,88 @@
+from ignite.metrics.metric import Metric
+import numpy as np
+from scipy import stats
+
+class IQAPerformance(Metric):
+    """
+    Evaluation of VQA methods using SROCC, PLCC, RMSE.
+    `update` must receive output of the form (y_pred, y).
+    """
+    def __init__(self, status='train', k=None, b=None, mapping=True):
+        super().__init__()
+        self.k = k if k is not None else [1, 1, 1]
+        self.b = b if b is not None else [0, 0, 0]
+        self.status = status
+        self.mapping = mapping
+
+    def reset(self):
+        self._y_pred = []
+        self._y_pred1 = []
+        self._y_pred2 = []
+        self._y = []
+        self._y_std = []
+
+    def update(self, output):
+        y_pred, y = output
+        self._y.extend(y[0].tolist())
+        self._y_std.extend(y[1].tolist())
+        self._y_pred.extend(y_pred[-1].tolist())
+        self._y_pred1.extend(y_pred[0].tolist())
+        self._y_pred2.extend(y_pred[1].tolist())
+
+    def compute(self):
+        sq = np.array(self._y)
+        sq_std = np.array(self._y_std)
+        pq_before = np.array(self._y_pred).reshape(-1, 1)
+        pq = self.linear_mapping(pq_before, sq, index=0)
+
+        metrics = {
+            'SROCC': stats.spearmanr(sq, pq)[0],
+            'PLCC': stats.pearsonr(sq, pq)[0],
+            'RMSE': np.sqrt(np.mean((sq - pq) ** 2))
+        }
+
+        pq1_before = np.array(self._y_pred1).reshape(-1, 1)
+        pq2_before = np.array(self._y_pred2).reshape(-1, 1)
+        pq1 = self.linear_mapping(pq1_before, sq, index=1)
+        pq2 = self.linear_mapping(pq2_before, sq, index=2)
+
+        metrics.update({
+            'SROCC1': stats.spearmanr(sq, pq1)[0],
+            'PLCC1': stats.pearsonr(sq, pq1)[0],
+            'RMSE1': np.sqrt(np.mean((sq - pq1) ** 2)),
+            'SROCC2': stats.spearmanr(sq, pq2)[0],
+            'PLCC2': stats.pearsonr(sq, pq2)[0],
+            'RMSE2': np.sqrt(np.mean((sq - pq2) ** 2))
+        })
+
+        metrics.update({
+            'sq': sq,
+            'sq_std': sq_std,
+            'pq': pq,
+            'pq1': pq1,
+            'pq2': pq2,
+            'pq_before': pq_before,
+            'pq1_before': pq1_before,
+            'pq2_before': pq2_before,
+            'k': self.k,
+            'b': self.b
+        })
+
+        return metrics
+
+    def linear_mapping(self, pq, sq, index=0):
+        if not self.mapping:
+            return pq.flatten()
+
+        ones = np.ones_like(pq)
+        yp1 = np.hstack((pq, ones))
+        
+        if self.status == 'train':
+            h = np.linalg.inv(yp1.T @ yp1) @ (yp1.T @ sq)
+            self.k[index] = h[0]
+            self.b[index] = h[1]
+        else:
+            h = np.array([self.k[index], self.b[index]]).reshape(-1, 1)
+        
+        pq = yp1 @ h
+        return pq.flatten()

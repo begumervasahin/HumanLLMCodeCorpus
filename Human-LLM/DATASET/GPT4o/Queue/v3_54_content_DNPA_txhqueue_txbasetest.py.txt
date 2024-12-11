@@ -1,0 +1,103 @@
+"""
+Basic test run for AioHysteresisQueue with a producer that is slightly faster than the consumer.
+"""
+
+import datetime
+from twisted.internet import reactor
+from twisted.internet.task import LoopingCall, deferLater
+from txhqueue import TxHysteresisQueue as HysteresisQueue
+
+# Initialize counters for statistics
+consume_count = 0
+low_water_count = 0
+high_water_count = 0
+
+def low_watermark(dropcount):
+    """
+    Callback function for when the low watermark is reached.
+    
+    Args:
+        dropcount (int): Number of dropped items when the low watermark is reached.
+    """
+    global low_water_count
+    low_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} Low water mark reached, re-activating HysteresisQueue. Drop count = {dropcount}")
+
+def high_watermark(okcount):
+    """
+    Callback function for when the high watermark is reached.
+    
+    Args:
+        okcount (int): Number of items processed when the high watermark is reached.
+    """
+    global high_water_count
+    high_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} High water mark reached, de-activating HysteresisQueue. OK count = {okcount}")
+
+def flow_statistics(stats):
+    """
+    Prints flow statistics.
+    
+    Args:
+        stats: Flow statistics object.
+    """
+    print(f"Flow statistics: {stats}")
+
+def produce(hqueue):
+    """
+    Fast produce function that puts items into the queue.
+    
+    Args:
+        hqueue (HysteresisQueue): Instance of HysteresisQueue.
+    """
+    hqueue.put("har")
+
+def consume(hqueue):
+    """
+    Slow consume function that processes items from the queue.
+    
+    Args:
+        hqueue (HysteresisQueue): Instance of HysteresisQueue.
+    """
+    def data_callback(msg):
+        """
+        Data callback for the consumer.
+        
+        Args:
+            msg: Message from the queue.
+        """
+        global consume_count
+        global low_water_count
+        global high_water_count
+        consume_count += 1
+        if consume_count == 1000:
+            print("Done consuming 1000 entries from queue")
+            if high_water_count != 3:
+                print(f"WARNING: expected 3 high water events, received {high_water_count}")
+            if low_water_count != 3:
+                print(f"WARNING: expected 3 low water events, received {low_water_count}")
+            reactor.stop()
+        deferLater(reactor, 0.047, consume, hqueue)
+    hqueue.get(data_callback)
+
+# Create an instance of HysteresisQueue with defined thresholds and callbacks
+hqueue = HysteresisQueue(
+    low=5,
+    high=25,
+    highwater=high_watermark,
+    lowwater=low_watermark,
+    flowstat_cb=flow_statistics,
+    flowstat_interval=10
+)
+
+# Start producing items into the queue at a set interval
+producer_loop = LoopingCall(produce, hqueue)
+producer_loop.start(0.044)
+
+# Start consuming items from the queue
+consume(hqueue)
+
+print("Starting base test for TxHysteresisQueue, this should take about a minute.")
+reactor.run()

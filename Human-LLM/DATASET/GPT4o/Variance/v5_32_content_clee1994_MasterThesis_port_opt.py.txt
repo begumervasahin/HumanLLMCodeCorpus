@@ -1,0 +1,104 @@
+import numpy as np
+from cvxpy import quad_form, Variable, Problem, Maximize, norm
+from sklearn.covariance import shrunk_covariance
+
+def ret2prices(ret_series, base_value):
+    """
+    Converts a series of returns to prices.
+
+    Parameters:
+    ret_series (array-like): Series of returns.
+    base_value (float): Initial price value.
+
+    Returns:
+    numpy.ndarray: Array of prices.
+    """
+    prices = np.zeros(len(ret_series) + 1)
+    prices[0] = base_value
+    for i, ret in enumerate(ret_series):
+        if np.isnan(ret):
+            prices[i + 1] = prices[i]
+        else:
+            prices[i + 1] = prices[i] * np.exp(ret)
+    return prices
+
+def is_pos_def(matrix):
+    """
+    Checks if a matrix is positive definite.
+
+    Parameters:
+    matrix (numpy.ndarray): Input matrix.
+
+    Returns:
+    bool: True if matrix is positive definite, False otherwise.
+    """
+    return np.all(np.linalg.eigvals(matrix) > 0)
+
+def make_pos_def(matrix):
+    """
+    Attempts to make a matrix positive definite by applying shrinkage.
+
+    Parameters:
+    matrix (numpy.ndarray): Input covariance matrix.
+
+    Returns:
+    numpy.ndarray: Positive definite covariance matrix.
+    """
+    for i in np.linspace(0.01, 10000, 1000000):
+        test_matrix = shrunk_covariance(matrix, shrinkage=i)
+        if is_pos_def(test_matrix):
+            return test_matrix
+    raise ValueError("Covariance matrix could not be made positive definite")
+
+def cv_opt(mu, Sigma, e_mu=None, glambda=None, h=0):
+    """
+    Optimizes a portfolio using convex optimization.
+
+    Parameters:
+    mu (numpy.ndarray): Expected returns.
+    Sigma (numpy.ndarray): Covariance matrix.
+    e_mu (float, optional): Expected portfolio return. Default is None.
+    glambda (float, optional): Regularization parameter. Default is None.
+    h (float, optional): Minimum weight for each asset. Default is 0.
+
+    Returns:
+    tuple: Optimized weights, expected return, and risk.
+    """
+    n = len(mu)
+    w = Variable(n)
+    ret = mu.T @ w
+
+    # Ensure Sigma is positive definite
+    if not is_pos_def(Sigma):
+        try:
+            Sigma = make_pos_def(Sigma)
+        except ValueError as e:
+            print(f"Error: {e}", flush=True)
+            print(Sigma)
+            return np.full(n, np.nan), np.nan, np.nan
+    
+    risk = quad_form(w, Sigma)
+
+    # Define the optimization problem
+    constraints = [sum(w) == 1, w >= h]
+    if e_mu is not None:
+        constraints.append(ret == e_mu)
+    if glambda is not None:
+        objective = Maximize(ret - risk - glambda * norm(w, 1))
+    else:
+        objective = Maximize(ret - risk)
+
+    prob = Problem(objective, constraints)
+    prob.solve()
+
+    # Extract results
+    try:
+        optimized_weights = w.value
+        expected_return = ret.value
+        portfolio_risk = risk.value
+    except:
+        optimized_weights = np.full(n, np.nan)
+        expected_return = np.nan
+        portfolio_risk = np.nan
+    
+    return optimized_weights, expected_return, portfolio_risk

@@ -1,0 +1,84 @@
+import math
+import random
+
+def gcd(a, b):
+    """Compute the greatest common divisor of a and b."""
+    while b:
+        a, b = b, a % b
+    return a
+
+def is_prime(n):
+    """Check if a number is prime."""
+    if n <= 1:
+        return False
+    for i in range(2, int(math.sqrt(n)) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+def get_primes(limit=50):
+    """Generate a list of prime numbers up to a given limit."""
+    return [i for i in range(2, limit) if is_prime(i)]
+
+def get_random_prime(primes):
+    """Select a random prime number from a list of primes."""
+    return random.choice(primes)
+
+def generate_key_pair():
+    """Generate RSA key pair (e, d) and modulus n."""
+    primes = get_primes()
+    p = get_random_prime(primes)
+    q = get_random_prime(primes)
+    while p == q:
+        q = get_random_prime(primes)
+    
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    
+    e = get_e(phi)
+    d = get_d(e, phi)
+    
+    return e, d, n
+
+def get_d(e, phi):
+    """Find the modular inverse of e modulo phi."""
+    for d in range(1, phi):
+        if (e * d) % phi == 1:
+            return d
+
+def get_e(phi):
+    """Find an integer e such that 1 < e < phi and gcd(e, phi) == 1."""
+    while True:
+        e = random.randint(2, phi - 1)
+        if gcd(e, phi) == 1:
+            return e
+
+def get_ascii_codes(message):
+    """Convert a message to its ASCII codes."""
+    return [ord(char) for char in message]
+
+def encrypt(ascii_codes, n, e):
+    """Encrypt a list of ASCII codes using RSA encryption."""
+    encrypted = [(char ** e) % n for char in ascii_codes]
+    encrypted_message = ''.join(map(str, encrypted))
+    print("Encrypted message: " + encrypted_message)
+    return encrypted
+
+def decrypt(encrypted, n, d):
+    """Decrypt a list of encrypted codes using RSA decryption."""
+    decrypted = ''.join([chr((char ** d) % n) for char in encrypted])
+    print("Decrypted message: " + decrypted)
+    return decrypted
+
+def main():
+    """Main function to perform RSA encryption and decryption."""
+    e, d, n = generate_key_pair()
+    
+    message = input("Enter your message: ")
+    ascii_codes = get_ascii_codes(message)
+    
+    encrypted = encrypt(ascii_codes, n, e)
+    decrypt(encrypted, n, d)
+
+if __name__ == "__main__":
+    main()

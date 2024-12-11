@@ -1,0 +1,85 @@
+import os
+import collections
+import re
+
+# Constants
+DATA_DIR = "data"  # Directory where data files are stored
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]  # MBTI dimensions
+WORDS_TO_REMOVE = [
+    "intj", "intp", "infj", "infp", "istj", "istp", "isfj", "isfp",
+    "entj", "entp", "enfj", "enfp", "estj", "estp", "esfj", "esfp",
+    "si", "ni", "ti", "fi", "se", "ne", "te", "fe", "nt", "nf",
+    "sxsp", "spsx", "spso", "sxso", "sosp", "sosx", "sp", "sx",
+    "sj", "sf", "st", "le", "socionic", "socionics", "enneagram",
+    "d", "w", "mbti",
+]
+
+def read_word_counts(file_path):
+    """
+    Reads a file and returns a Counter object of word frequencies.
+    
+    Args:
+    file_path (str): Path to the file to be read.
+    
+    Returns:
+    collections.Counter: A Counter object with word frequencies.
+    """
+    with open(file_path, "r") as file:
+        return collections.Counter(file.read().split())
+
+def write_special_words(file_path, word_dict, regex):
+    """
+    Writes words from a dictionary to a file, each word repeated according to its frequency.
+    
+    Args:
+    file_path (str): Path to the output file.
+    word_dict (dict): Dictionary containing words and their frequencies.
+    regex (Pattern): Regular expression for cleaning words.
+    """
+    with open(file_path, "w") as file:
+        for key, value in word_dict.items():
+            cleaned_key = regex.sub("", str(key))
+            if value > 2:  # Only write words that appear more than twice
+                file.write(f"{cleaned_key}\n" * value)
+
+def process_dimension(dimension):
+    """
+    Processes words for a given MBTI dimension, calculates differences,
+    and writes the results to output files.
+    
+    Args:
+    dimension (str): The MBTI dimension to be processed.
+    """
+    wordcount_a = read_word_counts(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"))
+    wordcount_b = read_word_counts(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"))
+
+    common_keys = set(wordcount_a.keys()) | set(wordcount_b.keys())
+
+    a_words = {}
+    b_words = {}
+
+    regex = re.compile("[^a-zA-Z]")  # Regular expression to remove non-alphabetic characters
+
+    for key in common_keys:
+        if key not in WORDS_TO_REMOVE:
+            if key in wordcount_a and key in wordcount_b:
+                diff = wordcount_a[key] - wordcount_b[key]
+                if diff > 0:
+                    a_words[key] = diff
+                elif diff < 0:
+                    b_words[key] = -diff
+            elif key in wordcount_a:
+                a_words[key] = wordcount_a[key]
+            elif key in wordcount_b:
+                b_words[key] = wordcount_b[key]
+
+    write_special_words(os.path.join(DATA_DIR, f"special_words_{dimension[0]}.txt"), a_words, regex)
+    write_special_words(os.path.join(DATA_DIR, f"special_words_{dimension[1]}.txt"), b_words, regex)
+
+def main():
+    """Main function to process all MBTI dimensions."""
+    for dimension in DIMENSIONS:
+        process_dimension(dimension)
+
+if __name__ == "__main__":
+    main()

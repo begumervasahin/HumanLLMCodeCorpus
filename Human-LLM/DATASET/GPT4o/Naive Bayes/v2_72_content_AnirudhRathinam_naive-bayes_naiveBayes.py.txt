@@ -1,0 +1,166 @@
+import numpy as np
+
+def load_data(filename):
+    """
+    Load data from a file.
+    
+    Parameters:
+    filename (str): The name of the file to read.
+    
+    Returns:
+    tuple: A tuple containing the attribute list, data list, and class list.
+    """
+    att_list = []
+    data = []
+    class_list = []
+
+    with open(filename, 'r') as file:
+        # Read attribute names
+        attributes = file.readline().strip().split()
+        att_list = attributes[:-1]  # All but the last column are attributes
+        
+        # Read data rows
+        for line in file:
+            parts = line.split()
+            data.append(parts[:-1])
+            class_list.append(parts[-1])
+
+    return att_list, data, class_list
+
+def calculate_probabilities(data, class_list, num_attributes):
+    """
+    Calculate probabilities for Naive Bayes classifier.
+    
+    Parameters:
+    data (list): The data list.
+    class_list (list): The class list.
+    num_attributes (int): The number of attributes.
+    
+    Returns:
+    tuple: A tuple containing the probabilities for class 0 and class 1.
+    """
+    prob_0 = []
+    prob_1 = []
+    
+    class_0_prob = class_list.count('0') / len(class_list)
+    class_1_prob = class_list.count('1') / len(class_list)
+    
+    for i in range(num_attributes):
+        count_c0_t0 = count_c0_t1 = count_c1_t0 = count_c1_t1 = 0
+        count_t0 = count_t1 = 0
+        
+        for j in range(len(data)):
+            if data[j][i] == '0':
+                count_t0 += 1
+                if class_list[j] == '0':
+                    count_c0_t0 += 1
+                else:
+                    count_c0_t1 += 1
+            else:
+                count_t1 += 1
+                if class_list[j] == '1':
+                    count_c1_t1 += 1
+                else:
+                    count_c1_t0 += 1
+        
+        prob_0.extend([count_c0_t0 / count_t0, count_c0_t1 / count_t0])
+        prob_1.extend([count_c1_t0 / count_t1, count_c1_t1 / count_t1])
+    
+    return class_0_prob, class_1_prob, prob_0, prob_1
+
+def print_probabilities(class_0_prob, class_1_prob, prob_0, prob_1, att_list):
+    """
+    Print the calculated probabilities.
+    
+    Parameters:
+    class_0_prob (float): The probability of class 0.
+    class_1_prob (float): The probability of class 1.
+    prob_0 (list): The probabilities for class 0.
+    prob_1 (list): The probabilities for class 1.
+    att_list (list): The list of attributes.
+    """
+    print(f'P(C = 0): {class_0_prob}')
+    for i, att in enumerate(att_list):
+        print(f'P({att} = 0|C = 0): {prob_0[2 * i]:.2f} P({att} = 1|C = 0): {prob_0[2 * i + 1]:.2f}', end=' ')
+    print('\n')
+    print(f'P(C = 1): {class_1_prob}')
+    for i, att in enumerate(att_list):
+        print(f'P({att} = 0|C = 1): {prob_1[2 * i]:.2f} P({att} = 1|C = 1): {prob_1[2 * i + 1]:.2f}', end=' ')
+
+def predict_class(row, prob_0, prob_1, class_0_prob, class_1_prob):
+    """
+    Predict the class of a row using Naive Bayes classifier.
+    
+    Parameters:
+    row (list): The row of data.
+    prob_0 (list): The probabilities for class 0.
+    prob_1 (list): The probabilities for class 1.
+    class_0_prob (float): The probability of class 0.
+    class_1_prob (float): The probability of class 1.
+    
+    Returns:
+    str: The predicted class ('0' or '1').
+    """
+    p0 = class_0_prob
+    p1 = class_1_prob
+    
+    for i in range(len(row)):
+        if row[i] == '0':
+            p0 *= prob_0[2 * i]
+            p1 *= prob_1[2 * i]
+        else:
+            p0 *= prob_0[2 * i + 1]
+            p1 *= prob_1[2 * i + 1]
+    
+    return '1' if p1 > p0 else '0'
+
+def calculate_accuracy(data, class_list, prob_0, prob_1, class_0_prob, class_1_prob):
+    """
+    Calculate the accuracy of the Naive Bayes classifier.
+    
+    Parameters:
+    data (list): The data list.
+    class_list (list): The class list.
+    prob_0 (list): The probabilities for class 0.
+    prob_1 (list): The probabilities for class 1.
+    class_0_prob (float): The probability of class 0.
+    class_1_prob (float): The probability of class 1.
+    
+    Returns:
+    float: The accuracy of the classifier.
+    """
+    correct_predictions = 0
+    
+    for i in range(len(data)):
+        if predict_class(data[i], prob_0, prob_1, class_0_prob, class_1_prob) == class_list[i]:
+            correct_predictions += 1
+    
+    return (correct_predictions / len(data)) * 100
+
+def main():
+    train_file = input('Please input the name of the training dataset (with file extension): ')
+    test_file = input('Please input the name of the test dataset (with file extension): ')
+
+    # Load training data
+    att_list, train_data, train_classes = load_data(train_file)
+    num_attributes = len(att_list)
+
+    # Calculate probabilities
+    class_0_prob, class_1_prob, prob_0, prob_1 = calculate_probabilities(train_data, train_classes, num_attributes)
+
+    # Print probabilities
+    print_probabilities(class_0_prob, class_1_prob, prob_0, prob_1, att_list)
+
+    # Calculate and print accuracy on the training set
+    train_accuracy = calculate_accuracy(train_data, train_classes, prob_0, prob_1, class_0_prob, class_1_prob)
+    print(f'\n\nAccuracy on training set ({len(train_data)} instances): {train_accuracy:.2f}%')
+
+    # Load test data
+    att_list, test_data, test_classes = load_data(test_file)
+
+    # Calculate and print accuracy on the test set
+    test_accuracy = calculate_accuracy(test_data, test_classes, prob_0, prob_1, class_0_prob, class_1_prob)
+    print(f'\n\nAccuracy on test set ({len(test_data)} instances): {test_accuracy:.2f}%')
+
+if __name__ == "__main__":
+    main()

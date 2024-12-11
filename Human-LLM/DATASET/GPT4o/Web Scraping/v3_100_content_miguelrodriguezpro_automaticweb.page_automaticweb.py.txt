@@ -1,0 +1,82 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Your WordPress credentials
+WORDPRESS_USERNAME = "YOUR_WORDPRESS_USER"
+WORDPRESS_PASSWORD = "YOUR_WORDPRESS_PASSWORD"
+
+# List of keywords to search for on YouTube
+KEYWORDS = ["example_keyword1", "example_keyword2"]  # Replace with your keywords
+
+# Initialize the Chrome driver
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service)
+
+def login_to_wordpress(username, password):
+    """Logs into WordPress using the provided credentials."""
+    driver.get('https://example.com/wp-admin/')
+    time.sleep(3)
+    driver.find_element(By.ID, 'user_login').send_keys(username)
+    time.sleep(1)
+    driver.find_element(By.ID, 'user_pass').send_keys(password)
+    driver.find_element(By.ID, 'user_pass').send_keys(Keys.ENTER)
+    time.sleep(8)
+
+def create_new_post(title):
+    """Creates a new post with the given title on WordPress."""
+    driver.find_element(By.ID, 'wp-admin-bar-new-content').click()
+    time.sleep(3)
+    driver.find_element(By.ID, 'post-title-0').send_keys(title)
+
+def search_youtube(keyword):
+    """Searches YouTube for the given keyword and opens the results in a new tab."""
+    search_url = f"https://www.youtube.com/results?search_query={keyword}&sp=EgIQAQ%253D%253D"
+    driver.execute_script("window.open('');")
+    driver.switch_to.window(driver.window_handles[1])
+    driver.get(search_url)
+    time.sleep(5)
+
+def get_top_videos():
+    """Retrieves the top 10 videos from the YouTube search results."""
+    video_elements = driver.find_elements(By.XPATH, '//*[@id="video-title"][@class="yt-simple-endpoint style-scope ytd-video-renderer"][starts-with(@href, "/watch?v=")]')
+    return video_elements[:10]
+
+def add_video_to_post(index, title, url):
+    """Adds the video title and URL to the WordPress post."""
+    driver.switch_to.window(driver.window_handles[0])
+    body_input = driver.find_element(By.XPATH, '//*[@id="post-content-0"]')
+    body_input.send_keys(Keys.ENTER, Keys.ENTER, f"{index + 1}. {title}", Keys.ENTER, url, Keys.ENTER, Keys.ENTER)
+    time.sleep(2)
+    body_input.send_keys(Keys.CONTROL, "s")
+    time.sleep(2)
+
+def process_keywords(keywords):
+    """Processes each keyword to create a new post and add top YouTube videos."""
+    for keyword in keywords:
+        print("Processing keyword:", keyword)
+        create_new_post(f"[TOP 10] videos {keyword}")
+        search_youtube(keyword)
+        top_videos = get_top_videos()
+
+        for idx, video in enumerate(top_videos):
+            title = video.get_attribute("title")
+            href = video.get_attribute("href")
+            print(f"{idx + 1}. {title}: {href}")
+            add_video_to_post(idx, title, href)
+            driver.switch_to.window(driver.window_handles[1])
+
+        driver.switch_to.window(driver.window_handles[0])
+        driver.find_element(By.XPATH, '//*[@id="post-content-0"]').send_keys(Keys.CONTROL, "s")
+        time.sleep(10)
+
+try:
+    # Log into WordPress
+    login_to_wordpress(WORDPRESS_USERNAME, WORDPRESS_PASSWORD)
+    # Process each keyword to create posts
+    process_keywords(KEYWORDS)
+finally:
+    driver.quit()

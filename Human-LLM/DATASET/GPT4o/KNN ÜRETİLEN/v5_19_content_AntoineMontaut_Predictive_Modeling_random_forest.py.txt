@@ -1,0 +1,130 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+import sklearn.metrics as skmet
+
+# Constants
+ACTIVITY_LIST = ['Walking', 'Walking upstairs', 'Walking downstairs', 'Sitting', 'Standing', 'Laying']
+ACTIVITY_LIST_ABR = ['Walk', 'Walk up', 'Walk down', 'Sit', 'Stand', 'Lay']
+ACTIVITY_DICT = {'1': 'Walking', '2': 'Walking upstairs', '3': 'Walking downstairs', '4': 'Sitting', '5': 'Standing', '6': 'Laying'}
+
+def clean_feature_name(feature):
+    """
+    Clean feature names by replacing or removing unwanted characters.
+    """
+    feature = feature.replace('-', '_').replace('(', '_').replace(')', '').replace(',', '').replace('__', '_')
+    feature = feature.replace('BodyBody', 'Body').replace('Body', '')
+    return feature.rstrip('_')
+
+def load_features(filepath):
+    """
+    Load and clean feature names from a file.
+    """
+    with open(filepath, 'r') as file:
+        features = [clean_feature_name(line.split()[1]) for line in file]
+    return features
+
+def load_training_data(features):
+    """
+    Load and prepare training data.
+    """
+    X_train = pd.read_table('./UCI HAR Dataset/train/X_train.txt', sep='\s+', names=features)
+    y_train = pd.read_table('./UCI HAR Dataset/train/y_train.txt', header=None, names=['activity_cat'])
+    y_train['activity'] = y_train['activity_cat'].map(ACTIVITY_DICT)
+    return X_train, y_train
+
+def preview_plots(X_train, y_train):
+    """
+    Plot histograms of a specific feature for each activity.
+    """
+    X_train['activity'] = y_train['activity']
+    plt.figure(figsize=(12, 8))
+    for i, activity in enumerate(ACTIVITY_LIST):
+        plt.subplot(2, 3, i + 1)
+        plt.hist(X_train[X_train['activity'] == activity]['fAccMag_mean'])
+        plt.xlim([-1.0, 1.0])
+        plt.title(activity)
+        if i % 3 == 0:
+            plt.ylabel('Frequency')
+    plt.tight_layout()
+    plt.show()
+    X_train.drop('activity', axis=1, inplace=True)
+
+def select_features(X_train):
+    """
+    Select relevant features based on domain knowledge.
+    """
+    to_keep = []
+    flags_out = ['angle', 'band', 'arCoeff', 'Mag']
+    flags_in = ['mean', 'std', 'skewness', 'kurtosis']
+    for col in X_train.columns:
+        if not any(flag in col for flag in flags_out) and any(flag in col for flag in flags_in):
+            to_keep.append(col)
+    return X_train[to_keep]
+
+def train_random_forest(X_train, y_train):
+    """
+    Train a Random Forest classifier.
+    """
+    clf = RandomForestClassifier(n_estimators=50, random_state=0)
+    clf.fit(X_train, y_train['activity'])
+    return clf
+
+def evaluate_model(clf, X_test, y_test):
+    """
+    Evaluate the trained model and return performance metrics.
+    """
+    predictions = clf.predict(X_test)
+    scores = {
+        'Accuracy': skmet.accuracy_score(y_test['activity'], predictions),
+        'Precision': skmet.precision_score(y_test['activity'], predictions, average='micro'),
+        'Recall': skmet.recall_score(y_test['activity'], predictions, average='micro'),
+        'F1': skmet.f1_score(y_test['activity'], predictions, average='micro'),
+    }
+    return scores, skmet.confusion_matrix(y_test['activity'], predictions)
+
+def load_test_data(features, to_keep):
+    """
+    Load and prepare test data.
+    """
+    X_test = pd.read_table('./UCI HAR Dataset/test/X_test.txt', sep='\s+', names=features)
+    X_test = X_test[to_keep]
+    y_test = pd.read_table('./UCI HAR Dataset/test/y_test.txt', header=None, names=['activity_cat'])
+    y_test['activity'] = y_test['activity_cat'].map(ACTIVITY_DICT)
+    return X_test, y_test
+
+def main():
+    """
+    Main function to execute the workflow.
+    """
+    features = load_features('./UCI HAR Dataset/features.txt')
+    X_train, y_train = load_training_data(features)
+    X_train_selected = select_features(X_train)
+
+    print('\n\n-----DOMAIN KNOWLEDGE APPROACH-----\n')
+    clf = train_random_forest(X_train_selected, y_train)
+    train_accuracy = clf.score(X_train_selected, y_train['activity'])
+    print(f'Random Forest accuracy on training data: {train_accuracy:.5f}')
+
+    X_test, y_test = load_test_data(features, X_train_selected.columns)
+    scores, conf_matrix = evaluate_model(clf, X_test, y_test)
+    print(f'\nRandom Forest scores on test data (global):\n\tAccuracy: {scores["Accuracy"]:.5f}\n\tPrecision: {scores["Precision"]:.5f}\n\tRecall: {scores["Recall"]:.5f}\n\tF1: {scores["F1"]:.5f}')
+    print('\nConfusion matrix:')
+    print(pd.DataFrame(conf_matrix, columns=ACTIVITY_LIST_ABR, index=ACTIVITY_LIST_ABR))
+
+    print('\n\n-----BLACK BOX APPROACH-----\n')
+    X_train_bb = pd.read_table('./UCI HAR Dataset/train/X_train.txt', sep='\s+', names=features)
+    clf_bb = RandomForestClassifier(n_estimators=50, random_state=0)
+    clf_bb.fit(X_train_bb, y_train['activity'])
+    train_accuracy_bb = clf_bb.score(X_train_bb, y_train['activity'])
+    print(f'Random Forest accuracy on training data: {train_accuracy_bb:.5f}')
+
+    X_test_bb = pd.read_table('./UCI HAR Dataset/test/X_test.txt', sep='\s+', names=features)
+    scores_bb, conf_matrix_bb = evaluate_model(clf_bb, X_test_bb, y_test)
+    print(f'\nRandom Forest scores on test data (global):\n\tAccuracy: {scores_bb["Accuracy"]:.5f}\n\tPrecision: {scores_bb["Precision"]:.5f}\n\tRecall: {scores_bb["Recall"]:.5f}\n\tF1: {scores_bb["F1"]:.5f}')
+    print('\nConfusion matrix:')
+    print(pd.DataFrame(conf_matrix_bb, columns=ACTIVITY_LIST_ABR, index=ACTIVITY_LIST_ABR))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,50 @@
+import json
+import discord
+from discord.ext import commands
+import glob
+import os
+
+def load_config():
+    """Load the configuration file."""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def initialize_bot(config):
+    """Initialize the bot with the specified prefix and remove the default help command."""
+    bot = commands.AutoShardedBot(command_prefix=commands.when_mentioned_or(config.get("prefix", ".")))
+    bot.remove_command("help")
+    bot.config = config
+    return bot
+
+def load_cogs(bot):
+    """Discover and load all cogs from the cogs directory."""
+    cogs = [file.replace(os.path.sep, '.').replace('.py', '') for file in glob.glob("cogs/*.py")]
+    for cog in cogs:
+        try:
+            bot.load_extension(cog)
+            print(f"Successfully loaded extension {cog}")
+        except Exception as e:
+            print(f"Failed to load extension {cog}: {e}")
+
+@bot.event
+async def on_ready():
+    """Define the on_ready event to set the bot's presence and print a confirmation message."""
+    await bot.change_presence(
+        activity=discord.Activity(
+            status=discord.Status.idle,
+            name=config["activity"],
+            type=discord.ActivityType.watching
+        )
+    )
+    print(f"Connected as {bot.user}")
+    print("Ready!")
+
+def main():
+    """Main function to run the DirectGUI Designer bot."""
+    config = load_config()
+    bot = initialize_bot(config)
+    load_cogs(bot)
+    bot.run(config.get("token"))
+
+if __name__ == '__main__':
+    main()

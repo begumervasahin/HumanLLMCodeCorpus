@@ -1,0 +1,71 @@
+# Global dictionary to keep track of parent relationships in the disjoint set
+parent = {}
+
+def make_set(vertex):
+    """
+    Initialize a set for the given vertex.
+    Each vertex is initially its own parent.
+    """
+    parent[vertex] = vertex
+
+def find_set(vertex):
+    """
+    Find the root ancestor of the set containing 'vertex'.
+    Apply path compression to flatten the structure.
+    """
+    if parent[vertex] != vertex:
+        parent[vertex] = find_set(parent[vertex])
+    return parent[vertex]
+
+def union(u, v):
+    """
+    Union the sets containing vertices 'u' and 'v'.
+    """
+    root_u = find_set(u)
+    root_v = find_set(v)
+    if root_u != root_v:
+        parent[root_u] = root_v
+
+def kruskal(graph):
+    """
+    Kruskal's algorithm to find the Minimum Spanning Tree (MST) of a graph.
+    
+    The graph is represented as a dictionary with two keys:
+    - 'V': a list of vertices
+    - 'E': a list of edges, where each edge is a tuple (weight, vertex_u, vertex_v)
+    """
+    mst = set()  # Set to store the edges of the MST
+    
+    # Initialize the disjoint set for each vertex
+    for vertex in graph['V']:
+        make_set(vertex)
+    
+    # Sort the edges by their weight
+    sorted_edges = sorted(graph['E'])
+
+    # Iterate over the sorted edges
+    for edge in sorted_edges:
+        weight, u, v = edge
+        
+        # If 'u' and 'v' are in different sets, add the edge to the MST
+        if find_set(u) != find_set(v):
+            mst.add(edge)
+            union(u, v)
+
+    return mst
+
+# Example usage:
+graph = {
+    'V': ['A', 'B', 'C', 'D', 'E'],
+    'E': [
+        (1, 'A', 'B'),
+        (2, 'B', 'C'),
+        (3, 'C', 'D'),
+        (4, 'D', 'E'),
+        (5, 'A', 'E'),
+        (6, 'B', 'D')
+    ]
+}
+
+mst = kruskal(graph)
+print("Minimum Spanning Tree:", mst)

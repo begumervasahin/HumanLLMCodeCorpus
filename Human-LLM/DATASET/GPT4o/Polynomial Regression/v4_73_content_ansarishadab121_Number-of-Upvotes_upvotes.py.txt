@@ -1,0 +1,97 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler, Binarizer, PolynomialFeatures
+from sklearn import linear_model
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Install scikit-learn if not already installed
+!pip install -U scikit-learn
+
+# Upload and read training data
+from google.colab import files
+uploaded = files.upload()
+train = pd.read_csv(io.StringIO(uploaded['train_NIR5Yl1.csv'].decode('utf-8')))
+
+# Upload and read test data
+uploaded = files.upload()
+test = pd.read_csv(io.StringIO(uploaded['test_8i3B3FC.csv'].decode('utf-8')))
+
+# Display basic information about the training data
+print(train.head())
+print(test.head())
+print(train.dtypes)
+print(train.describe())
+print(train.columns)
+print(train.shape, test.shape)
+print(train['Tag'].value_counts())
+
+# Visualize the distributions of 'Answers', 'Views', and 'Upvotes'
+sns.distplot(train['Answers'])
+plt.show()
+sns.distplot(train['Views'])
+plt.show()
+sns.distplot(train['Upvotes'])
+plt.show()
+
+# Check for missing values
+print(train.isnull().sum())
+
+# Drop outliers
+train = train[train['Views'] <= 3000000]
+
+# Encode categorical features
+labelencoder_X = LabelEncoder()
+train['Tag'] = labelencoder_X.fit_transform(train['Tag'])
+
+# Drop unnecessary columns
+train.drop(['ID', 'Username'], axis=1, inplace=True)
+
+# Define the target variable
+target = train['Upvotes']
+
+# Binarize the 'Answers' feature
+bn = Binarizer(threshold=7)
+train['pd_watched'] = bn.transform([train['Answers']])[0]
+
+# Split the data into training and validation sets
+feature_names = [x for x in train.columns if x not in ['Upvotes']]
+x_train, x_val, y_train, y_val = train_test_split(train[feature_names], target, test_size=0.22, random_state=205)
+
+# Scale the features
+sc_X = StandardScaler()
+x_train = sc_X.fit_transform(x_train)
+x_val = sc_X.transform(x_val)
+
+# Apply polynomial feature transformation
+poly_reg = PolynomialFeatures(degree=4, interaction_only=False, include_bias=True)
+X_poly = poly_reg.fit_transform(x_train)
+
+# Fit LassoLars model
+lin_reg_1 = linear_model.LassoLars(alpha=0.021, max_iter=150)
+lin_reg_1.fit(X_poly, y_train)
+
+# Predict on validation set and evaluate the model
+pred_val = lin_reg_1.predict(poly_reg.transform(x_val))
+print(r2_score(y_val, pred_val))
+
+# Preprocess the test data
+ids = test['ID']
+test.drop(['ID', 'Username'], axis=1, inplace=True)
+test['Tag'] = labelencoder_X.transform(test['Tag'])
+test['pd_watched'] = bn.transform([test['Answers']])[0]
+test = sc_X.transform(test)
+
+# Predict on test set
+pred_test = lin_reg_1.predict(poly_reg.transform(test))
+pred_test = abs(pred_test)
+
+# Prepare the submission file
+submission = pd.DataFrame({'ID': ids, 'Upvotes': pred_test})
+submission.to_csv("linearregr.csv", index=False)
+
+# Download the submission file
+files.download('linearregr.csv')

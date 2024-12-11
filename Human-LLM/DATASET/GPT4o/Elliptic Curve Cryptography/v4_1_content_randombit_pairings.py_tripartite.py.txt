@@ -1,0 +1,74 @@
+import random
+import bn256
+
+"""
+Demonstrate key generation and hashing using the bn256 module.
+"""
+
+def generate_private_key():
+    """
+    Generate a random private key.
+    :return: A random integer within the range of bn256.order.
+    """
+    return random.randrange(2, bn256.order)
+
+def generate_public_keys(private_key):
+    """
+    Generate corresponding public keys in G1 and G2 for a given private key.
+    :param private_key: The private key.
+    :return: Tuple containing the public keys in G1 and G2.
+    """
+    public_key_g1 = bn256.g1_scalar_base_mult(private_key)
+    public_key_g2 = bn256.g2_scalar_base_mult(private_key)
+    return public_key_g1, public_key_g2
+
+def generate_shared_key(public_key_g2, public_key_g1, private_key):
+    """
+    Generate a shared key in GT.
+    :param public_key_g2: The public key in G2.
+    :param public_key_g1: The public key in G1.
+    :param private_key: The private key.
+    :return: The shared key in GT.
+    """
+    pairing_result = bn256.optimal_ate(public_key_g2, public_key_g1)
+    return bn256.gt_scalar_mult(pairing_result, private_key)
+
+def hash_key(shared_key):
+    """
+    Hash a shared key in GT.
+    :param shared_key: The shared key in GT.
+    :return: The hashed key.
+    """
+    return bn256.gt_hash(shared_key)
+
+def main():
+    """
+    Main function to demonstrate key generation and hashing.
+    """
+    # Generate random private keys for a, b, and c
+    a_k = generate_private_key()
+    b_k = generate_private_key()
+    c_k = generate_private_key()
+
+    # Generate corresponding public keys in G1 and G2 for a, b, and c
+    a_g1, a_g2 = generate_public_keys(a_k)
+    b_g1, b_g2 = generate_public_keys(b_k)
+    c_g1, c_g2 = generate_public_keys(c_k)
+
+    # Generate shared keys in GT
+    a_key = generate_shared_key(b_g2, c_g1, a_k)
+    b_key = generate_shared_key(c_g2, a_g1, b_k)
+    c_key = generate_shared_key(a_g2, b_g1, c_k)
+
+    # Hash the shared keys
+    a_key_hash = hash_key(a_key)
+    b_key_hash = hash_key(b_key)
+    c_key_hash = hash_key(c_key)
+
+    # Print the hashed keys
+    print(f"Hashed Key for a: {a_key_hash}")
+    print(f"Hashed Key for b: {b_key_hash}")
+    print(f"Hashed Key for c: {c_key_hash}")
+
+if __name__ == "__main__":
+    main()

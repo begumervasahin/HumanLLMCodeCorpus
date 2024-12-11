@@ -1,0 +1,105 @@
+from random import randint
+
+class Graph:
+    """
+    Graph data structure.
+    """
+
+    def __init__(self, fname=None, num_vertices=None, num_edges=None, weight_range=None, directed=True):
+        """
+        Initializes the Graph. If a filename is provided, loads the graph from the file.
+        Otherwise, generates a random weighted graph.
+        """
+        self.adjacency_list = {}
+        self.edge_weights = {}
+        self.directed = directed
+
+        if fname is None:
+            if any(arg is None for arg in (num_vertices, num_edges, weight_range)):
+                num_vertices, num_edges, weight_range = map(int, input("Enter num_vertices, num_edges, weight_range: ").split())
+            self._generate_random_graph(num_vertices, num_edges, weight_range)
+        else:
+            self._load_graph_from_file(fname)
+
+    def num_vertices(self):
+        """
+        Returns the number of vertices in the graph.
+        """
+        return len(self.adjacency_list)
+
+    def vertices(self):
+        """
+        Returns a list of vertices in the graph.
+        """
+        return range(self.num_vertices())
+
+    def edges(self):
+        """
+        Returns a generator containing the edges in the graph.
+        """
+        return ((from_vertex, to_vertex) for from_vertex in self.vertices() for to_vertex in self.adjacency_list[from_vertex])
+
+    def add_directed_edge(self, from_vertex, to_vertex, weight):
+        """
+        Inserts a weighted directed edge into the graph.
+        """
+        self.adjacency_list.setdefault(from_vertex, set()).add(to_vertex)
+        self.edge_weights[(from_vertex, to_vertex)] = weight
+
+    def add_undirected_edge(self, from_vertex, to_vertex, weight):
+        """
+        Inserts a weighted undirected edge into the graph.
+        """
+        self.add_directed_edge(from_vertex, to_vertex, weight)
+        self.add_directed_edge(to_vertex, from_vertex, weight)
+
+    def _generate_random_graph(self, num_vertices, num_edges, weight_range):
+        """
+        Generates a random weighted graph.
+        """
+        add_edge = self.add_directed_edge if self.directed else self.add_undirected_edge
+
+        for vertex in range(num_vertices):
+            self.adjacency_list[vertex] = set()
+
+        for _ in range(num_edges):
+            from_vertex, to_vertex = None, None
+            while from_vertex == to_vertex:
+                from_vertex = randint(0, num_vertices - 1)
+                to_vertex = randint(0, num_vertices - 1)
+            weight = randint(0, weight_range)
+            add_edge(from_vertex, to_vertex, weight)
+
+    def _load_graph_from_file(self, fname):
+        """
+        Loads a graph from a file containing a list of edges
+        in the format: from_vertex to_vertex weight.
+        """
+        add_edge = self.add_directed_edge if self.directed else self.add_undirected_edge
+
+        with open(fname, 'r') as file:
+            num_vertices = int(file.readline().strip())
+            for vertex in range(num_vertices):
+                self.adjacency_list[vertex] = set()
+
+            for line in file:
+                from_vertex, to_vertex, weight = map(int, line.split())
+                add_edge(from_vertex, to_vertex, weight)
+
+    def adjacent_str(self, from_vertex):
+        """
+        Returns a string representing the neighborhood of the given vertex.
+        """
+        return ", ".join(f"({to_vertex}, {self.edge_weights[(from_vertex, to_vertex)]})" for to_vertex in self.adjacency_list[from_vertex])
+
+    def __str__(self):
+        """
+        Returns a string representation of the graph.
+        """
+        return "\n".join(f"{vertex}: {self.adjacent_str(vertex)}" for vertex in self.vertices())
+
+    def __repr__(self):
+        """
+        Represents the graph as a string.
+        """
+        return str(self)

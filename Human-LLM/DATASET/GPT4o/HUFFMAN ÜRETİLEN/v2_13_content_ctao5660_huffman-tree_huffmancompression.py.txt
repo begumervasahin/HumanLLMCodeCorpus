@@ -1,0 +1,134 @@
+import os
+
+class Node:
+    def __init__(self, frequency, char=None):
+        """
+        Initialize a node for the Huffman tree.
+
+        Args:
+            frequency (int): The frequency of the character or sum of frequencies for internal nodes.
+            char (str): The character represented by the node (None for internal nodes).
+        """
+        self.left = None
+        self.right = None
+        self.frequency = frequency
+        self.char = char
+
+    def print_tree(self):
+        """Recursively print the characters in the Huffman tree."""
+        if self.char is not None:
+            print(self.char, end=" ")
+        else:
+            if self.left:
+                self.left.print_tree()
+            if self.right:
+                self.right.print_tree()
+
+class BinaryTree:
+    def __init__(self, frequency_dict):
+        """
+        Initialize the binary tree for Huffman encoding.
+
+        Args:
+            frequency_dict (dict): Dictionary of character frequencies.
+        """
+        self.sorted_chars = sorted(frequency_dict, key=frequency_dict.get, reverse=True)
+        self.frequency_dict = frequency_dict
+        self.code_dict = {}
+        self.reverse_dict = {}
+        self.node_list = []
+
+    def create_tree(self):
+        """Create the Huffman tree from the frequency dictionary."""
+        for char in self.sorted_chars:
+            self.node_list.append(Node(self.frequency_dict[char], char))
+        
+        while len(self.node_list) > 1:
+            self.node_list.sort(key=lambda node: node.frequency)
+            node1 = self.node_list.pop(0)
+            node2 = self.node_list.pop(0)
+            merged_node = Node(node1.frequency + node2.frequency)
+            merged_node.left = node1
+            merged_node.right = node2
+            self.node_list.append(merged_node)
+        
+        return self.node_list[0]
+
+    def assign_codes(self, node, code=""):
+        """Assign binary codes to each character by traversing the Huffman tree."""
+        if node is None:
+            return
+        
+        if node.char is not None:
+            self.code_dict[node.char] = code
+            self.reverse_dict[code] = node.char
+            print(f"Character: {node.char}, Code: {code}")
+            return
+        
+        self.assign_codes(node.left, code + "1")
+        self.assign_codes(node.right, code + "0")
+
+    def is_valid_code(self, code, node):
+        """Check if a given code corresponds to a valid node in the Huffman tree."""
+        if node.char is not None:
+            return True
+        if not code:
+            return False
+        if code[0] == '1':
+            return self.is_valid_code(code[1:], node.left)
+        elif code[0] == '0':
+            return self.is_valid_code(code[1:], node.right)
+        return False
+
+    def decode_message(self, file_path, root_node):
+        """Decode the encoded message from a file using the Huffman tree."""
+        with open(file_path, 'r') as file:
+            encoded = list(file.read())
+        
+        index = 0
+        decoded_string = ""
+        while index < len(encoded):
+            index_range = 1
+            while not self.is_valid_code(encoded[index:index + index_range], root_node):
+                index_range += 1
+            decoded_char = self.reverse_dict[''.join(encoded[index:index + index_range])]
+            decoded_string += decoded_char
+            index += index_range
+        
+        print("Decoded Message:", decoded_string)
+        return decoded_string
+
+def count_characters(file_path):
+    """Count the frequency of each character in the given file."""
+    frequency_dict = {}
+    with open(file_path, 'r') as file:
+        while (char := file.read(1)):
+            frequency_dict[char] = frequency_dict.get(char, 0) + 1
+    return frequency_dict
+
+def encode_message(input_path, output_path, tree):
+    """Encode the message from the input file and write the encoded message to the output file."""
+    with open(input_path, 'r') as infile, open(output_path, 'w') as outfile:
+        for code, char in tree.reverse_dict.items():
+            outfile.write(f"{code}.-.{repr(char)}\n")
+        outfile.write("```\n")
+
+        while (char := infile.read(1)):
+            outfile.write(tree.code_dict[char])
+
+def main():
+    input_path = 'path/to/your/input.txt'
+    output_path = 'path/to/your/output.txt'
+    
+    char_frequencies = count_characters(input_path)
+    huffman_tree = BinaryTree(char_frequencies)
+    root_node = huffman_tree.create_tree()
+    huffman_tree.assign_codes(root_node)
+
+    encode_message(input_path, output_path, huffman_tree)
+    print("\nReverse Dictionary:", huffman_tree.reverse_dict)
+    
+    huffman_tree.decode_message(output_path, root_node)
+
+if __name__ == "__main__":
+    main()

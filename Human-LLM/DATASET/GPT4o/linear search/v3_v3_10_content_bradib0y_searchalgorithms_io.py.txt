@@ -1,0 +1,62 @@
+import re
+
+def read_file(file_path):
+    """Reads the content of a file and returns it."""
+    with open(file_path, encoding="utf-8") as file:
+        return file.read()
+
+def find_words_of_length(text, length):
+    """Finds words of a specified length or more in the given text."""
+    pattern = rf'\b\w{{{length}}}\w*\b'
+    return re.findall(pattern, text)
+
+def find_phone_numbers(text):
+    """Finds all phone numbers in the given text."""
+    phone_pattern = r'\(?\d{3}\)?-?\s?\d{3}-?\s?\d{4}'
+    return re.findall(phone_pattern, text)
+
+def find_names_and_titles(text):
+    """Finds all names and titles in the given text."""
+    name_title_pattern = r'\b[A-Z][a-z]*,\s[A-Z][a-z]*\b'
+    return re.findall(name_title_pattern, text)
+
+def find_emails(text):
+    """Finds all email addresses in the given text."""
+    email_pattern = r'[\w\.-]+@[\w\.-]+'
+    return re.findall(email_pattern, text)
+
+def filter_out_gov_emails(emails):
+    """Filters out emails ending with '.gov'."""
+    return [email for email in emails if not email.endswith('.gov')]
+
+def print_results(phone_numbers, names_and_titles, long_words, emails, non_gov_emails):
+    """Prints the results of the text analysis."""
+    print("Number of phone numbers found:", len(phone_numbers))
+    print("Number of names and titles found:", len(names_and_titles))
+    print("Words with 12 characters or more:", long_words)
+    print("Number of emails found:", len(emails))
+    print("Number of emails without .gov ending:", len(non_gov_emails))
+
+def remember(thing, file_path):
+    """Appends a given string to a specified file."""
+    with open(file_path, "a", encoding="utf-8") as file:
+        file.write(thing + "\n")
+
+# Main script
+if __name__ == "__main__":
+    # Read the content of the file
+    file_content = read_file("names.txt")
+
+    # Perform text analysis
+    phone_numbers = find_phone_numbers(file_content)
+    names_and_titles = find_names_and_titles(file_content)
+    long_words = find_words_of_length(file_content, 12)
+    emails = find_emails(file_content)
+    non_gov_emails = filter_out_gov_emails(emails)
+
+    # Print the results of the analysis
+    print_results(phone_numbers, names_and_titles, long_words, emails, non_gov_emails)
+
+    # Prompt the user for a string to remember and append it to the file
+    thing_to_remember = input("What would you like to remember? ")
+    remember(thing_to_remember, "database.txt")

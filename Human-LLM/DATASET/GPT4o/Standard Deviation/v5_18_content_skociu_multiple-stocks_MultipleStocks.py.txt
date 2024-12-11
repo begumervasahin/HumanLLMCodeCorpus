@@ -1,0 +1,89 @@
+import datetime
+import os
+import numpy as np
+import pandas as pd
+from pandas_datareader import data
+
+def fetch_stock_data(tickers, start_date, end_date):
+    """
+    Fetch adjusted close prices for each ticker.
+    """
+    stock_data = {}
+    for ticker in tickers:
+        stock_data[ticker] = data.get_data_yahoo(ticker, start=start_date, end=end_date, interval='m')['Adj Close']
+    return pd.DataFrame(stock_data)
+
+def calculate_annual_metrics(pct_stocks):
+    """
+    Calculate annual means and standard deviations of stock returns.
+    """
+    annual_means = (1 + pct_stocks.mean()) ** 12 - 1
+    annual_stdev = pct_stocks.std() * np.sqrt(12)
+    return annual_means, annual_stdev
+
+def calculate_portfolio_metrics(weights, means, cov_matrix):
+    """
+    Calculate portfolio return and standard deviation.
+    """
+    portfolio_return = np.dot(weights.T, means) * 12
+    portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights)) * 12
+    portfolio_stdev = np.sqrt(portfolio_variance)
+    return portfolio_return, portfolio_stdev
+
+def save_data_to_csv(output_dir, df, pct_stocks, correlation_matrix, cov_matrix):
+    """
+    Save data to CSV files.
+    """
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+
+    df.to_csv(os.path.join(output_dir, 'mystocks_prices.csv'))
+    pct_stocks.to_csv(os.path.join(output_dir, 'mystocks_pctchange.csv'))
+    correlation_matrix.to_csv(os.path.join(output_dir, 'mystocks_correlations.csv'))
+    cov_matrix.to_csv(os.path.join(output_dir, 'mystocks_varcov.csv'))
+
+def test_run():
+    # Define the stock tickers and date range
+    tickers = ['AMZN', 'SPY', 'M']
+    start_date = datetime.datetime(2007, 5, 13)
+    end_date = datetime.datetime(2017, 5, 13)
+
+    # Fetch stock data
+    df = fetch_stock_data(tickers, start_date, end_date)
+    print("Price Data:\n", df, '\n')
+
+    # Calculate monthly returns
+    pct_stocks = df.pct_change()
+    print("Stock Returns:\n", pct_stocks, '\n')
+
+    # Calculate correlation and covariance matrices
+    correlation_matrix = pct_stocks.corr()
+    print("Correlation Matrix:\n\n", correlation_matrix, "\n")
+
+    cov_matrix = pct_stocks.cov()
+    print("Variance-Covariance Matrix:\n\n", cov_matrix, "\n")
+
+    # Calculate annual means and standard deviations
+    annual_means, annual_stdev = calculate_annual_metrics(pct_stocks)
+    print("Annual Means:\n\n", annual_means, "\n")
+    print("Annual Standard Deviation:\n\n", annual_stdev, "\n")
+
+    # Assign equal weights to each stock
+    weights = pd.Series([1/len(tickers)] * len(tickers), index=tickers)
+    print("Weights:\n\n", weights, "\n")
+
+    # Convert weights, means, and covariance matrix to numpy arrays
+    weights_array = np.array(weights)
+    means_array = np.array(annual_means)
+    cov_matrix_array = np.array(cov_matrix)
+
+    # Calculate portfolio metrics
+    portfolio_return, portfolio_stdev = calculate_portfolio_metrics(weights_array, means_array, cov_matrix_array)
+    print("Portfolio Return:\n\n", portfolio_return, "\n")
+    print("Portfolio Standard Deviation:\n\n", portfolio_stdev, "\n")
+
+    # Save data to CSV files
+    save_data_to_csv('./Excel', df, pct_stocks, correlation_matrix, cov_matrix)
+
+if __name__ == "__main__":
+    test_run()

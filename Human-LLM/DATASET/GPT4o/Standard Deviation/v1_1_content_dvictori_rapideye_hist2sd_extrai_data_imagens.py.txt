@@ -1,0 +1,48 @@
+import glob
+from osgeo import ogr
+
+def dataCenas(imagens, articulacao, saida):
+    """
+    Extrai a data das cenas a partir do nome do arquivo
+    e adiciona no shape de articulacao
+    ATENCAO: posicao da data no nome do arquivo está fixa!!!
+    """
+    # Abrir o shapefile de entrada
+    entrada = ogr.Open(articulacao)
+    if entrada is None:
+        raise Exception("Não foi possível abrir o shapefile de entrada.")
+
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    outfile = driver.CopyDataSource(entrada, saida)
+    entrada = None
+    layer = outfile.GetLayer()
+
+    # Adicionar o campo de data
+    field_defn = ogr.FieldDefn('Data', ogr.OFTDate)
+    layer.CreateField(field_defn)
+
+    # Posições fixas da data e cena no nome do arquivo
+    ini_date = 48
+    ini_cena = 40
+
+    for i in imagens:
+        data_i = i[ini_date:ini_date + 10].split('-')
+        cena = i[ini_cena:ini_cena + 7]
+
+        # Filtrar as feições pela TILE_ID
+        layer.SetAttributeFilter(f'TILE_ID = {int(cena)}')
+
+        for feature in layer:
+            # Definir o campo de data na feição
+            feature.SetField('Data', int(data_i[0]), int(data_i[1]), int(data_i[2]), 0, 0, 0, 0)
+            layer.SetFeature(feature)
+
+    outfile = None
+
+# Caminho para as imagens e shapefile de articulação
+pasta = 'Z:\\filtro_radiometrico_2014_16bits\\*.tif'
+articulacao = 'C:\\geodb\\articulacao\\RapidEye_Tiles\\RapidEye_Tiles_Brasil.shp'
+imagens = glob.glob(pasta)
+
+# Chamar a função para processar as cenas
+dataCenas(imagens, articulacao, 'I:\\articulacao_rapideye_2014.shp')

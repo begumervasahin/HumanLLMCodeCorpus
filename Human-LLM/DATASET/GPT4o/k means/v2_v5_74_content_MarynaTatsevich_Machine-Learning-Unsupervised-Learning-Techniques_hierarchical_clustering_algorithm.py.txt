@@ -1,0 +1,65 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.cluster.hierarchy as sch
+from sklearn.cluster import AgglomerativeClustering
+
+# Load the dataset
+def load_data(filepath):
+    """Loads the dataset from a CSV file."""
+    return pd.read_csv(filepath)
+
+# Select relevant features
+def select_features(dataset, feature_columns):
+    """Selects relevant features from the dataset."""
+    return dataset[feature_columns]
+
+# Visualize dendrogram to find optimal number of clusters
+def visualize_dendrogram(data):
+    """Visualizes the dendrogram to determine the optimal number of clusters."""
+    plt.figure(figsize=(10, 7))
+    dendrogram = sch.dendrogram(sch.linkage(data, method='ward'))
+    plt.title('Dendrogram')
+    plt.xlabel('Customers')
+    plt.ylabel('Euclidean distances')
+    plt.show()
+
+# Perform Hierarchical Clustering
+def perform_hierarchical_clustering(data, n_clusters=5):
+    """Performs Hierarchical Clustering and returns cluster labels."""
+    hc = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')
+    return hc.fit_predict(data)
+
+# Visualize clusters
+def visualize_clusters(data, cluster_labels):
+    """Visualizes the clusters with different colors and labels."""
+    plt.figure(figsize=(10, 6))
+    colors = ['red', 'blue', 'green', 'black', 'magenta']
+    labels = ['Careful', 'Standard', 'Target', 'Careless', 'Sensible']
+    for i in range(len(np.unique(cluster_labels))):
+        plt.scatter(data[cluster_labels == i, 0], data[cluster_labels == i, 1], s=100, c=colors[i], label=labels[i])
+    plt.title('Clusters of clients')
+    plt.xlabel('Annual Income (K$)')
+    plt.ylabel('Spending Score (1-100)')
+    plt.legend()
+    plt.show()
+
+# Main function
+def main():
+    # Load and prepare the data
+    dataset = load_data('Mall_Customers.csv')
+    feature_columns = ['Annual Income (k$)', 'Spending Score (1-100)']
+    features = select_features(dataset, feature_columns)
+
+    # Visualize the dendrogram
+    visualize_dendrogram(features)
+
+    # Perform hierarchical clustering
+    cluster_labels = perform_hierarchical_clustering(features)
+
+    # Visualize the clusters
+    visualize_clusters(features.values, cluster_labels)
+
+# Entry point of the program
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,73 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import statistics
+import matplotlib.pyplot as plt
+
+# Function to fetch and parse HTML content from a URL
+def fetch_html(url):
+    response = requests.get(url)
+    return response.content
+
+# Function to extract player profile links from the main page
+def extract_player_links(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    links = []
+    table = soup.find('table', {'class': 'tablehead'})
+    if table:
+        rows = table.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            if cols:
+                for a in cols[0].find_all('a'):
+                    links.append(a.get('href'))
+    return links
+
+# Function to extract player height from a profile page
+def extract_player_height(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    general_info = soup.find('ul', {'class': 'general-info'})
+    if general_info:
+        info_pieces = general_info.find_all('li')
+        if len(info_pieces) > 1:
+            player_height = info_pieces[1].get_text()
+            try:
+                height_feet = int(re.search(r"(\d+)'", player_height).group(1))
+                height_inches = int(re.search(r"(\d+)\"", player_height).group(1))
+                return height_feet * 12 + height_inches
+            except (AttributeError, ValueError):
+                return None
+    return None
+
+# Main function to gather player heights
+def gather_player_heights(url):
+    html = fetch_html(url)
+    links = extract_player_links(html)
+    heights = []
+    for link in links:
+        player_html = fetch_html(link)
+        height = extract_player_height(player_html)
+        if height:
+            heights.append(height)
+            print(height)
+    return heights
+
+# Function to display statistics and plot a histogram
+def display_statistics(heights):
+    if heights:
+        print("Standard Deviation:", statistics.pstdev(heights))
+        print("Mean:", statistics.mean(heights))
+
+        bins_intervals = list(range(65, 81))
+        plt.hist(heights, bins=bins_intervals, edgecolor='black')
+        plt.xlabel('Height (inches)')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of NFL Player Heights')
+        plt.show()
+    else:
+        print("No player heights found.")
+
+# URL of the page containing the list of NFL players
+url = "http://www.espn.com/nfl/players/_/position/s"
+heights_list = gather_player_heights(url)
+display_statistics(heights_list)

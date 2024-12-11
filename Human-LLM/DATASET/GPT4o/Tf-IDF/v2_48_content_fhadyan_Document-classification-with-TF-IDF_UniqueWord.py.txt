@@ -1,0 +1,63 @@
+import os
+import xml.etree.ElementTree as ET
+import nltk
+from nltk import FreqDist
+import re
+
+class UniqueWord:
+    def __init__(self, input_path='dataset/training101/', output_path='output/training/unique/'):
+        """
+        Initialize the UniqueWord class with input and output paths.
+        
+        Parameters:
+            input_path (str): Path to the input XML files.
+            output_path (str): Path to save the output text files.
+        """
+        self.input_path = input_path
+        self.output_path = output_path
+
+    def process_file(self, filename):
+        """
+        Process a single XML file to extract and count unique words.
+        
+        Parameters:
+            filename (str): The name of the XML file to process.
+        """
+        # Construct the full file path
+        fullname = os.path.join(self.input_path, filename)
+        
+        # Parse the XML file
+        tree = ET.parse(fullname)
+        raw_text = ET.tostring(tree.getroot(), encoding='iso-8859-1', method='text').decode('utf-8')
+        
+        # Clean the text to keep only alphabetic characters and spaces
+        cleaned_text = re.sub(r'[^a-zA-Z\s]', '', raw_text)
+        
+        # Tokenize the cleaned text
+        tokens = nltk.word_tokenize(cleaned_text, language='english')
+        
+        # Calculate the frequency distribution of the tokens
+        fdist = FreqDist(tokens)
+        
+        # Prepare the output file name and write the word counts to it
+        output_filename = os.path.join(self.output_path, filename.replace('.xml', '.txt'))
+        with open(output_filename, 'w', encoding='utf-8') as output_file:
+            for word, count in fdist.items():
+                output_file.write(f"{word} - {count}\n")
+
+    def output(self):
+        """
+        Process all XML files in the input directory and save the word counts to the output directory.
+        """
+        # Ensure the output directory exists
+        os.makedirs(self.output_path, exist_ok=True)
+        
+        # Iterate over each file in the input directory
+        for filename in os.listdir(self.input_path):
+            if filename.endswith('.xml'):
+                self.process_file(filename)
+
+if __name__ == '__main__':
+    # Create an instance of the UniqueWord class and call the output method
+    res = UniqueWord()
+    res.output()

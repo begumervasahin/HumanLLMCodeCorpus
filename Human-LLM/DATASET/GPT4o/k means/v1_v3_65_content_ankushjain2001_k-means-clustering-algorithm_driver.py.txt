@@ -1,0 +1,57 @@
+import kmeans
+from sklearn import datasets
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
+
+def load_iris_dataset():
+    """Load the Iris dataset."""
+    iris = datasets.load_iris()
+    return iris.data, iris.target
+
+def run_custom_kmeans(data, k, max_iterations, init_method):
+    """Run the custom KMeans implementation."""
+    return kmeans.KMeans(data, k, max_iterations, init_method)
+
+def run_sklearn_kmeans(data, k):
+    """Run the SKLearn KMeans implementation."""
+    kmeans_sklearn = KMeans(n_clusters=k, init='k-means++').fit(data)
+    return kmeans_sklearn.labels_
+
+def plot_clusters(data, labels, title):
+    """Plot the clusters."""
+    plt.scatter(data[:, 0], data[:, 1], c=labels, cmap='viridis')
+    plt.title(title)
+    plt.show()
+
+def print_confusion_matrix(y_true, y_pred):
+    """Print the confusion matrix."""
+    print(confusion_matrix(y_true, y_pred))
+
+# Constants
+k = 3
+max_iterations = 100
+init_method = 'kmeans++'
+
+# Load the Iris dataset
+data, y_truth = load_iris_dataset()
+
+# Run custom KMeans
+y_pred_custom = run_custom_kmeans(data, k, max_iterations, init_method)
+
+# Run SKLearn KMeans
+y_pred_sklearn = run_sklearn_kmeans(data, k)
+
+# Plot clusters
+plot_clusters(data, y_truth, 'Ground Truth')
+plot_clusters(data, y_pred_custom, 'Custom KMeans Output')
+plot_clusters(data, y_pred_sklearn, 'SKLearn KMeans Output')
+
+# Print confusion matrices
+print('Confusion Matrix of True Labels v/s Custom KMeans Predicted Labels:')
+print_confusion_matrix(y_truth, y_pred_custom)
+print('Confusion Matrix of True Labels v/s SKLearn KMeans Predicted Labels:')
+print_confusion_matrix(y_truth, y_pred_sklearn)
+print('Confusion Matrix of SKLearn KMeans Predicted Labels v/s Custom KMeans Predicted Labels:')
+print_confusion_matrix(y_pred_sklearn, y_pred_custom)

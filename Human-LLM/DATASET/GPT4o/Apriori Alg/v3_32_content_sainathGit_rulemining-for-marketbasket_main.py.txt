@@ -1,0 +1,196 @@
+import sys
+
+def load_transactions(input_file):
+    """
+    Load the transaction database from the input file.
+
+    Args:
+        input_file (str): Path to the input file containing transactions.
+
+    Returns:
+        list: List of transactions, where each transaction is a list of items.
+    """
+    transactions = []
+    with open(input_file, "r") as file:
+        for line in file:
+            transactions.append([int(x) for x in line.split()])
+    return transactions
+
+def adjust_support(min_support, total_transactions):
+    """
+    Adjust minimum support to the absolute count.
+
+    Args:
+        min_support (float): Minimum support as a fraction.
+        total_transactions (int): Total number of transactions.
+
+    Returns:
+        int: Minimum support count.
+    """
+    return min_support * total_transactions
+
+def remove_infrequent_itemsets(itemset_counts, min_support):
+    """
+    Remove infrequent itemsets from the table.
+
+    Args:
+        itemset_counts (dict): Dictionary of itemsets with their support counts.
+        min_support (int): Minimum support count threshold.
+    """
+    infrequent_keys = [k for k in itemset_counts.keys() if itemset_counts[k] < min_support]
+    for key in infrequent_keys:
+        del itemset_counts[key]
+
+def get_combined_key(itemset1, itemset2):
+    """
+    Generate a new itemset key from two itemsets.
+
+    Args:
+        itemset1 (tuple): First itemset.
+        itemset2 (tuple): Second itemset.
+
+    Returns:
+        tuple: Combined itemset key.
+    """
+    key = list(itemset1[:-1])
+    key.extend([itemset1[-1], itemset2[-1]])
+    return tuple(key)
+
+def can_combine(itemset1, itemset2):
+    """
+    Check if two itemsets can be combined.
+
+    Args:
+        itemset1 (tuple): First itemset.
+        itemset2 (tuple): Second itemset.
+
+    Returns:
+        bool: True if the itemsets can be combined, False otherwise.
+    """
+    return itemset1[:-1] == itemset2[:-1] and itemset1[-1] < itemset2[-1]
+
+def generate_candidates(current_itemsets):
+    """
+    Generate candidate itemsets from the current table.
+
+    Args:
+        current_itemsets (dict): Dictionary of current itemsets.
+
+    Returns:
+        dict: Dictionary of new candidate itemsets.
+    """
+    new_itemsets = {}
+    for itemset1 in current_itemsets.keys():
+        for itemset2 in current_itemsets.keys():
+            if can_combine(itemset1, itemset2):
+                new_itemsets[get_combined_key(itemset1, itemset2)] = 0
+    return new_itemsets
+
+def count_support(itemsets, transactions):
+    """
+    Count the support of each itemset in the transaction database.
+
+    Args:
+        itemsets (dict): Dictionary of itemsets with their support counts.
+        transactions (list): List of transactions.
+    """
+    for itemset in itemsets.keys():
+        for transaction in transactions:
+            if set(itemset).issubset(transaction):
+                itemsets[itemset] += 1
+
+def generate_powerset(seq):
+    """
+    Generate all non-empty subsets of a sequence.
+
+    Args:
+        seq (list): The sequence to generate subsets from.
+
+    Yields:
+        list: Non-empty subsets of the sequence.
+    """
+    if len(seq) <= 1:
+        yield seq
+        yield []
+    else:
+        for item in generate_powerset(seq[1:]):
+            yield [seq[0]] + item
+            yield item
+
+def print_association_rule(antecedent, consequent, confidence):
+    """
+    Print an association rule.
+
+    Args:
+        antecedent (list): Antecedent of the rule.
+        consequent (list): Consequent of the rule.
+        confidence (float): Confidence of the rule.
+    """
+    print(f"{antecedent} ==> {consequent}    Confidence: {confidence:.2f}")
+
+def generate_and_print_rules(itemset, itemset_supports):
+    """
+    Generate and print association rules for an itemset.
+
+    Args:
+        itemset (tuple): The itemset to generate rules for.
+        itemset_supports (dict): Dictionary of all itemsets with their support counts.
+    """
+    global rule_count
+    for subset in generate_powerset(list(itemset)):
+        if not subset or subset == list(itemset):
+            continue
+        remaining = [x for x in itemset if x not in subset]
+        confidence = itemset_supports[itemset] / itemset_supports[tuple(subset)]
+        if confidence >= MIN_CONFIDENCE:
+            print_association_rule(subset, remaining, confidence)
+            rule_count += 1
+
+if __name__ == "__main__":
+    # Get input parameters from command line arguments
+    MIN_SUPPORT = float(sys.argv[1])
+    MIN_CONFIDENCE = float(sys.argv[2])
+    INPUT_FILE = sys.argv[3]
+
+    # Load the transaction database
+    transactions = load_transactions(INPUT_FILE)
+
+    # Adjust minimum support to the absolute count
+    MIN_SUPPORT = adjust_support(MIN_SUPPORT, len(transactions))
+
+    # Initialize the table with single items
+    itemset_supports = {}
+    for transaction in transactions:
+        for item in transaction:
+            if (item,) not in itemset_supports:
+                itemset_supports[(item,)] = 1
+            else:
+                itemset_supports[(item,)] += 1
+
+    remove_infrequent_itemsets(itemset_supports, MIN_SUPPORT)
+    itemsets_by_size = [itemset_supports]
+
+    # Main loop to generate itemsets of increasing size
+    k = 1
+    while len(itemsets_by_size[k-1]) != 0:
+        itemset_supports = generate_candidates(itemsets_by_size[k-1])
+        count_support(itemset_supports, transactions)
+        remove_infrequent_itemsets(itemset_supports, MIN_SUPPORT)
+        itemsets_by_size.append(itemset_supports)
+        k += 1
+
+    itemsets_by_size.pop()
+
+    # Combine all itemsets into a single dictionary
+    all_itemsets = {}
+    for level in itemsets_by_size:
+        all_itemsets.update(level)
+
+    # Generate and print association rules
+    rule_count = 0
+    for itemset in all_itemsets.keys():
+        if len(itemset) > 1:
+            generate_and_print_rules(itemset, all_itemsets)
+
+    print(f"Mined file {INPUT_FILE}")
+    print(f"Found a total of {rule_count} association rules")

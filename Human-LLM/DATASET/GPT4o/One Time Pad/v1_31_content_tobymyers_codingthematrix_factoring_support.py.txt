@@ -1,0 +1,116 @@
+from math import sqrt
+from functools import reduce
+import operator
+
+def gcd(x, y):
+    """
+    Compute the greatest common divisor of x and y.
+
+    Parameters:
+    x (int): First integer
+    y (int): Second integer
+
+    Returns:
+    int: Greatest common divisor of x and y
+    """
+    return x if y == 0 else gcd(y, x % y)
+
+def dumb_factor(x, primeset):
+    """
+    Factorize x over the given set of prime numbers.
+
+    Parameters:
+    x (int): The number to be factorized
+    primeset (set): A set of prime numbers
+
+    Returns:
+    list: A list of pairs (p_i, a_i) such that x is the product of p_i to the power of a_i.
+          If x cannot be completely factorized over the primeset, returns an empty list.
+    """
+    factors = []
+    for p in primeset:
+        exponent = 0
+        while x % p == 0:
+            exponent += 1
+            x //= p
+        if exponent > 0:
+            factors.append((p, exponent))
+    return factors if x == 1 else []
+
+def primes(limit):
+    """
+    Generate a set of prime numbers up to the given limit using the Sieve of Eratosthenes.
+
+    Parameters:
+    limit (int): The upper limit for generating prime numbers
+
+    Returns:
+    set: A set of prime numbers up to the limit
+    """
+    primeset = set()
+    a = [True] * limit
+    a[0] = a[1] = False
+    for i, isprime in enumerate(a):
+        if isprime:
+            primeset.add(i)
+            for n in range(i * i, limit, i):
+                a[n] = False
+    return primeset
+
+def intsqrt(x):
+    """
+    Compute the integer square root of x.
+
+    Parameters:
+    x (int): The number to compute the square root of
+
+    Returns:
+    int: The integer square root of x
+    """
+    L = 1
+    H = x
+    if H < L:
+        L, H = H, L
+    while H - L > 1:
+        m = (L + H) // 2
+        d = x // m
+        if d > m:
+            L = m
+        else:
+            H = m
+    return L if L * L == x else H
+
+def prod(factors):
+    """
+    Compute the product of numbers in the given list.
+
+    Parameters:
+    factors (list): A list of numbers
+
+    Returns:
+    int: The product of all numbers in the list
+    """
+    return reduce(operator.mul, factors, 1)
+
+# Example usage
+if __name__ == "__main__":
+    # Example primeset up to 100
+    primeset = primes(100)
+    print(f"Primeset: {primeset}")
+
+    # Example factorization
+    x = 60
+    factors = dumb_factor(x, primeset)
+    print(f"Factors of {x}: {factors}")
+
+    # Example GCD
+    x, y = 48, 18
+    print(f"GCD of {x} and {y}: {gcd(x, y)}")
+
+    # Example integer square root
+    x = 49
+    print(f"Integer square root of {x}: {intsqrt(x)}")
+
+    # Example product of factors
+    factors = [2, 3, 5]
+    print(f"Product of {factors}: {prod(factors)}")

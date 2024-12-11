@@ -1,0 +1,89 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+
+# Your WordPress username and password
+word_username = "your_username"
+word_password = "your_password"
+
+# Path to the ChromeDriver executable
+chrome_driver_path = "C:\\Users\\.....\\chromedriver.exe"
+
+# List of keywords to search on YouTube
+keywords = ["keyword1", "keyword2", "keyword3"]
+
+# Base URL for YouTube search
+youtube_search_url = "https://www.youtube.com/results?search_query="
+
+# Initialize the Chrome WebDriver
+driver = webdriver.Chrome(executable_path=chrome_driver_path)
+
+# Function to log into WordPress
+def wordpress_login():
+    driver.get('https://example.com/wp-admin/')
+    time.sleep(3)
+    
+    user_field = driver.find_element_by_xpath("//*[@id='user_login']")
+    user_field.send_keys(word_username)
+    
+    time.sleep(2)
+    
+    pass_field = driver.find_element_by_xpath("//*[@id='user_pass']")
+    pass_field.send_keys(word_password)
+    
+    pass_field.send_keys(Keys.ENTER)
+    time.sleep(8)
+
+# Function to create a new WordPress post
+def create_new_post():
+    driver.find_element_by_xpath("//*[@id='wp-admin-bar-new-content']/a/span[1]").click()
+    time.sleep(3)
+
+# Function to search YouTube and get video titles and URLs
+def search_youtube(keyword):
+    driver.switch_to.window(driver.window_handles[1])
+    time.sleep(3)
+    
+    search_url = youtube_search_url + keyword + "&sp=EgIQAQ%253D%253D"
+    driver.get(search_url)
+    
+    time.sleep(5)
+    
+    videos = driver.find_elements_by_xpath(
+        '//*[@id="video-title"][@class="yt-simple-endpoint style-scope ytd-video-renderer"][starts-with(@href, "/watch?v=")]'
+    )
+    return videos[:10]
+
+# Function to add video information to the WordPress post
+def add_videos_to_post(keyword, videos):
+    driver.switch_to.window(driver.window_handles[0])
+    title_field = driver.find_element_by_xpath('//*[@id="post-title-0"]')
+    content_field = driver.find_element_by_xpath('//*[@id="post-content-0"]')
+    
+    title_field.send_keys(f"[TOP 10] videos {keyword}")
+    time.sleep(2)
+    
+    for index, video in enumerate(videos):
+        video_title = video.get_attribute("title")
+        video_url = video.get_attribute("href")
+        
+        content_field.send_keys(Keys.ENTER)
+        content_field.send_keys(f"{index + 1}. {video_title}")
+        content_field.send_keys(Keys.ENTER)
+        content_field.send_keys(video_url)
+        content_field.send_keys(Keys.ENTER)
+        time.sleep(1)
+    
+    content_field.send_keys(Keys.CONTROL, "s")
+    time.sleep(2)
+
+# Main script execution
+wordpress_login()
+
+for keyword in keywords:
+    create_new_post()
+    videos = search_youtube(keyword)
+    add_videos_to_post(keyword, videos)
+    time.sleep(10)
+
+driver.quit()

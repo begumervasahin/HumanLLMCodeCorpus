@@ -1,0 +1,35 @@
+import sys
+import math
+
+class CalcMeanStdPlugin:
+    def input(self, inputfile):
+        with open(inputfile, 'r') as noafile:
+            self.scores = []
+            next(noafile)  # Skip the header line
+            for line in noafile:
+                vals = line.split('\t')
+                self.scores.append(float(vals[1]))
+
+    def run(self):
+        n = len(self.scores)
+        self.mean = sum(self.scores) / n
+        variance = sum((score - self.mean) ** 2 for score in self.scores) / n
+        self.std = math.sqrt(variance)
+
+    def output(self, outputfile):
+        with open(outputfile, 'w') as outfile:
+            outfile.write(f"[CalcMeanStdPlugin] Two left:  {self.mean - 2*self.std}\n")
+            outfile.write(f"[CalcMeanStdPlugin] One left:  {self.mean - self.std}\n")
+            outfile.write(f"[CalcMeanStdPlugin] Mean:  {self.mean}\n")
+            outfile.write(f"[CalcMeanStdPlugin] One right:  {self.mean + self.std}\n")
+            outfile.write(f"[CalcMeanStdPlugin] Two right:  {self.mean + 2*self.std}\n")
+
+# Usage
+if __name__ == "__main__":
+    inputfile = sys.argv[1]
+    outputfile = sys.argv[2]
+
+    plugin = CalcMeanStdPlugin()
+    plugin.input(inputfile)
+    plugin.run()
+    plugin.output(outputfile)

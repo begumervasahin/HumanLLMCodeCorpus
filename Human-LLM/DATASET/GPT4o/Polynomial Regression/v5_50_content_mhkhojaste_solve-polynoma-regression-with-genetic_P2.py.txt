@@ -1,0 +1,67 @@
+import numpy as np
+import pandas as pd
+
+class GeneticAlgorithm:
+    def __init__(self):
+        self.num_generations = 10000
+        self.population_size = 50
+        self.tournament_size = 2
+        self.mutation_rate = 0.1
+        self.sigma = 1
+        self.X_array = np.arange(1, 101)
+        self.degree = 4
+        self.Y_array = self._load_data("my_numbers.csv")
+    
+    def _load_data(self, filename):
+        data = pd.read_csv(filename)
+        return data["Y"].values
+
+    def set_attributes(self, mutation_rate, sigma):
+        self.mutation_rate = mutation_rate
+        self.sigma = sigma
+    
+    def create_initial_population(self):
+        return np.random.uniform(low=0, high=1, size=(self.population_size, self.degree))
+    
+    def calculate_fitness(self, population):
+        fitness = np.zeros(len(population))
+        for i, individual in enumerate(population):
+            predicted_y = (
+                individual[0] * np.power(self.X_array, 3) +
+                individual[1] * np.power(self.X_array, 2) +
+                individual[2] * self.X_array +
+                individual[3]
+            )
+            fitness[i] = 1 / (1 + np.mean(np.square(predicted_y - self.Y_array)))
+        return fitness
+    
+    def select_parents(self, population, fitness):
+        selected_parents = np.zeros((10, self.degree))
+        for i in range(10):
+            indices = np.random.choice(len(population), self.tournament_size, replace=False)
+            winner_index = indices[np.argmax(fitness[indices])]
+            selected_parents[i] = population[winner_index]
+        return selected_parents
+    
+    def crossover(self, parents):
+        children = []
+        num_parents = len(parents)
+        for i in range(num_parents):
+            for j in range(i + 1, num_parents):
+                child = self._crossover_individuals(parents[i], parents[j])
+                child = self.mutate(child)
+                children.append(child)
+        return np.asarray(children)
+    
+    def _crossover_individuals(self, parent1, parent2):
+        child = np.zeros(self.degree)
+        selected_genes = np.random.choice(self.degree, self.degree // 2, replace=False)
+        child[selected_genes] = parent1[selected_genes]
+        child[~selected_genes] = parent2[~selected_genes]
+        return child
+    
+    def mutate(self, child):
+        for gene_index in range(len(child)):
+            if np.random.rand() <= self.mutation_rate:
+                child[gene_index] += np.random.normal(0, self.sigma)
+        return child

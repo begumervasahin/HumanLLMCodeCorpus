@@ -1,0 +1,55 @@
+import matplotlib.pyplot as plt
+import os
+from scipy.optimize import curve_fit
+
+def func(x, a, b, c, d):
+    """Cubic function used for curve fitting."""
+    return a * x**3 + b * x**2 + c * x + d
+
+def get_data(folder):
+    """Read data from files in the specified folder and fit to a cubic function."""
+    x, y = [], []
+    folder_path = os.path.join(os.getcwd(), folder)
+
+    for filename in os.listdir(folder_path):
+        if filename == '.DS_Store':
+            continue
+        
+        print(f"Processing file: {filename}")
+        file_path = os.path.join(folder_path, filename)
+        
+        with open(file_path, 'r') as file:
+            for line in file:
+                values = line.split()
+                y.append(float(values[0]))
+                x.append(float(values[1]))
+
+    params, _ = curve_fit(func, x, y)
+    a, b, c, d = params
+
+    x_final = [i for i in range(0, 101, 20)]
+    y_final = [func(i/100, a, b, c, d) for i in x_final]
+
+    return x_final, y_final
+
+def main():
+    folder1 = input('Folder name for Vector Space Model:\n')
+    p_v, q_v = get_data(folder1)
+
+    folder2 = input('Folder name for Fuzzy Retrieval Model:\n')
+    p_f, q_f = get_data(folder2)
+
+    # Plotting the data
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision vs Recall')
+    plt.plot(p_v, q_v, label='Vector Space Model')
+    plt.plot(p_v, q_v, 'bs')
+    plt.plot(p_f, q_f, label='Fuzzy Retrieval Model')
+    plt.plot(p_f, q_f, 'r^')
+    plt.legend()
+    plt.axis([0.0, 1.0, 0.0, 1.0])
+    plt.show()
+
+if __name__ == "__main__":
+    main()

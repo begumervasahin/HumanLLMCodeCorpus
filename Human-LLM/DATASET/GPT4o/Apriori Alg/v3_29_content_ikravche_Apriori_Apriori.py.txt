@@ -1,0 +1,96 @@
+import itertools as it
+
+# Configuration
+MIN_SUPPORT = 3
+MIN_CONFIDENCE = 0.7
+
+# Global counters and dictionaries
+combination_size = 1
+support_counts = {}
+transaction_list = [
+    ['a', 'b'],
+    ['a', 'c', 'd', 'e'],
+    ['a', 'b', 'c', 'e'],
+    ['c', 'd'],
+    ['b', 'c', 'd', 'e'],
+    ['a', 'd', 'e'],
+    ['c', 'd', 'e']
+]
+product_set = set(item for sublist in transaction_list for item in sublist)
+
+def has_sufficient_support():
+    """
+    Check if the maximum support value in the results dictionary meets the minimum support for the last generated combinations.
+
+    Returns:
+        bool: True if the maximum support value meets the minimum support, False otherwise.
+    """
+    max_support = max((value for key, value in support_counts.items() if len(key) == combination_size - 1), default=0)
+    return max_support >= MIN_SUPPORT or combination_size == 1
+
+def generate_combinations():
+    """
+    Generate combinations of products and count their appearances in transactions.
+    """
+    global combination_size
+    if has_sufficient_support():
+        combinations = list(it.combinations(product_set, combination_size))
+        count_appearances(combinations)
+    else:
+        print_results()
+
+def count_appearances(combinations):
+    """
+    Count the appearances of each combination in the transaction list.
+
+    Args:
+        combinations (list): List of product combinations to count.
+    """
+    global combination_size
+    for combination in combinations:
+        for transaction in transaction_list:
+            update_support_counts(combination, transaction)
+    combination_size += 1
+    generate_combinations()
+
+def update_support_counts(combination, transaction):
+    """
+    Check if the combination appears in the transaction and update the support counts.
+
+    Args:
+        combination (tuple): The combination of products.
+        transaction (list): The transaction row.
+    """
+    combination_str = ''.join(sorted(combination))
+    transaction_str = ''.join(sorted(transaction))
+    filtered_transaction = filter_transaction(combination_str, transaction_str)
+    if combination_str in filtered_transaction:
+        if combination_str in support_counts:
+            support_counts[combination_str] += 1
+        else:
+            support_counts[combination_str] = 1
+
+def filter_transaction(combination, transaction):
+    """
+    Remove characters from the transaction that are not in the combination.
+
+    Args:
+        combination (str): The product combination.
+        transaction (str): The transaction row.
+
+    Returns:
+        str: Filtered transaction containing only characters in the combination.
+    """
+    return ''.join([char for char in transaction if char in combination])
+
+def print_results():
+    """
+    Print the frequent itemsets that meet the minimum support threshold.
+    """
+    print("Frequent Itemsets:")
+    for combination, support in support_counts.items():
+        if support >= MIN_SUPPORT:
+            print(f'Combination: {combination}, Support: {support}')
+
+if __name__ == "__main__":
+    generate_combinations()

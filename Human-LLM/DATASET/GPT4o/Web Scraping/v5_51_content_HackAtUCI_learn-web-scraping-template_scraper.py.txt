@@ -1,0 +1,127 @@
+import re
+import time
+import csv
+import sys
+from selenium import webdriver
+from bs4 import BeautifulSoup
+
+def get_html(driver, path):
+    """
+    Retrieve the HTML content from a given path using Selenium webdriver.
+
+    Args:
+        driver (webdriver): Selenium webdriver instance.
+        path (str): URL path to the desired page.
+
+    Returns:
+        str: HTML content of the page.
+    """
+    driver.get(f"https://www.hackuci.com{path}")
+    time.sleep(2)
+    return driver.find_element_by_tag_name("html").get_attribute("innerHTML")
+
+def initialize_csv(file_name, fieldnames):
+    """
+    Initialize a CSV writer with the specified file name and field names.
+
+    Args:
+        file_name (str): Name of the CSV file.
+        fieldnames (list): List of field names for the CSV.
+
+    Returns:
+        csv.DictWriter: CSV writer object.
+    """
+    file = open(file_name, "w", newline="")
+    writer = csv.DictWriter(file, fieldnames)
+    writer.writeheader()
+    return writer
+
+def get_qualifications(job):
+    """
+    Extract the list of qualifications for a job from the BeautifulSoup object.
+
+    Args:
+        job (BeautifulSoup): BeautifulSoup object containing job details.
+
+    Returns:
+        list: List of job qualifications.
+    """
+    return [item.text.replace("\n", "") for item in job.find_all("div", class_="item")]
+
+def get_prompt(job):
+    """
+    Extract the list of prompts for a job from the BeautifulSoup object.
+
+    Args:
+        job (BeautifulSoup): BeautifulSoup object containing job details.
+
+    Returns:
+        list: List of job prompts.
+    """
+    return [prompt["href"] for prompt in job.find_all("a")]
+
+def get_chromedriver_path():
+    """
+    Determine the correct path to the chromedriver based on the operating system.
+
+    Returns:
+        str: Path to the chromedriver executable.
+    """
+    if sys.platform.startswith("darwin"):
+        return "./webdrivers/chromedriver_mac"
+    elif sys.platform.startswith("linux"):
+        return "./webdrivers/chromedriver_linux"
+    return "./webdrivers/chromedriver_windows.exe"
+
+def extract_relative_paths(soup):
+    """
+    Extract relative paths to job positions from the BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): BeautifulSoup object containing the main page HTML.
+
+    Returns:
+        list: List of relative paths to job positions.
+    """
+    navbar_menu = soup.find("div", class_="navbar-menu")
+    positions_re = re.compile("/recruit/[a-z]+")
+    return [tag["href"] for tag in navbar_menu.find_all(lambda tag: tag.has_attr("href") and positions_re.match(tag["href"]))]
+
+def scrape_job_details(driver, relative_paths, writer):
+    """
+    Scrape job details for each relative path and write them to the CSV.
+
+    Args:
+        driver (webdriver): Selenium webdriver instance.
+        relative_paths (list): List of relative paths to job positions.
+        writer (csv.DictWriter): CSV writer object.
+    """
+    for relative_path in relative_paths:
+        positions_html = get_html(driver, relative_path)
+        soup = BeautifulSoup(positions_html, "html.parser")
+        for job in soup.find_all("div", class_="job"):
+            job_data = {
+                "ROLE": job.find("div", class_="job-title").text.replace("\n", ""),
+                "DESCRIPTION": job.find("span").text.replace("\n", ""),
+                "QUALIFICATIONS": get_qualifications(job),
+                "PROMPT": get_prompt(job),
+            }
+            writer.writerow(job_data)
+
+if __name__ == "__main__":
+    chromedriver_filename = get_chromedriver_path()
+    driver = webdriver.Chrome(chromedriver_filename)
+
+    recruit_html = get_html(driver, "/recruit")
+    soup = BeautifulSoup(recruit_html, "html.parser")
+
+    relative_paths = extract_relative_paths(soup)
+    for path in relative_paths:
+        print(path)
+
+    fieldnames = ["ROLE", "DESCRIPTION", "QUALIFICATIONS", "PROMPT"]
+    writer = initialize_csv("role.csv", fieldnames)
+
+    scrape_job_details(driver, relative_paths, writer)
+
+    driver.quit()

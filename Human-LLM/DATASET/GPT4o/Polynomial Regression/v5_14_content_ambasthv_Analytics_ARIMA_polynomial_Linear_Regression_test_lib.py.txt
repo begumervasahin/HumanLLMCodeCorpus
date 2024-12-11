@@ -1,0 +1,92 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from polynomial_regression import PolynomialRegression
+import assignment_dataset as Dataset
+
+def get_predictions(coefficients, independent):
+    """
+    Generate predictions based on polynomial coefficients and independent values.
+
+    Args:
+    coefficients (list): Polynomial coefficients.
+    independent (list): Independent variable values.
+
+    Returns:
+    list: Predicted dependent variable values.
+    """
+    return [sum(coefficients[i] * pow(sample, i) for i in range(len(coefficients))) for sample in independent]
+
+def generate_dataset(coefficients=[], add_error=False):
+    """
+    Generate a dataset based on polynomial coefficients, with optional error.
+
+    Args:
+    coefficients (list): Polynomial coefficients.
+    add_error (bool): Whether to add random error to the dependent values.
+
+    Returns:
+    tuple: Independent and dependent variable lists.
+    """
+    independent_list = np.arange(0, 50, 1.5)
+    dependent_list = [
+        sum(coefficients[i] * pow(value, i) for i in range(len(coefficients))) + (random.randint(-100, 100) if add_error else 0)
+        for value in independent_list
+    ]
+    return independent_list, dependent_list
+
+def fit_line_and_plot(independent_list, dependent_list, plt, order=1):
+    """
+    Fit a polynomial regression line and plot it.
+
+    Args:
+    independent_list (list): Independent variable values.
+    dependent_list (list): Dependent variable values.
+    plt (module): Matplotlib plotting module.
+    order (int): Order of the polynomial regression.
+    """
+    regression = PolynomialRegression(order)
+    coefficients = regression.fit(independent_list, dependent_list)
+    print(f'Coefficients for order {order}: {coefficients}')
+    prediction_list = get_predictions(coefficients, independent_list)
+    plt.plot(independent_list, prediction_list, label=f'Order-{order}', linewidth=3)
+    plt.legend()
+
+def draw_scatter_plot(independent_list, dependent_list, plt):
+    """
+    Draw a scatter plot of the dataset.
+
+    Args:
+    independent_list (list): Independent variable values.
+    dependent_list (list): Dependent variable values.
+    plt (module): Matplotlib plotting module.
+    """
+    plt.scatter(independent_list, dependent_list, s=100)
+
+def get_assignment_dataset():
+    """
+    Get the assignment dataset.
+
+    Returns:
+    tuple: Independent and dependent variable lists from the dataset.
+    """
+    return Dataset.assignmentIndependentList, Dataset.assignmentDependentList
+
+# Example usage
+if __name__ == "__main__":
+    # Generate a sample dataset with polynomial coefficients
+    independent, dependent = generate_dataset([1, -2, 3], add_error=True)
+    
+    # Plot the dataset
+    plt.figure(figsize=(10, 6))
+    draw_scatter_plot(independent, dependent, plt)
+    
+    # Fit polynomial lines of different orders and plot them
+    for order in range(1, 4):
+        fit_line_and_plot(independent, dependent, plt, order)
+    
+    # Show the plot
+    plt.xlabel('Independent Variable')
+    plt.ylabel('Dependent Variable')
+    plt.title('Polynomial Regression Fit')
+    plt.show()

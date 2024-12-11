@@ -1,0 +1,115 @@
+import numpy as np
+from scipy.sparse import csr_matrix
+from itertools import product
+from HopfClass import HopfAlgebra
+import sympy.combinatorics as comb
+
+def create_group_integral(dim):
+    """
+    Create the group integral for a specified dimension.
+
+    :param dim: The dimension of the group.
+    :return: A numpy array representing the group integral.
+    """
+    return np.ones(dim, dtype=complex)
+
+def create_group_counit(dim):
+    """
+    Create the group counit for a specified dimension.
+
+    :param dim: The dimension of the group.
+    :return: A numpy array representing the group counit.
+    """
+    return np.ones(dim, dtype=complex)
+
+def create_group_comult_matrix(dim):
+    """
+    Create the comultiplication matrix for a specified dimension.
+
+    :param dim: The dimension of the group.
+    :return: A CSR matrix representing the comultiplication matrix.
+    """
+    temp = np.zeros((dim**2, dim), dtype=complex)
+    for i in range(dim):
+        temp[i + dim * i, i] = 1
+    return csr_matrix(temp, dtype=complex)
+
+def create_group_algebra(name, element_names, multiplication_matrix, antipode_matrix):
+    """
+    Create a Hopf algebra with given parameters.
+
+    :param name: The name of the Hopf algebra.
+    :param element_names: List of names for the elements.
+    :param multiplication_matrix: The multiplication matrix.
+    :param antipode_matrix: The antipode matrix.
+    :return: An instance of HopfAlgebra.
+    """
+    dimension = len(element_names)
+    hopf_algebra = HopfAlgebra(
+        name,
+        element_names,
+        multiplication_matrix,
+        create_group_comult_matrix(dimension),
+        create_group_counit(dimension),
+        antipode_matrix
+    )
+    hopf_algebra.input_integral(create_group_integral(dimension))
+    return hopf_algebra
+
+def extract_permutation_group_info(permutation_group):
+    """
+    Extract information from a permutation group.
+
+    :param permutation_group: Sympy permutation group.
+    :return: Dictionary with element names, multiplication matrix, and antipode matrix.
+    """
+    elements = list(permutation_group.elements)
+    dimension = len(elements)
+    permutation_size = max(max(e) for e in elements)
+    identity = comb.Permutation(permutation_size)
+    
+    # Ensure the identity element is first
+    elements.remove(identity)
+    elements.insert(0, identity)
+    
+    # Create element names
+    element_names = [str(list(e)).replace(" ", "") for e in elements]
+    
+    # Create multiplication matrix
+    multiplication_matrix = np.zeros((dimension, dimension**2), dtype=int)
+    for i, j in product(range(dimension), repeat=2):
+        product_index = elements.index(elements[i] * elements[j])
+        multiplication_matrix[product_index, i * dimension + j] = 1
+    multiplication_matrix = csr_matrix(multiplication_matrix, dtype=int)
+    
+    # Create antipode matrix
+    antipode_matrix = np.zeros((dimension, dimension), dtype=int)
+    for i in range(dimension):
+        inverse = elements[i]**-1
+        inverse_index = elements.index(inverse)
+        antipode_matrix[inverse_index, i] = 1
+    antipode_matrix = csr_matrix(antipode_matrix, dtype=int)
+    
+    return {
+        'element_names': element_names,
+        'mult': multiplication_matrix,
+        'antipode': antipode_matrix
+    }
+
+# Example usage
+if __name__ == '__main__':
+    # Create a permutation group
+    permutation_group = comb.PermutationGroup([comb.Permutation([0, 1]), comb.Permutation([1, 0])])
+    
+    # Extract permutation group information
+    group_info = extract_permutation_group_info(permutation_group)
+    
+    # Create a Hopf algebra
+    hopf_algebra = create_group_algebra(
+        name='ExampleHopf',
+        element_names=group_info['element_names'],
+        multiplication_matrix=group_info['mult'],
+        antipode_matrix=group_info['antipode']
+    )
+    
+    print("Hopf Algebra created:", hopf_algebra)

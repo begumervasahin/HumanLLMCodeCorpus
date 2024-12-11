@@ -1,0 +1,76 @@
+import heapq
+import numpy as np
+from sklearn.metrics.pairwise import pairwise_distances
+
+class CosineKNN:
+    def __init__(self, n_neighbors=5):
+        """
+        Initialize the Cosine KNN classifier.
+
+        Parameters:
+        n_neighbors (int): Number of neighbors to consider for classification.
+        """
+        self.n_neighbors = n_neighbors
+
+    def fit(self, X, y):
+        """
+        Fit the classifier with training data.
+
+        Parameters:
+        X (list or ndarray): Training data features.
+        y (list or ndarray): Training data labels.
+        """
+        self.data = np.array(X)
+        self.labels = np.array(y)
+
+    def predict(self, X):
+        """
+        Predict the class label for a new data point.
+
+        Parameters:
+        X (list or ndarray): New data point for prediction.
+
+        Returns:
+        int: Predicted class label.
+        """
+        X = np.array([X])
+        distances = []
+
+        # Calculate cosine distance between the input and all points in the dataset
+        for data_point in self.data:
+            sim = pairwise_distances(X, data_point.reshape(1, -1), metric='cosine')
+            heapq.heappush(distances, (float(sim), data_point))
+
+        nearest_labels = []
+        for _ in range(self.n_neighbors):
+            min_sim, vector = heapq.heappop(distances)
+            for idx, item in enumerate(self.data):
+                if np.array_equal(item, vector):
+                    nearest_labels.append(self.labels[idx])
+                    break
+
+        # Determine the most common label among the nearest neighbors
+        label_count = {}
+        for label in nearest_labels:
+            label_count[label] = label_count.get(label, 0) + 1
+
+        # Get the label with the maximum count
+        y_pred = max(label_count.items(), key=lambda item: item[1])[0]
+        return y_pred
+
+def main():
+    # Example usage of CosineKNN
+    knn = CosineKNN(n_neighbors=2)
+    
+    # Training data
+    X = [[0.5, 0.86], [0.86, 0.5], [-0.5, -0.86], [-0.86, -0.5]]
+    y = [1, 1, 0, 0]
+    
+    knn.fit(X, y)
+    
+    # Predicting class labels for new data points
+    print('Answer:', knn.predict([0.7, 0.7]))
+    print('Answer:', knn.predict([-0.7, -0.7]))
+
+if __name__ == '__main__':
+    main()

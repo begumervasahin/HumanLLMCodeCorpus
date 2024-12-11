@@ -1,0 +1,93 @@
+import os
+import numpy as np
+import binascii
+from Crypto.Cipher import AES
+
+def pad(text):
+    """
+    Pads the text to be a multiple of 16 bytes.
+    """
+    while len(text) % 16 != 0:
+        text += '\0'
+    return text
+
+def encrypt_file(key, file_path):
+    """
+    Encrypts the content of the file specified by file_path using the provided key.
+    """
+    aes = AES.new(key, AES.MODE_ECB)
+    with open(file_path, 'rb') as fr:
+        with open(file_path + '.en', 'wb') as fw:
+            block_size = 512
+            while True:
+                buffer = fr.read(block_size)
+                if not buffer:
+                    break
+                buffer = buffer.hex()
+                buffer = pad(buffer)
+                encrypted_buffer = aes.encrypt(buffer.encode('utf-8'))
+                fw.write(encrypted_buffer)
+
+def decrypt_file(key, file_path):
+    """
+    Decrypts the content of the encrypted file specified by file_path using the provided key.
+    """
+    aes = AES.new(key, AES.MODE_ECB)
+    with open(file_path, 'rb') as fr:
+        output_file_path = file_path.replace('.en', '.de')
+        with open(output_file_path, 'wb') as fw:
+            block_size = 512
+            while True:
+                buffer = fr.read(block_size)
+                if not buffer:
+                    break
+                decrypted_buffer = aes.decrypt(buffer).decode('utf-8').rstrip('\0')
+                decrypted_buffer = binascii.a2b_hex(decrypted_buffer)
+                fw.write(decrypted_buffer)
+
+def save_key(key, file_path):
+    """
+    Saves the provided key to a file.
+    """
+    key_hex = key.hex()
+    key_file_path = f'keybox.{file_path}.key'
+    with open(key_file_path, 'w') as f:
+        f.write(key_hex)
+
+def main():
+    mode = input('Encrypt or decrypt? (enter "e" or "d"): \n').strip().lower()
+    if mode == 'e':
+        file_path = input('Enter the file name: \n').strip()
+        key = np.random.bytes(16)
+        try:
+            encrypt_file(key, file_path)
+            save_key(key, file_path)
+            print('Successfully encrypted!')
+        except Exception as e:
+            print(f'An error has occurred: {e}')
+    elif mode == 'd':
+        file_path = input('Enter the file name: \n').strip()
+        key_files = [entry.name for entry in os.scandir(os.getcwd()) if entry.name.endswith('.key')]
+        if not key_files:
+            print('No key files found!')
+            return
+
+        key_file_path = key_files[0]
+        print(f'Using key file: {key_file_path}')
+        with open(key_file_path, 'r') as f:
+            key_hex = f.read()
+
+        if len(key_hex) == 32:
+            key = binascii.a2b_hex(key_hex)
+            try:
+                decrypt_file(key, file_path)
+                print('Successfully decrypted!')
+            except Exception as e:
+                print(f'An error has occurred: {e}')
+        else:
+            print('A 16 bytes key is necessary!')
+    else:
+        print('Incorrect input!')
+
+if __name__ == '__main__':
+    main()

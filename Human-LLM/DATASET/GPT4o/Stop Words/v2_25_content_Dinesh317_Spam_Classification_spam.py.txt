@@ -1,0 +1,67 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import string
+import nltk
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report, accuracy_score
+
+# Download the stopwords from NLTK
+nltk.download('stopwords')
+
+# Load the dataset
+data_path = '/Users/dineshmaharana/jup/proj_spam_ham/smsspamcollection/SMSSpamCollection'
+messages = pd.read_csv(data_path, sep='\t', names=["label", "message"])
+
+# Add a column for the length of each message
+messages['length'] = messages['message'].apply(len)
+
+# Plot the histogram of message lengths
+plt.figure(figsize=(10, 6))
+messages['length'].plot(bins=50, kind='hist')
+plt.title('Message Length Distribution')
+plt.xlabel('Message Length')
+plt.ylabel('Frequency')
+plt.show()
+
+# Plot histograms of message lengths by label
+messages.hist(column='length', by='label', bins=50, figsize=(12, 6))
+plt.show()
+
+# Function to process text
+def text_process(mess):
+    # Remove punctuation
+    non_punc = [char for char in mess if char not in string.punctuation]
+    non_punc = ''.join(non_punc)
+    # Remove stopwords
+    clean_mess = [word for word in non_punc.split() if word.lower() not in stopwords.words('english')]
+    return clean_mess
+
+# Create a pipeline
+pipeline = Pipeline([
+    ('bow', CountVectorizer(analyzer=text_process)),
+    ('tfidf', TfidfTransformer()),
+    ('classifier', MultinomialNB()),
+])
+
+# Split the data into training and test sets
+msg_train, msg_test, label_train, label_test = train_test_split(
+    messages['message'], messages['label'], test_size=0.2, random_state=42)
+
+# Train the pipeline
+pipeline.fit(msg_train, label_train)
+
+# Make predictions
+predictions = pipeline.predict(msg_test)
+
+# Print the classification report
+print("CLASSIFICATION REPORT")
+print(classification_report(label_test, predictions))
+
+# Print the accuracy
+print("ACCURACY")
+print(accuracy_score(label_test, predictions))

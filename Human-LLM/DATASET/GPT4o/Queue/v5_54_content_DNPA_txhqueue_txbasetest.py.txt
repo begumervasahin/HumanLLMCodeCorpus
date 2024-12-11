@@ -1,0 +1,107 @@
+"""
+Basic test run for AioHysteresisQueue with a producer that is slightly faster than the consumer
+"""
+
+import datetime
+from twisted.internet import reactor
+from twisted.internet.task import LoopingCall, deferLater
+from txhqueue import TxHysteresisQueue as HysteresisQueue
+
+# Global counters for various events
+consume_count = 0
+low_water_count = 0
+high_water_count = 0
+
+def low_watermark_callback(dropcount):
+    """
+    Callback function for low watermark event.
+
+    Parameters:
+    dropcount (int): The count of dropped items.
+    """
+    global low_water_count
+    low_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} Low water mark reached, re-activating HysteresisQueue. Drop count = {dropcount}")
+
+def high_watermark_callback(okcount):
+    """
+    Callback function for high watermark event.
+
+    Parameters:
+    okcount (int): The count of successfully processed items.
+    """
+    global high_water_count
+    high_water_count += 1
+    now = datetime.datetime.now().isoformat()
+    print(f"{now} High water mark reached, de-activating HysteresisQueue. OK count = {okcount}")
+
+def flow_statistics_callback(stats):
+    """
+    Callback function for printing flow statistics.
+
+    Parameters:
+    stats (obj): The flow statistics object.
+    """
+    print("Flow statistics:", stats)
+
+def produce_items(hqueue):
+    """
+    Function to produce items at a fast rate.
+
+    Parameters:
+    hqueue (HysteresisQueue): The HysteresisQueue instance.
+    """
+    hqueue.put("har")
+
+def consume_items(hqueue):
+    """
+    Function to consume items at a slow rate.
+
+    Parameters:
+    hqueue (HysteresisQueue): The HysteresisQueue instance.
+    """
+    def on_data_received(msg):
+        """
+        Callback function when data is received from the queue.
+
+        Parameters:
+        msg (str): The message received from the queue.
+        """
+        global consume_count
+        global low_water_count
+        global high_water_count
+        
+        consume_count += 1
+        if consume_count == 1000:
+            print("Done consuming 1000 entries from queue")
+            if high_water_count != 3:
+                print(f"WARNING: expected 3 high water events, received {high_water_count}")
+            if low_water_count != 3:
+                print(f"WARNING: expected 3 low water events, received {low_water_count}")
+            reactor.stop()
+        
+        deferLater(reactor, 0.047, consume_items, hqueue)
+    
+    hqueue.get(on_data_received)
+
+if __name__ == '__main__':
+    # Create the HysteresisQueue with specified low and high watermarks
+    hqueue = HysteresisQueue(
+        low=5,
+        high=25,
+        highwater=high_watermark_callback,
+        lowwater=low_watermark_callback,
+        flowstat_cb=flow_statistics_callback,
+        flowstat_interval=10
+    )
+
+    # Start the producer
+    producer_loop = LoopingCall(produce_items, hqueue)
+    producer_loop.start(0.044)
+
+    # Start the consumer
+    consume_items(hqueue)
+
+    print("Starting base test for TxHysteresisQueue, this should take about a minute.")
+    reactor.run()

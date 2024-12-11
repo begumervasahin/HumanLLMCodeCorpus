@@ -1,0 +1,43 @@
+import sys
+import LRwithStopWords
+import LRwithoutStopWords
+
+def print_usage_instructions():
+    """Prints usage instructions for the script."""
+    print("Please provide the following command line arguments:")
+    print("[training ham path] [training spam path] [test ham path] [test spam path] [stopwords]\n")
+
+def parse_arguments():
+    """Parses and returns the command line arguments."""
+    if len(sys.argv) < 6:
+        print_usage_instructions()
+        sys.exit(1)
+
+    training_ham_path = sys.argv[1]
+    training_spam_path = sys.argv[2]
+    test_ham_path = sys.argv[3]
+    test_spam_path = sys.argv[4]
+    use_stopwords = sys.argv[5].strip().lower() in ['y', 'yes']
+
+    return training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords
+
+def choose_model(use_stopwords, training_ham_path, training_spam_path, test_ham_path, test_spam_path):
+    """Chooses and returns the appropriate logistic regression model based on stopwords usage."""
+    if use_stopwords:
+        print("------------------------------------------------")
+        print("Logistic Regression with stop words removal")
+        return LRwithStopWords.LogisticRegression(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    else:
+        print("------------------------------------------------")
+        print("Logistic Regression without stop words removal")
+        return LRwithoutStopWords.LogisticRegression(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+
+def main():
+    training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords = parse_arguments()
+    model = choose_model(use_stopwords, training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    model.run()
+    model.train()
+    model.test()
+
+if __name__ == "__main__":
+    main()

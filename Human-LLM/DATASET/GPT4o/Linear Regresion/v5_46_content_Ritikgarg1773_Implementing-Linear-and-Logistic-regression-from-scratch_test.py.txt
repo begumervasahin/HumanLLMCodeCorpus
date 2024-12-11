@@ -1,0 +1,97 @@
+from scratch import MyLinearRegression, MyLogisticRegression, MyPreProcessor
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def plot_loss(training_loss, validation_loss, training_label, validation_label, ylabel):
+    plt.plot(training_loss, color='red', linewidth=2, label=training_label)
+    plt.plot(validation_loss, color='orange', linewidth=2, label=validation_label)
+    plt.xlabel("Number of Iterations")
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.show()
+    plt.clf()
+
+def run_linear_regression(X, y, k=5):
+    print('Linear Regression')
+    num_rows = int(X.shape[0] * 0.7)
+    X_train, X_test = X[:num_rows], X[num_rows:]
+    y_train, y_test = y[:num_rows], y[num_rows:]
+
+    linear = MyLinearRegression()
+
+    # Split data into k folds for cross-validation
+    X_folds = np.array_split(X_train, k)
+    y_folds = np.array_split(y_train, k)
+
+    for i in range(k):
+        # Create training and validation sets
+        X_train_folds = np.concatenate(X_folds[:i] + X_folds[i+1:])
+        y_train_folds = np.concatenate(y_folds[:i] + y_folds[i+1:])
+        X_val_fold = X_folds[i]
+        y_val_fold = y_folds[i]
+
+        # Fit the model
+        rmse_errors, mae_errors, rmse_coef, rmse_intercept, mae_coef, mae_intercept = linear.fit(X_train_folds, y_train_folds)
+
+        # Predict and calculate validation loss
+        y_pred = linear.predict(X_val_fold)
+        rmse_val_loss, mae_val_loss = linear.validationLoss(X_val_fold, y_val_fold, rmse_coef, rmse_intercept, mae_coef, mae_intercept)
+
+        # Plot RMSE Training and Validation Loss
+        plot_loss(rmse_errors, rmse_val_loss, 'RMSE Training Loss', 'RMSE Validation Loss', 'Loss')
+
+        # Plot MAE Training and Validation Loss
+        plot_loss(mae_errors, mae_val_loss, 'MAE Training Loss', 'MAE Validation Loss', 'Loss')
+
+        print(f'RMSE Error on Test Data: {rmse_val_loss[-1]}')
+        print(f'MAE Error on Test Data: {mae_val_loss[-1]}')
+
+def run_logistic_regression(X, y):
+    print('Logistic Regression')
+    num_rows = int(X.shape[0] * 0.1)
+
+    # Split data for training, evaluation, and testing
+    X_train, y_train = X[:num_rows * 7], y[:num_rows * 7]
+    X_eval, y_eval = X[num_rows * 7:num_rows * 8], y[num_rows * 7:num_rows * 8]
+    X_test, y_test = X[num_rows * 8:], y[num_rows * 8:]
+
+    logistic = MyLogisticRegression()
+
+    # Fit the model
+    batch_errors, stochastic_errors, batch_coef, batch_intercept, stochastic_coef, stochastic_intercept = logistic.fit(X_train, y_train)
+
+    # Calculate validation loss
+    batch_test_loss, stochastic_test_loss = logistic.validationLoss(X_test, y_test, batch_coef, batch_intercept, stochastic_coef, stochastic_intercept)
+
+    # Accuracy on training and test data using Batch Gradient Descent
+    batch_train_acc = logistic.accuracy(X_train, y_train, batch_coef[-1], batch_intercept[-1])
+    batch_test_acc = logistic.accuracy(X_test, y_test, batch_coef[-1], batch_intercept[-1])
+    print(f"Accuracy on Train data using Batch Gradient Descent: {batch_train_acc}")
+    print(f"Accuracy on Test data using Batch Gradient Descent: {batch_test_acc}")
+
+    # Plot Batch Gradient Descent errors
+    plot_loss(batch_errors, batch_test_loss, 'Test errors', 'Validation loss', 'Loss')
+
+    # Accuracy on training and test data using Stochastic Gradient Descent
+    stochastic_train_acc = logistic.accuracy(X_train, y_train, stochastic_coef[-1], stochastic_intercept[-1])
+    stochastic_test_acc = logistic.accuracy(X_test, y_test, stochastic_coef[-1], stochastic_intercept[-1])
+    print(f"Accuracy on Train data using Stochastic Gradient Descent: {stochastic_train_acc}")
+    print(f"Accuracy on Test data using Stochastic Gradient Descent: {stochastic_test_acc}")
+
+    # Plot Stochastic Gradient Descent errors
+    plot_loss(stochastic_errors, stochastic_test_loss, 'Test errors', 'Validation loss', 'Loss')
+
+def main():
+    preprocessor = MyPreProcessor()
+
+    # Linear Regression
+    X, y = preprocessor.pre_process(0)
+    run_linear_regression(X, y)
+
+    # Logistic Regression
+    X, y = preprocessor.pre_process(2)
+    run_logistic_regression(X, y)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,110 @@
+import numpy as np
+
+def sigmoid(w):
+    """
+    Sigmoid function.
+    """
+    return 1 / (1 + np.exp(-w))
+
+def sigmoid_derivative(w):
+    """
+    Derivative of the sigmoid function.
+    """
+    exp_neg_w = np.exp(-w)
+    
+    if exp_neg_w < 1e16:
+        if exp_neg_w > 1e-16:
+            # General case
+            return exp_neg_w / ((1 + exp_neg_w) ** 2)
+        else:
+            # Small exponentials to avoid underflow
+            return exp_neg_w
+    else:
+        # Large exponentials to avoid overflow
+        return np.exp(w)
+
+def sigmoid_second_derivative(w):
+    """
+    Second derivative of the sigmoid function.
+    """
+    exp_neg_w = np.exp(-w)
+    
+    if exp_neg_w < 1e16:
+        if exp_neg_w > 1e-16:
+            # General case
+            return -np.exp(w) * (np.exp(w) - 1) / ((1 + np.exp(w)) ** 3)
+        else:
+            # Small exponentials to avoid underflow
+            return -exp_neg_w
+    else:
+        # Large exponentials to avoid overflow
+        return np.exp(w)
+
+def compute_loss(x, S, A, y, arg=1, penalization=False):
+    """
+    Compute the empirical loss function, its gradient, and Hessian.
+
+    Parameters:
+    x: ndarray, point at which the loss is computed
+    S: list of int, subset of indices
+    A: ndarray, matrix of datapoints
+    y: ndarray, vector of labels
+    arg: int, number of outputs (1 for loss, 2 for loss and gradient, 3 for loss, gradient, and Hessian)
+    penalization: bool, if True, apply L2 regularization to the loss
+
+    Returns:
+    Depending on the value of `arg`, returns:
+    - The loss value (arg == 1)
+    - The loss value and its gradient (arg == 2)
+    - The loss value, its gradient, and its Hessian (arg == 3)
+    """
+    num_features = A.shape[1]  # Number of features
+    subset_size = len(S)  # Size of subset S
+
+    # Initialize the loss, gradient, and Hessian
+    loss_value = 0
+    gradient = np.zeros(num_features) if arg >= 2 else None
+    hessian = np.zeros((num_features, num_features)) if arg == 3 else None
+
+    for i in range(subset_size):
+        y_i = y[S[i]]
+        A_i = A[S[i]]
+        dot_product = np.dot(x, A_i)
+        
+        # Compute the loss contribution
+        sigmoid_value = sigmoid(dot_product)
+        loss_value += (y_i - sigmoid_value) ** 2
+        
+        if arg >= 2:
+            # Compute the gradient contribution
+            sigmoid_derivative_value = sigmoid_derivative(dot_product)
+            gradient += 2 * A_i * sigmoid_derivative_value * (sigmoid_value - y_i)
+        
+        if arg == 3:
+            # Compute the Hessian contribution
+            sigmoid_second_derivative_value = sigmoid_second_derivative(dot_product)
+            hessian += 2 * ((sigmoid_value - y_i) * sigmoid_second_derivative_value + \
+                            sigmoid_derivative_value ** 2) * np.outer(A_i, A_i)
+    
+    # Apply L2 regularization if penalization is True
+    if penalization:
+        loss_value += 0.5 * np.linalg.norm(x) ** 2
+    
+    # Normalize the loss, gradient, and Hessian by the size of subset S
+    loss_value /= subset_size
+    if arg >= 2:
+        if penalization:
+            gradient += x
+        gradient /= subset_size
+    if arg == 3:
+        hessian = (hessian + hessian.T) / (2 * subset_size)  # Ensure Hessian symmetry
+        if penalization:
+            hessian += np.eye(num_features) / subset_size
+    
+    # Return the appropriate outputs based on the requested argument
+    if arg == 3:
+        return loss_value, gradient, hessian
+    elif arg == 2:
+        return loss_value, gradient
+    else:
+        return loss_value

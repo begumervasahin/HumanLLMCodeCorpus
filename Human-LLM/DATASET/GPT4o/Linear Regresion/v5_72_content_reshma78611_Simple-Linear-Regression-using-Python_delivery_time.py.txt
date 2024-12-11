@@ -1,0 +1,72 @@
+"""
+Created on Wed Sep 30 19:37:30 2020
+@author: HP
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.formula.api as smf
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+
+# Load data
+data_path = 'C:/Users/HP/Desktop/assignments submission/simple linear regression/delivery_time.csv'
+delv_time = pd.read_csv(data_path)
+
+# Helper function to plot scatter and regression line
+def plot_regression(x, y, y_pred, title, x_label='Sorting Time', y_label='Delivery Time'):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(x, y, color='r', label='Actual')
+    plt.plot(x, y_pred, color='b', label='Predicted')
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+# Scatter plot of delivery time vs sorting time
+plot_regression(delv_time.Sorting_time, delv_time.Delivery_time, [0]*len(delv_time), 
+                'Scatter plot of Delivery Time vs Sorting Time')
+
+# Calculate and display correlation coefficient
+correlation = np.corrcoef(delv_time.Sorting_time, delv_time.Delivery_time)[0, 1]
+print(f"Correlation coefficient: {correlation}")
+
+# Function to fit and summarize models
+def fit_and_summarize_model(formula, data, title):
+    model = smf.ols(formula, data=data).fit()
+    print(model.summary())
+    
+    predictions = model.predict(data)
+    error = data.Delivery_time - predictions
+    conf_int = model.conf_int(0.05)
+    rmse = sqrt(mean_squared_error(data.Delivery_time, predictions))
+    corr = np.corrcoef(data.Delivery_time, predictions)[0, 1]
+    
+    plot_regression(data.Sorting_time, data.Delivery_time, predictions, title)
+    
+    print(f"Model RMSE: {rmse}, Correlation: {corr}")
+    return model, predictions, error, conf_int, rmse, corr
+
+# Linear Regression Model
+lin_model, lin_predict, lin_error, lin_conf_int, lin_rmse, lin_corr = fit_and_summarize_model(
+    'Delivery_time ~ Sorting_time', delv_time, 'Linear Regression: Delivery Time vs Sorting Time'
+)
+
+# Log-Linear Regression Model
+log_model, log_predict, log_error, log_conf_int, log_rmse, log_corr = fit_and_summarize_model(
+    'Delivery_time ~ np.log(Sorting_time)', delv_time, 'Log-Linear Regression: Delivery Time vs Sorting Time'
+)
+
+# Exponential Regression Model
+exp_model, exp_predict_log, exp_error, exp_conf_int, exp_rmse, exp_corr = fit_and_summarize_model(
+    'np.log(Delivery_time) ~ Sorting_time', delv_time, 'Exponential Regression: Delivery Time vs Sorting Time'
+)
+exp_predict = np.exp(exp_predict_log)
+
+# Quadratic Regression Model
+delv_time['sq_sort_time'] = delv_time.Sorting_time ** 2
+quad_model, quad_predict, quad_error, quad_conf_int, quad_rmse, quad_corr = fit_and_summarize_model(
+    'Delivery_time ~ Sorting_time + sq_sort_time', delv_time, 'Quadratic Regression: Delivery Time vs Sorting Time'
+)

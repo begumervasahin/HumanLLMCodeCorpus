@@ -1,0 +1,73 @@
+from collections import defaultdict
+from words import get_text, words  # Assuming these functions are implemented correctly    
+
+def build_index(files):
+    """
+    Build an index mapping words to sets of document IDs.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+
+    Returns:
+        defaultdict: Mapping from word to set of document IDs.
+    """
+    # Return None if the input files list is empty
+    if not files:
+        return None
+
+    # Initialize a defaultdict to store sets of document IDs
+    index = defaultdict(set)
+    
+    # Iterate over the files and their corresponding document IDs
+    for doc_id, file_path in enumerate(files):
+        # Extract words from the file
+        words_in_file = words(get_text(file_path))
+        # Add the document ID to the set for each word in the file
+        for word in words_in_file:
+            index[word].add(doc_id)
+    
+    return index
+
+def search_documents(files, index, terms):
+    """
+    Search for documents containing all terms.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+        index (defaultdict): Mapping from word to set of document IDs.
+        terms (list): List of strings to search for.
+
+    Returns:
+        list: Matching filenames.
+    """
+    # Return None if any of the input parameters are empty
+    if not (files and index and terms):
+        return None
+
+    # Retrieve sets of document IDs for each term
+    term_sets = [index.get(term) for term in terms]
+    
+    # Return None if any term is not found in the index
+    if any(term_set is None for term_set in term_sets):
+        return None
+
+    # Find the intersection of all term sets to get matching document IDs
+    intersection_ids = set.intersection(*term_sets)
+    
+    # Map document IDs back to filenames
+    return [files[doc_id] for doc_id in intersection_ids]
+
+if __name__ == "__main__":
+    # Example usage
+    files = ["file1.txt", "file2.txt", "file3.txt"]
+
+    # Build the index from the files
+    index = build_index(files)
+
+    # Define search terms
+    search_terms = ["term1", "term2"]
+    
+    # Search for documents containing the search terms
+    result = search_documents(files, index, search_terms)
+    
+    print("Matching files:", result)

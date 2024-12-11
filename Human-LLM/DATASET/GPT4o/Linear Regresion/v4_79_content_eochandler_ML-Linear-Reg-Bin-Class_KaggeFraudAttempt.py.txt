@@ -1,0 +1,117 @@
+"""
+Created on Fri Mar 27 23:07:27 2020
+@author: elijahchandler
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+# Load data
+df_train = pd.read_csv('/Users/elijahchandler/Desktop/ieee-fraud-detection/train_transaction.csv')
+df_test = pd.read_csv('/Users/elijahchandler/Desktop/ieee-fraud-detection/test_transaction.csv')
+
+# Define the target variable
+Y_train = df_train['isFraud']
+
+def prepare_fraud_data(df):
+    """
+    Prepare fraud data by selecting specific columns, handling categorical variables,
+    filling missing values, and standardizing the data.
+    """
+    # Select relevant columns
+    cols = ['TransactionAmt', 'card4', 'card6']
+    X = df[cols]
+
+    # One-hot encode categorical variables
+    X = pd.get_dummies(X, columns=['card4', 'card6'], drop_first=True)
+
+    # Fill missing values
+    X['TransactionAmt'] = X['TransactionAmt'].fillna(X['TransactionAmt'].mean())
+
+    # Standardize the data
+    X = (X - X.mean()) / X.std()
+
+    return X
+
+# Prepare training and test data
+X_train = prepare_fraud_data(df_train)
+X_test = prepare_fraud_data(df_test)
+
+# Reduce training data for balance
+df_fraud = df_train[df_train['isFraud'] == 1]
+df_not_fraud = df_train[df_train['isFraud'] == 0].sample(n=20000, random_state=1)
+
+df_reduced = pd.concat([df_fraud, df_not_fraud], ignore_index=True)
+Y_train_reduced = df_reduced['isFraud']
+
+X_train_reduced = prepare_fraud_data(df_reduced)
+
+def sigmoid(u):
+    """Compute the sigmoid function."""
+    return 1 / (1 + np.exp(-u))
+
+def loss_function(beta, X, Y):
+    """Compute the loss function."""
+    N = X.shape[0]
+    loss = 0
+    for i in range(N):
+        dot_product = np.dot(X[i], beta)
+        loss += -Y[i] * dot_product + np.log(1 + np.exp(dot_product))
+    return loss
+
+def logistic_regression(X, Y, alpha=0.0001, max_iterations=30):
+    """
+    Perform logistic regression using gradient descent.
+    
+    Parameters:
+        X: Feature matrix
+        Y: Target vector
+        alpha: Learning rate
+        max_iterations: Number of iterations
+    
+    Returns:
+        beta: Coefficients
+        list_norm_grad: List of gradient norms
+        list_loss_betas: List of loss function values
+    """
+    N, d = X.shape
+    X = np.hstack((np.ones((N, 1)), X))  # Add bias term
+    beta = np.random.randn(d + 1)
+    list_norm_grad = []
+    list_loss_betas = []
+
+    for iteration in range(max_iterations):
+        gradient = np.zeros(d + 1)
+        for i in range(N):
+            dot_product = np.dot(X[i], beta)
+            gradient += (sigmoid(dot_product) - Y[i]) * X[i]
+        
+        norm_gradient = np.linalg.norm(gradient)
+        list_norm_grad.append(norm_gradient)
+        
+        beta -= alpha * gradient
+        
+        loss_beta = loss_function(beta, X, Y)
+        list_loss_betas.append(loss_beta)
+        
+        print(f"Iteration {iteration}: Loss = {loss_beta}")
+
+    return beta, list_norm_grad, list_loss_betas
+
+# Train logistic regression model
+beta, list_norm_grad, list_loss_betas = logistic_regression(X_train_reduced.values[:5000], Y_train_reduced.values[:5000])
+
+# Prepare test data for prediction
+N, d = X_test.shape
+X_test = np.hstack((np.ones((N, 1)), X_test))
+
+# Predict on test data
+dot_products = np.dot(X_test, beta)
+predictions = sigmoid(dot_products)
+
+# Create submission file
+kaggle_submission = df_test[['TransactionID']]
+kaggle_submission['isFraud'] = predictions
+kaggle_submission.to_csv('/Users/elijahchandler/Desktop/mySubmission.csv', index=False)

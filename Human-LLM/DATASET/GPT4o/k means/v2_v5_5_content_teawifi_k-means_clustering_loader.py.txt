@@ -1,0 +1,60 @@
+import os
+import pandas as pd
+import re
+
+# Define encoding if not imported from settings
+ENCODING = 'utf-8'
+
+def load_data_from_directory(directory_path):
+    """
+    Load and process data from all text files in the specified directory.
+
+    :param directory_path: Path to the directory containing text files.
+    :return: A list of processed data extracted from the files.
+    """
+    data = []
+
+    # List all .txt files in the directory
+    txt_files = [file for file in os.listdir(directory_path)
+                 if os.path.isfile(os.path.join(directory_path, file)) and file.endswith(".txt")]
+
+    # Read and accumulate content from each text file
+    for txt_file in txt_files:
+        file_path = os.path.join(directory_path, txt_file)
+        with open(file_path, "r", encoding=ENCODING) as file:
+            file_content = file.read().split('\n')
+            data.extend(file_content)
+
+    # Process the accumulated data
+    processed_data = [process_data(item) for item in data]
+    
+    return processed_data
+
+def process_data(data):
+    """
+    Extract the first three numbers from a string.
+
+    :param data: Input string containing numbers.
+    :return: A list containing the first three numbers found in the string.
+    """
+    pattern = r"[0-9]+"
+    number_strings = re.findall(pattern, data)
+    numbers = [float(num_str) for num_str in number_strings]
+    return numbers[:3]
+
+def save_data_to_csv(data, csv_file_path):
+    """
+    Save the processed data to a CSV file.
+
+    :param data: List of processed data to be saved.
+    :param csv_file_path: Path to the output CSV file.
+    """
+    # Create a DataFrame with columns named 'x', 'y', and 'z'
+    df = pd.DataFrame(data, columns=['x', 'y', 'z'])
+    df.to_csv(csv_file_path, index=False, encoding=ENCODING)
+
+# Example usage
+# directory_path = "path_to_directory"
+# output_csv_path = "output_file.csv"
+# data = load_data_from_directory(directory_path)
+# save_data_to_csv(data, output_csv_path)

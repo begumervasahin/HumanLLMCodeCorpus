@@ -1,0 +1,101 @@
+import networkx as nx
+import community as community_louvain
+import matplotlib.pyplot as plt
+import sys
+import copy
+
+def remove_edges_with_highest_betweenness(G):
+    """
+    Remove the edges with the highest betweenness centrality from the graph.
+
+    Args:
+        G (networkx.Graph): The input graph.
+
+    Returns:
+        tuple: A list of connected subgraphs, the modularity of the partition, and the updated graph.
+    """
+    # Calculate edge betweenness centrality
+    betweenness = nx.edge_betweenness_centrality(G)
+    max_betweenness = max(betweenness.values())
+
+    # Identify and remove edges with the highest betweenness
+    edges_to_remove = [edge for edge, value in betweenness.items() if value == max_betweenness]
+    G.remove_edges_from(edges_to_remove)
+
+    # Create partitions and calculate modularity
+    subgraphs = list(nx.connected_components(G))
+    partition = {node: idx for idx, component in enumerate(subgraphs) for node in component}
+
+    # If there are no edges left, return the results
+    if G.number_of_edges() == 0:
+        return subgraphs, 0, G
+
+    modularity = community_louvain.modularity(partition, G)
+    return subgraphs, modularity, G
+
+def detect_communities(input_file, output_file):
+    """
+    Detect communities in a graph and visualize them.
+
+    Args:
+        input_file (str): Path to the input file containing the graph.
+        output_file (str): Path to the output file to save the community visualization.
+    """
+    # Load the graph and create a deep copy
+    G = nx.read_edgelist(input_file)
+    original_graph = copy.deepcopy(G)
+
+    # Initialize community detection with an initial partition
+    partition = {node: 0 for node in G}
+    initial_modularity = community_louvain.modularity(partition, G)
+    community_history = [(partition, initial_modularity, G)]
+
+    # Iteratively remove edges and calculate modularity
+    while G.number_of_edges() > 0:
+        subgraphs, modularity, G = remove_edges_with_highest_betweenness(G)
+        community_history.append((subgraphs, modularity, G))
+
+    # Select the partition with the highest modularity
+    best_partition = max(community_history, key=lambda x: x[1])[0]
+
+    # Print the detected communities
+    for community in best_partition:
+        print(sorted(community))
+
+    # Visualize the best partition
+    visualize_communities(original_graph, best_partition, output_file)
+
+def visualize_communities(G, communities, output_file):
+    """
+    Visualize the detected communities in the graph.
+
+    Args:
+        G (networkx.Graph): The original graph.
+        communities (list): List of communities.
+        output_file (str): Path to the output file to save the visualization.
+    """
+    pos = nx.spring_layout(G)
+    colors = ["violet", "black", "orange", "cyan", "red", "blue", "green", "yellow", "indigo", "pink"]
+
+    # Draw nodes and edges for each community
+    for i, community in enumerate(communities):
+        nx.draw_networkx_nodes(
+            G, pos, nodelist=list(community),
+            node_color=colors[i % len(colors)], node_size=500, alpha=0.8
+        )
+
+    nx.draw_networkx_edges(G, pos)
+    nx.draw_networkx_labels(G, pos, font_size=10)
+
+    plt.axis('off')
+    plt.savefig(output_file)
+    plt.show()
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python detect_communities.py <inputfile> <outputfile>")
+        sys.exit(-1)
+
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    detect_communities(input_file, output_file)

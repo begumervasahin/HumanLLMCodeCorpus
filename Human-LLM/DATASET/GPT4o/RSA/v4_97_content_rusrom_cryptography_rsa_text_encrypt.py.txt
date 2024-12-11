@@ -1,0 +1,47 @@
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+# Define the text to encrypt
+TEXT_TO_ENCRYPT = (
+    'This is a “Hazardous Materials” module. This module is full of land mines, '
+    'dragons, and dinosaurs with laser guns.'
+)
+
+# Load the public key from a PEM file
+with open("public_key.pem", "rb") as key_file:
+    public_key = serialization.load_pem_public_key(
+        key_file.read(),
+        backend=default_backend()
+    )
+
+# Serialize the public key to PEM format
+public_pem = public_key.public_bytes(
+    encoding=serialization.Encoding.PEM,
+    format=serialization.PublicFormat.SubjectPublicKeyInfo
+)
+
+# Print the public key in PEM format
+for line in public_pem.decode().splitlines():
+    print(line)
+
+# Encrypt the text using the public key with OAEP padding and SHA-256
+ciphertext = public_key.encrypt(
+    TEXT_TO_ENCRYPT.encode(),
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+    )
+)
+
+# Convert the ciphertext to a hexadecimal string for easier storage and transmission
+ciphertext_string = ciphertext.hex()
+
+# Print the encoded text
+print('Encoded text:')
+print(ciphertext_string)
+
+# Save the encoded text to a file
+with open('encoded_text.txt', 'w') as f:
+    f.write(ciphertext_string)

@@ -1,0 +1,84 @@
+import csv
+from parsel import Selector
+from time import sleep
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+
+# Replace these with your LinkedIn login credentials
+linkedin_email = 'enter-your-email-here'
+linkedin_password = 'enter-your-password-here'
+
+# Initialize the CSV file
+with open('output.csv', 'w+', encoding='utf-8-sig', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Name', 'Position', 'Company', 'Education', 'Location', 'URL'])
+
+    # Initialize the WebDriver
+    driver = webdriver.Chrome('C://Users//Hritik//Downloads//chromedriver')
+    driver.get('https://www.linkedin.com/')
+
+    # Log in to LinkedIn
+    username = driver.find_element_by_name("session_key")
+    username.send_keys(linkedin_email)
+    sleep(0.5)
+    password = driver.find_element_by_name('session_password')
+    password.send_keys(linkedin_password)
+    sleep(0.5)
+    sign_in_button = driver.find_element_by_class_name('sign-in-form__submit-btn')
+    sign_in_button.click()
+    sleep(2)
+
+    # Perform Google search
+    driver.get('https://www.google.com/')
+    search_query = driver.find_element_by_name('q')
+    search_query.send_keys('site:linkedin.com/in AND "python developer" AND "london"')
+    search_query.send_keys(Keys.RETURN)
+    sleep(0.5)
+
+    # Get LinkedIn profile URLs
+    urls = driver.find_elements_by_xpath('//*[@class = "r"]/a[@href]')
+    urls = [url.get_attribute('href') for url in urls]
+    sleep(0.5)
+
+    for url in urls:
+        driver.get(url)
+        sleep(2)
+        sel = Selector(text=driver.page_source)
+
+        # Extract profile details
+        name = sel.xpath('//*[@class = "inline t-24 t-black t-normal break-words"]/text()').extract_first()
+        if name:
+            name = ' '.join(name.split())
+
+        position = sel.xpath('//*[@class = "mt1 t-18 t-black t-normal"]/text()').extract_first()
+        if position:
+            position = ' '.join(position.split())
+
+        experience = sel.xpath('//*[@class = "pv-top-card-v3--experience-list"]')
+        company = experience.xpath('./li[@data-control-name = "position_see_more"]//span/text()').extract_first()
+        if company:
+            company = ' '.join(company.split())
+
+        education = experience.xpath('.//li[@data-control-name = "education_see_more"]//span/text()').extract_first()
+        if education:
+            education = ' '.join(education.split())
+
+        location = sel.xpath('//*[@class = "t-16 t-black t-normal inline-block"]/text()').extract_first()
+        if location:
+            location = ' '.join(location.split())
+
+        current_url = driver.current_url
+
+        # Print and write the extracted details to CSV
+        print('\n')
+        print('Name: ', name)
+        print('Position: ', position)
+        print('Company: ', company)
+        print('Education: ', education)
+        print('Location: ', location)
+        print('URL: ', current_url)
+        print('\n')
+
+        writer.writerow([name, position, company, education, location, current_url])
+
+    driver.quit()

@@ -1,0 +1,78 @@
+
+import random
+
+def gcd(a, b):
+    """Compute the greatest common divisor using Euclidean algorithm."""
+    while b:
+        a, b = b, a % b
+    return a
+
+def is_prime(n):
+    """Check if a number is prime."""
+    if n <= 1:
+        return False
+    for i in range(2, int(n ** 0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+def get_primes():
+    """Generate a list of prime numbers up to 50."""
+    return [i for i in range(2, 50) if is_prime(i)]
+
+def get_random_prime(primes):
+    """Select a random prime number from a list of primes."""
+    return random.choice(primes)
+
+def generate_keys():
+    """Generate RSA keys (n, e, d) and Euler's totient (phi)."""
+    primes = get_primes()
+    p = get_random_prime(primes)
+    q = get_random_prime(primes)
+    while p == q:
+        q = get_random_prime(primes)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    e = select_e(phi)
+    d = calculate_d(e, phi)
+    return n, e, d, phi
+
+def select_e(phi):
+    """Select a random integer e such that 1 < e < phi and gcd(e, phi) = 1."""
+    e = random.randint(2, phi - 1)
+    while gcd(e, phi) != 1:
+        e = random.randint(2, phi - 1)
+    return e
+
+def calculate_d(e, phi):
+    """Calculate the modular multiplicative inverse of e modulo phi."""
+    for d in range(1, phi):
+        if (e * d) % phi == 1:
+            return d
+    return None
+
+def convert_to_ascii(message):
+    """Convert a string message to a list of ASCII values."""
+    return [ord(char) for char in message]
+
+def encrypt_message(ascii_codes, n, e):
+    """Encrypt a list of ASCII values using RSA encryption."""
+    return [(code ** e) % n for code in ascii_codes]
+
+def decrypt_message(encrypted_codes, n, d):
+    """Decrypt a list of encrypted ASCII values using RSA decryption."""
+    return ''.join(chr((code ** d) % n) for code in encrypted_codes)
+
+def main():
+    n, e, d, _ = generate_keys()
+    
+    message = input("Enter Your Message: ")
+    ascii_codes = convert_to_ascii(message)
+    encrypted_codes = encrypt_message(ascii_codes, n, e)
+    decrypted_message = decrypt_message(encrypted_codes, n, d)
+
+    print("Encrypted message: ", encrypted_codes)
+    print("Decrypted message: ", decrypted_message)
+
+if __name__ == "__main__":
+    main()

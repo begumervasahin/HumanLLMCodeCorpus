@@ -1,0 +1,95 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def load_data(path):
+    """
+    Load data from a CSV file.
+    
+    Parameters:
+    path (str): Path to the CSV file.
+    
+    Returns:
+    pd.DataFrame: Loaded data as a pandas DataFrame.
+    """
+    return pd.read_csv(path)
+
+def kernel(point, X, tau):
+    """
+    Compute the weights for the local regression.
+    
+    The weights are computed based on the distance between the query point and each training example.
+    
+    Parameters:
+    point (np.array): Query point x.
+    X (np.array): Training data.
+    tau (float): Bandwidth parameter controlling the rate of decay of the weights.
+    
+    Returns:
+    np.matrix: Diagonal matrix with weights for each training example.
+    """
+    num_samples, _ = np.shape(X)
+    weights = np.mat(np.eye(num_samples))
+    for i in range(num_samples):
+        diff = X[i] - point
+        weights[i, i] = np.exp(diff @ diff.T / (-2.0 * tau**2))
+    return weights
+
+def local_weight(point, X, y, tau):
+    """
+    Compute the local regression parameters.
+    
+    The parameters are computed by solving the weighted least squares problem.
+    
+    Parameters:
+    point (np.array): Query point x.
+    X (np.array): Training data.
+    y (np.array): Target values.
+    tau (float): Bandwidth parameter controlling the rate of decay of the weights.
+    
+    Returns:
+    np.matrix: Regression parameters that minimize the weighted least squares error.
+    """
+    weights = kernel(point, X, tau)
+    theta = (X.T @ (weights @ X)).I @ (X.T @ (weights @ y.T))
+    return theta
+
+def local_weight_regression(X, y, tau, show_process=False):
+    """
+    Perform local weighted regression.
+    
+    Parameters:
+    X (np.array): Training data.
+    y (np.array): Target values.
+    tau (float): Bandwidth parameter controlling the rate of decay of the weights.
+    show_process (bool): If True, print intermediate regression parameters.
+    
+    Returns:
+    np.array: Predicted values for each training example.
+    """
+    num_samples, _ = np.shape(X)
+    y_pred = np.zeros(num_samples)
+    for i in range(num_samples):
+        y_pred[i] = X[i] @ local_weight(X[i], X, y, tau)
+        if show_process:
+            theta = local_weight(X[i], X, y, tau)
+            print(f"h(θ) = {theta[0]} + {theta[1]}")
+    return y_pred
+
+def visualize_data(data, plot_title, x_title, y_title):
+    """
+    Visualize the given data using a scatter plot.
+    
+    Parameters:
+    data (pd.DataFrame): Data to be visualized.
+    plot_title (str): Title of the plot.
+    x_title (str): Label for the x-axis.
+    y_title (str): Label for the y-axis.
+    
+    Returns:
+    None
+    """
+    ax = sns.scatterplot(x=x_title, y=y_title, data=data)
+    ax.set_title(plot_title)
+    plt.show()

@@ -1,0 +1,64 @@
+import re
+import string
+import pandas as pd
+from math import log
+
+# Load the data from CSV file
+data = pd.read_csv('tf_idf.csv')
+
+# Extract reviewer IDs and document titles
+reviewer_ids = data['id'].tolist()
+reviewer_ids.insert(0, "reviewerID")
+documents = data['title'].tolist()
+
+# Print the type and length of documents
+print(f"Type of documents: {type(documents)}")
+print(f"Number of documents: {len(documents)}")
+
+# Compile a regex pattern to remove punctuation
+punctuation_pattern = re.compile(f'[{re.escape(string.punctuation)}]')
+
+# Tokenize and clean documents
+def tokenize_and_clean(doc):
+    doc = str(doc).lower()
+    doc = punctuation_pattern.sub('', doc)
+    return doc.split()
+
+# Apply tokenization and cleaning to all documents
+term_vectors = [tokenize_and_clean(doc) for doc in documents]
+
+# Flatten a list of lists into a single list of words
+def flatten(list_of_lists):
+    return [word for sublist in list_of_lists for word in sublist]
+
+word_list = flatten(term_vectors)
+
+# Print the length of the flattened word list
+print(f"Number of words: {len(word_list)}")
+
+# Convert the list of words to a frequency dictionary
+def calculate_word_frequencies(words):
+    return {word: words.count(word) for word in set(words)}
+
+# Calculate word frequencies and sort them
+word_frequencies = calculate_word_frequencies(word_list)
+sorted_word_frequencies = sorted(word_frequencies.items(), key=lambda item: item[1], reverse=True)
+
+# Compute additional statistics for each word
+def compute_tfidf_statistics(word_frequencies, total_words):
+    return [
+        (
+            word,
+            freq,
+            round(log(total_words / freq, 10), 4),  # Term Frequency
+            freq * log(total_words / freq, 10)      # TF-IDF score
+        )
+        for word, freq in word_frequencies
+    ]
+
+# Generate final results with TF-IDF calculations
+total_words = len(word_list)
+final_results = compute_tfidf_statistics(sorted_word_frequencies, total_words)
+
+# Print the final results
+print(final_results)

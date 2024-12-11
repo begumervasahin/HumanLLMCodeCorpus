@@ -1,0 +1,124 @@
+"""
+Sends an email with the contents of a file as the body of the email.
+
+Password best-practices:
+    * Use `read -s SMTP_PASSWORD; export SMTP_PASSWORD` to set the password
+    * Alternatively, read the password from a file with `export SMTP_PASSWORD=$(cat mypasswdfile)`
+    * Setting the password via the --smtp-password parameter leaves it open to both your bash history and process list
+"""
+
+import argparse
+import socket
+import os
+import sys
+import time
+import smtplib
+from email.mime.text import MIMEText
+
+def parse_arguments():
+    """
+    Parse command-line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-f", "--file", required=True, help="File to read content from")
+    parser.add_argument("-t", "--to", required=True, help="Recipient email address")
+    parser.add_argument("-u", "--smtp-user", required=True, help="SMTP username (also used as the 'From' email address)")
+    parser.add_argument("-p", "--smtp-password", default=os.environ.get('SMTP_PASSWORD'), help="SMTP password (reads from SMTP_PASSWORD env var if not provided)")
+    parser.add_argument("-s", "--smtp-server", default='smtp.gmail.com:587', help="SMTP server address (default: smtp.gmail.com:587)")
+    return parser.parse_args()
+
+def read_file_content(file_path):
+    """
+    Read the content of a specified file.
+    
+    Args:
+        file_path (str): Path to the file.
+        
+    Returns:
+        str: Content of the file.
+        
+    Raises:
+        Exception: If the file cannot be read.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            return file.read()
+    except Exception as e:
+        raise Exception(f"Failed to read file: {e}")
+
+def create_email_message(file_content, smtp_user, recipient):
+    """
+    Create an email message with the given content.
+    
+    Args:
+        file_content (str): Content of the file to be sent.
+        smtp_user (str): Sender's email address.
+        recipient (str): Recipient's email address.
+        
+    Returns:
+        email.mime.text.MIMEText: Created email message.
+    """
+    msg = MIMEText(file_content)
+    msg['Subject'] = f'{socket.gethostname()}: {os.path.basename(file_content)} at {time.asctime()}'
+    msg['From'] = smtp_user
+    msg['To'] = recipient
+    return msg
+
+def send_email(smtp_server, smtp_user, smtp_password, recipient, msg):
+    """
+    Send the email using the specified SMTP server.
+    
+    Args:
+        smtp_server (str): SMTP server address.
+        smtp_user (str): SMTP username.
+        smtp_password (str): SMTP password.
+        recipient (str): Recipient's email address.
+        msg (email.mime.text.MIMEText): Email message to be sent.
+        
+    Raises:
+        Exception: If the email cannot be sent.
+    """
+    try:
+        with smtplib.SMTP(smtp_server) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, [recipient], msg.as_string())
+            print(f"Email successfully sent to {recipient}")
+    except Exception as e:
+        raise Exception(f"Failed to send email: {e}")
+
+def main():
+    """
+    Main function to send an email with the content of a specified file.
+    """
+    args = parse_arguments()
+
+    # Ensure SMTP password is provided
+    if not args.smtp_password:
+        print("SMTP password is required.")
+        sys.exit(1)
+
+    # Read content from the specified file
+    try:
+        file_content = read_file_content(args.file)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+    # Create email message
+    msg = create_email_message(file_content, args.smtp_user, args.to)
+
+    # Send the email
+    try:
+        send_email(args.smtp_server, args.smtp_user, args.smtp_password, args.to, msg)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

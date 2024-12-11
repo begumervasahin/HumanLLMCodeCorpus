@@ -1,0 +1,98 @@
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+        self.rank = {}
+
+    def make_set(self, vertex):
+        """
+        Initialize the set for each vertex.
+        Each vertex is its own parent initially, and the rank is set to 0.
+        """
+        self.parent[vertex] = vertex
+        self.rank[vertex] = 0
+
+    def find(self, vertex):
+        """
+        Find the root of the set containing the vertex with path compression.
+        
+        Parameters:
+            vertex: The vertex whose root is to be found.
+        
+        Returns:
+            The root vertex of the set containing the given vertex.
+        """
+        if self.parent[vertex] != vertex:
+            self.parent[vertex] = self.find(self.parent[vertex])  # Path compression
+        return self.parent[vertex]
+
+    def union(self, vertex1, vertex2):
+        """
+        Unite the sets that contain vertex1 and vertex2 using union by rank.
+        
+        Parameters:
+            vertex1: The first vertex.
+            vertex2: The second vertex.
+        """
+        root1 = self.find(vertex1)
+        root2 = self.find(vertex2)
+
+        if root1 != root2:
+            # Union by rank
+            if self.rank[root1] < self.rank[root2]:
+                self.parent[root1] = root2
+            else:
+                self.parent[root2] = root1
+                if self.rank[root1] == self.rank[root2]:
+                    self.rank[root1] += 1
+
+def kruskal(graph):
+    """
+    Implement Kruskal's algorithm to find the maximum bandwidth path (maximum spanning tree).
+    
+    Parameters:
+        graph: A dictionary with 'vertices' as the list of vertices and 'edges' as the list of edges,
+               where each edge is represented as a tuple (weight, vertex1, vertex2).
+    
+    Returns:
+        A set of edges that form the maximum bandwidth path (maximum spanning tree).
+    """
+    disjoint_set = DisjointSet()
+    
+    # Initialize each vertex as a separate set
+    for vertex in graph['vertices']:
+        disjoint_set.make_set(vertex)
+    
+    max_bandwidth_path = set()
+    # Sort edges by weight in descending order to maximize bandwidth
+    sorted_edges = sorted(graph['edges'], reverse=True) 
+
+    # Iterate over the sorted edges
+    for weight, vertex1, vertex2 in sorted_edges:
+        # If vertex1 and vertex2 are in different sets, add the edge to the max bandwidth path
+        if disjoint_set.find(vertex1) != disjoint_set.find(vertex2):
+            disjoint_set.union(vertex1, vertex2)
+            max_bandwidth_path.add((weight, vertex1, vertex2))
+    
+    return max_bandwidth_path
+
+if __name__ == "__main__":
+    # Define the graph with vertices and edges
+    graph = {
+        'vertices': ['A', 'B', 'C', 'D', 'E'],
+        'edges': [
+            (10, 'A', 'C'),
+            (8, 'C', 'D'),
+            (7, 'B', 'D'),
+            (6, 'C', 'E'),
+            (5, 'A', 'B'),
+            (4, 'D', 'E')
+        ]
+    }
+
+    # Compute the maximum bandwidth path using Kruskal's algorithm
+    max_bandwidth_path = kruskal(graph)
+
+    # Print the edges in the maximum bandwidth path
+    print("Edges in the Maximum Bandwidth Path (Maximum Spanning Tree):")
+    for edge in max_bandwidth_path:
+        print(edge)

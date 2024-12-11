@@ -1,0 +1,57 @@
+import nltk
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus import stopwords
+
+# Ensure necessary NLTK data packages are downloaded
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+def simplify_text(text):
+    """
+    Simplifies the input text by removing punctuation, converting to lowercase,
+    removing stopwords, and lemmatizing the words.
+    """
+    # Remove punctuation and convert to lowercase
+    text = text.translate(str.maketrans('', '', string.punctuation)).lower()
+    
+    # Tokenize the text
+    word_list = nltk.word_tokenize(text)
+    
+    # Filter out stopwords
+    filtered_words = [word for word in word_list if word not in stopwords.words('english')]
+    
+    # Lemmatize the words
+    lemmatizer = nltk.wordnet.WordNetLemmatizer()
+    lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_words]
+    
+    # Join the words back into a single string
+    simplified_text = ' '.join(lemmatized_words)
+    
+    return simplified_text
+
+def calculate_similarity(text1, text2):
+    """
+    Calculates the cosine similarity between two texts using TF-IDF vectorization.
+    """
+    # Vectorize the texts
+    vectorizer = TfidfVectorizer(min_df=1)
+    tfidf_matrix = vectorizer.fit_transform([text1, text2])
+    
+    # Calculate the cosine similarity
+    similarity_score = (tfidf_matrix * tfidf_matrix.T).A[0, 1]
+    
+    return similarity_score
+
+# Test cases
+text1 = "hello I'm David, and I love my little bunny \n asdf fuck this code"
+text2 = "hello I'm Juwon, and I love my big bear"
+simplified_text1 = simplify_text("hello I'm David, and I love my little bunny")
+simplified_text2 = simplify_text("hello I'm Juwon, and I love my big bear")
+simplified_text3 = simplify_text("hello I'm David, I was born on the best day of the best month because I'm the best of them all!")
+
+# Print similarity scores
+print(calculate_similarity(text1, text2))
+print(calculate_similarity(simplified_text1, simplified_text2))
+print(simplified_text3)

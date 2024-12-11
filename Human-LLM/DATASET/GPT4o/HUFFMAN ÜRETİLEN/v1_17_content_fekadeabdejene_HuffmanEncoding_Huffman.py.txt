@@ -1,0 +1,131 @@
+import heapq
+from collections import Counter
+from functools import partial
+from io import StringIO
+
+class Huffman:
+    def __init__(self, data, width):
+        if not data:
+            raise ValueError("Invalid data.")
+        if width <= 0:
+            raise ValueError("Width must be > 0")
+        
+        self.originaldata = data
+        self.width = width
+        self.data = [l for l in iter(partial(StringIO(data).read, self.width), '')]
+        self._dictionary = dict()
+    
+    def encode_huffman(self):
+        freqmap = self.__create_frequency()
+        root = self.__huffman_tree(freqmap)
+        self.__huffman_code(root)
+        return self.__encode()
+
+    def decode_huffman(self, encodedvalue):
+        if not encodedvalue:
+            raise ValueError("Invalid encoded value.")
+        
+        bit_pattern = ''
+        decoded_value = ''
+        reversed_dictionary = self.get_reversed_dictionary
+        
+        for bit in encodedvalue:
+            bit_pattern += bit
+            if bit_pattern in reversed_dictionary:
+                decoded_value += reversed_dictionary[bit_pattern]
+                bit_pattern = ''
+        
+        return decoded_value
+
+    def get_compression_ratio(self, encoded_value):
+        if not encoded_value:
+            raise ValueError("Invalid argument \"encoded_value\".")
+        if not self.data:
+            raise ValueError("Invalid member \"data\".")
+        
+        return 1 - (len(encoded_value) / float((len(self.originaldata) * 8)))
+
+    @property
+    def dictionary(self):
+        return self._dictionary
+
+    @dictionary.setter
+    def dictionary(self, value):
+        self._dictionary = value
+
+    @property
+    def get_reversed_dictionary(self):
+        return {v: k for k, v in self._dictionary.items()}
+
+    def __create_frequency(self):
+        frequency_list = Counter(self.data).items()
+        return [(v, k) for k, v in frequency_list]
+
+    def __huffman_tree(self, frequency):
+        if not frequency:
+            raise ValueError("Invalid frequency table.")
+        
+        heapq.heapify(frequency)
+        
+        while len(frequency) > 1:
+            left_node = heapq.heappop(frequency)
+            right_node = heapq.heappop(frequency)
+            parent_node = (left_node[0] + right_node[0], left_node, right_node)
+            heapq.heappush(frequency, parent_node)
+        
+        return frequency[0]
+
+    def __huffman_code(self, tree):
+        stack = []
+        prefix = '1' if len(tree) == 2 else ''
+        stack.append((tree, prefix))
+        
+        while stack:
+            node, code = stack.pop()
+            if len(node) == 2:
+                self._dictionary[node[1]] = code
+            else:
+                stack.append((node[1], code + '0'))
+                stack.append((node[2], code + '1'))
+
+    def __encode(self):
+        if not self._dictionary:
+            raise ValueError("Huffman encoding table has not been created.")
+        
+        value = ''
+        for char in self.data:
+            if char in self._dictionary:
+                value += self._dictionary[char]
+            else:
+                raise ValueError("Invalid Huffman key.")
+        
+        return value
+
+def test_encoding_decoded(data):
+    original_data = data
+    huf = Huffman(original_data, 4)
+    encoded_data = huf.encode_huffman()
+    reencoded_data = huf.decode_huffman(encoded_data)
+    
+    print("************** Test Encoding **************")
+    print("Encoded data: ", encoded_data)
+    print("Compare: (original_data == re-encoded_data) = ", reencoded_data == original_data)
+    print("Compression Ratio: ", huf.get_compression_ratio(encoded_data))
+    
+    return reencoded_data
+
+if __name__ == "__main__":
+    test_data_1 = "a"
+    test_data_2 = "abcdefghijklmnopqrstuvwxyz"
+    test_data_3 = "aaaaaaaaaaaaaaaaaaaaaaaaaa"
+    test_data_4 = "asdfjbdsjkbfdifbeibfosdibfjkeboiuwebfisdbifbiobwieufbew"
+    
+    test_encoding_decoded(test_data_1)
+    test_encoding_decoded(test_data_2)
+    test_encoding_decoded(test_data_3)
+    test_encoding_decoded(test_data_4)
+    
+    with open("test_data.txt", "r") as f:
+        test_data_5 = f.read()
+    
+    test_encoding_decoded(test_data_5)

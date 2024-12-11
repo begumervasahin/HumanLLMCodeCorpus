@@ -1,0 +1,95 @@
+import time
+import utils
+import sys
+import os
+import csv
+
+# Ensure the paths to the algorithms are included
+sys.path.append(os.path.abspath('./QuadSieve'))
+sys.path.append(os.path.abspath('./Pollards'))
+
+import quadSieve
+import pollards
+
+# Prepare the CSV output file
+output_file = "output.csv"
+field_names = [
+    "Prime Bit Length", 
+    "Max Pollard's Runtime (s)", 
+    "Max QuadSieve Runtime (s)", 
+    "Pollard's Failures", 
+    "QuadSieve Failures"
+]
+
+def generate_distinct_primes(bitlength, certainty):
+    """Generate two distinct primes of a given bit length."""
+    p = utils.genPrime(bitlength, certainty)
+    q = utils.genPrime(bitlength, certainty)
+    while q == p:
+        q = utils.genPrime(bitlength, certainty)
+    return p, q
+
+def log_results(out_writer, bitlength, pol_max_time, quad_max_time, pol_failures, quad_failures):
+    """Log the results of the current iteration to the CSV file."""
+    write_data = {
+        "Prime Bit Length": bitlength,
+        "Max Pollard's Runtime (s)": f'{pol_max_time:.5f}',
+        "Max QuadSieve Runtime (s)": f'{quad_max_time:.5f}',
+        "Pollard's Failures": pol_failures,
+        "QuadSieve Failures": quad_failures
+    }
+    out_writer.writerow(write_data)
+
+def main():
+    bitlength = 6
+    sample_size = 5
+    niterations = 7
+    bitincrement = 5
+
+    with open(output_file, "w", newline="") as out:
+        out_writer = csv.DictWriter(out, fieldnames=field_names)
+        out_writer.writeheader()
+
+        for iteration in range(niterations):
+            pol_failures = 0
+            quad_failures = 0
+            pol_max_time = 0
+            quad_max_time = 0
+
+            for sample in range(sample_size):
+                p, q = generate_distinct_primes(bitlength, 40)
+                n = p * q
+                print(f"p: {p}\nq: {q}\nn: {n}\n")
+
+                # Pollard's p-1 algorithm
+                start_time = time.time()
+                p_res = pollards.pollards(n)
+                p_time = time.time() - start_time
+                print(f"Time for Pollard's p-1 algorithm to factor n: {p_time:.5f}s")
+                print(f"Pollards result: {p_res}")
+
+                # Quadratic Sieve algorithm
+                start_time = time.time()
+                q_res = quadSieve.quadSieve(n)
+                q_time = time.time() - start_time
+                print(f"Time for Quad. Sieve algorithm to factor n: {q_time:.5f}s")
+                print(f"Quad. Sieve result: {q_res}\n")
+
+                # Check results and update max times
+                if p_res != {p, q}:
+                    pol_failures += 1
+                else:
+                    pol_max_time = max(pol_max_time, p_time)
+                
+                if q_res != {p, q}:
+                    quad_failures += 1
+                else:
+                    quad_max_time = max(quad_max_time, q_time)
+
+            log_results(out_writer, bitlength, pol_max_time, quad_max_time, pol_failures, quad_failures)
+            bitlength += bitincrement
+
+    print(f"Results written to {output_file}")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,90 @@
+from sage.all_cmdline import Integer, RealNumber, GF, EllipticCurve
+
+# Constants
+P = RealNumber('29579385439865947694694684968492467204765870577.')
+FIELD = GF(P)
+CURVE = EllipticCurve(FIELD, [32934893483948394, 593439483948394349])
+PATH = '/home/landondare/EllipticCurveProject/data.txt'
+RUN_BLOCK = 2000000000
+WRITE_BLOCK = 100000000
+
+def read_last_line(filepath):
+    """
+    Read the last line of the file and return the values.
+
+    Args:
+        filepath (str): Path to the file.
+
+    Returns:
+        list: List of input values.
+    """
+    with open(filepath, 'r') as file:
+        lines = file.read().splitlines()
+    return lines[-1].split(' ')
+
+def write_to_file(filepath, content):
+    """
+    Append the given content to the file.
+
+    Args:
+        filepath (str): Path to the file.
+        content (str): Content to write to the file.
+    """
+    with open(filepath, "a") as file:
+        file.write(content)
+
+def display_initial_values(values):
+    """
+    Display the initial values read from the file.
+
+    Args:
+        values (list): List of initial values.
+    """
+    print("All values read in as the following:")
+    print(f"\te = {values[0]}")
+    print(f"\tx1 = {values[1]}")
+    print(f"\tlowest_x2 = {values[2]}")
+    print(f"\tlowest_y2 = {values[3]}")
+    print(f"\tlowest_e = {values[4]}")
+
+def main():
+    # Read the initial values from the file
+    input_values = read_last_line(PATH)
+    x1 = int(input_values[1])
+    start_point = CURVE.lift_x(x1)
+    e = int(input_values[0])
+    test_point = e * start_point
+    lowest_x2 = int(input_values[2])
+    lowest_y2 = int(input_values[3])
+    lowest_e = int(input_values[4])
+
+    # Display the initial values
+    display_initial_values(input_values)
+
+    # Iterate to find the lowest y-coordinate point
+    while e < RUN_BLOCK:
+        if test_point[1] < lowest_y2:
+            lowest_x2 = test_point[0]
+            lowest_y2 = test_point[1]
+            lowest_e = e
+            print("!!!!!!! Found new lowest y2")
+            print(test_point)
+            print(e)
+            new_lowest_content = (
+                f"\n\n!!!!!!!!!!!!!!!!!! NEW LOWEST FOUND {e} !!!!!!!!!!!!!!!!!!\n"
+                f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}\n"
+            )
+            write_to_file(PATH, new_lowest_content)
+        
+        if e % WRITE_BLOCK == 0:
+            block_content = (
+                f"\n\n/////////////////// Block {e} /////////////////////////\n"
+                f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}\n"
+            )
+            write_to_file(PATH, block_content)
+        
+        e += 1
+        test_point += start_point
+
+if __name__ == "__main__":
+    main()

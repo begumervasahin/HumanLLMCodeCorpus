@@ -1,0 +1,204 @@
+import numpy as np
+
+def load_quantization_table(component):
+    """
+    Load the quantization table for the given component ('lum' or 'chrom').
+
+    Parameters
+    ----------
+    component : str
+        The component for which the quantization table is requested ('lum' or 'chrom').
+
+    Returns
+    -------
+    numpy.ndarray
+        The quantization table as a 2D numpy array.
+
+    Raises
+    ------
+    ValueError
+        If the component is neither 'lum' nor 'chrom'.
+    """
+    if component == 'lum':
+        return np.array([
+            [2, 2, 2, 2, 3, 4, 5, 6],
+            [2, 2, 2, 2, 3, 4, 5, 6],
+            [2, 2, 2, 2, 4, 5, 7, 9],
+            [2, 2, 2, 4, 5, 7, 9, 12],
+            [3, 3, 4, 5, 8, 10, 12, 12],
+            [4, 4, 5, 7, 10, 12, 12, 12],
+            [5, 5, 7, 9, 12, 12, 12, 12],
+            [6, 6, 9, 12, 12, 12, 12, 12]
+        ])
+    elif component == 'chrom':
+        return np.array([
+            [3, 3, 5, 9, 13, 15, 15, 15],
+            [3, 4, 6, 11, 14, 12, 12, 12],
+            [5, 6, 9, 14, 12, 12, 12, 12],
+            [9, 11, 14, 12, 12, 12, 12, 12],
+            [13, 14, 12, 12, 12, 12, 12, 12],
+            [15, 12, 12, 12, 12, 12, 12, 12],
+            [15, 12, 12, 12, 12, 12, 12, 12],
+            [15, 12, 12, 12, 12, 12, 12, 12]
+        ])
+    else:
+        raise ValueError(f"Component should be either 'lum' or 'chrom', but '{component}' was found.")
+
+def zigzag_points(rows, cols):
+    """
+    Generate points in a zigzag traversal order for a matrix of given dimensions.
+
+    Parameters
+    ----------
+    rows : int
+        The number of rows in the matrix.
+    cols : int
+        The number of columns in the matrix.
+
+    Yields
+    ------
+    tuple
+        The next point in the zigzag traversal order.
+    """
+    UP, DOWN, RIGHT, LEFT, UP_RIGHT, DOWN_LEFT = range(6)
+
+    def move(direction, point):
+        direction_map = {
+            UP: (point[0] - 1, point[1]),
+            DOWN: (point[0] + 1, point[1]),
+            LEFT: (point[0], point[1] - 1),
+            RIGHT: (point[0], point[1] + 1),
+            UP_RIGHT: (point[0] - 1, point[1] + 1),
+            DOWN_LEFT: (point[0] + 1, point[1] - 1)
+        }
+        return direction_map[direction]
+
+    def inbounds(point):
+        return 0 <= point[0] < rows and 0 <= point[1] < cols
+
+    point = (0, 0)
+    move_up = True
+
+    for _ in range(rows * cols):
+        yield point
+        if move_up:
+            if inbounds(move(UP_RIGHT, point)):
+                point = move(UP_RIGHT, point)
+            else:
+                move_up = False
+                point = move(RIGHT, point) if inbounds(move(RIGHT, point)) else move(DOWN, point)
+        else:
+            if inbounds(move(DOWN_LEFT, point)):
+                point = move(DOWN_LEFT, point)
+            else:
+                move_up = True
+                point = move(DOWN, point) if inbounds(move(DOWN, point)) else move(RIGHT, point)
+
+def bits_required(n):
+    """
+    Calculate the number of bits required to represent an integer n.
+
+    Parameters
+    ----------
+    n : int
+        The integer for which to calculate the number of bits.
+
+    Returns
+    -------
+    int
+        The number of bits required to represent the integer.
+    """
+    return n.bit_length()
+
+def binstr_flip(binstr):
+    """
+    Flip the bits in a binary string.
+
+    Parameters
+    ----------
+    binstr : str
+        A binary string containing only '0's and '1's.
+
+    Returns
+    -------
+    str
+        The binary string with flipped bits.
+
+    Raises
+    ------
+    ValueError
+        If the binary string contains characters other than '0' and '1'.
+    """
+    if not set(binstr).issubset({'0', '1'}):
+        raise ValueError("The binary string should only contain '0's and '1's.")
+    return ''.join('0' if c == '1' else '1' for c in binstr)
+
+def uint_to_binstr(number, size):
+    """
+    Convert an unsigned integer to a binary string of a given size.
+
+    Parameters
+    ----------
+    number : int
+        The unsigned integer to convert.
+    size : int
+        The size of the binary string.
+
+    Returns
+    -------
+    str
+        The binary string representation of the number, zero-padded to the given size.
+    """
+    return bin(number)[2:].zfill(size)[-size:]
+
+def int_to_binstr(n):
+    """
+    Convert an integer to a binary string, considering the sign.
+
+    Parameters
+    ----------
+    n : int
+        The integer to convert.
+
+    Returns
+    -------
+    str
+        The binary string representation of the integer. For negative integers, the bits are flipped.
+    """
+    if n == 0:
+        return ''
+    binstr = bin(abs(n))[2:]
+    return binstr if n > 0 else binstr_flip(binstr)
+
+def flatten(lst):
+    """
+    Flatten a nested list into a single list.
+
+    Parameters
+    ----------
+    lst : list
+        The nested list to flatten.
+
+    Returns
+    -------
+    list
+        A flattened list containing all elements from the nested list.
+    """
+    return [item for sublist in lst for item in sublist]
+
+# Example usage of functions:
+if __name__ == "__main__":
+    print("Luminance quantization table:")
+    print(load_quantization_table('lum'))
+    
+    print("\nZigzag points for a 4x4 matrix:")
+    for point in zigzag_points(4, 4):
+        print(point)
+    
+    print("\nBits required to represent 37:", bits_required(37))
+    print("Binary string flip of '1010':", binstr_flip('1010'))
+    print("Binary representation of unsigned 13 with size 8:", uint_to_binstr(13, 8))
+    print("Binary representation of signed -13:", int_to_binstr(-13))
+    
+    nested_list = [[1, 2, 3], [4, 5], [6, 7, 8]]
+    print("\nFlattened list:", flatten(nested_list))

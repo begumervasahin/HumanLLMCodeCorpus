@@ -1,0 +1,75 @@
+import csvReader as reader
+import neuralNetwork as nn
+import activationFunctions as F
+import lossFunctions as L
+import networkPrinter as printer
+
+def classification_3_classes():
+    X_train, Y_train = reader.readClassification3ClassesFile('classification/data.three_gauss.train.100.csv')
+    X_test, Y_test = reader.readClassification3ClassesFile('classification/data.three_gauss.test.100.csv')
+    
+    net = nn.NeuralNetwork(momentumSize=0, seed=0)
+    net.addLayer(input_size=2, output_size=20, activation_function=F.LReLU, use_bias=False)
+    net.addLayer(input_size=20, output_size=3, activation_function=F.softmax, use_bias=False)
+    net.setCostFunction(L.crossEntropy)
+    
+    net.kFoldsTrainAndValidate(
+        X_train, Y_train, k=5, epochs=50, learning_rate=0.1,
+        show_error=True,
+        show_nodes=True,
+        print=lambda e: printer.print_classification(net, X_train, Y_train, size=1.5, dS=0.1),
+        show_every=5
+    )
+    
+    mean, std, error = net.validate(X_test, Y_test)
+    print(f'Mean: {mean}, Std: {std}, Error: {error}')
+    printer.print_accuracy(net, X_test, Y_test)
+
+def classification_2_classes():
+    X_train, Y_train = reader.readClassificationFile('classification/data.XOR.train.100.csv')
+    X_test, Y_test = reader.readClassificationFile('classification/data.XOR.test.100.csv')
+    
+    net = nn.NeuralNetwork(momentumSize=1, seed=0)
+    net.addLayer(input_size=2, output_size=10, activation_function=F.tanh, use_bias=True)
+    net.addLayer(input_size=10, output_size=1, activation_function=F.sigmoid, use_bias=True)
+    net.setCostFunction(L.l1)
+    
+    net.kFoldsTrainAndValidate(
+        X_train, Y_train, k=5, epochs=500, learning_rate=0.5,
+        show_error=True,
+        show_nodes=False,
+        print=lambda: printer.print_classification(net, X_test, Y_test, size=1.1, dS=0.1),
+        show_every=10
+    )
+    
+    mean, std, error = net.validate(X_test, Y_test)
+    print(f'Mean: {mean}, Std: {std}, Error: {error}')
+    printer.print_accuracy(net, X_test, Y_test)
+
+def regression():
+    X_train, Y_train = reader.readRegressionFile('regression/data.square.train.100.csv')
+    X_test, Y_test = reader.readRegressionFile('regression/data.square.test.100.csv')
+    
+    net = nn.NeuralNetwork(momentumSize=1, seed=100)
+    net.addLayer(input_size=1, output_size=2, activation_function=F.polly, use_bias=True)
+    net.addLayer(input_size=2, output_size=1, activation_function=F.linear, use_bias=True)
+    net.setCostFunction(L.l1)
+    
+    net.kFoldsTrainAndValidate(
+        X_train, Y_train, k=20, batch_size=1, epochs=2000, learning_rate=6e-4, momentum_rate=2e-5,
+        show_error=True,
+        show_nodes=False,
+        print=lambda: printer.print_regression(net, X_train, Y_train, size=5, dx=0.25),
+        show_every=10
+    )
+    
+    mean, std, error = net.validate(X_test, Y_test)
+    print(f'Mean: {mean}, Std: {std}, Error: {error}')
+
+if __name__ == "__main__":
+    classification_3_classes()
+    input('Click enter to continue...')
+    classification_2_classes()
+    input('Click enter to continue...')
+    regression()
+    input('Click enter to finish...')

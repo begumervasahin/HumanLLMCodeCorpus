@@ -1,0 +1,65 @@
+import requests
+from requests.exceptions import RequestException
+from bs4 import BeautifulSoup
+
+# Open output file in write mode
+output = open("rentpad_list.csv", "w+")
+
+def scrape_rentpad(city):
+    """
+    Scrapes apartment listings from Rentpad for a given city.
+    
+    Args:
+    city (str): The name of the city to scrape listings for.
+    """
+    payload = {
+        "a": "31",
+        "cityName": city,
+        "propertyTypeIDs": [2, 3, 5],
+        "furnishTypeIDs": [1, 2, 3],
+        "placeIDs": [],
+        "statusTypeIDs": [],
+        "amenityIDs": [],
+        "longMonthRateLow": "0",
+        "longMonthRateHigh": "30,000",
+        "numBedroomsLow": "0",
+        "numBedroomsHigh": "0",
+        "itemsPerPage": "1000",
+        "pageNumber": "1",
+        "lengthOfStay": "",
+        "ham": "ham"
+    }
+
+    try:
+        # Make a POST request to the Rentpad website
+        response = requests.post(
+            url="https://rentpad.com.ph/long-term-rentals/mandaluyong/apartment",
+            data=payload,
+        )
+        response.raise_for_status()  # Check for request errors
+
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Extract relevant data from the parsed HTML
+        prices = soup.find_all(itemprop="price")
+        apartments = soup.find_all(itemprop="name")
+        links = soup.find_all(itemprop="offers")
+
+        # Iterate through the apartment listings
+        for i, apartment in enumerate(apartments):
+            if apartment.string is None:
+                continue
+
+            price = prices[i].string[1:].replace(",", "")
+            link = links[i].find('a').get('href')
+
+            # Print and write the apartment details to the output file
+            print(f"{apartment.string}, {price}, {link}")
+            output.write(f"{apartment.string},{price},{link}\n")
+
+    except RequestException as e:
+        print(f"Error fetching data from Rentpad: {e}")
+
+# Call the scrape_rentpad function with the city name
+scrape_rentpad("Mandaluyong")

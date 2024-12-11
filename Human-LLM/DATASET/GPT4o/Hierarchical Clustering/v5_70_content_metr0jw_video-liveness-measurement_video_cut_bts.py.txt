@@ -1,0 +1,68 @@
+import pandas as pd
+
+def load_data(file_path):
+    """Load prediction data from a CSV file and return it as a flattened list."""
+    return pd.read_csv(file_path).values.flatten().tolist()
+
+def find_sequences(data, min_length=4):
+    """
+    Identify valid sequences in the data where values are 0.5 or 1.
+    
+    Args:
+        data (list): The prediction data as a list.
+        min_length (int): The minimum length for a sequence to be considered valid.
+        
+    Returns:
+        tuple: Two lists containing the start and end indices of each valid sequence.
+    """
+    start_indices = []
+    end_indices = []
+    idx = 0
+    data_length = len(data)
+
+    while idx < data_length:
+        count = 0
+        count_ones = 0
+        
+        if data[idx] in [0.5, 1]:
+            start_idx = idx
+            
+            # Traverse the sequence
+            while idx < data_length and data[idx] in [0.5, 1]:
+                if data[idx] == 1:
+                    count_ones += 1
+                count += 1
+                idx += 1
+            
+            end_idx = idx
+            
+            # Validate the sequence
+            if count >= min_length and count_ones > 0:
+                start_indices.append(start_idx)
+                end_indices.append(end_idx)
+        else:
+            idx += 1
+
+    return start_indices, end_indices
+
+def save_sequences(start_indices, end_indices, output_file):
+    """Save the start and end indices of sequences to a CSV file."""
+    time_data = pd.DataFrame({
+        "Start Time": start_indices,
+        "End Time": end_indices
+    })
+    time_data.to_csv(output_file, index=False)
+
+def main():
+    """Main function to load data, find sequences, and save the results."""
+    # Load the prediction data
+    pred_data = load_data("y_prediction_bts.csv")
+    
+    # Find valid sequences in the prediction data
+    start_indices, end_indices = find_sequences(pred_data)
+    
+    # Save the identified sequences to a CSV file
+    save_sequences(start_indices, end_indices, "timedata_bts.csv")
+
+if __name__ == "__main__":
+    main()

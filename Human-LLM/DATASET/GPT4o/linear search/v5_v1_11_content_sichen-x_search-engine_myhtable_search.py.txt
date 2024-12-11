@@ -1,0 +1,84 @@
+from words import get_text, words
+
+def myhtable_create_index(files):
+    """
+    Build an index mapping words to the set of document indexes where they appear.
+    This function uses a custom hash table with 4011 buckets.
+    
+    :param files: List of file names to index
+    :return: Hashtable with words as keys and sets of document indexes as values
+    """
+    if not files:
+        return None
+
+    # Initialize the hash table with 4011 buckets
+    table = htable(4011)
+    
+    for doc_id, file_name in enumerate(files):
+        # Get the content of the file
+        file_content = get_text(file_name)
+        # Extract words from the file content
+        key_words = words(file_content)
+        
+        for word in key_words:
+            # Retrieve the current set of document IDs associated with the word
+            current_docs = htable_get(table, word)
+            if current_docs is None:
+                current_docs = set()
+            # Add the current document ID to the set
+            current_docs.add(doc_id)
+            # Update the hash table with the new set
+            htable_put(table, word, current_docs)
+    
+    return table
+
+def myhtable_index_search(files, index, terms):
+    """
+    Search for documents containing all the specified terms using a custom hash table index.
+    
+    :param files: List of file names
+    :param index: Hashtable with words as keys and sets of document indexes as values
+    :param terms: List of search terms
+    :return: List of file names that contain all the search terms, or None if no documents match
+    """
+    if not files or not index or not terms:
+        return None
+
+    term_sets = []
+
+    for term in terms:
+        # Retrieve the set of document IDs for the term
+        doc_ids = htable_get(index, term)
+        if doc_ids:
+            term_sets.append(doc_ids)
+        else:
+            return None
+
+    if term_sets:
+        # Find the intersection of all sets to get documents containing all terms
+        common_doc_ids = set.intersection(*term_sets)
+        # Retrieve the file names corresponding to the common document IDs
+        result_files = [files[doc_id] for doc_id in common_doc_ids]
+        return result_files if result_files else None
+
+    return None
+
+# Example usage:
+
+# Assuming you have some files in a list
+files = ["file1.txt", "file2.txt", "file3.txt"]
+
+# Creating the index
+index = myhtable_create_index(files)
+
+# Searching for terms
+search_terms = ["term1", "term2", "term3"]
+result = myhtable_index_search(files, index, search_terms)
+
+# Printing the result
+if result:
+    print("Search Result:")
+    for file in result:
+        print(file)
+else:
+    print("No results found.")

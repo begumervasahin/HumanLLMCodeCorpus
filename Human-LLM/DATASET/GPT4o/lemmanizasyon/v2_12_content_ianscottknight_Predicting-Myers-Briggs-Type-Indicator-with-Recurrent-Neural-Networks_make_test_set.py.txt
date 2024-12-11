@@ -1,0 +1,49 @@
+import os
+import pandas as pd
+import csv
+import re
+
+# Define constants
+DATA_DIR = "data"
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+def filter_and_save_posts(df, dimension):
+    # Extract individual letters for the given dimension
+    letter_1, letter_2 = dimension
+    posts = []
+
+    # Iterate through each row in the DataFrame
+    for index, row in df.iterrows():
+        # Check if any of the specified letters are in the MBTI type
+        if any(letter in row["type"] for letter in [letter_1, letter_2]):
+            # Split the posts into a list of 100 posts
+            hundred_posts = row["posts"].split("|||")
+            
+            # Iterate through each post in the list
+            for post in hundred_posts:
+                # Skip posts containing "http", empty posts, or posts without any letters
+                if "http" in post or not re.search("[a-zA-Z]", post):
+                    continue
+                
+                # Append the filtered post to the posts list
+                posts.append(post)
+
+    # Create a CSV file with the filtered posts for the specific dimension
+    test_csv_path = os.path.join(DATA_DIR, f"test_{dimension}.csv")
+    with open(test_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        # Write each post as a separate row in the CSV file
+        writer.writerows([[post] for post in posts])      
+
+def main():
+    # Read the MBTI clean CSV file into a DataFrame
+    df = pd.read_csv(MBTI_CLEAN_CSV_PATH)
+
+    # Iterate through each dimension and filter/save posts
+    for dimension in DIMENSIONS:
+        filter_and_save_posts(df, dimension)
+
+# Execute the main function if the script is run directly
+if __name__ == "__main__":
+    main()

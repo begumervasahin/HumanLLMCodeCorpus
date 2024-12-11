@@ -1,0 +1,72 @@
+"""
+Created on Wed Jan 18 11:25:59 2017
+Program to generate a shapefile of RapidEye tiles with the date of the images.
+Note: This program does not handle scenes with more than one date.
+Warning: The code contains fixed paths and positions.
+Ensure to verify and adjust them before running.
+@author: m330625
+"""
+
+import glob
+from osgeo import ogr
+
+# Define the directory containing the images and the path to the RapidEye tiles shapefile
+IMAGE_DIRECTORY = 'Z:\\filtro_radiometrico_2014_16bits\\*.tif'
+TILE_SHAPEFILE = 'C:\\geodb\\articulacao\\RapidEye_Tiles\\RapidEye_Tiles_Brasil.shp'
+
+# Retrieve the list of image files
+image_files = glob.glob(IMAGE_DIRECTORY)
+
+def extract_image_dates(image_files, tile_shapefile, output_shapefile):
+    """
+    Extracts the date from the image filenames and adds it to the RapidEye tile shapefile.
+    
+    Args:
+        image_files (list): List of image file paths.
+        tile_shapefile (str): Path to the RapidEye tile shapefile.
+        output_shapefile (str): Path to the output shapefile with dates added.
+        
+    Warning:
+        The position of the date in the filename is fixed.
+    """
+    
+    # Open the tile shapefile
+    input_data = ogr.Open(tile_shapefile)
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    
+    # Copy the input shapefile to the output shapefile
+    output_data = driver.CopyDataSource(input_data, output_shapefile)
+    input_data = None
+    
+    # Get the layer from the output shapefile
+    layer = output_data.GetLayer()
+    
+    # Add a new field to store the date
+    layer.CreateField(ogr.FieldDefn('Date', ogr.OFTDate))
+    
+    # Define the fixed positions for extracting date and tile ID from the filename
+    DATE_START_POS = 48
+    TILE_ID_START_POS = 40
+    
+    # Loop through each image file
+    for image_file in image_files:
+        # Extract the date from the filename
+        date_str = image_file[DATE_START_POS:DATE_START_POS + 10]
+        date_parts = date_str.split('-')
+        
+        # Extract the tile ID from the filename
+        tile_id = image_file[TILE_ID_START_POS:TILE_ID_START_POS + 7]
+        
+        # Set the attribute filter to select the correct tile
+        layer.SetAttributeFilter(f'TILE_ID = {int(tile_id)}')
+        
+        # Loop through the selected features and update the date field
+        for feature in layer:
+            feature.SetField('Date', int(date_parts[0]), int(date_parts[1]), int(date_parts[2]), 0, 0, 0, 0)
+            layer.SetFeature(feature)
+    
+    # Close the output shapefile
+    output_data = None
+
+# Run the function with the specified paths
+extract_image_dates(image_files, TILE_SHAPEFILE, 'I:\\articulacao_rapideye_2014.shp')

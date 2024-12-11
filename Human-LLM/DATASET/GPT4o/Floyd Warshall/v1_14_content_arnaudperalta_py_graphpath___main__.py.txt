@@ -1,0 +1,85 @@
+import json
+from os import listdir
+from os.path import isfile, join
+from graph import Graph
+
+CONFIG_DEFAULT = "graph1.json"
+
+def run_project():
+    config = CONFIG_DEFAULT
+    print_menu(config)
+    while True:
+        user_input = input().strip()
+        for command in user_input:
+            if command == "c":
+                config = menu_config()
+            elif command in ["t", "n"]:
+                graph = Graph(load_config(config))
+                start_algo(graph, command)
+            elif command == "h":
+                print_help()
+            elif command == "m":
+                print_menu(config)
+            elif command == "q":
+                return
+
+def print_menu(config):
+    print("py_graphpath")
+    print("-----------------------------------------------------")
+    print(f"c : Choose configuration (Current: {config})")
+    print("t : Run the optimal rendezvous point algorithm by time")
+    print("n : Run the optimal rendezvous point algorithm by number of moves")
+    print("h : Access help")
+    print("m : Display menu")
+    print("q : Quit the program")
+
+def menu_config():
+    print("Available configurations:")
+    list_cfg = [f for f in listdir('./cfg') if isfile(join('./cfg', f))]
+    for config_file in list_cfg:
+        print(config_file)
+    while True:
+        config = input().strip()
+        if config in list_cfg:
+            print("Configuration successfully changed.")
+            break
+        else:
+            print("This configuration does not exist.")
+    return config
+
+def print_help():
+    print("Help")
+    print("For an example of the configuration syntax, see graph_sujet.json")
+    print("The first algorithm calculates the most optimal rendezvous point")
+    print("so that the two people meet at this point in minimum time.")
+    print("The second algorithm calculates the most optimal rendezvous point")
+    print("so that the two people meet at this point with a minimum number")
+    print("of moves.")
+    print("It is possible to enter multiple characters at once in the program menu.")
+
+def start_algo(graph, command):
+    if graph.get_error() != 0:
+        if graph.get_error() == 1:
+            print("Error in configuration file (nbNoeuds/nomSommets)")
+        elif graph.get_error() == 2:
+            print("Error in configuration file (nbLieuxRdv/nomRdv)")
+    else:
+        if command == "t":
+            result = graph.find_optimal_rdv()
+            if result:
+                print(f"The most optimal rendezvous point by time is: {result}")
+            else:
+                print("No compatible rendezvous point found")
+        elif command == "n":
+            result = graph.find_optimal_rdv2()
+            if result:
+                print(f"The most optimal rendezvous point by number of moves is: {result}")
+            else:
+                print("No compatible rendezvous point found")
+
+def load_config(config):
+    with open(join('./cfg', config), 'r') as file:
+        return json.load(file)
+
+if __name__ == '__main__':
+    run_project()

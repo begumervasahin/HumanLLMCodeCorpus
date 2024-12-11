@@ -1,0 +1,154 @@
+import random
+
+class _BSTVectorBase:
+    """Base class for BSTVector, providing common interface and properties."""
+    
+    def set(self, index, value):
+        """Sets the value at the specified index."""
+        pass
+    
+    def get(self, index):
+        """Gets the value at the specified index."""
+        pass
+    
+    def sample(self):
+        """Samples an index based on the norm2 values."""
+        pass
+    
+    @property
+    def norm2(self):
+        """Returns the norm squared of the vector."""
+        return self._norm2
+    
+    def __repr__(self):
+        """Returns a string representation of the BSTVector."""
+        return f"<BSTVector of dimension {self._dim}: {self.__str__()}>"
+
+class _BSTVectorLeaf(_BSTVectorBase):
+    """Leaf node of the BSTVector representing a single value."""
+    
+    def __init__(self):
+        self.value = 0.0
+        self._norm2 = 0.0
+        self._dim = 1
+    
+    def set(self, index, value):
+        """Sets the value of the leaf and updates its norm2."""
+        if index != 0:
+            raise IndexError("Index out of bounds for leaf node.")
+        self.value = float(value)
+        self._update_norm2()
+    
+    def get(self, index):
+        """Gets the value of the leaf."""
+        if index != 0:
+            raise IndexError("Index out of bounds for leaf node.")
+        return self.value
+    
+    def sample(self):
+        """Returns the index of the nonzero value in the leaf."""
+        return 0
+    
+    def _update_norm2(self):
+        """Updates the norm2 value for the leaf."""
+        self._norm2 = self.value ** 2
+    
+    def __str__(self):
+        """Returns a string representation of the leaf."""
+        return str(self.value)
+
+class _BSTVectorNode(_BSTVectorBase):
+    """Internal node of the BSTVector representing a partition of the vector."""
+    
+    def __init__(self, dim):
+        self._dim = dim
+        self._norm2 = 0.0
+        self.left = None
+        self.right = None
+    
+    def set(self, index, value):
+        """Sets the value at the specified index and updates the tree."""
+        if index < self.cutoff:
+            child_side = 'left'
+            child_size = self.cutoff
+            child_index = index
+        else:
+            child_side = 'right'
+            child_size = self._dim - self.cutoff
+            child_index = index - self.cutoff
+        
+        if self.__getattribute__(child_side) is None:
+            self.__setattr__(child_side, BSTVector(child_size))
+        
+        child = self.__getattribute__(child_side)
+        child.set(child_index, value)
+        
+        if child.norm2 == 0.0:
+            self.__setattr__(child_side, None)
+        
+        self._update_norm2()
+    
+    def get(self, index):
+        """Gets the value at the specified index."""
+        if index >= self._dim:
+            raise IndexError("Index out of bounds.")
+        
+        if index < self.cutoff:
+            child_side = 'left'
+            child_index = index
+        else:
+            child_side = 'right'
+            child_index = index - self.cutoff
+        
+        child = self.__getattribute__(child_side)
+        if child is None:
+            return 0.0
+        return child.get(child_index)
+    
+    def sample(self, seed=None):
+        """Samples an index based on the norm2 values."""
+        if self.norm2 == 0.0:
+            raise ValueError("No nonzero entries")
+        
+        left_norm2 = self.left.norm2 if self.left is not None else 0.0
+        if seed is not None:
+            random.seed(seed)
+        
+        if random.uniform(0, self.norm2) < left_norm2:
+            return self.left.sample()
+        
+        return self.cutoff + self.right.sample()
+    
+    def _update_norm2(self):
+        """Updates the norm2 value for the node."""
+        self._norm2 = sum(child.norm2 for child in [self.left, self.right] if child is not None)
+    
+    @property
+    def cutoff(self):
+        """Returns the index cutoff between the left and right children."""
+        return self._dim // 2
+    
+    def __str__(self):
+        """Returns a string representation of the node."""
+        left_str = self.left.__str__() if self.left is not None else "-" * self.cutoff
+        right_str = self.right.__str__() if self.right is not None else "-" * (self._dim - self.cutoff)
+        return f"({left_str} {right_str})"
+
+def BSTVector(dim):
+    """Factory function to create a BSTVector."""
+    if dim == 1:
+        return _BSTVectorLeaf()
+    else:
+        return _BSTVectorNode(dim)
+
+# Example usage:
+if __name__ == "__main__":
+    vec = BSTVector(4)
+    vec.set(0, 3)
+    vec.set(1, 4)
+    vec.set(2, 5)
+    vec.set(3, 6)
+    print(vec)
+    print("Norm2:", vec.norm2)
+    print("Sampled index:", vec.sample())
+    print("Value at index 2:", vec.get(2))

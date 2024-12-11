@@ -1,0 +1,108 @@
+from Crypto.Util import number
+import random
+import constants
+
+def generate_p_g_q(length_of_message=0):
+    """
+    Generates cryptographic parameters p, g, and q for a commitment scheme.
+
+    Args:
+        length_of_message (int): The length of the message to be committed.
+
+    Returns:
+        tuple: Contains the values of p, g, and q.
+    """
+    # Generate a prime number q of sufficient length
+    q = number.getPrime(max(constants.LENGTH_OF_PRIME, length_of_message + 1))
+    
+    # Calculate p as 2*q + 1
+    p = 2 * q + 1
+    
+    # Choose g as 2 (a common choice in practice)
+    g = 2
+    
+    return p, g, q
+
+def generate_a():
+    """
+    Generates a random integer within specified bounds.
+
+    Returns:
+        int: A random integer between RAND_NUMBER_LOWER_BOUND and RAND_NUMBER_UPPER_BOUND.
+    """
+    return random.randint(constants.RAND_NUMBER_LOWER_BOUND, constants.RAND_NUMBER_UPPER_BOUND)
+
+def generate_h(g, p, a):
+    """
+    Computes the value h used in the commitment scheme.
+
+    Args:
+        g (int): The base value for the commitment.
+        p (int): The prime modulus for the commitment.
+        a (int): The exponent for the computation.
+
+    Returns:
+        int: The computed value h.
+    """
+    return pow(g, a, p)
+
+def generate_r(q):
+    """
+    Generates a random integer for use in the commitment process.
+
+    Args:
+        q (int): The upper bound for the random integer.
+
+    Returns:
+        int: A random integer between 0 and q-1.
+    """
+    return random.randint(0, q - 1)
+
+def commit(m, g, h, r, p):
+    """
+    Computes the commitment of a message using given parameters.
+
+    Args:
+        m (int): The message to be committed.
+        g (int): The base value for the commitment.
+        h (int): The computed value used in the commitment.
+        r (int): The random integer used in the commitment.
+        p (int): The prime modulus for the commitment.
+
+    Returns:
+        int: The computed commitment.
+    """
+    # Calculate t1 as g^m mod p
+    t1 = pow(g, m, p)
+    
+    # Calculate t2 as h^r mod p
+    t2 = pow(h, r, p)
+    
+    # Compute the final commitment
+    return (t1 * t2) % p
+
+def open(m, g, h, r, p, c):
+    """
+    Verifies the commitment and returns the message if valid.
+
+    Args:
+        m (int): The original message.
+        g (int): The base value used in the commitment.
+        h (int): The computed value used in the commitment.
+        r (int): The random integer used in the commitment.
+        p (int): The prime modulus for the commitment.
+        c (int): The commitment to be verified.
+
+    Returns:
+        int or None: The original message if the commitment matches; otherwise, None.
+    """
+    # Recompute the commitment with the given values
+    t1 = pow(g, m, p)
+    t2 = pow(h, r, p)
+    computed_commitment = (t1 * t2) % p
+    
+    # Check if the computed commitment matches the provided commitment
+    if computed_commitment == c:
+        return m
+    else:
+        return None

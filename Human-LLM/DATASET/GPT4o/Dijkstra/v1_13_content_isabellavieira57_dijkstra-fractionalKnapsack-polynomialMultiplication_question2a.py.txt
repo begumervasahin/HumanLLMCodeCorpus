@@ -1,0 +1,40 @@
+from __future__ import print_function, division
+import CPUtimer
+from data2 import instance_iterator, print_solution
+
+def solve(instance_path):
+    timer = CPUtimer.CPUTimer()
+    for instance in instance_iterator(instance_path):
+        instance_name, capacity, profits, weights = instance
+        timer.reset()
+        timer.start()
+        for _ in range(2):  # Looping twice as per the original code
+            items = knapsack(capacity, profits, weights)
+            timer.lap()
+        timer.stop()
+        print_solution(profits, weights, items, instance_name, '2a', timer)
+
+def knapsack(capacity, profits, weights):
+    items = [(i + 1, w, p / w) for i, (p, w) in enumerate(zip(profits, weights))]
+    items = iter(sorted(items, key=lambda item: item[2], reverse=True))
+    x = [0] * len(profits)
+    weight = 0
+
+    while weight < capacity:
+        try:
+            i, w, _ = next(items)
+            if weight + w <= capacity:
+                x[i - 1] = 1
+                weight += w
+            else:
+                x[i - 1] = (capacity - weight) / w
+                weight = capacity
+        except StopIteration:
+            break
+
+    return [(i + 1, frac) for i, frac in enumerate(x) if frac > 0]
+
+# Example usage
+if __name__ == "__main__":
+    instance_path = 'path_to_instance_file'  # Replace with your instance file path
+    solve(instance_path)

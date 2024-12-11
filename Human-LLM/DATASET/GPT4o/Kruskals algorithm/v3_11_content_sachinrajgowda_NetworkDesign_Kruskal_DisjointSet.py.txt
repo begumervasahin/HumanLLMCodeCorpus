@@ -1,0 +1,65 @@
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+
+    def add(self, item):
+        """Adds a new item to the disjoint set, initializing its parent to itself."""
+        self.parent[item] = item
+
+    def find(self, item):
+        """Finds the root of the item with path compression."""
+        if self.parent[item] != item:
+            self.parent[item] = self.find(self.parent[item])  # Path compression
+        return self.parent[item]
+
+    def union(self, item1, item2):
+        """Unites the sets containing item1 and item2."""
+        root1 = self.find(item1)
+        root2 = self.find(item2)
+        if root1 != root2:
+            self.parent[root2] = root1  # Union by setting the parent of one root to the other
+
+
+def kruskal(nodes, sorted_edges):
+    """Implements Kruskal's algorithm to find the Minimum Spanning Tree (MST) of a graph."""
+    disjoint_set = DisjointSet()
+    mst = []
+
+    # Initialize each node in the disjoint set
+    for node in nodes:
+        disjoint_set.add(node)
+
+    # The MST will have exactly len(nodes) - 1 edges
+    edges_needed = len(nodes) - 1
+
+    # Iterate over the edges in non-decreasing order of weight
+    for src, dest, weight in sorted_edges:
+        # Find the roots of the sets to which src and dest belong
+        root_src = disjoint_set.find(src)
+        root_dest = disjoint_set.find(dest)
+
+        # If they belong to different sets, this edge can be added to the MST
+        if root_src != root_dest:
+            mst.append((src, dest, weight))
+            disjoint_set.union(root_src, root_dest)
+            edges_needed -= 1
+
+            # If we've found enough edges for the MST, we can stop
+            if edges_needed == 0:
+                break
+
+    return mst
+
+# Example usage:
+nodes = ['A', 'B', 'C', 'D', 'E']
+sorted_edges = [
+    ('A', 'B', 1),
+    ('B', 'C', 2),
+    ('C', 'D', 3),
+    ('D', 'E', 4),
+    ('A', 'E', 5),
+    ('B', 'D', 6)
+]
+
+mst = kruskal(nodes, sorted_edges)
+print("Minimum Spanning Tree:", mst)

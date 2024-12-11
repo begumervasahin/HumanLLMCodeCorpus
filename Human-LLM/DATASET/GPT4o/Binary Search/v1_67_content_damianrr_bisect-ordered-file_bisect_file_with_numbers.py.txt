@@ -1,0 +1,87 @@
+import os
+
+def bisect_big_file_looking_for_number(f, search):
+    """
+    This function searches for a number in an ordered file using binary search.
+    It divides the file into chunks, finds the nearest newline to read whole lines,
+    and compares the value to determine which part of the file to search next.
+    The process continues until the number is found or determined to be absent.
+
+    Parameters:
+    f (file object): File object for the file to search.
+    search (int): The number to search for.
+
+    Returns:
+    dict: {'result': line_content, 'position': position_in_file} if found.
+    bool: False if the number is not found.
+
+    Examples:
+    Value missing from the test file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 5)
+    False
+
+    Value greater than the greatest value in the file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 100000000)
+    False
+
+    Value smaller than the smallest value in the file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 0)
+    False
+
+    Random existing number:
+    >>> with open('test.log', 'r') as f:
+    ...    print(bisect_big_file_looking_for_number(f, 59953))
+    {'result': '59953', 'position': 348612}
+    """
+
+    high = os.fstat(f.fileno()).st_size  # Size of the file
+    low = 0  # Starting position in the file
+    number = int(search)
+
+    while high - low > 1:
+        middle = (high + low) // 2  # Midpoint of the current range
+        f.seek(middle)  # Move to the midpoint
+        last_pos = f.tell()
+
+        # Ensure we are reading a complete line
+        while f.read(1) != '\n' and f.tell() < high:
+            pass
+
+        line = f.readline()
+
+        if not line:  # If we're at the end of the file or no line found
+            f.seek(last_pos)
+            f.seek(-1, os.SEEK_CUR)
+            while f.read(1) != '\n' and f.tell() > 0:
+                f.seek(-2, os.SEEK_CUR)
+            line = f.readline()
+
+        if not line:  # If the file is empty or a problem occurs
+            return False
+
+        number_in_line = int(line.strip())
+
+        if number < number_in_line:
+            high = middle
+        elif number > number_in_line:
+            low = middle
+        else:
+            return {"result": line.strip(), "position": f.tell()}
+
+    return False
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+
+    # Example usage:
+    with open('test.log', 'r') as f:
+        search_value = 59953
+        result = bisect_big_file_looking_for_number(f, search_value)
+        if result:
+            print(f"Number {search_value} found at position {result['position']}")
+        else:
+            print(f"Number {search_value} not found.")

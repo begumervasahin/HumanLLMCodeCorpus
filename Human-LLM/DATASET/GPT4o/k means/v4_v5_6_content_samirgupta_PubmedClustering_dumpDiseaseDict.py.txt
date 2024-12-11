@@ -1,0 +1,63 @@
+import sys
+import time
+import pickle
+
+def process_pubtator_file(input_file_name):
+    """
+    Processes a PubTator file to extract PMID-disease mappings.
+
+    Args:
+        input_file_name (str): The name of the input file.
+
+    Returns:
+        dict: A dictionary with PMIDs as keys and lists of associated diseases as values.
+    """
+    # Initialize the dictionary to store PMID-disease mappings
+    pmid_disease_dict = {}
+
+    # Record the start time of processing
+    start_time = time.time()
+
+    # Open and read the input file
+    with open(input_file_name, "r") as file:
+        for line in file:
+            # Remove leading/trailing whitespaces and split the line into tokens
+            tokens = line.strip().split("\t")
+
+            # Ensure the line has the required fields
+            if len(tokens) == 4:
+                pmid, _, diseases_mentioned, _ = tokens
+
+                # Split the mentioned diseases into individual entries
+                diseases = diseases_mentioned.split("|")
+
+                # Update the dictionary with the extracted information
+                if pmid not in pmid_disease_dict:
+                    pmid_disease_dict[pmid] = []
+                pmid_disease_dict[pmid].extend(diseases)
+
+    # Print the time taken to process the file
+    print(f"Processing done in {time.time() - start_time:.4f} seconds\n")
+
+    return pmid_disease_dict
+
+def run():
+    """
+    Main function to execute the script. 
+    Processes the input PubTator file and saves the PMID-disease dictionary to a file.
+    """
+    # Get the input file name from command-line arguments
+    input_file_name = sys.argv[1]
+
+    # Process the PubTator file to extract the dictionary
+    pmid_disease_dict = process_pubtator_file(input_file_name)
+
+    # Define the output file name for storing the dictionary
+    output_file_name = './pubtator_dumps/pmid_disease_dict.pickle'
+
+    # Serialize and save the dictionary using pickle
+    with open(output_file_name, 'wb') as file:
+        pickle.dump(pmid_disease_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+if __name__ == '__main__':
+    run()

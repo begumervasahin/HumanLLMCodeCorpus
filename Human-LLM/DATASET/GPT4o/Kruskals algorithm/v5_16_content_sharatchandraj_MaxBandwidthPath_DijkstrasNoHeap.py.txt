@@ -1,0 +1,67 @@
+from collections import namedtuple
+from typing import List, Tuple, Optional
+
+# Define an Edge using namedtuple for clarity
+Edge = namedtuple('Edge', ['vertex', 'weight'])
+
+def pick_best_vertex(status: List[str], weights: List[float]) -> Optional[int]:
+    """Pick the vertex with the highest weight among the fringe vertices."""
+    best_vertex = None
+    best_weight = float('-inf')  # Initialize to negative infinity to find the max
+    
+    for i, (st, wt) in enumerate(zip(status, weights)):
+        if st == 'fringe' and wt > best_weight:
+            best_weight = wt
+            best_vertex = i
+    
+    return best_vertex
+
+def dijkstra_no_heap(graph, source: int, destination: int) -> Tuple[List[int], float]:
+    """Dijkstra's algorithm without a heap to find the maximum bandwidth path."""
+    number_of_vertices = len(graph.get_vertex())
+    
+    # Initialize data structures
+    status = ['unseen'] * number_of_vertices
+    weights = [float('-inf')] * number_of_vertices  # Initialize weights to negative infinity
+    predecessors = [None] * number_of_vertices
+    
+    # Set up the source vertex
+    status[source] = 'intree'
+    weights[source] = float('inf')  # Infinite weight for source
+    
+    # Initialize fringe vertices from the source vertex
+    for edge in graph.get_edge(source):
+        status[edge.vertex] = 'fringe'
+        weights[edge.vertex] = edge.weight
+        predecessors[edge.vertex] = source
+    
+    # Main loop: process vertices until no fringe vertices are left
+    while 'fringe' in status:
+        # Pick the fringe vertex with the highest weight
+        v = pick_best_vertex(status, weights)
+        
+        if v is None:
+            break  # If no vertex is found, break out of the loop
+        
+        status[v] = 'intree'
+        
+        # Update the status, weights, and predecessors for neighboring vertices
+        for edge in graph.get_edge(v):
+            if status[edge.vertex] == 'unseen':
+                status[edge.vertex] = 'fringe'
+                predecessors[edge.vertex] = v
+                weights[edge.vertex] = min(weights[v], edge.weight)
+            elif status[edge.vertex] == 'fringe' and weights[edge.vertex] < min(weights[v], edge.weight):
+                predecessors[edge.vertex] = v
+                weights[edge.vertex] = min(weights[v], edge.weight)
+    
+    # Build the maximum bandwidth path by tracing predecessors
+    max_bandwidth_path = []
+    current_vertex = destination
+    while current_vertex is not None:
+        max_bandwidth_path.append(current_vertex)
+        current_vertex = predecessors[current_vertex]
+    
+    max_bandwidth_path.reverse()  # Reverse to get the path from source to destination
+    
+    return max_bandwidth_path, weights[destination]

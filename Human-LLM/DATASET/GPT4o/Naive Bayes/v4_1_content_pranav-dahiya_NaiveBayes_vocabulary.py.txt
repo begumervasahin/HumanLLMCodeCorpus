@@ -1,0 +1,106 @@
+import glob
+import pickle
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import numpy as np
+
+def extract_vocabulary(folder):
+    """
+    Extract vocabulary from text files in the specified folder.
+    """
+    files = glob.glob(folder + "*.txt")
+    vocabulary = {}
+    
+    for filename in files:
+        with open(filename, 'r') as file:
+            text = file.readlines()
+            for line in text:
+                words = word_tokenize(line)
+                for word in words:
+                    word = word.lower()
+                    if word in vocabulary:
+                        vocabulary[word] += 1
+                    else:
+                        vocabulary[word] = 1
+
+    vocabulary.pop("", None)
+    return vocabulary
+
+def merge_vocabulary(old_vocab, new_vocab):
+    """
+    Merge new vocabulary into the existing vocabulary.
+    """
+    for word, count in new_vocab.items():
+        if word in old_vocab:
+            old_vocab[word] += count
+        else:
+            old_vocab[word] = count
+    return old_vocab
+
+def remove_stop_words(vocabulary):
+    """
+    Remove stop words from the vocabulary.
+    """
+    stop_words = set(stopwords.words('english'))
+    for word in stop_words:
+        vocabulary.pop(word, None)
+    return vocabulary
+
+def lemmatize_vocabulary(vocabulary):
+    """
+    Lemmatize the words in the vocabulary.
+    """
+    lemmatizer = WordNetLemmatizer()
+    lemmatized_vocabulary = {}
+    
+    for word in list(vocabulary.keys()):
+        lemmatized_word = lemmatizer.lemmatize(word)
+        if lemmatized_word != word:
+            if lemmatized_word in lemmatized_vocabulary:
+                lemmatized_vocabulary[lemmatized_word] += vocabulary[word]
+            else:
+                lemmatized_vocabulary[lemmatized_word] = vocabulary[word]
+        else:
+            lemmatized_vocabulary[word] = vocabulary[word]
+
+    return lemmatized_vocabulary
+
+def apply_threshold(vocabulary, percentile):
+    """
+    Apply threshold to the vocabulary based on the specified percentile.
+    """
+    values = np.fromiter(vocabulary.values(), dtype=float)
+    lower_bound = np.percentile(values, percentile)
+    upper_bound = np.percentile(values, 100 - percentile)
+    print(f"Lower bound: {lower_bound}, Upper bound: {upper_bound}")
+
+    filtered_vocabulary = {key: value for key, value in vocabulary.items() if lower_bound < value < upper_bound}
+    return filtered_vocabulary
+
+if __name__ == '__main__':
+    vocabulary = {}
+    
+    # Extract vocabulary from parts 1 to 10
+    for i in range(1, 11):
+        folder = f"lingspam/part{i}/"
+        vocabulary = merge_vocabulary(vocabulary, extract_vocabulary(folder))
+    
+    # Save initial vocabulary
+    with open("vocabulary1.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    
+    # Remove stop words and save vocabulary
+    vocabulary = remove_stop_words(vocabulary)
+    with open("vocabulary2.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    
+    # Lemmatize and save vocabulary
+    vocabulary = lemmatize_vocabulary(vocabulary)
+    with open("vocabulary3.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    
+    # Apply threshold and save final vocabulary
+    vocabulary = apply_threshold(vocabulary, 2)
+    with open("vocabulary4.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)

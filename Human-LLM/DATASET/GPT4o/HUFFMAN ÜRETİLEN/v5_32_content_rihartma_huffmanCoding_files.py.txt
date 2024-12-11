@@ -1,0 +1,95 @@
+class Files:
+    def load_file(self, filename):
+        """
+        Load and return the content of a file.
+
+        Args:
+            filename (str): The name of the file to load.
+
+        Returns:
+            str: The content of the file.
+        """
+        with open(filename, 'r') as file:
+            return file.read()
+
+    def save_table(self, content, filename):
+        """
+        Save the given content to a file.
+
+        Args:
+            content (str): The content to save.
+            filename (str): The name of the file to save the content to.
+        """
+        with open(filename, 'w') as file:
+            file.write(content)
+
+    def save_file(self, filename, text, codes):
+        """
+        Save encoded text to a file using Huffman codes.
+
+        Args:
+            filename (str): The name of the file to save.
+            text (str): The text to encode.
+            codes (dict): The Huffman codes for encoding.
+        """
+        # Generate the binary string from the Huffman codes
+        binary_string = ''.join(codes[char] for char in text)
+
+        # Convert the binary string to text representation
+        encoded_text = ''.join(
+            chr(int(binary_string[i:i+8], 2)) for i in range(0, len(binary_string) - 8, 8)
+        )
+
+        # Handle remaining bits if the binary string length is not a multiple of 8
+        if len(binary_string) % 8 != 0:
+            remainder = binary_string[-(len(binary_string) % 8):]
+            encoded_text += "~~~" + remainder
+
+        # Save the encoded text to the file
+        with open(filename, 'w') as file:
+            file.write(encoded_text)
+
+    def load_table(self, filename):
+        """
+        Load and return the Huffman codes from a file.
+
+        Args:
+            filename (str): The name of the file to load.
+
+        Returns:
+            dict: A dictionary of Huffman codes.
+        """
+        with open(filename, 'r') as file:
+            text = file.read()
+
+        codes = {}
+        pairs = text.split(",")
+
+        # Handle cases where the delimiter was part of the data
+        pairs = self._handle_delimiter_cases(pairs)
+
+        # Parse the pairs and populate the dictionary
+        for pair in pairs:
+            symbol, code = pair.split("-")
+            codes[code] = symbol
+
+        return codes
+
+    def _handle_delimiter_cases(self, pairs):
+        """
+        Handle edge cases where the delimiter was part of the data.
+
+        Args:
+            pairs (list): A list of string pairs.
+
+        Returns:
+            list: A cleaned-up list of string pairs.
+        """
+        index = 0
+        while index < len(pairs):
+            if pairs[index] == "":
+                pairs[index + 1] = "," + pairs[index + 1]
+                del pairs[index]
+            else:
+                index += 1
+        return pairs

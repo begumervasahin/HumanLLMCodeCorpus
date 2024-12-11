@@ -1,0 +1,80 @@
+import numpy as np
+import cv2
+from datetime import datetime
+
+def calculate_distance_map(frame1, frame2):
+    """Calculate the Pythagorean distance between two frames."""
+    frame1_32 = np.float32(frame1)
+    frame2_32 = np.float32(frame2)
+    diff32 = frame1_32 - frame2_32
+    num = np.sqrt(diff32[:, :, 0]**2 + diff32[:, :, 1]**2 + diff32[:, :, 2]**2)
+    den = np.sqrt(255**2 + 255**2 + 255**2)
+    norm32 = num / den
+    distance_map = np.uint8(norm32 * 255)
+    return distance_map
+
+def initialize_windows():
+    """Create windows to display the video feed and distance map."""
+    cv2.namedWindow('frame')
+    cv2.namedWindow('dist')
+
+def capture_initial_frames(cap):
+    """Capture the initial frames from the video source."""
+    _, frame1 = cap.read()
+    _, frame2 = cap.read()
+    return frame1, frame2
+
+def process_frame(frame1, frame2, frame3):
+    """Process the current frame and return the updated frames and distance map."""
+    dist = calculate_distance_map(frame1, frame3)
+    frame1 = frame2
+    frame2 = frame3
+    return frame1, frame2, dist
+
+def apply_threshold(mod):
+    """Apply Gaussian blur and thresholding to the distance map."""
+    mod_blurred = cv2.GaussianBlur(mod, (7, 7), 0)
+    _, thresh = cv2.threshold(mod_blurred, 100, 255, 0)
+    return thresh
+
+def calculate_standard_deviation(thresh):
+    """Calculate the standard deviation of the thresholded image."""
+    _, stDev = cv2.meanStdDev(thresh)
+    return stDev[0][0]
+
+def display_results(frame, mod, stDev):
+    """Display the distance map and standard deviation on the video feed."""
+    cv2.imshow('dist', mod)
+    cv2.putText(frame, f"Standard Deviation - {round(stDev, 0)}", (70, 70), font, 1, (255, 0, 255), 1, cv2.LINE_AA)
+
+def main():
+    sd_threshold = 5
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    initialize_windows()
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    frame1, frame2 = capture_initial_frames(cap)
+
+    while cap.isOpened():
+        ret, frame3 = cap.read()
+        if ret:
+            frame1, frame2, dist = process_frame(frame1, frame2, frame3)
+            thresh = apply_threshold(dist)
+            stDev = calculate_standard_deviation(thresh)
+            display_results(frame1, dist, stDev)
+
+            if stDev > sd_threshold:
+                print('Motion Detected:', datetime.now().strftime("%B %d %Y %H:%M:%S"))
+            
+            cv2.imshow('frame', frame2)
+        else:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()

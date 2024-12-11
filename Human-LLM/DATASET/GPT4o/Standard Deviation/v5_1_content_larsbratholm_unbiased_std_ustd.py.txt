@@ -1,0 +1,62 @@
+import numpy as np
+import math
+
+def get_scaling_factor(n):
+    """
+    Calculate the scaling factor based on the sample size n.
+    
+    Parameters:
+    n (int): Sample size.
+    
+    Returns:
+    float: Scaling factor.
+    """
+    k = n // 2
+    if n % 2 == 0:
+        # Calculate scaling factor for even n
+        factor = np.sqrt(2 / (np.pi * (2 * k - 1)))
+        numerator = (2 ** (2 * k - 2)) * (math.factorial(k - 1) ** 2)
+        denominator = math.factorial(2 * k - 2)
+    else:
+        # Calculate scaling factor for odd n
+        factor = np.sqrt(np.pi / k)
+        numerator = math.factorial(2 * k - 1)
+        denominator = (2 ** (2 * k - 1)) * (math.factorial(k - 1) ** 2)
+    
+    scaling_factor = factor * (numerator / denominator)
+    return scaling_factor
+
+def ustd(x):
+    """
+    Compute the unbiased estimation of standard deviation.
+    
+    Parameters:
+    x (numpy.ndarray): Input array of data.
+    
+    Returns:
+    numpy.ndarray: Unbiased standard deviation.
+    """
+    if x.ndim == 1:
+        # For 1D array
+        n = x.size
+        unbiased_variance = np.var(x, ddof=1)
+    else:
+        # For 2D array, calculate along the second axis
+        n = x.shape[1]
+        unbiased_variance = np.var(x, ddof=1, axis=1)
+    
+    unbiased_std = np.sqrt(unbiased_variance) / get_scaling_factor(n)
+    return unbiased_std
+
+if __name__ == "__main__":
+    # Test the get_scaling_factor function with known values
+    assert abs(get_scaling_factor(2) - 0.7978845608) < 1e-6
+    assert abs(get_scaling_factor(3) - 0.8862269255) < 1e-6
+    assert abs(get_scaling_factor(4) - 0.9213177319) < 1e-6
+    
+    # Generate random normal data and test the ustd function
+    x = np.random.normal(size=(100000, 4))
+    sigma = ustd(x)
+    
+    # Verify that the mean of the computed standard deviations is close to 1
+    assert abs(np.mean(sigma) - 1) < 0.005

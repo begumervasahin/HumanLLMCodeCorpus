@@ -1,0 +1,65 @@
+import json
+import nltk
+import re
+import sys
+from tweepy import Stream
+from tweepy import OAuthHandler
+from tweepy.streaming import StreamListener
+
+# Authentication keys
+ckey = "ZmPXKTWphyiVnQxlCa2erNy64"
+csecret = "gI3B2iQflMbB166VFI55Gll84S7I8Izb73iyaWoMTyc2QdU4HU"
+atoken = "2697779004-2Pk3eVHdgdHYtsnbDxGjKEopbh5moyVER09hHDV"
+asecret = "LwR4bT6bMNGVi43RXtKehreBzns7AEKBhhxvGMdmXbqwV"
+
+# Load English words set from NLTK
+nltk.download('words')
+words = set(nltk.corpus.words.words())
+
+# Get command line arguments
+args = sys.argv[1:]
+
+class Listener(StreamListener):
+    count = 0
+
+    def on_data(self, data):
+        all_data = json.loads(data)
+
+        # Extracting required fields
+        user_name = all_data["user"]["name"]
+        verified = all_data["user"]["verified"]
+        text = all_data["text"]
+        if "extended_tweet" in all_data:
+            text = all_data["extended_tweet"]["full_text"]
+
+        # Clean the text
+        cleaned_text = re.sub(r"[^A-Za-z0-9_@./#&: ]+", "", text)
+
+        # Print and save the tweet data
+        output_line = f'Username: {user_name} , verified: {verified} , text: {cleaned_text}'
+        print(output_line)
+        with open("new_tweets.txt", "a") as output:
+            output.write(output_line + '\n')
+
+        # Increment the tweet count
+        Listener.count += 1
+
+        # Exit after fetching 30 tweets
+        if Listener.count == 30:
+            sys.exit("30 tweets fetched")
+
+        return True
+
+    def on_error(self, status):
+        print(status)
+
+# OAuth authentication
+auth = OAuthHandler(ckey, csecret)
+auth.set_access_token(atoken, asecret)
+
+# Join the command line arguments to form the query string
+query_string = " ".join(args)
+
+# Create and start the stream
+twitter_stream = Stream(auth, Listener())
+twitter_stream.filter(languages=["en"], track=[query_string.strip()])

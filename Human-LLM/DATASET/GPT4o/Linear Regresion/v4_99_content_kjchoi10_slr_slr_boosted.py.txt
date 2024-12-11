@@ -1,0 +1,77 @@
+import statsmodels.api as sm
+import pandas as pd
+import numpy as np
+
+class BoostedSLR:
+    def __init__(self, input_endog, n_season=12, forecast_length=12, smooth_factor=1,
+                 trend_dampening=1, model_type='add', boost=True, boost_iter=5):
+        self.input_endog = input_endog
+        self.n_season = n_season
+        self.forecast_length = forecast_length
+        self.smooth_factor = smooth_factor
+        self.trend_dampening = trend_dampening
+        self.model_type = model_type
+        self.boost = boost
+        self.boost_iter = boost_iter
+
+    def get_avg_seasonal_idx(self, ts_list, nk, smooth_factor):
+        # Calculate average seasonal index
+        avg_list = [sum(season) / len(season) for season in ts_list]
+        seasonal_indices = [season / avg for season, avg in zip(ts_list, avg_list)]
+
+        if nk < 1.0:
+            avg_seasonal_idx = np.mean(seasonal_indices)
+        else:
+            max_len = max(len(s) for s in seasonal_indices)
+            avg_seasonal_idx = [np.mean([s[i] for s in seasonal_indices if len(s) > i]) for i in range(max_len)]
+
+        smoothed_seasonal_idx = np.array(avg_seasonal_idx) * smooth_factor
+        return smoothed_seasonal_idx
+
+    def fit_slr(self):
+        n_total = len(self.input_endog)
+        nk = n_total / self.n_season
+        ts = self.input_endog.values
+        ts_list = [ts[i:i + self.n_season] for i in range(0, len(ts), self.n_season)]
+        
+        # Get average seasonal index
+        avg_seasonal_idx = self.get_avg_seasonal_idx(ts_list, nk, self.smooth_factor)
+
+        X = sm.add_constant(range(len(ts)))
+        y = ts - np.resize(avg_seasonal_idx, len(ts)) if self.model_type == 'add' else ts / np.resize(avg_seasonal_idx, len(ts))
+
+        if not self.boost:
+            model = sm.OLS(y, X)
+            res = model.fit()
+            coefs = res.params
+        else:
+            coefs, boosted_output = self.boost_model(y, X)
+
+        X_forecast = sm.add_constant(range(len(ts) + self.forecast_length))
+        yhat = model.predict(coefs, X_forecast)
+        y_pred = yhat * np.resize(avg_seasonal_idx, len(yhat)) if self.model_type == 'add' else yhat
+
+        forecast_in_sample = y_pred[:len(ts)]
+        forecast_out_of_sample = y_pred[len(ts):]
+
+        return {
+            'model': model,
+            'in_sample_forecast': pd.Series(forecast_in_sample),
+            'out_of_sample_forecast': pd.Series(forecast_out_of_sample),
+            'trend': yhat
+        }
+
+    def boost_model(self, y, X):
+        boosted_data = y.copy()
+        boosted_output = np.zeros(len(y))
+        coefs = np.zeros(2)
+        
+        for _ in range(self.boost_iter):
+            model = sm.OLS(boosted_data, X)
+            res = model.fit()
+            fitted = model.predict(res.params, X)
+            boosted_output += 0.2 * fitted
+            boosted_data = y - boosted_output
+            coefs += 0.2 * res.params
+        
+        return coefs, boosted_output

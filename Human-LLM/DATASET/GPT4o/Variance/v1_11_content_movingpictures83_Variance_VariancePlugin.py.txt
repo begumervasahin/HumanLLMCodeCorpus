@@ -1,0 +1,44 @@
+import numpy as np
+
+class VariancePlugin:
+    def __init__(self):
+        self.bacteria = []
+        self.ADJ = []
+
+    def input(self, filename):
+        self.myfile = filename
+
+    def run(self):
+        with open(self.myfile, 'r') as file:
+            firstline = file.readline().strip()
+            self.bacteria = [item for item in firstline.split(',') if item != '\"\"']
+            self.n = len(self.bacteria)
+            self.ADJ = [[] for _ in range(self.n)]
+
+            for line in file:
+                contents = line.strip().split(',')
+                for j in range(1, len(contents)):
+                    value = float(contents[j])
+                    self.ADJ[j-1].append(value)
+
+    def output(self, filename):
+        variances = []
+
+        for i in range(self.n):
+            if len(self.ADJ[i]) > 0:
+                values = np.array(self.ADJ[i])
+                variance = np.var(values)
+                variances.append((variance, self.bacteria[i]))
+
+        variances.sort(reverse=True)
+
+        with open(filename, 'w') as file:
+            file.write("Element\tVariance\n\n")
+            for variance, name in variances:
+                file.write(f"{name}\t{variance:.6f}\n")
+
+# Example usage:
+# plugin = VariancePlugin()
+# plugin.input('input_file.csv')
+# plugin.run()
+# plugin.output('output_file.txt')

@@ -1,0 +1,111 @@
+import os
+import sys
+import sqlite3
+import xml.etree.ElementTree as ET
+import data
+
+# Constants
+VIEWMODE_LOW_LIST = 66037
+VIEWMODE_POSTERS = 458808
+VIEWMODE_MAPPING = {
+    data.Context.KIND_SERIES: VIEWMODE_POSTERS,
+    data.Context.KIND_SEASON: VIEWMODE_LOW_LIST,
+    data.Context.KIND_MOVIE: VIEWMODE_LOW_LIST,
+    data.Context.KIND_OVA: VIEWMODE_LOW_LIST,
+}
+WINDOW = 10025
+SORT_METHOD = 4
+SORT_ORDER = 1
+SORT_ATTRIBUTES = 0
+SKIN = 'skin.aeon.nox.5'
+QUERY_SELECT = 'SELECT idView, window, viewMode, sortMethod, sortOrder, sortAttributes, skin FROM view WHERE path = ?'
+QUERY_INSERT = 'INSERT INTO view (window, path, viewMode, sortMethod, sortOrder, sortAttributes, skin) VALUES(?, ?, ?, ?, ?, ?, ?)'
+QUERY_UPDATE = 'UPDATE view SET viewMode = ?, sortMethod = ?, sortOrder = ?, sortAttributes = ? WHERE idView = ?'
+BACKGROUND_KEYS = (
+    'skin.aeon.nox.5.System.Fallback',
+    'skin.aeon.nox.5.Movies.Fallback',
+    'skin.aeon.nox.5.TVShows.Fallback',
+    'skin.aeon.nox.5.Videos.Fallback',
+)
+
+def run_query(cursor, query, parameters):
+    """
+    Executes the given query with the provided parameters using the cursor.
+    """
+    print(f'Running query: {query} with parameters {parameters}')
+    cursor.execute(query, parameters)
+
+def update_database(context, cursor):
+    """
+    Updates the database with the context information using the provided cursor.
+    """
+    mode = VIEWMODE_MAPPING.get(context.kind)
+    if not mode:
+        return
+
+    reflected_path = context.reflected_path
+    if not reflected_path.endswith(os.sep):
+        reflected_path += os.sep
+
+    row = cursor.execute(QUERY_SELECT, (reflected_path,)).fetchone()
+    if row:
+        idView, window, viewMode, sortMethod, sortOrder, sortAttributes, skin = row
+        if (window, viewMode, sortMethod, sortOrder, sortAttributes, skin) != (WINDOW, mode, SORT_METHOD, SORT_ORDER, SORT_ATTRIBUTES, SKIN):
+            run_query(cursor, QUERY_UPDATE, (mode, SORT_METHOD, SORT_ORDER, SORT_ATTRIBUTES, idView))
+    else:
+        run_query(cursor, QUERY_INSERT, (WINDOW, reflected_path, mode, SORT_METHOD, SORT_ORDER, SORT_ATTRIBUTES, SKIN))
+
+def update_kodi_profile(library, profile):
+    """
+    Updates the Kodi profile settings with the background settings from the library.
+    """
+    guisettings_path = os.path.join(profile, 'userdata/guisettings.xml')
+    tree = ET.parse(guisettings_path)
+    changed = False
+
+    for setting in tree.getroot().findall('.//setting'):
+        if setting.get('name') in BACKGROUND_KEYS and setting.text != library.background:
+            changed = True
+            setting.text = library.background
+
+    if changed:
+        tree.write(guisettings_path)
+
+def main():
+    libraries = {}
+    databases = {}
+
+    try:
+        for path in sys.argv[1:]:
+            for context in data.Traverse(path):
+                print(f'Updating database entry for: {context}')
+                library = context.library
+
+                if library.path not in libraries:
+                    libraries[library.path] = library
+                    for profile in library.kodi_profiles:
+                        if profile in databases:
+                            continue
+                        database_path = os.path.join(profile, 'userdata/Database/ViewModes6.db')
+                        if not os.path.isfile(database_path):
+                            raise RuntimeError(f'Database file {database_path} does not exist.')
+                        conn = sqlite3.connect(database_path)
+                        cursor = conn.cursor()
+                        databases[profile] = (conn, cursor)
+
+                for profile in library.kodi_profiles:
+                    update_database(context, databases[profile][1])
+
+    finally:
+        for conn, _ in databases.values():
+            conn.commit()
+            conn.close()
+
+    for library in libraries.values():
+        print(f'Updating library settings for: {library}')
+        for profile in library.kodi_profiles:
+            print(f'Updating Kodi profile for {library} at {profile}')
+            update_kodi_profile(library, profile)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,117 @@
+class Files:
+    def load_file(self, filename):
+        """
+        Loads the content of a file and returns it as a string.
+        
+        Parameters
+        ----------
+        filename : str
+            The name of the file to load.
+        
+        Returns
+        -------
+        str
+            The content of the file as a string.
+        """
+        with open(filename, 'r') as file:
+            return file.read()
+
+    def save_table(self, table_text, filename):
+        """
+        Saves a string (Huffman code table) to a file.
+        
+        Parameters
+        ----------
+        table_text : str
+            The text to save (Huffman code table).
+        filename : str
+            The name of the file to save the table to.
+        """
+        with open(filename, 'w') as file:
+            file.write(table_text)
+
+    def save_encoded_file(self, filename, text, codes):
+        """
+        Saves the encoded text to a file using Huffman codes.
+        
+        Parameters
+        ----------
+        filename : str
+            The name of the file to save.
+        text : str
+            The original text to encode.
+        codes : dict
+            A dictionary mapping characters to their Huffman codes.
+        """
+        binary_string = ''.join(codes[char] for char in text)
+        
+        encoded_text = ""
+        for i in range(0, len(binary_string) - 8, 8):
+            encoded_text += chr(int(binary_string[i:i+8], 2))
+        
+        # Handle remaining bits if the binary string length is not a multiple of 8
+        if len(binary_string) % 8 != 0:
+            encoded_text += "~~~" + binary_string[-(len(binary_string) % 8):]
+        
+        with open(filename, 'w') as file:
+            file.write(encoded_text)
+
+    def load_table(self, filename):
+        """
+        Loads a Huffman code table from a file and returns it as a dictionary.
+        
+        Parameters
+        ----------
+        filename : str
+            The name of the file to load the table from.
+        
+        Returns
+        -------
+        dict
+            A dictionary mapping Huffman codes to their respective characters.
+        """
+        with open(filename, "r") as file:
+            content = file.read()
+        
+        codes = {}
+        pairs = content.split(",")
+
+        # Handle cases where the comma is part of the key
+        index = 0
+        while index < len(pairs):
+            if pairs[index] == "":
+                pairs[index + 1] = "," + pairs[index + 1]
+                del pairs[index]
+            else:
+                index += 1
+
+        for pair in pairs:
+            char, code = pair.split("-")
+            codes[code] = char
+        
+        return codes
+
+# Example usage:
+if __name__ == "__main__":
+    files = Files()
+    
+    # Load text from a file
+    original_text = files.load_file("example.txt")
+    
+    # Example Huffman code table
+    huffman_codes = {
+        'a': '101',
+        'b': '111',
+        'c': '000',
+        # Additional mappings can be added...
+    }
+    
+    # Save the Huffman code table
+    files.save_table("a-101,b-111,c-000", "huffman_table.txt")
+    
+    # Save the encoded file
+    files.save_encoded_file("encoded_file.txt", original_text, huffman_codes)
+    
+    # Load the Huffman code table
+    loaded_codes = files.load_table("huffman_table.txt")
+    print(loaded_codes)

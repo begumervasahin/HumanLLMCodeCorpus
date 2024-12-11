@@ -1,0 +1,68 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import statistics
+import matplotlib.pyplot as plt
+
+# Initialize an empty list to store player heights
+heights_list = []
+
+# URL of the page containing the list of NFL players
+url = "http://www.espn.com/nfl/players/_/position/s"
+html = requests.get(url).content
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(html, 'html.parser')
+
+# Initialize a list to store player profile links
+links = []
+
+# Find the table containing player information
+table = soup.find('table', {'class': 'tablehead'})
+
+# Extract all rows from the table
+rows = table.findAll('tr')
+
+# Loop through the rows to extract player profile links
+for tr in rows:
+    cols = tr.findAll('td')
+    if len(cols) > 0:
+        atags = cols[0].findAll('a')
+        for atag in atags:
+            links.append(atag.get('href'))
+
+# Loop through the extracted player profile links
+for link in links:
+    player_html = requests.get(link).content
+    new_soup = BeautifulSoup(player_html, 'html.parser')
+    general_player_info = new_soup.find('ul', {'class': 'general-info'})
+    if general_player_info:
+        info_pieces = general_player_info.findAll('li')
+        if len(info_pieces) > 1:
+            player_height = str(info_pieces[1])
+            try:
+                height_feet = re.search(r"<li>(\d+)\s", player_height).group(1)
+                height_inches = re.search(r"\s(\d+)\s?<\/li>", player_height).group(1)
+                total_height_inches = int(height_feet) * 12 + int(height_inches)
+                heights_list.append(total_height_inches)
+                print(total_height_inches)
+            except AttributeError:
+                # Handle case where height is not in expected format
+                continue
+
+# Calculate and print the standard deviation and mean of the heights
+if heights_list:
+    print("Standard Deviation:", statistics.pstdev(heights_list))
+    print("Mean:", statistics.mean(heights_list))
+
+    # Create histogram bins
+    bins_intervals = list(range(65, 81))
+
+    # Plot the histogram of player heights
+    plt.hist(heights_list, bins=bins_intervals, edgecolor='black')
+    plt.xlabel('Height (inches)')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of NFL Player Heights')
+    plt.show()
+else:
+    print("No player heights found.")

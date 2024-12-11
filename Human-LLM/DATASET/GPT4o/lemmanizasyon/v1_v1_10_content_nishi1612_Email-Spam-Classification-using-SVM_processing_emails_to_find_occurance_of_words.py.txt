@@ -1,0 +1,51 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Start the timer
+start_time = time()
+
+# Read the wordslist.csv file
+df = pd.read_csv('wordslist.csv')
+words = df['word'].tolist()
+lmtzr = WordNetLemmatizer()
+
+# Define the directory containing the email files
+directory_in_str = "emails/"
+directory = os.fsencode(directory_in_str)
+
+# Create and write headers to the frequency.csv file
+with open("frequency.csv", "w") as f:
+    f.write(','.join(words) + ',output\n')
+
+# Process each email file in the directory
+k = 0
+for file in os.listdir(directory):
+    file_name = os.path.join(directory_in_str, file.decode("utf-8"))
+    k += 1
+
+    # Read the email file
+    with open(file_name, "r", encoding='utf-8', errors='ignore') as file_reading:
+        words_list_array = np.zeros(len(words))
+
+        # Process each word in the file
+        for word in file_reading.read().split():
+            word = lmtzr.lemmatize(word.lower())
+            if word in stopwords.words('english') or word in string.punctuation or len(word) <= 2 or word.isdigit():
+                continue
+            if word in words:
+                words_list_array[words.index(word)] += 1
+
+        # Write the word frequencies to the frequency.csv file
+        with open("frequency.csv", "a") as f:
+            f.write(','.join(map(str, map(int, words_list_array))) + ',')
+            f.write("1\n" if len(file_name) == 71 else "-1\n")
+
+    if k % 100 == 0:
+        print(f"Done {k}")
+
+print(f"Time (in seconds) to segregate the entire dataset to form the input vector: {round(time() - start_time, 2)}")

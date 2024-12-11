@@ -1,0 +1,50 @@
+import pandas as pd
+import pickle
+import os
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+from sklearn import svm
+
+def training():
+    # Set the random seed for reproducibility
+    np.random.seed(100)
+    
+    # Load the dataset
+    corpus = pd.read_csv("Test.csv", encoding='utf-8-sig')
+    texts = corpus['text']
+    labels = corpus['label']
+    
+    # Define the text classification pipeline
+    text_clf = Pipeline([
+        ('vect', CountVectorizer()),
+        ('tfidf', TfidfTransformer()),
+        ('clf', svm.SVC(C=5, kernel='rbf', degree=3, gamma=0.5)),
+    ])
+    
+    # Train the classifier
+    trained_clf = text_clf.fit(texts, labels)
+    
+    # Save the trained model to a file
+    model_filename = 'Amz_5000_.sav'
+    pickle.dump(trained_clf, open(model_filename, 'wb'))
+    
+    # Check if the model file was successfully saved
+    is_model_saved = os.path.exists(model_filename)
+    
+    # Prepare the response messages
+    messages = [
+        "Successful: Training model saved",
+        "Oh Snap! Something's wrong",
+        f"Number of records in the corpus: {len(corpus)}"
+    ]
+    
+    # Return the appropriate message based on the save status
+    if is_model_saved:
+        return [messages[0], messages[2]]
+    else:
+        return [messages[1], messages[2]]
+
+# Example usage
+result = training()
+print(result)

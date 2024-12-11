@@ -1,0 +1,64 @@
+import threading
+import random
+import time
+from quicksort import quick_sort
+from merge import merge
+
+class SortingThread(threading.Thread):
+    def __init__(self, thread_id, name, array, left, right):
+        super().__init__()
+        self.thread_id = thread_id
+        self.name = name
+        self.array = array
+        self.left = left
+        self.right = right
+        self.result = []
+
+    def run(self):
+        quick_sort(self.array, self.left, self.right)
+        self.result = self.array[self.left:self.right + 1]
+
+class MergingThread(threading.Thread):
+    def __init__(self, thread_id, name, array, left, right, partitions):
+        super().__init__()
+        self.thread_id = thread_id
+        self.name = name
+        self.array = array
+        self.left = left
+        self.right = right
+        self.partitions = partitions
+        self.result = []
+
+    def run(self):
+        mid = self.left + (self.right - self.left) // 2
+        if self.partitions == 2:
+            left_thread = SortingThread(self.thread_id + 1, f"SortingThread-{self.thread_id + 1}", self.array, self.left, mid)
+            right_thread = SortingThread(self.thread_id + 2, f"SortingThread-{self.thread_id + 2}", self.array, mid + 1, self.right)
+        else:
+            left_thread = MergingThread(self.thread_id + 1, f"MergingThread-{self.thread_id + 1}", self.array, self.left, mid, self.partitions // 2)
+            right_thread = MergingThread(self.thread_id + 2, f"MergingThread-{self.thread_id + 2}", self.array, mid + 1, self.right, self.partitions // 2)
+        
+        left_thread.start()
+        right_thread.start()
+        left_thread.join()
+        right_thread.join()
+        
+        self.result = merge(left_thread.result, right_thread.result)
+
+def main():
+    partitions = 32
+    array = list(range(0, 1000000))
+    random.shuffle(array)
+    
+    start_time = time.time()
+    
+    main_thread = MergingThread(1, "MergingThread-1", array, 0, len(array) - 1, partitions)
+    main_thread.start()
+    main_thread.join()
+    
+    end_time = time.time()
+    
+    print(f"Execution time: {end_time - start_time:.2f} seconds")
+
+if __name__ == '__main__':
+    main()

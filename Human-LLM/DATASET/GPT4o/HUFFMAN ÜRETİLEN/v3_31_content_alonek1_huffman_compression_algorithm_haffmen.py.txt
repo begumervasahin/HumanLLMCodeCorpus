@@ -1,0 +1,85 @@
+from collections import Counter
+from queue import PriorityQueue
+
+def calculate_probabilities(text, characters):
+    """Calculate the probability of each character in the text from a specified list of characters."""
+    char_count = Counter(text)
+    total_count = sum(char_count[char] for char in characters)
+    return {char: char_count[char] / total_count for char in characters}
+
+class HuffmanNode:
+    """Represents a node in the Huffman Tree."""
+    def __init__(self, char=None, left=None, right=None):
+        self.char = char
+        self.left = left
+        self.right = right
+
+    def is_leaf(self):
+        """Check if the node is a leaf (i.e., has no children)."""
+        return self.char is not None
+
+def create_huffman_tree(frequencies):
+    """Build a Huffman Tree based on character frequencies."""
+    pq = PriorityQueue()
+    for char, prob in frequencies:
+        pq.put((prob, HuffmanNode(char=char)))
+
+    while pq.qsize() > 1:
+        left_prob, left_node = pq.get()
+        right_prob, right_node = pq.get()
+        combined_node = HuffmanNode(left=left_node, right=right_node)
+        pq.put((left_prob + right_prob, combined_node))
+
+    return pq.get()[1]
+
+def generate_huffman_codes(node, prefix="", code=None):
+    """Recursively generate Huffman codes by traversing the tree."""
+    if code is None:
+        code = {}
+
+    if node.is_leaf():
+        code[node.char] = prefix
+    else:
+        generate_huffman_codes(node.left, prefix + "0", code)
+        generate_huffman_codes(node.right, prefix + "1", code)
+
+    return code
+
+def encode_text(text, huffman_codes):
+    """Encode the text using the provided Huffman codes."""
+    return ''.join(huffman_codes[char] for char in text)
+
+def main():
+    # Load the text from a file
+    with open('rand_file', 'r') as file:
+        text = file.read()
+
+    # Define the characters of interest
+    characters = ['A', 'B', 'C', 'D', 'E']
+
+    # Calculate character probabilities
+    probabilities = calculate_probabilities(text, characters)
+
+    # Sort frequencies by ascending probability
+    frequencies = sorted(probabilities.items(), key=lambda item: item[1])
+
+    # Create the Huffman Tree
+    huffman_tree = create_huffman_tree(frequencies)
+
+    # Generate Huffman codes
+    huffman_codes = generate_huffman_codes(huffman_tree)
+
+    # Display frequencies and their corresponding Huffman codes
+    print("Character Frequencies and Huffman Codes:")
+    for char, prob in sorted(frequencies, key=lambda item: item[1], reverse=True):
+        print(f"Character: {char}, Probability: {prob:.10f}, Code: {huffman_codes[char]}")
+
+    # Encode the entire text
+    encoded_text = encode_text(text, huffman_codes)
+
+    # Print the encoded text
+    print("\nEncoded Text:")
+    print(encoded_text)
+
+if __name__ == "__main__":
+    main()

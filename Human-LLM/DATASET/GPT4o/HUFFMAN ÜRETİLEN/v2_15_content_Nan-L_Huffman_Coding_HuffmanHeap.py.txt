@@ -1,0 +1,101 @@
+class HuffmanTree:
+    """
+    A class representing a node in a Huffman tree.
+
+    Attributes
+    ----------
+    freq : int
+        The frequency associated with the node.
+    symbol : str, optional
+        The symbol stored in the node (None for internal nodes).
+    left : HuffmanTree, optional
+        The left child of the node.
+    right : HuffmanTree, optional
+        The right child of the node.
+    """
+
+    def __init__(self, freq, symbol=None, left=None, right=None):
+        self.freq = freq
+        self.symbol = symbol
+        self.left = left
+        self.right = right
+
+    def get_freq(self):
+        """Returns the frequency of the node."""
+        return self.freq
+
+    def __repr__(self):
+        return f"HuffmanTree(freq={self.freq}, symbol={self.symbol})"
+
+class HuffmanHeap:
+    """
+    A heap-like structure for managing two lists of Huffman trees.
+    
+    Attributes
+    ----------
+    old : list of HuffmanTree
+        A list of Huffman trees, assumed to be sorted.
+    new : list of HuffmanTree
+        A list of Huffman trees, dynamically updated and kept sorted.
+    """
+
+    def __init__(self, old=None, new=None):
+        self.old = old if old is not None else []
+        self.new = new if new is not None else []
+
+    def enqueue(self, item):
+        """
+        Insert a Huffman tree into the new list, keeping it sorted.
+
+        Parameters
+        ----------
+        item : HuffmanTree
+            The HuffmanTree object to be added to the new list.
+        """
+        self.new.append(item)
+        self.new.sort(key=lambda x: x.get_freq())  # Keep the new list sorted
+
+    def dequeue(self):
+        """
+        Remove and return the HuffmanTree with the smallest frequency.
+
+        Returns
+        -------
+        HuffmanTree
+            The HuffmanTree object with the smallest frequency, or None if both lists are empty.
+        """
+        if not self.old and self.new:
+            return self.new.pop(0)
+        elif not self.new and self.old:
+            return self.old.pop(0)
+        elif self.new and self.old:
+            if self.old[0].get_freq() <= self.new[0].get_freq():
+                return self.old.pop(0)
+            else:
+                return self.new.pop(0)
+        else:
+            print("Both old and new lists are empty!")
+            return None
+
+if __name__ == "__main__":
+    # Example usage
+    old_list = [HuffmanTree(freq=5), HuffmanTree(freq=10)]
+    new_list = [HuffmanTree(freq=2), HuffmanTree(freq=8)]
+
+    huffman_heap = HuffmanHeap(old_list, new_list)
+
+    # Enqueue a new Huffman tree
+    huffman_heap.enqueue(HuffmanTree(freq=3))
+
+    # Dequeue the smallest Huffman tree
+    print("Dequeued:", huffman_heap.dequeue())
+
+    # Dequeue another Huffman tree
+    print("Dequeued:", huffman_heap.dequeue())
+
+    # Dequeue remaining Huffman trees
+    while True:
+        item = huffman_heap.dequeue()
+        if item is None:
+            break
+        print("Dequeued:", item)

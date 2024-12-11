@@ -1,0 +1,112 @@
+import random
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+
+def compute_cost(X, Y, theta):
+    """Compute the cost function for linear regression."""
+    predictions = np.dot(X.T, theta)
+    errors = predictions - Y
+    cost = (1 / 2) * np.dot(errors.T, errors)[0][0]
+    return cost
+
+def batch_gradient_descent(X, Y, theta, learning_rate=0.00005, threshold=0.1, max_steps=10000):
+    """Perform batch gradient descent to learn theta."""
+    cost = compute_cost(X, Y, theta)
+    cost_history = []
+    steps = 0
+
+    while cost > threshold and steps < max_steps:
+        gradient = np.dot(X, np.dot(X.T, theta) - Y)
+        theta -= learning_rate * gradient
+        cost = compute_cost(X, Y, theta)
+        cost_history.append(cost)
+        steps += 1
+
+    return theta, steps, cost_history
+
+def stochastic_gradient_descent(X, Y, theta, learning_rate=0.0001, threshold=0.1, max_steps=10000):
+    """Perform stochastic gradient descent to learn theta."""
+    cost_history = []
+    steps = 0
+    cost = compute_cost(X, Y, theta)
+    cost_history.append(cost)
+    num_features, num_samples = X.shape
+
+    while cost > threshold and steps < max_steps:
+        for i in range(num_samples):
+            prediction = np.dot(X[:, i], theta)[0]
+            for j in range(num_features):
+                theta[j] -= learning_rate * (prediction - Y[i][0]) * X[j][i]
+        cost = compute_cost(X, Y, theta)
+        cost_history.append(cost)
+        steps += 1
+
+    return theta, steps, cost_history
+
+def load_and_prepare_data(file_path):
+    """Load and prepare the dataset for training and testing."""
+    df = pd.read_csv(file_path, header=None, delim_whitespace=True)
+    data = df.values
+
+    X = data[:, :-1]
+    Y = data[:, -1].reshape(-1, 1)
+
+    scaler_X = StandardScaler()
+    scaler_Y = StandardScaler()
+
+    X = scaler_X.fit_transform(X)
+    Y = scaler_Y.fit_transform(Y)
+
+    X = X.T
+    X = np.insert(X, 0, 1, axis=0)
+
+    train_X = X[:, :455]
+    test_X = X[:, 455:]
+
+    train_Y = Y[:455]
+    test_Y = Y[455:]
+
+    return train_X, train_Y, test_X, test_Y
+
+def plot_loss(cost_history_bgd, cost_history_sgd):
+    """Plot the training loss for BGD and SGD."""
+    plt.plot(np.arange(len(cost_history_bgd)), cost_history_bgd, color='blue', label='BGD')
+    plt.plot(np.arange(len(cost_history_sgd)), cost_history_sgd, color='red', label='SGD')
+    plt.legend()
+    plt.title("Training Loss Function of BGD and SGD")
+    plt.savefig("training_loss_function.png")
+    plt.show()
+
+def plot_predictions(test_X, test_Y, predict_bgd, predict_sgd):
+    """Plot the predictions of BGD and SGD against the real values."""
+    plt.plot(np.arange(len(test_X[0])), predict_bgd, color='blue', label='Predict BGD')
+    plt.plot(np.arange(len(test_X[0])), predict_sgd, color='red', label='Predict SGD')
+    plt.plot(np.arange(len(test_X[0])), test_Y, color='yellow', label='Real')
+    plt.legend()
+    plt.title("Test Housing Price Predictions")
+    plt.savefig("test_housing_price_predictions.png")
+    plt.show()
+
+def main():
+    file_path = 'housing.data'
+    train_X, train_Y, test_X, test_Y = load_and_prepare_data(file_path)
+
+    initial_theta = np.ones((train_X.shape[0], 1))
+
+    theta_bgd, steps_bgd, cost_history_bgd = batch_gradient_descent(train_X, train_Y, initial_theta)
+    theta_sgd, steps_sgd, cost_history_sgd = stochastic_gradient_descent(train_X, train_Y, initial_theta)
+
+    print("BGD minimum cost:", cost_history_bgd[-1])
+    print("SGD minimum cost:", cost_history_sgd[-1])
+
+    plot_loss(cost_history_bgd, cost_history_sgd)
+
+    predict_bgd = np.dot(test_X.T, theta_bgd)
+    predict_sgd = np.dot(test_X.T, theta_sgd)
+
+    plot_predictions(test_X, test_Y, predict_bgd, predict_sgd)
+
+if __name__ == "__main__":
+    main()

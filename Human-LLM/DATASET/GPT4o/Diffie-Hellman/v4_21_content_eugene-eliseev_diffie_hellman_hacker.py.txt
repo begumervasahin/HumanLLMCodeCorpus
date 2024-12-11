@@ -1,0 +1,38 @@
+from person import Person
+from tools import AESCipher
+
+class Hacker(Person):
+    def read_data(self, sent):
+        """
+        Process the sent data and perform actions based on the context.
+        
+        Args:
+            sent (tuple): A tuple containing sender, receiver, action, and data.
+        
+        Returns:
+            tuple: Processed data in the form of a tuple.
+        """
+        send_from, send_to, action, data = sent
+        
+        # Handle initial parameter exchange
+        if action == "my param":
+            shared_key = (int(data) ** self.prime) % self.p
+            self.keys[send_from] = AESCipher(str(shared_key))
+            
+            # Initiate communication
+            _, _, action, data = self.start_communication_with("")
+            return send_from, send_to, action, data
+        
+        # Handle message exchange if keys are established
+        elif send_from in self.keys and send_to in self.keys:
+            decoded_data = self.decode(self.keys[send_from], data)
+            
+            # Translate the message if it's in the known messages
+            if decoded_data in self.messages:
+                decoded_data = self.messages[decoded_data]
+            
+            encoded_data = self.encode(self.keys[send_to], decoded_data)
+            return send_from, send_to, "message", encoded_data
+        
+        # Return the original sent data if no action was taken
+        return sent

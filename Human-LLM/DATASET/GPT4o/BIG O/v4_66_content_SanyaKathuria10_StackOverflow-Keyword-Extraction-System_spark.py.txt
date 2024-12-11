@@ -1,0 +1,85 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SQLContext, SparkSession
+from cassandra.cluster import Cluster
+from operator import add
+
+# Configuration for Spark
+conf = SparkConf().setMaster("local").setAppName("Keyword Count Application")
+sc = SparkContext(conf=conf)
+sqlContext = SQLContext(sc)
+spark = SparkSession.builder.appName("PythonWordCount").getOrCreate()
+
+# Load data from CSV file
+data = spark.read.text("AnsOutput.csv").cache()
+
+# Define a hashmap for keywords
+hashmap = {
+    "java": 0, "c": 1, "c++": 2, "python": 3, "perl": 4, "sql": 5,
+    "jquery": 6, "javascript": 7, "html": 8, "linux": 9, "algorithm": 10
+}
+
+def process_row(row):
+    """
+    Process a row of data to extract the date and keyword counts.
+    
+    Args:
+        row (Row): A row of data.
+        
+    Returns:
+        tuple: A tuple containing the date and a list of keyword counts.
+    """
+    count = [0] * len(hashmap)
+    data = row[0].split(" ")
+    wordlist = data[1:]
+    date = data[0].split("T")[0].split(",")[1]
+    
+    for word in wordlist:
+        word = str(word)
+        if word in hashmap:
+            count[hashmap[word]] = 1
+    return date, count
+
+def create_tuples(entry):
+    """
+    Create tuples of (date, keyword, count) for the given entry.
+    
+    Args:
+        entry (tuple): A tuple containing the date and a list of keyword counts.
+        
+    Returns:
+        list: A list of tuples with the format (date, keyword, count).
+    """
+    date, counts = entry
+    return [(date, key, counts[value]) for key, value in hashmap.items() if counts[value] != 0]
+
+def sum_counts(list1, list2):
+    """
+    Sum the counts of two lists element-wise.
+    
+    Args:
+        list1 (list): The first list of counts.
+        list2 (list): The second list of counts.
+        
+    Returns:
+        list: A list of summed counts.
+    """
+    return list(map(add, list1, list2))
+
+# Process the data and collect results
+processed_data = data.rdd.map(process_row).reduceByKey(sum_counts).map(create_tuples).collect()
+
+# Filter out empty lists and flatten the list of tuples
+data_to_insert = [item for sublist in processed_data if sublist for item in sublist]
+
+# Parallelize the data for insertion
+collection = sc.parallelize(data_to_insert)
+
+# Connect to Cassandra and insert data
+cluster = Cluster(['172.31.87.203'])
+session = cluster.connect('stackoverflowdb')
+
+for entry in data_to_insert:
+    session.execute("INSERT INTO keywords_count(timestamp, keyword, count) VALUES(%s, %s, %s)", entry)
+
+# Stop the Spark context
+sc.stop()

@@ -1,0 +1,66 @@
+import textwrap
+import conversion
+import permutations
+import misc
+
+def encrypt(text, key):
+    """
+    Encrypts the given text using the specified key and a simplified DES-like algorithm.
+
+    :param text: The plaintext to encrypt.
+    :param key: The encryption key.
+    :return: The encrypted text as a binary string.
+    """
+    # Convert the text to binary
+    binary_text = misc.text_to_bits(text)
+    
+    # Split the binary text into 64-bit blocks
+    binary_text_blocks = textwrap.wrap(binary_text, 64)
+    
+    # Pad the last block if necessary
+    last_text_part = binary_text_blocks[-1]
+    binary_text_blocks[-1] = last_text_part.ljust(64, '0')
+    
+    # Generate subkeys from the primary key
+    subkeys = conversion.primary_key_to_subkeys(key)
+    
+    # Encrypt each 64-bit block
+    for i, block in enumerate(binary_text_blocks):
+        block = permutations.permutation(block, "initial")
+        left, right = block[:32], block[32:]
+        
+        # 16 rounds of processing
+        for round_index in range(16):
+            left, right = right, misc.binary_addition(left, des_function(right, subkeys[round_index]), 32)
+        
+        # Apply the inverse permutation
+        binary_text_blocks[i] = permutations.permutation(right + left, "inverse")
+    
+    return ''.join(binary_text_blocks)
+
+def des_function(right, subkey):
+    """
+    Performs the DES function on the right part of the text block using the given subkey.
+
+    :param right: The right part of the text block.
+    :param subkey: The subkey for this round.
+    :return: The transformed right part of the text block.
+    """
+    expanded_right = permutations.permutation(right, "expansion")
+    xored_right = misc.XOR(expanded_right, subkey)
+    substituted_right = permutations.sBox_permutation(xored_right)
+    final_right = permutations.permutation(substituted_right, "pBox")
+    return final_right
+
+def main():
+    """
+    Main function to demonstrate the encryption process.
+    """
+    plaintext = "Your plaintext here"  # Replace with your actual plaintext
+    encryption_key = "Your key here"  # Replace with your actual key
+    
+    encrypted_text = encrypt(plaintext, encryption_key)
+    print("Encrypted text:", encrypted_text)
+
+if __name__ == "__main__":
+    main()

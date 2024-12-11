@@ -1,0 +1,102 @@
+import time
+import numpy as np
+import hashlib
+import quicksort as qsort
+import sys
+import os
+from random import randint
+
+# Initialize global variables
+qs = qsort.QuickSort()
+timeArray = []
+arr = []
+chosenAlgorithm = ''
+arrSize = 0
+isUnique = True
+shuffle = 0
+repeat = 0
+definitions = {
+    'CSVFileName': 'randomNumDump.csv',
+    'Output': 'output.csv',
+    'TimeLog': 'timelog.csv'
+}
+
+def TimedSortFunction(function):
+    global timeArray, arr, repeat
+    for i in range(int(repeat)):
+        arr = SetupUpArray()
+        startTime = time.time()
+        sort_function = ChooseAlgorithm(function)
+        arr = sort_function(arr)
+        elapsedTime = time.time() - startTime
+        print(hashlib.sha512(', '.join(map(str, arr)).encode('utf-8')).hexdigest())
+        print(f'{i}. function [{sort_function.__name__}] finished in {elapsedTime * 1000} ms')
+        timeArray.append(elapsedTime * 1000)
+    
+    timeArray.append(f'Mean :: {sum(timeArray) / len(timeArray)}')
+    np.savetxt(definitions['TimeLog'], timeArray, fmt='%s', delimiter=',')
+    np.savetxt(definitions['Output'], arr, fmt='%d', delimiter=',')
+
+def NewArrayToCSV(size, isUnique, shuffle):
+    arr = list(np.random.choice(size, size, replace=not isUnique))
+    print('Array Size ::', len(arr))
+    if shuffle == '0':
+        arr.sort()
+    elif shuffle == '1':
+        arr.sort()
+        arr = SlightlyShuffle(arr)
+    np.savetxt(definitions['CSVFileName'], arr, fmt='%d', delimiter=',')
+
+def CSVToArray(path):
+    return list(np.genfromtxt(path, delimiter=',', dtype=int))
+
+def ChooseAlgorithm(func):
+    return {
+        'QuickSort': qs.QuickSort,
+        'SortMedianOfThree': qs.SortMedianOfThree,
+        'OptimisedSort': qs.OptimisedSort
+    }.get(func, qs.QuickSort)
+
+def InitialSetup():
+    global chosenAlgorithm, arrSize, isUnique, shuffle, repeat
+    if len(sys.argv) > 1:
+        chosenAlgorithm = sys.argv[1]
+        arrSize = int(sys.argv[2])
+        isUnique = sys.argv[3] == '1'
+        shuffle = int(sys.argv[4])
+        repeat = int(sys.argv[5])
+        definitions['CSVFileName'] = sys.argv[6]
+        definitions['Output'] = sys.argv[7]
+    else:
+        chosenAlgorithm = input('Choose algorithm (QuickSort, SortMedianOfThree, OptimisedSort):\n')
+        arrSize = int(input('Enter the size of the array:\n'))
+        isUnique = input('All unique elements? (0/1)\n') == '1'
+        shuffle = int(input('Shuffling level (0/1/2):\n'))
+        repeat = int(input('Number of times to repeat sort:\n'))
+        definitions['CSVFileName'] = input('Enter input file name:\n')
+        definitions['Output'] = input('Enter output file name:\n')
+
+    if not definitions['CSVFileName'].endswith('.csv'):
+        definitions['CSVFileName'] += '.csv'
+    if not definitions['Output'].endswith('.csv'):
+        definitions['Output'] += '.csv'
+    
+    definitions['Output'] = os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), definitions['Output'])
+    if arrSize != 0:
+        definitions['CSVFileName'] = os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), definitions['CSVFileName'])
+
+def SetupUpArray():
+    global arrSize, isUnique, shuffle
+    if arrSize != 0:
+        NewArrayToCSV(arrSize, isUnique, shuffle)
+    return CSVToArray(definitions['CSVFileName'])
+
+def SlightlyShuffle(arr):
+    for _ in range(len(arr) // 7):
+        randNo1, randNo2 = randint(0, len(arr) - 1), randint(0, len(arr) - 1)
+        arr[randNo1], arr[randNo2] = arr[randNo2], arr[randNo1]
+    return arr
+
+if __name__ == '__main__':
+    InitialSetup()
+    TimedSortFunction(chosenAlgorithm)

@@ -1,0 +1,104 @@
+import os
+import random
+import pandas as pd
+from auxiliaryfunctions import compute_distances, plot_traj
+
+# Load the dataset
+df = pd.read_csv('train_set.csv')
+
+# Remove rows with null 'journeyPatternId'
+df = df[pd.notnull(df['journeyPatternId'])]
+
+# Display settings
+pd.set_option('display.max_rows', 1000000000)
+
+# Create 'route' column
+df['route'] = df['vehicleID'].map(str) + df['timestamp'].map(str)
+
+# Sort values by 'route'
+df = df.sort_values(by=['route'])
+df = df.reset_index(drop=True)
+print("ready for cleaning. (completed sorting and creation of route)")
+
+# Combine 'timestamp', 'longitude', and 'latitude' into a single column
+df['timestamp_longitude_latitude'] = df[['timestamp', 'longitude', 'latitude']].values.tolist()
+
+# Initialize new DataFrame for storing cleaned data
+df_2 = pd.DataFrame(columns=['TripId', 'JourneyPatternId', 'timestamp_longitude_latitude'])
+
+# Initialize list for storing trip locations and counter
+TripId_LOCS = []
+count = 0
+
+# Iterate through the rows to create trips
+for index, row in df.iterrows():
+    TripId_LOCS.append(df['timestamp_longitude_latitude'][index])
+    if (index + 1) == df.shape[0]:
+        break
+    if df['journeyPatternId'][index] != df['journeyPatternId'][index + 1]:
+        a = TripId_LOCS
+        df_2 = df_2.append(
+            {'TripId': count, 'JourneyPatternId': df['journeyPatternId'][index], 'timestamp_longitude_latitude': a},
+            ignore_index=True)
+        count += 1
+        TripId_LOCS = []
+
+# Save and reload the data
+df_2.to_pickle('TripId.df')
+df3 = pd.read_pickle('./TripId.df')
+
+# Initial counter
+init_counter = len(df3.index)
+print('initially we had ' + str(init_counter) + ' trajectories')
+
+# Initialize final DataFrame
+df_final = pd.DataFrame(
+    columns=['TripId', 'JourneyPatternId', 'timestamp_longitude_latitude', 'total_distance', 'max_distance'])
+
+# Initialize counters for dropped trajectories
+totaldrop = 0
+maxdrop = 0
+
+# Iterate through trips and compute distances
+for index, row in df3.iterrows():
+    td = compute_distances(df3['timestamp_longitude_latitude'][index])
+    if td[0] <= 2:
+        totaldrop += 1
+        continue
+    if td[1] >= 2:
+        maxdrop += 1
+        continue
+    else:
+        df_final = df_final.append({'TripId': df3['TripId'][index], 'JourneyPatternId': df3['JourneyPatternId'][index],
+                                    'timestamp_longitude_latitude': df3['timestamp_longitude_latitude'][index],
+                                    'total_distance': td[0], 'max_distance': td[1]}, ignore_index=True)
+
+# Final counter
+final_counter = len(df_final.index)
+print('we dropped ' + str(totaldrop) + ' trajectories from totaldistance.')
+print('we dropped ' + str(maxdrop) + ' trajectories from maxdistance.')
+print('finally, we have ' + str(final_counter) + ' trajectories')
+
+# Save final cleaned data
+df_final.to_csv('final_cleaned.csv')
+df_final.to_pickle('final_cleaned.df')
+
+# Load the cleaned data
+df_gm = pd.read_pickle('./final_cleaned.df')
+
+# Get the first trajectory
+first_traj = df_gm['timestamp_longitude_latitude'].iloc[0]
+
+# Randomly select 5 trajectories
+r5 = random.sample(range(0, len(df_gm)), 5)
+
+# Create directory for storing random images
+os.mkdir("Random_Images")
+
+# Plot the selected trajectories
+i = 1
+for elem in r5:
+    print("i chose traj : " + df_gm["JourneyPatternId"].iloc[elem])
+    traj = df_gm['timestamp_longitude_latitude'].iloc[elem]
+    plot_traj(traj, "./Random_Images/RandomImage" + str(i))
+    i += 1

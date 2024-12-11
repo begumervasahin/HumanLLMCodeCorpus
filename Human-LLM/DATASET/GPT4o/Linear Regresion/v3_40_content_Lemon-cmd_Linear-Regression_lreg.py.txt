@@ -1,0 +1,109 @@
+import numpy as np
+import numpy.random as npr
+from mnist import MNIST
+import matplotlib.pyplot as plt
+
+# Load MNIST data
+mndata = MNIST('.')
+x_train, y_train = mndata.load_training()
+x_test, y_test = mndata.load_testing()
+
+# Convert lists to numpy arrays and reshape
+def to_np_array(data, shape):
+    return np.array(data).reshape(shape)
+
+x_train = to_np_array(x_train, [-1, 28 * 28])
+y_train = to_np_array(y_train, [-1, 1])
+x_test = to_np_array(x_test, [-1, 28 * 28])
+y_test = to_np_array(y_test, [-1, 1])
+
+# Convert multi-class labels to binary labels (-1 for not '1', 1 for '1')
+y_train = np.where(y_train != 1.0, -1.0, 1.0)
+y_test = np.where(y_test != 1.0, -1.0, 1.0)
+
+# Define Linear Regression model
+class LinearReg:
+    def __init__(self, in_dim, out_dim, bias=False):
+        self.bias = bias
+        self.A = npr.uniform(-0.2, 0.2, (out_dim, in_dim))
+        if bias:
+            self.B = np.ones((out_dim, 1), dtype=np.float64)
+    
+    def __call__(self, x, apply_sign=False):
+        yh = self.A @ x
+        if self.bias:
+            yh += self.B
+        if apply_sign:
+            return np.sign(yh)
+        return yh
+    
+    @staticmethod
+    def loss_fn(yh, y):
+        return (yh - y) ** 2.0
+
+# Train the model
+def train(model, train_data, epochs=2, verbose=False, train_with_bias=False):
+    x_train, y_train = train_data
+    lrate = 9e-9
+    N = x_train.shape[0]
+
+    for epoch in range(epochs):
+        total_loss = 0.0
+        dJdA = np.zeros_like(model.A, dtype=np.float64)
+        
+        for i in range(N):
+            x = x_train[i][..., None]
+            y = y_train[i][..., None]
+            yh = model(x)
+            total_loss += model.loss_fn(yh, y)
+            
+            dJdyh = (yh - y)
+            dyhdA = x
+            dJdA += dJdyh @ dyhdA.T
+            
+            if train_with_bias:
+                # Calculate dJ w.r.t Bias or B, i.e., dJ/dB
+                pass
+        
+        total_loss /= (N * 2.0)
+        dJdA /= N
+        model.A -= lrate * dJdA
+        
+        if train_with_bias:
+            # Update Bias --- declare dJdB somewhere and make sure the shape is correct
+            pass
+        
+        if verbose:
+            print(f"Training iteration: {epoch + 1}, Loss: {float(total_loss)}")
+    
+    return model
+
+# Evaluate the model
+def evaluate(model, test_data):
+    x_test, y_test = test_data
+    N = x_test.shape[0]
+    total_loss = 0.0
+    total_accuracy = 0.0
+    
+    for i in range(N):
+        x = x_test[i][..., None]
+        y = y_test[i][..., None]
+        yh = model(x)
+        total_loss += model.loss_fn(yh, y)
+        yh = np.sign(yh)
+        total_accuracy += np.where(yh == y, 1.0, 0.0).sum() / y.size
+    
+    total_loss /= (N * 2.0)
+    total_accuracy /= N
+    print(f"Loss: {float(total_loss)}, Accuracy: {total_accuracy}")
+
+# Instantiate and train the model
+model = LinearReg(in_dim=784, out_dim=1, bias=False)
+model = train(model, (x_train, y_train), epochs=15, verbose=True)
+
+# Evaluate the model
+evaluate(model, (x_test, y_test))
+
+# Print prediction for the first test example
+first_test_pred = model(x_test[0][..., None], apply_sign=True)
+print(f"Pred: {first_test_pred}, True: {y_test[0]}")

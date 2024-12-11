@@ -1,0 +1,64 @@
+import os
+import re
+import pandas as pd
+
+# Define the text encoding to use
+ENCODING = 'utf-8'
+
+def load_data(path_to_dir):
+    """
+    Load data from text files in a directory.
+
+    :param path_to_dir: Path to directory containing text files.
+    :return: List of filtered data.
+    """
+    data = []
+    # Get a list of all files in the directory that end with '.txt'
+    files = [file for file in os.listdir(path_to_dir)
+             if os.path.isfile(os.path.join(path_to_dir, file)) and file.endswith(".txt")]  
+
+    # Read content from each file and append to data list
+    for file in files:
+        with open(os.path.join(path_to_dir, file), "r", encoding=ENCODING) as f:
+            content = f.read().split('\n')
+            data.extend(content)
+
+    # Filter data
+    filtered_data = [filter_data(item) for item in data]
+    return filtered_data
+
+def filter_data(data):
+    """
+    Filter data based on a regex pattern to extract numerical values.
+
+    :param data: Input string to filter.
+    :return: List of first three numerical values found.
+    """
+    pattern = "[0-9]+"
+    strings = re.findall(pattern, data)
+    numbers = [float(i) for i in strings]
+    return numbers[:3]
+
+def save_to_csv(data, file_path):
+    """
+    Save filtered data to a CSV file.
+
+    :param data: Data to be saved.
+    :param file_path: Path to save the CSV file.
+    """
+    df = pd.DataFrame(data, columns=['x', 'y', 'z'])
+    df.to_csv(file_path, index=False, encoding=ENCODING)
+
+if __name__ == "__main__":
+    # Example usage:
+
+    # Directory containing the text files
+    data_directory = "/path/to/directory"
+    # Output file path
+    output_file = "output.csv"
+
+    # Load data from the specified directory
+    data = load_data(data_directory)
+
+    # Save the loaded data to a CSV file
+    save_to_csv(data, output_file)

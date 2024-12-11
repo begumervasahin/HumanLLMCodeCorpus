@@ -1,0 +1,78 @@
+import tkinter as tk
+from tkinter import simpledialog
+
+def radix_sort(vector):
+    def counting_sort(vector, exp1):
+        n = len(vector)
+        output = [0] * n
+        count = [0] * 10
+        
+        # Store count of occurrences in count[]
+        for i in range(n):
+            index = (vector[i] // exp1)
+            count[(index % 10)] += 1
+        
+        # Change count[i] so that count[i] contains actual position of this digit in output[]
+        for i in range(1, 10):
+            count[i] += count[i - 1]
+        
+        # Build the output array
+        i = n - 1
+        while i >= 0:
+            index = (vector[i] // exp1)
+            output[count[(index % 10)] - 1] = vector[i]
+            count[(index % 10)] -= 1
+            i -= 1
+        
+        # Copy the output array to vector[], so that vector now contains sorted numbers according to the current digit
+        for i in range(n):
+            vector[i] = output[i]
+
+    # Get maximum element to figure out the number of digits
+    max1 = max(vector)
+    exp = 1
+    while max1 // exp > 0:
+        counting_sort(vector, exp)
+        exp *= 10
+
+def sorting():
+    num_elements = int(entry_num.get())
+    vector = []
+    
+    for _ in range(num_elements):
+        num = simpledialog.askinteger("Input", "Enter a number:")
+        vector.append(num)
+    
+    # Display the original list
+    label_original.config(text="Original List: " + str(vector))
+    
+    # Perform radix sort
+    radix_sort(vector)
+    
+    # Display the sorted list
+    label_sorted.config(text="Sorted List: " + str(vector))
+
+# Create the main application window
+app = tk.Tk()
+app.title("Radix Sort")
+app.geometry('300x200')
+app.configure(bg='SkyBlue2')
+
+# Create and place the widgets
+label_prompt = tk.Label(app, text="How many numbers will you enter?", font='Helvetica 12', bg='SkyBlue2')
+label_prompt.pack(pady=10)
+
+entry_num = tk.Entry(app, width=8)
+entry_num.pack()
+
+button_sort = tk.Button(app, text="Sort", command=sorting)
+button_sort.pack(pady=10)
+
+label_original = tk.Label(app, text="", bg='SkyBlue2')
+label_original.pack(pady=5)
+
+label_sorted = tk.Label(app, text="", bg='SkyBlue2')
+label_sorted.pack(pady=5)
+
+# Run the application
+app.mainloop()

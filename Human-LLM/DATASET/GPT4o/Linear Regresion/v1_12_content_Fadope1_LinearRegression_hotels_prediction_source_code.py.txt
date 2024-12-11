@@ -1,0 +1,130 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import statistics
+import time
+from tqdm import tqdm
+
+# Load the data
+data = pd.read_csv("hotels.csv")
+
+# Check if the lengths of 'quadratmeter' and 'preis' columns are equal
+if len(data['quadratmeter']) != len(data['preis']):
+    print('Ups es ist was schief gelaufen daten stimmen nicht überein!!')
+    exit()
+    
+# Visualize the data
+print('Hier sind die Daten veranschaulicht')
+plt.scatter(data["preis"], data["quadratmeter"], color='red')
+plt.xlabel('Preis')
+plt.ylabel('Quadratmeter')
+plt.title('Preis vs Quadratmeter')
+plt.show()
+
+# Calculate the nearest and farthest points from origin
+print('Jetzt werden die Anfangspunkte ausgerechnet...')
+time.sleep(1)
+nearest = None
+farthest = None
+d_max = None
+d_min = None
+
+for i in range(len(data['quadratmeter'])):
+    x = data['preis'][i]
+    y = data['quadratmeter'][i]
+    d = math.sqrt(x**2 + y**2)
+    if nearest is None:
+        nearest = (x, y)
+        farthest = (x, y)
+        d_min = d
+        d_max = d
+    elif d_min > d:
+        nearest = (x, y)
+        d_min = d
+    elif d_max < d:
+        farthest = (x, y)
+        d_max = d
+
+x1 = nearest[0]
+y1 = nearest[1]
+x2 = farthest[0]
+y2 = farthest[1]
+
+print('Nähester Punkt:', nearest)
+print('Entferntester Punkt:', farthest)
+time.sleep(0.5)
+
+# Plot nearest and farthest points
+print('Hier sind die nähesten/ entferntesten Punkte markiert.')
+plt.scatter(data["preis"], data["quadratmeter"], color='red')
+plt.scatter(x1, y1, color='green')
+plt.scatter(x2, y2, color='green')
+plt.xlabel('Preis')
+plt.ylabel('Quadratmeter')
+plt.title('Markierte Punkte')
+plt.show()
+
+# Calculate initial line parameters
+print('Jetzt werden m und b für die Anfangslinie ausgerechnet...')
+time.sleep(1)
+m = (y2 - y1) / (x2 - x1)
+b = y1 - m * x1
+
+print('Die Anfangsgerade lautet: y = {}x + {}'.format(m, b))
+
+# Plot initial line
+print('Hier ist die Gerade zu denn Daten gezeichnet.')
+plt.scatter(data["preis"], data["quadratmeter"], color='red')
+plt.scatter(x1, y1, color='green')
+plt.scatter(x2, y2, color='green')
+plt.plot(data['preis'], data['preis'] * m + b, color='blue', label='InitLine')
+plt.xlabel('Preis')
+plt.ylabel('Quadratmeter')
+plt.title('Initiale Gerade')
+plt.legend()
+plt.show()
+
+# Calculate mean values
+xmean = statistics.mean(data['preis'])
+ymean = statistics.mean(data['quadratmeter'])
+
+# Fit the line using linear regression
+m1 = 0
+m2 = 0
+print('Jetzt wird die gerade angepasst...')
+for i, x in enumerate(tqdm(data['preis'])):
+    m1 += (x - xmean) * (data['quadratmeter'][i] - ymean)
+    m2 += (x - xmean)**2
+    m = m1 / m2
+    b = ymean - m * xmean
+    plt.scatter(data["preis"], data["quadratmeter"], color='red')
+    plt.plot(data['preis'], data['preis'] * m + b, color='blue')
+    plt.xlabel('Preis')
+    plt.ylabel('Quadratmeter')
+    plt.title('Anpassung der Linie')
+    plt.pause(0.05)
+    plt.cla()
+
+print('Die perfekte Linie wurde ausgerechenet!')
+print('Die perfekte Linie lautet: f(x) = {}x + {}'.format(m, b))
+print('Oder auch y = {}x + {}'.format(m, b))
+
+# Plot final fitted line
+print('Die Finale Gerade wurde gefunden!')
+plt.scatter(data["preis"], data["quadratmeter"], color='red')
+plt.plot(data['preis'], data['preis'] * m + b, color='blue', label='FittedLine')
+plt.xlabel('Preis')
+plt.ylabel('Quadratmeter')
+plt.title('Finale Gerade')
+plt.legend()
+plt.show()
+
+# Prediction functionality
+print('Jetzt kann man das Program nutzen um vorraussagen zu treffen...')
+while True:
+    try:
+        frage = float(input('Geben sie eine Grösse eines Hotels ein um denn vorrausgesagten Preis zu bekommen: '))
+        print('Die KI hat denn preis = {} Euro vorrausgesagt.'.format(m * frage + b))
+    except Exception as e:
+        print('Bitte nur Zahlen eingeben, ohne "m" oder ähnliches!', e)

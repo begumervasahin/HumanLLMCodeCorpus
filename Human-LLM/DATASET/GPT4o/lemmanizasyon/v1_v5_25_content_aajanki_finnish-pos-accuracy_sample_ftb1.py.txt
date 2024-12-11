@@ -1,0 +1,91 @@
+import hashlib
+import re
+
+def main():
+    input_file = 'data/test/ftb1/ftb1u.tsv'
+    output_file = 'data/test/ftb1/ftb1u_sample.tsv'
+
+    # Read input file and split it into sentences
+    sentences = read_and_split_sentences(input_file)
+
+    # Select sentences with a SHA256 digest starting with '0'
+    selected_sentences = filter_selected_sentences(sentences)
+
+    # Print the number of sampled sentences
+    print(f'Sampled {len(selected_sentences)} out of {len(sentences)} sentences')
+
+    # Write selected sentences to the output file
+    write_selected_sentences(output_file, selected_sentences)
+
+    # Inform about the completion
+    print(f'Wrote samples to {output_file}')
+
+def read_and_split_sentences(input_file):
+    """
+    Reads an input file and splits it into sentences based on a start pattern.
+    
+    Args:
+    - input_file (str): Path to the input file.
+    
+    Returns:
+    - List of sentences (list of str).
+    """
+    with open(input_file) as file:
+        lines = file.readlines()
+        sentences = list(split_sentences(lines))
+    return sentences
+
+def split_sentences(lines):
+    """
+    Splits lines into sentences using a regular expression to match the start of a sentence.
+    
+    Args:
+    - lines (list of str): Lines from the input file.
+    
+    Yields:
+    - Sentences (str).
+    """
+    start_re = re.compile(r'^')
+
+    sentence = []
+    for line in lines:
+        if start_re.match(line):
+            if sentence:
+                yield ''.join(sentence)
+                sentence = []
+        if line.strip():
+            sentence.append(line)
+
+    if sentence:
+        yield ''.join(sentence)
+
+def filter_selected_sentences(sentences):
+    """
+    Filters sentences whose SHA256 digest starts with '0'.
+    
+    Args:
+    - sentences (list of str): List of sentences.
+    
+    Returns:
+    - Selected sentences (list of str).
+    """
+    selected = []
+    for sentence in sentences:
+        digest = hashlib.sha256(sentence.encode('utf-8')).hexdigest()
+        if digest.startswith('0'):
+            selected.append(sentence)
+    return selected
+
+def write_selected_sentences(output_file, selected_sentences):
+    """
+    Writes selected sentences to an output file.
+    
+    Args:
+    - output_file (str): Path to the output file.
+    - selected_sentences (list of str): List of selected sentences.
+    """
+    with open(output_file, 'w') as file:
+        file.write('\n'.join(selected_sentences))
+
+if __name__ == '__main__':
+    main()

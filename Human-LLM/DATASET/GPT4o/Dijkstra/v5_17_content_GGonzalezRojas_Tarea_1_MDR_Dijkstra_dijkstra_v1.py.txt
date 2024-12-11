@@ -1,0 +1,83 @@
+from collections import defaultdict
+from heapq import heappop, heappush
+
+def dijkstra(graph, start, end):
+    """
+    Compute the shortest path from start to end using Dijkstra's algorithm.
+
+    Args:
+    - graph (list of tuples): Each tuple represents an edge with (start, end, weight).
+    - start (str): The starting node.
+    - end (str): The destination node.
+
+    Returns:
+    - tuple: A tuple containing the total cost and the path as a linked list.
+    """
+    # Build the adjacency list from the list of edges
+    adjacency_list = defaultdict(list)
+    for node, next_node, weight in graph:
+        adjacency_list[node].append((weight, next_node))
+    
+    # Priority queue to store (cost, vertex, path)
+    priority_queue = [(0, start, ())]  # Start with the source node
+    visited = set()
+    
+    while priority_queue:
+        # Get the node with the lowest cost
+        current_cost, current_node, path = heappop(priority_queue)
+        
+        if current_node not in visited:
+            visited.add(current_node)
+            path = (current_node, path)  # Append the current node to the path
+            
+            # If we have reached the destination node
+            if current_node == end:
+                return current_cost, path
+            
+            # Add neighboring nodes to the priority queue
+            for weight, neighbor in adjacency_list[current_node]:
+                if neighbor not in visited:
+                    heappush(priority_queue, (current_cost + weight, neighbor, path))
+    
+    return float("inf"), ()  # Return infinity and empty path if there's no path
+
+def print_result(result):
+    """
+    Helper function to print the result.
+
+    Args:
+    - result (tuple): A tuple containing the total cost and the path as a linked list.
+    """
+    cost, path = result
+    node_list = []
+    
+    # Reconstruct the path
+    while path:
+        node, path = path
+        node_list.append(node)
+    
+    # Output the cost and path
+    print(f"Cost: {cost}")
+    print("Path:", " -> ".join(reversed(node_list)))
+
+if __name__ == "__main__":
+    # Define the edges of the graph
+    graph = [
+        ("A", "B", 7),
+        ("A", "D", 5),
+        ("B", "C", 8),
+        ("B", "D", 9),
+        ("B", "E", 7),
+        ("C", "E", 5),
+        ("D", "E", 15),
+        ("D", "F", 6),
+        ("E", "F", 8),
+        ("E", "G", 9),
+        ("F", "G", 11),
+        ("G", "H", 5)
+    ]
+    
+    # Calculate and print the shortest path from A to H
+    result = dijkstra(graph, "A", "H")
+    print("Shortest path from A to H:")
+    print_result(result)

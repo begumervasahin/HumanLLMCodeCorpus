@@ -1,0 +1,60 @@
+import csv
+import numpy as np
+
+def split_data(ifname, delimiter=None, has_header=False, columns=None, seed=42, fraction=0.15):
+    """
+    Imports a tab/comma/semi-colon/... separated data file as an array of
+    floating point numbers.
+    parameters
+    ----------
+    ifname -- filename/path of data file.
+    delimiter -- delimiter of data values
+    has_header -- does the data-file have a header line
+    columns -- a list of integers specifying which columns of the file to import
+        (counting from 0)
+    seed -- the seed for the pseudo-random number generator
+    fraction -- the fraction of data to be used for testing
+    returns
+    -------
+    training_data_as_array -- the training data as a numpy.array object
+    test_data_as_array -- the test data as a numpy.array object
+    field_names -- the header fields (if has_header is True), else None
+    """
+    np.random.seed(seed)
+
+    # Reading the data from the file
+    with open(ifname, 'r') as ifile:
+        datareader = csv.reader(ifile, delimiter=delimiter if delimiter else '\t')
+        if has_header:
+            field_names = next(datareader)
+        else:
+            field_names = None
+
+        data = list(datareader)
+
+    # Selecting columns if specified
+    if columns is not None:
+        data = [[row[c] for c in columns] for row in data]
+
+    # Converting to numpy array and shuffling the data
+    data = np.array(data).astype(float)
+    num_rows = data.shape[0]
+    indices = np.arange(num_rows)
+    np.random.shuffle(indices)
+
+    # Splitting the data into training and testing sets
+    test_size = int(fraction * num_rows)
+    test_indices = indices[:test_size]
+    train_indices = indices[test_size:]
+
+    test_data = data[test_indices]
+    training_data = data[train_indices]
+
+    print("There are %d training entries" % len(training_data))
+    print("There are %d test entries" % len(test_data))
+    print("Each row has %d elements" % len(training_data[0]))
+
+    return training_data, test_data, field_names
+
+# Example usage:
+# training_data, test_data, field_names = split_data('data.csv', delimiter=',', has_header=True, columns=[0, 1, 2], seed=42, fraction=0.15)

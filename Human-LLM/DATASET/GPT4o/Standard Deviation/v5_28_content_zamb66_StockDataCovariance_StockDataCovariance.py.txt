@@ -1,0 +1,71 @@
+import pandas as pd
+from pandas_datareader import data as web
+import numpy as np
+import datetime
+import calendar
+
+def main():
+    start_date = datetime.date(2016, 1, 1)
+    end_date = datetime.date(2016, 12, 31)
+    ticker = 'AAPL'
+    data_source = 'morningstar'
+
+    # Fetch stock prices data
+    stock_prices = fetch_stock_data(ticker, data_source, start_date, end_date)
+
+    # Separate data by month
+    monthly_data = separate_by_month(stock_prices)
+
+    # Calculate monthly average prices
+    monthly_avg_prices = calculate_monthly_averages(monthly_data)
+
+    # Print results
+    print(stock_prices)
+    print(monthly_avg_prices)
+
+def fetch_stock_data(ticker, data_source, start_date, end_date):
+    """Fetches stock data and filters out rows with zero volume."""
+    stock_data = web.DataReader(ticker, data_source, start_date, end_date)
+    stock_data = stock_data[stock_data['Volume'] != 0]
+    stock_data['Date'] = stock_data.index.get_level_values(1)
+    return stock_data
+
+def separate_by_month(stock_prices):
+    """Separates stock prices data by month."""
+    month_data = {}
+    current_month = 0
+    month_array = []
+    months_of_interest = range(2, 13)
+
+    for index, row in stock_prices.iterrows():
+        day_month = row['Date'].month
+        day_month_name = calendar.month_name[day_month]
+
+        if day_month == current_month:
+            month_array.append(row.to_frame().T)
+        else:
+            if current_month in months_of_interest:
+                month_data[last_month] = pd.concat(month_array, axis=0)
+            month_array = [row.to_frame().T]
+            current_month = day_month
+            last_month = day_month_name
+
+    # Include the last month data
+    month_data[day_month_name] = pd.concat(month_array, axis=0)
+
+    return month_data
+
+def calculate_monthly_averages(monthly_data):
+    """Calculates the average closing price for each month."""
+    monthly_avg_prices = []
+
+    for month, data in monthly_data.items():
+        avg_close_price = data['Close'].mean()
+        monthly_avg_prices.append(avg_close_price)
+
+    avg_price_df = pd.DataFrame(monthly_avg_prices, index=monthly_data.keys(), columns=["Mean Closing Price"])
+
+    return avg_price_df
+
+if __name__ == "__main__":
+    main()

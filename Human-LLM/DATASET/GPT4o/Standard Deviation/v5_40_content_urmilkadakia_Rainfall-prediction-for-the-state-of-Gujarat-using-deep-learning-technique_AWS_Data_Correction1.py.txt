@@ -1,0 +1,74 @@
+import csv
+
+def write_header(writer):
+    """Write the header row to the CSV file."""
+    writer.writerow([
+        '@STATION_ID', 'LATITUDE', 'LONGITUDE', 'ALTITUDE(m)', 'TIME(GMT)', 
+        'DATE(GMT)', 'AIR_TEMP(°C)', 'WIND_SPEED(m/s)', 'WIND_DIRECTION(deg)', 
+        'ATMO_PRESSURE(hpa)', 'HUMIDITY(%)', 'RAIN_FALL(mm)', 'ERROR'
+    ])
+
+def read_input_file(file_path):
+    """Read the input CSV file and return filtered data."""
+    data = []
+    with open(file_path, 'r') as f:
+        reader = csv.reader(f)
+        next(reader)  # Skip header row
+        for row in reader:
+            if float(row[11]) != 9999.9:
+                data.append(row)
+    return data
+
+def process_data(data):
+    """Process the data to calculate rain fall and identify errors."""
+    rain = 0
+    errors_negative = 0
+    errors_excess = 0
+    processed_data = []
+
+    for row in data:
+        if row[5] == '05/31/2016':
+            rain = float(row[11])
+            continue
+
+        temp = float(row[11])
+        if rain - temp > 924:
+            row[11] = temp + (1023 - rain)
+        else:
+            row[11] = temp - rain
+        
+        rain = temp
+        
+        if float(row[11]) < 0:
+            row.append('Neg')
+            errors_negative += 1
+        elif float(row[11]) > 100:
+            row.append('Excess')
+            errors_excess += 1
+        
+        processed_data.append(row)
+    
+    return processed_data, errors_negative, errors_excess
+
+def write_output_file(file_path, data):
+    """Write the processed data to the output CSV file."""
+    with open(file_path, 'w+', newline='') as file_out:
+        writer = csv.writer(file_out)
+        write_header(writer)
+        for row in data:
+            writer.writerow(row)
+
+def main():
+    station = 'ISRO0009_15F009(PRL..Ahmedabad)'
+    input_file = 'output2016.csv'
+    output_file = 'rain2016.csv'
+    date = '05/31/2014'
+
+    aws_data = read_input_file(input_file)
+    processed_data, err_neg, err_ex = process_data(aws_data)
+    write_output_file(output_file, processed_data)
+
+    print(f"Negative Errors: {err_neg}, Excess Errors: {err_ex}")
+
+if __name__ == "__main__":
+    main()

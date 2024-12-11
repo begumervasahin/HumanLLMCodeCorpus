@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+class PrimsMaze:
+    def __init__(self, size=25, show_maze=True):
+        # Ensure size is odd for proper maze generation
+        self.size = (size // 2) * 2 + 1
+        self.show_maze = show_maze
+        self.walls_list = []
+        
+        # Initialize grid with -50 and set the cells that can be visited to -1
+        self.grid = np.full((self.size, self.size), -50, dtype=int)
+        for i in range(size // 2 + 1):
+            for j in range(size // 2 + 1):
+                self.grid[i * 2, j * 2] = -1
+        
+        # Initialize maze with False (walls)
+        self.maze = np.zeros((self.size, self.size), dtype=bool)
+
+    def is_valid(self, curr, dx, dy):
+        # Check if new position is within the grid boundaries
+        x, y = curr
+        return 0 <= x + dx < self.size and 0 <= y + dy < self.size
+
+    def add_neighbors(self, curr):
+        # Add valid neighboring walls to the list
+        nearby = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        for dx, dy in nearby:
+            if self.is_valid(curr, dx, dy):
+                self.walls_list.append((curr[0] + dx, curr[1] + dy))
+
+    def create_maze(self, start):
+        # Start position must be at an even index
+        start = ((start[0] // 2) * 2, (start[1] // 2) * 2)
+        self.grid[start[0], start[1]] = 1
+        self.add_neighbors(start)
+
+        while self.walls_list:
+            # Randomly select a wall from the list
+            ind = np.random.randint(0, len(self.walls_list))
+            wall_x, wall_y = self.walls_list[ind]
+            
+            # Check if there is a passage to be created vertically
+            if self.is_valid((wall_x, wall_y), -1, 0) and self.is_valid((wall_x, wall_y), 1, 0):
+                top = (wall_x - 1, wall_y)
+                bottom = (wall_x + 1, wall_y)
+                
+                if self.grid[top] == 1 and self.grid[bottom] == -1:
+                    self.grid[wall_x, wall_y] = 1
+                    self.grid[bottom] = 1
+                    self.add_neighbors(bottom)
+                elif self.grid[top] == -1 and self.grid[bottom] == 1:
+                    self.grid[wall_x, wall_y] = 1
+                    self.grid[top] = 1
+                    self.add_neighbors(top)
+                self.walls_list.pop(ind)
+            
+            # Check if there is a passage to be created horizontally
+            if self.is_valid((wall_x, wall_y), 0, 1) and self.is_valid((wall_x, wall_y), 0, -1):
+                left = (wall_x, wall_y - 1)
+                right = (wall_x, wall_y + 1)
+                
+                if self.grid[left] == 1 and self.grid[right] == -1:
+                    self.grid[wall_x, wall_y] = 1
+                    self.grid[right] = 1
+                    self.add_neighbors(right)
+                elif self.grid[left] == -1 and self.grid[right] == 1:
+                    self.grid[wall_x, wall_y] = 1
+                    self.grid[left] = 1
+                    self.add_neighbors(left)
+                self.walls_list.pop(ind)
+            
+            # Display the maze generation process if show_maze is True
+            if self.show_maze:
+                plt.figure(1)
+                plt.clf()
+                plt.imshow(self.grid, cmap='gray')
+                plt.title('Maze Generation')
+                plt.pause(0.005)
+        
+        plt.pause(5)
+        
+        # Convert grid to maze boolean array
+        for row in range(self.size):
+            for col in range(self.size):
+                if self.grid[row, col] == 1:
+                    self.maze[row, col] = True
+        
+        return self.maze
+
+if __name__ == "__main__":
+    size = int(input("Enter size of maze (example: 10): "))
+    start = (0, 0)
+    maze_generator = PrimsMaze(size)
+    maze = maze_generator.create_maze(start)
+    
+    # Uncomment to display the final maze
+    # plt.figure(figsize=(10, 5))
+    # plt.imshow(maze, interpolation='nearest', cmap='gray')
+    # plt.xticks([]), plt.yticks([])
+    # plt.show()

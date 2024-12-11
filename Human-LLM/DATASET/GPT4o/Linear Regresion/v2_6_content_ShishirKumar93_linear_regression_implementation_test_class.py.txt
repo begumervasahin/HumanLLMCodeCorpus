@@ -1,0 +1,160 @@
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import load_wine, load_iris
+from sklearn.model_selection import train_test_split
+
+# Set random seed for reproducibility
+np.random.seed(999)
+
+# Import custom logistic regression model (assuming it's defined in linreg.py)
+from linreg import LogisticRegression621
+
+def mean_absolute_error(a, b):
+    """
+    Calculate the Mean Absolute Error between two arrays.
+    
+    Parameters:
+        a (np.ndarray): First array.
+        b (np.ndarray): Second array.
+    
+    Returns:
+        float: Mean absolute error.
+    """
+    return np.mean(np.abs(a - b))
+
+def load_wine_data():
+    """
+    Load and preprocess wine dataset.
+    
+    Returns:
+        X (np.ndarray): Feature matrix.
+        y (np.ndarray): Target vector.
+    """
+    wine = load_wine()
+    df_wine = pd.DataFrame(data=wine.data, columns=wine.feature_names)
+    df_wine['y'] = wine.target
+    df_wine = df_wine[df_wine['y'] < 2]  # Use only two classes
+    X = df_wine.drop('y', axis=1).values
+    y = df_wine['y'].values.reshape(-1, 1)
+    return X, y
+
+def load_iris_data():
+    """
+    Load and preprocess iris dataset.
+    
+    Returns:
+        X (np.ndarray): Feature matrix.
+        y (np.ndarray): Target vector.
+    """
+    iris = load_iris()
+    df_iris = pd.DataFrame(data=iris.data, columns=iris.feature_names)
+    df_iris['y'] = iris.target
+    df_iris = df_iris[df_iris['y'] < 2]  # Use only two classes
+    X = df_iris.drop('y', axis=1).values
+    y = df_iris['y'].values.reshape(-1, 1)
+    return X, y
+
+def normalize_features(X):
+    """
+    Normalize the feature matrix.
+    
+    Parameters:
+        X (np.ndarray): Feature matrix.
+    
+    Returns:
+        np.ndarray: Normalized feature matrix.
+    """
+    return (X - X.mean(axis=0)) / X.std(axis=0)
+
+def check_model_performance(X, y, mae_threshold, custom_model, sklearn_model, accuracy_threshold=1.0):
+    """
+    Train and evaluate custom and sklearn models on the given dataset.
+    
+    Parameters:
+        X (np.ndarray): Feature matrix.
+        y (np.ndarray): Target vector.
+        mae_threshold (float): MAE threshold for model coefficients.
+        custom_model (object): Custom logistic regression model.
+        sklearn_model (object): Sklearn logistic regression model.
+        accuracy_threshold (float): Accuracy threshold for model performance.
+    
+    Raises:
+        AssertionError: If model performance is below the threshold.
+    """
+    X = normalize_features(X)
+    
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=999)
+    
+    # Train custom model
+    custom_model.fit(X_train, y_train)
+    y_pred = custom_model.predict(X_test)
+    
+    # Calculate accuracy
+    correct = np.sum(y_test.flatten() == y_pred.flatten())
+    n = len(X_test)
+    accuracy = correct / n
+    print(f"Got {correct} / {n} correct = {accuracy * 100:.2f}%")
+    
+    # Estimate coefficients
+    estimated_B = custom_model.B.reshape(-1)
+    
+    # Train sklearn model
+    sklearn_model.fit(X_train, y_train.ravel())
+    
+    # Get true coefficients
+    true_B = np.concatenate([sklearn_model.intercept_, sklearn_model.coef_.ravel()])
+    
+    # Calculate MAE of coefficients
+    mae_B = mean_absolute_error(estimated_B, true_B)
+    print("MAE of B", mae_B)
+    
+    # Display coefficients comparison
+    coef_df = pd.DataFrame({'estimated': estimated_B, 'true': true_B})
+    print(coef_df)
+    
+    # Check performance
+    assert accuracy >= accuracy_threshold, "Model accuracy is below the threshold."
+    assert mae_B < mae_threshold, "Model MAE is above the threshold."
+
+def test_synthetic_data():
+    """
+    Test custom and sklearn logistic regression models on synthetic data.
+    """
+    n = 5000
+    x1 = np.random.multivariate_normal([0, 0], [[1, 0.75], [0.75, 1]], n)
+    x2 = np.random.multivariate_normal([1, 4], [[1, 0.75], [0.75, 1]], n)
+    X = np.vstack((x1, x2)).astype(np.float32)
+    y = np.hstack((np.zeros(n), np.ones(n))).reshape(-1, 1)
+    
+    check_model_performance(X, y, mae_threshold=0.003,
+                            custom_model=LogisticRegression621(max_iter=10000, eta=10),
+                            sklearn_model=LogisticRegression(penalty='none', solver='lbfgs'),
+                            accuracy_threshold=0.99)
+
+def test_wine_data():
+    """
+    Test custom and sklearn logistic regression models on wine dataset.
+    """
+    X, y = load_wine_data()
+    check_model_performance(X, y, mae_threshold=1.8,
+                            custom_model=LogisticRegression621(max_iter=20000, eta=1),
+                            sklearn_model=LogisticRegression(penalty='none', solver='lbfgs'),
+                            accuracy_threshold=0.95)
+
+def test_iris_data():
+    """
+    Test custom and sklearn logistic regression models on iris dataset.
+    """
+    X, y = load_iris_data()
+    check_model_performance(X, y, mae_threshold=1.5,
+                            custom_model=LogisticRegression621(max_iter=80000, eta=1),
+                            sklearn_model=LogisticRegression(penalty='none', solver='lbfgs'),
+                            accuracy_threshold=0.99)
+
+if __name__ == "__main__":
+    # Run tests
+    test_synthetic_data()
+    test_wine_data()
+    test_iris_data()

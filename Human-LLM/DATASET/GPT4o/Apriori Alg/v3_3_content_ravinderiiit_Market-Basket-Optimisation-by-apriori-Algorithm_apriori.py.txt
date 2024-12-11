@@ -1,0 +1,50 @@
+# Importing the necessary libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from apyori import apriori
+
+# Data Preprocessing
+# Load the dataset
+dataset = pd.read_csv('Market_Basket_Optimisation.csv', header=None)
+
+# Prepare the transactions data
+transactions = [
+    [str(dataset.values[i, j]) for j in range(dataset.shape[1]) if pd.notna(dataset.values[i, j])]
+    for i in range(dataset.shape[0])
+]
+
+# Training Apriori on the dataset
+# Set the minimum support, confidence, and lift
+min_support = 0.003
+min_confidence = 0.2
+min_lift = 3
+min_length = 2
+
+# Apply the apriori algorithm
+rules = apriori(
+    transactions, 
+    min_support=min_support, 
+    min_confidence=min_confidence, 
+    min_lift=min_lift, 
+    min_length=min_length
+)
+
+# Extracting and Visualizing the Results
+# Convert the rules into a list
+results = list(rules)
+
+# Function to convert the results into a readable format
+def inspect(results):
+    lhs = [tuple(result.items_base) for result in results]
+    rhs = [tuple(result.items_add) for result in results]
+    supports = [result.support for result in results]
+    confidences = [result.ordered_statistics[0].confidence for result in results]
+    lifts = [result.ordered_statistics[0].lift for result in results]
+    return list(zip(lhs, rhs, supports, confidences, lifts))
+
+# Create a DataFrame with the results
+results_df = pd.DataFrame(inspect(results), columns=['Left Hand Side', 'Right Hand Side', 'Support', 'Confidence', 'Lift'])
+
+# Display the results
+print(results_df)

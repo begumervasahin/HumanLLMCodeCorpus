@@ -1,0 +1,61 @@
+import subprocess
+import json
+import os
+
+def get_docker_container_ip(cont_name="rsa-docker_node_", net_name="rsa-net", max_iter=20):
+    '''Iterate over one or more containers in a range and stop at the first non-existent container'''
+    ips = list()
+    for i in range(1, max_iter):
+        path = ["docker", "container", "inspect", cont_name + str(i)]
+        try:
+            output = subprocess.check_output(path, stderr=subprocess.STDOUT).decode('utf-8')
+            dic = json.loads(output)[0]
+            ips.append(dic["NetworkSettings"]["Networks"][net_name]["IPAddress"])
+        except (subprocess.CalledProcessError, IndexError, json.JSONDecodeError):
+            break
+    return ips
+
+node_ip = get_docker_container_ip()
+ca_ip = get_docker_container_ip("rsa-docker_ca_", "rsa-net", 2)
+orchestrator_ip = get_docker_container_ip("rsa-docker_orchestrator_", "rsa-net", 2)
+
+print("Node IP: " + str(node_ip))
+print("CA IP: " + str(ca_ip))
+print("Orchestrator IP: " + str(orchestrator_ip))
+
+# Write IPs to test file
+with open("./test/ips.txt", "w") as test_file:
+    for ip in node_ip:
+        test_file.write(str(ip) + "\n")
+    for ip in ca_ip:
+        test_file.write("ca: " + str(ip) + "\n")
+    for ip in orchestrator_ip:
+        test_file.write("or: " + str(ip) + "\n")
+
+# Write orchestrator IP to client file
+with open("./client/orqIp.txt", "w") as client_file:
+    for ip in orchestrator_ip:
+        client_file.write(str(ip))
+
+# Build Docker image
+path = ["docker", "build", "-t", "test", "./test"]
+try:
+    print("\nBuilding test...\n")
+    output = subprocess.check_output(path, stderr=subprocess.STDOUT).decode('utf-8')
+    print("[Test] - Building output: ")
+    print(output)
+except subprocess.CalledProcessError as e:
+    print("Error during build: ")
+    print(e.output.decode('utf-8'))
+
+# Run Docker container
+path = ["docker", "run", "-it", "--network", "rsa-net", "test"]
+try:
+    print("\nRunning test...\n")
+    output = subprocess.check_output(path, stderr=subprocess.STDOUT).decode('utf-8')
+    print("[Test] - Running output: ")
+    print(output)
+    print("\nFinished test\n")
+except subprocess.CalledProcessError as e:
+    print("Error during run: ")
+    print(e.output.decode('utf-8'))

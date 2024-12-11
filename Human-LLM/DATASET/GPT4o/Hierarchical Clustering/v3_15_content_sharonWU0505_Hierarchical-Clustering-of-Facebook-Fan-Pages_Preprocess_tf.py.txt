@@ -1,0 +1,96 @@
+import os
+import sys
+import csv
+from tqdm import tqdm
+import re
+import jieba
+
+def process_files(posts_path):
+    """
+    Process CSV files in the specified directory, tokenize text using jieba,
+    count term frequencies, and write results to output CSV files.
+
+    Parameters:
+    posts_path (str): Path to the directory containing subdirectories of CSV files.
+    """
+    dirs = os.listdir(posts_path)
+    dir_count = len(dirs)
+
+    # Create 'tfs' directory if it doesn't exist
+    os.makedirs('tfs', exist_ok=True)
+
+    # Iterate over each directory in the specified path
+    for idx, directory in enumerate(dirs):
+        print(f'Progress: {idx + 1}/{dir_count}')
+        pages_path = os.path.join(posts_path, directory)
+        pages = os.listdir(pages_path)
+        
+        # Process each CSV file in the directory
+        for page in tqdm(pages, desc=f"Processing {directory}"):
+            process_page(os.path.join(pages_path, page))
+
+def process_page(page_path):
+    """
+    Process a single CSV file to tokenize text, count term frequencies,
+    and write results to an output CSV file.
+
+    Parameters:
+    page_path (str): Path to the CSV file to process.
+    """
+    tfs = {}
+    
+    with open(page_path, 'r', errors='ignore') as file:
+        reader = csv.reader((line.replace('\0', '') for line in file))
+        rows = list(reader)
+
+        if len(rows) >= 2:
+            page_name = rows[1][0]
+            content_rows = rows[1:]
+            
+            # Tokenize and clean text
+            tokens = [
+                list(jieba.cut(re.sub(r'^https?:\/\/.*[\r\n]*', '', row[1], flags=re.MULTILINE)))
+                for row in content_rows if len(row) >= 2
+            ]
+            flat_tokens = [token for sublist in tokens for token in sublist]
+            
+            # Count term frequencies
+            for term in flat_tokens:
+                tfs[term] = tfs.get(term, 0) + 1
+            
+            # Write term frequencies to output CSV file
+            output_file = os.path.join('tfs', sanitize_filename(page_name) + '.csv')
+            write_term_frequencies(output_file, tfs)
+
+def sanitize_filename(filename):
+    """
+    Sanitize the filename by removing or replacing characters that are not allowed in filenames.
+
+    Parameters:
+    filename (str): The filename to sanitize.
+
+    Returns:
+    str: The sanitized filename.
+    """
+    return re.sub(r'[\/:*?"<>|]', '', filename)
+
+def write_term_frequencies(output_file, tfs):
+    """
+    Write the term frequencies to an output CSV file.
+
+    Parameters:
+    output_file (str): Path to the output CSV file.
+    tfs (dict): Dictionary of term frequencies.
+    """
+    with open(output_file, 'w', newline='', encoding='utf-8') as w:
+        writer = csv.writer(w)
+        for term, freq in tfs.items():
+            writer.writerow([term, freq])
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <posts_path>")
+        sys.exit(1)
+    
+    posts_path = sys.argv[1]  # Directory containing the posts
+    process_files(posts_path)

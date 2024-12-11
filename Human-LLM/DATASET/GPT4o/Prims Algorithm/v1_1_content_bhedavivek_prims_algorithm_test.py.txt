@@ -1,0 +1,122 @@
+import sys
+
+class Graph:
+    def __init__(self, n):
+        self.list = [[] for _ in range(n)]
+    
+    def insert(self, u, v, w):
+        vert = Vertex()
+        vert.id = v
+        vert.parent_id = u
+        vert.distance = w
+        vert.position = 0
+        self.list[u - 1].append(vert)
+
+class Vertex:
+    def __init__(self):
+        self.position = 0
+        self.parent_id = 0
+        self.distance = float('inf')
+        self.id = 0
+
+    def get_distance(self):
+        return self.distance
+
+def insert(vert):
+    array.append(vert)
+    array[0] = len(array) - 1
+    heapify_up(array[0])
+    vertex_vector[vert.id - 1].position = array[0]
+
+def heapify_up(index):
+    while index > 1:
+        j = index // 2
+        if array[j].distance > array[index].distance:
+            vertex_vector[array[index].id - 1].position = j
+            vertex_vector[array[j].id - 1].position = index
+            array[index], array[j] = array[j], array[index]
+            index = j
+        else:
+            break
+
+def extract_min():
+    vertex_vector[array[1].id - 1].position = 0
+    last_index = array[0]
+    vertex_vector[array[last_index].id - 1].position = 1
+    ret = array[1]
+    array[1] = array[last_index]
+    array[0] -= 1
+    if array[0] > 1:
+        heapify_down(1)
+    array.pop()
+    return ret
+
+def decrease_key(heap_index, updated_distance, parent_id):
+    if heap_index > 0:
+        array[heap_index].distance = updated_distance
+        array[heap_index].parent_id = parent_id
+        heapify_up(heap_index)
+
+def heapify_down(index):
+    while 2 * index <= array[0]:
+        if 2 * index == array[0] or array[2 * index].distance < array[2 * index + 1].distance:
+            j = 2 * index
+        else:
+            j = 2 * index + 1
+        if array[j].distance < array[index].distance:
+            vertex_vector[array[index].id - 1].position = j
+            vertex_vector[array[j].id - 1].position = index
+            array[index], array[j] = array[j], array[index]
+            index = j
+        else:
+            break
+
+def mst_prim(g, w):
+    insert(w)
+    s = []
+    for i in range(len(vertex_vector)):
+        if i != w.id - 1:
+            vert = Vertex()
+            vert.id = i + 1
+            vert.position = 0
+            vert.distance = float('inf')
+            vert.parent_id = 0
+            insert(vert)
+    while len(array) > 1:
+        v = extract_min()
+        s.append(v)
+        for vert in g.list[v.id - 1]:
+            if vert.distance < vertex_vector[vert.id - 1].distance:
+                vertex_vector[vert.id - 1].distance = vert.distance
+                decrease_key(vertex_vector[vert.id - 1].position, vert.distance, v.id)
+                vertex_vector[vert.id - 1].parent_id = v.id
+    return s
+
+if __name__ == "__main__":
+    node_num = int(input("Enter the number of nodes: "))
+    edge_num = int(input("Enter the number of edges: "))
+    g = Graph(node_num)
+    
+    for _ in range(edge_num):
+        u, v, w = map(int, input("Enter edge (u, v, w): ").split())
+        g.insert(u, v, w)
+        g.insert(v, u, w)
+    
+    vertex_vector = []
+    for i in range(node_num):
+        vert = Vertex()
+        vert.id = i + 1
+        vertex_vector.append(vert)
+    
+    vert = Vertex()
+    vert.id = 1
+    vert.distance = 0
+    array = [0]
+    mst = mst_prim(g, vert)
+    
+    total_distance = 0
+    for vert in mst:
+        if vert.id != 0 and vert.parent_id != 0:
+            total_distance += vert.distance
+    
+    print(f"Total distance of MST: {total_distance}")

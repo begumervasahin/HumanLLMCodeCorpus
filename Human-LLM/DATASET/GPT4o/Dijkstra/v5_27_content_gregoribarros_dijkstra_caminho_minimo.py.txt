@@ -1,0 +1,82 @@
+from igraph import Graph
+
+class Arrow:
+    """
+    Represents an edge in the graph with its origin, target, and cost.
+    """
+    def __init__(self, origin='', target='', cost=0):
+        self.origin = origin
+        self.target = target
+        self.cost = cost
+
+    def __repr__(self):
+        return f"{self.origin} -> {self.target} [cost: {self.cost}]"
+
+def run_graph(graph, vertex):
+    """
+    Generates a list of Arrow objects representing the edges incident to the given vertex.
+
+    Parameters:
+    graph (Graph): The graph.
+    vertex (int): The index of the vertex.
+
+    Returns:
+    list: A list of Arrow objects.
+    """
+    list_of_arrows = []
+    for edge in graph.incident(vertex):
+        edge_data = graph.es[edge]
+        arrow = Arrow(
+            origin=edge_data.source,
+            target=edge_data.target,
+            cost=edge_data['peso']
+        )
+        list_of_arrows.append(arrow)
+    return list_of_arrows
+
+def initialize_graph():
+    """
+    Initializes and returns a directed graph with predefined vertices and edges.
+    
+    Returns:
+    Graph: The initialized graph.
+    """
+    graph = Graph(directed=True)
+    graph.add_vertices(5)
+    graph.vs['nome'] = ['a', 'b', 'c', 'd', 'e']
+    graph.add_edges([(0, 1), (0, 4), (1, 2), (1, 3), (1, 4), (2, 4)])
+    graph.es['peso'] = [3, 11, 3, 2, 7, 2]
+    return graph
+
+def calculate_shortest_paths(graph):
+    """
+    Calculates the shortest paths from the starting vertex to all other vertices.
+    
+    Parameters:
+    graph (Graph): The graph.
+    
+    Returns:
+    list: The list of shortest path costs.
+    """
+    num_vertices = len(graph.vs)
+    cost_list = [float('inf')] * num_vertices
+    cost_list[0] = 0  # Assuming the starting vertex is the first vertex (index 0)
+
+    for vertex in range(num_vertices):
+        for arrow in run_graph(graph, vertex):
+            new_cost = cost_list[arrow.origin] + arrow.cost
+            if new_cost < cost_list[arrow.target]:
+                cost_list[arrow.target] = new_cost
+
+    return cost_list
+
+def main():
+    """
+    Main function to create a graph, calculate shortest paths, and print the results.
+    """
+    graph = initialize_graph()
+    cost_list = calculate_shortest_paths(graph)
+    print("Shortest path costs:", cost_list)
+
+if __name__ == "__main__":
+    main()

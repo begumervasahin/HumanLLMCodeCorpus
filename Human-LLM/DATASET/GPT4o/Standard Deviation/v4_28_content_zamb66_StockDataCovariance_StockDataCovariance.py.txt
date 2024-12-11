@@ -1,0 +1,71 @@
+import pandas as pd
+from pandas_datareader import data as web
+import numpy as np
+import datetime
+import calendar
+
+def main():
+    start = datetime.date(2016, 1, 1)
+    end = datetime.date(2016, 12, 31)
+    ticker = ['AAPL']
+    data_source = 'morningstar'
+
+    # Fetch stock prices data
+    stock_prices_all = web.DataReader(ticker, data_source, start, end)
+
+    # Filter out rows with zero volume
+    stock_prices = stock_prices_all[stock_prices_all['Volume'] != 0]
+
+    # Extract the dates from the index
+    stock_prices['Date'] = stock_prices.index.get_level_values(1)
+
+    print(stock_prices)
+
+    # Separate data by month
+    all_monthly_data = month_separate(stock_prices)
+
+    # Calculate monthly average prices
+    monthly_avg_prices = mean_calculator(all_monthly_data)
+
+    print(monthly_avg_prices)
+
+def month_separate(stock_prices):
+    current_month = 0
+    month_dict = {}
+    month_array = []
+    months_of_interest = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    for index, row in stock_prices.iterrows():
+        day_month = row['Date'].month
+        day_month_name = calendar.month_name[day_month]
+
+        if day_month == current_month:
+            month_array.append(row.to_frame().T)
+        else:
+            if current_month in months_of_interest:
+                monthly_data = pd.concat(month_array, axis=0)
+                month_dict[last_month] = monthly_data
+
+            month_array = [row.to_frame().T]
+            current_month = day_month
+            last_month = day_month_name
+
+    # Include the last month data
+    monthly_data = pd.concat(month_array, axis=0)
+    month_dict[day_month_name] = monthly_data
+
+    return month_dict
+
+def mean_calculator(all_monthly_data):
+    monthly_average_price = []
+
+    for month, data in all_monthly_data.items():
+        avg_close_price = data['Close'].mean()
+        monthly_average_price.append(avg_close_price)
+
+    avg_price = pd.DataFrame(monthly_average_price, index=all_monthly_data.keys(), columns=["Mean Closing Price"])
+
+    return avg_price
+
+if __name__ == "__main__":
+    main()

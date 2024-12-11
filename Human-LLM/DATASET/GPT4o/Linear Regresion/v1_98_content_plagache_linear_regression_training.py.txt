@@ -1,0 +1,113 @@
+import pandas as pd
+from linear_function import linear_function
+
+# Load data from CSV file
+data = pd.read_csv('data.csv')
+data_frame = pd.DataFrame(data)
+x_values = data_frame["km"]
+y_values = data_frame["price"]
+
+# Calculate basic statistics
+data_set_size = x_values.count()
+x_min = x_values.min()
+y_min = y_values.min()
+x_max = x_values.max()
+y_max = y_values.max()
+
+def get_normalized_list(given_list, min_value, max_value):
+    """
+    Normalize a list of values to the range [0, 1].
+    """
+    normalized_list = [(element - min_value) / (max_value - min_value) for element in given_list]
+    return normalized_list
+
+def normalize_data(x_values, y_values):
+    """
+    Normalize the x and y values and return a DataFrame with the normalized data.
+    """
+    x_normalized = get_normalized_list(x_values, x_min, x_max)
+    y_normalized = get_normalized_list(y_values, y_min, y_max)
+    return pd.DataFrame({"xs": x_normalized, "ys": y_normalized})
+
+normalize_matrix = normalize_data(x_values, y_values)
+xs = normalize_matrix["xs"]
+ys = normalize_matrix["ys"]
+
+def denormalized_value(value, min_value, max_value):
+    """
+    Denormalize a single value from the range [0, 1] to the original range.
+    """
+    return (value * (max_value - min_value)) + min_value
+
+def denormalize_data(normalized_data, min_value, max_value):
+    """
+    Denormalize a list of values from the range [0, 1] to the original range.
+    """
+    return [denormalized_value(value, min_value, max_value) for value in normalized_data]
+
+def denormalize_matrix(normalize_matrix):
+    """
+    Denormalize the x and y values from the normalized DataFrame.
+    """
+    denormalize_x = denormalize_data(normalize_matrix["xs"], x_min, x_max)
+    denormalize_y = denormalize_data(normalize_matrix["ys"], y_min, y_max)
+    return pd.DataFrame({"km": denormalize_x, "price": denormalize_y})
+
+def denormalize_thetas(normalized_theta_0, normalized_theta_1):
+    """
+    Denormalize the theta values to the original scale.
+    """
+    y_mean = y_values.mean()
+    x_mean = x_values.mean()
+    y_range = y_max - y_min
+    x_range = x_max - x_min
+    range_ratio = y_range / x_range
+    d_theta_1 = normalized_theta_1 * range_ratio
+    d_theta_0 = (normalized_theta_0 * range_ratio + y_mean) - (d_theta_1 * x_mean)
+    return d_theta_0, d_theta_1
+
+def save_thetas(theta_0, theta_1):
+    """
+    Save theta values to a CSV file.
+    """
+    with open("thetas.csv", "a+") as f:
+        f.write(f"{theta_0}, {theta_1}\n")
+
+def get_thetas():
+    """
+    Retrieve the last saved theta values from the CSV file.
+    """
+    thetas = pd.read_csv('thetas.csv')
+    theta_0 = thetas["theta0"].values[-1]
+    theta_1 = thetas["theta1"].values[-1]
+    return theta_0, theta_1
+
+def gradient_descent(theta_0, theta_1, total_iterations=1000, learning_rate=0.3):
+    """
+    Perform gradient descent to find the optimal theta values.
+    """
+    for _ in range(total_iterations):
+        sum_loss_y = sum_loss_x = 0
+        for x, y in zip(xs, ys):
+            estimate = linear_function(theta_1, theta_0, float(x))
+            loss_y = estimate - y
+            loss_x = loss_y * x
+            sum_loss_y += loss_y
+            sum_loss_x += loss_x
+        gradient_theta_0 = sum_loss_y / data_set_size
+        gradient_theta_1 = sum_loss_x / data_set_size
+        theta_0 -= learning_rate * gradient_theta_0
+        theta_1 -= learning_rate * gradient_theta_1
+        dt0, dt1 = denormalize_thetas(theta_0, theta_1)
+        save_thetas(dt0, dt1)
+    return denormalize_thetas(theta_0, theta_1)
+
+# Load initial theta values
+base_theta_0, base_theta_1 = get_thetas()
+
+# Perform gradient descent to optimize theta values
+dt0, dt1 = gradient_descent(base_theta_0, base_theta_1)
+
+# Print the final denormalized theta values
+print("\nLast denormalized theta 0 =", dt0)
+print("\nLast denormalized theta 1 =", dt1)

@@ -1,0 +1,159 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def read_idx(filename, offset):
+    """
+    Reads IDX files and returns the data starting from the given offset.
+    
+    Parameters:
+    - filename (str): The path to the IDX file.
+    - offset (int): The offset from where to start reading the data.
+    
+    Returns:
+    - np.ndarray: The read data as a NumPy array.
+    """
+    with open(filename, 'rb') as file:
+        data = file.read()
+    data = bytearray(data)
+    data = data[offset:]
+    return np.array(data, dtype="float64")
+
+def preprocess_images(filename, offset, threshold=100.0):
+    """
+    Loads and preprocesses IDX images by applying a threshold.
+    
+    Parameters:
+    - filename (str): The path to the IDX file.
+    - offset (int): The offset from where to start reading the data.
+    - threshold (float): The threshold value for binarizing the images.
+    
+    Returns:
+    - np.ndarray: The preprocessed images.
+    """
+    images = read_idx(filename, offset) > threshold
+    return images
+
+def visualize_images(images, image_size=(28, 28), grid_size=(20, 20)):
+    """
+    Visualizes a subset of images.
+    
+    Parameters:
+    - images (np.ndarray): The images to visualize.
+    - image_size (tuple): The size of each image (height, width).
+    - grid_size (tuple): The size of the grid for visualization (rows, cols).
+    """
+    fig = plt.figure()
+    for k in range(grid_size[0] * grid_size[1]):
+        a = fig.add_subplot(grid_size[0], grid_size[1], k + 1)
+        plt.imshow(images[k].reshape(image_size), cmap=plt.cm.bone)
+        a.set_axis_off()
+    plt.show()
+
+def calculate_class_priors(labels, num_classes):
+    """
+    Calculates class priors and log priors.
+    
+    Parameters:
+    - labels (np.ndarray): The class labels.
+    - num_classes (int): The number of classes.
+    
+    Returns:
+    - np.ndarray: The class priors.
+    - np.ndarray: The log priors.
+    """
+    counts = np.bincount(labels.astype(int), minlength=num_classes)
+    priors = counts / len(labels)
+    log_priors = np.log10(priors)
+    return priors, log_priors
+
+def calculate_class_conditional_probabilities(images, labels, num_classes):
+    """
+    Calculates class conditional probabilities and their logarithms.
+    
+    Parameters:
+    - images (np.ndarray): The binarized images.
+    - labels (np.ndarray): The class labels.
+    - num_classes (int): The number of classes.
+    
+    Returns:
+    - np.ndarray: Log of theta.
+    - np.ndarray: Log of complement of theta.
+    """
+    num_pixels = images.shape[1]
+    theta = np.zeros((num_classes, num_pixels), dtype="float64")
+    for i in range(num_classes):
+        mask = (labels == i)
+        theta[i] = (np.sum(images[mask], axis=0, dtype="float64") + 1.0) / (mask.sum() + num_classes)
+    log_theta = np.log10(theta)
+    log_complement = np.log10(1.0 - theta)
+    return log_theta, log_complement
+
+def classify_images(test_images, log_priors, log_theta, log_complement):
+    """
+    Classifies test images using Naive Bayes classifier.
+    
+    Parameters:
+    - test_images (np.ndarray): The binarized test images.
+    - log_priors (np.ndarray): The log priors.
+    - log_theta (np.ndarray): Log of theta.
+    - log_complement (np.ndarray): Log of complement of theta.
+    
+    Returns:
+    - np.ndarray: The predicted class labels.
+    """
+    num_classes = log_priors.shape[0]
+    num_test_images = test_images.shape[0]
+    test_labels_hat = np.zeros((num_test_images, 1))
+    for i in range(num_test_images):
+        log_likelihood = (
+            np.sum(log_theta[:, test_images[i].astype(bool)], axis=1) +
+            np.sum(log_complement[:, np.logical_not(test_images[i].astype(bool))], axis=1)
+        )
+        log_posterior = log_priors + log_likelihood
+        test_labels_hat[i] = np.argmax(log_posterior)
+    return test_labels_hat
+
+def calculate_accuracy(true_labels, predicted_labels):
+    """
+    Calculates the classification accuracy.
+    
+    Parameters:
+    - true_labels (np.ndarray): The true class labels.
+    - predicted_labels (np.ndarray): The predicted class labels.
+    
+    Returns:
+    - float: The classification accuracy as a percentage.
+    """
+    accuracy = np.sum(true_labels == predicted_labels) / len(true_labels) * 100
+    return accuracy
+
+def main():
+    # Load and preprocess training images and labels
+    training_images = preprocess_images('train-images.idx3-ubyte', 16)
+    training_labels = read_idx('train-labels.idx1-ubyte', 8)
+    training_images = training_images.reshape(-1, 28 * 28)
+    
+    # Visualize a subset of the training images
+    visualize_images(training_images)
+    
+    # Calculate class priors and log priors
+    num_classes = 10  # Number of classes (digits 0-9)
+    priors, log_priors = calculate_class_priors(training_labels, num_classes)
+    
+    # Calculate class conditional probabilities
+    log_theta, log_complement = calculate_class_conditional_probabilities(training_images, training_labels, num_classes)
+    
+    # Load and preprocess test images and labels
+    test_images = preprocess_images('t10k-images.idx3-ubyte', 16)
+    test_labels = read_idx('t10k-labels.idx1-ubyte', 8)
+    test_images = test_images.reshape(-1, 28 * 28)
+    
+    # Classify test images
+    test_labels_hat = classify_images(test_images, log_priors, log_theta, log_complement)
+    
+    # Calculate classification accuracy
+    accuracy = calculate_accuracy(test_labels, test_labels_hat)
+    print("Naive Bayes classifier classification accuracy: {:.2f}%".format(accuracy))
+
+if __name__ == "__main__":
+    main()

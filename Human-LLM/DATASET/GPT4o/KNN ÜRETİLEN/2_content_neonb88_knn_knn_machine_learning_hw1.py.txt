@@ -1,0 +1,62 @@
+import sys
+import scipy.io as sio
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import heapq
+from PIL import Image
+def euclidean_dist(x, y):
+    diff_vect = x - y
+    return np.linalg.norm(diff_vect)
+k = int(input("please type a k for how many nearest neighbors you want to compute"))
+num_training_pts = int(input("There are 10,000 pictures of numbers.\n  How many would you like to use as training data?"))
+data = sio.loadmat('ML_hw1data.mat')
+training_pixels = data['X'][:num_training_pts]
+training_labels = data['Y'][:num_training_pts]
+test_pixels     = data['X'][num_training_pts:]
+test_labels     = data['Y'][num_training_pts:]
+correct_wrong_list = [0,0]
+RIGHT = 0
+WRONG = 1
+for test_idx in range(0, len(test_pixels)):
+    knn = []
+    for i in range(0, 100):
+        img = training_pixels[i]
+        curr_dist = euclidean_dist(img, test_pixels[test_idx])
+        if (len(knn) < k):
+            heapq.heappush(knn, (curr_dist, str(i)))
+            heapq._heapify_max(knn)
+        elif (curr_dist < knn[0][0]):
+            heapq.heappop(knn)
+            heapq.heappush(knn, (curr_dist, str(i)))
+            heapq._heapify_max(knn)
+    counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for pair in knn:
+        idx = int(pair[1])
+        label = training_labels[idx][0]
+        counts[label] += 1
+    label_guess = 0
+    prev_max_num_guesses = 0
+    for i in range(0, 10):
+        if (counts[i] > prev_max_num_guesses):
+            label_guess = i
+    actual_label = test_labels[test_idx][0]
+    if (actual_label == label_guess):
+        correct_wrong_list[RIGHT] += 1
+    else :
+        correct_wrong_list[WRONG] += 1
+    print("   test image ", end='')
+    print((num_training_pts + test_idx), end='')
+    print(" was identified as ", end='')
+    print(label_guess)
+    print("     actual label was ", end='')
+    print(test_labels[test_idx][0])
+print("    k was ", end='')
+print(k)
+print("    and we used ", end='')
+print(num_training_pts, end='')
+print(" training data points")
+print("\n\n\n\n   Correct vs. wrong answers:")
+print(correct_wrong_list)
+print("\n\n\n\n\n    Percentage correct:    ")
+print(   (correct_wrong_list[0] +0.0)   /   correct_wrong_list[1])

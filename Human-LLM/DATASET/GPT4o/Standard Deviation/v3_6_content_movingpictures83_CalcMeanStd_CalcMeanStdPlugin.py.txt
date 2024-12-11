@@ -1,0 +1,57 @@
+import sys
+import math
+
+class CalcMeanStdPlugin:
+    def __init__(self):
+        self.scores = []
+
+    def input(self, inputfile):
+        """
+        Reads scores from a tab-separated file, skipping the header line.
+        """
+        with open(inputfile, 'r') as file:
+            next(file)  # Skip the header line
+            for line in file:
+                # Assuming the score is the second value in the tab-separated line
+                score = float(line.split('\t')[1])
+                self.scores.append(score)
+
+    def run(self):
+        """
+        Calculates the mean and standard deviation of the scores.
+        """
+        n = len(self.scores)
+        if n == 0:
+            raise ValueError("No scores to process.")
+
+        self.mean = sum(self.scores) / n
+        variance = sum((score - self.mean) ** 2 for score in self.scores) / n
+        self.std = math.sqrt(variance)
+
+    def output(self, outputfile):
+        """
+        Writes the mean and standard deviation information to an output file.
+        """
+        results = (
+            f"[CalcMeanStdPlugin] Two left:  {self.mean - 2 * self.std}\n"
+            f"[CalcMeanStdPlugin] One left:  {self.mean - self.std}\n"
+            f"[CalcMeanStdPlugin] Mean:  {self.mean}\n"
+            f"[CalcMeanStdPlugin] One right:  {self.mean + self.std}\n"
+            f"[CalcMeanStdPlugin] Two right:  {self.mean + 2 * self.std}\n"
+        )
+
+        with open(outputfile, 'w') as file:
+            file.write(results)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python calc_mean_std.py <inputfile> <outputfile>")
+        sys.exit(1)
+
+    inputfile = sys.argv[1]
+    outputfile = sys.argv[2]
+
+    plugin = CalcMeanStdPlugin()
+    plugin.input(inputfile)
+    plugin.run()
+    plugin.output(outputfile)

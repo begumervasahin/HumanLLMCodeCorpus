@@ -1,0 +1,109 @@
+"""
+Zach Dischner's submission to the modified fizz-buzz programming challenge
+listed at https://github.com/swift-nav/screening_questions/blob/master/questions.md
+Example:
+    python fizzbuzz.py 20
+    pytest --doctest-module fizzbuzz.py
+    pytest fizzbuzz.py
+"""
+
+from __future__ import print_function
+import sys
+import argparse
+
+def is_prime(x):
+    """
+    Determine if a number is prime.
+    
+    Args:
+        x: (integer) number to test for primeness
+        
+    Returns:
+        (bool) Boolean indicator of primeness
+    """
+    assert isinstance(x, int), "is_prime requires integer type, provided {}".format(type(x))
+    if x < 2:
+        return False
+    if x == 2:
+        return True
+    if x % 2 == 0:
+        return False
+    for divisor in range(3, int(x ** 0.5) + 1, 2):
+        if x % divisor == 0:
+            return False
+    return True
+
+def fib():
+    """
+    Memory efficient Fibonacci sequence generator.
+    
+    Returns:
+        (generator) Fibonacci number generator
+    """
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+def fizz_buzzify(x):
+    """
+    Determine modified fizz-buzz representation of number `x`.
+    
+    Args:
+        x: (integer) number to be fizz-buzzified
+        
+    Returns:
+        (str/int) Fizz-buzz representation of `x`
+    """
+    if is_prime(x):
+        return "BuzzFizz"
+    result = ""
+    if x % 3 == 0:
+        result += "Buzz"
+    if x % 5 == 0:
+        result += "Fizz"
+    return result or x
+
+def generate_fizz_buzz(N, debug=False):
+    """
+    Generates a fizz-buzzed Fibonacci sequence up to the N-th Fibonacci number.
+    
+    Args:
+        N: (int) Index up to which to generate Fibonacci numbers
+        
+    Kwargs:
+        debug: (bool) Print out more comprehensive fizzbuzzification
+    """
+    for index, fib_number in enumerate(fib()):
+        if index > N:
+            break
+        fizzbuzzed = fizz_buzzify(fib_number)
+        if debug:
+            print(f"F[{index}] ==> {fib_number} ==> {fizzbuzzed}")
+        else:
+            print(fizzbuzzed)
+
+def test_fib():
+    """
+    Test the Fibonacci sequence generator.
+    """
+    fibgen = fib()
+    fib5 = [next(fibgen) for _ in range(5)]
+    expected = [0, 1, 1, 2, 3]
+    assert fib5 == expected, f"Fibonacci sequence generator failed, {fib5} should == {expected}"
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Fizz-Buzzify a Fibonacci sequence',
+        epilog='Example of use: python fizzbuzz.py 5'
+    )
+    parser.add_argument('N', type=int, help="Index up to which to generate Fibonacci numbers")
+    parser.add_argument('--debug', action='store_true', help="Print out extra info illustrating the fizzbuzzification")
+    args = parser.parse_args()
+    
+    N = args.N
+    debug = args.debug
+    
+    print(f"Generating a Fibonacci sequence of length {N} for fizz-buzzifying")
+    generate_fizz_buzz(N, debug=debug)
+    sys.exit(0)

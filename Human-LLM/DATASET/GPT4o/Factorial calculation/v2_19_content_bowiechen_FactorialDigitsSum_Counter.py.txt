@@ -1,0 +1,69 @@
+class Counter:
+    def __init__(self, count, initial_value=0, zeros=True):
+        """
+        Initialize the Counter object.
+
+        Parameters:
+        count (int): The number of digits in the counter.
+        initial_value (int, optional): The initial value of the counter. Defaults to 0.
+        zeros (bool, optional): If True, initialize with zeros, otherwise with ones. Defaults to True.
+        """
+        self.count = count
+        self.overflow = False
+
+        if initial_value != 0:
+            self.digits = [int(digit) for digit in str(initial_value).zfill(count)]
+        else:
+            self.digits = [0 if zeros else 1 for _ in range(count)]
+
+    def increment(self):
+        """
+        Increment the counter by 1.
+        """
+        self.digits[-1] += 1
+        for i in range(self.count - 1, -1, -1):
+            if self.digits[i] > 9:
+                if i == 0:
+                    self.overflow = True
+                self.digits[i] = 0
+                if i - 1 >= 0:
+                    self.digits[i - 1] += 1
+
+    def get_value(self):
+        """
+        Get the current value of the counter as an integer.
+        
+        Returns:
+        int: The current value of the counter.
+        """
+        return int(''.join(map(str, self.digits)))
+
+    def get_list(self):
+        """
+        Get the current value of the counter as a list of digits.
+        
+        Returns:
+        list: The list of digits representing the current value of the counter.
+        """
+        return self.digits
+
+if __name__ == "__main__":
+    # Example usage
+    counter = Counter(5, initial_value=123)
+    print("Initial value:", counter.get_value())  # Output: 00123
+    print("Initial list:", counter.get_list())    # Output: [0, 0, 1, 2, 3]
+    
+    counter.increment()
+    print("After incrementing:", counter.get_value())  # Output: 00124
+    print("After incrementing list:", counter.get_list())  # Output: [0, 0, 1, 2, 4]
+
+    for _ in range(10):
+        counter.increment()
+        print("Value:", counter.get_value())
+        print("List:", counter.get_list())
+
+    # Testing overflow
+    counter = Counter(3, initial_value=999)
+    counter.increment()
+    print("Overflow value:", counter.get_value())  # Output: 000
+    print("Overflow flag:", counter.overflow)      # Output: True

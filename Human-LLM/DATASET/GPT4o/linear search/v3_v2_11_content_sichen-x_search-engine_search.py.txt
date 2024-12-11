@@ -1,0 +1,116 @@
+import sys
+import webbrowser
+from index_search import index_search, create_index
+from linear_search import linear_search
+from myhtable_search import myhtable_index_search, myhtable_create_index
+from words import filelist, words, results
+
+def main():
+    """
+    Main function to handle the search functionality based on the user's input.
+
+    The script supports three types of searches:
+    1. Linear search
+    2. Index-based search
+    3. Hash table-based search
+
+    Usage:
+    $ python search.py linear ~/data/slate
+    $ python search.py index ~/data/slate
+    $ python search.py myhtable ~/data/slate
+    """
+    if not validate_arguments():
+        print_usage_instructions()
+        return
+
+    search_impl = sys.argv[1]
+    root_directory = sys.argv[2]
+
+    files = filelist(root_directory)
+    print(f"{len(files)} files found in the directory {root_directory}")
+
+    search_index = None
+
+    while True:
+        search_terms = input("Enter search terms: ")
+        terms = words(search_terms)
+        
+        documents, search_index = perform_search(search_impl, files, terms, search_index)
+        
+        if documents is None:
+            print(f"Invalid search type: {search_impl}")
+            break
+
+        display_results(documents, terms)
+
+
+def validate_arguments():
+    """
+    Validate the command line arguments.
+    
+    Returns:
+    bool: True if arguments are valid, False otherwise.
+    """
+    return len(sys.argv) == 3
+
+
+def print_usage_instructions():
+    """
+    Print usage instructions for the script.
+    """
+    print("Usage:")
+    print("$ python search.py linear ~/data/slate")
+    print("$ python search.py index ~/data/slate")
+    print("$ python search.py myhtable ~/data/slate")
+
+
+def perform_search(search_impl, files, terms, search_index):
+    """
+    Perform the search based on the chosen implementation.
+
+    Args:
+    search_impl (str): The search implementation type ('linear', 'index', 'myhtable').
+    files (list): The list of files to search.
+    terms (list): The search terms.
+    search_index (dict or None): The search index, if applicable.
+
+    Returns:
+    tuple: A tuple containing the list of documents that match the search terms and the updated search index.
+    """
+    if search_impl == 'linear':
+        documents = linear_search(files, terms)
+    elif search_impl == 'index':
+        if search_index is None:
+            search_index = create_index(files)
+            print("Index creation complete")
+        documents = index_search(files, search_index, terms)
+    elif search_impl == 'myhtable':
+        if search_index is None:
+            search_index = myhtable_create_index(files)
+            print("Hash table index creation complete")
+        documents = myhtable_index_search(files, search_index, terms)
+    else:
+        return None, search_index
+
+    return documents, search_index
+
+
+def display_results(documents, terms):
+    """
+    Generate and display the search results in a web browser.
+
+    Args:
+    documents (list): The list of documents that match the search terms.
+    terms (list): The search terms.
+    """
+    results_page = results(documents, terms)
+    results_file_path = "/tmp/results.html"
+    
+    with open(results_file_path, "w") as results_file:
+        results_file.write(results_page)
+    
+    webbrowser.open_new_tab(f"file://{results_file_path}")
+
+
+if __name__ == "__main__":
+    main()

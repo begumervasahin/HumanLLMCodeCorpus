@@ -1,0 +1,98 @@
+class AStar:
+    def __init__(self, initial_state, actions, result, goal_test, get_cost, heuristic):
+        self.frontier = []  # Frontier (nodes to be explored)
+        self.explored = []  # Explored nodes
+        self.visited = []   # Visited nodes
+        self.initial_state = initial_state
+        self.actions = actions
+        self.result = result
+        self.goal_test = goal_test
+        self.get_cost = get_cost
+        self.heuristic = heuristic
+        self.max_memory = 0
+
+    def search(self):
+        while self.frontier:
+            # Update maximum memory usage
+            self.max_memory = max(self.max_memory, len(self.frontier) + len(self.explored))
+            
+            # Select the node with the lowest cost
+            current_node = min(self.frontier, key=lambda x: x[1] + x[3])
+            path, cost, action_path, heur = current_node
+
+            if self.goal_test(path[-1]):
+                return [action_path, path, cost, heur]
+
+            # Move current node from frontier to explored
+            self.frontier.remove(current_node)
+            self.explored.append(path[-1])
+
+            for action in self.actions(path[-1]):
+                successor = self.result(path[-1], action)
+                if successor not in self.explored:
+                    new_cost = self.get_cost(path[-1], successor) + cost
+                    new_heuristic = self.heuristic(successor)
+                    new_path = path + [successor]
+                    new_action_path = action_path + [action]
+                    self.frontier.append([new_path, new_cost, new_action_path, new_heuristic])
+                    if successor not in self.visited:
+                        self.visited.append(successor)
+
+    def search_astar(self):
+        start_state = self.initial_state()
+        self.frontier = [[[start_state], 0, [], 0]]
+        result = self.search()
+        
+        if not result:
+            print("No path found.")
+        else:
+            print("Path found:")
+            print("Actions:", result[0])
+            print("Number of visited nodes:", len(self.visited))
+            print("Number of nodes in closed list:", len(self.explored))
+            print("Max memory used:", self.max_memory)
+            print("Total path cost:", result[2] + result[3])
+
+# Example usage for an 8-puzzle problem
+def initial_state():
+    return (1, 2, 3, 4, 5, 6, 7, 8, 0)  # Example initial state of 8-puzzle
+
+def actions(state):
+    zero_index = state.index(0)
+    possible_actions = []
+    if zero_index % 3 > 0:  # Can move left
+        possible_actions.append('Left')
+    if zero_index % 3 < 2:  # Can move right
+        possible_actions.append('Right')
+    if zero_index > 2:  # Can move up
+        possible_actions.append('Up')
+    if zero_index < 6:  # Can move down
+        possible_actions.append('Down')
+    return possible_actions
+
+def result(state, action):
+    zero_index = state.index(0)
+    new_state = list(state)
+    if action == 'Left':
+        new_state[zero_index], new_state[zero_index - 1] = new_state[zero_index - 1], new_state[zero_index]
+    elif action == 'Right':
+        new_state[zero_index], new_state[zero_index + 1] = new_state[zero_index + 1], new_state[zero_index]
+    elif action == 'Up':
+        new_state[zero_index], new_state[zero_index - 3] = new_state[zero_index - 3], new_state[zero_index]
+    elif action == 'Down':
+        new_state[zero_index], new_state[zero_index + 3] = new_state[zero_index + 3], new_state[zero_index]
+    return tuple(new_state)
+
+def goal_test(state):
+    return state == (0, 1, 2, 3, 4, 5, 6, 7, 8)
+
+def get_cost(state1, state2):
+    return 1  # Uniform cost for each move
+
+def heuristic(state):
+    goal = (0, 1, 2, 3, 4, 5, 6, 7, 8)
+    return sum(abs(s % 3 - g % 3) + abs(s // 3 - g // 3) for s, g in zip(state, goal))
+
+if __name__ == "__main__":
+    astar_solver = AStar(initial_state, actions, result, goal_test, get_cost, heuristic)
+    astar_solver.search_astar()

@@ -1,0 +1,215 @@
+import sys
+import csv
+import math
+
+# Command-line arguments
+train_input = sys.argv[1]
+test_input = sys.argv[2]
+depth = int(sys.argv[3])
+train_out = sys.argv[4]
+test_out = sys.argv[5]
+metrics = sys.argv[6]
+
+def import_data(file_path):
+    """
+    Import data from a CSV file and organize it into features and labels.
+    """
+    features = {}
+    label_list = []
+    feat = []
+
+    with open(file_path) as all_data:
+        reader = csv.reader(all_data)
+        for row in reader:
+            if not feat:
+                for index in range(len(row) - 1):
+                    feat.append([row[index]])
+            else:
+                for index in range(len(row) - 1):
+                    feat[index].append(row[index])
+                label_list.append(row[-1])
+
+    for j in range(len(row) - 1):
+        temp = feat[j].pop(0)
+        features[temp] = feat[j]
+
+    tags = list(set(label_list))
+    return label_list, features, tags
+
+def count_number(label_list, tags):
+    """
+    Count the occurrences of each tag in the label list.
+    """
+    label0 = label_list.count(tags[0])
+    label1 = label_list.count(tags[1])
+    return label0, label1
+
+def calculate_entropy(label_list, tags):
+    """
+    Calculate the entropy of the label list.
+    """
+    label0, label1 = count_number(label_list, tags)
+    if label0 == 0 or label1 == 0:
+        return 0
+
+    prob0 = label0 / len(label_list)
+    prob1 = label1 / len(label_list)
+    return -prob0 * math.log(prob0, 2) - prob1 * math.log(prob1, 2)
+
+def calculate_mutual_information(feature, label_list):
+    """
+    Calculate the mutual information for a given feature.
+    """
+    n_labels = []
+    y_labels = []
+    tags = list(set(label_list))
+
+    for index, value in enumerate(feature):
+        if value in ('n', 'notA', 'no'):
+            n_labels.append(label_list[index])
+        else:
+            y_labels.append(label_list[index])
+
+    prob_n = len(n_labels) / len(label_list)
+    prob_y = len(y_labels) / len(label_list)
+    return (calculate_entropy(label_list, tags) 
+            - prob_n * calculate_entropy(n_labels, tags) 
+            - prob_y * calculate_entropy(y_labels, tags)), n_labels, y_labels
+
+def split_features(feature, features):
+    """
+    Split the features based on the given feature.
+    """
+    n_features = {}
+    y_features = {}
+
+    for index in features:
+        if index == feature:
+            continue
+        n_features[index] = []
+        y_features[index] = []
+        for j, value in enumerate(features[feature]):
+            if value in ('n', 'notA', 'no'):
+                n_features[index].append(features[index][j])
+            else:
+                y_features[index].append(features[index][j])
+
+    return n_features, y_features
+
+class Node:
+    def __init__(self, tag, left=None, right=None, feature=None):
+        self.tag = tag
+        self.left = left
+        self.right = right
+        self.feature = feature
+
+    def is_leaf(self):
+        return self.left is None and self.right is None
+
+def train_decision_tree(label_list, features, tags, cur_depth, max_depth):
+    """
+    Train the decision tree using the given training data.
+    """
+    label0_num, label1_num = count_number(label_list, tags)
+    if label0_num > label1_num:
+        predict = tags[0]
+        predict_num = label0_num
+    else:
+        predict = tags[1]
+        predict_num = label1_num
+
+    if predict_num == len(label_list):
+        return Node(predict)
+    elif not features:
+        return Node(predict)
+    elif cur_depth > max_depth:
+        return Node(predict)
+    else:
+        n_labels, y_labels = [], []
+        best_score = -1
+        best_feature = None
+        for feature in features:
+            score, current_n_labels, current_y_labels = calculate_mutual_information(features[feature], label_list)
+            if score >= best_score:
+                best_score = score
+                n_labels = current_n_labels
+                y_labels = current_y_labels
+                best_feature = feature
+
+        cur_depth += 1
+        n_features, y_features = split_features(best_feature, features)
+        left = train_decision_tree(n_labels, n_features, tags, cur_depth, max_depth)
+        right = train_decision_tree(y_labels, y_features, tags, cur_depth, max_depth)
+        return Node(tags[0], left, right, best_feature)
+
+def test_decision_tree(node, test_input, output):
+    """
+    Test the decision tree on the given test data.
+    """
+    with open(test_input) as all_data:
+        reader = csv.reader(all_data)
+        count = 0
+        total = 0
+        data = []
+        feat = []
+
+        for row in reader:
+            if total == 0:
+                for index in range(len(row) - 1):
+                    feat.append(row[index])
+            else:
+                record = {feat[index]: row[index] for index in range(len(row) - 1)}
+                label = classify(node, record)
+                data.append(label + '\n')
+                if label != row[-1]:
+                    count += 1
+            total += 1
+
+    with open(output, 'w') as f:
+        f.writelines(data)
+
+    return count / (total - 1)
+
+def classify(node, record):
+    """
+    Classify a single record using the decision tree.
+    """
+    if node.is_leaf():
+        return node.tag
+    else:
+        if record[node.feature] in ('n', 'notA', 'no'):
+            return classify(node.left, record)
+        else:
+            return classify(node.right, record)
+
+def print_tree(node, depth):
+    """
+    Print the decision tree.
+    """
+    if node.is_leaf():
+        print(' ' * depth, node.tag)
+    else:
+        print(' ' * depth, node.tag, ': ', node.feature)
+        print_tree(node.left, depth + 1)
+        print_tree(node.right, depth + 1)
+
+def train_and_test(train_input, test_input, depth, train_out, test_out, metrics):
+    """
+    Train and test the decision tree, then write the results to files.
+    """
+    label_list, features, tags = import_data(train_input)
+    node = train_decision_tree(label_list, features, tags, 0, depth)
+    train_error = test_decision_tree(node, train_input, train_out)
+    test_error = test_decision_tree(node, test_input, test_out)
+
+    with open(metrics, 'w') as f:
+        f.write(f'error(train): {train_error}\nerror(test): {test_error}\n')
+
+if __name__ == '__main__':
+    global log
+    log = utils.get_top_level_logger(name=__file__, log_target='terminal')
+    try:
+        train_and_test(train_input, test_input, depth, train_out, test_out, metrics)
+    except Exception as e:
+        log.exception(f'{__file__} failed to finish executing successfully.')
+        sys.exit(1)

@@ -1,0 +1,116 @@
+def edges_to_set(edges):
+    """
+    Converts a list of edges to a set of unique nodes.
+    
+    Args:
+    edges (list of tuple): List of edges where each edge is a tuple of two nodes.
+    
+    Returns:
+    list: List of unique nodes present in the edges.
+    """
+    nodes = set()
+    for edge in edges:
+        nodes.update(edge)
+    return list(nodes)
+
+class Dgraph:
+    def __init__(self):
+        self.nodes = []
+        self.arrows = []
+        self.dists = {}
+    
+    def add_node(self, node):
+        """
+        Adds a node to the graph if it is not already present.
+        
+        Args:
+        node: The node to be added.
+        """
+        if node not in self.nodes:
+            self.nodes.append(node)
+    
+    def add_arrow(self, arrow, dist):
+        """
+        Adds an arrow (directed edge) and its distance to the graph.
+        
+        Args:
+        arrow (tuple): A tuple representing the directed edge.
+        dist (float): The distance associated with the edge.
+        """
+        self.arrows.append(arrow)
+        self.dists[arrow] = dist
+    
+    def neighbors_of(self, node):
+        """
+        Returns a list of neighbors for a given node.
+        
+        Args:
+        node: The node whose neighbors are to be found.
+        
+        Returns:
+        list: List of neighboring nodes.
+        """
+        neighbors = []
+        for arrow in self.arrows:
+            if arrow[0] == node:
+                neighbors.append(arrow[1])
+            elif arrow[1] == node:
+                neighbors.append(arrow[0])
+        return neighbors
+    
+    def get_length(self, node1, node2):
+        """
+        Returns the distance between two nodes if an edge exists between them.
+        
+        Args:
+        node1, node2: The nodes between which the distance is to be found.
+        
+        Returns:
+        float: The distance between the nodes, or None if no edge exists.
+        """
+        if (node1, node2) in self.dists:
+            return self.dists[(node1, node2)]
+        elif (node2, node1) in self.dists:
+            return self.dists[(node2, node1)]
+        return None
+    
+    def closest_neighbor(self, node):
+        """
+        Finds the closest neighbor to a given node.
+        
+        Args:
+        node: The node whose closest neighbor is to be found.
+        
+        Returns:
+        tuple: A tuple containing the closest neighbor and the distance to it.
+        """
+        min_dist = float('inf')
+        closest_node = None
+        for arrow in self.arrows:
+            if node in arrow:
+                neighbor = arrow[1] if arrow[0] == node else arrow[0]
+                dist = self.dists[arrow]
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_node = neighbor
+        return closest_node, min_dist
+    
+    def get_edges(self, arrow_list):
+        """
+        Finds all edges that are connected to any edge in the given list of edges.
+        
+        Args:
+        arrow_list (list of tuple): List of edges to find connections for.
+        
+        Returns:
+        list: List of edges that are connected to any edge in the arrow_list.
+        """
+        near_edges = []
+        current_edges = set(self.arrows) - set(arrow_list)
+        nodes_in_arrows = set(edges_to_set(arrow_list))
+        current_edges = {edge for edge in current_edges if not (edge[0] in nodes_in_arrows and edge[1] in nodes_in_arrows)}
+        
+        for edge in current_edges:
+            if any(set(edge) & set(arrow) for arrow in arrow_list):
+                near_edges.append(edge)
+        return near_edges

@@ -1,0 +1,66 @@
+"""
+Program description
+Created by: Skeleton by Billy Koech
+Date: Jan 4th 2018
+Most recent update: Sept 24th 2019
+Standard deviation and mean calculator for performance and pin outputs.
+"""
+
+import re
+import numpy as np
+
+# Constants
+PERF_OUTPUT_FILE = "measure.out"
+SEARCH_TERMS = [
+    "mem_inst_retired.all_loads:u",
+    "instructions:u",
+    "mem_inst_retired.all_stores:u",
+    "br_inst_retired.all_branches:u"
+]
+DEBUG_MODE = False
+
+def parse_perf_output(file_path, search_terms, debug_mode=False):
+    runtimes = {term: [] for term in search_terms}
+
+    with open(file_path, "r") as f:
+        for line in f:
+            for term in search_terms:
+                if term in line:
+                    numeric_value = int(re.findall(r"\d+", line)[0])
+                    if debug_mode:
+                        print(f"Found {numeric_value} for term {term}")
+                    runtimes[term].append(numeric_value)
+
+    return runtimes
+
+def calculate_statistics(runtimes):
+    statistics = {}
+    for term, values in runtimes.items():
+        std_dev = np.std(values)
+        mean = np.mean(values)
+        statistics[term] = (std_dev, mean)
+    return statistics
+
+def generate_report(statistics, report_file):
+    header = "Type of instruction:\tstd,\tmean\n"
+    report_lines = [header]
+    for term, (std_dev, mean) in statistics.items():
+        report_lines.append(f"{term}:\t{std_dev:.2f},\t{mean:.2f}\n")
+
+    with open(report_file, "w") as report:
+        report.writelines(report_lines)
+    
+    print("Report generated successfully!")
+    print("".join(report_lines))
+
+def main():
+    runtimes = parse_perf_output(PERF_OUTPUT_FILE, SEARCH_TERMS, DEBUG_MODE)
+    
+    if DEBUG_MODE:
+        print(f"Runtimes collected: {runtimes}")
+    
+    statistics = calculate_statistics(runtimes)
+    generate_report(statistics, "perf_report.txt")
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,105 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import os
+import imageio
+import argparse
+
+# Argument parser configuration
+parser = argparse.ArgumentParser(
+    prog='Graph',
+    description='Plot different graphs',
+    exit_on_error=False
+)
+parser.add_argument('-p', '--polyfit', help='Polyfit example', action='store_true', required=False)
+parser.add_argument('-l', '--linear', help='My linear function', action='store_true', required=False)
+parser.add_argument('-g', '--gif', help='Create Animated Gif', action='store_true', required=False)
+args = parser.parse_args()
+
+# Data loading
+data = pd.read_csv('data.csv')
+x_values = data["km"]
+y_values = data["price"]
+
+# Min and max values for x
+x_min = x_values.min()
+x_max = x_values.max()
+
+# Theta values
+thetas = pd.read_csv('thetas.csv')
+theta_0 = thetas["theta0"].values[-1]
+theta_1 = thetas["theta1"].values[-1]
+thetas_size = len(thetas)
+
+# Function to set up the base graph
+def base_graph(xs, ys):
+    plt.style.use('ggplot')
+    plt.xlabel('km')
+    plt.ylabel('price')
+    plt.scatter(xs, ys)
+
+# Function to plot linear regression
+def plot_linear_regression(theta_0, theta_1, x_min, x_max, name, format):
+    x = np.linspace(x_min, x_max, 2)
+    y = x * theta_1 + theta_0
+    plt.plot(x, y, format, label=name)
+
+# Function to perform and plot polyfit example
+def polyfit_example():
+    model = np.polyfit(x_values, y_values, 1)
+    plot_linear_regression(model[1], model[0], x_min, x_max, "Polyfit Example", "r:.")
+
+# Function to create directory for PNG files
+def create_path():
+    directory = "png"
+    path = os.path.join(os.getcwd(), directory)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+# Function to create PNG files for GIF
+def create_pngs():
+    images = []
+    total_images = 120
+    index_interval = thetas_size // total_images
+
+    for index in range(1, total_images):
+        theta_0 = thetas["theta0"].values[index * index_interval]
+        theta_1 = thetas["theta1"].values[index * index_interval]
+        base_graph(x_values, y_values)
+        plot_linear_regression(theta_0, theta_1, x_min, x_max, "My Linear Regression", "g")
+        filename = f'png/{index}.png'
+        images.append(filename)
+        plt.savefig(filename)
+        plt.close()
+    
+    base_graph(x_values, y_values)
+    plot_linear_regression(theta_0, theta_1, x_min, x_max, "My Linear Regression", "g")
+    polyfit_example()
+    filename = f'png/{total_images + 1}.png'
+    images.append(filename)
+    plt.legend()
+    plt.savefig(filename)
+    plt.close()
+
+    return images
+
+# Function to create animated GIF
+def create_animated_gif():
+    create_path()
+    images = create_pngs()
+    frames = [imageio.v3.imread(image) for image in images]
+    imageio.mimsave("training.gif", frames, duration=50)
+
+# Main execution
+base_graph(x_values, y_values)
+
+if args.linear:
+    plot_linear_regression(theta_0, theta_1, x_min, x_max, "My Linear Regression", "g")
+if args.polyfit:
+    polyfit_example()
+if args.gif:
+    create_animated_gif()
+
+plt.legend()
+plt.show()

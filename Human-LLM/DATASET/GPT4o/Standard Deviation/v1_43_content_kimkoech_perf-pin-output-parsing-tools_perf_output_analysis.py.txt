@@ -1,0 +1,47 @@
+import re
+import numpy as np
+
+def parse_perf_output(perf_output_file, search_terms, debugMode=False):
+    runtimes = {term: [] for term in search_terms}
+    
+    with open(perf_output_file, "r") as f:
+        for line in f:
+            for term in search_terms:
+                if term in line:
+                    numeric_value = int(re.findall(r"\d+", line)[0])
+                    if debugMode:
+                        print(f"Found {numeric_value} for term {term}")
+                    runtimes[term].append(numeric_value)
+    
+    print("Parsing complete!")
+    return runtimes
+
+def calculate_statistics(runtimes):
+    output_str = ""
+    for key, values in runtimes.items():
+        std = np.std(values)
+        mean = np.mean(values)
+        output_str += f"{key} :\t{std:.2f},\t{mean:.2f}\n"
+    return output_str
+
+def write_report(output_str, report_file="perf_report.txt"):
+    header = "Type of instruction: \t std, \t mean\n"
+    with open(report_file, "w") as report:
+        report.write(header + output_str)
+
+def main():
+    perf_output_file = "measure.out"
+    search_terms = ["mem_inst_retired.all_loads:u",
+                    "instructions:u",
+                    "mem_inst_retired.all_stores:u",
+                    "br_inst_retired.all_branches:u"]
+    debugMode = False
+    
+    runtimes = parse_perf_output(perf_output_file, search_terms, debugMode)
+    output_str = calculate_statistics(runtimes)
+    print("Type of instruction: \t std, \t mean")
+    print(output_str)
+    write_report(output_str)
+
+if __name__ == '__main__':
+    main()

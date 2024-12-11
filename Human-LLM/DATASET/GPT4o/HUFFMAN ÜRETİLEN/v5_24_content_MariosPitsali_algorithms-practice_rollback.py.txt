@@ -1,0 +1,133 @@
+import sqlite3
+import datetime
+import pytz
+
+# Connect to the SQLite database
+db = sqlite3.connect("accounts.sqlite", detect_types=sqlite3.PARSE_DECLTYPES)
+
+# Create tables if they do not exist
+db.execute("""
+    CREATE TABLE IF NOT EXISTS accounts(
+        name TEXT PRIMARY KEY NOT NULL, 
+        balance INTEGER NOT NULL
+    )
+""")
+db.execute("""
+    CREATE TABLE IF NOT EXISTS history (
+        time TIMESTAMP NOT NULL, 
+        account TEXT NOT NULL, 
+        amount INTEGER NOT NULL, 
+        PRIMARY KEY(time, account)
+    )
+""")
+db.execute("""
+    CREATE VIEW IF NOT EXISTS localhistory AS 
+    SELECT 
+        strftime('%Y-%m-%d %H:%M:%f', history.time, 'localtime') AS localtime,
+        history.account, 
+        history.amount 
+    FROM history 
+    ORDER BY history.time
+""")
+
+class Account:
+    def __init__(self, name: str, opening_balance: int = 0):
+        self.name = name
+        self._balance = self._retrieve_or_create_account(name, opening_balance)
+        self.show_balance()
+
+    def _retrieve_or_create_account(self, name: str, opening_balance: int) -> int:
+        """
+        Retrieve the account balance if the account exists, or create a new account.
+
+        Args:
+            name (str): The name of the account.
+            opening_balance (int): The initial balance for a new account.
+
+        Returns:
+            int: The current balance of the account.
+        """
+        cursor = db.execute("SELECT balance FROM accounts WHERE name = ?", (name,))
+        row = cursor.fetchone()
+
+        if row:
+            print(f"Retrieved balance for {name}")
+            return row[0]
+        else:
+            db.execute("INSERT INTO accounts (name, balance) VALUES (?, ?)", (name, opening_balance))
+            db.commit()
+            print(f"Account created for {name}")
+            return opening_balance
+
+    def show_balance(self):
+        """Display the current balance of the account."""
+        print(f"Balance on account {self.name} is {self._balance / 100:.2f}")
+
+    @staticmethod
+    def current_time():
+        """Get the current UTC time."""
+        return datetime.datetime.now(pytz.utc)
+
+    def deposit(self, amount: int) -> float:
+        """
+        Deposit money into the account.
+
+        Args:
+            amount (int): The amount to deposit in cents.
+
+        Returns:
+            float: The new balance of the account in dollars.
+        """
+        if amount > 0:
+            self._save_update(amount)
+            print(f"{amount / 100:.2f} deposited")
+        return self._balance / 100
+
+    def withdraw(self, amount: int) -> float:
+        """
+        Withdraw money from the account.
+
+        Args:
+            amount (int): The amount to withdraw in cents.
+
+        Returns:
+            float: The new balance of the account in dollars.
+        """
+        if 0 < amount <= self._balance:
+            self._save_update(-amount)
+            print(f"{amount / 100:.2f} withdrawn")
+        else:
+            print("Amount must be more than zero and less than your account balance.")
+        return self._balance / 100
+
+    def _save_update(self, amount: int):
+        """
+        Update the account balance and record the transaction.
+
+        Args:
+            amount (int): The amount to update the balance by in cents.
+        """
+        new_balance = self._balance + amount
+        deposit_time = self.current_time()
+        db.execute("UPDATE accounts SET balance = ? WHERE name = ?", (new_balance, self.name))
+        db.execute("INSERT INTO history (time, account, amount) VALUES (?, ?, ?)", (deposit_time, self.name, amount))
+        db.commit()
+        self._balance = new_balance
+
+if __name__ == "__main__":
+    john = Account("John")
+    john.deposit(1010)
+    john.deposit(10)
+    john.deposit(10)
+    john.withdraw(30)
+    john.show_balance()
+
+    terry = Account("Terry")
+    graham = Account("Graham", 9000)
+    eric = Account("Eric", 7000)
+    jordan = Account("Jordan", 8000)
+    jordan.deposit(1000)
+    eric.deposit(2000)
+    eric.withdraw(90000)
+
+    db.close()

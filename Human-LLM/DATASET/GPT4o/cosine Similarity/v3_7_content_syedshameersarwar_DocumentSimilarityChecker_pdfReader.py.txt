@@ -1,0 +1,46 @@
+import io
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfpage import PDFPage
+
+def pdf_to_text(file_path):
+    """
+    Extract text from a PDF file.
+
+    Args:
+        file_path (str): The path to the PDF file.
+
+    Returns:
+        str: The extracted text from the PDF.
+    """
+    # Initialize PDF resource manager
+    resource_manager = PDFResourceManager()
+    # StringIO object to capture the extracted text
+    output_string = io.StringIO()
+    # Set parameters for analysis
+    laparams = LAParams()
+    # Create a TextConverter to convert PDF to text
+    device = TextConverter(resource_manager, output_string, laparams=laparams)
+    # Create a PDF interpreter object
+    interpreter = PDFPageInterpreter(resource_manager, device)
+
+    # Open the PDF file
+    with open(file_path, 'rb') as file:
+        # Process each page in the PDF
+        for page in PDFPage.get_pages(file, check_extractable=True):
+            interpreter.process_page(page)
+
+    # Get the text from StringIO object
+    text = output_string.getvalue()
+
+    # Close all the resources
+    device.close()
+    output_string.close()
+    
+    return text
+
+if __name__ == '__main__':
+    pdf_path = 'Computer Graphics.pdf'  # Path to your PDF file
+    extracted_text = pdf_to_text(pdf_path)
+    print(extracted_text)

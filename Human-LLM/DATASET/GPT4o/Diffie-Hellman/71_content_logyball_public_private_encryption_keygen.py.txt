@@ -1,0 +1,32 @@
+from random import randint, seed, getrandbits
+from millerrabin import isPrime
+GENERATOR = 2
+def fake32BitInt(num):
+    return num % 4294967295
+def getPrime(bitLength=31):
+    done = False
+    prime = 0
+    while not done:
+        random = getrandbits(bitLength)
+        if (random % 12) != 5:
+            continue
+        prime = (2*random) + 1
+        if isPrime(prime) and prime > 2147483648:
+            done = True
+    return prime
+def getPriKey(userSeed, prime):
+    seed(userSeed)
+    return randint(1, prime-2)
+def getE2(privateKey, prime, gen=GENERATOR):
+    return pow(gen, privateKey, prime)
+def getKeys(seed=None):
+    prime = getPrime()
+    priKey = getPriKey(seed, prime)
+    e2 = getE2(priKey, prime)
+    gen = GENERATOR
+    return {
+        'd': priKey,
+        'p': prime,
+        'g': gen,
+        'e2': e2
+    }

@@ -1,0 +1,71 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.offsetbox import AnchoredText
+from matplotlib.patheffects import withStroke
+
+# Custom function to add a title inside a plot
+def add_inner_title(title, loc, ax=None, size=None, **kwargs):
+    """Adds a title inside a plot with a stroke effect."""
+    if ax is None:
+        ax = plt.gca()
+    if size is None:
+        size = dict(size=plt.rcParams['legend.fontsize'])
+
+    # Create the anchored text object
+    at = AnchoredText(title, loc=loc, prop=size, pad=0.7, borderpad=0.01, frameon=False, **kwargs)
+    ax.add_artist(at)
+
+    # Add stroke to text for better readability
+    at.txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
+    return at
+
+# Function to plot the subplots
+def plot_subplots():
+    # Create a 2x2 grid of subplots
+    fig, axs = plt.subplots(nrows=2, ncols=2)
+
+    # Mapping for row names, column values, and labels
+    row2name = {0: "subspace_distance", 1: "Steifel_distance"}
+    col2k = {0: 100, 1: 2000}
+    lab = {(0, 0): "(a)", (0, 1): "(b)", (1, 0): "(c)", (1, 1): "(d)"}
+    ticks = projection_algorithms
+    ims = [[None, None], [None, None]]
+
+    # Loop over rows and columns to create each subplot
+    for i in range(2):
+        for j in range(2):
+            name, k = row2name[i], col2k[j]
+            mat = np.loadtxt(f"{name}/{name}__k_{k}.txt")
+
+            # Plot the matrix and apply log scale
+            im = axs[i][j].matshow(np.log10(mat))
+            ims[i][j] = im
+
+            # Set current axes
+            plt.sca(axs[i][j])
+
+            # Set x and y ticks based on position
+            if i == 0:
+                plt.xticks(np.arange(mat.shape[0]), ticks, rotation="vertical")
+            else:
+                plt.xticks([])
+
+            if j == 0:
+                plt.yticks(np.arange(mat.shape[0]), ticks)
+            else:
+                plt.yticks([])
+
+            # Add inner title to each subplot
+            add_inner_title(lab[(i, j)], loc=2, ax=axs[i][j])
+
+            # Add colorbar to each subplot
+            fig.colorbar(ims[i][j], ax=axs[i][j])
+
+    # Adjust spacing between subplots
+    plt.subplots_adjust(wspace=0, hspace=0.1)
+
+    # Save the figure to a file
+    plt.savefig("subspace_distance.pdf", bbox_inches="tight")
+
+# Run the function to plot the subplots
+plot_subplots()

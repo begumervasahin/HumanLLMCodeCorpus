@@ -1,0 +1,86 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import movie_predict_knn
+
+def get_title(index, df):
+    """
+    Get the movie title from the DataFrame based on the index.
+
+    Args:
+        index (int): The index of the movie.
+        df (pd.DataFrame): The DataFrame containing the movie data.
+
+    Returns:
+        str: The title of the movie.
+    """
+    return df.iloc[index]["title"]
+
+def get_index(title, df):
+    """
+    Get the index of the movie from the DataFrame based on the title.
+
+    Args:
+        title (str): The title of the movie.
+        df (pd.DataFrame): The DataFrame containing the movie data.
+
+    Returns:
+        int: The index of the movie.
+    """
+    return df[df.title == title].index[0]
+
+def combine_features(row):
+    """
+    Combine selected features into a single string.
+
+    Args:
+        row (pd.Series): A row of the DataFrame.
+
+    Returns:
+        str: The combined features as a single string.
+    """
+    return f"{row['keywords']} {row['cast']} {row['genres']} {row['director']}"
+
+def main():
+    # Load the dataset
+    df = pd.read_csv("D:/roops_backup/projects/data mining project/movie_recommender/movie_dataset.csv")
+
+    # Select features to be used for recommendation
+    features = ['keywords', 'cast', 'genres', 'director']
+
+    # Fill NaN values with empty strings
+    for feature in features:
+        df[feature] = df[feature].fillna('')
+
+    # Create a new column 'combined_features'
+    df["combined_features"] = df.apply(combine_features, axis=1)
+
+    # Create a CountVectorizer to count the number of words in each combined feature
+    vectorizer = CountVectorizer(stop_words='english')
+    count_matrix = vectorizer.fit_transform(df["combined_features"])
+
+    # Compute the cosine similarity based on the count matrix
+    cosine_sim = cosine_similarity(count_matrix)
+
+    # Define the movie to find recommendations for
+    movie = "Avengers: Age of Ultron"
+    movie_index = get_index(movie, df)
+
+    # Get a list of similar movies based on cosine similarity
+    similar_movies = list(enumerate(cosine_sim[movie_index]))
+    sorted_similar_movies = sorted(similar_movies, key=lambda x: x[1], reverse=True)
+
+    # Print results with cosine similarity
+    print("Result with cosine similarity:")
+    for i, movie in enumerate(sorted_similar_movies):
+        print(get_title(movie[0], df))
+        if i >= 5:
+            break
+
+    # Print results with KNN
+    print("Result with KNN:")
+    K = 5
+    movie_predict_knn.main(movie_index, K)
+
+if __name__ == '__main__':
+    main()

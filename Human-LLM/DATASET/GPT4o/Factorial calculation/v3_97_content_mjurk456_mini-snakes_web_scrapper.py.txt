@@ -1,0 +1,67 @@
+import requests
+import os
+from bs4 import BeautifulSoup
+
+def download_images_from_url(url, save_directory):
+    """
+    Downloads images from a webpage and saves them to a specified directory.
+
+    Parameters:
+    - url (str): The URL of the webpage to scrape images from.
+    - save_directory (str): Directory path where images will be saved.
+    """
+    # Ensure the save directory exists
+    os.makedirs(save_directory, exist_ok=True)
+
+    while True:
+        # Fetch the content of the current webpage
+        print(f"Fetching page: {url}")
+        response = requests.get(url)
+        response.raise_for_status()  # Ensure the request was successful
+
+        # Parse the webpage content
+        soup = BeautifulSoup(response.text, "lxml")
+        img_elements = soup.select(".image-size-full")
+
+        # Download and save each image found on the page
+        for element in img_elements:
+            img_url = element.get('src')
+            if img_url:
+                download_and_save_image(img_url, save_directory)
+
+        # Check if there is a link to the next page
+        next_link = soup.find("a", class_="pagination")
+        if next_link and 'href' in next_link.attrs:
+            url = next_link.get('href')
+        else:
+            print("No more pages to download.")
+            break
+
+    print("All images have been downloaded.")
+
+def download_and_save_image(img_url, save_directory):
+    """
+    Downloads an image from a URL and saves it to a specified directory.
+
+    Parameters:
+    - img_url (str): The URL of the image to download.
+    - save_directory (str): Directory path where the image will be saved.
+    """
+    print(f"Downloading image: {img_url}")
+    response = requests.get(img_url)
+    response.raise_for_status()  # Ensure the request was successful
+
+    # Create a path for the image file
+    img_filename = os.path.join(save_directory, os.path.basename(img_url))
+    
+    # Save the image to the specified directory
+    with open(img_filename, 'wb') as img_file:
+        for chunk in response.iter_content(1024):  # 1 KB chunks
+            img_file.write(chunk)
+
+if __name__ == "__main__":
+    # Define the initial URL and directory for downloading images
+    start_url = 'https://www.boredpanda.com/funny-pet-jerks/'
+    save_directory = "/home/maria/Pictures/downloaded/"
+    
+    download_images_from_url(start_url, save_directory)

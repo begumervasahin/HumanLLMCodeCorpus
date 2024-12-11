@@ -1,0 +1,64 @@
+import numpy as np
+import timeit
+import matplotlib.pyplot as plt
+
+plt.style.use('ggplot')
+
+def linear_search(arr):
+    comparisons = 0
+    previous_element = -np.inf
+
+    for current_element in arr:
+        if current_element < previous_element:
+            return comparisons
+
+        comparisons += 1
+        previous_element = current_element
+
+def binary_search(arr, start_index=0):
+    middle_index = len(arr) // 2
+    pivot = arr[middle_index]
+
+    if pivot == arr[0]:
+        return start_index + 1
+
+    if pivot < arr[0]:
+        return binary_search(arr[:middle_index], start_index)
+    else:
+        start_index += middle_index
+        return binary_search(arr[middle_index:], start_index)
+
+def time_wrapper(func, *args, **kwargs):
+    def wrapped():
+        return func(*args, **kwargs)
+    return wrapped
+
+def measure_average_time(func, arr, num_iterations=10):
+    total_time = 0
+
+    for _ in range(num_iterations):
+        t_function = time_wrapper(func, arr)
+        total_time += timeit.timeit(t_function, number=num_iterations)
+
+    return total_time / num_iterations
+
+if __name__ == '__main__':
+    bins = []
+    lins = []
+    ns = [10, 50, 100, 200, 500, 1000, 5000, 10000]
+
+    for n in ns:
+        arr = np.roll(np.arange(n), np.random.randint(n))
+        
+        average_time_binary = measure_average_time(binary_search, arr)
+        average_time_linear = measure_average_time(linear_search, arr)
+
+        bins.append(average_time_binary)
+        lins.append(average_time_linear)
+
+    plt.plot(ns, np.array(lins) / max(lins), '-o', label='Linear Search')
+    plt.plot(ns, np.array(bins) / max(lins), '-o', label='Binary Search')
+    plt.plot(ns, np.array(ns) / max(ns), '--k', label='Linear')
+    plt.plot(ns, np.log2(np.array(ns)) / max(ns), '--k', label='Logarithmic')
+    plt.legend()
+    plt.show()

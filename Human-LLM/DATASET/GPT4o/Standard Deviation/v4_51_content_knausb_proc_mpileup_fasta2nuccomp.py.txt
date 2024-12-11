@@ -1,0 +1,40 @@
+import argparse
+from Bio import SeqIO
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Determine nucleotide composition of FASTA files.')
+    parser.add_argument("FASTA", help="FASTA file containing nucleotides.")
+    parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
+    return parser.parse_args()
+
+def verbose_print(verbose, message):
+    if verbose:
+        print(message)
+
+def count_nucleotides(seq, nucleotides):
+    return {nuc: seq.count(nuc) for nuc in nucleotides}
+
+def write_output(file_name, records, nucleotides):
+    with open(file_name, 'w') as f:
+        header = 'Id,Length,' + ','.join(nucleotides) + '\n'
+        f.write(header)
+        for record in records:
+            counts = count_nucleotides(record.seq, nucleotides)
+            f.write(f"{record.id},{len(record)},{','.join(str(counts[nuc]) for nuc in nucleotides)}\n")
+
+def main():
+    args = parse_arguments()
+    
+    nucleotides = ["a", "A", "c", "C", "g", "G", "t", "T", "w", "W", "s", "S", "m", "M", "k", "K", "r", "R", "y", "Y", "n", "N"]
+
+    verbose_print(args.verbose, "Verbosity turned on")
+    verbose_print(args.verbose, f"Input FASTA file: {args.FASTA}")
+
+    output_file = f"{args.FASTA.split('.')[0]}_nuccomp.csv"
+    verbose_print(args.verbose, f"Output file: {output_file}")
+
+    records = list(SeqIO.parse(args.FASTA, "fasta"))
+    write_output(output_file, records, nucleotides)
+
+if __name__ == "__main__":
+    main()

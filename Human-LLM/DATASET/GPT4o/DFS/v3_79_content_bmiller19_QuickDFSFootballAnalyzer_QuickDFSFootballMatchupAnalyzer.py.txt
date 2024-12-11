@@ -1,0 +1,72 @@
+import pypyodbc
+from DFSFootball_Lib import TeamReformat
+
+def get_defensive_dvoa(team_name, cursor):
+    """
+    Retrieve the Defensive DVOA value for a specific team.
+
+    Args:
+        team_name (str): The name of the team to search for.
+        cursor (pypyodbc.Cursor): The cursor for querying defensive stats.
+
+    Returns:
+        str: The Defensive DVOA value for the team, or 'error' if not found.
+    """
+    while True:
+        row = cursor.fetchone()
+        if row is None:
+            return 'error'
+        if row.get("Team") == team_name:
+            return row.get("DefDVOA")
+
+def setup_database_connection(db_path):
+    """
+    Establish and return a connection to the Access database.
+
+    Args:
+        db_path (str): Path to the Access database file.
+
+    Returns:
+        pypyodbc.Connection: The database connection object.
+    """
+    connection_string = (
+        r"Driver={Microsoft Access Driver (*.mdb, *.accdb)};"
+        f"Dbq={db_path};"
+    )
+    return pypyodbc.connect(connection_string)
+
+def main():
+    """
+    Main function to connect to the database, process matchups, and display team Defensive DVOA values.
+    """
+    # Path to the Access database
+    db_path = r"C:\Users\mille\OneDrive\Documents\DFSFootball.accdb"
+
+    # Disable automatic conversion to lowercase in pypyodbc
+    pypyodbc.lowercase = False
+
+    # Connect to the database
+    conn = setup_database_connection(db_path)
+
+    # Create cursors for querying matchups and defensive stats
+    with conn.cursor() as matchups_cursor, conn.cursor() as def_stats_cursor:
+        # Execute queries to fetch matchups and defensive stats
+        matchups_cursor.execute("SELECT ID, AwayTeam, HomeTeam FROM Matchups")
+        def_stats_cursor.execute("SELECT Team, DefDVOA FROM DefensiveStats")
+
+        # Process each matchup
+        for matchup in matchups_cursor:
+            away_team = TeamReformat(matchup.get("AwayTeam"))
+            home_team = TeamReformat(matchup.get("HomeTeam"))
+
+            # Get Defensive DVOA for the away team
+            away_dvoa = get_defensive_dvoa(away_team, def_stats_cursor)
+
+            # Print the Defensive DVOA value
+            print(f"{away_team}'s DVOA = {away_dvoa}")
+
+    # Close database connection
+    conn.close()
+
+if __name__ == "__main__":
+    main()

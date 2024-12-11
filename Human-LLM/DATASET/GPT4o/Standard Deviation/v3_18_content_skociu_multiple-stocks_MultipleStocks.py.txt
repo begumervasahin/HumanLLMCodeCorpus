@@ -1,0 +1,74 @@
+import datetime
+from pandas_datareader import data
+import pandas as pd
+import numpy as np
+import os
+
+def fetch_data(tickers, start_date, end_date):
+    """Fetch adjusted close price data for the given tickers from Yahoo Finance."""
+    data_list = []
+    for ticker in tickers:
+        stock_data = data.get_data_yahoo(ticker, start=start_date, end=end_date, interval='m')['Adj Close']
+        stock_series = pd.Series(stock_data, name=ticker)
+        data_list.append(stock_series)
+    return pd.DataFrame(data=data_list).T
+
+def calculate_portfolio_metrics(df, tickers):
+    """Calculate portfolio metrics including returns, correlations, variances, and weights."""
+    returns = df.pct_change()
+    corr_matrix = returns.corr()
+    cov_matrix = returns.cov()
+    annual_means = (1 + returns.mean())**12.0 - 1
+    annual_stddev = returns.std() * np.sqrt(12)
+    weights = pd.Series([1 / len(tickers)] * len(tickers), index=tickers)
+    
+    portfolio_return = np.dot(weights.T, annual_means) * 12.0
+    portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights)) * 12
+    portfolio_stddev = np.sqrt(portfolio_variance)
+    
+    return {
+        'returns': returns,
+        'corr_matrix': corr_matrix,
+        'cov_matrix': cov_matrix,
+        'annual_means': annual_means,
+        'annual_stddev': annual_stddev,
+        'weights': weights,
+        'portfolio_return': portfolio_return,
+        'portfolio_stddev': portfolio_stddev
+    }
+
+def save_to_csv(data, filename):
+    """Save the given DataFrame to a CSV file."""
+    if not os.path.exists('./Excel'):
+        os.mkdir('./Excel')
+    data.to_csv(os.path.join('./Excel', filename))
+
+def test_run():
+    tickers = ['AMZN', 'SPY', 'M']
+    start_date = datetime.datetime(2007, 5, 13)
+    end_date = datetime.datetime(2017, 5, 13)
+    
+    # Fetch stock data
+    df = fetch_data(tickers, start_date, end_date)
+    print("Price data:\n", df, '\n')
+    
+    # Calculate portfolio metrics
+    metrics = calculate_portfolio_metrics(df, tickers)
+    
+    print("Stock returns:\n", metrics['returns'], '\n')
+    print("Correlation matrix:\n\n", metrics['corr_matrix'], "\n")
+    print("Variance-covariance matrix:\n\n", metrics['cov_matrix'], "\n")
+    print("Annual means:\n\n", metrics['annual_means'], "\n")
+    print("Annual standard deviation:\n\n", metrics['annual_stddev'], "\n")
+    print("Weights:\n\n", metrics['weights'], "\n")
+    print("Portfolio return:\n\n", metrics['portfolio_return'], "\n")
+    print("Portfolio standard deviation:\n\n", metrics['portfolio_stddev'], "\n")
+    
+    # Save data to CSV files
+    save_to_csv(df, 'mystocks_prices.csv')
+    save_to_csv(metrics['returns'], 'mystocks_pctchange.csv')
+    save_to_csv(metrics['corr_matrix'], 'mystocks_correlations.csv')
+    save_to_csv(metrics['cov_matrix'], 'mystocks_varcov.csv')
+
+if __name__ == "__main__":
+    test_run()

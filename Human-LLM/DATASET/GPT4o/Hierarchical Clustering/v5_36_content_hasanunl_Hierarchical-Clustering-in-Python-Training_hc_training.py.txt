@@ -1,0 +1,87 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import scipy.cluster.hierarchy as sch
+from sklearn.cluster import AgglomerativeClustering
+
+def load_data(file_path):
+    """
+    Load the dataset and extract the relevant features (Annual Income and Spending Score).
+
+    Args:
+        file_path (str): Path to the CSV file.
+
+    Returns:
+        np.ndarray: Extracted features for clustering.
+    """
+    dataset = pd.read_csv(file_path)
+    return dataset.iloc[:, [3, 4]].values
+
+def plot_dendrogram(X):
+    """
+    Plot a dendrogram to help determine the optimal number of clusters.
+
+    Args:
+        X (np.ndarray): Data for plotting the dendrogram.
+    """
+    plt.figure(figsize=(10, 7))
+    sch.dendrogram(sch.linkage(X, method='ward'))
+    plt.title('Dendrogram')
+    plt.xlabel('Customers')
+    plt.ylabel('Euclidean Distances')
+    plt.show()
+
+def perform_clustering(X, n_clusters=5):
+    """
+    Perform Agglomerative Clustering on the dataset.
+
+    Args:
+        X (np.ndarray): Data to be clustered.
+        n_clusters (int): Number of clusters to form.
+
+    Returns:
+        np.ndarray: Cluster labels for each data point.
+    """
+    model = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')
+    return model.fit_predict(X)
+
+def visualize_clusters(X, y_hc):
+    """
+    Visualize the clusters formed by Agglomerative Clustering.
+
+    Args:
+        X (np.ndarray): Data used for clustering.
+        y_hc (np.ndarray): Cluster labels for the data points.
+    """
+    plt.figure(figsize=(10, 7))
+    colors = ['red', 'blue', 'green', 'cyan', 'magenta']
+    labels = ['Careful', 'Standard', 'Target', 'Careless', 'Sensible']
+
+    for i, color in enumerate(colors):
+        plt.scatter(X[y_hc == i, 0], X[y_hc == i, 1], s=100, c=color, label=labels[i])
+
+    plt.title('Clusters of Clients')
+    plt.xlabel('Annual Income (k$)')
+    plt.ylabel('Spending Score (1-100)')
+    plt.legend()
+    plt.show()
+
+def main():
+    """
+    Main function to load the data, perform clustering, and visualize the clusters.
+    """
+    # Load dataset and extract features
+    file_path = 'Mall_Customers.csv'
+    X = load_data(file_path)
+
+    # Plot the dendrogram to determine the optimal number of clusters
+    plot_dendrogram(X)
+
+    # Perform Agglomerative Clustering
+    y_hc = perform_clustering(X, n_clusters=5)
+
+    # Visualize the resulting clusters
+    visualize_clusters(X, y_hc)
+
+if __name__ == "__main__":
+    main()

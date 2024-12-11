@@ -1,0 +1,72 @@
+import numpy as np
+
+class KMeans:
+    """Implementation of the k-Means algorithm"""
+
+    def __init__(self, k, data):
+        """Initialize the KMeans instance with the number of clusters and the data."""
+        self.k = k
+        self.data = data
+        self.n_data, self.n_dim = data.shape
+
+    def initialize_centers(self):
+        """Initialize cluster centers randomly within the bounds of the data."""
+        minima = self.data.min(axis=0)
+        maxima = self.data.max(axis=0)
+        self.centres = np.random.rand(self.k, self.n_dim) * (maxima - minima) + minima
+
+    def compute_distances(self, data, centers):
+        """Compute the distance from each point to each cluster center."""
+        return np.linalg.norm(data[:, np.newaxis] - centers, axis=2)
+
+    def update_centers(self, cluster_assignments):
+        """Update cluster centers based on the current assignments."""
+        for i in range(self.k):
+            assigned_data = self.data[cluster_assignments == i]
+            if assigned_data.size > 0:
+                self.centres[i] = assigned_data.mean(axis=0)
+
+    def train(self, max_iterations=100):
+        """Train the k-Means algorithm on the provided data."""
+        self.initialize_centers()
+        old_centres = np.zeros_like(self.centres)
+        count = 0
+
+        while np.any(np.abs(old_centres - self.centres) > 1e-5) and count < max_iterations:
+            old_centres = self.centres.copy()
+            count += 1
+
+            # Compute distances and assign clusters
+            distances = self.compute_distances(self.data, self.centres)
+            cluster_assignments = np.argmin(distances, axis=1)
+
+            # Update cluster centers
+            self.update_centers(cluster_assignments)
+
+        return self.centres
+
+    def predict(self, new_data):
+        """Predict the cluster for each data point in new_data."""
+        distances = self.compute_distances(new_data, self.centres)
+        cluster_assignments = np.argmin(distances, axis=1)
+        return cluster_assignments
+
+# Sample usage
+if __name__ == "__main__":
+    # Example data: 2D points
+    data = np.array([[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]])
+
+    # Number of clusters
+    k = 2
+
+    # Create KMeans instance
+    kmeans = KMeans(k, data)
+
+    # Train the model
+    centres = kmeans.train(max_iterations=100)
+    print("Cluster centers:\n", centres)
+
+    # Predict clusters for new data
+    new_data = np.array([[0, 0], [4, 4], [10, 10]])
+    clusters = kmeans.predict(new_data)
+    print("Predicted clusters for new data:\n", clusters)

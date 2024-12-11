@@ -1,0 +1,108 @@
+import requests
+import json
+from flatten_dict import flatten
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+import sys
+
+def fetch_ticket_data(url, username, password):
+    """
+    Fetch ticket data from the given URL with provided credentials.
+
+    Parameters:
+    url (str): The API URL to fetch ticket data.
+    username (str): The username for authentication.
+    password (str): The password for authentication.
+
+    Returns:
+    dict: The flattened ticket data.
+    """
+    response = requests.get(url, auth=(username, password))
+    ticket_data = json.loads(response.text)
+    return flatten(ticket_data)
+
+def initialize_google_sheet(credentials_file, template_file):
+    """
+    Initialize the Google Sheet for the current day and month.
+
+    Parameters:
+    credentials_file (str): The path to the JSON credentials file.
+    template_file (str): The path to the CSV template file.
+
+    Returns:
+    gspread.Spreadsheet: The initialized Google Sheet.
+    """
+    # Authorize and initialize the client
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
+    client = gspread.authorize(creds)
+
+    now = datetime.now()
+    day_now = now.day
+    year_month = f"{now.year}-{now.month}"
+
+    # Open or create the monthly sheet
+    try:
+        sheet = client.open(year_month)
+    except gspread.exceptions.SpreadsheetNotFound:
+        client.create(year_month)
+        sheet = client.open(year_month)
+        sheet.share('gaetano.egisto@hostopia.com.au', perm_type='user', role='writer')
+
+    # Add a worksheet for the current day
+    worksheet = sheet.add_worksheet(title=str(day_now), rows="17", cols="25")
+
+    # Import the CSV template into the new worksheet
+    with open(template_file, 'r') as file:
+        csv_template = file.read()
+    client.import_csv(sheet.id, csv_template)
+
+    return sheet, worksheet
+
+def update_google_sheet(worksheet, data):
+    """
+    Update the Google Sheet with the provided data.
+
+    Parameters:
+    worksheet (gspread.Worksheet): The Google Sheet worksheet to update.
+    data (list): The data to be inserted into the sheet.
+    """
+    row = 2
+    col = 2
+    count = 0
+
+    for item in data:
+        worksheet.update_cell(row, col, item)
+        count += 1
+        row += 1
+
+        if count == 11:
+            row = 2
+            col += 1
+            count = 0
+
+def main():
+    """
+    Main function to fetch ticket data and update the Google Sheet.
+    """
+    # Fetch ticket data
+    ticket_data_url = 'http://pbx02.apdcsy1.digitalpacific.com.au/tickethistory_api.php'
+    username = 'X'
+    password = '5rsMThTeZ22p3MqGpz2xRPGY5hAWrwmx'
+    ticket_data = fetch_ticket_data(ticket_data_url, username, password)
+
+    # Convert ticket data to a list of values
+    ticket_values = [value for _, value in ticket_data.items()]
+
+    # Initialize the Google Sheet
+    credentials_file = 'client_secret.json'
+    template_file = 'qsdetemplate.csv'
+    sheet, worksheet = initialize_google_sheet(credentials_file, template_file)
+
+    # Update the Google Sheet with ticket data
+    update_google_sheet(worksheet, ticket_values)
+
+if __name__ == "__main__":
+    main()
+    sys.exit()

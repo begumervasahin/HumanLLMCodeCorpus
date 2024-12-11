@@ -1,0 +1,40 @@
+import re
+import sys
+
+class Document:
+    def __init__(self):
+        self.docid = 0
+        self.lines = []
+
+    def print_doc(self, out=sys.stdout):
+        print(f"\n[DOCID: {self.docid}]", file=out)
+        for line in self.lines:
+            print(line, file=out)
+
+class ReadDocuments:
+    def __init__(self, filepath):
+        self.filepath = filepath
+
+    def __iter__(self):
+        start_doc_pattern = re.compile(r'<document docid\s*=\s*(\d+)\s*>')
+        end_doc_pattern = re.compile(r'</document\s*>')
+        reading_doc = False
+        doc = None
+
+        with open(self.filepath, 'r') as file:
+            for line in file:
+                if start_doc_match := start_doc_pattern.search(line):
+                    reading_doc = True
+                    doc = Document()
+                    doc.docid = int(start_doc_match.group(1))
+                elif end_doc_pattern.search(line):
+                    reading_doc = False
+                    if doc:
+                        yield doc
+                elif reading_doc and doc:
+                    doc.lines.append(line)
+
+# Example usage:
+# reader = ReadDocuments("path_to_file.txt")
+# for document in reader:
+#     document.print_doc()

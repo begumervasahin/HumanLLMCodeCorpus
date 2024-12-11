@@ -1,0 +1,105 @@
+import numpy as np
+import csv
+import matplotlib.pyplot as plt
+
+# Define the loss function
+def loss_func(inp, out, theta):
+    m = len(inp[0])
+    J = 0
+    for i in range(m):
+        y_hat = theta[0]*inp[0][i] + theta[1]*inp[1][i] + theta[2]*inp[2][i] + theta[3]*inp[3][i]
+        y = out[i]
+        J += (y_hat - y)**2
+    return J / (2 * m)
+
+# Define the derivative of the loss function
+def loss_func_der(inp, out, theta, alpha):
+    m = len(inp[0])
+    dJ = [0, 0, 0, 0]
+    for i in range(m):
+        y_hat = theta[0] + theta[1]*inp[1][i] + theta[2]*inp[2][i] + theta[3]*inp[3][i]
+        y = out[i]
+        dJ[0] += alpha * (y - y_hat) * inp[0][i] / m
+        dJ[1] += alpha * (y - y_hat) * inp[1][i] / m
+        dJ[2] += alpha * (y - y_hat) * inp[2][i] / m
+        dJ[3] += alpha * (y - y_hat) * inp[3][i] / m
+    return dJ
+
+# Standardize function
+def standardize(x):
+    mean = np.mean(x)
+    std = np.std(x)
+    return (x - mean) / std
+
+# Standardize a single value
+def standardize_s(x0, x):
+    mean = np.mean(x)
+    std = np.std(x)
+    return (x0 - mean) / std
+
+# Load data from CSV
+x1, x2, x3, y = [], [], [], []
+with open('data/KCSmall_NS2.csv', newline='') as f:
+    reader = csv.reader(f)
+    for row in reader:
+        x1.append(float(row[0]))
+        x2.append(float(row[1]))
+        x3.append(float(row[2]))
+        y.append(float(row[3]))
+
+# Display the first 5 rows of raw data
+print("--------------------------------------------------------------------------------------------")
+print("(1) First 5 rows of raw input data are:")
+for i in range(5):
+    print("{0}\t{1}\t{2}\t{3}".format(x1[i], x2[i], x3[i], y[i]))
+
+# Standardize the data
+x1s = standardize(x1)
+x2s = standardize(x2)
+x3s = standardize(x3)
+xs = [[1.0]*len(x1s), x1s, x2s, x3s]
+
+# Display the first 5 rows of standardized data
+print("--------------------------------------------------------------------------------------------")
+print("(2) First 5 rows of standardized data are:")
+for i in range(5):
+    print("1\t{0}\t{1}\t{2}\t{3}".format(x1s[i], x2s[i], x3s[i], y[i]))
+
+# Initialize theta and calculate initial cost
+theta = [0, 0, 0, 0]
+print("The cost (J) value for theta = {0} is: J = {1}".format(theta, loss_func(xs, y, theta)))
+
+# Gradient descent parameters
+n = 50
+alpha = 1.5
+J = []
+
+# Perform gradient descent
+print("--------------------------------------------------------------------------------------------")
+print("Theta \t\t\t\t\t\t\t\t Loss Function (J)")
+print("--------------------------------------------------------------------------------------------")
+for iter in range(n):
+    gradients = loss_func_der(xs, y, theta, alpha)
+    theta[0] += gradients[0]
+    theta[1] += gradients[1]
+    theta[2] += gradients[2]
+    theta[3] += gradients[3]
+    J_temp = loss_func(xs, y, theta)
+    J.append(J_temp)
+    theta_r = [round(t, 5) for t in theta]
+    J_temp = round(J_temp, 5)
+    print("{0} \t\t {1}".format(theta_r, J_temp))
+
+# Test the model with new input
+xtests = [1, standardize_s(3, x1), standardize_s(2000, x2), standardize_s(8550, x3)]
+price = round((theta[0] + theta[1]*xtests[1] + theta[2]*xtests[2] + theta[3]*xtests[3]), 2)
+print("Aproximate house price for [3, 2000, 8550] is: ${0}".format(price))
+
+# Plot the cost function
+print("--------------------------------------------------------------------------------------------")
+plt.title("J vs n")
+plt.plot(range(1, n+1), J)
+plt.xlabel('Iterations')
+plt.ylabel('Loss value (J)')
+plt.grid(axis='both')
+plt.show()

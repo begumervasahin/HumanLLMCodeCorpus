@@ -1,0 +1,67 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.offsetbox import AnchoredText
+from matplotlib.patheffects import withStroke
+
+def add_inner_title(title, loc, ax=None, size=None, **kwargs):
+    """
+    Add an inner title to a matplotlib plot.
+
+    Parameters:
+    - title (str): The title text to add to the plot.
+    - loc (int): The location code for the anchored text.
+    - ax (matplotlib.axes._subplots.AxesSubplot, optional): The axis to add the title to. Defaults to the current axis.
+    - size (dict, optional): The size properties for the title text. Defaults to legend font size.
+    """
+    if ax is None:
+        ax = plt.gca()
+    if size is None:
+        size = {'size': plt.rcParams['legend.fontsize']}
+    
+    at = AnchoredText(title, loc=loc, prop=size, pad=0.7, borderpad=0.01, frameon=False, **kwargs)
+    ax.add_artist(at)
+    at.txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
+    return at
+
+# Mapping of row indices to distance type and column indices to k values
+row2name = {0: "subspace_distance", 1: "Steifel_distance"}
+col2k = {0: 100, 1: 2000}
+labels = {(0, 0): "(a)", (0, 1): "(b)", (1, 0): "(c)", (1, 1): "(d)"}
+projection_algorithms = ['alg1', 'alg2', 'alg3', 'alg4', 'alg5']  # Update with actual algorithm names
+
+# Create a 2x2 grid of subplots
+fig, axs = plt.subplots(nrows=2, ncols=2)
+ims = [[None, None], [None, None]]
+
+for i in range(2):
+    for j in range(2):
+        name = row2name[i]
+        k = col2k[j]
+        mat = np.loadtxt(f"{name}/{name}__k_{k}.txt")
+        
+        # Plot the matrix with log10 scaling
+        im = axs[i][j].matshow(np.log10(mat))
+        ims[i][j] = im
+        
+        # Set current axis
+        plt.sca(axs[i][j])
+        
+        # Customize x and y ticks
+        if i == 0:
+            plt.xticks(np.arange(mat.shape[0]), projection_algorithms, rotation="vertical")
+        else:
+            plt.xticks([])
+        
+        if j == 0:
+            plt.yticks(np.arange(mat.shape[0]), projection_algorithms)
+        else:
+            plt.yticks([])
+        
+        # Add inner title and colorbar
+        add_inner_title(labels[(i, j)], loc=2, ax=axs[i][j])
+        fig.colorbar(ims[i][j], ax=axs[i][j])
+
+# Adjust layout and save figure
+plt.subplots_adjust(wspace=0, hspace=0.1)
+plt.savefig("subspace_distance.pdf", bbox_inches="tight")
+plt.show()

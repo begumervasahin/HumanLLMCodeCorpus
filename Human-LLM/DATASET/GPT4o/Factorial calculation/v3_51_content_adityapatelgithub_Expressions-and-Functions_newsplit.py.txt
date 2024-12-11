@@ -1,0 +1,62 @@
+def new_split_iter(expr):
+    """
+    Tokenizes a character string into individual tokens. Tokens can include operators, numbers, and identifiers,
+    and they may not be separated by spaces.
+
+    :param expr: The expression to be tokenized.
+    :yield: Tokens extracted from the expression.
+    """
+    operators = {'+', '-', '*', '/', '%', '(', ')', '=', '<', '>', '!', '?', ':', ';', ','}
+    expr = expr + ";"  # Append a semicolon to handle the end of the expression
+    pos = 0
+
+    def is_operator(char):
+        """Check if the character is an operator."""
+        return char in operators
+
+    def is_potential_operator(start_pos):
+        """Check if the current and next characters form a two-character operator."""
+        return (expr[start_pos] in {'=', '!', '<', '>'} and
+                start_pos + 1 < len(expr) and
+                expr[start_pos + 1] == '=')
+
+    while pos < len(expr):
+        char = expr[pos]
+
+        if char.isspace():
+            # Skip whitespace
+            pos += 1
+        elif char.isalpha() or char == '_':
+            # Tokenize identifiers
+            start = pos
+            while pos < len(expr) and (expr[pos].isalnum() or expr[pos] == '_'):
+                pos += 1
+            yield expr[start:pos]
+        elif char.isdigit():
+            # Tokenize numbers
+            start = pos
+            while pos < len(expr) and expr[pos].isdigit():
+                pos += 1
+            yield expr[start:pos]
+        elif is_potential_operator(pos):
+            # Tokenize two-character operators
+            yield expr[pos:pos + 2]
+            pos += 2
+        elif is_operator(char):
+            # Tokenize single-character operators
+            yield char
+            pos += 1
+        elif char == ";":
+            # End of expression
+            yield char
+            pos += 1
+        else:
+            # Handle unexpected characters
+            raise ValueError(f"Unexpected character '{char}' in expression")
+
+# Example usage
+if __name__ == "__main__":
+    expr = "a = 10 + b * (c - d) >= 5;"
+    tokens = list(new_split_iter(expr))
+    print("Tokens:", tokens)
+    # Expected output: Tokens: ['a', '=', '10', '+', 'b', '*', '(', 'c', '-', 'd', ')', '>=', '5', ';']

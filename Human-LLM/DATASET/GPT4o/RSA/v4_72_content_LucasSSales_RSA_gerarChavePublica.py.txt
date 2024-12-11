@@ -1,0 +1,58 @@
+import tkinter as tk
+import tkinter.messagebox
+import os
+from sympy.ntheory import isprime
+from funcoesAux import pqeValidacao
+
+class Option01(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Title and instructions
+        tk.Label(self, text="Gerar chave publica", font=('Verdana', 22)).pack(side="top", fill="x")
+        tk.Label(self, text="Insira os valores abaixo", font=('Verdana', 10)).pack(side="top", fill="x")
+        for _ in range(5):
+            tk.Label(self, text="", font=('Verdana', 22)).pack(side="top", fill="x")
+        
+        # Input labels and fields
+        self.create_label_and_entry("p:", 80, 65)
+        self.create_label_and_entry("q:", 80, 90)
+        self.create_label_and_entry("e:", 80, 115)
+
+        # Generate key button
+        okbtn = tk.Button(self, text="Gerar chave", command=self.gerar)
+        okbtn.pack()
+        okbtn.place(x=95, y=145)
+
+    def create_label_and_entry(self, text, x, y):
+        label = tk.Label(self, text=text)
+        label.pack()
+        label.place(x=x, y=y)
+        entry = tk.Entry(self)
+        entry.pack()
+        entry.place(x=x + 20, y=y)
+        setattr(self, text[0], entry)
+
+    def gerar(self):
+        p_value = self.p.get()
+        q_value = self.q.get()
+        e_value = self.e.get()
+        
+        err, titulo = pqeValidacao(p_value, q_value, e_value), "ERRO!"
+        if err == "":
+            self.write_public_key(p_value, q_value, e_value)
+            err, titulo = "Chave Gerada com Sucesso!", "Concluido"
+        tkinter.messagebox.showinfo(titulo, err)
+
+    def write_public_key(self, p, q, e):
+        if os.path.exists("chavePublica.txt"):
+            os.remove("chavePublica.txt")
+        with open("chavePublica.txt", "w") as file:
+            file.write(str((int(p) * int(q), int(e))))
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    Option01(root).pack(side="top", fill="both", expand=True)
+    root.mainloop()

@@ -1,0 +1,191 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+
+class BST:
+    def __init__(self):
+        self.root = None
+
+    def add_node(self, data):
+        """Adds a node to the binary search tree."""
+        if not self.root:
+            self.root = Node(data)
+            return
+
+        current = self.root
+        while current:
+            parent = current
+            if data < current.data:
+                current = current.left
+            else:
+                current = current.right
+        
+        if data < parent.data:
+            parent.left = Node(data)
+        else:
+            parent.right = Node(data)
+
+    def in_order(self):
+        """Prints the nodes of the tree in in-order traversal."""
+        if not self.root:
+            print("Nothing to print")
+            return
+
+        print("\nIn Order:", end=" ")
+        stack = []
+        current = self.root
+
+        while True:
+            while current:
+                stack.append(current)
+                current = current.left
+
+            if not stack:
+                break
+
+            current = stack.pop()
+            print(current.data, end=" ")
+            current = current.right
+
+        print()
+
+    def level_order(self):
+        """Prints the nodes of the tree in level-order traversal."""
+        if not self.root:
+            print("No Tree")
+            return
+
+        print("\nLevel Order:")
+        queue = [self.root]
+
+        while queue:
+            level_length = len(queue)
+
+            for _ in range(level_length):
+                current = queue.pop(0)
+
+                if current.left:
+                    queue.append(current.left)
+                if current.right:
+                    queue.append(current.right)
+
+                print(current.data, end=" ")
+            print()
+
+    def search_data(self, data, del_operation=False):
+        """Searches for a node with the given data."""
+        current = self.root
+        parent = None
+
+        while current:
+            if current.data == data:
+                print(f"{data} found!")
+                return parent if del_operation else True
+
+            parent = current
+            if data < current.data:
+                current = current.left
+            else:
+                current = current.right
+
+        print(f"{data} not present")
+        return None if del_operation else False
+
+    def delete_node(self, data):
+        """Deletes a node with the given data from the tree."""
+        parent = self.search_data(data, del_operation=True)
+
+        if parent is None and (not self.root or self.root.data != data):
+            print("Node to be deleted not found!")
+            return False
+
+        node = self.root if parent is None else (parent.left if data < parent.data else parent.right)
+        is_left_child = parent is not None and data < parent.data
+
+        # Node has one or no children
+        if node.left is None or node.right is None:
+            child = node.left if node.left else node.right
+
+            if parent:
+                if is_left_child:
+                    parent.left = child
+                else:
+                    parent.right = child
+            else:
+                self.root = child
+            return
+
+        # Node has two children: find the in-order successor
+        successor_parent = node
+        successor = node.right
+        while successor.left:
+            successor_parent = successor
+            successor = successor.left
+
+        # Swap data between node and successor
+        node.data, successor.data = successor.data, node.data
+
+        # Remove the successor node
+        if successor_parent.left == successor:
+            successor_parent.left = successor.right
+        else:
+            successor_parent.right = successor.right
+
+    def search_kth_node(self, k):
+        """Finds the k-th smallest element in the tree."""
+        stack = []
+        current = self.root
+
+        while True:
+            while current:
+                stack.append(current)
+                current = current.left
+
+            if not stack:
+                break
+
+            current = stack.pop()
+            k -= 1
+            if k == 0:
+                print(current.data)
+                return
+
+            current = current.right
+
+    def in_order_successor(self, k):
+        """Finds the in-order successor of the node with the given data."""
+        current = self.root
+        successor = None
+        found = False
+
+        while current:
+            if k == current.data:
+                found = True
+                break
+            elif k < current.data:
+                successor = current
+                current = current.left
+            else:
+                current = current.right
+
+        if not found:
+            print("Element not found")
+            return False
+
+        if current.right:
+            current = current.right
+            while current.left:
+                current = current.left
+            return current.data
+
+        if successor:
+            return successor.data
+
+        print("Last Node, no successor present!")
+        return False
+
+    def get_root(self):
+        """Returns the root of the tree."""
+        return self.root

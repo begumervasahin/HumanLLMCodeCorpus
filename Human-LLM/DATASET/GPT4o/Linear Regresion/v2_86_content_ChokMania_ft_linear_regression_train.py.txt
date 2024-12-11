@@ -1,0 +1,122 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+
+def loadCSV(filename):
+    """Load CSV data from the given filename."""
+    return np.loadtxt(filename, delimiter=',', skiprows=1)
+
+class LinearRegression:
+    def __init__(self):
+        """Initialize the LinearRegression class with default values and load the data."""
+        self.data = loadCSV("data/data.csv")
+        self.theta0 = 0.0
+        self.theta1 = 0.0
+        self.km = ""
+        self.price = ""
+        self.learning_rate = 0.1
+        self.theta = [0.0, 0.0]
+        self.cost_function = []
+        self.evolution = []
+
+    def create_line(self, value):
+        """Create a line for visualization based on the current theta values."""
+        price = self.estimate_price(self.km)
+        km = self.destandardize(self.km, self.data[:, 0])
+        price = self.destandardize(price, self.data[:, 1])
+        slope = (price[0] - price[1]) / (km[0] - km[1])
+        intercept = -slope * km[0] + price[0]
+        return intercept + (slope * value)
+
+    def estimate_price(self, value):
+        """Estimate the price based on the given km value."""
+        return self.theta0 + (self.theta1 * value)
+
+    def standardize(self, values):
+        """Standardize the given values."""
+        return (values - np.mean(values)) / np.std(values)
+
+    def destandardize(self, values, ref_values):
+        """Destandardize the values based on reference values."""
+        return values * np.std(ref_values) + np.mean(ref_values)
+
+    def transform(self):
+        """Standardize the km and price data."""
+        self.data = np.array(self.data)
+        self.km = self.standardize(self.data[:, 0])
+        self.price = self.standardize(self.data[:, 1])
+
+    def untransform(self):
+        """Untransform the standardized data back to original scale and update theta values."""
+        self.price = self.estimate_price(self.km)
+        self.km = self.destandardize(self.km, self.data[:, 0])
+        self.price = self.destandardize(self.price, self.data[:, 1])
+        self.theta1 = (self.price[0] - self.price[1]) / (self.km[0] - self.km[1])
+        self.theta0 = -self.theta1 * self.km[0] + self.price[0]
+        self.theta = [self.theta0, self.theta1]
+
+    def train(self):
+        """Train the linear regression model using gradient descent."""
+        cost = 0.0
+        tmp_cost = -1.0
+        m = len(self.km)
+        i = 0
+        while round(tmp_cost, 20) != round(cost, 20) and i < 1000:
+            tmp_cost = cost
+            self.theta0 -= self.learning_rate * (1 / m) * sum([(self.estimate_price(self.km[j]) - self.price[j]) for j in range(m)])
+            self.theta1 -= self.learning_rate * (1 / m) * sum([(self.estimate_price(self.km[j]) - self.price[j]) * self.km[j] for j in range(m)])
+            cost = (1 / (2 * m)) * sum([(self.estimate_price(self.km[j]) - self.price[j]) ** 2 for j in range(m)])
+            self.cost_function.append(cost)
+            self.evolution.append([self.create_line(250000), self.create_line(100)])
+            i += 1
+
+    def display_cost(self):
+        """Display the cost function plot."""
+        plt.ion()
+        fig, ax = plt.subplots()
+        x, y = [], []
+        sc = ax.scatter(x, y, c="r")
+        plt.ylabel("Cost Function")
+        plt.xlabel("Iteration")
+        plt.title("Learning Graph")
+        plt.xlim(0, len(self.cost_function))
+        plt.ylim(min(self.cost_function), max(self.cost_function))
+        plt.draw()
+        for i in range(len(self.cost_function)):
+            x.append(i)
+            y.append(self.cost_function[i])
+            sc.set_offsets(np.c_[x, y])
+            fig.canvas.draw_idle()
+            plt.pause(0.01)
+        plt.ioff()
+
+def update(val):
+    """Update the plot based on the slider value."""
+    l1.set_data([250000, 100], lr.evolution[int(val)])
+    plt.draw()
+
+if __name__ == "__main__":
+    np.seterr(divide='ignore', invalid='ignore')
+    lr = LinearRegression()
+    lr.transform()
+    if len(lr.price) == 1 or len(lr.km) == 1:
+        print("Not enough data to train")
+    else:
+        lr.train()
+        lr.untransform()
+        np.savetxt("data/theta.txt", lr.theta, delimiter=',', fmt="%.10f")
+        print(f"Training is finished,\ntheta0: {lr.theta[0]}\ntheta1: {lr.theta[1]}")
+        lr.display_cost()
+
+        fig, main_ax = plt.subplots(figsize=(10, 8))
+        for x in range(len(lr.data[:, 0])):
+            plt.plot(lr.data[:, 0][x], lr.data[:, 1][x], "b+")
+
+        ax_slider = plt.axes([0.15, 0.01, 0.71, 0.03])
+        slider = Slider(ax_slider, 'Epoch', 0, len(lr.evolution) - 1, valinit=0)
+        slider.on_changed(update)
+        l1, = main_ax.plot([250000, 0], lr.evolution[0], label="Estimated Price", lw=2)
+        main_ax.set_xlabel('Price')
+        main_ax.set_ylabel('Km')
+        main_ax.set_title("Evolution of Linear Regression")
+        plt.show()

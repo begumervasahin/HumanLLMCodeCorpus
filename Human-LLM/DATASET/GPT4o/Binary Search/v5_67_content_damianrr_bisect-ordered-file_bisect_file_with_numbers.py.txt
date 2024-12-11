@@ -1,0 +1,80 @@
+import os
+
+def bisect_big_file_looking_for_number(f, search):
+    """
+    Search for a number in an ordered file using binary search.
+    
+    The function splits the file into chunks, searches for a newline to ensure
+    that we read whole lines, and checks the value on that line. If the value
+    is greater than the search target, it searches the first part of the file.
+    If the value is smaller, it searches the second part. This process continues
+    iteratively until the number is found or the search terminates. The function
+    returns a dictionary with the search result and the position of the line,
+    or False if the number is not found.
+    
+    Examples:
+    
+    Value missing from the file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 5)
+    False
+    
+    Value greater than the greatest value in the file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 100000000)
+    False
+    
+    Value smaller than the smallest value in the file:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 0)
+    False
+    
+    Random existing number:
+    >>> with open('test.log', 'r') as f:
+    ...    bisect_big_file_looking_for_number(f, 59953)
+    {'result': '59953', 'position': 348612}
+    
+    Ensure that a file named test.log containing values from 1 to 99999 (excluding 5)
+    is present in the same folder as this script to run the above examples.
+    """
+    
+    file_size = os.fstat(f.fileno()).st_size  # Get the size of the file
+    low, high = 0, file_size
+    target_number = int(search)
+
+    while high - low > 1:
+        middle = (high + low) // 2
+        f.seek(middle)
+
+        # Move to the start of the next full line
+        while f.read(1) != '\n':
+            if f.tell() >= high:  # Ensure we don't exceed the high bound
+                break
+
+        line = f.readline()
+        
+        # If middle lands at the end of the file or a newline, adjust accordingly
+        if not line.strip():  # Handle cases where line is empty
+            f.seek(middle)
+            while middle > 0 and f.read(1) != '\n':
+                f.seek(middle - 2, os.SEEK_SET)
+                middle -= 1
+            line = f.readline()
+
+        if not line.strip():  # If the adjusted line is still empty, break
+            break
+
+        number_in_line = int(line.strip())
+
+        if target_number < number_in_line:
+            high = middle
+        elif target_number > number_in_line:
+            low = f.tell()
+        else:
+            return {"result": line.strip(), "position": f.tell()}
+
+    return False
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

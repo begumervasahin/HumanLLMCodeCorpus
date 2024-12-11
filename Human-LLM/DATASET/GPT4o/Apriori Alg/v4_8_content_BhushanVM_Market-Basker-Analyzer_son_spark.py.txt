@@ -1,0 +1,81 @@
+from pyspark import SparkContext
+from collections import defaultdict
+from operator import add
+from itertools import combinations
+import sys
+
+# Initialize the Spark context
+sc = SparkContext(appName="Market-Basket-Analyzer")
+
+# Define the support ratio
+support_ratio = 0.3
+
+def fx(x):
+    """Convert the input RDD to a list."""
+    return list(x[0])
+
+def find_candidates(input_list, length):
+    """Generate candidate itemsets of a specified length."""
+    candidates = []
+    input_len = len(input_list)
+    
+    for i in range(input_len):
+        for j in range(i + 1, input_len):
+            combined_set = set(input_list[i]).union(set(input_list[j]))
+            if len(combined_set) == length:
+                candidate_tuple = tuple(combined_set)
+                if candidate_tuple not in candidates:
+                    candidates.append(candidate_tuple)
+    return candidates
+
+def partition_apriori(iterator):
+    """Perform the Apriori algorithm on a partition."""
+    transactions = list(iterator)
+    support = support_ratio * len(transactions)
+    item_count = defaultdict(int)
+    output_list = []
+    all_items = set()
+
+    # Get all unique items and their counts
+    for transaction in transactions:
+        for item in transaction:
+            all_items.add(item)
+            item_count[item] += 1
+
+    # Filter items based on support threshold
+    frequent_items = {item for item, count in item_count.items() if count >= support}
+    output_list.extend(frequent_items)
+
+    # Generate candidate itemsets of length 2 and higher
+    length = 2
+    while frequent_items:
+        candidates = find_candidates(list(frequent_items), length)
+        candidate_count = defaultdict(int)
+
+        for candidate in candidates:
+            for transaction in transactions:
+                if set(candidate).issubset(transaction):
+                    candidate_count[candidate] += 1
+
+        # Filter candidates based on support threshold
+        frequent_items = {candidate for candidate, count in candidate_count.items() if count >= support}
+        output_list.extend(frequent_items)
+        length += 1
+
+    return output_list
+
+def main():
+    # Read input data and split into partitions
+    input_rdd = sc.textFile(sys.argv[1], 2)
+    transactions_rdd = input_rdd.map(lambda x: x.split("\n"))
+
+    # Apply the Apriori algorithm on each partition
+    candidate_itemsets = transactions_rdd.mapPartitions(partition_apriori)
+
+    # Collect and print the results
+    result = candidate_itemsets.collect()
+    print(result)
+    print(f"Number of partitions: {transactions_rdd.getNumPartitions()}")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,74 @@
+from pyspark import SparkConf, SparkContext
+import sys
+import re
+from variables import MACHINE, VUID, PAGE_TABLE, INDEX_TABLE, COLUMN_FAMILY, COLUMN
+
+# Define HDFS paths for movie and actor data
+ALL_MOVIES_PATH = 'hdfs:///user/kirvenjt/oscar_data/omdb_responses'
+TEST_PATH = 'hdfs:///user/kirvenjt/oscar_data/actor_experience'
+IMDB_FILE_PATH = 'hdfs:///user/kirvenjt/oscar_data/top10ActorsPerMovie.txt'
+
+def create_y(spark):
+    imdb_data = spark.textFile(IMDB_FILE_PATH)
+    movie_data = spark.textFile(ALL_MOVIES_PATH)
+
+    # Process IMDB data
+    imdb_data = (
+        imdb_data.map(get_imdb_fields)
+                 .filter(lambda x: correct_field_size(x, 5))
+                 .keyBy(lambda x: (x[0], get_int_clean(x[1])))
+    )
+
+    # Process movie data
+    movie_data = (
+        movie_data.map(get_fields)
+                  .filter(lambda x: has_name_and_year(x[1], x[2]))
+                  .map(lambda x: (x[1], x[2]))
+                  .keyBy(lambda x: (x[0], get_int_clean(x[1])))
+    )
+
+    # Join IMDB and movie data
+    movie_data.join(imdb_data) \
+              .map(lambda key_value: tuple(key_value[1][1])) \
+              .distinct() \
+              .saveAsTextFile(TEST_PATH)
+
+def correct_field_size(item, size):
+    return len(item) == size
+
+def has_name_and_year(title, year):
+    return title != "" and len(year) == 4
+
+def get_int_clean(item):
+    try:
+        year = int(re.findall(r'\d{4}', item).pop())
+    except Exception:
+        return 0
+    return year
+
+def get_fields(text):
+    return eval(text)
+
+def get_imdb_fields(text):
+    text = text.split('|')
+    return [x.strip() for x in text]
+
+if __name__ == '__main__':
+    conf = SparkConf()
+    
+    if len(sys.argv) != 2 or sys.argv[1] not in ['local', 'cluster']:
+        print("Usage: script.py <local|cluster>")
+        sys.exit(1)
+    
+    if sys.argv[1] == 'local':
+        conf.setMaster("local[3]")
+        print('Running locally')
+    elif sys.argv[1] == 'cluster':
+        conf.setMaster("spark://10.0.22.241:7077")
+        print('Running on cluster')
+
+    conf.set("spark.executor.memory", "10g")
+    conf.set("spark.driver.memory", "10g")
+    
+    spark = SparkContext(conf=conf)
+    create_y(spark)

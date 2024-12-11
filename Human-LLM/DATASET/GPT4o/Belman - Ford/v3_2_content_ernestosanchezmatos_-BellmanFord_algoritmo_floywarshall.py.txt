@@ -1,0 +1,94 @@
+import numpy as np
+
+# Define infinity as a large number
+INF = 99999
+
+def read_graph_from_file(filename):
+    """
+    Reads the graph from a file and returns the number of vertices and the graph as a matrix.
+    
+    Args:
+        filename (str): The name of the file containing the graph.
+    
+    Returns:
+        int: The number of vertices in the graph.
+        list: The adjacency matrix representing the graph.
+    """
+    with open(filename, "r") as f:
+        lines = f.readlines()
+    
+    V = int(lines[0].strip())
+    graph = []
+    for line in lines[1:]:
+        row = [int(elem.strip()) if elem.strip() != 'INF' else INF for elem in line.split(',')]
+        graph.append(row)
+    
+    return V, graph
+
+def floyd_warshall(graph, V):
+    """
+    Runs the Floyd-Warshall algorithm on the provided graph.
+    
+    Args:
+        graph (list): The adjacency matrix representing the graph.
+        V (int): The number of vertices in the graph.
+    
+    Returns:
+        list: The adjacency matrix after running the Floyd-Warshall algorithm.
+    """
+    for k in range(V):
+        for i in range(V):
+            for j in range(V):
+                if graph[i][j] > graph[i][k] + graph[k][j]:
+                    graph[i][j] = graph[i][k] + graph[k][j]
+    
+    # Check for negative cycles
+    for i in range(V):
+        if graph[i][i] < 0:
+            print(f"Exists Negative Cycle on Vertice(s): {i}")
+    
+    return graph
+
+def write_graph_to_file(graph, filename):
+    """
+    Writes the graph matrix to a file.
+    
+    Args:
+        graph (list): The adjacency matrix representing the graph.
+        filename (str): The name of the file to write the graph to.
+    """
+    with open(filename, "w") as f:
+        for row in graph:
+            f.write(', '.join(map(str, row)) + "\n")
+
+def main():
+    # Choose the input file
+    op = input("Choose the file (1 - Graph without Negative Cycles or 2 - Graph with Negative Cycles): ")
+    if int(op) == 1:
+        input_filename = "input.txt"
+    elif int(op) == 2:
+        input_filename = "inputNegativeCycle.txt"
+    else:
+        print("Invalid option.")
+        return
+    
+    # Read the graph from the file
+    V, graph = read_graph_from_file(input_filename)
+    
+    print(f"Vertices: {V}")
+    print("Initial Graph:")
+    for row in graph:
+        print(row)
+    
+    # Run the Floyd-Warshall algorithm
+    updated_graph = floyd_warshall(graph, V)
+    
+    print("Graph after Floyd-Warshall:")
+    for row in updated_graph:
+        print(row)
+    
+    # Write the resulting graph to the output file
+    write_graph_to_file(updated_graph, "output.txt")
+
+if __name__ == "__main__":
+    main()

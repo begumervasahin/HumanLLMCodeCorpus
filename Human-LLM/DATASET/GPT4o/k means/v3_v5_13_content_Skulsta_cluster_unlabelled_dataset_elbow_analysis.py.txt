@@ -1,0 +1,53 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+
+# Define column names for the dataset
+column_names = [
+    'area', 'perimeter', 'compactness', 'length_of_kernel',
+    'width_of_kernel', 'asymmetry_coefficient', 'length_of_kernel_groove', 'classifier'
+]
+
+# Load the dataset into a pandas DataFrame
+data = pd.read_table("seeds_dataset.txt", names=column_names, header=None, delimiter='\s+')
+
+# Separate features (X) and target (y) from the dataset
+X = data.drop(columns=['classifier']).values
+y = data['classifier'].values
+
+# Perform Principal Component Analysis (PCA) for dimensionality reduction to 2 components
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X)
+
+# Scale the features using StandardScaler
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X_pca)
+
+# Use the Elbow method to determine the optimal number of clusters for KMeans
+def elbow_method(X_scaled, max_clusters=6):
+    cluster_range = range(1, max_clusters + 1)
+    cluster_errors = []
+
+    for num_clusters in cluster_range:
+        kmeans = KMeans(n_clusters=num_clusters)
+        kmeans.fit(X_scaled)
+        cluster_errors.append(kmeans.inertia_)
+
+    return pd.DataFrame({"num_clusters": cluster_range, "cluster_errors": cluster_errors})
+
+# Get the cluster errors for different numbers of clusters
+clusters_df = elbow_method(X_scaled)
+
+# Print the DataFrame to observe the results
+print(clusters_df)
+
+# Plot the Elbow method graph to visualize the optimal number of clusters
+plt.figure(figsize=(12, 6))
+plt.plot(clusters_df.num_clusters, clusters_df.cluster_errors, marker="o")
+plt.title('Elbow Method for Optimal k')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Cluster Error (Inertia)')
+plt.grid(True)
+plt.show()

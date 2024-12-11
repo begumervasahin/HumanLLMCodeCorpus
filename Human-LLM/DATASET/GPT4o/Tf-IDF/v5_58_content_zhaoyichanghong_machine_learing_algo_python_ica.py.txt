@@ -1,0 +1,68 @@
+import numpy as np
+import scipy.special
+import pca
+
+class ICA:
+    def __init__(self):
+        self.__W = None
+
+    def fit_transform(self, X, epochs, optimizer):
+        """
+        Perform Independent Component Analysis (ICA) on the given data.
+
+        Parameters
+        ----------
+        X : ndarray of shape (n_samples, n_features)
+            Training data.
+        epochs : int
+            Number of epochs to run the optimization.
+        optimizer : object
+            Optimizer instance with a defined 'optimize' method.
+
+        Returns
+        -------
+        S : ndarray of shape (n_samples, n_features)
+            Predicted sources for each sample.
+        """
+        n_samples, n_features = X.shape
+
+        # Step 1: Whiten the data using PCA
+        X_whitened = self._whiten_data(X, n_features)
+
+        # Step 2: Initialize the unmixing matrix W
+        self.__W = self._initialize_unmixing_matrix(n_features)
+
+        # Step 3: Optimize W using the given optimizer and epochs
+        for _ in range(epochs):
+            gradient = self._compute_gradient(X_whitened)
+            self.__W += optimizer.optimize([gradient])[0]
+
+        # Step 4: Transform the whitened data using the learned unmixing matrix
+        S = self._transform_data(X_whitened)
+
+        return S
+
+    def _whiten_data(self, X, n_features):
+        """Whiten the data using PCA."""
+        pca_model = pca.PCA(n_features, whiten=True)
+        return pca_model.fit_transform(X)
+
+    def _initialize_unmixing_matrix(self, n_features):
+        """Initialize the unmixing matrix W with random values."""
+        return np.random.rand(n_features, n_features)
+
+    def _compute_gradient(self, X_whitened):
+        """Compute the gradient for the unmixing matrix W."""
+        n_samples = X_whitened.shape[0]
+        gradient = np.zeros_like(self.__W)
+        
+        for x in X_whitened:
+            term1 = 1 - 2 * scipy.special.expit(self.__W.dot(x.T))
+            term2 = np.linalg.inv(self.__W.T)
+            gradient += term1[:, None] * x + term2
+
+        return gradient / n_samples
+
+    def _transform_data(self, X_whitened):
+        """Transform the whitened data using the learned unmixing matrix W."""
+        return X_whitened.dot(self.__W)

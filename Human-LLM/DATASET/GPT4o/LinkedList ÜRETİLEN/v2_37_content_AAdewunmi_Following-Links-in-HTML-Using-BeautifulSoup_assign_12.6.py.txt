@@ -1,0 +1,60 @@
+import urllib.request
+from bs4 import BeautifulSoup
+import ssl
+
+# Ignore SSL certificate errors
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+def get_html(url, context):
+    """
+    Retrieve HTML content from the given URL.
+
+    Args:
+        url (str): The URL to retrieve HTML content from.
+        context (ssl.SSLContext): The SSL context to use for the request.
+
+    Returns:
+        str: The HTML content of the page.
+    """
+    return urllib.request.urlopen(url, context=context).read()
+
+def find_next_url(soup, position):
+    """
+    Find the URL at the specified position in the list of anchor tags.
+
+    Args:
+        soup (BeautifulSoup): The BeautifulSoup object containing the parsed HTML.
+        position (int): The position of the anchor tag to retrieve the URL from.
+
+    Returns:
+        str or None: The URL at the specified position, or None if not found.
+    """
+    tags = soup('a')
+    if len(tags) >= position:
+        return tags[position - 1].get('href', None)
+    else:
+        print(f"No link found at position {position}")
+        return None
+
+def main():
+    """
+    Main function to retrieve URLs from a web page by following links.
+    """
+    url = input('Enter URL: ')
+    count = int(input('Enter count: '))
+    position = int(input('Enter position: '))
+
+    for i in range(count + 1):
+        print('Retrieving:', url)
+        html = get_html(url, ctx)
+        soup = BeautifulSoup(html, 'html.parser')
+        next_url = find_next_url(soup, position)
+        if next_url:
+            url = next_url
+        else:
+            break
+
+if __name__ == "__main__":
+    main()

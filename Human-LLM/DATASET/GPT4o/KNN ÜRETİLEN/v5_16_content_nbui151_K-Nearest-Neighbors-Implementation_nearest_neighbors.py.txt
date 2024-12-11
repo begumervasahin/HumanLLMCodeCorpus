@@ -1,0 +1,104 @@
+"""
+Created on Tue May  2 09:15:47 2017
+Author: nbui151
+"""
+
+import numpy as np
+import pandas as pd
+from collections import defaultdict
+from sklearn import datasets
+
+def cosine_similarity(u, v):
+    """
+    Calculate the cosine similarity between two vectors.
+    
+    Parameters:
+    - u, v: input vectors
+    
+    Returns:
+    - Cosine similarity between u and v
+    """
+    return np.inner(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
+
+def nearest_neighbors(train, test, y_train, n_neighbors=5):
+    """
+    Find the nearest neighbors and predict the labels of the test set.
+    
+    Parameters:
+    - train: numpy ndarray containing the covariates of the training data
+    - test: numpy ndarray containing the covariates of the test data
+    - y_train: numpy array containing the labels of the training data
+    - n_neighbors: number of neighbors to include in determining the label of the test data
+    
+    Returns:
+    - predictions: list of predicted labels for the test set
+    """
+    predictions = []
+    for test_vector in test:
+        distances = {i: cosine_similarity(train_vector, test_vector) for i, train_vector in enumerate(train)}
+        sorted_distances = sorted(distances.items(), key=lambda item: item[1], reverse=True)
+        neighbor_indices = [sorted_distances[i][0] for i in range(min(n_neighbors, len(sorted_distances)))]
+        neighbor_labels = [y_train[i] for i in neighbor_indices]
+        
+        label_counts = defaultdict(int)
+        for label in neighbor_labels:
+            label_counts[label] += 1
+        
+        predicted_label = max(label_counts.items(), key=lambda item: item[1])[0]
+        predictions.append(predicted_label)
+    
+    return predictions
+
+def evaluate_iris():
+    """
+    Evaluate the KNN classifier on the Iris dataset.
+    """
+    iris = datasets.load_iris()
+    iris_data = pd.DataFrame(iris.data, columns=iris.feature_names)
+    iris_data['target'] = iris.target
+    
+    accuracies = []
+    for _ in range(20):
+        shuffled_data = iris_data.sample(frac=1).reset_index(drop=True)
+        y_iris = shuffled_data['target'].values
+        x_iris = shuffled_data.drop('target', axis=1).values
+        
+        x_train, y_train = x_iris[:120], y_iris[:120]
+        x_test, y_test = x_iris[120:], y_iris[120:]
+        
+        y_pred = nearest_neighbors(x_train, x_test, y_train, n_neighbors=5)
+        accuracy = np.mean(y_pred == y_test) * 100
+        accuracies.append(accuracy)
+    
+    print(f"Average accuracy for iris dataset: {np.mean(accuracies):.2f}%")
+
+def evaluate_wine():
+    """
+    Evaluate the KNN classifier on the Wine Quality dataset.
+    """
+    wine_data = pd.read_csv("redwinequality.csv")
+    
+    accuracies = []
+    fuzzy_accuracies = []
+    for _ in range(20):
+        shuffled_data = wine_data.sample(frac=1).reset_index(drop=True)
+        y_wine = shuffled_data['quality'].values
+        x_wine = shuffled_data.drop('quality', axis=1).values
+        
+        x_train, y_train = x_wine[:1500], y_wine[:1500]
+        x_test, y_test = x_wine[1500:1600], y_wine[1500:1600]
+        
+        y_pred = nearest_neighbors(x_train, x_test, y_train, n_neighbors=5)
+        
+        strict_accuracy = np.mean(y_pred == y_test) * 100
+        fuzzy_accuracy = np.mean(np.abs(np.array(y_pred) - y_test) < 2) * 100
+        
+        accuracies.append(strict_accuracy)
+        fuzzy_accuracies.append(fuzzy_accuracy)
+    
+    print(f"Average strict accuracy for red wine dataset: {np.mean(accuracies):.2f}%")
+    print(f"Average fuzzy accuracy for red wine dataset: {np.mean(fuzzy_accuracies):.2f}%")
+
+if __name__ == '__main__':
+    evaluate_iris()
+    evaluate_wine()

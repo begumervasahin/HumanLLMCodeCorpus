@@ -1,0 +1,55 @@
+def radix_sort(arr, base=10, verbose=False, desc=False):
+    def get_digit_count(number, base):
+        """Calculate the number of digits in the largest number based on the given base."""
+        count = 0
+        while number > 0:
+            count += 1
+            number //= base
+        return count
+
+    def extract_digit(number, position, base):
+        """Extract the digit at the specified position from the number."""
+        return (number // base**position) % base
+
+    def distribute_to_buckets(arr, position, base):
+        """Distribute numbers into buckets based on the digit at the current position."""
+        buckets = [[] for _ in range(base)]
+        for number in arr:
+            digit = extract_digit(number, position, base)
+            buckets[digit].append(number)
+            if verbose == 2:
+                print(f"Placing number {number} in bucket {digit}: {buckets}")
+        # Flatten the buckets into a single list
+        return [num for bucket in buckets for num in bucket]
+
+    # Handle negative numbers by adjusting the array
+    min_value = min(arr)
+    if min_value < 0:
+        arr = [num - min_value for num in arr]
+
+    # Determine the number of passes based on the largest number
+    max_value = max(arr)
+    num_passes = get_digit_count(max_value, base)
+
+    # Perform the sorting process based on each digit's position
+    for pos in range(num_passes):
+        arr = distribute_to_buckets(arr, pos, base)
+        if verbose:
+            print(f"After pass {pos + 1}: {arr}")
+
+    # Restore original values if the array was adjusted for negatives
+    if min_value < 0:
+        arr = [num + min_value for num in arr]
+
+    # Sort in descending order if required
+    if desc:
+        arr.reverse()
+
+    return arr
+
+
+# Example usage
+if __name__ == "__main__":
+    sample_array = [170, 45, 75, 90, 802, 24, 2, 66]
+    sorted_array = radix_sort(sample_array, verbose=True, desc=False)
+    print("Sorted Array:", sorted_array)

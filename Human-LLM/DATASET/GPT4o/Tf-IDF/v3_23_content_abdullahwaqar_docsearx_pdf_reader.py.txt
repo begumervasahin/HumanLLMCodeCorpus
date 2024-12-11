@@ -1,0 +1,57 @@
+import fitz  # PyMuPDF
+from storage import enumrateFilenames
+
+def read_all_pdfs():
+    """
+    Reads all the PDF files from the storage and returns their text and filenames.
+    
+    Returns:
+        list: A list of tuples, each containing the PDF filename and its text content.
+    """
+    pdf_texts = []
+    pdf_files = enumrateFilenames()
+    
+    for pdf_file in pdf_files:
+        pdf_texts.extend(read_pdf(pdf_file))
+    
+    return pdf_texts
+
+def read_pdf(pdf_filename):
+    """
+    Reads a single PDF file from the storage and returns its text and filename.
+    
+    Args:
+        pdf_filename (str): The path to the PDF file.
+    
+    Returns:
+        list: A list of tuples, each containing the PDF filename and its text content.
+    """
+    pdf_texts = []
+    
+    with fitz.open(pdf_filename) as pdf_document:
+        for page in pdf_document:
+            pdf_texts.append((pdf_filename, page.get_text()))
+    
+    return pdf_texts
+
+def display_pdf_texts(pdf_texts):
+    """
+    Displays the text content of PDFs.
+    
+    Args:
+        pdf_texts (list): A list of tuples, each containing the PDF filename and its text content.
+    """
+    for pdf_file, text in pdf_texts:
+        print(f"PDF Name: {pdf_file}")
+        print(f"Text: {text}")
+        print("\n" + "="*80 + "\n")
+
+# Example usage
+if __name__ == "__main__":
+    # Read and display all PDFs
+    all_pdfs = read_all_pdfs()
+    display_pdf_texts(all_pdfs)
+    
+    # Read and display a specific PDF
+    specific_pdf = read_pdf("path/to/your/pdf.pdf")
+    display_pdf_texts(specific_pdf)

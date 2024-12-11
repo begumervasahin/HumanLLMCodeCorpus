@@ -1,0 +1,124 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import matplotlib.patches as mpatches
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# Function to calculate the slope of the linear regression line
+def Slope(a, b):
+    n = len(a)
+    two_sum = np.sum(a * b)
+    sumX = np.sum(a)
+    sumY = np.sum(b)
+    sumX_2 = np.sum(a**2)
+    slope = (n * two_sum - sumX * sumY) / (n * sumX_2 - (sumX)**2)
+    return slope
+
+# Function to calculate the intercept of the linear regression line
+def Intercept(a, b):
+    intercept = np.mean(b) - Slope(a, b) * np.mean(a)
+    return intercept
+
+# Function to make predictions based on the slope, intercept, and input values
+def Predictions(slope, x_input, intercept):
+    predict = slope * x_input + intercept
+    return predict
+
+# Function to calculate R-squared value
+def R_squared(predicted_values, test_values):
+    f = predicted_values
+    y = test_values
+    ss_total = np.sum((y - np.mean(y))**2)
+    ss_res = np.sum((y - f)**2)
+    R_2 = 1 - (ss_res / ss_total)
+    return R_2
+
+# Function to calculate the correlation coefficient
+def correlation_coeff(predicted_values, test_values):
+    a = predicted_values
+    b = test_values
+    n = len(a)
+    two_sum = np.sum(a * b)
+    sumX = np.sum(a)
+    sumY = np.sum(b)
+    sumX_2 = np.sum(a**2)
+    sumY_2 = np.sum(b**2)
+    score = (n * two_sum - sumX * sumY) / np.sqrt((n * sumX_2 - (sumX)**2) * (n * sumY_2 - (sumY)**2))
+    return score
+
+# Function to calculate the covariance
+def Covariance(X, Y):
+    a = X
+    b = Y
+    n = len(a)
+    two_sum = np.sum(a * b)
+    cov = two_sum / n - np.mean(a) * np.mean(b)
+    return cov
+
+# Load dataset
+dataset = pd.read_csv('Salary_Data.csv')
+array = dataset.values
+X = array[:, 0]
+Y = array[:, 1]
+
+# Plot box plots for X and Y
+plt.figure(figsize=(10, 5))
+
+plt.subplot(1, 2, 1)
+plt.boxplot(X)
+plt.title('Box plot for X')
+
+plt.subplot(1, 2, 2)
+plt.boxplot(Y)
+plt.title('Box plot for Y')
+
+plt.tight_layout()
+plt.show()
+
+# Calculate and print covariance
+print("Covariance:", Covariance(X, Y))
+
+# Split dataset into training and testing sets
+def train_test_split(x, y, train_size, test_size):
+    assert train_size + test_size == 1.0
+    assert len(x) == len(y)
+    n_train = int(round(len(x) * train_size))
+    X_train, X_test = x[:n_train], x[n_train:]
+    Y_train, Y_test = y[:n_train], y[n_train:]
+    return X_train, X_test, Y_train, Y_test
+
+train_ratio = 0.7
+test_ratio = 0.3
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, train_ratio, test_ratio)
+
+# Calculate slope and intercept
+slope = Slope(X_train, Y_train)
+intercept = Intercept(X_train, Y_train)
+print("Intercept:", intercept)
+print("Slope:", slope)
+
+# Make predictions
+predictions = Predictions(slope, X_test, intercept)
+print("Predictions:", predictions)
+
+# Calculate and print R-squared and correlation coefficient
+print("R-squared:", R_squared(predicted_values=predictions, test_values=Y_test))
+print("Correlation Coefficient:", correlation_coeff(test_values=Y_test, predicted_values=predictions))
+
+# Plot regression line
+plt.scatter(X, Y, marker='^', color='k', alpha=0.55)
+plt.plot(X, slope * X + intercept, color='red', linewidth=2)
+plt.legend([mpatches.Patch(color='red', label='Regression Line')])
+plt.title('Linear Regression Plot')
+plt.tight_layout(pad=2)
+plt.grid(False)
+plt.show()
+
+# Plot residual plot
+sns.set(style="whitegrid")
+sns.residplot(X, Y, lowess=True, color="r")
+plt.title('Residual Plot')
+plt.show()

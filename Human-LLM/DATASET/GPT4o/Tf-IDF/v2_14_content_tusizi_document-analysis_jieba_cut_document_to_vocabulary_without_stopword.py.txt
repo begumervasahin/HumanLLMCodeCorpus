@@ -1,0 +1,41 @@
+import json
+import jieba
+from pyspark import SparkContext
+
+# Initialize Spark context
+sc = SparkContext(appName='CutDocument')
+
+def encode_text(text):
+    """Encode text to UTF-8."""
+    return text.encode("utf-8")
+
+def cut_and_encode(text):
+    """Cut text using jieba, filter out empty strings, and encode the results."""
+    segmented_list = jieba.cut(text, cut_all=False)
+    filtered_list = filter(lambda x: x != "", segmented_list)
+    encoded_list = map(encode_text, filtered_list)
+    return list(encoded_list)
+
+def write_to_file(items):
+    """Write the processed items to a file."""
+    output_file = "/vagrant/result/jieba_cut_word.txt"
+    with open(output_file, "a+", encoding="utf-8") as file:
+        file.write(" ".join(items) + "\n")
+
+# Load source file and extract 'content' field from JSON
+source_file = '/vagrant/data/data.txt'
+content_rdd = sc.textFile(source_file).map(lambda x: json.loads(x)['content'])
+
+# Load stop words and encode them to UTF-8
+stop_words = sc.textFile("stop_words.txt").map(lambda x: x.encode("utf-8")).collect()
+
+def filter_stop_words(word_list):
+    """Filter out stop words from the word list."""
+    return [word for word in word_list if word not in stop_words]
+
+# Process the content
+cut_word_rdd = content_rdd.map(cut_and_encode)
+filtered_rdd = cut_word_rdd.map(filter_stop_words)
+
+# Write the results to the output file
+filtered_rdd.foreach(write_to_file)

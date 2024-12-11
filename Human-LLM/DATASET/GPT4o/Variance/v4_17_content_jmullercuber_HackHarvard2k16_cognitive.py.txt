@@ -1,0 +1,67 @@
+import json
+import httplib
+import time
+
+headers = {
+    'Content-Type': 'application/json',
+    'Ocp-Apim-Subscription-Key': 'b3f5d9f8d81046598dedc07a7541e2c9',
+}
+
+def documents_to_sentiments(docs):
+    c_body = {
+        'documents': [
+            {'id': str(i), 'text': doc}
+            for i, doc in enumerate(docs) if doc
+        ]
+    }
+
+    conn = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')
+    conn.request("POST", "/text/analytics/v2.0/sentiment", json.dumps(c_body), headers)
+    response = conn.getresponse()
+    data = response.read()
+    conn.close()
+
+    result = json.loads(data)
+    return {'body': c_body, 'result': result}
+
+def documents_to_topics(docs):
+    c_body = {
+        'stop_words': [],
+        'topicsToExclude': [],
+        'documents': [
+            {'id': str(i), 'text': doc}
+            for i, doc in enumerate(docs)
+        ]
+    }
+
+    conn = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')
+    conn.request("POST", "/text/analytics/v2.0/topics", json.dumps(c_body), headers)   
+    response = conn.getresponse()
+    op_loc = response.getheader('operation-location')
+
+    print(response.getheaders())
+    print(op_loc)
+
+    if '.com' in op_loc:
+        op_loc = op_loc[op_loc.index('.com') + 4:]
+
+    print(op_loc)
+
+    res = {'body': c_body}
+
+    while True:
+        time.sleep(5)
+        conn2 = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')      
+        conn2.request("GET", op_loc, '', headers)
+        response = conn2.getresponse()
+        data = response.read()
+        data = json.loads(data)
+
+        if data.get('status') == 'Succeeded':
+            res['result'] = data
+            break
+
+        conn2.close()
+
+    conn.close()
+    return res

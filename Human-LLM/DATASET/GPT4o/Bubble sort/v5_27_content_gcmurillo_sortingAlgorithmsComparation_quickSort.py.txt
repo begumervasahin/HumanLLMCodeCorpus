@@ -1,0 +1,64 @@
+from time import time
+import configuraciones
+
+def quick_sort(alist):
+    def quick_sort_helper(alist, first, last):
+        if first < last:
+            split_point = partition(alist, first, last)
+            quick_sort_helper(alist, first, split_point - 1)
+            quick_sort_helper(alist, split_point + 1, last)
+
+    def partition(alist, first, last):
+        pivot_value = alist[first]
+        left_mark = first + 1
+        right_mark = last
+        done = False
+
+        while not done:
+            while left_mark <= right_mark and alist[left_mark] <= pivot_value:
+                left_mark += 1
+            while alist[right_mark] >= pivot_value and right_mark >= left_mark:
+                right_mark -= 1
+
+            if right_mark < left_mark:
+                done = True
+            else:
+                alist[left_mark], alist[right_mark] = alist[right_mark], alist[left_mark]
+
+        alist[first], alist[right_mark] = alist[right_mark], alist[first]
+        return right_mark
+
+    quick_sort_helper(alist, 0, len(alist) - 1)
+
+def sort_and_record(configuration_func, config_name, sorted_filename, time_filename):
+    arrays = configuration_func('QuickSort')
+    total_time = 0
+
+    with open(sorted_filename, 'a') as sorted_file:
+        for array in arrays:
+            start_time = time()
+            quick_sort(array)
+            elapsed_time = time() - start_time
+            sorted_file.write(str(array) + '\n')
+            total_time += elapsed_time
+
+    with open(time_filename, 'a') as time_file:
+        time_file.write(f'{config_name}: {total_time}\n')
+
+def main():
+    configurations = [
+        (configuraciones.confA, 'ConfA', 'ordenadoAQuickSort.txt'),
+        (configuraciones.confB, 'ConfB', 'ordenadoBQuickSort.txt'),
+        (configuraciones.confC, 'ConfC', 'ordenadoCQuickSort.txt'),
+        (configuraciones.confD, 'ConfD', 'ordenadoDQuickSort.txt'),
+        (configuraciones.confE, 'ConfE', 'ordenadoEQuickSort.txt'),
+        (configuraciones.confF, 'ConfF', 'ordenadoFQuickSort.txt')
+    ]
+
+    time_filename = 'tiempoQuick.txt'
+
+    for config_func, config_name, sorted_filename in configurations:
+        sort_and_record(config_func, config_name, sorted_filename, time_filename)
+
+if __name__ == "__main__":
+    main()

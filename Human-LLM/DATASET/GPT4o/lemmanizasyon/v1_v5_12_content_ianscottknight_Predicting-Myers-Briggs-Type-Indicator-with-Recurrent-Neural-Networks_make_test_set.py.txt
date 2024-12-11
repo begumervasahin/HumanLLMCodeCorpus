@@ -1,0 +1,73 @@
+import os
+import pandas as pd
+import csv
+import re
+
+# Define constants
+DATA_DIR = "data"
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+def main():
+    # Read the CSV file into a pandas DataFrame
+    df = pd.read_csv(MBTI_CLEAN_CSV_PATH)
+
+    # Process each personality dimension and its letters
+    for dimension in DIMENSIONS:
+        process_dimension(df, dimension)
+
+def process_dimension(df, dimension):
+    """
+    Process each dimension, filter valid posts and save them to CSV files.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing MBTI types and posts.
+        dimension (str): The personality dimension (e.g., "IE").
+    """
+    letter_1, letter_2 = dimension
+
+    # Iterate over each letter in the dimension (e.g., "I" and "E" for "IE")
+    for letter in [letter_1, letter_2]:
+        selected_posts = []
+
+        # Iterate over each row in the DataFrame
+        for _, row in df.iterrows():
+            # Check if the letter is in the personality type
+            if letter in row["type"]:
+                # Split posts into individual posts
+                individual_posts = row["posts"].split("|||")
+
+                # Filter and append valid posts
+                valid_posts = [post for post in individual_posts if is_valid_post(post)]
+                selected_posts.extend(valid_posts)
+
+        # Create a CSV file for the selected letter
+        save_posts_to_csv(selected_posts, letter)
+
+def is_valid_post(post):
+    """
+    Check if a post is valid based on certain criteria.
+
+    Args:
+        post (str): The post to be validated.
+
+    Returns:
+        bool: True if the post is valid, False otherwise.
+    """
+    return not ("http" in post or post == "" or post is None or not re.search("[a-zA-Z]", post))
+
+def save_posts_to_csv(posts, letter):
+    """
+    Save a list of posts to a CSV file for the given letter.
+
+    Args:
+        posts (list): The list of posts to be saved.
+        letter (str): The letter representing the personality dimension.
+    """
+    csv_path = os.path.join(DATA_DIR, f"posts_{letter}.csv")
+    with open(csv_path, "w", newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows([[post] for post in posts])
+
+if __name__ == "__main__":
+    main()

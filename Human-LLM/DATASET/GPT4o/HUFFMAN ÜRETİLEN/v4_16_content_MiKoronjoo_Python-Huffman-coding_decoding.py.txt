@@ -1,0 +1,69 @@
+import sys
+
+def generate_code_dictionary(file_name: str) -> dict:
+    code_dictionary = {}
+    try:
+        with open(file_name, 'r') as file_stream:
+            for line in file_stream:
+                char, _, code = line.strip().split('\t')
+                char = {
+                    '\\n': '\n',
+                    '\\t': '\t',
+                    '\\r': '\r'
+                }.get(char, char)
+                code_dictionary[code] = char
+    except FileNotFoundError as ex:
+        print(f"No such file or directory: {ex.filename}")
+    except IsADirectoryError as ex:
+        print(f"Is a directory: {ex.filename}")
+    return code_dictionary
+
+def decode_binary_text(binary_text: str, code_dictionary: dict) -> str:
+    temp_code = ''
+    decoded_text = ''
+    
+    for bit in binary_text:
+        temp_code += bit
+        if temp_code in code_dictionary:
+            char = code_dictionary[temp_code]
+            if char == '\0':  # Assuming '\0' marks the end of the decoded text
+                break
+            decoded_text += char
+            temp_code = ''
+    
+    return decoded_text
+
+def convert_text_to_binary(text: str) -> str:
+    binary_text = ''.join(f'{ord(char):08b}' for char in text)
+    return binary_text
+
+def decode_file(zip_address: str, huffman_address: str) -> None:
+    try:
+        with open(zip_address, 'r') as file_stream:
+            code_text = file_stream.read()
+    except FileNotFoundError as ex:
+        print(f"No such file or directory: {ex.filename}")
+        return
+    except IsADirectoryError as ex:
+        print(f"Is a directory: {ex.filename}")
+        return
+
+    code_dictionary = generate_code_dictionary(huffman_address)
+    if not code_dictionary:
+        return
+
+    binary_text = convert_text_to_binary(code_text)
+    decoded_text = decode_binary_text(binary_text, code_dictionary)
+    
+    with open('Output.txt', 'w') as output_file:
+        output_file.write(decoded_text)
+    
+    print(f"File '{zip_address}' unzipped to 'Output.txt' successfully.")
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 3:
+        zip_file_address, huffman_file_address = sys.argv[1], sys.argv[2]
+    else:
+        zip_file_address, huffman_file_address = 'Zip.txt', 'Huffman.txt'
+    
+    decode_file(zip_file_address, huffman_file_address)

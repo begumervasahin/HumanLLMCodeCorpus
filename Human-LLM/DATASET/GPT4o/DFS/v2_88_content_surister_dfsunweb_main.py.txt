@@ -1,0 +1,71 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from time import sleep
+
+def setup_driver():
+    """
+    Initializes and returns a Selenium WebDriver for Firefox.
+    
+    Returns:
+        webdriver.Firefox: Configured WebDriver instance.
+    """
+    driver_path = 'D:/geckodriver/geckodriver.exe'
+    return webdriver.Firefox(executable_path=driver_path)
+
+def select_date(driver, date):
+    """
+    Inputs a date into the date field on the webpage.
+
+    Args:
+        driver (webdriver.Firefox): The WebDriver instance.
+        date (str): The date to input, in 'YYYY-MM-DD' format.
+    """
+    date_field = driver.find_element(By.ID, 'fecha_salida')
+    date_field.click()
+    date_field.send_keys(date)
+    date_field.click()
+
+def print_dropdown_options(driver, dropdown_id):
+    """
+    Prints each option's value from a dropdown menu.
+
+    Args:
+        driver (webdriver.Firefox): The WebDriver instance.
+        dropdown_id (str): The ID of the dropdown menu.
+    """
+    # Wait until the dropdown is present in the DOM
+    dropdown = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, dropdown_id))
+    )
+    # Get all option elements
+    options = dropdown.find_elements(By.TAG_NAME, 'option')
+    for option in options:
+        print(option.get_attribute('value'))
+        sleep(1)  # Pause between each option for visibility
+
+def main():
+    """
+    Main function to perform web interactions.
+    """
+    driver = setup_driver()
+    try:
+        driver.get("http://checkyourflight.info")
+        
+        select_date(driver, '2019-08-14')
+        sleep(1)  # Allow time for the page to update
+        
+        print("Flight options:")
+        print_dropdown_options(driver, 'flight')
+        
+        print("Hotel options:")
+        print_dropdown_options(driver, 'hoteles')
+
+        # Pause to allow observation of results
+        sleep(100)
+    finally:
+        driver.quit()  # Ensure the browser is closed after execution
+
+if __name__ == "__main__":
+    main()

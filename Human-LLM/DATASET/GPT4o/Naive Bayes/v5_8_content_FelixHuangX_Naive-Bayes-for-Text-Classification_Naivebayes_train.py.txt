@@ -1,0 +1,132 @@
+import numpy as np
+from participle import fenci
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+
+def load_data_set(raw_path, stop_path):
+    """
+    Load the dataset and perform tokenization and stop word removal.
+    
+    Args:
+    raw_path (str): Path to the raw data file.
+    stop_path (str): Path to the stop words file.
+
+    Returns:
+    tuple: Tokenized dataset and target labels.
+    """
+    return fenci(raw_path, stop_path)
+
+def create_unique_set(dataset, frequency_threshold=50):
+    """
+    Create a set of unique words from the dataset with a frequency threshold.
+    
+    Args:
+    dataset (list): List of tokenized documents.
+    frequency_threshold (int): Minimum frequency for words to be included.
+
+    Returns:
+    list: List of unique words sorted by frequency.
+    """
+    word_freq = {}
+    for i, doc in enumerate(dataset):
+        for word in doc:
+            word_freq[word] = word_freq.get(word, 0) + 1
+        print(f"Processing document {i+1}/{len(dataset)}")
+
+    filtered_words = {word: freq for word, freq in word_freq.items() if freq > frequency_threshold}
+    sorted_words = sorted(filtered_words.items(), key=lambda x: x[1], reverse=True)
+    return [word for word, _ in sorted_words]
+
+def words_to_vec(unique_words, input_doc):
+    """
+    Convert words in the input document to a vector based on the unique words list.
+    
+    Args:
+    unique_words (list): List of unique words.
+    input_doc (list): List of words in the input document.
+
+    Returns:
+    list: Vector representation of the input document.
+    """
+    word_vector = [0] * len(unique_words)
+    for word in input_doc:
+        if word in unique_words:
+            word_vector[unique_words.index(word)] += 1
+    return word_vector
+
+def train_naive_bayes(train_matrix, train_classes):
+    """
+    Train a Naive Bayes classifier.
+    
+    Args:
+    train_matrix (numpy.ndarray): Training data matrix.
+    train_classes (list): List of class labels for the training data.
+
+    Returns:
+    tuple: List of log probabilities for each class and list of class probabilities.
+    """
+    num_train_docs = len(train_matrix)
+    num_words = len(train_matrix[0])
+    class_labels = set(train_classes)
+
+    class_probs = []
+    log_prob_vectors = []
+
+    for cls in class_labels:
+        class_count = train_classes.count(cls)
+        class_prob = class_count / float(num_train_docs)
+        class_probs.append(class_prob)
+
+        word_counts = np.ones(num_words)  # Laplace smoothing
+        total_count = 2.0  # Laplace smoothing
+
+        for i in range(num_train_docs):
+            if train_classes[i] == cls:
+                word_counts += train_matrix[i]
+                total_count += sum(train_matrix[i])
+
+        print(f"Training class {cls}")
+        log_prob_vectors.append(np.log(word_counts / total_count))
+
+    return log_prob_vectors, class_probs
+
+def save_model(unique_words, class_probs, log_prob_vectors, model_dir='models'):
+    """
+    Save the model parameters to files.
+    
+    Args:
+    unique_words (list): List of unique words.
+    class_probs (list): List of class probabilities.
+    log_prob_vectors (list): List of log probability vectors for each class.
+    model_dir (str): Directory to save the model files.
+    """
+    np.save(f'{model_dir}/pos.npy', np.array(class_probs))
+    
+    with open(f'{model_dir}/unique_set_list.txt', 'w') as file:
+        for word in unique_words:
+            file.write(f"{word}\n")
+    
+    np.save(f'{model_dir}/p_vectors.npy', np.array(log_prob_vectors))
+
+if __name__ == "__main__":
+    labels = ['Sport', 'Entertainment', 'Household', 'House Property', 'Education', 'Fashion', 'Current Politics', 'Game', 'Science and Technology', 'Finance']
+    stop_path = './cnews/cnews.vocab.txt'
+    train_path = './cnews/cnews.train.txt'
+    test_path = './cnews/cnews.test.txt'
+
+    # Load and process the training data
+    raw_features, raw_classes = load_data_set(train_path, stop_path)
+    unique_set_list = create_unique_set(raw_features)
+
+    # Convert the training data to vectors
+    train_matrix = [words_to_vec(unique_set_list, doc) for doc in raw_features]
+    for i, _ in enumerate(train_matrix):
+        print(f"Vectorizing document {i+1}/{len(train_matrix)}")
+
+    # Train the Naive Bayes model
+    p_vectors, pos_probabilities = train_naive_bayes(np.array(train_matrix), raw_classes)
+
+    # Save the model parameters
+    save_model(unique_set_list, pos_probabilities, p_vectors)
+
+    print("Model training completed and parameters saved.")

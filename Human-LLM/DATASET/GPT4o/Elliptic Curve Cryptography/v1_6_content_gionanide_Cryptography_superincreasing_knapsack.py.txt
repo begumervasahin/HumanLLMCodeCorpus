@@ -1,0 +1,212 @@
+import itertools
+import random
+from functools import reduce
+
+char_per_block = 2
+N = 8 * char_per_block
+
+def build_superincreasing_knapsack():
+    """
+    Build a superincreasing knapsack sequence.
+    
+    Returns:
+        list: A superincreasing knapsack sequence.
+    """
+    SIK = [0] * N
+    for it_i in range(N):
+        sum_ij = sum(SIK[:it_i])
+        SIK[it_i] = sum_ij + random.randint(1, 5)
+
+    # Verify superincreasing property
+    superi = 0
+    for i in range(len(SIK) - 1):
+        superi += SIK[i]
+        if superi > SIK[i + 1]:
+            print("NON SIK")
+    return SIK
+
+SIK = [1, 4, 6, 12, 25, 50, 103, 205, 409, 820, 1639, 3276, 6554, 13106, 26212, 52425]
+m, n = 89, 104848
+mmi = 87177
+GK = [89, 356, 534, 1068, 2225, 4450, 9167, 18245, 36401, 72980, 41023, 81868, 59066, 13106, 26212, 52513]
+
+def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def coprime(a, b):
+    return gcd(a, b) == 1
+
+def choose_m_n():
+    """
+    Choose and return suitable values for m and n for the knapsack.
+    
+    Returns:
+        tuple: (m, n) where m and n are suitable values for the knapsack.
+    """
+    sum_i = sum(SIK)
+    m = random.randint(41, 100)
+    n = 0
+    while n < sum_i:
+        if coprime(m, sum_i + 1):
+            n = sum_i + 1
+    return m, n
+
+def build_general_knapsack(m, n, SIK):
+    """
+    Build a general knapsack sequence from a superincreasing sequence.
+
+    Args:
+        m (int): The multiplier.
+        n (int): The modulus.
+        SIK (list): The superincreasing knapsack sequence.
+
+    Returns:
+        list: A general knapsack sequence.
+    """
+    return [(ai * m) % n for ai in SIK]
+
+def extended_euclid_gcd(a, b):
+    """
+    Extended Euclidean Algorithm to find the GCD and coefficients.
+
+    Args:
+        a (int): First number.
+        b (int): Second number.
+
+    Returns:
+        tuple: (gcd, x, y) where gcd is the greatest common divisor and (x, y) are the coefficients.
+    """
+    s, old_s = 0, 1
+    t, old_t = 1, 0
+    r, old_r = b, a
+
+    while r != 0:
+        quotient = old_r // r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+
+    return old_r, old_s, old_t
+
+def modulo_multiplicative_inverse(A, M):
+    """
+    Compute the modular multiplicative inverse of A modulo M.
+
+    Args:
+        A (int): The number to invert.
+        M (int): The modulus.
+
+    Returns:
+        int: The modular inverse.
+    """
+    gcd, x, _ = extended_euclid_gcd(A, M)
+    if x < 0:
+        x += M
+    return x
+
+def str2ascii(x):
+    """
+    Convert a character to its 8-bit binary ASCII representation.
+
+    Args:
+        x (str): A single character string.
+
+    Returns:
+        str: 8-bit binary representation of the character.
+    """
+    x = ord(x)
+    binary = "{0:b}".format(x)
+    return binary.zfill(8)
+
+def encrypt_N_char(chars):
+    """
+    Encrypt a pair of characters using the knapsack sequence.
+
+    Args:
+        chars (str): A string of two characters.
+
+    Returns:
+        int: The encrypted integer.
+    """
+    bin_chars = ''.join(str2ascii(c)[::-1] for c in chars)
+    return sum(int(bit) * weight for bit, weight in zip(bin_chars, GK))
+
+def decrypt_N_char(number):
+    """
+    Decrypt an integer to retrieve the original pair of characters.
+
+    Args:
+        number (int): The encrypted integer.
+
+    Returns:
+        str: The decrypted characters.
+    """
+    d = (number * mmi) % n
+    res = ""
+    for sik_i in SIK[::-1]:
+        if d >= sik_i:
+            res = "1" + res
+            d -= sik_i
+        else:
+            res = "0" + res
+    res = res.zfill(8 * char_per_block)
+    char1 = chr(bit2Str(res[:8]))
+    char2 = chr(bit2Str(res[8:]))
+    return char1 + char2
+
+def bit2Str(bitstring):
+    """
+    Convert a binary string to an integer.
+
+    Args:
+        bitstring (str): The binary string.
+
+    Returns:
+        int: The integer representation of the binary string.
+    """
+    return int(bitstring, 2)
+
+def encrypt_mh(message):
+    """
+    Encrypt a message using the knapsack encryption scheme.
+
+    Args:
+        message (str): The message to encrypt.
+
+    Returns:
+        list: A list of encrypted integers.
+    """
+    if len(message) % char_per_block != 0:
+        message += " " * (char_per_block - len(message) % char_per_block)
+    
+    encrypted = [encrypt_N_char(message[i:i + char_per_block]) for i in range(0, len(message), char_per_block)]
+    return encrypted
+
+def decrypt_mh(crypto_list):
+    """
+    Decrypt a list of encrypted integers to retrieve the original message.
+
+    Args:
+        crypto_list (list): A list of encrypted integers.
+
+    Returns:
+        str: The decrypted message.
+    """
+    plaintext = ''.join(decrypt_N_char(num) for num in crypto_list)
+    return plaintext
+
+# Example usage
+if __name__ == "__main__":
+    encrypted_message = encrypt_mh("ciao, io mi chiamo francesco ")
+    print("Encrypted:", encrypted_message)
+    
+    decrypted_message = decrypt_mh(encrypted_message)
+    print("Decrypted:", decrypted_message)
+    
+    # Reading from a file
+    with open("encrypted", "r") as file:
+        encrypted_numbers = [int(line.strip(), 16) for line in file]
+        decrypted_text = decrypt_mh(encrypted_numbers)
+        print("Decrypted from file:", decrypted_text)

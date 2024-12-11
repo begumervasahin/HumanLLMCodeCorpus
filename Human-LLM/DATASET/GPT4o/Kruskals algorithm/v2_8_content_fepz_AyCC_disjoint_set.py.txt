@@ -1,0 +1,77 @@
+class DisjointSet:
+    def __init__(self, elements):
+        """
+        Initialize the disjoint set data structure.
+        Each element starts in its own set.
+        
+        Parameters:
+            elements: An iterable of elements to be included in the disjoint set.
+        """
+        self.elements = list(elements)
+        self.parent = list(range(len(elements)))  # Parent pointers, each element is its own parent initially
+        self.rank = [1] * len(elements)  # Rank for union by rank
+
+    def find(self, element):
+        """
+        Find the representative (root) of the set containing 'element'.
+        Implements path compression to flatten the structure, improving efficiency.
+        
+        Parameters:
+            element: The element whose set representative is to be found.
+        
+        Returns:
+            The index of the representative of the set containing 'element'.
+        """
+        index = self.elements.index(element)
+        if self.parent[index] != index:
+            # Path compression: update the parent to the root
+            self.parent[index] = self.find(self.elements[self.parent[index]])
+        return self.parent[index]
+
+    def union(self, element_a, element_b):
+        """
+        Merge the sets containing 'element_a' and 'element_b'.
+        Uses union by rank to maintain a balanced tree structure.
+        
+        Parameters:
+            element_a: The first element.
+            element_b: The second element.
+        """
+        root_a = self.find(element_a)
+        root_b = self.find(element_b)
+
+        if root_a != root_b:
+            # Union by rank
+            if self.rank[root_a] > self.rank[root_b]:
+                self.parent[root_b] = root_a
+            elif self.rank[root_a] < self.rank[root_b]:
+                self.parent[root_a] = root_b
+            else:
+                self.parent[root_b] = root_a
+                self.rank[root_a] += 1
+
+    def __str__(self):
+        """
+        Provide a string representation of the disjoint set, showing each element's set representative.
+        """
+        return "\n".join(f"{element}: {self.find(element)}" for element in self.elements)
+
+if __name__ == "__main__":
+    elements = ['A', 'B', 'C', 'D', 'E']
+    ds = DisjointSet(elements)
+
+    print("Initial sets:")
+    print(ds)
+
+    # Perform some union operations
+    ds.union('A', 'B')  # Merge sets containing 'A' and 'B'
+    ds.union('B', 'C')  # Merge sets containing 'B' and 'C'
+
+    print("\nSets after some unions:")
+    print(ds)
+
+    ds.union('D', 'E')  # Merge sets containing 'D' and 'E'
+    ds.union('C', 'D')  # Merge sets containing 'C' and 'D'
+
+    print("\nFinal sets after all unions:")
+    print(ds)

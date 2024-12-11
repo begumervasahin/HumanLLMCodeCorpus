@@ -1,0 +1,72 @@
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+
+def convert_to_number(num):
+    """Convert a string to a float, return 0 if conversion fails."""
+    try:
+        return float(num)
+    except ValueError:
+        return 0
+
+def assign_label(num):
+    """Assign a label based on draft position."""
+    label_distribution = [
+        "Top 10 picks", "Mid 1st round", "Late 1st round",
+        "Early 2nd round", "Mid 2nd round", "Late 2nd round/undrafted"
+    ]
+    return label_distribution[(num - 1) // 10]
+
+def read_nba_stats(filename):
+    """Read NBA stats from a file and return stats and labels."""
+    stats = []
+    labels = []
+    with open(filename, "r") as file:
+        for line in file.readlines()[2:]:
+            if line.split(",")[11] == "":  # Skip lines with missing data
+                continue
+            stat_list = line.split(",")
+            player_stats = [
+                convert_to_number(stat_list[18]),
+                convert_to_number(stat_list[20]) * 20,
+                convert_to_number(stat_list[21])
+            ]
+            stats.append(np.array(player_stats))
+            labels.append(assign_label(int(stat_list[1])))
+    return stats, labels
+
+# Prepare the dataset
+nba_stats = []
+nba_labels = []
+for year in range(1999, 2017):
+    filename = f"{year}.txt"
+    yearly_stats, yearly_labels = read_nba_stats(filename)
+    nba_stats.extend(yearly_stats)
+    nba_labels.extend(yearly_labels)
+
+# Train the KNN classifier
+knn = KNeighborsClassifier(n_neighbors=50)
+knn.fit(nba_stats, np.array(nba_labels))
+
+def test_model(year):
+    """Test the model on a specific year's data and print predictions."""
+    filename = f"{year}.txt"
+    with open(filename, "r") as file:
+        for line in file.readlines()[2:60]:  # Read specific lines for testing
+            player_name = line.split(",")[3]
+            print(player_name)  # Print player name
+            stat_list = line.split(",")
+            player_stats = [
+                convert_to_number(stat_list[18]),
+                convert_to_number(stat_list[20]) * 20,
+                convert_to_number(stat_list[21])
+            ]
+            prediction = knn.predict([np.array(player_stats)])
+            print(prediction[0])
+
+# Test the model on the year 2003
+test_model(2003)
+
+# Example: Predicting the draft round for new stats
+new_stats = [convert_to_number('22.5'), convert_to_number('8.2') * 20, convert_to_number('1.5')]
+prediction = knn.predict([np.array(new_stats)])
+print("Prediction for new stats:", prediction[0])

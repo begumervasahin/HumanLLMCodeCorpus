@@ -1,0 +1,72 @@
+import time
+
+class StopWatch:
+    def __init__(self, component=None, noisy=False):
+        """
+        Initialize the StopWatch with optional component name and noisy flag.
+
+        Args:
+            component (str): Name of the component being timed.
+            noisy (bool): If True, prints the time taken upon finish.
+        """
+        self._component = component
+        self._noisy = noisy
+        self.reset()
+
+    @property
+    def finishtime(self):
+        """Return the finish time of the stopwatch."""
+        return self._finishtime
+
+    def stop(self):
+        """Stop the stopwatch and calculate the elapsed time."""
+        self._finishtime = time.time() - self._start_time
+        return self.finishtime
+
+    def finish(self):
+        """Finish the timing and print the result if noisy."""
+        self._finishtime = self.stop()
+        if self._noisy:
+            print(f"{self._component} took {self}")
+
+    def reset(self):
+        """Reset the stopwatch."""
+        self._finishtime = None
+        self._start_time = time.time()
+
+    def __str__(self):
+        """Return a formatted string of the elapsed time."""
+        elapsed_time = self.stop()
+        if elapsed_time < 1:
+            return f"{round(1000 * elapsed_time)} ms"
+        elif elapsed_time < 10:
+            return f"{elapsed_time:.1f} sec"
+        else:
+            elapsed_seconds = round(elapsed_time)
+            if elapsed_seconds < 60:
+                return f"{elapsed_seconds} sec"
+            elif elapsed_seconds < 3600:
+                return f"{elapsed_seconds // 60}:{elapsed_seconds % 60:02d} m:s"
+            elif elapsed_seconds < 86400:
+                return f"{elapsed_seconds // 3600}:{elapsed_seconds % 3600 // 60:02d}:{elapsed_seconds % 60:02d} h:m:s"
+            else:
+                return f"{elapsed_seconds // 86400}-{elapsed_seconds % 86400 // 3600}:{elapsed_seconds % 3600 // 60:02d}:{elapsed_seconds % 60:02d} d-h:m:s"
+
+    def __enter__(self):
+        """Enter the runtime context related to this object."""
+        self.reset()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit the runtime context related to this object."""
+        self.finish()
+
+if __name__ == "__main__":
+    # Example usage of the StopWatch class
+    stopwatch = StopWatch("foobar", True)
+    time.sleep(0.1)
+    stopwatch.finish()
+    print(f"Elapsed time: {stopwatch.finishtime} seconds")
+
+    with StopWatch("foobar2", True):
+        time.sleep(0.1)

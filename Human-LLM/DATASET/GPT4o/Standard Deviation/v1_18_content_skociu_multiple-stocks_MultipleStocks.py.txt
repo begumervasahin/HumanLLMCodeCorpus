@@ -1,0 +1,62 @@
+import datetime
+from pandas_datareader import data
+import pandas as pd
+import numpy as np
+import os
+
+def test_run():
+    tickers = ['AMZN', 'SPY', 'M']
+    start_date = datetime.datetime(2007, 5, 13)
+    end_date = datetime.datetime(2017, 5, 13)
+    listall = []
+    
+    for ticker in tickers:
+        mydata = data.get_data_yahoo(ticker, start=start_date, end=end_date, interval='m')['Adj Close']
+        symbol = pd.Series(mydata, name=ticker)
+        listall.append(symbol)
+    
+    df = pd.DataFrame(data=listall).T
+    print("price data", df, '\n')
+    
+    pctstocks = df.pct_change()
+    print("Stock returns", pctstocks, '\n')
+    
+    cormat = pctstocks.corr()
+    print("correlation matrix \n\n", cormat, "\n")
+    
+    covmat = pctstocks.cov()
+    print("variance-covariance matrix \n\n", covmat, "\n")
+    
+    means = (1 + pctstocks.mean())**(12.0) - 1
+    print("Annual means \n\n", means, "\n")
+    
+    stdev = pctstocks.std() * np.sqrt(12)
+    print("Annual standard deviation \n\n", stdev, "\n")
+    
+    weights = [1 / float(len(tickers))] * len(tickers)
+    weights = pd.Series(data=weights, index=tickers)
+    print("weights \n\n", weights, "\n")
+    
+    w1 = np.array(weights)
+    m1 = np.array(means)
+    cov1 = np.array(covmat)
+    
+    portret = np.dot(w1.T, m1) * 12.0
+    print("portfolio return \n\n", portret, "\n")
+    
+    first = np.dot(w1.T, cov1)
+    portstd = np.sqrt(np.dot(first, w1)) * np.sqrt(12)
+    print("portfolio standard deviation \n\n", portstd, "\n")
+    
+    if not os.path.isdir('./Excel'):
+        os.mkdir('./Excel')
+    
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    df.to_csv(os.path.join(cur_dir, 'Excel/mystocks_prices.csv'))
+    pctstocks.to_csv(os.path.join(cur_dir, 'Excel/mystocks_pctchange.csv'))
+    cormat.to_csv(os.path.join(cur_dir, 'Excel/mystocks_correlations.csv'))
+    covmat.to_csv(os.path.join(cur_dir, 'Excel/mystocks_varcov.csv'))
+
+if __name__ == "__main__":
+    test_run()

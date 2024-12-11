@@ -1,0 +1,157 @@
+"""
+Created on Fri Jul  3 11:35:03 2020
+Author: Hemchaitanya
+"""
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import csv
+import random
+import math
+import operator
+
+def load_dataset(filename, split_ratio):
+    """Load dataset from a CSV file and split it into training and test sets."""
+    training = []
+    test = []
+
+    with open(filename, 'r') as csvfile:
+        lines = csv.reader(csvfile)
+        dataset = list(lines)
+        
+        for i in range(1, len(dataset) - 1):
+            for j in range(1, 3):
+                dataset[i][j] = float(dataset[i][j])
+            
+            if random.random() < split_ratio:
+                training.append(dataset[i])
+            else:
+                test.append(dataset[i])
+
+    return training, test
+
+def euclidean_distance(instance1, instance2, length):
+    """Calculate the Euclidean distance between two data instances."""
+    distance = 0
+    for x in range(1, length):
+        distance += pow((instance1[x] - instance2[x]), 2)
+    return math.sqrt(distance)
+
+def get_neighbors(training_set, test_instance, k):
+    """Find k nearest neighbors of the test instance from the training set."""
+    distances = []
+    length = len(test_instance) - 1
+    
+    for train_instance in training_set:
+        dist = euclidean_distance(test_instance, train_instance, length)
+        distances.append((train_instance, dist))
+    
+    distances.sort(key=operator.itemgetter(1))
+    neighbors = [distances[x][0] for x in range(k)]
+    
+    return neighbors
+
+def get_response(neighbors):
+    """Get the majority voted response from k neighbors."""
+    class_votes = {}
+    
+    for neighbor in neighbors:
+        response = neighbor[0]
+        if response in class_votes:
+            class_votes[response] += 1
+        else:
+            class_votes[response] = 1
+    
+    sorted_votes = sorted(class_votes.items(), key=operator.itemgetter(1), reverse=True)
+    
+    return sorted_votes[0][0]
+
+def get_accuracy(test_set, predictions):
+    """Calculate the accuracy of predictions."""
+    correct = sum(1 for i in range(len(test_set)) if test_set[i][0] == predictions[i])
+    return (correct / float(len(test_set))) * 100.0
+
+def confusion_matrix(predictions, test_set):
+    """Generate a confusion matrix for the predictions."""
+    cm = {'mm': 0, 'mf': 0, 'fm': 0, 'ff': 0}
+    
+    for i in range(len(test_set)):
+        if predictions[i] == 'Male':
+            if test_set[i][0] == predictions[i]:
+                cm['mm'] += 1
+            else:
+                cm['mf'] += 1
+        else:
+            if test_set[i][0] == predictions[i]:
+                cm['ff'] += 1
+            else:
+                cm['fm'] += 1
+                
+    return cm
+
+def calculate_recall(cm, gender):
+    """Calculate the recall score for a given gender."""
+    if gender == 'Male':
+        return cm['mm'] / (cm['mm'] + cm['mf'])
+    else:
+        return cm['ff'] / (cm['ff'] + cm['fm'])
+
+def calculate_f_score(accuracy, recall):
+    """Calculate the F-score."""
+    return (2 * accuracy * recall) / (accuracy + recall)
+
+def plot_data(training_set):
+    """Plot height vs. weight data, colored by gender."""
+    female_height = [instance[2] for instance in training_set if instance[0] == 'Female']
+    female_weight = [instance[1] for instance in training_set if instance[0] == 'Female']
+    male_height = [instance[2] for instance in training_set if instance[0] == 'Male']
+    male_weight = [instance[1] for instance in training_set if instance[0] == 'Male']
+    
+    plt.scatter(male_weight, male_height, c="blue", label='Male')
+    plt.scatter(female_weight, female_height, c="red", label='Female')
+    plt.xlabel("Weight")
+    plt.ylabel("Height")
+    plt.legend()
+    plt.show()
+
+def main():
+    # Load dataset and split into training and test sets
+    filename = "weight-height.csv"
+    split_ratio = 0.7
+    training_set, test_set = load_dataset(filename, split_ratio)
+    
+    print(f'Train set size: {len(training_set)}')
+    print(f'Test set size: {len(test_set)}')
+    
+    # Plot the data
+    plot_data(training_set)
+    
+    # Set value of k
+    k = int(math.sqrt(len(training_set)))
+    
+    # Make predictions
+    predictions = [get_response(get_neighbors(training_set, instance, k)) for instance in test_set]
+    
+    # Calculate accuracy
+    accuracy = get_accuracy(test_set, predictions)
+    print(f'Accuracy: {accuracy:.2f}%')
+    
+    # Calculate confusion matrix
+    cm = confusion_matrix(predictions, test_set)
+    print(f'Confusion Matrix: {cm}')
+    
+    # Calculate recall scores
+    recall_male = calculate_recall(cm, 'Male')
+    recall_female = calculate_recall(cm, 'Female')
+    print(f'Recall score for Male: {recall_male:.2f}')
+    print(f'Recall score for Female: {recall_female:.2f}')
+    
+    # Calculate F-scores
+    f_score_male = calculate_f_score(accuracy, recall_male)
+    f_score_female = calculate_f_score(accuracy, recall_female)
+    print(f'F-score for Male: {f_score_male:.2f}')
+    print(f'F-score for Female: {f_score_female:.2f}')
+
+if __name__ == "__main__":
+    main()

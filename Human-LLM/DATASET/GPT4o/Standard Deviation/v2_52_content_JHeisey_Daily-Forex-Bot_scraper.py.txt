@@ -1,0 +1,62 @@
+import requests
+from bs4 import BeautifulSoup as BS
+from pathlib import Path
+from datetime import datetime, timedelta
+import csv
+
+n_hist_days = 31
+
+def fetch_historical_data(n_hist_days):
+    csv_data = []
+    for i in range(n_hist_days, 0, -1):
+        date = datetime.today() - timedelta(days=i)
+        date_str = date.strftime('%Y-%m-%d')
+        url = f'https://www.x-rates.com/historical/?from=USD&amount=1&date={date_str}'
+        
+        response = requests.get(url)
+        html_content = response.text.split("<span class='ratesTableAlpha'>Alphabetical order</span>")[1]
+        soup = BS(html_content, "html.parser")
+        tds = soup.find_all('td')
+        
+        if i == n_hist_days:
+            currency_names = [td.text for td in tds[::3]]
+            csv_data.append(currency_names)
+        
+        exchange_rates = [td.text for td in tds[2::3]]
+        csv_data.append(exchange_rates)
+    
+    with open("data/hist_rates.csv", "w", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(csv_data)
+    
+    print(f"Historical data obtained for the last {n_hist_days} days.")
+
+def fetch_daily_data():
+    url = 'https://www.x-rates.com/table/?from=USD&amount=1'
+    
+    response = requests.get(url)
+    html_content = response.text.split("<span class='ratesTableAlpha'>Alphabetical order</span>")[1]
+    soup = BS(html_content, "html.parser")
+    tds = soup.find_all('td')
+    
+    daily_rates = [td.text for td in tds[2::3]]
+    return daily_rates
+
+def daily_update():
+    data_path = Path('data/hist_rates.csv')
+    
+    if not data_path.is_file():
+        print("Historical data not found, obtaining from x-rates.com...")
+        fetch_historical_data(n_hist_days)
+    
+    today = datetime.today().strftime('%Y-%m-%d')
+    today_rates = fetch_daily_data()
+    
+    with open('data/hist_rates.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(today_rates)
+    
+    print(f"Today's currency rates ({today}) obtained...")
+
+if __name__ == "__main__":
+    daily_update()

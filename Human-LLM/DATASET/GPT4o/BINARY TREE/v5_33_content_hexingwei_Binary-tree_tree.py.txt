@@ -1,0 +1,218 @@
+import sys
+from collections import defaultdict
+import gflags as flags
+
+FLAGS = flags.FLAGS
+
+class Tree:
+    def __init__(self, label, span, word=None, subs=None):
+        assert (word is None) ^ (subs is None), f"Bad tree {label} {word} {subs}"
+        self.label = label
+        self.span = span
+        self.word = word
+        self.subs = subs
+        self._str = None
+        self._hash = None
+
+    def is_terminal(self):
+        return self.word is not None
+
+    def __str__(self):
+        if self._str is None:
+            self._str = self._dostr()
+        return self._str
+
+    __repr__ = __str__
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = hash(str(self))
+        return self._hash
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def span_width(self):
+        return self.span[1] - self.span[0]
+
+    __len__ = span_width
+
+    def arity(self):
+        return len(self.subs)
+
+    def labelspan(self):
+        return f"{self.label} [{self.span[0]}-{self.span[1]}]"
+
+    def spanlabel(self):
+        return f"[{self.span[0]}-{self.span[1]}]: {self.label}"
+
+    def _dostr(self):
+        if self.is_terminal():
+            return f"({self.label} {self.word})"
+        else:
+            subs_str = " ".join(map(str, self.subs))
+            return f"({self.label} {subs_str})"
+
+    @staticmethod
+    def _parse(line, pos=0, word_index=0, truncate=True):
+        """
+        Parse a line of text into a Tree object.
+        Returns a tuple: ((new_position, new_word_index), is_empty, tree)
+        """
+        assert line[pos] == '(', f"Tree must start with '('! line={line}, pos={pos}, line[pos]={line[pos]}"
+        empty = False
+        space = line.find(" ", pos)
+        label = line[pos + 1: space]
+        
+        if truncate:
+            if label[0] != "-":
+                for sep in ["-", "=", "|"]:
+                    dashpos = label.find(sep)
+                    if dashpos >= 0:
+                        label = label[:dashpos]
+            elif label == "-NONE-":
+                empty = True
+
+        newpos = space + 1
+        newidx = word_index
+
+        if line[newpos] == '(':
+            subtrees = []
+            while line[newpos] != ')':
+                if line[newpos] == " ":
+                    newpos += 1
+                (newpos, newidx), is_empty, subtree = Tree._parse(line, newpos, newidx, truncate)
+                if not is_empty:
+                    subtrees.append(subtree)
+            return (newpos + 1, newidx), subtrees == [], Tree(label, (word_index, newidx), subs=subtrees)
+        else:
+            finalpos = line.find(")", newpos)
+            word = line[newpos: finalpos]
+            return (finalpos + 1, word_index + 1 if not empty else word_index), empty, Tree(label, (word_index, word_index + 1), word=word)
+
+    @staticmethod
+    def parse(line, truncate=False):
+        """
+        Parse a line of text into a Tree object.
+        """
+        _, is_empty, tree = Tree._parse(line, 0, 0, truncate)
+        assert not is_empty, "The whole tree is empty! " + line
+        if tree.label != "TOP":
+            tree = Tree(label="TOP", span=tree.span, subs=[tree])
+        return tree
+
+    def all_label_spans(self):
+        """
+        Get a list of all labeled spans for PARSEVAL.
+        """
+        if self.is_terminal():
+            return []
+        spans = [(self.label, self.span)]
+        for sub in self.subs:
+            spans.extend(sub.all_label_spans())
+        return spans
+
+    def label_span_counts(self):
+        """
+        Return a dict mapping (label, span) to count.
+        """
+        counts = defaultdict(int)
+        for span in self.all_label_spans():
+            counts[span] += 1
+        return counts
+
+    def pretty_print(self, level=0):
+        """
+        Pretty print the tree.
+        """
+        indent = "| " * level
+        if self.is_terminal():
+            print(f"{indent}{self.labelspan()} {self.word}")
+        else:
+            print(f"{indent}{self.labelspan()}")
+            for sub in self.subs:
+                sub.pretty_print(level + 1)
+
+    def height(self):
+        """
+        Calculate the height of the tree.
+        """
+        if self.is_terminal():
+            return 1
+        return max(sub.height() for sub in self.subs) + 1
+
+    def binarize(self):
+        """
+        Binarize the tree.
+        """
+        if self.subs:
+            if len(self.subs) > 2:
+                new_label = self.label
+                if not new_label.endswith("'"):
+                    new_label += "'"
+                t2 = Tree(label=new_label, span=self.span, subs=self.subs[1:])
+                self.subs = [self.subs[0], t2]
+            for child in self.subs:
+                child.binarize()
+
+    def debinarize(self):
+        """
+        De-binarize the tree. Assumes that this is a binary tree.
+        """
+        if self.subs:
+            while self.subs and self.subs[-1].label.endswith("'"):
+                rhs_node = self.subs.pop()
+                self.subs.extend(rhs_node.subs)
+            for child in self.subs:
+                child.debinarize()
+
+    def get_productions(self):
+        """
+        Get the productions of the tree.
+        """
+        productions = []
+        if self.subs:
+            if len(self.subs) == 2:
+                child1, child2 = self.subs
+                production = (self.label, f"{child1.label} {child2.label}")
+                productions.append(production)
+            elif len(self.subs) == 1:
+                production = (self.label, self.subs[0].label)
+                productions.append(production)
+            for child in self.subs:
+                productions.extend(child.get_productions())
+        elif self.word:
+            production = (self.label, self.word)
+            productions.append(production)
+        return productions
+
+if __name__ == "__main__":
+    flags.DEFINE_integer("max_len", 400, "Maximum sentence length")
+    flags.DEFINE_boolean("pp", True, "Pretty print")
+    flags.DEFINE_boolean("height", False, "Output the height of each tree")
+    flags.DEFINE_boolean("clean", False, "Clean up functional tags and empty nodes")
+
+    argv = FLAGS(sys.argv)
+    for line in sys.stdin:
+        tree = Tree.parse(line.strip(), trunc=FLAGS.clean)
+        tree.binarize()
+        
+        if len(tree) <= FLAGS.max_len:
+            if FLAGS.pp:
+                tree.pretty_print()
+                print(tree)
+            elif FLAGS.height:
+                print(f"{len(tree)}\t{tree.height()}")
+            else:
+                print(tree)
+        
+        tree.debinarize()
+        
+        if len(tree) <= FLAGS.max_len:
+            if FLAGS.pp:
+                tree.pretty_print()
+                print(tree)
+            elif FLAGS.height:
+                print(f"{len(tree)}\t{tree.height()}")
+            else:
+                print(tree)

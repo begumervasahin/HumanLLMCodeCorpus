@@ -1,0 +1,51 @@
+import pickle
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectPercentile, f_classif
+
+def preprocess(words_file="../tools/word_data.pkl", authors_file="../tools/email_authors.pkl"):
+    """
+    This function preprocesses email texts and corresponding authors by performing several steps:
+        -- Splits into training/testing sets (10% testing)
+        -- Vectorizes into a TF-IDF matrix
+        -- Selects and keeps the most helpful features
+    After preprocessing, the features and labels are converted into numpy arrays for compatibility with sklearn functions.
+    The function returns four objects:
+        -- training features
+        -- testing features
+        -- training labels
+        -- testing labels
+    """
+    
+    # Load the authors and words data from the provided pickle files
+    with open(authors_file, "rb") as af:
+        authors = pickle.load(af)
+        
+    with open(words_file, "rb") as wf:
+        word_data = pickle.load(wf)
+        
+    # Split the data into training and testing sets
+    features_train, features_test, labels_train, labels_test = train_test_split(
+        word_data, authors, test_size=0.1, random_state=42
+    )
+    
+    # Vectorize the data into a TF-IDF matrix
+    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, stop_words='english')
+    features_train_transformed = vectorizer.fit_transform(features_train)
+    features_test_transformed = vectorizer.transform(features_test)
+    
+    # Select the most helpful features
+    selector = SelectPercentile(f_classif, percentile=10)
+    selector.fit(features_train_transformed, labels_train)
+    features_train_transformed = selector.transform(features_train_transformed).toarray()
+    features_test_transformed = selector.transform(features_test_transformed).toarray()
+    
+    # Print some statistics about the training data
+    print("Number of Chris training emails:", sum(labels_train))
+    print("Number of Sara training emails:", len(labels_train) - sum(labels_train))
+    
+    return features_train_transformed, features_test_transformed, labels_train, labels_test
+
+# Example usage
+features_train, features_test, labels_train, labels_test = preprocess()

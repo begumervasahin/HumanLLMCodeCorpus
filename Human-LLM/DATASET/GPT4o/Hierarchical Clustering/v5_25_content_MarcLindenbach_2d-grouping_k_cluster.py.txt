@@ -1,0 +1,102 @@
+from cluster import *
+
+# Define the color palette for clusters
+CLUSTER_COLORS = [
+    (255, 127, 39),  # Orange
+    (34, 177, 76),   # Green
+    (0, 162, 232),   # Blue
+    (163, 73, 164),  # Purple
+    (255, 242, 0),   # Yellow
+    (63, 72, 204)    # Indigo
+]
+
+# Define the size for cluster points
+CLUSTER_POINT_SIZE = 8
+
+def k_means_clustering(points, num_clusters=6, distance_func=p_distance, file_name_template='k-iteration-%d.jpeg'):
+    """
+    Performs k-means clustering on a set of points and saves the iteration images.
+
+    Args:
+        points (list): The data points to be clustered.
+        num_clusters (int): The number of clusters to form.
+        distance_func (function): A function to compute the distance between points.
+        file_name_template (str): Template for saving the output images.
+
+    Returns:
+        list: The final positions of the cluster centers.
+    """
+    # Initial rendering of points before clustering
+    render_clusters(points, file_name=file_name_template % 0)
+    
+    # Initialize cluster centers as random points
+    clusters = generate_points(n=num_clusters)
+    previous_matches = None
+
+    for iteration in range(1, 100):
+        print(f'Iteration {iteration}...')
+        best_matches = [[] for _ in range(num_clusters)]
+        
+        # Assign each point to the nearest cluster center
+        for i, point in enumerate(points):
+            best_cluster = min(range(num_clusters), key=lambda j: distance_func(clusters[j], point))
+            best_matches[best_cluster].append(i)
+        
+        # Stop if clusters have not changed
+        if best_matches == previous_matches:
+            break
+        
+        previous_matches = best_matches
+        render_clusters(points, clusters=clusters, matches=best_matches, file_name=file_name_template % iteration)
+        
+        # Recalculate the position of each cluster center
+        for i in range(len(clusters)):
+            if best_matches[i]:
+                clusters[i] = [
+                    sum(points[j][0] for j in best_matches[i]) / len(best_matches[i]),
+                    sum(points[j][1] for j in best_matches[i]) / len(best_matches[i])
+                ]
+    
+    return clusters
+
+def render_clusters(points, clusters=None, matches=None, file_name='cluster.jpeg'):
+    """
+    Renders the points and their respective clusters, saving the image.
+
+    Args:
+        points (list): The data points to be rendered.
+        clusters (list): The cluster centers.
+        matches (list): A list of lists where each sublist contains indices of points in the corresponding cluster.
+        file_name (str): The file name for saving the rendered image.
+    """
+    img, draw = create_image()
+
+    # Draw lines connecting points to their respective cluster centers
+    if matches and clusters:
+        for i, cluster_points in enumerate(matches):
+            for point_index in cluster_points:
+                point = points[point_index]
+                cluster_center = clusters[i]
+                draw.line((point[0], point[1], cluster_center[0], cluster_center[1]), fill=CLUSTER_COLORS[i])
+
+    # Draw cluster centers
+    if clusters:
+        for i, cluster_center in enumerate(clusters):
+            draw_point(draw, cluster_center, CLUSTER_COLORS[i], size=CLUSTER_POINT_SIZE)
+
+    # Draw individual points
+    for point in points:
+        draw_point(draw, point, POINT_COLOR)
+
+    # Save the rendered image
+    img.save(file_name)
+
+def main():
+    # Generate random points
+    points = generate_points(n=100)
+
+    # Perform k-means clustering
+    k_means_clustering(points, num_clusters=6)
+
+if __name__ == "__main__":
+    main()

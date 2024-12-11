@@ -1,0 +1,106 @@
+import csv
+import argparse
+from sys import exit
+from numpy import linspace, array as npArray
+from matplotlib import pyplot as plt
+
+def is_float(val):
+    """Check if the provided value can be converted to float."""
+    try:
+        float(val)
+        return True
+    except ValueError:
+        return False
+
+def read_file(file_name):
+    """Read data from a CSV file and return a dictionary with x and y data sets."""
+    data_x = []
+    data_y = []
+    with open(file_name) as file:
+        reader = csv.reader(file, delimiter=',')
+        line_count = 0
+        for row in reader:
+            if len(row) != 2:
+                exit(f"Error: expected two columns per row on line {line_count}")
+            if line_count == 0:
+                data_name = row
+            else:
+                if not is_float(row[0]) or not is_float(row[1]):
+                    exit(f"Error: unexpected digit on line {line_count}")
+                data_x.append(float(row[0]))
+                data_y.append(float(row[1]))
+            line_count += 1
+    return {'data_name': data_name, 'x_set': data_x, 'y_set': data_y}
+
+def write_log(a, b):
+    """Write the final coefficients a and b to a log file."""
+    with open("log", "w") as f:
+        f.write(f"{b}\n{a}\n")
+
+def compute(data, rate, epochs, visualize, visualize_error):
+    """Perform linear regression using gradient descent and visualize results if needed."""
+    m = len(data['x_set'])
+    error_stack = []
+    a, b = 0.0, 0.0
+    x_arr, y_arr = data['x_set'], data['y_set']
+    
+    for epoch in range(epochs):
+        try:
+            computed_y = [(a * x + b) for x in x_arr]
+            cost = (1 / (2 * m)) * (sum([(computed_y[i] - y_arr[i]) ** 2 for i in range(m)]))
+            
+            if visualize_error:
+                error_stack.append(cost)
+            
+            b_grad = (1 / m) * sum([(computed_y[i] - y_arr[i]) for i in range(m)])
+            a_grad = (1 / m) * sum([(x_arr[i] * (computed_y[i] - y_arr[i])) for i in range(m)])
+            
+            b -= (0.01 * b_grad)
+            a -= (rate * a_grad)
+        except OverflowError:
+            exit("Too large value encountered. Exiting.")
+    
+    if visualize:
+        visualize_results(data, a, b)
+    
+    if visualize_error:
+        visualize_error_evolution(error_stack)
+    
+    print(f"Final error: {cost}")
+    print(f"Linear equation: y = {a} * x + {b}")
+    write_log(a, b)
+
+def visualize_error_evolution(error_stack):
+    """Visualize the evolution of the error over epochs."""
+    plt.plot(error_stack)
+    plt.xlabel("Epoch")
+    plt.ylabel("Error")
+    plt.axis([0, len(error_stack), 0, max(error_stack)])
+    plt.grid()
+    plt.show()
+
+def visualize_results(data, a, b):
+    """Visualize the original data points and the fitted linear regression line."""
+    fig, ax = plt.subplots()
+    ax.scatter(data['x_set'], data['y_set'])
+    ax.set_xlabel(data['data_name'][0])
+    ax.set_ylabel(data['data_name'][1])
+    
+    x = linspace(npArray(data['x_set']).min() - 5, npArray(data['x_set']).max() + 5, 100)
+    y = a * x + b
+    ax.plot(x, y, '-r')
+    
+    plt.grid()
+    plt.show()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Perform linear regression on a CSV dataset.")
+    parser.add_argument("dataset", help="Path to the dataset file in CSV format.")
+    parser.add_argument("-r", "--rate", type=float, default=0.0001, help="Learning rate, default: 0.0001")
+    parser.add_argument("-e", "--epoch", type=int, default=1000, help="Number of epochs, default: 1000")
+    parser.add_argument("-v", "--visualise", action="store_true", help="Visualize the data and regression line.")
+    parser.add_argument("-ve", "--verror", action="store_true", help="Visualize the error evolution.")
+    
+    args = parser.parse_args()
+    dataset = read_file(args.dataset)
+    compute(dataset, args.rate, args.epoch, args.visualise, args.verror)

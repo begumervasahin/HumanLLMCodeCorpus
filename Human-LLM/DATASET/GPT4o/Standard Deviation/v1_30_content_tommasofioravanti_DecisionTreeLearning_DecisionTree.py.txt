@@ -1,0 +1,65 @@
+class DecisionTree:
+    def __init__(self, attribute, threshold, attrname=None, default_child=None, branches=None):
+        """
+        Initialize the DecisionTree node with an attribute, threshold, optional attribute name,
+        default child, and branches dictionary.
+        """
+        self.attr = attribute
+        self.threshold = threshold
+        self.attrname = attrname or attribute
+        self.default_child = default_child
+        self.branches = branches or {}
+
+    def __call__(self, example):
+        """
+        Classify the given example using the attribute and branches of the decision tree.
+        """
+        attrvalue = example[self.attr]
+        if float(attrvalue) > self.threshold:
+            return self.branches[(self.threshold, True)](example)
+        else:
+            return self.branches[(self.threshold, False)](example)
+
+    def add(self, val, is_greater, subtree):
+        """
+        Add a branch to the decision tree for the given value and comparison result.
+        """
+        self.branches[(val, is_greater)] = subtree
+
+    def display(self, indent=0):
+        """
+        Display the structure of the decision tree.
+        """
+        name = self.attrname
+        print('Test', name)
+        for (val, subtree) in self.branches.items():
+            if val[1] is True:
+                print(' ' * 4 * indent, name, '>', val[0], '==>', end=' ')
+            else:
+                print(' ' * 4 * indent, name, '<=', val[0], '==>', end=' ')
+            subtree.display(indent + 1)
+
+
+# Example usage:
+if __name__ == "__main__":
+    # Leaf nodes
+    leaf1 = DecisionTree(None, None)
+    leaf1.__call__ = lambda x: "Leaf 1"
+
+    leaf2 = DecisionTree(None, None)
+    leaf2.__call__ = lambda x: "Leaf 2"
+
+    # Intermediate nodes
+    tree = DecisionTree('attribute1', 10)
+    tree.add(10, True, leaf1)
+    tree.add(10, False, leaf2)
+
+    # Display the tree
+    tree.display()
+
+    # Test example
+    example = {'attribute1': 12}
+    print("Classification:", tree(example))
+
+    example = {'attribute1': 8}
+    print("Classification:", tree(example))

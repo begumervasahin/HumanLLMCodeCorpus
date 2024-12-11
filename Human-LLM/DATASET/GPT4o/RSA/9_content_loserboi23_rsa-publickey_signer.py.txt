@@ -1,0 +1,59 @@
+import os, random, struct
+import sys
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA512
+from base64 import b64encode, b64decode
+def loadKey(keyPath):
+	key = None
+	with open(keyPath, 'r') as keyFile:
+		keyFileContent = keyFile.read()
+		decodedKey = b64decode(keyFileContent)
+		key = RSA.importKey(decodedKey)
+	return key
+def digSig(sigKey, string):
+	return sigKey.sign(string,' ')
+def getFileSig(fileName, privKey):
+	with open(fileName,'r') as file:
+		content = file.read()
+	dataHash = SHA512.new(content).hexdigest()
+	return digSig(privKey,dataHash)
+def verifyFileSig(fileName, pubKey, signature):
+	with open(fileName,'r') as file:
+		content = file.read()
+	dataHash = SHA512.new(content).hexdigest()
+	return verifySig(dataHash,signature,pubKey)
+def saveSig(fileName, signature):
+	signature_string = signature[0];
+	signature_string = str(signature_string)
+	with open(fileName,'w') as file:
+		file.write(signature_string)
+def loadSig(fileName):
+	with open(fileName,'r') as file:
+		signature = file.read()
+	return tuple((int(signature),None))
+def verifySig(theHash, sig, veriKey):
+	return veriKey.verify(theHash,sig)
+def main():
+	if len(sys.argv) < 5:
+		print "USAGE: " + sys.argv[0] + " <KEY FILE NAME> <SIGNATURE FILE NAME> <INPUT FILE NAME>"
+		exit(-1)
+	keyFileName = sys.argv[1]
+	sigFileName = sys.argv[2]
+	inputFileName = sys.argv[3]
+	mode = sys.argv[4]
+	Key = loadKey(keyFileName)
+	if mode == "sign":
+		saveSig(sigFileName,getFileSig(inputFileName,Key))
+		print "Signature saved to file ", sigFileName
+	elif mode == "verify":
+		signature = loadSig(sigFileName)
+		if verifyFileSig(inputFileName,Key,signature) == True:
+			print "Signature Matches"
+		else:
+			print "Signature DO NOT MATCH"
+	else:
+		print "Invalid mode ", mode
+if __name__ == "__main__":
+	main()

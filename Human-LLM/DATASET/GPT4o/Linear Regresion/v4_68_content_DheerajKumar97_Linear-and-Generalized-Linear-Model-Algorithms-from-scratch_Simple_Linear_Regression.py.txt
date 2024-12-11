@@ -1,0 +1,173 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import matplotlib.patches as mpatches
+import warnings
+
+warnings.filterwarnings("ignore")
+
+def calculate_slope(x, y):
+    """
+    Calculate the slope for linear regression.
+    
+    Args:
+    x (array-like): Independent variable.
+    y (array-like): Dependent variable.
+    
+    Returns:
+    float: Slope of the regression line.
+    """
+    n = len(x)
+    numerator = np.sum(x * y) * n - np.sum(x) * np.sum(y)
+    denominator = n * np.sum(x**2) - (np.sum(x))**2
+    return numerator / denominator
+
+def calculate_intercept(x, y):
+    """
+    Calculate the intercept for linear regression.
+    
+    Args:
+    x (array-like): Independent variable.
+    y (array-like): Dependent variable.
+    
+    Returns:
+    float: Intercept of the regression line.
+    """
+    return np.mean(y) - calculate_slope(x, y) * np.mean(x)
+
+def predict(slope, x, intercept):
+    """
+    Make predictions using the linear regression model.
+    
+    Args:
+    slope (float): Slope of the regression line.
+    x (array-like): Independent variable.
+    intercept (float): Intercept of the regression line.
+    
+    Returns:
+    array-like: Predicted values.
+    """
+    return slope * x + intercept
+
+def calculate_r_squared(predictions, actual):
+    """
+    Calculate the R-squared value.
+    
+    Args:
+    predictions (array-like): Predicted values.
+    actual (array-like): Actual values.
+    
+    Returns:
+    float: R-squared value.
+    """
+    ss_total = np.sum((actual - np.mean(actual))**2)
+    ss_residual = np.sum((actual - predictions)**2)
+    return 1 - (ss_residual / ss_total)
+
+def calculate_correlation_coeff(predictions, actual):
+    """
+    Calculate the correlation coefficient.
+    
+    Args:
+    predictions (array-like): Predicted values.
+    actual (array-like): Actual values.
+    
+    Returns:
+    float: Correlation coefficient.
+    """
+    n = len(predictions)
+    numerator = np.sum(predictions * actual) * n - np.sum(predictions) * np.sum(actual)
+    denominator = np.sqrt((n * np.sum(predictions**2) - np.sum(predictions)**2) *
+                          (n * np.sum(actual**2) - np.sum(actual)**2))
+    return numerator / denominator
+
+def calculate_covariance(x, y):
+    """
+    Calculate the covariance between two variables.
+    
+    Args:
+    x (array-like): Independent variable.
+    y (array-like): Dependent variable.
+    
+    Returns:
+    float: Covariance.
+    """
+    return np.sum(x * y) / len(x) - np.mean(x) * np.mean(y)
+
+def train_test_split(x, y, train_ratio, test_ratio):
+    """
+    Split the data into training and testing sets.
+    
+    Args:
+    x (array-like): Independent variable.
+    y (array-like): Dependent variable.
+    train_ratio (float): Ratio of training data.
+    test_ratio (float): Ratio of testing data.
+    
+    Returns:
+    tuple: Training and testing sets.
+    """
+    assert train_ratio + test_ratio == 1.0, "Train and test ratios must sum to 1.0"
+    assert len(x) == len(y), "The length of x and y must be equal"
+
+    n_train = int(len(x) * train_ratio)
+    n_test = len(x) - n_train
+    
+    x_train = x[:n_train]
+    x_test = x[-n_test:]
+    y_train = y[:n_train]
+    y_test = y[-n_test:]
+    
+    return x_train, x_test, y_train, y_test
+
+# Load dataset
+dataset = pd.read_csv('Salary_Data.csv')
+X = dataset.iloc[:, 0].values
+Y = dataset.iloc[:, 1].values
+
+# Plot box plots
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+axes[0].boxplot(X)
+axes[0].set_title('Box plot for X')
+axes[1].boxplot(Y)
+axes[1].set_title('Box plot for Y')
+plt.show()
+
+# Calculate and print covariance
+print(f"Covariance: {calculate_covariance(X, Y)}")
+
+# Split data into training and testing sets
+train_ratio = 0.7
+test_ratio = 0.3
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, train_ratio, test_ratio)
+
+# Calculate slope and intercept
+slope = calculate_slope(X_train, Y_train)
+intercept = calculate_intercept(X_train, Y_train)
+
+# Make predictions
+predictions = predict(slope, X_test, intercept)
+
+# Calculate R-squared and correlation coefficient
+r_squared = calculate_r_squared(predictions, Y_test)
+correlation_coeff = calculate_correlation_coeff(predictions, Y_test)
+
+print(f"Intercept: {intercept}")
+print(f"Slope: {slope}")
+print(f"Predictions: {predictions}")
+print(f"R-squared: {r_squared}")
+print(f"Correlation Coefficient: {correlation_coeff}")
+
+# Plot regression line
+plt.scatter(X, Y, marker='^', color='k', alpha=0.55)
+plt.plot(X, predict(slope, X, intercept), color='red', linewidth=2)
+plt.legend(handles=[mpatches.Patch(color='red', label='Regression Line')])
+plt.title('Linear Regression Plot')
+plt.show()
+
+# Plot residuals
+sns.set(style="whitegrid")
+sns.residplot(X, Y, lowess=True, color="r")
+plt.title('Residual Plot')
+plt.show()

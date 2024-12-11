@@ -1,0 +1,106 @@
+from orthogonalization import orthogonalize, aug_orthogonalize
+from matutil import listlist2mat, coldict2mat
+from vecutil import list2vec
+from math import sqrt
+from vec import Vec
+
+def find_norm(vec):
+    """
+    Calculate the Euclidean norm of a vector.
+
+    Parameters
+    ----------
+    vec : Vec
+        The vector for which to calculate the norm.
+
+    Returns
+    -------
+    float
+        The Euclidean norm of the vector.
+    """
+    return sqrt(vec * vec)
+
+def orthonormalize(L):
+    """
+    Orthonormalize a list of vectors using the Gram-Schmidt process.
+
+    Parameters
+    ----------
+    L : list of Vec
+        List of Vec instances to orthonormalize.
+
+    Returns
+    -------
+    list of Vec
+        List of orthonormalized Vec instances.
+    """
+    Lstar = orthogonalize(L)
+    norms = [find_norm(l) for l in Lstar]
+    return [(1 / norm) * l for l, norm in zip(Lstar, norms)]
+
+def adjust(v, multipliers):
+    """
+    Adjust the vector by element-wise multiplication with multipliers.
+
+    Parameters
+    ----------
+    v : Vec
+        The vector to adjust.
+    multipliers : dict
+        The multipliers for each element in v.
+
+    Returns
+    -------
+    Vec
+        The adjusted vector.
+    """
+    return Vec(v.D, {i: v[i] * multipliers[i] for i in v.D})
+
+def aug_orthonormalize(L):
+    """
+    Perform augmented orthonormalization on a list of vectors.
+
+    Parameters
+    ----------
+    L : list of Vec
+        List of Vec instances to orthonormalize.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the list of orthonormalized vectors (Q) and the 
+        corresponding adjustments (R).
+    """
+    Lstar, sigmadict = aug_orthogonalize(L)
+    norms = [find_norm(l) for l in Lstar]
+    R = [adjust(sigma, {i: norms[i] for i in range(len(norms))}) for sigma in sigmadict]
+    Q = [(1 / norm) * l for l, norm in zip(Lstar, norms)]
+    return Q, R
+
+# Example usage
+if __name__ == "__main__":
+    # Example with a 2x2 matrix
+    l = [list2vec(vec) for vec in [[6, 6], [2, 0]]]
+    Q, R = aug_orthonormalize(l)
+    print("Q:", Q)
+    print("R:", R)
+    
+    Q_mat = coldict2mat(Q)
+    R_mat = coldict2mat(R)
+    print("Q_mat:\n", Q_mat)
+    print("R_mat:\n", R_mat)
+    
+    # Example with a 3x2 matrix
+    l = [list2vec(vec) for vec in [[2, 3], [2, 1], [1, 1]]]
+    print("Original matrix:\n", coldict2mat(l))
+    
+    Q, R = aug_orthonormalize(l)
+    print("Q:", Q)
+    print("R:", R)
+    
+    Q_mat = coldict2mat(Q)
+    R_mat = coldict2mat(R)
+    print("Q_mat:\n", Q_mat)
+    print("R_mat:\n", R_mat)
+    
+    print("Reconstructed matrix:\n", Q_mat * R_mat)

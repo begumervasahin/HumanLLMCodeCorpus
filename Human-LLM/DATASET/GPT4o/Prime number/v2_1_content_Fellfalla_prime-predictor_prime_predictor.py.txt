@@ -1,0 +1,80 @@
+import tensorflow as tf
+import numpy as np
+
+# Dictionary to store known prime states
+prime_states = {
+    2: True,
+    3: True,
+    4: False
+}
+
+def is_prime(given_number):
+    """
+    Check if a number is prime and store the result in prime_states.
+
+    Args:
+        given_number (int): The number to check for primality.
+
+    Returns:
+        bool: True if the number is prime, False otherwise.
+    """
+    if given_number not in prime_states:
+        prime_states[given_number] = True
+        for num in range(2, int(given_number ** 0.5) + 1):
+            if given_number % num == 0:
+                prime_states[given_number] = False
+                break
+    return prime_states[given_number]
+
+def get_next_prime(x):
+    """
+    Get the next prime number greater than or equal to x.
+
+    Args:
+        x (int): The starting number to find the next prime.
+
+    Returns:
+        int: The next prime number greater than or equal to x.
+    """
+    while not is_prime(x):
+        x += 1
+    return x
+
+if __name__ == "__main__":
+    # Find and print the next prime number greater than or equal to 500
+    a = get_next_prime(500)
+    print(a)
+
+    # Build the model
+    prime_model = tf.keras.Sequential([
+        tf.keras.layers.Dense(24, activation='relu', input_dim=1),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(1)
+    ])
+
+    # Compile the model
+    opt = tf.keras.optimizers.Adam()
+    loss = tf.keras.losses.mae
+    prime_model.compile(optimizer=opt, loss=loss)
+    prime_model.summary()
+
+    # Training parameters
+    batch_size = 64
+    steps = 500
+
+    # Train the model
+    for i in range(steps):
+        x = np.array(range(i * batch_size, (i + 1) * batch_size)).reshape(-1, 1)
+        y = np.array([get_next_prime(n) for n in x.flatten()])
+        r = prime_model.train_on_batch(x, y)
+        print(f"Step {i+1}/{steps}, Loss: {r}")
+
+    # Test the model
+    for i in range(steps * batch_size, steps * batch_size + 50):
+        x = np.array([[i]])
+        expected = get_next_prime(i)
+        pred = prime_model.predict(x)
+        print(f"input: {i}\texpected: {expected}\tpredicted: {int(pred[0][0])}")

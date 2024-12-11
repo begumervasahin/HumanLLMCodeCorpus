@@ -1,0 +1,35 @@
+import urllib.request
+import ssl
+from bs4 import BeautifulSoup
+
+# Set up SSL context to ignore certificate errors
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+def get_url_at_position(url, position):
+    """
+    Retrieve the URL at the specified position from the given URL's page.
+    """
+    html = urllib.request.urlopen(url, context=ctx).read()
+    soup = BeautifulSoup(html, 'html.parser')
+    tags = soup('a')
+    return tags[position - 1].get('href', None)
+
+def main():
+    """
+    Main function to retrieve and follow URLs based on user inputs.
+    """
+    url = input('Enter URL: ')
+    count = int(input('Enter count: '))
+    position = int(input('Enter position: '))
+
+    for _ in range(count + 1):
+        print('Retrieving:', url)
+        url = get_url_at_position(url, position)
+        if url is None:
+            print("No URL found at the specified position.")
+            break
+
+if __name__ == "__main__":
+    main()

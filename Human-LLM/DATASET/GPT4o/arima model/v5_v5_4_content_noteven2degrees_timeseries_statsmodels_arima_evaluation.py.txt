@@ -1,0 +1,64 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error
+
+# Set plot size
+plt.rcParams['figure.figsize'] = [12, 6]
+
+# Load and display the data
+data_path = './data/AirPassengers.csv'
+data = pd.read_csv(data_path, parse_dates=['Month'], index_col='Month')
+print("First few rows of data:\n", data.head())
+
+# Decompose the time series
+decomposition = seasonal_decompose(data['Passengers'], two_sided=False)
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid.dropna()
+
+# Split data into training and testing sets
+train_size = int(len(residual) * 0.8)
+train, test = residual[:train_size], residual[train_size:]
+
+# Plot training and testing sets
+plt.plot(train, color='blue', label='Training set')
+plt.plot(test, color='green', label='Testing set')
+plt.legend()
+plt.title('Training and Testing Sets')
+plt.show()
+
+# Function to evaluate ARIMA models
+def evaluate_arima(order, forecast_only=True):
+    history = list(train)
+    predictions = []
+
+    for t in range(len(test)):
+        model = ARIMA(history, order=order)
+        model_fit = model.fit(disp=0)
+        yhat = model_fit.forecast()[0] if forecast_only else model_fit.predict(start=len(history), end=len(history))[0]
+        predictions.append(yhat)
+        history.append(test[t])
+
+    mse = mean_squared_error(test, predictions)
+    return predictions, mse
+
+# Evaluate different ARIMA models
+orders = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0, 1), (1, 1, 1)]
+mse_results = {}
+
+for order in orders:
+    predictions, mse = evaluate_arima(order)
+    mse_results[order] = mse
+
+    # Plot predictions
+    plt.plot(test, label='Ground Truth')
+    plt.plot(predictions, label=f'ARIMA{order}', alpha=0.7)
+    plt.legend()
+    plt.title(f'ARIMA{order} Predictions')
+    plt.show()
+
+# Display MSE results
+for order, mse in mse_results.items():
+    print(f'MSE for ARIMA{order}: {mse:.4f}')

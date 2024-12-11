@@ -1,0 +1,101 @@
+import sys
+import heapq
+from disjoint_set import DisjointSet
+
+def read_graph(input_file):
+    adjacency = {}
+    unvisited_set = set()
+    nodes = set()
+
+    with open(input_file) as graph:
+        for line in graph:
+            vertex1, vertex2, weight = line.split()
+            weight = int(weight)
+            
+            if vertex1 not in adjacency:
+                adjacency[vertex1] = []
+            if vertex2 not in adjacency:
+                adjacency[vertex2] = []
+
+            adjacency[vertex1].append((vertex2, weight))
+            adjacency[vertex2].append((vertex1, weight))
+
+            unvisited_set.add(vertex1)
+            unvisited_set.add(vertex2)
+            nodes.update([vertex1, vertex2])
+
+    return adjacency, unvisited_set, list(nodes)
+
+def prims(input_file):
+    adjacency, unvisited_set, nodes = read_graph(input_file)
+    
+    # Initialize structures for Prim's algorithm
+    start_node = nodes[0]
+    distance = {node: sys.maxsize for node in nodes}
+    previous = {node: None for node in nodes}
+    distance[start_node] = 0
+    queue = [(0, start_node)]
+    mst_edges = []
+    total_cost = 0
+
+    while queue:
+        current_cost, current_vertex = heapq.heappop(queue)
+        
+        if current_cost > distance[current_vertex]:
+            continue
+        
+        for neighbor, weight in adjacency[current_vertex]:
+            if weight < distance[neighbor]:
+                distance[neighbor] = weight
+                previous[neighbor] = current_vertex
+                heapq.heappush(queue, (weight, neighbor))
+                mst_edges.append((current_vertex, neighbor, weight))
+                total_cost += weight
+
+    print(f"Prim's total cost: {total_cost}")
+    return mst_edges
+
+def kruskals(input_file):
+    adjacency, _, nodes = read_graph(input_file)
+
+    # Flatten edge list and sort by weight
+    edges = [(weight, v1, v2) for v1 in adjacency for v2, weight in adjacency[v1]]
+    edges = list(set(edges))  # Remove duplicate edges
+    edges.sort()
+
+    disjoint_set = DisjointSet(len(nodes))
+    node_index = {node: idx for idx, node in enumerate(nodes)}
+    
+    total_cost = 0
+    mst_edges = []
+
+    for weight, v1, v2 in edges:
+        root1 = disjoint_set.find(node_index[v1])
+        root2 = disjoint_set.find(node_index[v2])
+        
+        if root1 != root2:
+            disjoint_set.union(root1, root2)
+            mst_edges.append((v1, v2, weight))
+            total_cost += weight
+
+    print(f"Kruskal's total cost: {total_cost}")
+    return mst_edges
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print('Usage: python mst.py [input file] [prims | kruskals]')
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+    algorithm = sys.argv[2]
+
+    if algorithm == 'prims':
+        mst_edges = prims(input_file)
+    elif algorithm == 'kruskals':
+        mst_edges = kruskals(input_file)
+    else:
+        print("Illegal algorithm. Must be either 'prims' or 'kruskals'")
+        sys.exit(1)
+
+    for edge in mst_edges:
+        print(edge)

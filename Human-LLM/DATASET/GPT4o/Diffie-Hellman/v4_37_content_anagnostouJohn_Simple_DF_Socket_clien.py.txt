@@ -1,0 +1,76 @@
+"""
+Created on Thu Sep  6 13:34:29 2018
+Author: John
+"""
+
+import socket
+import json
+from diffiehellman.diffiehellman import DiffieHellman
+
+# Server connection details
+IP_ADDRESS = '192.168.168.184'
+PORT = 8201
+TIMEOUT = 5
+BUFFER_SIZE = 100
+
+def connect_to_server(ip_address, port, timeout):
+    """
+    Connect to the server and return the socket object.
+    """
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.settimeout(timeout)
+    server.connect((ip_address, port))
+    return server
+
+def send_public_key(server, public_key):
+    """
+    Send the public key to the server.
+    """
+    data = json.dumps({"bob": public_key}).encode("utf-8")
+    server.send(data)
+
+def receive_data(server, buffer_size):
+    """
+    Receive data from the server.
+    """
+    total_data = []
+    while True:
+        try:
+            message = server.recv(buffer_size).decode("utf-8")
+            if message:
+                total_data.append(message)
+            else:
+                break
+        except socket.error as ex:
+            print(f"Socket error: {ex}")
+            break
+    return ''.join(total_data)
+
+def main():
+    # Connect to the server
+    server = connect_to_server(IP_ADDRESS, PORT, TIMEOUT)
+    
+    # Generate DiffieHellman keys
+    bob = DiffieHellman()
+    bob.generate_public_key()
+    
+    # Send public key to the server
+    send_public_key(server, bob.public_key)
+    
+    # Receive data from the server
+    total_data = receive_data(server, BUFFER_SIZE)
+    
+    # Load the received data
+    received_data = json.loads(total_data)
+    
+    # Generate shared secret
+    bob.generate_shared_secret(received_data["alice"], echo_return_key=True)
+    
+    # Print the shared key
+    print(f"Shared Key: {bob.shared_key}")
+    
+    # Close the server connection
+    server.close()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,63 @@
+import sys
+import time
+from pyspark import SparkContext, SparkConf
+from utilities.Utils import Utils
+
+def load_post_code_map(file_path):
+    """
+    Load the UK postcode map from a CSV file and return a dictionary mapping postcodes to regions.
+    
+    Args:
+        file_path (str): The path to the CSV file containing postcode data.
+    
+    Returns:
+        dict: A dictionary where the keys are postcodes and the values are regions.
+    """
+    with open(file_path, "r") as f:
+        lines = f.read().split("\n")
+    return {line.split(',')[0]: line.split(',')[7] for line in lines if line}
+
+def get_post_prefix(line):
+    """
+    Extract the postcode prefix from a line of CSV data.
+    
+    Args:
+        line (str): A line of CSV data.
+    
+    Returns:
+        str: The postcode prefix or None if not available.
+    """
+    postcode = line.split(',')[4]
+    return postcode.split(" ")[0] if postcode else None
+
+def main():
+    start_time = time.time()
+
+    # Initialize Spark context
+    conf = SparkConf().setAppName('UkMakerSpaces').setMaster("local[*]")
+    sc = SparkContext(conf=conf)
+    sc.setLogLevel("ERROR")
+
+    # Load postcode to region mapping
+    post_code_map = load_post_code_map("data/uk-postcode.csv")
+
+    # Load maker spaces data
+    maker_space_rdd = sc.textFile("data/uk-makerspaces-identifiable-data.csv")
+
+    # Process data to map postcodes to regions and count occurrences
+    regions = maker_space_rdd \
+        .filter(lambda line: line.split(',')[0] != "Timestamp") \
+        .map(lambda line: post_code_map.get(get_post_prefix(line), "Unknown"))
+
+    region_counts = regions.countByValue()
+
+    # Output region counts
+    for region, count in region_counts.items():
+        print(f"{region}: {count}")
+
+    # Print execution time
+    print("\nExecution time")
+    print(f"--- {time.time() - start_time} seconds ---")
+
+if __name__ == "__main__":
+    main()

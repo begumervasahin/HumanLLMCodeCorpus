@@ -1,0 +1,153 @@
+import os
+import gzip
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+# Set Seaborn style and palette
+sns.set_style('darkgrid')
+sns.set_palette('muted')
+sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5})
+
+# Define random seed for reproducibility
+RANDOM_SEED = 123
+
+def load_mnist(data_dir, dataset_type='train'):
+    """
+    Load MNIST data from a specified directory.
+
+    Args:
+        data_dir (str): Directory where the MNIST data files are located.
+        dataset_type (str): Type of dataset to load ('train' or 't10k').
+
+    Returns:
+        tuple: Tuple containing images and labels as numpy arrays.
+    """
+    labels_path = os.path.join(data_dir, f'{dataset_type}-labels-idx1-ubyte.gz')
+    images_path = os.path.join(data_dir, f'{dataset_type}-images-idx3-ubyte.gz')
+
+    with gzip.open(labels_path, 'rb') as label_file:
+        labels = np.frombuffer(label_file.read(), dtype=np.uint8, offset=8)
+
+    with gzip.open(images_path, 'rb') as image_file:
+        images = np.frombuffer(image_file.read(), dtype=np.uint8, offset=16).reshape(len(labels), 784)
+
+    return images, labels
+
+def create_scatter_plot(embedding, labels):
+    """
+    Create a scatter plot of the data using its embedding (PCA or t-SNE results).
+
+    Args:
+        embedding (np.ndarray): The 2D data embedding to plot.
+        labels (np.ndarray): Corresponding class labels for the data points.
+
+    Returns:
+        tuple: Matplotlib figure, axes, scatter plot, and text annotations.
+    """
+    num_classes = len(np.unique(labels))
+    palette = np.array(sns.color_palette("hls", num_classes))
+
+    plt.figure(figsize=(8, 8))
+    ax = plt.subplot(aspect='equal')
+    scatter = ax.scatter(embedding[:, 0], embedding[:, 1], lw=0, s=40, c=palette[labels.astype(int)])
+    plt.xlim(-25, 25)
+    plt.ylim(-25, 25)
+    ax.axis('off')
+    ax.axis('tight')
+
+    annotations = []
+    for i in range(num_classes):
+        x_text, y_text = np.median(embedding[labels == i, :], axis=0)
+        text = ax.text(x_text, y_text, str(i), fontsize=24)
+        text.set_path_effects([PathEffects.Stroke(linewidth=5, foreground="w"), PathEffects.Normal()])
+        annotations.append(text)
+
+    return plt.gcf(), ax, scatter, annotations
+
+def perform_pca(data, n_components=2):
+    """
+    Perform PCA on the data.
+
+    Args:
+        data (np.ndarray): The input data to reduce dimensions.
+        n_components (int): Number of principal components to keep.
+
+    Returns:
+        tuple: Transformed data and the variance explained by each principal component.
+    """
+    pca = PCA(n_components=n_components)
+    pca_result = pca.fit_transform(data)
+    explained_variance = pca.explained_variance_ratio_
+    print(f'Variance explained by each principal component: {explained_variance}')
+    return pca_result, explained_variance
+
+def perform_tsne(data, random_state=RANDOM_SEED):
+    """
+    Perform t-SNE on the data.
+
+    Args:
+        data (np.ndarray): The input data to reduce dimensions.
+        random_state (int): Seed for reproducibility.
+
+    Returns:
+        np.ndarray: The 2D embedding of the data after t-SNE.
+    """
+    tsne = TSNE(random_state=random_state)
+    tsne_result = tsne.fit_transform(data)
+    return tsne_result
+
+def main():
+    # Load MNIST data
+    data_dir = os.getcwd()
+    X_train, y_train = load_mnist(data_dir, dataset_type='train')
+
+    # Subset the first 20k data points for visualization
+    subset_size = 20000
+    X_subset = X_train[:subset_size]
+    y_subset = y_train[:subset_size]
+
+    print("Unique labels in the subset:", np.unique(y_subset))
+
+    # Perform PCA and visualize the top two components
+    print("Performing PCA with 4 components...")
+    start_time = time.time()
+    pca_result, _ = perform_pca(X_subset, n_components=4)
+    print(f"PCA completed in {time.time() - start_time:.2f} seconds")
+    
+    pca_df = pd.DataFrame(pca_result, columns=['pca1', 'pca2', 'pca3', 'pca4'])
+    print(f'Variance explained per principal component: {pca_df.var()}')
+
+    top_two_components = pca_df[['pca1', 'pca2']]
+    create_scatter_plot(top_two_components.values, y_subset)
+
+    # Perform t-SNE and visualize the results
+    print("Performing t-SNE...")
+    start_time = time.time()
+    tsne_result = perform_tsne(X_subset)
+    print(f"t-SNE completed in {time.time() - start_time:.2f} seconds")
+    
+    create_scatter_plot(tsne_result, y_subset)
+
+    # Perform PCA with 50 components and apply t-SNE
+    print("Performing PCA with 50 components...")
+    start_time = time.time()
+    pca_50_result, _ = perform_pca(X_subset, n_components=50)
+    print(f"PCA with 50 components completed in {time.time() - start_time:.2f} seconds")
+
+    print(f"Cumulative variance explained by 50 principal components: {np.sum(pca_50_result.var())}")
+
+    print("Performing t-SNE on PCA-reduced data...")
+    start_time = time.time()
+    tsne_pca_result = perform_tsne(pca_50_result)
+    print(f"t-SNE on PCA-reduced data completed in {time.time() - start_time:.2f} seconds")
+
+    create_scatter_plot(tsne_pca_result, y_subset)
+
+if __name__ == "__main__":
+    main()

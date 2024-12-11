@@ -1,0 +1,90 @@
+def popmin(pqueue):
+    """
+    Remove and return the key with the minimum value from the priority queue.
+
+    Parameters:
+    pqueue (dict): A dictionary where keys are nodes and values are distances.
+
+    Returns:
+    keylowest (any): The key associated with the minimum value in the priority queue.
+    """
+    # Initialize variables to track the minimum value and corresponding key
+    lowest = float('inf')
+    keylowest = None
+
+    # Find the key with the minimum value
+    for key, value in pqueue.items():
+        if value < lowest:
+            lowest = value
+            keylowest = key
+
+    # Remove the key with the minimum value from the queue
+    if keylowest is not None:
+        del pqueue[keylowest]
+
+    return keylowest
+
+def dijkstra(graph, start):
+    """
+    Calculate the shortest paths from the start node to all other nodes using Dijkstra's algorithm.
+
+    Parameters:
+    graph (dict): Adjacency list where keys are nodes and values are dictionaries of neighbors with edge weights.
+    start (any): The starting node for the algorithm.
+
+    Returns:
+    tuple: A tuple containing two dictionaries:
+        - dist (dict): Shortest distances from the start node to each node.
+        - pred (dict): Predecessors of each node in the shortest path.
+    """
+    # Initialize dictionaries for priority queue, distances, and predecessors
+    pqueue = {}
+    dist = {}
+    pred = {}
+
+    # Set initial distances to infinity and predecessors to None
+    for node in graph:
+        dist[node] = float('inf')
+        pred[node] = None
+        pqueue[node] = dist[node]
+
+    # Distance to the start node is zero
+    dist[start] = 0
+    pqueue[start] = dist[start]
+
+    while pqueue:
+        # Get the node with the minimum distance
+        current_node = popmin(pqueue)
+
+        # Update distances for neighboring nodes
+        for neighbor, weight in graph.get(current_node, {}).items():
+            new_distance = dist[current_node] + weight
+            if new_distance < dist[neighbor]:
+                dist[neighbor] = new_distance
+                pred[neighbor] = current_node
+                pqueue[neighbor] = new_distance
+
+    return dist, pred
+
+if __name__ == '__main__':
+    # Define the graph as an adjacency list
+    graph = {
+        0: {1: 6, 2: 1, 3: 4},
+        1: {4: 3},
+        2: {1: -3, 3: 2},
+        3: {4: -1},
+        4: {2: 5},
+    }
+
+    # Compute shortest paths from start node 0
+    dist, pred = dijkstra(graph, 0)
+
+    # Output shortest distances
+    print("Shortest distance from start node 0 to all other nodes:")
+    for node, distance in dist.items():
+        print(f"Node {node}: Distance = {distance}")
+
+    # Output predecessors
+    print("\nPredecessors in the shortest paths from start node 0:")
+    for node, predecessor in pred.items():
+        print(f"Node {node}: Predecessor = {predecessor}")

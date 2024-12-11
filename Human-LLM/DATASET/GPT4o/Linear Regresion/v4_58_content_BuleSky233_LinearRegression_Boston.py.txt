@@ -1,0 +1,139 @@
+import random
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+
+def compute_cost(X, Y, theta):
+    """
+    Computes the cost function for linear regression.
+    Args:
+        X (np.ndarray): Feature matrix.
+        Y (np.ndarray): Target vector.
+        theta (np.ndarray): Parameters for the regression.
+    Returns:
+        float: Computed cost.
+    """
+    m = len(Y)
+    predictions = np.dot(X.T, theta)
+    errors = predictions - Y
+    cost = (1 / (2 * m)) * np.dot(errors.T, errors)
+    return cost[0][0]
+
+def batch_gradient_descent(X, Y, theta, learning_rate=0.00005, threshold=0.1, max_iterations=10000):
+    """
+    Performs batch gradient descent to learn theta.
+    Args:
+        X (np.ndarray): Feature matrix.
+        Y (np.ndarray): Target vector.
+        theta (np.ndarray): Parameters for the regression.
+        learning_rate (float): Learning rate for gradient descent.
+        threshold (float): Threshold for convergence.
+        max_iterations (int): Maximum number of iterations.
+    Returns:
+        tuple: Updated theta, number of iterations, cost history.
+    """
+    cost = compute_cost(X, Y, theta)
+    cost_history = []
+    iterations = 0
+    
+    while cost > threshold and iterations < max_iterations:
+        gradients = np.dot(X, np.dot(X.T, theta) - Y)
+        theta -= learning_rate * gradients
+        cost = compute_cost(X, Y, theta)
+        cost_history.append(cost)
+        iterations += 1
+    
+    return theta, iterations, cost_history
+
+def stochastic_gradient_descent(X, Y, theta, learning_rate=0.0001, threshold=0.1, max_iterations=10000):
+    """
+    Performs stochastic gradient descent to learn theta.
+    Args:
+        X (np.ndarray): Feature matrix.
+        Y (np.ndarray): Target vector.
+        theta (np.ndarray): Parameters for the regression.
+        learning_rate (float): Learning rate for gradient descent.
+        threshold (float): Threshold for convergence.
+        max_iterations (int): Maximum number of iterations.
+    Returns:
+        tuple: Updated theta, number of iterations, cost history.
+    """
+    cost_history = []
+    iterations = 0
+    cost = compute_cost(X, Y, theta)
+    cost_history.append(cost)
+    m, n = X.shape
+    
+    while cost > threshold and iterations < max_iterations:
+        for i in range(n):
+            prediction = np.dot(X[:, i], theta)[0]
+            for j in range(m):
+                theta[j] -= learning_rate * (prediction - Y[i][0]) * X[j][i]
+        cost = compute_cost(X, Y, theta)
+        cost_history.append(cost)
+        iterations += 1
+    
+    return theta, iterations, cost_history
+
+def main():
+    # Load dataset
+    data_file = 'housing.data'
+    df = pd.read_csv(data_file, header=None, delim_whitespace=True)
+    
+    # Extract features and target
+    data = df.values
+    X = data[:, :-1]
+    Y = data[:, -1].reshape(-1, 1)
+    
+    # Standardize features and target
+    scaler_X = StandardScaler()
+    scaler_Y = StandardScaler()
+    X = scaler_X.fit_transform(X)
+    Y = scaler_Y.fit_transform(Y)
+    
+    # Add intercept term to X
+    X = np.insert(X.T, 0, 1, axis=0)
+    
+    # Split dataset into training and testing sets
+    train_X, test_X = X[:, :455], X[:, 455:]
+    train_Y, test_Y = Y[:455], Y[455:]
+    
+    # Initialize theta
+    theta = np.ones((len(X), 1))
+    
+    # Perform Batch Gradient Descent and Stochastic Gradient Descent
+    theta_bgd, steps_bgd, cost_history_bgd = batch_gradient_descent(train_X, train_Y, theta.copy())
+    theta_sgd, steps_sgd, cost_history_sgd = stochastic_gradient_descent(train_X, train_Y, theta.copy())
+    
+    # Print results
+    print(f"Minimum cost with BGD: {cost_history_bgd[-1]}")
+    print(f"Minimum cost with SGD: {cost_history_sgd[-1]}")
+    
+    # Plot cost history for both methods
+    plt.plot(range(len(cost_history_bgd)), cost_history_bgd, label='BGD', color='blue')
+    plt.plot(range(len(cost_history_sgd)), cost_history_sgd, label='SGD', color='red')
+    plt.xlabel('Iterations')
+    plt.ylabel('Cost')
+    plt.title('Training Loss Function: BGD vs SGD')
+    plt.legend()
+    plt.savefig('training_loss_comparison.png')
+    plt.show()
+    
+    # Predict on test set
+    predictions_bgd = np.dot(test_X.T, theta_bgd)
+    predictions_sgd = np.dot(test_X.T, theta_sgd)
+    
+    # Plot predictions vs actual values
+    plt.plot(range(len(test_Y)), predictions_bgd, label='Predict BGD', color='blue')
+    plt.plot(range(len(test_Y)), predictions_sgd, label='Predict SGD', color='red')
+    plt.plot(range(len(test_Y)), test_Y, label='Real', color='yellow')
+    plt.xlabel('Samples')
+    plt.ylabel('Standardized Price')
+    plt.title('Test Housing Price Predictions')
+    plt.legend()
+    plt.savefig('test_housing_predictions.png')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

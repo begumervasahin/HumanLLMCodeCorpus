@@ -1,0 +1,98 @@
+"""
+Created on Mon Oct 5 00:31:34 2020
+@author: HP
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+
+# Load the dataset
+data_path = 'C:/Users/HP/Desktop/assignments submission/multi linear regression/ToyotaCorolla.csv'
+corolla_data = pd.read_csv(data_path, encoding="ISO-8859-1")
+
+# Select relevant columns
+selected_columns = ["Price", "Age_08_04", "KM", "HP", "cc", "Doors", "Gears", "Quarterly_Tax", "Weight"]
+Toyota = corolla_data[selected_columns]
+
+# Check for missing values
+print(Toyota.isna().sum())
+Toyota = Toyota.dropna()
+
+# Pairplot to visualize relationships
+sns.pairplot(Toyota)
+plt.show()
+
+# Correlation matrix
+print(Toyota.corr())
+
+# Fit the initial regression model
+formula = 'Price ~ Age_08_04 + KM + HP + cc + Doors + Gears + Quarterly_Tax + Weight'
+toyota_model = smf.ols(formula, data=Toyota).fit()
+print(toyota_model.summary())
+
+# Calculate VIF for each predictor
+def calculate_vif(data, predictor):
+    rsq = smf.ols(f'{predictor} ~ Age_08_04 + KM + HP + cc + Doors + Gears + Quarterly_Tax + Weight', data=data).fit().rsquared
+    return 1 / (1 - rsq)
+
+predictors = ['Age_08_04', 'KM', 'HP', 'cc', 'Doors', 'Gears', 'Quarterly_Tax', 'Weight']
+vif_values = [calculate_vif(Toyota, predictor) for predictor in predictors]
+
+# Create a DataFrame for VIF values
+vif_data = {'Variable': predictors, 'VIF': vif_values}
+vif_frame = pd.DataFrame(vif_data)
+print(vif_frame)
+
+# Plot partial regression and influence
+sm.graphics.plot_partregress_grid(toyota_model)
+plt.show()
+sm.graphics.influence_plot(toyota_model)
+plt.show()
+
+# Remove outlier and refit the model
+outliers = [80]
+Toyota1 = Toyota.drop(Toyota.index[outliers])
+toyota_model1 = smf.ols(formula, data=Toyota1).fit()
+print(toyota_model1.summary())
+
+# Plot partial regression and influence after removing outlier
+sm.graphics.plot_partregress_grid(toyota_model1)
+plt.show()
+sm.graphics.influence_plot(toyota_model1)
+plt.show()
+
+# Remove additional outliers and refit the model
+additional_outliers = [221, 960, 601]
+Toyota2 = Toyota.drop(Toyota.index[outliers + additional_outliers])
+toyota_model2 = smf.ols(formula, data=Toyota2).fit()
+print(toyota_model2.summary())
+
+# Plot partial regression and influence after removing additional outliers
+sm.graphics.plot_partregress_grid(toyota_model2)
+plt.show()
+sm.graphics.influence_plot(toyota_model2)
+plt.show()
+
+# Log transform of certain predictors and refit the model
+formula_log = 'Price ~ Age_08_04 + KM + HP + np.log(cc) + np.log(Doors) + Gears + Quarterly_Tax + Weight'
+toyota_model3 = smf.ols(formula_log, data=Toyota2).fit()
+print(toyota_model3.summary())
+
+# Square transform of certain predictors and refit the model
+Toyota2['cc_sq'] = Toyota2['cc'] ** 2
+Toyota2['Door_sq'] = Toyota2['Doors'] ** 2
+formula_sq = 'Price ~ Age_08_04 + KM + HP + cc + Doors + Gears + Quarterly_Tax + Weight + Door_sq'
+toyota_model4 = smf.ols(formula_sq, data=Toyota2).fit()
+print(toyota_model4.summary())
+
+# Predictions and RMSE calculation
+Toyota_predict = toyota_model4.predict(Toyota2)
+Toyota_error = Toyota2['Price'] - Toyota_predict
+Toyota_rmse = sqrt(mean_squared_error(Toyota2['Price'], Toyota_predict))
+print(f'RMSE: {Toyota_rmse}')

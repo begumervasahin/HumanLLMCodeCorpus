@@ -1,0 +1,87 @@
+import sys
+import csv
+
+def read_data(file_name):
+    x_values = []
+    y_values = []
+    try:
+        with open(file_name, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)  # Skip header row
+            for row in reader:
+                try:
+                    x_values.append(float(row[0]))
+                    y_values.append(float(row[1]))
+                except ValueError:
+                    print('  Error: A value in the file cannot be read')
+                    sys.exit(0)
+    except FileNotFoundError:
+        print('  Error: File could not be opened.')
+        sys.exit(0)
+    return x_values, y_values
+
+def calculate_regression_coefficients(x_values, y_values):
+    count = len(x_values)
+    x_avg = sum(x_values) / count
+    y_avg = sum(y_values) / count
+
+    m_num = sum((x - x_avg) * (y - y_avg) for x, y in zip(x_values, y_values))
+    m_den = sum((x - x_avg) ** 2 for x in x_values)
+    m = m_num / m_den
+    b = y_avg - m * x_avg
+    return m, b
+
+def calculate_errors(x_values, y_values, m, b):
+    est = [m * x + b for x in x_values]
+    errors = [abs(y - e) for y, e in zip(y_values, est)]
+    error_sum = sum(errors)
+    mse = sum((y - e) ** 2 for y, e in zip(y_values, est)) / (len(x_values) - 2)
+    
+    error_avg = round(error_sum / len(errors), 5)
+    standard_error = round(mse ** 0.5, 5)
+    return error_avg, standard_error
+
+def get_headers(file_name):
+    try:
+        with open(file_name, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            headers = next(reader)
+            return headers[0], headers[1].strip()
+    except FileNotFoundError:
+        print('  Error: File could not be opened.')
+        sys.exit(0)
+
+def main():
+    print('\nWelcome to the Linear Regression Generator')
+    file_name = input('Enter File Name Containing Data: ')
+
+    x_values, y_values = read_data(file_name)
+    m, b = calculate_regression_coefficients(x_values, y_values)
+    error_avg, standard_error = calculate_errors(x_values, y_values, m, b)
+
+    m_rounded = round(m, 5)
+    b_rounded = round(b, 5)
+    plus_minus = '+' if b_rounded >= 0 else ''
+
+    print(f'\n  The Linear Regression Line is y = {m_rounded}*x {plus_minus} {b_rounded}.')
+    print(f'  Average Error for Known Values was +/-{error_avg}.')
+    print(f'  Regression Standard Error for Known Values was {standard_error}.')
+    print('  System Ready to make predictions.')
+    print("  To quit, type 'exit' as the year.")
+
+    x_header, y_header = get_headers(file_name)
+
+    while True:
+        year = input(f'  Enter {x_header}: ')
+        if year.lower() == 'exit':
+            sys.exit(0)
+        try:
+            year = int(year)
+            prediction = round(m * year + b, 5)
+            print(f'  Prediction when {x_header} = {year} is {y_header} = {prediction}.')
+            print('  ________________________________')
+        except ValueError:
+            print('  Input could not be understood. Please try again.')
+
+if __name__ == '__main__':
+    main()

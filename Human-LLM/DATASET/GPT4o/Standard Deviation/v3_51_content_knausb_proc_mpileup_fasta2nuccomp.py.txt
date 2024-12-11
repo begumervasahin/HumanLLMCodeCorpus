@@ -1,0 +1,54 @@
+import argparse
+from Bio import SeqIO
+
+def parse_arguments():
+    """
+    Set up and parse command-line arguments.
+    """
+    parser = argparse.ArgumentParser(description='Determine nucleotide composition of FASTA files.')
+    parser.add_argument("fasta_file", help="FASTA file containing nucleotide sequences.")
+    parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
+    return parser.parse_args()
+
+def verbose_print(message, verbose):
+    """
+    Print a message if verbosity is enabled.
+    """
+    if verbose:
+        print(message)
+
+def get_nucleotide_counts(sequence):
+    """
+    Get the counts of each nucleotide in the given sequence.
+    """
+    nucleotides = "aAcCgGtTwWsSmMkKrRyYnN"
+    return {nuc: sequence.count(nuc) for nuc in nucleotides}
+
+def write_nucleotide_composition_to_file(fasta_file, verbose):
+    """
+    Calculate nucleotide composition of each sequence in a FASTA file and write the results to a CSV file.
+    """
+    output_file = f"{fasta_file.split('.')[0]}_nuccomp.csv"
+    verbose_print(f"Input FASTA file: {fasta_file}", verbose)
+    verbose_print(f"Output file: {output_file}", verbose)
+    
+    with open(output_file, 'w') as f:
+        # Write header
+        header = 'Id,Length,' + ','.join("aAcCgGtTwWsSmMkKrRyYnN") + '\n'
+        f.write(header)
+        
+        # Parse FASTA file and compute nucleotide composition
+        for record in SeqIO.parse(fasta_file, "fasta"):
+            counts = get_nucleotide_counts(record.seq)
+            line = f"{record.id},{len(record)},"
+            line += ','.join(str(counts[nuc]) for nuc in "aAcCgGtTwWsSmMkKrRyYnN") + '\n'
+            f.write(line)
+
+def main():
+    args = parse_arguments()
+    if args.verbose:
+        print("Verbosity turned on")
+    write_nucleotide_composition_to_file(args.fasta_file, args.verbose)
+
+if __name__ == "__main__":
+    main()

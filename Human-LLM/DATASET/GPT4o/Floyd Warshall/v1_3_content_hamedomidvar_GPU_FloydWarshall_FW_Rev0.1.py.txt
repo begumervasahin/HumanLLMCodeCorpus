@@ -1,0 +1,58 @@
+import numpy as np
+import cupy as cp
+
+myInf = 1e6
+
+def floyd_warshall(W, n):
+    """
+    Perform the Floyd-Warshall algorithm using GPU operations to find the shortest paths between all pairs of nodes.
+    
+    Parameters:
+    W (cupy.ndarray): The adjacency matrix of the graph.
+    n (int): The number of vertices in the graph.
+    
+    Returns:
+    cupy.ndarray: A matrix representing the shortest path distances between all pairs of nodes.
+    """
+    d = cp.ones([n, n]) * myInf
+    all_ones = cp.ones([n, n])
+    
+    for k in range(n):
+        dk = cp.log(cp.dot(cp.exp(W[:, k].reshape(n, 1)), cp.exp(W[k, :].reshape(1, n))))
+        a = cp.sign(d - dk)
+        where_to = cp.where(a > 0)
+        d[where_to] = dk[where_to]
+    
+    return d
+
+def make_W(n=4):
+    """
+    Create an adjacency matrix and weight matrix for a random graph.
+    
+    Parameters:
+    n (int): The number of vertices in the graph.
+    
+    Returns:
+    cupy.ndarray: The adjacency matrix with weights.
+    """
+    A = np.random.binomial(1, 0.5, [n, n])
+    A = np.triu(A, 1)
+    A += np.transpose(A)
+    A = cp.array(A)
+    
+    W = cp.array(np.random.exponential(scale=1, size=(n, n)))
+    W = cp.multiply(A, W)
+    W = cp.array(np.triu(W.get(), 1))
+    W += cp.transpose(W)
+    W += (cp.ones([n, n]) - A) * myInf
+    cp.fill_diagonal(W, 0)
+    W = cp.array(W)
+    
+    return W
+
+if __name__ == '__main__':
+    n = 4
+    W = make_W(n)
+    print("Adjacency Matrix:", W)
+    distances = floyd_warshall(W, n)
+    print("Distances:", distances)

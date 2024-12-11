@@ -1,0 +1,105 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def check_price(data_dict):
+    """
+    Checks the price of the product and sends email if discount is sufficient.
+    Parameter:
+        data_dict (dict): Dictionary containing user data
+    """
+    headers = {"User-Agent": data_dict["user_agent"]}
+    page = requests.get(data_dict["URL"], headers=headers)
+    
+    with open("details.json", "r") as json_file:
+        json_data = json.load(json_file)
+    
+    soup = BeautifulSoup(page.content, "html.parser")
+    data_dict["title"] = soup.find(id="productTitle").get_text().strip()
+    
+    for id in json_data["price_id"]:
+        try:
+            data_dict["price"] = float(soup.find(id=id).get_text().strip()[1:])
+            break
+        except:
+            pass
+    
+    try:
+        for id in json_data["savings_id"]:
+            try:
+                savings = soup.find(id=id).get_text().strip()
+                break
+            except:
+                pass
+        data_dict["savings"] = savings.replace("£", "GBP ")
+        start = data_dict["savings"].index("(")
+        stop = data_dict["savings"].index("%")
+        data_dict["per_savings"] = float(data_dict["savings"][start + 1: stop])
+        print("Discount available:", data_dict["per_savings"], "%")
+    except:
+        print("No discount is currently available!")
+        data_dict["savings"] = "\nNo savings at the moment."
+        data_dict["per_savings"] = 0
+    
+    if data_dict["per_savings"] >= data_dict["discount"]:
+        send_email(data_dict)
+    else:
+        login(data_dict["username"], data_dict["password"])
+        print("\nSorry, the product is currently not available at the desired price!")
+        print("NAME:", data_dict["title"])
+        print("CURRENT PRICE: GBP", data_dict["price"], "\n")
+
+def send_email(data_dict):
+    """
+    Sends email from user's email ID to themself.
+    Parameter:
+        data_dict (dict): Dictionary containing user data
+    """
+    server = login(data_dict["username"], data_dict["password"])
+    msg = MIMEMultipart()
+    msg['From'] = data_dict["username"]
+    msg['To'] = data_dict["username"]
+    msg['Subject'] = f"PRICE DROP: \"{data_dict['title'][:30]}...\" available now for GBP {data_dict['price']}"
+    
+    body = f"""
+    The following product that you were interested in is now available at a discount!
+    
+    Name: {data_dict['title']}
+    Current price: GBP {data_dict['price']}
+    {data_dict['savings']}
+    Check out this link: {data_dict['URL']}
+    """
+    msg.attach(MIMEText(body, 'plain'))
+    text = msg.as_string()
+    server.sendmail(data_dict["username"], data_dict["username"], text)
+    print("...Email sent successfully!")
+    server.quit()
+    exit()
+
+def login(username, password):
+    """
+    Logs in to the email server.
+    Parameter:
+        username (str): User's email address
+        password (str): User's email password
+    Returns:
+        server: Logged in email server
+    """
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(username, password)
+    return server
+
+# Example usage
+data = {
+    "user_agent": "Your User-Agent",
+    "URL": "https://www.example.com/product-page",
+    "username": "your-email@gmail.com",
+    "password": "your-email-password",
+    "discount": 20.0
+}
+
+check_price(data)

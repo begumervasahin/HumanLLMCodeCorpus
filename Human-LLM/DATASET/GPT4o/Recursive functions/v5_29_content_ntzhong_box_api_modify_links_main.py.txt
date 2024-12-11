@@ -1,0 +1,88 @@
+import box_module.interface_box as box
+import setup
+import time
+import utils
+
+def update_folder_links_to_company(console_url, access_token, folder_id_list):
+    """
+    Update all folder links to have company access.
+
+    Args:
+        console_url (str): The Box console URL.
+        access_token (str): The access token for authentication.
+        folder_id_list (list): List of folder IDs to update.
+
+    Returns:
+        list: List of folder IDs that failed to update.
+    """
+    failed_updates = []
+
+    for folder_id in folder_id_list:
+        if not box.box_update_folder_shared_link_company(console_url, access_token, folder_id):
+            time.sleep(1)
+            if not box.box_update_folder_shared_link_company(console_url, access_token, folder_id):
+                failed_updates.append(folder_id)
+
+    print(f"Failed folder updates: {failed_updates}")
+    return failed_updates
+
+def update_file_links_to_company(console_url, access_token, file_id_list):
+    """
+    Update all file links to have company access.
+
+    Args:
+        console_url (str): The Box console URL.
+        access_token (str): The access token for authentication.
+        file_id_list (list): List of file IDs to update.
+
+    Returns:
+        list: List of file IDs that failed to update.
+    """
+    failed_updates = []
+
+    for file_id in file_id_list:
+        if not box.box_update_file_shared_link_company(console_url, access_token, file_id):
+            time.sleep(1)
+            if not box.box_update_file_shared_link_company(console_url, access_token, file_id):
+                failed_updates.append(file_id)
+
+    print(f"Failed file updates: {failed_updates}")
+    return failed_updates
+
+def lock_items_with_pattern(console_url, access_token, pattern, access_level):
+    """
+    Iterate over all top-level user items in Box. If an item is a folder and it matches the pattern,
+    recursively lock down all items and subdirectories.
+
+    Args:
+        console_url (str): The Box console URL.
+        access_token (str): The access token for authentication.
+        pattern (str): The pattern to match folder names.
+        access_level (str): The access level to set.
+
+    Returns:
+        None
+    """
+    all_users = box.get_all_users(console_url, access_token)
+
+    for user in all_users:
+        folders = box.get_user_folders(console_url, access_token, user.id)
+        
+        for folder in folders:
+            if pattern.lower() in folder['name'].lower():
+                box.update_all_shared_links_access_in_folder(console_url, access_token, folder['id'], access_level)
+
+def main():
+    """
+    Main function to lock all items containing a specific pattern in their names.
+    """
+    client_id, client_secret = box.read_api_credentials(setup.box_cred_file)
+    refresh_token = utils.read_txt_file(setup.box_refresh_token_file)
+    access_token, refresh_token = box.refresh_access_token(client_id, client_secret, refresh_token)
+    utils.write_to_txtfile(refresh_token, setup.box_refresh_token_file)
+
+    example_pattern = 'finance'
+    lock_items_with_pattern(setup.console_url, access_token, example_pattern, 'company')
+
+if __name__ == '__main__':
+    main()

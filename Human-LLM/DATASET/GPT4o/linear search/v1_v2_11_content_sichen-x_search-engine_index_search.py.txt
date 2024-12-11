@@ -1,0 +1,89 @@
+from collections import defaultdict
+
+def get_text(file_path):
+    """
+    Reads the content of a file and returns it as a string.
+    
+    Parameters:
+        file_path (str): The path to the file.
+        
+    Returns:
+        str: The content of the file.
+    """
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
+
+def words(text):
+    """
+    Splits the text into words and returns a list of words.
+    
+    Parameters:
+        text (str): The text to split into words.
+        
+    Returns:
+        list: A list of words.
+    """
+    return text.lower().split()
+
+def create_index(files):
+    """
+    Build an index from words to sets of document IDs.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+
+    Returns:
+        defaultdict: Mapping from word to set of document IDs.
+    """
+    if not files:
+        return None
+
+    index = defaultdict(set)
+    for i, file_path in enumerate(files):
+        file_content = get_text(file_path)
+        key_words = words(file_content)
+        for word in key_words:
+            index[word].add(i)
+    return index
+
+def index_search(files, index, terms):
+    """
+    Search for documents containing all terms.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+        index (defaultdict): Mapping from word to set of document IDs.
+        terms (list): List of strings to search for.
+
+    Returns:
+        list: Matching filenames.
+    """
+    if not (files and index and terms):
+        return None
+
+    list_of_sets = []
+    for term in terms:
+        value_set = index.get(term)
+        if value_set:
+            list_of_sets.append(index[term])
+        else:
+            return None
+
+    if list_of_sets:
+        intersection_ids = set.intersection(*list_of_sets)
+        return [files[id] for id in intersection_ids]
+    else:
+        return None
+
+# Example usage:
+if __name__ == "__main__":
+    # Assuming you have some filenames in a list named `files`
+    files = ["file1.txt", "file2.txt", "file3.txt"]
+
+    # Create index
+    index = create_index(files)
+
+    # Search for terms
+    search_terms = ["term1", "term2"]
+    result = index_search(files, index, search_terms)
+    print("Matching files:", result)

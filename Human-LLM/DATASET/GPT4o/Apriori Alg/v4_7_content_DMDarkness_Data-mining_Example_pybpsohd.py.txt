@@ -1,0 +1,62 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 03 16:02:51 2017
+
+@author: ZhongjieZhang
+
+This is an example for pybpsohd, demonstrating how to use the BPSO-HD algorithm to mine frequent itemsets.
+"""
+
+import pybpsohd as pybp
+import re
+
+def read_dataset(file_name):
+    """
+    Read the transactional dataset from a file.
+
+    Parameters:
+    file_name (str): The name of the file containing the dataset.
+
+    Returns:
+    list: A list of transactions, each transaction is a list of items.
+    """
+    with open(file_name, 'r') as file:
+        transactions = []
+        content = file.readlines()
+        for line in content:
+            items = re.split(r' |\n', line)
+            transaction = [int(item) for item in items if item.isdigit()]
+            if transaction:
+                transactions.append(transaction)
+    return transactions
+
+def main():
+    # Read the transactional dataset
+    # The dataset kosarak.dat can be downloaded from http://fimi.ua.ac.be/data/
+    dataset = read_dataset("kosarak.dat")
+
+    # Mine long patterns from the dataset
+    # Minimum support: 0.001% (0.00001)
+    # Population size: 30
+    # Number of generations: 30
+    # Inertia weight: 0.5
+    # Acceleration coefficients: 1, 1
+    # Minimum pattern length: 10
+    frequent_itemsets = pybp.getFP(dataset, 0.00001, 30, 30, 0.5, 1, 1, 10)
+
+    # Output the result
+    print("Frequent itemsets:")
+    for itemset in frequent_itemsets:
+        print(itemset)
+
+if __name__ == "__main__":
+    main()
+
+"""
+Reference:
+-----------------------------------------------------------------------------------------------
+Zhang Z, Huang J, Wei Y, et al. Frequent item sets mining from high-dimensional
+dataset based on a novel binary particle swarm optimization. Journal of Central
+South University, 2016, 23(7): 1700-1708.
+-----------------------------------------------------------------------------------------------
+"""

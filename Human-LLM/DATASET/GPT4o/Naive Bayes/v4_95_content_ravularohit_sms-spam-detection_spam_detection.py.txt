@@ -1,0 +1,77 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+from sklearn.feature_extraction.text import CountVectorizer
+
+# Load the dataset
+df = pd.read_csv("/path/to/your/dataset.csv")
+
+# Map the labels to numerical values
+df['label_num'] = df.label.map({'ham': 0, 'spam': 1})
+
+# Separate features and labels
+features = df["text"]
+labels = df["label_num"]
+
+# Plot the distribution of labels
+sns.countplot(df["label"])
+plt.show()
+
+# Split the dataset into training and testing sets
+f_train, f_test, l_train, l_test = train_test_split(features, labels, test_size=0.1, random_state=42)
+
+# Convert the features to numpy arrays
+f_train = np.array(f_train)
+f_test = np.array(f_test)
+l_train = np.array(l_train)
+l_test = np.array(l_test)
+
+# Vectorize the text data
+vectorizer = CountVectorizer()
+f_train_count = vectorizer.fit_transform(f_train)
+f_test_count = vectorizer.transform(f_test)
+
+# Initialize and train the Multinomial Naive Bayes model
+model = MultinomialNB()
+model.fit(f_train_count, l_train)
+
+# Print training and testing scores
+print("\n[+] Training score: ", model.score(f_train_count, l_train))
+print("[+] Testing score: ", model.score(f_test_count, l_test))
+
+# Predict the labels for the test set
+y_pred = model.predict(f_test_count)
+
+# Calculate and print evaluation metrics
+accuracy = accuracy_score(l_test, y_pred)
+precision = precision_score(l_test, y_pred)
+recall = recall_score(l_test, y_pred)
+f1 = f1_score(l_test, y_pred)
+
+print("\n[+] Accuracy score: ", accuracy)
+print("[+] Precision score: ", precision)
+print("[+] Recall score: ", recall)
+print("[+] F1 score: ", f1)
+
+# Print classification report
+report = classification_report(l_test, y_pred)
+print("\nClassification Report:\n", report)
+
+# Function to test custom messages
+def test_custom_message(message):
+    message = np.array([message])
+    message_vectorized = vectorizer.transform(message)
+    prediction = model.predict(message_vectorized)
+    if prediction == 0:
+        print("HAM!")
+    else:
+        print("\033[1;31;40m [+] SPAM!")
+
+# Test with a custom message
+print("\n\n[+] Let's test with other unique messages not in the dataset:")
+custom_message = input("[+] Enter a text message to test: ")
+test_custom_message(custom_message)

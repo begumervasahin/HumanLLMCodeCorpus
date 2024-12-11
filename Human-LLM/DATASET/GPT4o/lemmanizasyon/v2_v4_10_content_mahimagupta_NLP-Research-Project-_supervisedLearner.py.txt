@@ -1,0 +1,80 @@
+# Define the file paths for the input and output files
+hindi_dic_file = './datasets/hi_hdtb-ud-dev.conllu'
+hindi_out_file = './outputs/train_data.txt'
+
+def is_same_lemma(existing_lemma, new_lemma):
+    """
+    Check if two lemmas are the same based on their root, tag1, and tag2.
+    """
+    return (
+        existing_lemma["root"] == new_lemma["root"] and
+        existing_lemma["tag1"] == new_lemma["tag1"] and
+        existing_lemma["tag2"] == new_lemma["tag2"]
+    )
+
+def serialize_lemma(lemma):
+    """
+    Convert a lemma dictionary into a serialized string format.
+    """
+    return '[{}, {}, {}]'.format(lemma["root"], lemma["tag1"], lemma["tag2"])
+
+def read_training_data(input_training_file, dest_file=None):
+    """
+    Read training data from the input file, process it into a dictionary,
+    and optionally write the processed data to the output file.
+    """
+    dataset = {}
+
+    with open(input_training_file, 'r', encoding='utf-8') as hindiFile:
+        for line in hindiFile.readlines():
+            # Skip empty lines or lines with less than 5 characters
+            if len(line) < 5 or line[0] == '\n':
+                continue
+
+            # Split the line into parts and ensure there are at least 5 parts
+            parts = line.split("\t")
+            if len(parts) < 5:
+                continue
+            
+            word, root, tag1, tag2 = parts[1:5]
+
+            # Initialize the word entry in the dataset if it doesn't exist
+            if word not in dataset:
+                dataset[word] = []
+
+            # Create a new lemma dictionary
+            lemma = {
+                "root": root,
+                "tag1": tag1,
+                "tag2": tag2,
+            }
+
+            # Avoid adding duplicate lemmas for the same word
+            if any(is_same_lemma(existing_lemma, lemma) for existing_lemma in dataset[word]):
+                continue
+
+            dataset[word].append(lemma)
+
+    # Write the processed dataset to the output file if specified
+    if dest_file is not None:
+        with open(dest_file, 'w', encoding='utf-8') as out:
+            lines = []
+            for word, lemmas in dataset.items():
+                lines.append(
+                    '{}:{}\n'.format(word, ', '.join([serialize_lemma(lemma) for lemma in lemmas]))
+                )
+            out.writelines(lines)
+
+    return dataset
+
+def supervised_learn():
+    """
+    Execute the supervised learning process by reading and processing the training data.
+    """
+    training_data = read_training_data(hindi_dic_file, hindi_out_file)
+
+    for word, lemmas in training_data.items():
+        print('Processing word:', word, 'with', len(lemmas), 'lemmas')
+
+if __name__ == '__main__':
+    supervised_learn()

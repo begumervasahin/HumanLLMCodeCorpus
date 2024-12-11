@@ -1,0 +1,96 @@
+"""
+Created on Mon Oct  5 00:31:34 2020
+@author: HP
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.formula.api as smf
+import statsmodels.api as sm
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+
+# Load the data
+corolla_data = pd.read_csv('C:/Users/HP/Desktop/assignments submission/multi linear regression/ToyotaCorolla.csv', encoding="ISO-8859-1")
+
+# Select relevant columns for analysis
+selected_columns = ["Price", "Age_08_04", "KM", "HP", "cc", "Doors", "Gears", "Quarterly_Tax", "Weight"]
+Toyota = corolla_data[selected_columns]
+
+# Check for missing values and drop rows with missing values
+print("Missing values in each column:\n", Toyota.isna().sum())
+Toyota = Toyota.dropna()
+
+# Visualize relationships between variables using pairplot
+sns.pairplot(Toyota)
+plt.show()
+
+# Compute and display the correlation matrix
+print("Correlation matrix:\n", Toyota.corr())
+
+# Fit the initial regression model
+initial_model_formula = 'Price ~ Age_08_04 + KM + HP + cc + Doors + Gears + Quarterly_Tax + Weight'
+toyota_model = smf.ols(initial_model_formula, data=Toyota).fit()
+print("Initial model parameters:\n", toyota_model.params)
+print("Initial model summary:\n", toyota_model.summary())
+
+# Function to calculate VIF for each predictor
+def calculate_vif(data, predictors):
+    vif_data = pd.DataFrame()
+    vif_data["variables"] = predictors
+    vif_data["VIF"] = [
+        1 / (1 - smf.ols(f'{predictor} ~ ' + '+'.join([p for p in predictors if p != predictor]), data=data).fit().rsquared)
+        for predictor in predictors
+    ]
+    return vif_data
+
+# Calculate and display VIF for each predictor
+predictors = ["Age_08_04", "KM", "HP", "cc", "Doors", "Gears", "Quarterly_Tax", "Weight"]
+vif_frame = calculate_vif(Toyota, predictors)
+print("VIF DataFrame:\n", vif_frame)
+
+# Plot partial regression plots
+sm.graphics.plot_partregress_grid(toyota_model)
+plt.show()
+
+# Plot influence plot
+sm.graphics.influence_plot(toyota_model)
+plt.show()
+
+# Remove influential points and refit the model
+influential_points = [80, 221, 960, 601]
+Toyota_filtered = Toyota.drop(Toyota.index[influential_points], axis=0)
+
+# Refit model after removing influential points
+toyota_model_filtered = smf.ols(initial_model_formula, data=Toyota_filtered).fit()
+print("Model parameters after removing influential points:\n", toyota_model_filtered.params)
+print("Model summary after removing influential points:\n", toyota_model_filtered.summary())
+
+# Plot partial regression plots for the updated model
+sm.graphics.plot_partregress_grid(toyota_model_filtered)
+plt.show()
+
+# Plot influence plot for the updated model
+sm.graphics.influence_plot(toyota_model_filtered)
+plt.show()
+
+# Test different transformations on 'cc' and 'Doors'
+transformed_model_formula = 'Price ~ Age_08_04 + KM + HP + np.log(cc) + np.log(Doors) + Gears + Quarterly_Tax + Weight'
+toyota_model_transformed = smf.ols(transformed_model_formula, data=Toyota_filtered).fit()
+print("Model parameters with log transformations:\n", toyota_model_transformed.params)
+print("Model summary with log transformations:\n", toyota_model_transformed.summary())
+
+# Add polynomial terms and refit the model
+Toyota_filtered['cc_sq'] = Toyota_filtered['cc'] ** 2
+Toyota_filtered['Door_sq'] = Toyota_filtered['Doors'] ** 2
+polynomial_model_formula = 'Price ~ Age_08_04 + KM + HP + cc + Doors + Gears + Quarterly_Tax + Weight + Door_sq'
+toyota_model_polynomial = smf.ols(polynomial_model_formula, data=Toyota_filtered).fit()
+print("Model parameters with polynomial terms:\n", toyota_model_polynomial.params)
+print("Model summary with polynomial terms:\n", toyota_model_polynomial.summary())
+
+# Predict and calculate RMSE of the final model
+Toyota_predict = toyota_model_polynomial.predict(Toyota_filtered)
+Toyota_rmse = sqrt(mean_squared_error(Toyota_filtered.Price, Toyota_predict))
+print("RMSE of the final model:", Toyota_rmse)

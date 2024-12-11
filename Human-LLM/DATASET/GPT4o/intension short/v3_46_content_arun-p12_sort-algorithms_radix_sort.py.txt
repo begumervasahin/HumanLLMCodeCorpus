@@ -1,0 +1,55 @@
+def radix_sort(arr, base=10, verbose=False, desc=False):
+    def calculate_digit_count(number, base):
+        """Return the number of digits in the given number using the specified base."""
+        digit_count = 0
+        while number > 0:
+            digit_count += 1
+            number //= base
+        return digit_count
+
+    def get_digit_at_position(number, position, base):
+        """Extract the digit at a specific position from the number."""
+        return (number // base**position) % base
+
+    def sort_into_buckets(arr, position, base):
+        """Distribute numbers into buckets based on the digit at the specified position."""
+        buckets = [[] for _ in range(base)]
+        for number in arr:
+            digit = get_digit_at_position(number, position, base)
+            buckets[digit].append(number)
+            if verbose == 2:
+                print(f"Number {number} placed in bucket {digit}: {buckets}")
+        # Flatten the list of buckets into a single sorted list
+        return [num for bucket in buckets for num in bucket]
+
+    # Adjust the array for negative values, if any exist
+    min_value = min(arr)
+    if min_value < 0:
+        arr = [num - min_value for num in arr]
+
+    # Determine the number of digit positions based on the largest number in the array
+    max_value = max(arr)
+    digit_count = calculate_digit_count(max_value, base)
+
+    # Perform sorting for each digit position
+    for position in range(digit_count):
+        arr = sort_into_buckets(arr, position, base)
+        if verbose:
+            print(f"After pass {position + 1}: {arr}")
+
+    # Restore original values if adjustment was made for negative numbers
+    if min_value < 0:
+        arr = [num + min_value for num in arr]
+
+    # Reverse the sorted list if descending order is specified
+    if desc:
+        arr.reverse()
+
+    return arr
+
+
+# Example usage
+if __name__ == "__main__":
+    sample_array = [170, 45, 75, 90, 802, 24, 2, 66]
+    sorted_array = radix_sort(sample_array, verbose=True, desc=False)
+    print("Sorted Array:", sorted_array)

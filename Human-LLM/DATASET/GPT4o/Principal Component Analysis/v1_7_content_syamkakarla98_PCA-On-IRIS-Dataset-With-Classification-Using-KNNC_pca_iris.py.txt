@@ -1,0 +1,58 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+# Load the dataset
+df = pd.read_csv("D:\Python_programs\ML\iris.csv")
+
+# Define the features and target
+features = ['sepal length', 'sepal width', 'petal length', 'petal width']
+x = df.loc[:, features].values
+y = df.loc[:, ['target']].values
+
+# Standardize the features
+x = StandardScaler().fit_transform(x)
+
+# Perform PCA
+pca = PCA(n_components=4)
+principalComponents = pca.fit_transform(x)
+explained_variance_ratio = pca.explained_variance_ratio_
+
+# Plot the explained variance ratio
+plt.bar([1, 2, 3, 4], list(explained_variance_ratio * 100), label='Principal Components', color='b')
+plt.legend()
+plt.xlabel('Principal Components')
+plt.xticks([1, 2, 3, 4], ['PC-1', 'PC-2', 'PC-3', 'PC-4'], fontsize=8, rotation=30)
+plt.ylabel('Variance Ratio')
+plt.title('Variance Ratio of IRIS Dataset')
+plt.show()
+
+# Perform PCA with 2 components for visualization
+pca = PCA(n_components=2)
+principalComponents = pca.fit_transform(x)
+principalDf = pd.DataFrame(data=principalComponents, columns=['PC-1', 'PC-2'])
+
+# Concatenate the target variable for plotting
+finalDf = pd.concat([principalDf, df[['target']]], axis=1)
+
+# Plot the PCA result
+fig = plt.figure(figsize=(8, 8))
+ax = fig.add_subplot(1, 1, 1)
+ax.set_xlabel('PC-1', fontsize=15)
+ax.set_ylabel('PC-2', fontsize=15)
+ax.set_title('PCA on IRIS Dataset', fontsize=20)
+targets = ['Iris-setosa', 'Iris-versicolor', 'Iris-virginica']
+colors = ['r', 'g', 'b']
+
+for target, color in zip(targets, colors):
+    indicesToKeep = finalDf['target'] == target
+    ax.scatter(finalDf.loc[indicesToKeep, 'PC-1'], finalDf.loc[indicesToKeep, 'PC-2'], c=color, s=50)
+
+ax.legend(targets)
+ax.grid()
+plt.show()
+
+# Save the PCA result to a CSV file
+finalDf.to_csv('iris_after_pca.csv', index=False)

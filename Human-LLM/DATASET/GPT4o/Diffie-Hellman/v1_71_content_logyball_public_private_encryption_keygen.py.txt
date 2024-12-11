@@ -1,0 +1,91 @@
+import random
+from millerrabin import isPrime
+
+GENERATOR = 2
+
+def fake32BitInt(num):
+    """
+    Simulate a 32-bit integer by taking modulo 4294967295.
+
+    Parameters:
+    num (int): The number to be converted.
+
+    Returns:
+    int: The simulated 32-bit integer.
+    """
+    return num % 4294967295
+
+def getPrime(bitLength=31):
+    """
+    Generate a prime number of specified bit length.
+
+    Parameters:
+    bitLength (int): The bit length of the prime number to be generated.
+
+    Returns:
+    int: The generated prime number.
+    """
+    while True:
+        random_num = random.getrandbits(bitLength)
+        if (random_num % 12) != 5:
+            continue
+        prime = (2 * random_num) + 1
+        if isPrime(prime) and prime > 2147483648:
+            return prime
+
+def getPriKey(userSeed, prime):
+    """
+    Generate a private key based on a user-provided seed and a prime number.
+
+    Parameters:
+    userSeed (any hashable type): The seed for the random number generator.
+    prime (int): The prime number used to bound the private key.
+
+    Returns:
+    int: The generated private key.
+    """
+    random.seed(userSeed)
+    return random.randint(1, prime - 2)
+
+def getE2(privateKey, prime, gen=GENERATOR):
+    """
+    Compute e2 using the private key, prime, and generator.
+
+    Parameters:
+    privateKey (int): The private key.
+    prime (int): The prime number.
+    gen (int): The generator.
+
+    Returns:
+    int: The computed e2 value.
+    """
+    return pow(gen, privateKey, prime)
+
+def getKeys(seed=None):
+    """
+    Generate a set of cryptographic keys.
+
+    Parameters:
+    seed (any hashable type, optional): The seed for the random number generator.
+
+    Returns:
+    dict: A dictionary containing the private key (d), prime (p), generator (g), and e2 value (e2).
+    """
+    prime = getPrime()
+    priKey = getPriKey(seed, prime)
+    e2 = getE2(priKey, prime)
+    return {
+        'd': priKey,
+        'p': prime,
+        'g': GENERATOR,
+        'e2': e2
+    }
+
+if __name__ == '__main__':
+    # Example usage
+    keys = getKeys(seed='user-defined-seed')
+    print("Generated Keys:")
+    print(f"Private Key (d): {keys['d']}")
+    print(f"Prime (p): {keys['p']}")
+    print(f"Generator (g): {keys['g']}")
+    print(f"e2: {keys['e2']}")

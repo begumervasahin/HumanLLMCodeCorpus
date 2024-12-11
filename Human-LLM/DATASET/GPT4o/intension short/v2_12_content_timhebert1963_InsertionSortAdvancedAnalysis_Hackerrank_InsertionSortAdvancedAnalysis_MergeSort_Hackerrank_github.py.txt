@@ -1,0 +1,65 @@
+import time
+
+class InversionCounter:
+    def __init__(self):
+        self.count = 0
+
+def split_array(array):
+    mid_index = len(array) // 2
+    left_half = array[:mid_index]
+    right_half = array[mid_index:]
+    return left_half, right_half
+
+def count_and_merge_inversions(left_half, right_half, counter):
+    left_half.sort()
+    right_half.sort()
+    i, j = 0, 0
+    while i < len(left_half):
+        while j < len(right_half) and right_half[j] < left_half[i]:
+            counter.count += len(left_half) - i
+            j += 1
+        i += 1
+
+def merge_sort_and_count(array, counter):
+    if len(array) > 1:
+        left_half, right_half = split_array(array)
+        merge_sort_and_count(left_half, counter)
+        merge_sort_and_count(right_half, counter)
+        count_and_merge_inversions(left_half, right_half, counter)
+
+def calculate_inversions(array):
+    counter = InversionCounter()
+    merge_sort_and_count(array, counter)
+    return counter.count
+
+def get_current_time():
+    return int(time.time())
+
+def format_duration(seconds):
+    minutes = seconds // 60
+    remaining_seconds = seconds % 60
+    return minutes, remaining_seconds
+
+def display_test_results(test_name, calculated_inversions, expected_inversions, start_time):
+    end_time = get_current_time()
+    elapsed_time = end_time - start_time
+    minutes, seconds = format_duration(elapsed_time)
+    status = 'PASS' if calculated_inversions == expected_inversions else 'FAIL'
+    
+    print(f"\n{test_name} - Inversions: {calculated_inversions} (Expected: {expected_inversions}) - {status}")
+    print(f"Execution time: {minutes} minutes, {seconds} seconds\n")
+
+def main():
+    test_cases = [
+        ('TC2_1', 'TC2_1_length_441_answer_46768', 46768),
+        ('TC2_2', 'TC2_2_length_18_answer_77', 77)
+    ]
+    
+    for test_name, module_name, expected_inversions in test_cases:
+        test_module = __import__(module_name)
+        start_time = get_current_time()
+        calculated_inversions = calculate_inversions(test_module.arr)
+        display_test_results(test_name, calculated_inversions, expected_inversions, start_time)
+
+if __name__ == '__main__':
+    main()

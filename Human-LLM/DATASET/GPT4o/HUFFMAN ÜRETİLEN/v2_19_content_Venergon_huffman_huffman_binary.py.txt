@@ -1,0 +1,139 @@
+class Node:
+    """
+    A class representing a leaf node in the Huffman tree.
+    
+    Attributes
+    ----------
+    val : str
+        The symbol or value stored in the node.
+    probability : float
+        The probability associated with the node.
+    code : str
+        The Huffman code assigned to the node.
+    """
+    def __init__(self, value, probability):
+        self.val = value
+        self.probability = probability
+        self.code = ""
+
+    def __str__(self):
+        return f"({self.val})"
+
+    def set_code(self, code):
+        """Sets the Huffman code for the node."""
+        self.code = code
+
+    def get_code(self):
+        """Returns the Huffman code assigned to the node."""
+        return self.code
+
+class NodeJoin:
+    """
+    A class representing an internal node in the Huffman tree that joins two nodes.
+    
+    Attributes
+    ----------
+    node1 : Node or NodeJoin
+        The left child node.
+    node2 : Node or NodeJoin
+        The right child node.
+    probability : float
+        The sum of probabilities of node1 and node2.
+    code : str
+        The Huffman code assigned to the node.
+    """
+    def __init__(self, node1, node2):
+        self.node1 = node1
+        self.node2 = node2
+        self.probability = node1.probability + node2.probability
+        self.code = ""
+
+    def __str__(self):
+        return f"({self.node1},{self.node2})"
+
+    def set_code(self, code):
+        """Sets the Huffman code for the internal node."""
+        self.code = code
+
+    def get_code(self):
+        """Returns the Huffman code assigned to the internal node."""
+        return self.code
+
+def split_nodes(node, final_codes):
+    """
+    Recursively assigns binary codes to all leaf nodes in the Huffman tree.
+    
+    Parameters
+    ----------
+    node : Node or NodeJoin
+        The current node in the Huffman tree.
+    final_codes : list
+        A list to store the leaf nodes with their assigned Huffman codes.
+    """
+    code = node.get_code()
+    node1, node2 = node.node1, node.node2
+    node1.set_code(code + "1")
+    node2.set_code(code + "0")
+
+    if isinstance(node1, NodeJoin):
+        split_nodes(node1, final_codes)
+    else:
+        final_codes.append(node1)
+    
+    if isinstance(node2, NodeJoin):
+        split_nodes(node2, final_codes)
+    else:
+        final_codes.append(node2)
+
+def main():
+    nodes = []
+
+    # Input nodes with the format 'value,probability'
+    while True:
+        n = input("Enter node (or leave blank to stop): ")
+        if not n:
+            break
+        if "," not in n:
+            print("Invalid input. Please use the format 'value,probability'.")
+            continue
+        value, probability = n.split(",")
+        nodes.append(Node(value, float(probability)))
+
+    if not nodes:
+        print("No nodes entered. Exiting.")
+        return
+
+    # Ensure nodes are sorted by probability in descending order
+    nodes.sort(key=lambda x: x.probability, reverse=True)
+    print("Nodes sorted by probability:")
+    for node in nodes:
+        print(f"  {node}")
+
+    # Build the Huffman Tree
+    while len(nodes) > 1:
+        nodes.sort(key=lambda x: x.probability)
+        node1 = nodes.pop(0)
+        node2 = nodes.pop(0)
+        new_node = NodeJoin(node1, node2)
+        nodes.append(new_node)
+
+    # Generate Huffman codes for the nodes
+    final_codes = []
+    root = nodes[0]
+    root.set_code("")
+    
+    if isinstance(root, Node):
+        final_codes.append(root)
+    else:
+        split_nodes(root, final_codes)
+
+    # Sort the final codes by their values for consistent output
+    final_codes.sort(key=lambda x: x.val)
+
+    # Output the results
+    print("\nHuffman Codes:")
+    for node in final_codes:
+        print(f"Node {node} has code {node.get_code()}")
+
+if __name__ == "__main__":
+    main()

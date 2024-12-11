@@ -1,0 +1,63 @@
+import math
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.tsa.stattools as st
+from pandas import read_csv, to_datetime
+
+def parse_datetime(date_string):
+    """
+    Parse a datetime string into a datetime object.
+    
+    Parameters:
+        date_string (str): The datetime string to parse.
+    
+    Returns:
+        datetime: The parsed datetime object.
+    """
+    return to_datetime(date_string, format='%Y-%m-%d %H:%M:%S')
+
+def calculate_mape(actual_values, predicted_values):
+    """
+    Calculate the Mean Absolute Percentage Error (MAPE).
+    
+    Parameters:
+        actual_values (list): The list of actual values.
+        predicted_values (list): The list of predicted values.
+    
+    Returns:
+        float: The MAPE value.
+    """
+    total_error = sum(abs(predicted - actual) / actual for actual, predicted in zip(actual_values, predicted_values))
+    return total_error / len(actual_values)
+
+def main():
+    """
+    Main function to read the CSV file, extract data, and perform the Augmented Dickey-Fuller (ADF) test.
+    """
+    # File path to the CSV file
+    file_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+    
+    # Read the CSV file
+    series = read_csv(file_path, usecols=[2, 3], header=0, parse_dates=[0],
+                      index_col=0, squeeze=True, date_parser=parse_datetime)
+    
+    # Extract values from the series
+    data_values = series.values
+    
+    # Set the start index and training size for ARIMA
+    start_index = 2
+    training_size = 200
+    arima_training_data = data_values[start_index:start_index + training_size]
+    
+    # Perform the Augmented Dickey-Fuller test for stationarity
+    adf_result = st.adfuller(arima_training_data)
+    
+    # Print the ADF test results
+    print(f'ADF Statistic: {adf_result[0]:.6f}')
+    print(f'p-value: {adf_result[1]:.6f}')
+    print('Critical Values:')
+    for key, value in adf_result[4].items():
+        print(f'{key}: {value:.3f}')
+
+if __name__ == "__main__":
+    main()

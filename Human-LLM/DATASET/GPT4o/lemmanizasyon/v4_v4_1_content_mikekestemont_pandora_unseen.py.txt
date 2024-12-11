@@ -1,0 +1,69 @@
+from __future__ import print_function
+import os
+import codecs
+from pandora.tagger import Tagger
+import pandora.utils
+
+def main():
+    """
+    Main function to start the annotation process.
+    Loads the pre-trained Tagger model and processes each text file in the input directory,
+    annotating the tokens and saving the results to the output directory.
+    """
+    print('::: Annotation Process Started :::')
+
+    # Load the pre-trained Tagger model
+    tagger = Tagger(load=True, model_dir='models/new_cg')
+    print('Tagger loaded. Now, annotating...')
+
+    # Set the paths for input and output directories
+    orig_path = 'data/limborch/orig/'
+    new_path = 'data/limborch/tagged/'
+
+    # Process each file in the input directory
+    for filename in os.listdir(orig_path):
+        if filename.endswith('.txt'):
+            print(f'\t + Annotating {filename}')
+            annotate_file(tagger, orig_path, new_path, filename)
+
+    print('::: Annotation Process Ended :::')
+
+def annotate_file(tagger, orig_path, new_path, filename):
+    """
+    Annotates a single file and writes the annotated data to the output directory.
+
+    Args:
+        tagger: The pre-trained Tagger model.
+        orig_path: The path to the input directory.
+        new_path: The path to the output directory.
+        filename: The name of the file to be annotated.
+    """
+    # Load unannotated data from the original file
+    input_file_path = os.path.join(orig_path, filename)
+    unseen_tokens = pandora.utils.load_unannotated_file(
+        input_file_path,
+        nb_instances=None,
+        tokenized_input=False
+    )
+
+    # Annotate the tokens using the loaded tagger
+    annotations = tagger.annotate(unseen_tokens)
+
+    # Write annotated data to a new file
+    output_file_path = os.path.join(new_path, filename)
+    write_annotations_to_file(output_file_path, annotations)
+
+def write_annotations_to_file(output_file_path, annotations):
+    """
+    Writes the annotated tokens, lemmas, and POS tags to a file.
+
+    Args:
+        output_file_path: The path to the output file.
+        annotations: The annotated data containing tokens, lemmas, and POS tags.
+    """
+    with codecs.open(output_file_path, 'w', 'utf8') as output_file:
+        for token, lemma, pos in zip(annotations['tokens'], annotations['lemmas'], annotations['pos']):
+            output_file.write('\t'.join((token.lower(), lemma.lower(), pos.lower())) + '\n')
+
+if __name__ == '__main__':
+    main()

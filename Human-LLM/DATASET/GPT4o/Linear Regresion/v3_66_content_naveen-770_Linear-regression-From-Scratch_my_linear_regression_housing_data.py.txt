@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def load_data(file_path):
+    """Load data from a text file and separate it into features and labels."""
+    cols = np.loadtxt(file_path, delimiter=',', usecols=(0, 1, 2, 3), unpack=True)
+    X = np.transpose(np.array(cols[:-1]))
+    y = np.transpose(np.array(cols[-1:]))
+    return X, y
+
+def add_intercept(X):
+    """Add an intercept term (column of ones) to the feature matrix."""
+    return np.insert(X, 0, 1, axis=1)
+
+def normalize_features(X):
+    """Normalize the features in the dataset."""
+    stored_feature_means = []
+    stored_feature_stds = []
+    Xnorm = X.copy()
+    
+    for col in range(1, Xnorm.shape[1]):
+        mean = np.mean(Xnorm[:, col])
+        std = np.std(Xnorm[:, col])
+        stored_feature_means.append(mean)
+        stored_feature_stds.append(std)
+        Xnorm[:, col] = (Xnorm[:, col] - mean) / std
+    
+    return Xnorm, stored_feature_means, stored_feature_stds
+
+def hypothesis(X, theta):
+    """Compute the hypothesis (predicted values) for linear regression."""
+    return np.dot(X, theta)
+
+def compute_cost(theta, X, y):
+    """Compute the cost function for linear regression."""
+    m = y.size
+    pred = hypothesis(X, theta)
+    sqr_error = (pred - y) ** 2
+    J = 1 / (2 * m) * np.sum(sqr_error)
+    return J
+
+def gradient_descent(X, y, theta, num_iters, alpha):
+    """Perform gradient descent to learn theta."""
+    m = y.size
+    J_hist = np.zeros((num_iters, 1))
+    
+    for iter in range(num_iters):
+        errors = hypothesis(X, theta) - y
+        theta_change = (alpha / m) * np.dot(X.T, errors)
+        theta -= theta_change
+        J_hist[iter] = compute_cost(theta, X, y)
+    
+    return theta, J_hist
+
+def plot_convergence(jvec, iterations):
+    """Plot the convergence of the cost function over iterations."""
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(len(jvec)), jvec, 'bo')
+    plt.grid(True)
+    plt.title("Convergence of Cost Function")
+    plt.xlabel("Iteration number")
+    plt.ylabel("Cost function")
+    plt.xlim([-0.05 * iterations, 1.05 * iterations])
+    plt.show()
+
+def predict(ytest, stored_feature_means, stored_feature_stds, theta):
+    """Make a prediction for a new set of features."""
+    print(f"Check of result: What is the price of a house with {ytest[0]} square feet, {ytest[1]} bedrooms, and {ytest[2]} years old?")
+    ytest_scaled = [(ytest[i] - stored_feature_means[i]) / stored_feature_stds[i] for i in range(len(ytest))]
+    ytest_scaled.insert(0, 1)
+    prediction = float(hypothesis(np.array(ytest_scaled), theta))
+    print(f"$ {prediction:.2f}")
+
+def main():
+    # Load and prepare data
+    datafile = 'Housing_data.txt'
+    X, y = load_data(datafile)
+    X = add_intercept(X)
+    Xnorm, stored_feature_means, stored_feature_stds = normalize_features(X)
+    
+    # Set initial parameters for gradient descent
+    initial_theta = np.zeros((Xnorm.shape[1], 1))
+    iterations = 1500
+    alpha = 0.01
+    
+    # Perform gradient descent
+    theta, j_vec = gradient_descent(Xnorm, y, initial_theta, iterations, alpha)
+    
+    # Print the results
+    print("The updated values of theta are:")
+    print(theta)
+    
+    # Plot the cost function convergence
+    plot_convergence(j_vec, iterations)
+    
+    # Make a prediction
+    ytest = np.array([1203, 3, 11])
+    predict(ytest, stored_feature_means, stored_feature_stds, theta)
+
+if __name__ == "__main__":
+    main()

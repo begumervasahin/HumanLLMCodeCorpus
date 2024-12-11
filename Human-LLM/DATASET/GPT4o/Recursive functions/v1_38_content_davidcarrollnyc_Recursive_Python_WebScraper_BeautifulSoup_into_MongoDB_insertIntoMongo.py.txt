@@ -1,0 +1,64 @@
+from bs4 import BeautifulSoup
+from bs4.element import Comment
+import urllib.request
+from urllib.error import HTTPError
+from pymongo import MongoClient
+
+# MongoDB connection setup
+client = MongoClient("mongodb://XXXXX:XXXXX@ds117489.mlab.com:17489/heroku_XXXXX")
+mydb = client['heroku_XXXXX']
+data_base_name = 'HTML_content'
+
+def tag_visible(element):
+    """
+    Filter function to identify visible HTML elements.
+    """
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
+def text_from_html(body):
+    """
+    Extract visible text from HTML content.
+    """
+    soup = BeautifulSoup(body, 'html.parser')
+    texts = soup.findAll(text=True)
+    visible_texts = filter(tag_visible, texts)
+    return u" ".join(t.strip() for t in visible_texts)
+
+def main():
+    url = 'http://www.nytimes.com'
+    html = urllib.request.urlopen(url).read()
+    bs = BeautifulSoup(html, "html.parser")
+
+    # Select all links starting with http
+    possible_links = bs.select('a[href^="http"]')
+
+    for link in possible_links:
+        if link.has_attr('href'):
+            print(link.attrs['href'])
+            try:
+                # Check if the link returns HTTP status 200
+                checkFor200 = urllib.request.urlopen(link.attrs['href'])
+                html2 = checkFor200.read()
+                print(html2)
+                
+                # Create a record to insert in MongoDB
+                myrecord = {
+                    "link": link.attrs['href'],
+                    "content": text_from_html(html2)
+                }
+                
+                # Insert the record into MongoDB
+                record_id = mydb.HTML_content.insert_one(myrecord).inserted_id
+                print(f"Inserted record ID: {record_id}")
+                print(f"Collections: {mydb.list_collection_names()}")
+            except HTTPError as e:
+                continue
+            print("")
+            print(text_from_html(html2))
+
+if __name__ == "__main__":
+    main()

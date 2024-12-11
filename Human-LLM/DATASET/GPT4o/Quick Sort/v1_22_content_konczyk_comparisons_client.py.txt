@@ -1,0 +1,50 @@
+import argparse
+import random
+import sys
+
+# Import pivot functions
+import pivots
+from comparisons import Comparisons
+
+# Dictionary to map pivot choice to corresponding functions
+pivots_choice = {
+    'first': pivots.first_index,
+    'last': pivots.last_index,
+    'median': pivots.median_of_three_index
+}
+
+# Create the argument parser
+parser = argparse.ArgumentParser(description='Comparisons client.',
+                                 formatter_class=argparse.RawTextHelpFormatter)
+
+# Add mutually exclusive group for upper bound number
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-b', '--bound', type=int, help='Upper bound number')
+
+# Add argument for input file
+group.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                   default=sys.stdin,
+                   help='Input file with numbers (default stdin)')
+
+# Add argument for pivot choice
+parser.add_argument('-p', '--pivot', choices=pivots_choice.keys(),
+                    metavar='PIVOT', default='first',
+                    help='first: use first element as a pivot (default)\n'
+                         'last: use last element as a pivot\n'
+                         'median: use median of three elements as a pivot')
+
+# Parse the arguments
+args = parser.parse_args()
+
+# Generate or read the list of numbers
+if args.bound is not None:
+    nums = list(range(1, args.bound + 1))
+    random.shuffle(nums)
+else:
+    nums = [int(num) for num in args.infile]
+
+# Create Comparisons instance with the chosen pivot function
+comp = Comparisons(nums, pivots_choice[args.pivot])
+
+# Print the count of comparisons
+print(comp.count())

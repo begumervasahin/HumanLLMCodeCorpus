@@ -1,0 +1,93 @@
+from Crypto.Util import number
+import random
+import constants
+
+def generate_p_g_q(message_length=0):
+    """
+    Generates cryptographic parameters p, g, and q for a commitment scheme.
+
+    Args:
+        message_length (int): The length of the message to be committed.
+
+    Returns:
+        tuple: Contains the values of p, g, and q.
+    """
+    # Generate a prime number q large enough to handle the message length
+    q = number.getPrime(max(constants.LENGTH_OF_PRIME, message_length + 1))
+    
+    # Compute p as 2*q + 1
+    p = 2 * q + 1
+    
+    # Commonly used base value g
+    g = 2
+    
+    return p, g, q
+
+def generate_random_integer(lower_bound, upper_bound):
+    """
+    Generates a random integer within the specified bounds.
+
+    Args:
+        lower_bound (int): The lower bound for the random integer.
+        upper_bound (int): The upper bound for the random integer.
+
+    Returns:
+        int: A random integer between lower_bound and upper_bound (inclusive).
+    """
+    return random.randint(lower_bound, upper_bound)
+
+def compute_h(base, prime_modulus, exponent):
+    """
+    Computes the value h used in the commitment scheme.
+
+    Args:
+        base (int): The base value for the computation.
+        prime_modulus (int): The prime modulus for the computation.
+        exponent (int): The exponent used in the computation.
+
+    Returns:
+        int: The computed value h.
+    """
+    return pow(base, exponent, prime_modulus)
+
+def compute_commitment(message, base, h_value, random_value, prime_modulus):
+    """
+    Computes the commitment of a message using given parameters.
+
+    Args:
+        message (int): The message to be committed.
+        base (int): The base value for the commitment.
+        h_value (int): The computed value used in the commitment.
+        random_value (int): The random integer used in the commitment.
+        prime_modulus (int): The prime modulus for the commitment.
+
+    Returns:
+        int: The computed commitment.
+    """
+    # Calculate the commitment value
+    t1 = pow(base, message, prime_modulus)
+    t2 = pow(h_value, random_value, prime_modulus)
+    return (t1 * t2) % prime_modulus
+
+def verify_commitment(message, base, h_value, random_value, prime_modulus, commitment):
+    """
+    Verifies the commitment and returns the message if the commitment is valid.
+
+    Args:
+        message (int): The original message.
+        base (int): The base value used in the commitment.
+        h_value (int): The computed value used in the commitment.
+        random_value (int): The random integer used in the commitment.
+        prime_modulus (int): The prime modulus for the commitment.
+        commitment (int): The commitment to be verified.
+
+    Returns:
+        int or None: The original message if the commitment matches; otherwise, None.
+    """
+    # Recompute the commitment with the given values
+    recomputed_commitment = compute_commitment(message, base, h_value, random_value, prime_modulus)
+    
+    # Verify if the recomputed commitment matches the provided commitment
+    if recomputed_commitment == commitment:
+        return message
+    return None

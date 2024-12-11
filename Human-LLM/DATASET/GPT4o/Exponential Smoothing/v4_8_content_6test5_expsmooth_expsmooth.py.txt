@@ -1,0 +1,77 @@
+"""
+Simple Exponential Smoothing
+Created on 18.03.2019
+Author: /dat
+
+The formula:
+y_t = a * y_t + a * (1-a)^1 * y_t-1 + a * (1-a)^2 * y_t-2 + ... + a*(1-a)^n * y_t-n
+"""
+
+import numpy as np
+import xlwings as xw
+
+@xw.func
+def expsmooth(data):
+    """
+    Applies simple exponential smoothing to the provided data series.
+
+    Parameters:
+    data (list or np.array): Time series data to smooth.
+
+    Returns:
+    float: Smoothed value.
+    """
+    data = list(data)  # Ensure the data is in list format
+
+    def calculate_sigma(alpha):
+        """
+        Calculates the sigma value for a given alpha.
+
+        Parameters:
+        alpha (float): Smoothing factor.
+
+        Returns:
+        float: Sigma value.
+        """
+        eps = 0
+        b = data[0]  # Initialize the smoothed value
+        for i in range(1, len(data)):
+            b = alpha * data[i] + (1 - alpha) * b
+            eps += (b - data[i]) ** 2
+        return eps / len(data)
+
+    def find_optimal_alpha(alpha_range, step=0.001):
+        """
+        Finds the optimal alpha within a specified range using fine-tuning.
+
+        Parameters:
+        alpha_range (tuple): Range of alpha values to search.
+        step (float): Step size for alpha values. Default is 0.001.
+
+        Returns:
+        float: Optimal alpha value.
+        """
+        alphas = np.arange(alpha_range[0], alpha_range[1], step)
+        sigmas = [calculate_sigma(alpha) for alpha in alphas]
+        min_sigma_index = np.argmin(sigmas)
+        return alphas[min_sigma_index]
+
+    # Coarse search for optimal alpha
+    coarse_alphas = np.arange(0.1, 2.0, 0.1)
+    coarse_sigmas = [calculate_sigma(alpha) for alpha in coarse_alphas]
+    best_coarse_alpha = coarse_alphas[np.argmin(coarse_sigmas)]
+
+    # Fine-tune the search around the best coarse alpha
+    fine_alpha_range = (max(0, best_coarse_alpha - 0.2), best_coarse_alpha + 0.2)
+    best_alpha = find_optimal_alpha(fine_alpha_range)
+
+    # Apply exponential smoothing with the best alpha
+    smoothed_value = data[0]  # Initialize the smoothed value
+    for i in range(1, len(data)):
+        smoothed_value = best_alpha * data[i] + (1 - best_alpha) * smoothed_value
+
+    return smoothed_value
+
+if __name__ == '__main__':
+    xw.Book().set_mock_caller()
+    expsmooth()

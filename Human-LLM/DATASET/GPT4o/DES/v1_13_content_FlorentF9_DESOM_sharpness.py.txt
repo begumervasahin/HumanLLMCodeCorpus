@@ -1,0 +1,64 @@
+"""
+Prototype sharpness ratio metric
+Author: Florent Forest
+"""
+
+import numpy as np
+
+def prototype_sharpness_ratio(X, som):
+    """
+    Calculate the prototype sharpness ratio for image datasets.
+
+    Parameters
+    ----------
+    X : array, shape = [n_samples, input_dim]
+        Input samples.
+    som : array
+        SOM prototype vectors.
+
+    Returns
+    -------
+    float
+        The ratio of SOM sharpness to data sharpness.
+    """
+    
+    # Determine the size of the images (assuming square images)
+    size = int(np.sqrt(X.shape[-1]))
+    
+    # Reshape the input samples and SOM prototypes to 2D images
+    X = X.reshape(-1, size, size, 1)
+    som = som.reshape(-1, size, size, 1)
+    
+    # Calculate the sharpness for the data samples
+    data_sharpness = 0.0
+    for x in X:
+        gx, gy = np.gradient(x[:, :, 0])  # Compute gradients
+        gnorm = np.sqrt(gx ** 2 + gy ** 2)  # Gradient norm
+        data_sharpness += np.mean(gnorm)  # Mean gradient norm
+    
+    data_sharpness /= X.shape[0]  # Average over all samples
+    
+    # Calculate the sharpness for the SOM prototypes
+    som_sharpness = 0.0
+    for prototype in som:
+        gx, gy = np.gradient(prototype[:, :, 0])  # Compute gradients
+        gnorm = np.sqrt(gx ** 2 + gy ** 2)  # Gradient norm
+        som_sharpness += np.mean(gnorm)  # Mean gradient norm
+    
+    som_sharpness /= som.shape[0]  # Average over all prototypes
+    
+    # Return the ratio of SOM sharpness to data sharpness
+    return som_sharpness / data_sharpness
+
+# Example usage
+if __name__ == "__main__":
+    # Generate some example data (replace with actual data)
+    n_samples = 10
+    input_dim = 64
+    n_prototypes = 5
+
+    X = np.random.rand(n_samples, input_dim)
+    som = np.random.rand(n_prototypes, input_dim)
+
+    ratio = prototype_sharpness_ratio(X, som)
+    print("Prototype Sharpness Ratio:", ratio)

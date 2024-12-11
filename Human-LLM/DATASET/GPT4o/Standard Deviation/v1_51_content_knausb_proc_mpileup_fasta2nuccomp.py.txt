@@ -1,0 +1,45 @@
+import argparse
+from Bio import SeqIO
+
+def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Determine nucleotide composition of FASTA files.')
+    parser.add_argument("FASTA", help="FASTA file containing nucleotides.")
+    parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
+    args = parser.parse_args()
+
+    # Verbose output if enabled
+    if args.verbose:
+        print("verbosity turned on")
+        print("Input FASTA file: " + args.FASTA)
+
+    # Prepare output file name
+    outfile = args.FASTA.split('.')[0] + '_nuccomp.csv'
+    if args.verbose:
+        print("Output file: " + outfile)
+
+    # Open output file and write header
+    with open(outfile, 'w') as f:
+        f.write('Id,Length,a,A,c,C,g,G,t,T,w,W,s,S,m,M,k,K,r,R,y,Y,n,N\n')
+        
+        # Parse FASTA file and compute nucleotide composition
+        for record in SeqIO.parse(args.FASTA, "fasta"):
+            counts = {
+                'a': record.seq.count("a"), 'A': record.seq.count("A"),
+                'c': record.seq.count("c"), 'C': record.seq.count("C"),
+                'g': record.seq.count("g"), 'G': record.seq.count("G"),
+                't': record.seq.count("t"), 'T': record.seq.count("T"),
+                'w': record.seq.count("w"), 'W': record.seq.count("W"),
+                's': record.seq.count("s"), 'S': record.seq.count("S"),
+                'm': record.seq.count("m"), 'M': record.seq.count("M"),
+                'k': record.seq.count("k"), 'K': record.seq.count("K"),
+                'r': record.seq.count("r"), 'R': record.seq.count("R"),
+                'y': record.seq.count("y"), 'Y': record.seq.count("Y"),
+                'n': record.seq.count("n"), 'N': record.seq.count("N")
+            }
+            f.write(f"{record.id},{len(record)},")
+            f.write(','.join(str(counts[nuc]) for nuc in counts))
+            f.write('\n')
+
+if __name__ == "__main__":
+    main()

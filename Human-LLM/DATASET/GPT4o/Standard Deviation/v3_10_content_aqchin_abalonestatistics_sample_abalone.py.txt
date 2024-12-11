@@ -1,0 +1,75 @@
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+
+# Set the random seed for reproducibility
+random.seed(0)
+
+# Define the number of runs to test
+RUN_TESTS = [10, 100, 1000, 10000, 100000]
+
+# Define the scale for the simulation
+SCALE = 0.1
+
+def read_num_rows(filename):
+    """Count the number of rows in the file."""
+    with open(filename) as file:
+        return sum(1 for _ in file)
+
+def simulate_runs(num_rows, num_runs, scale):
+    """Simulate the runs and return the mean and standard deviation."""
+    data_in = [0] * num_rows
+
+    for _ in range(num_runs):
+        n_n = int(num_rows * scale)  # Number of positives to assign
+        n_r = num_rows               # Total number of rows remaining
+
+        for j in range(num_rows):
+            if n_n / n_r > random.random():
+                data_in[j] += 1
+                n_n -= 1
+            n_r -= 1
+
+    mean = np.mean(data_in) / num_runs
+    std = np.std(data_in) / num_runs
+
+    return mean, std
+
+def plot_results(runs, means, stds):
+    """Plot the results of the simulations."""
+    plt.figure(figsize=(10, 8))
+
+    plt.subplot(2, 1, 1)
+    plt.plot(runs, means, marker='o')
+    plt.title("Mean vs. Runs")
+    plt.ylabel("Mean")
+
+    plt.subplot(2, 1, 2)
+    plt.plot(runs, stds, marker='o')
+    plt.title("Standard Deviation vs. Runs")
+    plt.xlabel("Number of Runs")
+    plt.ylabel("Standard Deviation")
+
+    plt.tight_layout()
+    plt.show()
+
+def main():
+    # Count the number of rows in the 'abalone.data' file
+    num_rows = read_num_rows('abalone.data')
+
+    # Initialize lists to store means and standard deviations
+    means = []
+    stds = []
+
+    # Perform simulations for each number of runs
+    for num_runs in RUN_TESTS:
+        mean, std = simulate_runs(num_rows, num_runs, SCALE)
+        means.append(mean)
+        stds.append(std)
+
+    # Plot the results
+    plot_results(RUN_TESTS, means, stds)
+
+# Run the main function
+if __name__ == "__main__":
+    main()

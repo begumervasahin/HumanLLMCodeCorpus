@@ -1,0 +1,74 @@
+import sys
+import pandas as pd
+
+def check_legitimacy(grouped):
+    """
+    Check if the max temperature exceeds 100°F on any given day.
+    Specific days with max temperature > 100°F:
+    - 2011-05-04: min 53.6, max 101.8, mean 68.46
+    - 2017-09-01: min 66.6, max 107.5, mean 84.27
+    - 2017-09-02: min 73.4, max 104.4, mean 86.59
+
+    These dates have been verified as legitimate due to corresponding news reports.
+    """
+    for index, row in grouped.iterrows():
+        if row['max'] > 100:
+            print(f"{index}: min {row['min']}, max {row['max']}, mean {row['mean']}")
+
+def fill_missing_values(grouped):
+    """
+    Fill missing values using forward fill method.
+    """
+    grouped.fillna(method='ffill', inplace=True)
+    return grouped
+
+def replace_negatives_with_nans(grouped):
+    """
+    Replace negative values with NaNs.
+    Mean values below 12.46 are also replaced with NaNs.
+    """
+    grouped['min'] = grouped['min'].apply(lambda x: float('nan') if x < 0 else x)
+    grouped['max'] = grouped['max'].apply(lambda x: float('nan') if x < 0 else x)
+    grouped['mean'] = grouped['mean'].apply(lambda x: float('nan') if x < 12.46 else x)
+    return grouped
+
+def group_temperature_data(df):
+    """
+    Group the temperature data by day and calculate min, max, and mean temperatures.
+    """
+    grouped = df.groupby(pd.Grouper(freq='D'))['TemperatureF'].agg(['min', 'max', 'mean'])
+    return grouped
+
+def process_temperature_data(df):
+    """
+    Process the temperature data by grouping, replacing negatives, and filling NaNs.
+    """
+    grouped = group_temperature_data(df)
+    grouped = replace_negatives_with_nans(grouped)
+    grouped = fill_missing_values(grouped)
+    return grouped
+
+def main():
+    """
+    Main function to read raw temperature data, process it, check legitimacy, and save cleaned data.
+    """
+    try:
+        df = pd.read_csv("temp_data_raw.csv", index_col="Time", parse_dates=True)
+    except FileNotFoundError:
+        print("Please run `scrape_data.py` to generate the raw data first.")
+        sys.exit(0)
+
+    # Remove any unnamed columns that might have been added during data export
+    df.drop(columns=[col for col in df.columns if "Unnamed" in col], inplace=True)
+
+    # Process the data
+    grouped = process_temperature_data(df)
+
+    # Check data legitimacy
+    check_legitimacy(grouped)
+
+    # Save the cleaned data
+    grouped.to_csv("temp_data_cleaned.csv")
+
+if __name__ == "__main__":
+    main()

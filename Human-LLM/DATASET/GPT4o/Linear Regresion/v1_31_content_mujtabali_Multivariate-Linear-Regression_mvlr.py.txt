@@ -1,0 +1,117 @@
+import numpy as np
+import pandas as pd
+import sys
+import matplotlib.pyplot as plt
+
+def computeCost(X, y, theta):
+    inner = np.power(((X @ theta.T) - y), 2)
+    return np.sum(inner) / (2 * len(X))
+
+def gradientDescent(X, y, theta, iters, alpha):
+    cost = np.zeros(iters)
+    for i in range(iters):
+        h = X @ theta.T
+        temp = h - y
+        S = X.T @ temp
+        S = (alpha / len(X)) * S
+        theta = theta - S.T
+        c = computeCost(X, y, theta)
+        cost[i] = c
+    return cost, theta
+
+def getTrainingTest(my_data):
+    X = my_data.iloc[:, 0:len(my_data.columns) - 1]
+    ones = np.ones([X.shape[0], 1])
+    X = np.concatenate((ones, X), axis=1)
+    X = np.array(X, dtype=np.float64)
+    y = my_data.iloc[:, len(my_data.columns) - 1:len(my_data.columns)]
+    y = np.array(y, dtype=np.float64)
+    itrain = round(len(X) * 0.8)
+    trainX = X[0:itrain, :]
+    testX = X[itrain:, :]
+    trainY = y[0:itrain, :]
+    testY = y[itrain:, :]
+    return trainX, trainY, testX, testY
+
+def getError(py, y):
+    d = py - y
+    s = d.T @ d
+    error = np.sqrt(s[0, 0])
+    return error
+
+def costreg(X, y, theta, lamda):
+    cost = computeCost(X, y, theta)
+    th = theta[:, 1:theta.shape[1]]
+    th = lamda * th * th
+    term = np.sum(th)
+    cost = cost + term
+    return cost
+
+def gdRegularized(X, y, theta, iters, alpha, lamda):
+    cost = np.zeros(iters)
+    term = 1 - lamda * (alpha / len(X))
+    o = np.ones(theta.shape[1] - 1) * term
+    a = np.ones(1)
+    M = np.concatenate((a, o), axis=0)
+    for i in range(iters):
+        h = X @ theta.T
+        temp = h - y
+        S = X.T @ temp
+        S = (alpha / len(X)) * S
+        theta = theta * M
+        theta = theta - S.T
+        c = costreg(X, y, theta, lamda)
+        cost[i] = c
+    return cost, theta
+
+def predict(X, theta):
+    py = X @ theta.T
+    return py
+
+if len(sys.argv) < 2:
+    print("Usage: python3 script.py (filename)")
+    sys.exit()
+
+filename = sys.argv[1]
+my_data = pd.read_csv(filename)
+my_data = (my_data - my_data.mean()) / my_data.std()
+
+trainX, trainY, testX, testY = getTrainingTest(my_data)
+theta = np.zeros([1, trainX.shape[1]], dtype=np.float64)
+iters = 1000
+ALPHA = [0.0001, 0.001, 0.01, 0.1]
+minerr = float('inf')
+optalpha = 0
+
+plt.figure()
+
+for alpha in ALPHA:
+    theta = np.zeros([1, trainX.shape[1]], dtype=np.float64)
+    cost, theta_optimized = gradientDescent(trainX, trainY, theta, iters, alpha)
+    I = [i for i in range(iters)]
+    plt.plot(I, cost, label=f'alpha = {alpha}')
+    prY = predict(testX, theta_optimized)
+    err = getError(prY, testY)
+    if err < minerr:
+        minerr = err
+        optalpha = alpha
+    print(f"For alpha = {alpha}")
+    print(f"Theta: {theta_optimized}")
+    print(f"RMSE = {err}")
+
+print("\n")
+lamdas = [0, 1, 10, 100]
+
+for lamda in lamdas:
+    cost, theta_reg = gdRegularized(trainX, trainY, theta, iters, optalpha, lamda)
+    prY1 = predict(testX, theta_reg)
+    print(f"After regularization with lambda = {lamda}")
+    print(f"Theta: {theta_reg}")
+    print(f"Error = {getError(prY1, testY)}")
+
+plt.title('Variation of Cost with iterations for different values of alpha')
+plt.xlabel('Iterations')
+plt.ylabel('Cost')
+plt.legend()
+plt.savefig('Cost_vs_iters.png')
+plt.show()

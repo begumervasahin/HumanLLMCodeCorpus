@@ -1,0 +1,71 @@
+import os
+import json
+import operator
+
+def list_files(directory):
+    """List all files in the given directory and its subdirectories."""
+    files_list = []
+    for subdir, _, files in os.walk(directory):
+        for file in files:
+            files_list.append(os.path.join(subdir, file))
+    return files_list
+
+def process_files(file_list):
+    """Process the given list of files to compute word frequencies."""
+    word_counter = {}
+    document_counter = {}
+    total_files = 0
+
+    for file in file_list:
+        with open(file) as f:
+            for line in f:
+                json_data = json.loads(line)
+                text = json_data.get('desc')
+                if text:
+                    total_files += 1
+                    local_word_counter = {}
+                    for word in text.split():
+                        if "," not in word and "-" not in word:
+                            # Update word_counter
+                            word_counter[word] = word_counter.get(word, 0) + 1
+                            # Update local_word_counter
+                            local_word_counter[word] = local_word_counter.get(word, 0) + 1
+                    
+                    # Update document_counter
+                    for word in local_word_counter:
+                        document_counter[word] = document_counter.get(word, 0) + 1
+
+    return word_counter, document_counter
+
+def compute_results(word_counter, document_counter):
+    """Compute the results based on word frequencies and document occurrences."""
+    results = {}
+    for word in document_counter:
+        results[word] = word_counter[word] * document_counter[word] ** 2
+    return results
+
+def main():
+    # Directory containing files
+    directory = 'extracted'
+    
+    # List of files to process
+    file_list = list_files(directory)
+    
+    # For testing, we override file_list with a single file
+    file_list = ['out.txt']
+
+    # Process the files and get word frequencies
+    word_counter, document_counter = process_files(file_list)
+
+    # Compute the results based on frequencies
+    results = compute_results(word_counter, document_counter)
+
+    # Sort the results in descending order
+    sorted_results = sorted(results.items(), key=operator.itemgetter(1), reverse=True)
+
+    # Print the top 50 words
+    for i, (word, score) in enumerate(sorted_results[:50]):
+        print(word)
+
+if __name__ == "__main__":
+    main()

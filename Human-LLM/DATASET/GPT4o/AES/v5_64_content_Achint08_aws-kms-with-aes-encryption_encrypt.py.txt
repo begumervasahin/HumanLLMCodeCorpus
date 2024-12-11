@@ -1,0 +1,81 @@
+import os
+from Crypto.Cipher import AES
+from Crypto import Random
+import hashlib
+import base64
+import boto3
+
+# Configuration for AWS KMS and master key
+KEY_ID = 'arn:aws:kms:xxxxxxx:key/xxxxxxxxxxxxxxxxxxxx'
+MASTER_KEY = 'This is a secret key'
+REGION_NAME = 'xx-xxxx-1'
+BLOCK_SIZE = 16
+
+def pad(data):
+    """
+    Pads the input string to a block size of 16 for cryptographic functions.
+    :param data: String to pad
+    :return: Padded string
+    """
+    padding = BLOCK_SIZE - len(data) % BLOCK_SIZE
+    padded_data = data + padding * chr(padding)
+    return padded_data
+
+def generate_key_from_kms(master_key):
+    """
+    Encrypts the master key using AWS KMS and retrieves the encrypted key.
+    :param master_key: Master key to be encrypted
+    :return: Encrypted master key
+    """
+    kms = boto3.client('kms', region_name=REGION_NAME)
+    try:
+        response = kms.encrypt(
+            KeyId=KEY_ID,
+            Plaintext=master_key
+        )
+        encrypted_master_key = response['CiphertextBlob']
+        print(f"Encrypted master key: {encrypted_master_key}")
+        print("Store the encrypted master key. It can be used later.")
+        return encrypted_master_key
+    except Exception as e:
+        print(f"[ERROR]: Error during KMS calls: {e}")
+        return None
+
+def encrypt_data(master_key, data):
+    """
+    Encrypts data using the provided master key.
+    :param master_key: Master key to encrypt the data
+    :param data: Data to be encrypted
+    :return: Encrypted data
+    """
+    try:
+        # Hash the master key to fit the AES key size
+        hashed_key = hashlib.sha256(master_key.encode('utf-8')).digest()
+        # Generate a random IV (Initialization Vector)
+        iv = Random.new().read(AES.block_size)
+        # Create the cipher object using the hashed key and IV
+        cipher = AES.new(hashed_key, AES.MODE_CBC, iv)
+        # Pad the data to ensure it fits the block size
+        padded_data = pad(data)
+        # Encrypt the padded data
+        encrypted_data = iv + cipher.encrypt(padded_data.encode('utf-8'))
+        # Encode the encrypted data to base64
+        return base64.b64encode(encrypted_data).decode('utf-8')
+    except Exception as e:
+        print(f"[ERROR]: Error while data encryption: {e}")
+        return None
+
+if __name__ == "__main__":
+    # Encrypt the master key using AWS KMS
+    encrypted_master_key = generate_key_from_kms(MASTER_KEY)
+    
+    if encrypted_master_key:
+        data = "Sensitive data that needs encryption"
+        encrypted_data = encrypt_data(MASTER_KEY, data)
+        
+        if encrypted_data:
+            print(f"Encrypted data: {encrypted_data}")
+        else:
+            print("Data encryption failed.")
+    else:
+        print("Master key encryption failed.")

@@ -1,0 +1,184 @@
+"""
+Created on Fri Mar 27 23:07:27 2020
+Author: Elijah Chandler
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define file paths
+TRAIN_PATH = '/Users/elijahchandler/Desktop/ieee-fraud-detection/train_transaction.csv'
+TEST_PATH = '/Users/elijahchandler/Desktop/ieee-fraud-detection/test_transaction.csv'
+
+def load_data(train_path, test_path):
+    """
+    Load the training and testing datasets.
+    
+    Args:
+        train_path (str): Path to the training dataset.
+        test_path (str): Path to the testing dataset.
+    
+    Returns:
+        tuple: DataFrames for training and testing data.
+    """
+    train_data = pd.read_csv(train_path)
+    test_data = pd.read_csv(test_path)
+    return train_data, test_data
+
+def prepare_fraud_data(df):
+    """
+    Prepares the fraud data for modeling by handling missing values,
+    encoding categorical variables, and normalizing numerical variables.
+
+    Args:
+        df (pd.DataFrame): Input dataframe.
+
+    Returns:
+        pd.DataFrame: Processed dataframe.
+    """
+    selected_columns = ['TransactionAmt', 'card4', 'card6']
+    X = df[selected_columns]
+
+    # One-hot encode categorical variables
+    X = pd.get_dummies(X, columns=['card4', 'card6'], drop_first=True)
+
+    # Handle missing values in TransactionAmt
+    X['TransactionAmt'] = X['TransactionAmt'].fillna(X['TransactionAmt'].mean())
+
+    # Normalize numerical variables
+    X = (X - X.mean()) / X.std()
+
+    return X
+
+def balance_data(df, target_col='isFraud', sample_size=20000, random_state=42):
+    """
+    Balances the dataset by undersampling the non-fraud cases.
+
+    Args:
+        df (pd.DataFrame): Input dataframe.
+        target_col (str): Column name of the target variable.
+        sample_size (int): Number of samples to use for non-fraud cases.
+        random_state (int): Random state for reproducibility.
+
+    Returns:
+        tuple: Balanced feature matrix and target vector.
+    """
+    fraud_data = df[df[target_col] == 1]
+    non_fraud_data = df[df[target_col] == 0].sample(n=sample_size, random_state=random_state)
+
+    balanced_data = pd.concat([fraud_data, non_fraud_data], ignore_index=True)
+    Y_balanced = balanced_data[target_col]
+    X_balanced = prepare_fraud_data(balanced_data)
+
+    return X_balanced, Y_balanced
+
+def sigmoid(u):
+    """
+    Computes the sigmoid function.
+
+    Args:
+        u (float): Input value.
+
+    Returns:
+        float: Sigmoid of the input value.
+    """
+    return 1 / (1 + np.exp(-u))
+
+def log_likelihood(beta, X, Y):
+    """
+    Computes the log likelihood for logistic regression.
+
+    Args:
+        beta (np.ndarray): Coefficient vector.
+        X (np.ndarray): Feature matrix.
+        Y (np.ndarray): Target vector.
+
+    Returns:
+        float: Log likelihood.
+    """
+    dot_products = X.dot(beta)
+    return np.sum(Y * dot_products - np.log(1 + np.exp(dot_products)))
+
+def logistic_regression(X, Y, alpha=0.0001, max_iterations=30):
+    """
+    Performs logistic regression using gradient descent.
+
+    Args:
+        X (np.ndarray): Feature matrix.
+        Y (np.ndarray): Target vector.
+        alpha (float): Learning rate.
+        max_iterations (int): Maximum number of iterations.
+
+    Returns:
+        tuple: Coefficient vector, list of gradient norms, list of log likelihoods.
+    """
+    N, d = X.shape
+    X = np.hstack((np.ones((N, 1)), X))  # Add intercept term
+    beta = np.random.randn(d + 1)
+    gradient_norms = []
+    log_likelihoods = []
+
+    for iteration in range(max_iterations):
+        predictions = sigmoid(X.dot(beta))
+        gradient = X.T.dot(predictions - Y)
+        gradient_norms.append(np.linalg.norm(gradient))
+        beta -= alpha * gradient
+        log_likelihoods.append(log_likelihood(beta, X, Y))
+        print(f"Iteration {iteration}: Log Likelihood = {log_likelihoods[-1]}")
+
+    return beta, gradient_norms, log_likelihoods
+
+def make_predictions(X_test, beta):
+    """
+    Makes predictions on the test set.
+
+    Args:
+        X_test (np.ndarray): Test feature matrix.
+        beta (np.ndarray): Coefficient vector.
+
+    Returns:
+        np.ndarray: Predictions.
+    """
+    X_test = np.hstack((np.ones((X_test.shape[0], 1)), X_test))
+    return sigmoid(X_test.dot(beta))
+
+def prepare_submission(test_data, predictions, file_path):
+    """
+    Prepares the submission file.
+
+    Args:
+        test_data (pd.DataFrame): Test data containing TransactionID.
+        predictions (np.ndarray): Predictions for the test data.
+        file_path (str): Path to save the submission file.
+
+    Returns:
+        None
+    """
+    submission = test_data[['TransactionID']].copy()
+    submission['isFraud'] = predictions
+    submission.to_csv(file_path, index=False)
+    print("Submission file created.")
+
+# Load data
+train_data, test_data = load_data(TRAIN_PATH, TEST_PATH)
+
+# Extract target variable
+Y_train = train_data['isFraud']
+
+# Prepare data
+X_train = prepare_fraud_data(train_data)
+X_test = prepare_fraud_data(test_data)
+
+# Balance the training data
+X_train_balanced, Y_train_balanced = balance_data(train_data)
+
+# Train logistic regression model
+beta, gradient_norms, log_likelihoods = logistic_regression(X_train_balanced.values, Y_train_balanced.values)
+
+# Make predictions on the test set
+predictions = make_predictions(X_test.values, beta)
+
+# Prepare and save submission
+submission_path = '/Users/elijahchandler/Desktop/mySubmission.csv'
+prepare_submission(test_data, predictions, submission_path)

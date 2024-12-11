@@ -1,0 +1,142 @@
+from scipy.sparse import csc_matrix
+import numpy as np
+import math
+import heapq as hp
+import sys
+from collections import Counter
+
+def calculate_centroid(cluster_indices, matrix):
+    """
+    Calculate the centroid of a given cluster based on its indices in the sparse matrix.
+    """
+    centroid = sum(matrix[i] for i in cluster_indices) / len(cluster_indices)
+    return centroid
+
+def load_data(file_path):
+    """
+    Load document-term data from a file.
+    
+    Returns:
+        num_docs (int): Number of documents.
+        num_words (int): Number of words.
+        row_indices (list): Row indices for sparse matrix.
+        col_indices (list): Column indices for sparse matrix.
+        values (list): Non-zero values for sparse matrix.
+    """
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    num_docs = int(lines[0].strip())
+    num_words = int(lines[1].strip())
+
+    row_indices, col_indices, values = [], [], []
+    for line in lines[2:]:
+        doc_id, word_id, count = map(int, line.split())
+        row_indices.append(doc_id - 1)
+        col_indices.append(word_id - 1)
+        values.append(count)
+
+    return num_docs, num_words, row_indices, col_indices, values
+
+def normalize_matrix(num_docs, num_words, row_indices, col_indices, values):
+    """
+    Create and normalize a sparse document-term matrix using TF-IDF weighting.
+    
+    Returns:
+        normalized_matrix (csc_matrix): Normalized sparse matrix.
+    """
+    term_frequencies = Counter(col_indices)
+
+    # Compute TF-IDF weights
+    for i in range(len(values)):
+        tf_idf_weight = math.log((num_docs + 1) / (term_frequencies[col_indices[i]] + 1), 2)
+        values[i] *= tf_idf_weight
+
+    # Create the sparse matrix
+    sparse_matrix = csc_matrix((values, (row_indices, col_indices)), shape=(num_docs, num_words))
+
+    # Normalize the matrix
+    normalization_factors = np.sqrt(sparse_matrix.power(2).sum(axis=1))
+    normalized_matrix = sparse_matrix / normalization_factors
+
+    return normalized_matrix
+
+def hierarchical_clustering(num_docs, num_clusters, normalized_matrix):
+    """
+    Perform agglomerative hierarchical clustering on the normalized matrix.
+    
+    Returns:
+        clusters (dict): Final clusters after hierarchical clustering.
+    """
+    clusters = {i: normalized_matrix[i] for i in range(normalized_matrix.shape[0])}
+    merged_clusters = {}
+    heap = []
+
+    # Calculate initial similarities and populate the heap
+    for i in clusters:
+        for j in clusters:
+            if i < j:
+                similarity = (clusters[i].multiply(clusters[j]).sum()) / \
+                             (np.sqrt(clusters[i].power(2).sum()) * np.sqrt(clusters[j].power(2).sum()))
+                hp.heappush(heap, (1 - similarity, i, j))
+
+    # Perform clustering until the desired number of clusters is reached
+    while len(clusters) > num_clusters:
+        _, cluster1, cluster2 = hp.heappop(heap)
+
+        # Skip if any cluster has already been merged
+        if cluster1 in merged_clusters or cluster2 in merged_clusters:
+            continue
+
+        # Mark clusters as merged
+        merged_clusters[cluster1] = None
+        merged_clusters[cluster2] = None
+
+        # Create a new cluster
+        new_cluster = (cluster1, cluster2) if isinstance(cluster1, int) else cluster1 + (cluster2,)
+        new_centroid = calculate_centroid(new_cluster, normalized_matrix)
+
+        # Remove merged clusters
+        del clusters[cluster1]
+        del clusters[cluster2]
+
+        # Recalculate similarities and update the heap
+        for i in clusters:
+            if i not in merged_clusters:
+                similarity = (new_centroid.multiply(clusters[i]).sum()) / \
+                             (np.sqrt(clusters[i].power(2).sum()) * np.sqrt(new_centroid.power(2).sum()))
+                hp.heappush(heap, (1 - similarity, new_cluster, i))
+
+        clusters[new_cluster] = new_centroid
+
+    return clusters
+
+def print_clusters(clusters):
+    """
+    Print the final clusters with document indices sorted in ascending order.
+    """
+    for cluster in clusters:
+        if isinstance(cluster, int):
+            print(cluster + 1)
+        else:
+            print(','.join(str(idx + 1) for idx in sorted(cluster)))
+
+def main():
+    # Parse command line arguments
+    file_path = sys.argv[1]
+    num_clusters = int(sys.argv[2])
+
+    # Load the document-term matrix data
+    num_docs, num_words, row_indices, col_indices, values = load_data(file_path)
+
+    # Normalize the matrix
+    normalized_matrix = normalize_matrix(num_docs, num_words, row_indices, col_indices, values)
+
+    # Perform hierarchical clustering
+    clusters = hierarchical_clustering(num_docs, num_clusters, normalized_matrix)
+
+    # Print the final clusters
+    print_clusters(clusters)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,84 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def load_data(file_path):
+    """
+    Load data from a CSV file using pandas.
+
+    :param file_path: Path to the CSV file
+    :return: DataFrame containing the loaded data
+    """
+    return pd.read_csv(file_path)
+
+def calculate_weights(query_point, data, tau):
+    """
+    Calculate the weights for each data point based on the query point using a Gaussian kernel.
+
+    :param query_point: The query point x
+    :param data: The dataset X
+    :param tau: Bandwidth parameter controlling the weight fall-off
+    :return: Diagonal matrix of weights
+    """
+    num_samples, _ = np.shape(data)
+    weights = np.mat(np.eye(num_samples))
+    for i in range(num_samples):
+        diff = data[i] - query_point
+        weights[i, i] = np.exp(diff * diff.T / (-2.0 * tau**2))
+    return weights
+
+def compute_local_weight(query_point, data, labels, tau):
+    """
+    Compute the local weight for a given query point.
+
+    :param query_point: The query point x
+    :param data: The dataset X
+    :param labels: The label vector y
+    :param tau: Bandwidth parameter controlling the weight fall-off
+    :return: Theta (θ) that minimizes the cost function
+    """
+    weights = calculate_weights(query_point, data, tau)
+    theta = (data.T * (weights * data)).I * (data.T * weights * labels.T)
+    return theta
+
+def local_weight_regression(data, labels, tau, show_process=False):
+    """
+    Perform Local Weighted Regression.
+
+    :param data: The dataset X
+    :param labels: The label vector y
+    :param tau: Bandwidth parameter controlling the weight fall-off
+    :param show_process: Flag to print the intermediate calculations
+    :return: Predictions vector
+    """
+    num_samples, _ = np.shape(data)
+    predictions = np.zeros(num_samples)
+    for i in range(num_samples):
+        predictions[i] = data[i] * compute_local_weight(data[i], data, labels, tau)
+        if show_process:
+            theta = compute_local_weight(data[i], data, labels, tau)
+            print(f"h(θ)= {theta[0]} + {theta[1]}")
+    return predictions
+
+def visualize_data(data, plot_title, x_label, y_label):
+    """
+    Visualize the given data using a scatter plot.
+
+    :param data: DataFrame containing the data
+    :param plot_title: Title of the plot
+    :param x_label: Label for the x-axis
+    :param y_label: Label for the y-axis
+    :return: None
+    """
+    ax = sns.scatterplot(x=x_label, y=y_label, data=data)
+    ax.set_title(plot_title)
+    plt.show()
+
+# Example usage (uncomment and modify the file path as needed):
+# data = load_data('path_to_your_file.csv')
+# tau = 0.5  # Example value for tau
+# X = np.mat(data[['Feature1', 'Feature2']].values)  # Example feature columns
+# y = np.mat(data['Label'].values).T  # Example label column
+# predictions = local_weight_regression(X, y, tau, show_process=True)
+# visualize_data(data, 'Plot Title', 'Feature1', 'Label')

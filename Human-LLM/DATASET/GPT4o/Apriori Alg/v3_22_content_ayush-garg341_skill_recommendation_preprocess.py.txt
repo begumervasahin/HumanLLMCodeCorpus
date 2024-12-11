@@ -1,0 +1,60 @@
+import pandas as pd
+import re
+
+def preprocess_skills(frame):
+    """
+    Preprocess the DataFrame by cleaning and standardizing the skill names.
+
+    Args:
+        frame (pd.Series): The Series containing the skill data.
+
+    Returns:
+        list: A list of lists, where each inner list contains the cleaned and standardized skill names.
+    """
+    specific_skills = ['c#', '.net', 'asp.net', 'c++']
+    processed_skills = []
+
+    for skill_string in frame:
+        # Clean and split the skill strings
+        skill_string = skill_string.replace('>', '').replace('<', '').replace('...', '')
+        skill_list = skill_string.split(',')
+        cleaned_skills = []
+
+        # Define regex patterns
+        alphanumeric_pattern = re.compile(r'([a-z].*[0-9])')
+        alphabetic_pattern = re.compile(r'([a-z].*[a-z])')
+
+        for skill in skill_list:
+            skill_parts = skill.split(' ')
+            if len(skill_parts) <= 4:
+                skill = skill.lower().strip()
+                if (alphanumeric_pattern.match(skill) or alphabetic_pattern.match(skill) or skill in specific_skills):
+                    skill = skill.replace('?', '').replace('&amp;', '').replace('&', '')
+                    skill = skill.replace('#x', '').replace('#x22', '')
+                    if skill.endswith('.'):
+                        skill = skill[:-1]
+                    if skill.startswith('.') and not skill.startswith('.net'):
+                        skill = skill[1:]
+
+                    if skill not in cleaned_skills:
+                        cleaned_skills.append(skill.strip())
+
+        processed_skills.append(cleaned_skills)
+
+    return processed_skills
+
+# Example usage
+if __name__ == "__main__":
+    # Sample DataFrame creation for demonstration
+    data = {
+        'skills': [
+            'Python, Java, C++, HTML, CSS, JavaScript',
+            'C#, .NET, ASP.NET, SQL, Python, HTML',
+            'Machine Learning, Data Science, AI, Deep Learning'
+        ]
+    }
+    df = pd.DataFrame(data)
+
+    # Preprocess the DataFrame
+    cleaned_skills = preprocess_skills(df['skills'])
+    print(cleaned_skills)

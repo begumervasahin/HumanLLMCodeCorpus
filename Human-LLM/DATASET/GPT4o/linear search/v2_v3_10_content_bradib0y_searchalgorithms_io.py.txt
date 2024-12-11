@@ -1,0 +1,59 @@
+import re
+
+def read_file(file_path):
+    """Reads the content of a file and returns it."""
+    with open(file_path, encoding="utf-8") as file:
+        return file.read()
+
+def find_words_of_length(length, text):
+    """Finds words of a specified length or more in the given text."""
+    pattern = r'\b\w{' + str(length) + r'}\w*\b'
+    return re.findall(pattern, text)
+
+def find_phone_numbers(text):
+    """Finds all phone numbers in the given text."""
+    return re.findall(r'\(?\d{3}\)?-?\s?\d{3}-?\s?\d{4}', text)
+
+def find_names_and_titles(text):
+    """Finds all names and titles in the given text."""
+    return re.findall(r'\b[A-Z][a-z]*,\s[A-Z][a-z]*\b', text)
+
+def find_emails(text):
+    """Finds all email addresses in the given text."""
+    return re.findall(r'[\w\.-]+@[\w\.-]+', text)
+
+def find_emails_without_gov(emails):
+    """Filters out emails ending with '.gov'."""
+    return [email for email in emails if not email.endswith('.gov')]
+
+def print_results(phones, names_and_titles, words, emails, emails_without_gov):
+    """Prints the results of the text analysis."""
+    print("Number of phone numbers found:", len(phones))
+    print("Number of names and titles found:", len(names_and_titles))
+    print("Words with 12 characters or more:", words)
+    print("Number of emails found:", len(emails))
+    print("Number of emails without .gov ending:", len(emails_without_gov))
+
+def remember(thing, file_path):
+    """Appends a given string to a specified file."""
+    with open(file_path, "a", encoding="utf-8") as file:
+        file.write(thing + "\n")
+
+# Main script
+if __name__ == "__main__":
+    # Read the content of the file
+    data = read_file("names.txt")
+
+    # Perform text analysis
+    phones = find_phone_numbers(data)
+    names_and_titles = find_names_and_titles(data)
+    words = find_words_of_length(12, data)
+    emails = find_emails(data)
+    emails_without_gov = find_emails_without_gov(emails)
+
+    # Print the results of the analysis
+    print_results(phones, names_and_titles, words, emails, emails_without_gov)
+
+    # Prompt the user for a string to remember and append it to the file
+    thing_to_remember = input("What would you like to remember? ")
+    remember(thing_to_remember, "database.txt")

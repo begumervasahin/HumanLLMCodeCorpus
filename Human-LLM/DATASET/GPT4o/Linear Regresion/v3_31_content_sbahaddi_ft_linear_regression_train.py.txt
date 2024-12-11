@@ -1,0 +1,129 @@
+import argparse
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+
+def open_csv(filename):
+    """
+    Opens a CSV file and returns the data as numpy arrays.
+    """
+    X, Y = [], []
+    with open(filename, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            X.append(float(row[0]))
+            Y.append(float(row[1]))
+    return np.array(X), np.array(Y)
+
+def save_thetas(filename, theta0, theta1):
+    """
+    Saves the theta values to a file.
+    """
+    with open(filename, 'w') as f:
+        f.write(f'{theta0},{theta1}\n')
+
+def plot_cycle(ax, X, Y, Y_pred, theta0, theta1):
+    """
+    Plots the data points and the regression line during training.
+    """
+    ax.clear()
+    ax.scatter(X, Y)
+    ax.plot(X, Y_pred, 'r')
+    ax.text(0, 0.1, f'theta0 = {theta0}', fontsize=8)
+    ax.text(0, 0, f'theta1 = {theta1}', fontsize=8)
+    plt.pause(0.0001)
+
+def plot_final_train(X, Y, Y_pred):
+    """
+    Plots the final regression line and data points after training.
+    """
+    plt.scatter(X, Y)
+    plt.plot(X, Y_pred, 'r')
+    plt.show()
+
+class Regression:
+    def __init__(self, X, Y):
+        """
+        Initializes the Regression object with data and initial parameters.
+        """
+        self.X = X
+        self.Y = Y
+        self.theta0 = 0.0
+        self.theta1 = 0.0
+        self.cost_history = []
+        self.Y_pred = 0
+        self.X_norm = 0
+        self.Y_norm = 0
+
+    def normalize_x(self):
+        """
+        Normalizes the X values.
+        """
+        xmax = self.X.max()
+        xmin = self.X.min()
+        return (self.X - xmin) / (xmax - xmin)
+
+    def normalize_y(self):
+        """
+        Normalizes the Y values.
+        """
+        ymax = self.Y.max()
+        ymin = self.Y.min()
+        return (self.Y - ymin) / (ymax - ymin)
+
+    def hypothesis(self, theta0, theta1, X):
+        """
+        Calculates the predicted Y values based on the hypothesis.
+        """
+        return theta1 * X + theta0
+
+    def train(self, lr=0.001):
+        """
+        Trains the regression model using gradient descent.
+        """
+        self.X_norm = self.normalize_x()
+        self.Y_norm = self.normalize_y()
+        m = float(len(self.X_norm))
+        iteration = 0
+        while True:
+            Y_pred = self.hypothesis(self.theta0, self.theta1, self.X_norm)
+            self.cost_history.append((1 / (2 * m)) * np.sum(np.square(Y_pred - self.Y_norm)))
+            tmp_theta0 = (1 / m) * np.sum(Y_pred - self.Y_norm)
+            tmp_theta1 = (1 / m) * np.sum(self.X_norm * (Y_pred - self.Y_norm))
+            if abs(tmp_theta0) < 0.0001 and abs(tmp_theta1) < 0.0001:
+                print("Training finished.")
+                break
+            self.theta0 -= lr * tmp_theta0
+            self.theta1 -= lr * tmp_theta1
+            if iteration % 3000 == 0 and args.visu == "train":
+                plot_cycle(ax, self.X_norm, self.Y_norm, Y_pred, self.theta0, self.theta1)
+            iteration += 1
+        self.Y_pred = Y_pred
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--visu", help="select which visualization you want.")
+    parser.add_argument("-p", "--plot", help="visualize data to see their repartition")
+    args = parser.parse_args()
+
+    X, Y = open_csv("data.csv")
+
+    if args.plot == "on":
+        plt.scatter(X, Y)
+        plt.show()
+    else:
+        regression = Regression(X, Y)
+        regression.train()
+        save_thetas("thetas", regression.theta0, regression.theta1)
+
+        if args.visu == "train":
+            plt.ioff()
+            plt.show()
+        elif args.visu == "mse":
+            plt.plot(range(len(regression.cost_history)), regression.cost_history, "r")
+            plt.title("Cost Through Iterations")
+            plt.xlabel("Number of Iterations")
+            plt.ylabel("Cost")
+            plt.show()
+        elif args.visu == "on":
+            plot_final_train(regression.X_norm, regression.Y_norm, regression.Y_pred)

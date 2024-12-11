@@ -1,0 +1,139 @@
+from math import sqrt
+from functools import reduce
+import operator
+
+def gcd(x, y):
+    """
+    Compute the greatest common divisor (GCD) of two integers x and y.
+
+    Parameters
+    ----------
+    x : int
+        The first integer.
+    y : int
+        The second integer.
+
+    Returns
+    -------
+    int
+        The greatest common divisor of x and y.
+    """
+    while y != 0:
+        x, y = y, x % y
+    return x
+
+def factorize(x, primeset):
+    """
+    Factorize an integer x over a given set of prime numbers.
+
+    Parameters
+    ----------
+    x : int
+        The number to be factorized.
+    primeset : set
+        A set of prime numbers.
+
+    Returns
+    -------
+    list
+        A list of pairs (p_i, a_i) such that x is the product of p_i raised to the power of a_i.
+        Returns an empty list if x cannot be completely factorized over the primeset.
+    """
+    factors = []
+    for p in primeset:
+        exponent = 0
+        while x % p == 0:
+            exponent += 1
+            x //= p
+        if exponent > 0:
+            factors.append((p, exponent))
+    return factors if x == 1 else []
+
+def generate_primes(limit):
+    """
+    Generate a set of prime numbers up to a given limit using the Sieve of Eratosthenes.
+
+    Parameters
+    ----------
+    limit : int
+        The upper limit for generating prime numbers.
+
+    Returns
+    -------
+    set
+        A set of prime numbers up to the specified limit.
+    """
+    primeset = set()
+    is_prime = [True] * limit
+    is_prime[0] = is_prime[1] = False  # 0 and 1 are not prime numbers
+
+    for i in range(2, limit):
+        if is_prime[i]:
+            primeset.add(i)
+            for multiple in range(i * i, limit, i):
+                is_prime[multiple] = False
+    return primeset
+
+def integer_sqrt(x):
+    """
+    Compute the integer square root of a given number x.
+
+    Parameters
+    ----------
+    x : int
+        The number to compute the integer square root of.
+
+    Returns
+    -------
+    int
+        The integer square root of x.
+    """
+    if x == 0:
+        return 0
+    low, high = 1, x
+    while low < high:
+        mid = (low + high + 1) // 2
+        if mid * mid <= x:
+            low = mid
+        else:
+            high = mid - 1
+    return low
+
+def product(factors):
+    """
+    Compute the product of a list of numbers.
+
+    Parameters
+    ----------
+    factors : list
+        A list of numbers.
+
+    Returns
+    -------
+    int
+        The product of all numbers in the list.
+    """
+    return reduce(operator.mul, factors, 1)
+
+# Example usage
+if __name__ == "__main__":
+    # Generate a set of primes up to 100
+    primeset = generate_primes(100)
+    print(f"Primeset: {primeset}")
+
+    # Factorize the number 60 using the generated primeset
+    x = 60
+    factors = factorize(x, primeset)
+    print(f"Factors of {x}: {factors}")
+
+    # Compute the GCD of 48 and 18
+    x, y = 48, 18
+    print(f"GCD of {x} and {y}: {gcd(x, y)}")
+
+    # Compute the integer square root of 49
+    x = 49
+    print(f"Integer square root of {x}: {integer_sqrt(x)}")
+
+    # Compute the product of the list [2, 3, 5]
+    factors = [2, 3, 5]
+    print(f"Product of {factors}: {product(factors)}")

@@ -1,0 +1,45 @@
+from Crypto.Cipher import Blowfish
+from struct import pack
+
+def blowfish_encrypt(key, plaintext):
+    """
+    Encrypts the given plaintext using Blowfish cipher with the specified key.
+
+    Parameters
+    ----------
+    key : bytes
+        The encryption key.
+    plaintext : bytes
+        The plaintext to be encrypted.
+
+    Returns
+    -------
+    bytes
+        The encrypted message including the initialization vector (IV).
+    """
+    # Initialize Blowfish cipher in CBC mode
+    cipher = Blowfish.new(key, Blowfish.MODE_CBC)
+    
+    # Determine block size
+    bs = Blowfish.block_size
+    
+    # Calculate padding length
+    plen = bs - len(plaintext) % bs
+    
+    # Create padding
+    padding = [plen] * plen
+    padding = pack('b' * plen, *padding)
+    
+    # Encrypt the plaintext with padding and prepend the IV
+    encrypted_msg = cipher.iv + cipher.encrypt(plaintext + padding)
+    
+    return encrypted_msg
+
+if __name__ == "__main__":
+    # Example usage
+    key = b'An arbitrarily long key'
+    plaintext = b'docendo discimus '
+    
+    encrypted_msg = blowfish_encrypt(key, plaintext)
+    
+    print("Encrypted message:", encrypted_msg)

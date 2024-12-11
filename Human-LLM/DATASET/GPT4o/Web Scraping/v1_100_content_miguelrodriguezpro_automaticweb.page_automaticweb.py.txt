@@ -1,0 +1,76 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Your WordPress credentials
+word_username = "YOUR_WORDPRESS_USER"
+word_password = "YOUR_WORDPRESS_PASSWORD"
+
+# List of keywords to search for on YouTube
+keywords = ["example_keyword1", "example_keyword2"]  # Replace with your keywords
+
+# Initialize the Chrome driver
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service)
+
+try:
+    # Log into WordPress
+    driver.get('https://example.com/wp-admin/')
+    time.sleep(3)
+    user = driver.find_element(By.ID, 'user_login')
+    user.send_keys(word_username)
+    time.sleep(1)
+    passw = driver.find_element(By.ID, 'user_pass')
+    passw.send_keys(word_password)
+    passw.send_keys(Keys.ENTER)
+    time.sleep(8)
+
+    for keyword in keywords:
+        print("Processing keyword:", keyword)
+
+        # Create a new post
+        driver.find_element(By.ID, 'wp-admin-bar-new-content').click()
+        time.sleep(3)
+        post_title = driver.find_element(By.ID, 'post-title-0')
+        post_title.send_keys(f"[TOP 10] videos {keyword}")
+
+        # Open a new tab to search YouTube
+        driver.execute_script("window.open('');")
+        driver.switch_to.window(driver.window_handles[1])
+        search_url = f"https://www.youtube.com/results?search_query={keyword}&sp=EgIQAQ%253D%253D"
+        driver.get(search_url)
+        time.sleep(5)
+
+        # Gather top 10 video titles and links
+        videos = driver.find_elements(By.XPATH, '//*[@id="video-title"][@class="yt-simple-endpoint style-scope ytd-video-renderer"][starts-with(@href, "/watch?v=")]')
+        top_videos = videos[:10]
+
+        for idx, video in enumerate(top_videos):
+            title = video.get_attribute("title")
+            href = video.get_attribute("href")
+            print(f"{idx + 1}. {title}: {href}")
+
+            # Switch back to WordPress tab to add content
+            driver.switch_to.window(driver.window_handles[0])
+            body = driver.find_element(By.XPATH, '//*[@id="post-content-0"]')
+
+            body.send_keys(Keys.ENTER, Keys.ENTER, f"{idx + 1}. {title}", Keys.ENTER, href, Keys.ENTER, Keys.ENTER)
+            time.sleep(2)
+
+            # Save draft
+            body.send_keys(Keys.CONTROL, "s")
+            time.sleep(2)
+
+            # Switch back to YouTube tab for next video
+            driver.switch_to.window(driver.window_handles[1])
+
+        # Switch back to WordPress tab and save final draft
+        driver.switch_to.window(driver.window_handles[0])
+        body.send_keys(Keys.CONTROL, "s")
+        time.sleep(10)
+
+finally:
+    driver.quit()

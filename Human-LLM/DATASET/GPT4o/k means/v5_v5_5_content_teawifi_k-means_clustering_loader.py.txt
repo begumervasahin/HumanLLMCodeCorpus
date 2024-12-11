@@ -1,0 +1,81 @@
+import os
+import pandas as pd
+import re
+from settings import ENCODING
+
+def load_data_from_directory(directory_path):
+    """
+    Load data from text files in a directory and process it.
+
+    This function reads all text files in a specified directory, processes the 
+    contents to extract numerical data, and returns a list of processed data.
+
+    :param directory_path: Path to the directory containing text files.
+    :return: A list of processed data extracted from the files.
+    """
+    data = []
+
+    # Get all .txt files in the specified directory
+    txt_files = _get_txt_files(directory_path)
+
+    # Read and process the content of each .txt file
+    for txt_file in txt_files:
+        file_path = os.path.join(directory_path, txt_file)
+        file_content = _read_file(file_path)
+        data.extend(file_content)
+
+    # Process each line of data to extract numerical values
+    processed_data = [_process_data(item) for item in data]
+
+    return processed_data
+
+def _get_txt_files(directory_path):
+    """
+    Get a list of .txt files in the specified directory.
+
+    :param directory_path: Path to the directory.
+    :return: A list of .txt file names.
+    """
+    return [file for file in os.listdir(directory_path)
+            if os.path.isfile(os.path.join(directory_path, file)) and file.endswith(".txt")]
+
+def _read_file(file_path):
+    """
+    Read the contents of a file and return it as a list of lines.
+
+    :param file_path: Path to the file.
+    :return: A list of lines in the file.
+    """
+    with open(file_path, "r", encoding=ENCODING) as file:
+        return file.read().split('\n')
+
+def _process_data(data):
+    """
+    Extract the first three numbers from a string.
+
+    This function uses a regular expression to find all numbers in the input string,
+    converts them to floats, and returns the first three numbers found.
+
+    :param data: Input data string.
+    :return: A list of the first three floating point numbers found in the string.
+    """
+    pattern = r"\d+"
+    number_strings = re.findall(pattern, data)
+    numbers = [float(num_str) for num_str in number_strings]
+    return numbers[:3]
+
+def save_data_to_csv(data, csv_file_path):
+    """
+    Save processed data to a CSV file.
+
+    This function takes a list of data and saves it to a CSV file with columns 'x', 'y', and 'z'.
+
+    :param data: Data to be saved.
+    :param csv_file_path: Path to save the CSV file.
+    """
+    df = pd.DataFrame(data, columns=['x', 'y', 'z'])
+    df.to_csv(csv_file_path, index=False, encoding=ENCODING)
+
+# Example usage:
+# data = load_data_from_directory("path_to_directory")
+# save_data_to_csv(data, "output_file.csv")

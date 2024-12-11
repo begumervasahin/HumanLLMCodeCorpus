@@ -1,0 +1,107 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def load_dataset(path):
+    """
+    Loads the dataset from the specified path.
+
+    Parameters:
+    - path (str): The path to the CSV file.
+
+    Returns:
+    - DataFrame: The loaded dataset.
+    """
+    return pd.read_csv(path)
+
+def clean_dataset(data, columns_to_remove):
+    """
+    Drops specified columns from the dataset.
+
+    Parameters:
+    - data (DataFrame): The original dataset.
+    - columns_to_remove (list): List of columns to be removed.
+
+    Returns:
+    - DataFrame: The cleaned dataset.
+    """
+    return data.drop(columns=columns_to_remove)
+
+def plot_histograms(data):
+    """
+    Plots histograms for each numerical column in the given DataFrame.
+
+    Parameters:
+    - data (DataFrame): The DataFrame containing the data to plot.
+    """
+    fig = plt.figure(figsize=(15, 12))
+    plt.suptitle('Histograms of Numerical Columns', fontsize=20)
+
+    for i, column in enumerate(data.columns):
+        plt.subplot(6, 3, i + 1)
+        plt.gca().set_title(column)
+
+        # Determine the number of bins for the histogram
+        unique_values_count = np.size(data[column].unique())
+        if unique_values_count >= 100:
+            unique_values_count = 100
+
+        # Plot the histogram
+        plt.hist(data[column], bins=unique_values_count, color='blue')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
+
+def plot_correlation_with_target(data, target_column):
+    """
+    Plots the correlation of each feature with the target column.
+
+    Parameters:
+    - data (DataFrame): The DataFrame containing the features.
+    - target_column (Series): The target column to calculate correlation with.
+    """
+    correlation_with_target = data.corrwith(target_column)
+    correlation_with_target.plot.bar(
+        figsize=(20, 10), title="Correlation with e_signed", fontsize=15,
+        rot=45, grid=True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_correlation_matrix(data):
+    """
+    Plots a heatmap of the correlation matrix of the given DataFrame.
+
+    Parameters:
+    - data (DataFrame): The DataFrame containing the data to plot.
+    """
+    sns.set(style="white")
+    correlation_matrix = data.corr()
+    mask = np.zeros_like(correlation_matrix, dtype=bool)
+    mask[np.triu_indices_from(mask)] = True
+
+    fig, ax = plt.subplots(figsize=(18, 15))
+    color_map = sns.diverging_palette(220, 10, as_cmap=True)
+    sns.heatmap(correlation_matrix, mask=mask, cmap=color_map, vmax=0.4, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5})
+    plt.suptitle("Correlation Matrix")
+    plt.show()
+
+# Main execution flow
+if __name__ == "__main__":
+    # Define the dataset path and columns to drop
+    dataset_path = "C:\\Users\\himal\\Desktop\\Machine Learning Practicals\\P5- Predicting the likelihood of e-signing a loan based on Financial History\\P39-Financial-Data.csv"
+    columns_to_drop = ['entry_id', 'pay_schedule', 'e_signed']
+
+    # Load and clean the dataset
+    dataset = load_dataset(dataset_path)
+    dataset_cleaned = clean_dataset(dataset, columns_to_drop)
+
+    # Plot histograms of numerical columns
+    plot_histograms(dataset_cleaned)
+
+    # Plot correlation with e_signed
+    plot_correlation_with_target(dataset_cleaned, dataset['e_signed'])
+
+    # Plot correlation matrix heatmap
+    plot_correlation_matrix(dataset_cleaned)

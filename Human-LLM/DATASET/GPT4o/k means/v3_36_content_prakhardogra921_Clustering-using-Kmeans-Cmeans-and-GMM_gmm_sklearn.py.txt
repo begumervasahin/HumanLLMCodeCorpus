@@ -1,0 +1,85 @@
+import numpy as np
+from sklearn import mixture
+import matplotlib.pyplot as plt
+from scipy import linalg
+import itertools
+import matplotlib as mpl
+import random
+
+def generate_dataset(size, loc_scale_pairs, proportions):
+    """
+    Generate a dataset based on specified means, standard deviations, and proportions.
+
+    Parameters:
+    size (int): Total number of data points.
+    loc_scale_pairs (list of tuples): Each tuple contains the mean and standard deviation for each subset.
+    proportions (list of floats): Proportions of each subset in the total dataset.
+
+    Returns:
+    np.ndarray: Generated dataset.
+    """
+    subsets = [np.random.normal(loc=loc, scale=scale, size=size) for loc, scale in loc_scale_pairs]
+    dataset = np.concatenate([random.sample(list(subset), int(p * size)) for subset, p in zip(subsets, proportions)])
+    return dataset
+
+def plot_gmm_1d(dataset, n_components=3):
+    """
+    Fit a GMM to a 1D dataset and plot the resulting clusters.
+
+    Parameters:
+    dataset (np.ndarray): Input dataset.
+    n_components (int): Number of components for the GMM.
+    """
+    gmm = mixture.GaussianMixture(n_components=n_components)
+    gmm.fit(dataset.reshape(-1, 1))
+    labels = gmm.predict(dataset.reshape(-1, 1))
+    plt.scatter(dataset, labels)
+    plt.title('GMM Clustering')
+    plt.show()
+
+def plot_gmm_with_ellipses(data, n_components=2):
+    """
+    Fit a GMM to a dataset and plot the clusters with ellipses representing the covariance of each component.
+
+    Parameters:
+    data (np.ndarray): Input dataset.
+    n_components (int): Number of components for the GMM.
+    """
+    gmm = mixture.GaussianMixture(n_components=n_components)
+    gmm.fit(data.reshape(-1, 1))
+    labels = gmm.predict(data.reshape(-1, 1))
+
+    fig, ax = plt.subplots()
+    color_iter = itertools.cycle(['navy', 'turquoise', 'cornflowerblue', 'darkorange'])
+
+    for i, (mean, cov, color) in enumerate(zip(gmm.means_, gmm.covariances_, color_iter)):      
+        if not np.any(labels == i):
+            continue
+        plt.scatter(data[labels == i], np.zeros_like(data[labels == i]), 0.8, color=color)
+        v, w = linalg.eigh(cov)
+        angle = np.arctan2(w[0][1], w[0][0])
+        angle = 180. * angle / np.pi
+        v = 2. * np.sqrt(2.) * np.sqrt(v)
+        ell = mpl.patches.Ellipse(mean, v[0], v[1], 180. + angle, color=color)
+        ell.set_clip_box(ax.bbox)
+        ell.set_alpha(0.5)
+        ax.add_artist(ell)
+    
+    plt.xticks(())
+    plt.yticks(())
+    plt.title('GMM with Ellipses')
+    plt.show()
+
+# Parameters
+size = 500
+loc_scale_pairs1 = [(1, 0.1), (1.5, 0.1), (2, 0.2)]
+loc_scale_pairs2 = [(1, 0.3), (1.5, 0.4), (2, 0.3)]
+proportions = [0.25, 0.5, 0.25]
+
+# Generate datasets
+dset1 = generate_dataset(size, loc_scale_pairs1, proportions)
+dset2 = generate_dataset(size, loc_scale_pairs2, proportions)
+
+# Plot results
+plot_gmm_1d(dset1)
+plot_gmm_with_ellipses(dset1)

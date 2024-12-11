@@ -1,0 +1,72 @@
+import csv
+from datetime import datetime
+import random
+import requests
+from bs4 import BeautifulSoup
+import schedule
+import time
+
+# List of user agent strings
+headers = [
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Googlebot/2.1 (+http://www.google.com/bot.html)',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/49.0.2623.108 Chrome/49.0.2623.108 Safari/537.36',
+    'Gigabot/3.0 (http://www.gigablast.com/spider.html)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; pt-BR) AppleWebKit/533.3 (KHTML, like Gecko) QtWeb Internet Browser/3.7 http://www.QtWeb.net',
+    'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/532.2 (KHTML, like Gecko) ChromePlus/4.0.222.3 Chrome/4.0.222.3 Safari/532.2',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.4pre) Gecko/20070404 K-Ninja/2.1.3',
+    'Mozilla/5.0 (Future Star Technologies Corp.; Star-Blade OS; x86_64; U; en-US) iNet Browser 4.7',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080414 Firefox/2.0.0.13 Pogo/2.0.0.13.6866',
+    'WorldWideweb (NEXT)'
+]
+
+def get_header():
+    """Returns a random user agent header."""
+    return {'User-Agent': random.choice(headers)}
+
+def fetch_offers():
+    """Fetches offers from the Goibibo website and saves them to a CSV file."""
+    url = "https://www.goibibo.com/offers/"
+    response = requests.get(url, headers=get_header())
+    page_soup = BeautifulSoup(response.text, "html.parser")
+    
+    container = page_soup.find_all("div", {"class": "bot-section"})
+    promo_container = page_soup.find_all("div", {"class": "back-content"})
+    
+    offers = [offer.p.text.replace(",", "") for offer in container]
+    links = ["https://www.goibibo.com" + content.a['href'] for content in promo_container]
+    promos = []
+    terms_conditions = []
+    
+    for content in promo_container:
+        promo_content = content.find_all("div", {"class": "back-content-top-inner"})
+        conditions = content.find_all("div", {"class": "tnc-section"})
+        
+        for terms in conditions:
+            terms_conditions.append(terms.li.text.replace(",", ""))
+        
+        for promo in promo_content:
+            promo_code = promo.find_all("div", {"class": "promocode"})
+            for promo_text in promo_code:
+                promos.append(promo_text.text)
+    
+    save_to_csv(offers, links, promos, terms_conditions)
+
+def save_to_csv(offers, links, promos, terms_conditions):
+    """Saves the scraped data to a CSV file."""
+    filename = "goibibo_offers.csv"
+    with open(filename, "a", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Offer Name", "Link", "Promocode", "Description", "Booking Channel"])
+        for i in range(len(offers)):
+            writer.writerow([offers[i], links[i], promos[i], terms_conditions[i]])
+
+# Schedule the job to run at a specific interval
+schedule.every().day.at("10:00").do(fetch_offers)
+
+# Run the scheduled tasks
+while True:
+    schedule.run_pending()
+    time.sleep(1)

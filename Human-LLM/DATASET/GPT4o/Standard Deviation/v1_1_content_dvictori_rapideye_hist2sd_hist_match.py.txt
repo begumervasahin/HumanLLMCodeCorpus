@@ -1,0 +1,52 @@
+from osgeo import gdal
+import numpy as np
+from scipy.interpolate import interp1d
+import argparse
+
+def balanco(referencia, adjust, saida):
+    '''Realiza o balanço de cores por CDF matching
+    referencia: imagem referencia
+    adjust: imagem para ser ajustada
+    saida: imagem de saida'''
+    
+    ref = gdal.Open(referencia)
+    adj = gdal.Open(adjust)
+    
+    if ref.RasterCount != adj.RasterCount:
+        print("Imagens com número de bandas diferentes")
+        return
+    
+    bandas = ref.RasterCount
+    ref_hist = [ref.GetRasterBand(b+1).GetHistogram() for b in range(bandas)]
+    ref_cdf = [np.cumsum(a) / float(sum(a)) for a in ref_hist]
+    adj_hist = [adj.GetRasterBand(b+1).GetHistogram() for b in range(bandas)]
+    adj_cdf = [np.cumsum(a) / float(sum(a)) for a in adj_hist]
+    
+    inv_cdf_func = [interp1d(b, range(len(b)), bounds_error=False, fill_value="extrapolate") for b in ref_cdf]
+    transf_b = [inv_cdf_func[b](adj_cdf[b]) for b in range(bandas)]
+    transf = [np.insert(l, 0, 0) for l in transf_b]
+    transf_func = [lambda x, t=transf[b]: t[x] for b in range(bandas)]
+    
+    file_type = 'GTiff'
+    driver = gdal.GetDriverByName(file_type)
+    outfile = driver.CreateCopy(saida, adj, 0, ['COMPRESS=LZW'])
+    
+    for b in range(bandas):
+        banda_corr = transf_func[b](adj.GetRasterBand(b+1).ReadAsArray().astype(int))
+        outfile.GetRasterBand(b+1).WriteArray(banda_corr)
+    
+    ref = None
+    adj = None
+    outfile = None
+
+def main():
+    parser = argparse.ArgumentParser(description='Faz o histogram matching entre imagem de referência e imagem a ser ajustada')
+    parser.add_argument("referencia", help="Imagem para usar como referência")
+    parser.add_argument("ajuste", help='Imagem que será ajustada')
+    parser.add_argument("saida", help='Nome da imagem de saída')
+    args = parser.parse_args()
+    
+    balanco(args.referencia, args.ajuste, args.saida)
+
+if __name__ == '__main__':
+    main()

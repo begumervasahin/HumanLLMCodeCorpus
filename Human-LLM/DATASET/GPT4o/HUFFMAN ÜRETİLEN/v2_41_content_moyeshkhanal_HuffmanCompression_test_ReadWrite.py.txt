@@ -1,0 +1,120 @@
+import sys
+import unittest
+import os
+
+class BitFileWriter:
+    def __init__(self, filename):
+        self.file = open(filename, 'wb')
+        self.current_byte = 0
+        self.bit_position = 0
+
+    def write_bit(self, bit):
+        if bit not in (0, 1):
+            raise ValueError("Bit must be 0 or 1")
+        if self.bit_position == 8:
+            self._flush_current_byte()
+        if bit == 1:
+            self.current_byte |= (1 << (7 - self.bit_position))
+        self.bit_position += 1
+
+    def write_uint(self, value):
+        self.file.write(value.to_bytes(4, byteorder='big'))
+
+    def write_ushort(self, value):
+        self.file.write(value.to_bytes(2, byteorder='big'))
+
+    def write_ubyte(self, value):
+        self.file.write(value.to_bytes(1, byteorder='big'))
+
+    def _flush_current_byte(self):
+        if self.bit_position > 0:
+            self.file.write(bytes([self.current_byte]))
+            self.current_byte = 0
+            self.bit_position = 0
+
+    def close(self):
+        self._flush_current_byte()
+        self.file.close()
+
+class BitFileReader:
+    def __init__(self, filename):
+        self.file = open(filename, 'rb')
+        self.current_byte = None
+        self.bit_position = 8
+
+    def read_bit(self):
+        if self.bit_position == 8:
+            byte = self.file.read(1)
+            if not byte:
+                raise EOFError("End of file reached")
+            self.current_byte = byte[0]
+            self.bit_position = 0
+        bit = (self.current_byte >> (7 - self.bit_position)) & 1
+        self.bit_position += 1
+        return bit
+
+    def read_uint(self):
+        return int.from_bytes(self.file.read(4), byteorder='big')
+
+    def read_ushort(self):
+        return int.from_bytes(self.file.read(2), byteorder='big')
+
+    def read_ubyte(self):
+        return int.from_bytes(self.file.read(1), byteorder='big')
+
+    def close(self):
+        self.file.close()
+
+class BitFileReadWriteTest(unittest.TestCase):
+    def setUp(self):
+        self.test_file = "test_data.bin"
+
+    def tearDown(self):
+        if os.path.exists(self.test_file):
+            os.remove(self.test_file)
+
+    def test_mixed_operations(self):
+        writer = BitFileWriter(self.test_file)
+        writer.write_bit(1)
+        writer.write_bit(0)
+        writer.write_bit(1)
+        writer.write_bit(1)
+        writer.write_uint(10000042)
+        writer.write_bit(1)
+        writer.write_bit(0)
+        writer.write_ushort(50000)
+        writer.write_bit(1)
+        writer.write_ubyte(42)
+        writer.close()
+
+        reader = BitFileReader(self.test_file)
+        self.assertEqual(reader.read_bit(), 1)
+        self.assertEqual(reader.read_bit(), 0)
+        self.assertEqual(reader.read_bit(), 1)
+        self.assertEqual(reader.read_bit(), 1)
+        self.assertEqual(reader.read_uint(), 10000042)
+        self.assertEqual(reader.read_bit(), 1)
+        self.assertEqual(reader.read_bit(), 0)
+        self.assertEqual(reader.read_ushort(), 50000)
+        self.assertEqual(reader.read_bit(), 1)
+        self.assertEqual(reader.read_ubyte(), 42)
+        reader.close()
+
+    def test_sequential_bits(self):
+        writer = BitFileWriter(self.test_file)
+        for _ in range(4):
+            writer.write_bit(1)
+            writer.write_bit(0)
+        writer.close()
+
+        reader = BitFileReader(self.test_file)
+        for _ in range(4):
+            self.assertEqual(reader.read_bit(), 1)
+            self.assertEqual(reader.read_bit(), 0)
+        reader.close()
+
+def main(argv):
+    unittest.main(argv=argv, exit=False)
+
+if __name__ == '__main__':
+    main(sys.argv)

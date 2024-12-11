@@ -1,0 +1,45 @@
+import json
+import jieba.posseg as pseg
+from pyspark import SparkContext
+
+# Initialize Spark Context
+sc = SparkContext(appName='CutDocument')
+
+# Define the list of allowed parts of speech
+ALLOWED_POS = [
+    "n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng", "s",
+    "f", "v", "vd", "vn", "vf", "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"
+]
+
+def cut(text):
+    """
+    Function to segment text and filter words by part of speech.
+    """
+    seg_list = list(pseg.cut(text))
+    filtered_list = filter(lambda word_flag: word_flag.flag in ALLOWED_POS, seg_list)
+    encoded_list = map(lambda word_flag: word_flag.word.encode("utf-8"), filtered_list)
+    return list(encoded_list)
+
+def output(items):
+    """
+    Function to write the processed items to a file.
+    """
+    filename = "/vagrant/vocabulary/nominal.txt"
+    with open(filename, "a+") as fo:
+        fo.write(" ".join(items) + "\n")
+
+def filter_stopwords(words):
+    """
+    Function to filter out stop words from a list of words.
+    """
+    return filter(lambda word: word not in stopWordList, words)
+
+# Load the source file
+src_file = '/vagrant/data/data.txt'
+rdd = sc.textFile(src_file).map(lambda x: json.loads(x)['content'])
+
+# Load the stop words
+stopWordList = sc.textFile("stop_words.txt").map(lambda x: x.encode("utf-8")).collect()
+
+# Process the data
+result = rdd.map(cut).map(filter_stopwords).foreach(output)

@@ -1,0 +1,82 @@
+import re
+import timeit
+from time import sleep
+from BellmanFord import BFA
+
+def initialize_router():
+    """Initialize router information from user input and configuration files."""
+    whichPort = {}
+    adrToName = {}
+    routerCount = 0
+
+    # Get the router name from user input
+    routerName = input("Welcome to Emulated Bellman-Ford Algorithm\nWhich router am I?\n")
+
+    # Read port and address information from the file
+    with open("which_port.txt") as whichRouter:
+        for line in whichRouter:
+            router_id = line[0]
+            port = int(line[2:6])
+            whichPort[router_id] = port
+            adrToName[port] = int(router_id)
+            routerCount += 1
+
+    return routerName, whichPort, adrToName, routerCount
+
+def read_initial_cost(routerName):
+    """Read the initial cost from the adjacency matrix file."""
+    with open("adj_mat.txt") as adj_matrix_file:
+        myLine = adj_matrix_file.readlines()[int(routerName) - 1].strip()
+    initialCost = re.split(" ", myLine)
+    print(f'Initial Cost is {initialCost}\n')
+    return initialCost
+
+def start_bellman_ford(routerCount, initialCost, routerName, whichPort, adrToName):
+    """Initialize and start the Bellman-Ford Algorithm."""
+    myBf = BFA(routerCount, initialCost, routerName, whichPort, adrToName)
+    myBf.who_to_send()
+
+    # Wait for the user to start the Bellman-Ford Algorithm
+    while True:
+        s = input("To start BellmanFord Algorithm, Enter 's'\n")
+        if s == 's':
+            break
+        else:
+            print("Wrong input! Please enter 's' to start.")
+
+    # Start the Bellman-Ford algorithm's send operation
+    myBf.send()
+    return myBf
+
+def emulate_bellman_ford(myBf):
+    """Emulate the Bellman-Ford algorithm with periodic updates and user input handling."""
+    start = timeit.default_timer()
+
+    while True:
+        # Calculate elapsed time
+        elapsedTime = timeit.default_timer() - start
+
+        # Send updates if more than 0.1 seconds have passed
+        if elapsedTime > 0.1:
+            myBf.send()
+            start = timeit.default_timer()
+
+        # Receive messages from other routers
+        myBf.receive()
+
+        # Small sleep to prevent high CPU usage
+        sleep(0.1)
+
+        # Check for user input to update costs
+        if input().lower() == 'u':
+            with open("adj_mat.txt") as adj_matrix_file:
+                myLine = adj_matrix_file.readlines()[int(routerName) - 1].strip()
+            newCost = re.split(" ", myLine)
+            print(f'New cost is {newCost}\n')
+            myBf.check_cost(newCost)
+
+if __name__ == "__main__":
+    routerName, whichPort, adrToName, routerCount = initialize_router()
+    initialCost = read_initial_cost(routerName)
+    myBf = start_bellman_ford(routerCount, initialCost, routerName, whichPort, adrToName)
+    emulate_bellman_ford(myBf)

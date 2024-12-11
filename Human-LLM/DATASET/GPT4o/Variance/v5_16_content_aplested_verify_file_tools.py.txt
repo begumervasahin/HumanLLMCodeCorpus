@@ -1,0 +1,70 @@
+import os
+
+def file_read(file_path):
+    """Read lines of ASCII text from a file, stripping the first and last lines."""
+    print(f'Reading {file_path}...')
+    with open(file_path, 'r') as file:
+        lines = file.read().strip().split('\n')
+    
+    # Remove the first and last lines
+    if lines:
+        lines = lines[1:]  # Remove the first line
+    if lines:
+        lines = lines[:-1]  # Remove the last line
+    
+    if lines:
+        print(lines[0])
+    
+    return lines
+
+def file_write(file_path, data):
+    """Write lines of data to an ASCII file."""
+    with open(file_path, 'w') as file:
+        for line in data:
+            file.write(f"{line}\r")
+
+def add_filename_prefix(path, prefix=""):
+    """Add a prefix to the filename in the given path."""
+    directory, filename = os.path.split(path)
+    new_filename = prefix + filename
+    return os.path.join(directory, new_filename)
+
+def lines_into_traces(lines):
+    """Convert a list of ASCII text lines into traces (a list of lists of floats)."""
+    split_lines = [line.split('\t') for line in lines]
+    
+    num_of_traces = len(split_lines[0])
+    traces = [[] for _ in range(num_of_traces)]
+    
+    for split_line in split_lines:
+        for i in range(num_of_traces):
+            traces[i].append(float(split_line[i]))
+    
+    return traces
+
+def traces_into_lines(traces):
+    """Convert traces (a list of lists of floats) into a list of ASCII text lines."""
+    lines_of_output = len(traces[0])
+    lines = ['\t'.join(map(str, trace_point)) for trace_point in zip(*traces)]
+    
+    return lines
+
+# Example usage
+if __name__ == "__main__":
+    input_file = "input.txt"
+    output_file = "output.txt"
+    prefix = "new_"
+    
+    # Reading from file
+    lines = file_read(input_file)
+    
+    # Converting lines to traces and back
+    traces = lines_into_traces(lines)
+    new_lines = traces_into_lines(traces)
+    
+    # Writing to file
+    file_write(output_file, new_lines)
+    
+    # Adding prefix to filename
+    new_filename = add_filename_prefix(output_file, prefix)
+    print(f'New filename: {new_filename}')

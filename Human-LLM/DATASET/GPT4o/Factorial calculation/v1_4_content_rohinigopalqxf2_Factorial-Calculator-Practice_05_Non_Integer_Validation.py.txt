@@ -1,0 +1,96 @@
+"""
+AUTHOR: Rohini Gopal
+Contact: rohini.gopal@qxf2.com
+SCOPE:
+1) Launch Chrome Driver
+2) Navigate to https://qainterview.pythonanywhere.com/ page
+3) Enter non-integer value in the textbox
+4) Click on the calculate! button and check the validation message
+5) Verify no factorial value is printed
+6) Close the browser
+"""
+
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
+def setup_driver():
+    """
+    Sets up the Chrome WebDriver and maximizes the browser window.
+    
+    :return: Initialized WebDriver
+    """
+    driver = webdriver.Chrome()
+    driver.maximize_window()
+    return driver
+
+def navigate_to_page(driver, url):
+    """
+    Navigates to the specified URL using the provided WebDriver.
+    
+    :param driver: WebDriver instance
+    :param url: URL to navigate to
+    """
+    driver.get(url)
+
+def enter_text(driver, element_id, text):
+    """
+    Enters the specified text into a textbox identified by element ID.
+    
+    :param driver: WebDriver instance
+    :param element_id: ID of the textbox element
+    :param text: Text to enter into the textbox
+    """
+    driver.find_element(By.ID, element_id).send_keys(text)
+
+def click_button(driver, xpath):
+    """
+    Clicks a button identified by its XPath.
+    
+    :param driver: WebDriver instance
+    :param xpath: XPath of the button element
+    """
+    driver.find_element(By.XPATH, xpath).click()
+
+def get_result_text(driver, xpath):
+    """
+    Retrieves the result text from an element identified by XPath.
+    
+    :param driver: WebDriver instance
+    :param xpath: XPath of the result element
+    :return: Text content of the result element
+    """
+    return driver.find_element(By.XPATH, xpath).text
+
+def main():
+    """
+    Main function to execute the test script.
+    """
+    driver = setup_driver()
+
+    try:
+        # Step 1 & 2: Launch Chrome Driver and navigate to the page
+        navigate_to_page(driver, 'https://qainterview.pythonanywhere.com/')
+        
+        # Step 3: Enter non-integer value in the textbox
+        enter_text(driver, 'number', 'aa')
+
+        # Step 4: Click on the calculate button
+        click_button(driver, "//*[@id='getFactorial']")
+
+        # Step 5: Check the validation message
+        time.sleep(3)  # Wait for the result to be displayed
+        result_text = get_result_text(driver, "//*[@id='resultDiv']")
+        
+        # Step 6: Verify the factorial value is not printed and the correct error message is displayed
+        if result_text == "Please enter an integer":
+            print("Success - Factorial calculation failed for non-integer")
+        else:
+            print("Failure - Factorial is calculated for non-integer")
+    
+    finally:
+        # Step 7: Close the browser
+        driver.quit()
+
+if __name__ == "__main__":
+    main()

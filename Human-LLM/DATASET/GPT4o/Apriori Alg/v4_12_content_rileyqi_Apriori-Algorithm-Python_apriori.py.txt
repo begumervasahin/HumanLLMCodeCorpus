@@ -1,0 +1,122 @@
+import sys
+from collections import defaultdict
+from optparse import OptionParser
+import csv
+
+def has_infrequent_subset(candidate, previous_level_itemsets):
+    """
+    Check if a candidate itemset has any infrequent subset.
+
+    Parameters:
+    candidate (frozenset): The candidate itemset to check.
+    previous_level_itemsets (list): List of frequent itemsets from the previous level.
+
+    Returns:
+    bool: True if there is an infrequent subset, False otherwise.
+    """
+    for item in candidate:
+        subset = candidate - frozenset([item])
+        if subset not in previous_level_itemsets:
+            return True
+    return False
+
+def apriori_gen(previous_level_itemsets, k):
+    """
+    Generate candidate itemsets of size k.
+
+    Parameters:
+    previous_level_itemsets (list): List of frequent itemsets from the previous level.
+    k (int): The size of the itemsets to generate.
+
+    Returns:
+    list: List of candidate itemsets of size k.
+    """
+    candidate_itemsets = []
+    for i in previous_level_itemsets:
+        for j in previous_level_itemsets:
+            candidate = i.union(j)
+            if len(candidate) == k and not has_infrequent_subset(candidate, previous_level_itemsets):
+                candidate_itemsets.append(candidate)
+    return list(set(candidate_itemsets))
+
+def find_frequent_1_itemsets(database, min_support):
+    """
+    Find frequent 1-itemsets in the database.
+
+    Parameters:
+    database (list): The transactional database.
+    min_support (float): The minimum support threshold.
+
+    Returns:
+    list: List of frequent 1-itemsets.
+    """
+    item_count = defaultdict(int)
+    for transaction in database:
+        for item in transaction:
+            item_count[item] += 1
+
+    num_transactions = len(database)
+    frequent_1_itemsets = [
+        frozenset([item])
+        for item, count in item_count.items()
+        if float(count) / num_transactions >= min_support
+    ]
+    return frequent_1_itemsets
+
+def apriori(database, min_support):
+    """
+    Run the Apriori algorithm on the database.
+
+    Parameters:
+    database (list): The transactional database.
+    min_support (float): The minimum support threshold.
+
+    Returns:
+    list: List of lists containing frequent itemsets of increasing size.
+    """
+    database = [frozenset(transaction) for transaction in database]
+
+    L = [None, find_frequent_1_itemsets(database, min_support)]
+    k = 2
+    while L[k-1]:
+        candidate_itemsets = apriori_gen(L[k-1], k)
+        itemset_counts = defaultdict(int)
+        for transaction in database:
+            for candidate in candidate_itemsets:
+                if candidate.issubset(transaction):
+                    itemset_counts[candidate] += 1
+
+        num_transactions = len(database)
+        L.append([
+            itemset
+            for itemset, count in itemset_counts.items()
+            if float(count) / num_transactions >= min_support
+        ])
+        k += 1
+    return L
+
+def main():
+    """
+    Main function to parse command line arguments and run the Apriori algorithm.
+    """
+    opt_parser = OptionParser()
+    opt_parser.add_option('-f', '--inputFile', dest='input', help='filename containing csv', default=None)
+    opt_parser.add_option('-s', '--minSupport', dest='min_support', help='minimum support value', default=0.15, type='float')
+    options, _ = opt_parser.parse_args()
+
+    if not options.input:
+        print("Please provide an input file using the -f option.")
+        sys.exit(1)
+
+    with open(options.input, 'r') as infile:
+        csv_reader = csv.reader(infile)
+        database = list(csv_reader)
+
+    min_support = options.min_support
+    frequent_itemsets = apriori(database, min_support)
+    for level in frequent_itemsets:
+        for itemset in level:
+            print(itemset)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,171 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.stats import norm
+
+def generate_data(mean, covariance, size):
+    """
+    Generate multivariate normal data.
+    
+    Args:
+    mean (list): Mean of the distribution.
+    covariance (list): Covariance matrix.
+    size (int): Number of samples to generate.
+
+    Returns:
+    tuple: Generated x and y data.
+    """
+    return np.random.multivariate_normal(mean, covariance, size).T
+
+def compute_naive_bayes_params(train_data_class0, train_data_class1):
+    """
+    Compute the parameters for Naive Bayes.
+
+    Args:
+    train_data_class0 (tuple): Training data for class 0.
+    train_data_class1 (tuple): Training data for class 1.
+
+    Returns:
+    dict: Parameters including means, standard deviations, and priors.
+    """
+    x0, y0 = train_data_class0
+    x1, y1 = train_data_class1
+
+    params = {
+        'mean_x0': np.mean(x0), 'mean_y0': np.mean(y0),
+        'std_x0': np.std(x0), 'std_y0': np.std(y0),
+        'mean_x1': np.mean(x1), 'mean_y1': np.mean(y1),
+        'std_x1': np.std(x1), 'std_y1': np.std(y1),
+        'prior0': len(x0) / (len(x0) + len(x1)),
+        'prior1': len(x1) / (len(x0) + len(x1))
+    }
+    return params
+
+def compute_likelihoods(test_data, params):
+    """
+    Compute likelihoods for test data using Naive Bayes parameters.
+
+    Args:
+    test_data (pd.DataFrame): Test data.
+    params (dict): Naive Bayes parameters.
+
+    Returns:
+    pd.DataFrame: Test data with likelihoods and posteriors.
+    """
+    test_data['likelihood0'] = (
+        norm.pdf(test_data['x'], loc=params['mean_x0'], scale=params['std_x0']) *
+        norm.pdf(test_data['y'], loc=params['mean_y0'], scale=params['std_y0'])
+    )
+    test_data['likelihood1'] = (
+        norm.pdf(test_data['x'], loc=params['mean_x1'], scale=params['std_x1']) *
+        norm.pdf(test_data['y'], loc=params['mean_y1'], scale=params['std_y1'])
+    )
+
+    test_data['posterior0'] = test_data['likelihood0'] * params['prior0']
+    test_data['posterior1'] = test_data['likelihood1'] * params['prior1']
+    test_data['predicted'] = np.where(test_data['posterior0'] > test_data['posterior1'], 0, 1)
+    test_data['color'] = np.where(test_data['posterior0'] > test_data['posterior1'], 'r', 'b')
+
+    return test_data
+
+def compute_metrics(test_data):
+    """
+    Compute performance metrics.
+
+    Args:
+    test_data (pd.DataFrame): Test data with predictions.
+
+    Returns:
+    dict: Performance metrics.
+    """
+    tn = np.sum((test_data['predicted'] == 0) & (test_data['actual'] == 0))
+    tp = np.sum((test_data['predicted'] == 1) & (test_data['actual'] == 1))
+    fp = np.sum((test_data['predicted'] == 0) & (test_data['actual'] == 1))
+    fn = np.sum((test_data['predicted'] == 1) & (test_data['actual'] == 0))
+
+    accuracy = (tp + tn) / (tp + fp + fn + tn)
+    error_rate = 1 - accuracy
+    recall = tp / (tp + fn)
+    precision = tp / (tp + fp)
+
+    return {
+        'accuracy': accuracy,
+        'error_rate': error_rate,
+        'recall': recall,
+        'precision': precision,
+        'tp': tp,
+        'tn': tn,
+        'fp': fp,
+        'fn': fn
+    }
+
+def plot_data(test_data):
+    """
+    Plot test data with predictions.
+
+    Args:
+    test_data (pd.DataFrame): Test data with predictions.
+    """
+    plt.figure(figsize=(10, 10))
+    plt.scatter(test_data['x'], test_data['y'], color=test_data['color'], alpha=0.5, edgecolor='k', marker="x")
+    plt.title('Test Data Predictions')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
+
+def naive_bayes(train_size_class0, train_size_class1):
+    """
+    Perform Naive Bayes classification.
+
+    Args:
+    train_size_class0 (int): Size of training data for class 0.
+    train_size_class1 (int): Size of training data for class 1.
+
+    Returns:
+    float: Accuracy of the model.
+    """
+    mean_class0 = [1, 0]
+    mean_class1 = [0, 1]
+    covariance_matrix = [[1, 0.75], [0.75, 1]]
+
+    # Generate training and test data
+    train_data_class0 = generate_data(mean_class0, covariance_matrix, train_size_class0)
+    train_data_class1 = generate_data(mean_class1, covariance_matrix, train_size_class1)
+    test_data_class0 = generate_data(mean_class0, covariance_matrix, 100)
+    test_data_class1 = generate_data(mean_class1, covariance_matrix, 100)
+
+    # Combine test data into DataFrame
+    test_data = pd.DataFrame({
+        'x': np.concatenate((test_data_class0[0], test_data_class1[0])),
+        'y': np.concatenate((test_data_class0[1], test_data_class1[1])),
+        'actual': np.concatenate((np.zeros(100), np.ones(100)))
+    })
+
+    # Compute Naive Bayes parameters
+    params = compute_naive_bayes_params(train_data_class0, train_data_class1)
+
+    # Compute likelihoods and posteriors for test data
+    test_data = compute_likelihoods(test_data, params)
+
+    # Compute performance metrics
+    metrics = compute_metrics(test_data)
+
+    # Print performance metrics
+    print(f"Accuracy: {metrics['accuracy']}")
+    print(f"Error Rate: {metrics['error_rate']}")
+    print(f"Recall: {metrics['recall']}")
+    print(f"Precision: {metrics['precision']}")
+    print(f"True Positives: {metrics['tp']}, True Negatives: {metrics['tn']}")
+    print(f"False Positives: {metrics['fp']}, False Negatives: {metrics['fn']}")
+
+    # Plot the test data with predictions
+    plot_data(test_data)
+
+    return metrics['accuracy']
+
+def main():
+    accuracy = naive_bayes(500, 500)
+    print("Accuracy of the model:", accuracy)
+
+if __name__ == "__main__":
+    main()

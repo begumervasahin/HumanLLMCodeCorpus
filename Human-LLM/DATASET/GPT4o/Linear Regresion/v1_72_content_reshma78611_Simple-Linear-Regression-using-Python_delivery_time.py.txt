@@ -1,0 +1,116 @@
+"""
+Created on Wed Sep 30 19:37:30 2020
+Refactored on [current_date]
+@author: HP
+"""
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+import statsmodels.formula.api as smf
+
+# Load the dataset
+data_path = 'C:/Users/HP/Desktop/assignments submission/simple linear regression/delivery_time.csv'
+delivery_time_data = pd.read_csv(data_path)
+
+# Scatter plot of the data
+plt.scatter(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time)
+plt.xlabel('Sorting Time')
+plt.ylabel('Delivery Time')
+plt.title('Scatter Plot of Sorting Time vs Delivery Time')
+plt.show()
+
+# Calculate correlation coefficient
+correlation_matrix = np.corrcoef(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time)
+print(f'Correlation Coefficient: {correlation_matrix[0, 1]}')
+
+# Linear Regression Model
+linear_model = smf.ols('Delivery_time ~ Sorting_time', data=delivery_time_data).fit()
+print(linear_model.params)
+print(linear_model.summary())
+
+# Predictions and Errors for Linear Model
+linear_predictions = linear_model.predict(delivery_time_data)
+linear_errors = delivery_time_data.Delivery_time - linear_predictions
+
+# Plot Linear Regression Results
+plt.scatter(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time, c='r')
+plt.plot(delivery_time_data.Sorting_time, linear_predictions, c='b')
+plt.xlabel('Sorting Time')
+plt.ylabel('Delivery Time')
+plt.title('Linear Regression: Sorting Time vs Delivery Time')
+plt.show()
+
+# Confidence Interval and RMSE for Linear Model
+print(linear_model.conf_int(0.05))
+linear_rmse = sqrt(mean_squared_error(delivery_time_data.Delivery_time, linear_predictions))
+print(f'Linear Model RMSE: {linear_rmse}')
+
+# Logarithmic Model
+log_model = smf.ols('Delivery_time ~ np.log(Sorting_time)', data=delivery_time_data).fit()
+print(log_model.params)
+print(log_model.summary())
+
+# Predictions and Errors for Logarithmic Model
+log_predictions = log_model.predict(delivery_time_data)
+log_errors = delivery_time_data.Delivery_time - log_predictions
+
+# Plot Logarithmic Regression Results
+plt.scatter(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time, c='r')
+plt.plot(delivery_time_data.Sorting_time, log_predictions, c='b')
+plt.xlabel('Sorting Time')
+plt.ylabel('Delivery Time')
+plt.title('Logarithmic Regression: Sorting Time vs Delivery Time')
+plt.show()
+
+# Confidence Interval and RMSE for Logarithmic Model
+print(log_model.conf_int(0.05))
+log_rmse = sqrt(mean_squared_error(delivery_time_data.Delivery_time, log_predictions))
+print(f'Logarithmic Model RMSE: {log_rmse}')
+
+# Exponential Model
+exp_model = smf.ols('np.log(Delivery_time) ~ Sorting_time', data=delivery_time_data).fit()
+print(exp_model.params)
+print(exp_model.summary())
+
+# Predictions and Errors for Exponential Model
+exp_predictions_log = exp_model.predict(delivery_time_data)
+exp_predictions = np.exp(exp_predictions_log)
+exp_errors = delivery_time_data.Delivery_time - exp_predictions
+
+# Plot Exponential Regression Results
+plt.scatter(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time, c='r')
+plt.plot(delivery_time_data.Sorting_time, exp_predictions, c='b')
+plt.xlabel('Sorting Time')
+plt.ylabel('Delivery Time')
+plt.title('Exponential Regression: Sorting Time vs Delivery Time')
+plt.show()
+
+# Confidence Interval and RMSE for Exponential Model
+print(exp_model.conf_int(0.05))
+exp_rmse = sqrt(mean_squared_error(delivery_time_data.Delivery_time, exp_predictions))
+print(f'Exponential Model RMSE: {exp_rmse}')
+
+# Quadratic Model
+delivery_time_data['sq_sorting_time'] = delivery_time_data.Sorting_time ** 2
+quad_model = smf.ols('Delivery_time ~ Sorting_time + sq_sorting_time', data=delivery_time_data).fit()
+print(quad_model.params)
+print(quad_model.summary())
+
+# Predictions and Errors for Quadratic Model
+quad_predictions = quad_model.predict(delivery_time_data)
+quad_errors = delivery_time_data.Delivery_time - quad_predictions
+
+# Plot Quadratic Regression Results
+plt.scatter(delivery_time_data.Sorting_time, delivery_time_data.Delivery_time, c='r')
+plt.plot(delivery_time_data.Sorting_time, quad_predictions, c='b')
+plt.xlabel('Sorting Time')
+plt.ylabel('Delivery Time')
+plt.title('Quadratic Regression: Sorting Time vs Delivery Time')
+plt.show()
+
+# Confidence Interval and RMSE for Quadratic Model
+print(quad_model.conf_int(0.05))
+quad_rmse = sqrt(mean_squared_error(delivery_time_data.Delivery_time, quad_predictions))
+print(f'Quadratic Model RMSE: {quad_rmse}')

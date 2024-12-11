@@ -1,0 +1,58 @@
+import argparse
+import os
+import ntpath
+import glob
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description='Process gzipped samtools mpileup output.')
+    parser.add_argument("bams", help="Text file of bam files, one file per line.")
+    parser.add_argument("dir", help="Directory containing *mpileup.gz files.")
+    parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
+    return parser.parse_args()
+
+def read_bam_file(bams_path):
+    """Read in the list of BAM files from the provided text file."""
+    with open(bams_path) as f:
+        return f.readlines()
+
+def clean_filenames(file_names):
+    """Clean filenames by removing path and extension."""
+    return [os.path.splitext(ntpath.basename(file_name))[0] for file_name in file_names]
+
+def list_mpileup_files(directory):
+    """Create a list of *mpileup.gz files from the specified directory."""
+    return glob.glob(os.path.join(directory, "*.mpileup.gz"))
+
+def main():
+    args = parse_arguments()
+
+    if args.verbose:
+        print("Verbosity turned on")
+        print(f"Input BAM files: {args.bams}")
+        print(f"Input directory: {args.dir}")
+
+    bam_files = read_bam_file(args.bams)
+    if args.verbose:
+        print(f"Number of BAM files: {len(bam_files)}")
+        print(f"First BAM file: {bam_files[0]}")
+
+    sample_names = clean_filenames(bam_files)
+    if args.verbose:
+        print("Sample names:")
+        for name in sample_names:
+            print(name)
+
+    mpileup_files = list_mpileup_files(args.dir)
+    locus_names = clean_filenames(mpileup_files)
+    if args.verbose:
+        print(f"Number of mpileup files: {len(mpileup_files)}")
+
+    for mpileup_file, locus_name in zip(mpileup_files, locus_names):
+        print(f"{mpileup_file}  {locus_name}")
+
+    nonzeros = [[] for _ in range(len(sample_names))]
+    print(nonzeros)
+
+if __name__ == "__main__":
+    main()

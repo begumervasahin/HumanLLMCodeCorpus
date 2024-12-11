@@ -1,0 +1,98 @@
+import pandas as pd
+import numpy as np
+
+def data_preprocessing():
+    df = pd.read_csv("iris.csv")
+    target_dict = {species: i for i, species in enumerate(df['species'].unique())}
+    df['target'] = df['species'].map(target_dict)
+    return df
+
+def data_shuffling(df):
+    df_shuffled = df.sample(frac=1).reset_index(drop=True)
+    X = df_shuffled.iloc[:, :-2].values
+    Y = df_shuffled['target'].values
+    return df_shuffled, X, Y
+
+def data_split(X, Y, split_ratio=0.8):
+    train_len = int(len(X) * split_ratio)
+    X_train, X_test = X[:train_len], X[train_len:]
+    Y_train, Y_test = Y[:train_len], Y[train_len:]
+    return X_train, Y_train, X_test, Y_test
+
+def init_parameters(n_features):
+    w = np.random.rand(n_features)
+    b = 0
+    return w, b
+
+def forward_prop(X, w, b):
+    return np.dot(X, w) + b
+
+def cost_function(y_hat, y):
+    m = len(y)
+    return (1 / (2 * m)) * np.sum(np.square(y_hat - y))
+
+def back_prop(X, y, y_hat):
+    m = len(y)
+    dy_hat = (y_hat - y) / m
+    dw = np.dot(X.T, dy_hat)
+    db = np.sum(dy_hat)
+    return dw, db
+
+def gradient_descent(w, b, dw, db, lr):
+    w -= lr * dw
+    b -= lr * db
+    return w, b
+
+def train(X_train, Y_train, epochs=10, lr=1e-3):
+    w, b = init_parameters(X_train.shape[1])
+    for epoch in range(epochs):
+        y_hat = forward_prop(X_train, w, b)
+        cost = cost_function(y_hat, Y_train)
+        dw, db = back_prop(X_train, Y_train, y_hat)
+        w, b = gradient_descent(w, b, dw, db, lr)
+        if epoch % 2 == 0:
+            print(f"Epoch {epoch}, Cost: {cost:.4f}")
+    print(f"Training complete. w: {w}, b: {b}")
+    return w, b
+
+def predict(X_test, Y_test, w, b):
+    predictions = np.round(forward_prop(X_test, w, b))
+    accuracy = np.mean(predictions == Y_test) * 100
+    for pred, actual in zip(predictions, Y_test):
+        print(f"Predicted: {pred}, Actual: {actual}")
+    return accuracy
+
+def data_sampler(X, Y, fold_index, num_folds):
+    partition_size = len(X) // num_folds
+    test_start = fold_index * partition_size
+    test_end = (fold_index + 1) * partition_size
+    X_test = X[test_start:test_end]
+    Y_test = Y[test_start:test_end]
+    X_train = np.concatenate((X[:test_start], X[test_end:]))
+    Y_train = np.concatenate((Y[:test_start], Y[test_end:]))
+    return X_train, Y_train, X_test, Y_test
+
+def cross_validation(X, Y, num_folds=5, epochs=10, lr=1e-3):
+    acc_dict = {}
+    for fold_index in range(num_folds):
+        X_train, Y_train, X_test, Y_test = data_sampler(X, Y, fold_index, num_folds)
+        w, b = train(X_train, Y_train, epochs, lr)
+        acc = predict(X_test, Y_test, w, b)
+        acc_dict[fold_index] = acc
+    print("Cross-validation results:", acc_dict)
+
+def main():
+    df = data_preprocessing()
+    df, X, Y = data_shuffling(df)
+    X_train, Y_train, X_test, Y_test = data_split(X, Y)
+
+    print("Training and predicting results for the test data using the trained model:")
+    w, b = train(X_train, Y_train)
+    acc = predict(X_test, Y_test, w, b)
+    print(f"Accuracy: {acc:.2f}%")
+
+    print("\nCross-validation for the trained model")
+    cross_validation(X, Y)
+
+if __name__ == "__main__":
+    main()

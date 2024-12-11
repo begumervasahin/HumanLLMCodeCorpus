@@ -1,0 +1,97 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import sys
+
+# Function to display the Minimum Spanning Tree (MST) graph
+def displayGraph(MST_list, vert_list, vert_count):
+    G = nx.Graph()
+    for edge in MST_list:
+        G.add_edge(vert_list[edge[0]], vert_list[edge[1]], weight=edge[2])
+    
+    pos = nx.spring_layout(G, k=20, iterations=150, weight='weight')
+    edge_labels = {(u, v): d['weight'] for u, v, d in G.edges(data=True)}
+    
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+    node_size = max(len(vert) for vert in vert_list) * 180
+    
+    nx.draw_networkx_nodes(G, pos, node_size=node_size, node_shape='h', alpha=0.5)
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges, width=2, edge_color='b', alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=9, font_family='sans-serif')
+    
+    plt.axis('off')
+    plt.show()
+
+# Function to find the MST using Prim's algorithm
+def prim(wc_graph, vert_count):
+    MST_list = []
+    visited_list = []
+    edge_list = []
+    
+    # Start with vertex 0
+    min_edge = [0, 1, wc_graph[0][1]]
+    v = 0
+    
+    for _ in range(vert_count - 1):
+        visited_list.append(v)
+        for u in range(vert_count):
+            if wc_graph[v][u] != 0:
+                edge_list.append([v, u, wc_graph[v][u]])
+        
+        for edge in edge_list[1:]:
+            if edge[2] < min_edge[2] and edge[1] not in visited_list:
+                min_edge = edge
+        
+        MST_list.append(min_edge)
+        v = min_edge[1]
+        edge_list.remove(min_edge)
+        if edge_list:
+            min_edge = edge_list[0]
+    
+    return MST_list
+
+# Main function
+def main(file_name):
+    vert_set = set()
+    
+    # Read the file and gather all vertices
+    with open(file_name) as f:
+        for line in f:
+            columns = line.strip().split(' ')
+            vert_set.add(columns[0])
+            vert_set.add(columns[1])
+    
+    vert_list = list(vert_set)
+    vert_count = len(vert_set)
+    
+    # Initialize weighted connection graph
+    wc_graph = [[0 for _ in range(vert_count)] for _ in range(vert_count)]
+    
+    # Populate the graph with weights from the file
+    with open(file_name) as f:
+        for line in f:
+            columns = line.strip().split(' ')
+            idx1, idx2 = vert_list.index(columns[0]), vert_list.index(columns[1])
+            weight = int(columns[2])
+            wc_graph[idx1][idx2] = wc_graph[idx2][idx1] = weight
+    
+    # Find MST using Prim's algorithm
+    MST_list = prim(wc_graph, vert_count)
+    
+    # Print the MST and total weight
+    total_weight = 0
+    print("The minimum spanning tree is as follows:")
+    for edge in MST_list:
+        print(f"{vert_list[edge[0]]} to {vert_list[edge[1]]} = {edge[2]} miles")
+        total_weight += edge[2]
+    print(f"Total weight: {total_weight} miles.")
+    
+    # Display the graph
+    displayGraph(MST_list, vert_list, vert_count)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 prim.py <file_name>")
+        sys.exit(1)
+    
+    file_name = sys.argv[1]
+    main(file_name)

@@ -1,0 +1,83 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load data
+datafile = 'Housing_data.txt'
+cols = np.loadtxt(datafile, delimiter=',', usecols=(0, 1, 2, 3), unpack=True)
+X = np.transpose(np.array(cols[:-1]))
+y = np.transpose(np.array(cols[-1:]))
+m = y.size
+
+# Add intercept term to X
+X = np.insert(X, 0, 1, axis=1)
+
+# Feature normalization
+stored_feature_means, stored_feature_stds = [], []
+Xnorm = X.copy()
+for col in range(1, Xnorm.shape[1]):
+    mean = np.mean(Xnorm[:, col])
+    std = np.std(Xnorm[:, col])
+    stored_feature_means.append(mean)
+    stored_feature_stds.append(std)
+    Xnorm[:, col] = (Xnorm[:, col] - mean) / std
+
+# Hypothesis function
+def h(X, theta):
+    return np.dot(X, theta)
+
+# Cost function
+def compute_cost(theta, X, y):
+    pred = h(X, theta)
+    sqr_error = (pred - y) ** 2
+    J = 1 / (2 * m) * np.sum(sqr_error)
+    return J
+
+# Gradient Descent function
+def gradient_descent(X, y, theta, num_iters, alpha):
+    J_hist = np.zeros((num_iters, 1))
+    for iter in range(num_iters):
+        errors = h(X, theta) - y
+        theta_change = (alpha / m) * np.dot(X.T, errors)
+        theta -= theta_change
+        J_hist[iter] = compute_cost(theta, X, y)
+    return theta, J_hist
+
+# Plot cost function convergence
+def plot_convergence(jvec, iterations):
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(len(jvec)), jvec, 'bo')
+    plt.grid(True)
+    plt.title("Convergence of Cost Function")
+    plt.xlabel("Iteration number")
+    plt.ylabel("Cost function")
+    plt.xlim([-0.05 * iterations, 1.05 * iterations])
+    plt.show()
+
+# Predict function
+def predict(ytest, stored_feature_means, stored_feature_stds, theta):
+    print(f"Check of result: What is the price of a house with {ytest[0]} square feet, {ytest[1]} bedrooms, and {ytest[2]} years old?")
+    ytest_scaled = [(ytest[i] - stored_feature_means[i]) / stored_feature_stds[i] for i in range(len(ytest))]
+    ytest_scaled.insert(0, 1)
+    prediction = float(h(np.array(ytest_scaled), theta))
+    print(f"$ {prediction:.2f}")
+
+# Main execution
+if __name__ == "__main__":
+    # Initial parameters
+    initial_theta = np.zeros((Xnorm.shape[1], 1))
+    iterations = 1500
+    alpha = 0.01
+
+    # Perform gradient descent
+    theta, j_vec = gradient_descent(Xnorm, y, initial_theta, iterations, alpha)
+
+    # Print results
+    print("The updated values of theta are:")
+    print(theta)
+
+    # Plot convergence
+    plot_convergence(j_vec, iterations)
+
+    # Prediction
+    ytest = np.array([1203, 3, 11])
+    predict(ytest, stored_feature_means, stored_feature_stds, theta)

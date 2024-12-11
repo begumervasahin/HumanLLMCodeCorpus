@@ -1,0 +1,62 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.parent = self
+        self.rank = 0
+
+class TreeSet:
+    def __init__(self):
+        self.data = {}
+
+    def make_set(self, n):
+        """Creates a new set containing the single element n."""
+        self.data[n] = Node(n)
+
+    def find(self, n):
+        """Finds the representative (root) of the set containing n with path compression."""
+        if self.data[n].parent != self.data[n]:
+            self.data[n].parent = self.data[self.find(self.data[n].parent.value)]
+        return self.data[n].parent.value
+
+    def union(self, u, v):
+        """Unites the sets that contain u and v using union by rank."""
+        root_u = self.data[self.find(u)]
+        root_v = self.data[self.find(v)]
+
+        if root_u.value != root_v.value:
+            if root_u.rank > root_v.rank:
+                root_v.parent = root_u
+                return root_u
+            elif root_u.rank < root_v.rank:
+                root_u.parent = root_v
+                return root_v
+            else:
+                root_v.parent = root_u
+                root_u.rank += 1
+                return root_u
+
+    def print_data(self):
+        """Prints the internal structure of the TreeSet."""
+        for key in self.data:
+            node = self.data[key]
+            print(f"Node: {key}, Parent: {node.parent.value}, Rank: {node.rank}")
+
+if __name__ == "__main__":
+    # Example usage:
+    ts = TreeSet()
+    ts.make_set(1)
+    ts.make_set(2)
+    ts.make_set(3)
+    ts.make_set(4)
+
+    print("Initial sets:")
+    ts.print_data()
+
+    ts.union(1, 2)
+    ts.union(3, 4)
+    ts.union(2, 3)
+
+    print("\nAfter some unions:")
+    ts.print_data()
+
+    print("\nFind representative of element 4:", ts.find(4))

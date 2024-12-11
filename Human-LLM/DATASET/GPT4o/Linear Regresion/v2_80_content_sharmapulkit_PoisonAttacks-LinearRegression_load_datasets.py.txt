@@ -1,0 +1,198 @@
+import pandas as pd
+import numpy as np
+
+class DatasetStruct:
+    """
+    A class to store feature (X) and target (Y) datasets.
+    """
+    def __init__(self, X, Y):
+        """
+        Initializes the DatasetStruct with features and targets.
+
+        Parameters:
+        X (numpy.ndarray): Feature dataset.
+        Y (numpy.ndarray): Target dataset.
+        """
+        self._X = X
+        self._Y = Y
+
+    @property
+    def X(self):
+        """Returns the feature dataset."""
+        return self._X
+
+    @property
+    def Y(self):
+        """Returns the target dataset."""
+        return self._Y
+
+    def get_size(self):
+        """Returns the size of the dataset."""
+        return len(self._X)
+
+
+class BaseDataset:
+    """
+    A base class for loading and managing datasets.
+    """
+    def __init__(self, train_frac=0.7):
+        """
+        Initializes the BaseDataset with a training fraction.
+
+        Parameters:
+        train_frac (float): Fraction of data to be used for training.
+        """
+        self.train_frac = train_frac
+        self.train = None
+        self.val = None
+        self.whole = None
+
+    def load(self):
+        """Loads the dataset from the specified file path."""
+        self.df = pd.read_csv(self.data_path)
+        feature_columns = self.df.columns.drop(self.target_columns)
+        X = self.df[feature_columns].values
+        Y = self.df[self.target_columns].values
+        self.whole = DatasetStruct(X, Y)
+
+        N = len(X)
+        all_idxs = np.arange(N)
+        np.random.shuffle(all_idxs)
+        train_size = int(self.train_frac * N)
+        train_idxs = all_idxs[:train_size]
+        val_idxs = all_idxs[train_size:]
+
+        self.train = DatasetStruct(X[train_idxs], Y[train_idxs])
+        self.val = DatasetStruct(X[val_idxs], Y[val_idxs])
+
+    def get_df(self):
+        """Returns the DataFrame of the dataset."""
+        return self.df
+
+    def get_size(self):
+        """Returns the size of the dataset."""
+        return len(self.df)
+
+    def get_train(self):
+        """Returns the training dataset."""
+        if self.train is None:
+            raise ValueError("Training data not loaded")
+        return self.train
+
+    def get_val(self):
+        """Returns the validation dataset."""
+        if self.val is None:
+            raise ValueError("Validation data not loaded")
+        return self.val
+
+
+class HouseData(BaseDataset):
+    """
+    A class for loading and managing the house dataset.
+    """
+    def __init__(self, train_frac=0.7):
+        """
+        Initializes the HouseData with a training fraction.
+
+        Parameters:
+        train_frac (float): Fraction of data to be used for training.
+        """
+        super().__init__(train_frac)
+        self.data_path = "./datasets/house-processed.csv"
+        self.target_columns = ['SalePrice']
+
+
+class LoanData(BaseDataset):
+    """
+    A class for loading and managing the loan dataset.
+    """
+    def __init__(self, train_frac=0.7):
+        """
+        Initializes the LoanData with a training fraction.
+
+        Parameters:
+        train_frac (float): Fraction of data to be used for training.
+        """
+        super().__init__(train_frac)
+        self.data_path = "./datasets/loan-processed.csv"
+        self.target_columns = ['int_rate']
+
+
+class PharmPreprocData(BaseDataset):
+    """
+    A class for loading and managing the pharmaceutical preprocessing dataset.
+    """
+    def __init__(self, train_frac=0.7):
+        """
+        Initializes the PharmPreprocData with a training fraction.
+
+        Parameters:
+        train_frac (float): Fraction of data to be used for training.
+        """
+        super().__init__(train_frac)
+        self.data_path = "./datasets/pharm-preproc.csv"
+        self.target_columns = ['TherapeuticDoseofWarfarin']
+
+
+class InitialDataSet(BaseDataset):
+    """
+    A class for generating and managing initial datasets with specific transformations.
+    """
+    def __init__(self):
+        """Initializes the InitialDataSet."""
+        super().__init__()
+
+    def load_inv_flip(self, data_tr, N):
+        """
+        Load an Inverse Flip dataset randomly from training data.
+
+        Parameters:
+        data_tr (DatasetStruct): Training data.
+        N (int): Number of samples to load.
+        """
+        train_data_size = data_tr.get_size()
+        assert N < train_data_size, "N should be less than the training data size"
+        selected_idxs = np.random.choice(train_data_size, size=N, replace=False)
+        self.X = data_tr.X[selected_idxs]
+        self.Y = 1 - data_tr.Y[selected_idxs]
+        self.whole = DatasetStruct(self.X, self.Y)
+
+    def load_b_flip(self, data_tr, N):
+        """
+        Load a Boundary Flip dataset randomly from training data.
+
+        Parameters:
+        data_tr (DatasetStruct): Training data.
+        N (int): Number of samples to load.
+        """
+        train_data_size = data_tr.get_size()
+        assert N < train_data_size, "N should be less than the training data size"
+        selected_idxs = np.random.choice(train_data_size, size=N, replace=False)
+        self.X = data_tr.X[selected_idxs]
+        self.Y = np.round(1 - data_tr.Y[selected_idxs])
+        self.whole = DatasetStruct(self.X, self.Y)
+
+    def load_random(self, N, mean, variance):
+        """
+        Load random data points sampled from a Multivariate Normal distribution.
+
+        Parameters:
+        N (int): Number of samples to generate.
+        mean (array-like): Mean of the distribution.
+        variance (array-like): Covariance matrix of the distribution.
+        """
+        self.X, self.Y = np.random.multivariate_normal(mean, variance, N).T
+        self.whole = DatasetStruct(self.X, self.Y)
+
+    def get_size(self):
+        """Returns the size of the dataset."""
+        return len(self.X)
+
+    def get_df(self):
+        """
+        Convert the dataset to a pandas DataFrame.
+
+        Returns:
+        pandas.DataFrame: DataFrame of the feature dataset.
+        """
+        return pd.DataFrame(self.X)

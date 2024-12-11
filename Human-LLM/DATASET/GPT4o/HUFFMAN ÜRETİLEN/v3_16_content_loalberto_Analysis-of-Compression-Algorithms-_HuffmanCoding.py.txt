@@ -1,0 +1,139 @@
+import random
+import string
+import time
+from heapq import heappush, heappop, heapify
+from collections import defaultdict
+
+def huffman_encode(symbol_weights):
+    """
+    Perform Huffman encoding on the given dictionary of symbol weights.
+
+    Parameters
+    ----------
+    symbol_weights : dict
+        A dictionary with symbols as keys and their respective weights as values.
+
+    Returns
+    -------
+    tuple
+        A list of symbols and their corresponding Huffman codes, sorted by code length and symbol.
+        Also returns the total number of operations performed during encoding.
+    """
+    operation_count = 0
+    heap = []
+
+    # Initialize the heap with symbols and their weights
+    for symbol, weight in symbol_weights.items():
+        operation_count += 1
+        heap.append([weight, [symbol, ""]])
+    
+    heapify(heap)
+
+    # Build the Huffman tree
+    while len(heap) > 1:
+        operation_count += 1
+        low = heappop(heap)
+        high = heappop(heap)
+
+        for pair in low[1:]:
+            pair[1] = '0' + pair[1]
+        for pair in high[1:]:
+            pair[1] = '1' + pair[1]
+
+        heappush(heap, [low[0] + high[0]] + low[1:] + high[1:])
+    
+    huffman_codes = sorted(heappop(heap)[1:], key=lambda item: (len(item[1]), item[0]))
+    return huffman_codes, operation_count
+
+def generate_random_string(length):
+    """
+    Generate a random string of a given length composed of lowercase letters.
+
+    Parameters
+    ----------
+    length : int
+        The length of the generated string.
+
+    Returns
+    -------
+    str
+        A random string of the specified length.
+    """
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
+
+def main():
+    iterations = 10
+    op_matrix = {f'Iteration {i + 1}': [] for i in range(iterations)}
+    time_matrix = {f'Iteration {i + 1}': [] for i in range(iterations)}
+    
+    # Run multiple iterations for performance measurement
+    for itr in range(iterations):
+        iteration_key = f'Iteration {itr + 1}'
+        n = 10
+        
+        while n <= 100000:
+            random_string = generate_random_string(n)
+            frequency_dict = defaultdict(int)
+            initial_operations = 0
+            
+            # Build frequency dictionary
+            for char in random_string:
+                initial_operations += 1
+                frequency_dict[char] += 1
+            
+            # Measure time and perform Huffman encoding
+            start_time = time.time()
+            encoded_values, encoding_operations = huffman_encode(frequency_dict)
+            end_time = time.time()
+            
+            total_time_ns = (end_time - start_time) * 1e9  # Convert to nanoseconds
+            total_operations = initial_operations + encoding_operations
+            
+            # Store the results
+            op_matrix[iteration_key].append(total_operations)
+            time_matrix[iteration_key].append(total_time_ns)
+            
+            n *= 10  # Increase string length by an order of magnitude
+    
+    # Calculate and store averages across iterations
+    calculate_averages(op_matrix)
+    calculate_averages(time_matrix)
+    
+    # Print the results
+    print_results(op_matrix, 'Operation Count')
+    print_results(time_matrix, 'Time (ns)')
+
+def calculate_averages(matrix):
+    """
+    Calculate and append the average of values across all iterations in the matrix.
+
+    Parameters
+    ----------
+    matrix : dict
+        Dictionary containing lists of measurements for each iteration.
+    """
+    num_iterations = len(matrix)
+    averages = [
+        sum(matrix[key][i] for key in matrix) / num_iterations
+        for i in range(len(next(iter(matrix.values()))))
+    ]
+    
+    matrix['Average'] = averages
+
+def print_results(matrix, label):
+    """
+    Print the results stored in the matrix.
+
+    Parameters
+    ----------
+    matrix : dict
+        Dictionary containing the results to print.
+    label : str
+        The label for the type of results (e.g., operation count, time).
+    """
+    print(f'\n------------ {label} Measurements ------------\n')
+    for key, values in matrix.items():
+        print(f'{key}: {values}')
+
+if __name__ == "__main__":
+    main()

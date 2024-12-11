@@ -1,0 +1,51 @@
+import json
+import jieba
+from pyspark import SparkContext
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+
+# Initialize the Spark context
+sc = SparkContext(appName='DocumentsRewrite')
+
+# Load data from a text file and extract the 'content' field from the JSON objects
+rdd = sc.textFile('/vagrant/data/data.txt').map(lambda x: json.loads(x)['content'])
+
+# Function to perform word segmentation using jieba
+def cut(text):
+    seg_list = jieba.cut(text, cut_all=True)
+    return " ".join(seg_list)
+
+# Apply the segmentation function to the RDD and collect the results
+corpus = rdd.map(cut).collect()
+
+# Function to compute TF-IDF and save the results
+def compute_and_save_tfidf(corpus):
+    # Initialize CountVectorizer and TfidfTransformer
+    vectorizer = CountVectorizer()
+    transformer = TfidfTransformer()
+
+    # Fit and transform the corpus to get TF-IDF matrix
+    tfidf = transformer.fit_transform(vectorizer.fit_transform(corpus))
+
+    # Get the feature names (words) and the TF-IDF weights
+    words = vectorizer.get_feature_names_out()
+    weights = tfidf.toarray()
+
+    # Define the output file path
+    filename = "/vagrant/vocabulary/mllib.txt"
+
+    # Open the output file for writing
+    with open(filename, "a+", encoding="utf-8") as fo:
+        # Iterate over each document's TF-IDF weights
+        for doc_weights in weights:
+            # Write each word and its corresponding weight to the file
+            for word, weight in zip(words, doc_weights):
+                record = json.dumps([word, weight], ensure_ascii=False)
+                fo.write(record + "\n")
+            # Add a newline after each document's weights
+            fo.write("\n")
+
+# Compute TF-IDF and save the results
+compute_and_save_tfidf(corpus)
+
+# Stop the Spark context
+sc.stop()

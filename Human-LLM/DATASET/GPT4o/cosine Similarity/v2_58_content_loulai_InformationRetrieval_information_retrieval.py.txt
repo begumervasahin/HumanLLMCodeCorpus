@@ -1,0 +1,91 @@
+import re
+from stop_list import closed_class_stop_words
+
+def read_queries(file_path):
+    """
+    Read and process the queries from the file.
+    
+    Args:
+        file_path (str): The path to the query file.
+    
+    Returns:
+        str: The content of the query file.
+    """
+    with open(file_path, 'r') as file:
+        return file.read().replace(r"\s", "")
+
+def get_query_nums(string):
+    """
+    Extract query numbers from the input string.
+    
+    Args:
+        string (str): The input string containing query numbers.
+    
+    Returns:
+        list: A list of query numbers.
+    """
+    return [match.replace(".I ", "") for match in re.findall(r"\.I \d{3}", string)]
+
+def get_query_strings(string):
+    """
+    Extract query strings from the input string.
+    
+    Args:
+        string (str): The input string containing queries.
+    
+    Returns:
+        list: A list of query strings.
+    """
+    return [match.strip() for match in re.findall(r"([a-z ]+\n){1,3}[a-z ]+\.", string)]
+
+def trim(string):
+    """
+    Remove stopwords and trim the input string.
+    
+    Args:
+        string (str): The input string to be trimmed.
+    
+    Returns:
+        list: A list of trimmed words.
+    """
+    words = re.sub(r"\n|\r", " ", string).split()
+    return [word for word in words if word not in closed_class_stop_words]
+
+def get_tf(words):
+    """
+    Calculate term frequency in the given list of words.
+    
+    Args:
+        words (list): A list of words.
+    
+    Returns:
+        dict: A dictionary of term frequencies.
+    """
+    return {word: words.count(word) for word in set(words)}
+
+def print_dict(dictionary):
+    """
+    Print a dictionary's keys and values.
+    
+    Args:
+        dictionary (dict): The dictionary to print.
+    """
+    for key, value in dictionary.items():
+        print(f"{key}: {value}")
+
+if __name__ == "__main__":
+    # Read and process queries
+    queries = read_queries("cran.qry")
+    query_strings = get_query_strings(queries)
+    
+    # Print extracted query strings
+    for query in query_strings:
+        print(query)
+    
+    # Trim and process a different query file
+    trimmed_content = trim(open("cran2.qry", 'r').read())
+    print(trimmed_content)
+    
+    # Calculate and print term frequencies
+    term_frequency = get_tf(trimmed_content)
+    print_dict(term_frequency)

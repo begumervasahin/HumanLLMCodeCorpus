@@ -1,0 +1,68 @@
+import ipfsapi
+
+DEBUG = 0
+point = 0
+
+# Connect to IPFS API
+api = ipfsapi.connect('127.0.0.1', 5001)
+
+# Read the random key from the file
+with open('TEST_RANDOM_DO_NOT_USE_IN_REAL_CONVERSATION.txt', 'r') as f:
+    all_random = f.read()
+
+def save_point(point):
+    """
+    Save the current point to a file.
+
+    Args:
+        point (int): The current point.
+    """
+    with open('pointt', 'w') as fpoint:
+        fpoint.write(str(point))
+
+def debug_print(message, *args):
+    """
+    Print debug information if debugging is enabled.
+
+    Args:
+        message (any): The information to print.
+        *args (any): Additional arguments.
+    """
+    if DEBUG:
+        print(message, *args)
+
+def encrypt(text, key):
+    """
+    Encrypt a string using a key with XOR encryption.
+
+    Args:
+        text (str): The input string to encrypt.
+        key (str): The key to use for encryption.
+
+    Returns:
+        str: The encrypted string.
+    """
+    return "".join(chr(ord(char) ^ ord(k)) for char, k in zip(text, key))
+
+def main():
+    global point
+    print("You:")
+
+    while True:
+        data = input("")
+        debug_print('point:', point)
+        end = point + len(data)
+        debug_print('end:', end)
+        key = all_random[point:end]
+        debug_print('key:', key)
+        data_enc = encrypt(data, key)
+        debug_print('data_enc:', data_enc)
+        data_ipfs = api.add_pyobj([data_enc, point, end])
+        debug_print('data_ipfs:', [data_enc, point, end])
+        data_ipns = api.name_publish('/ipfs/' + data_ipfs)
+        debug_print('IPFS name published. Do it again.')
+        point = end
+        save_point(point)
+
+if __name__ == "__main__":
+    main()

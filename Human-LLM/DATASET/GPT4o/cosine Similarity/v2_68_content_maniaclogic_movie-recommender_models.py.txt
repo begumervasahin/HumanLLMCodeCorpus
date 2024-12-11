@@ -1,0 +1,48 @@
+import pandas as pd
+import numpy as np
+import pickle
+from sklearn.decomposition import NMF
+
+# Load data from CSV files
+movies = pd.read_csv('movies.csv', header=0)
+ratings = pd.read_csv('ratings.csv', header=0)
+tags = pd.read_csv('tags.csv', header=0)
+links = pd.read_csv('links.csv', header=0)
+
+# Select relevant columns
+ratings = ratings[['userId', 'movieId', 'rating']]
+tags = tags[['userId', 'movieId', 'tag']]
+links = links[['movieId', 'imdbId']]
+
+# Combine data into a single DataFrame
+data_dfs = [movies, tags, links, ratings]
+DF = pd.concat(data_dfs, join='outer', sort=True)
+
+def df_to_matrix(df):
+    """Convert DataFrame to a user-movie rating matrix."""
+    pre_data = df[['movieId', 'userId', 'rating']]
+    data_matrix = pre_data.pivot_table(index='userId', columns='movieId', values='rating')
+    data_matrix.fillna(3.0, inplace=True)  # Fill missing values with 3.0
+    return data_matrix, pre_data
+
+# Create the rating matrix and pre-data DataFrame
+R, PRE = df_to_matrix(DF)
+
+# Load the pre-trained NMF model
+with open('nmf_model.bin', 'rb') as file:
+    nmf = pickle.load(file)
+
+# Print some information about the NMF model
+print(f"NMF components shape: {nmf.components_.shape}")
+print(f"NMF reconstruction error: {nmf.reconstruction_err_}")
+
+# Use the NMF model to transform the rating matrix
+W = nmf.transform(R)
+H = nmf.components_
+
+print(f"W matrix shape: {W.shape}")
+print(f"H matrix shape: {H.shape}")
+
+# Save the transformed data
+np.save('W_matrix.npy', W)
+np.save('H_matrix.npy', H)

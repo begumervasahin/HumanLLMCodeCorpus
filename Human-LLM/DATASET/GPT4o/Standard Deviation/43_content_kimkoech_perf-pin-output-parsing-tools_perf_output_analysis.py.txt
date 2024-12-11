@@ -1,0 +1,44 @@
+"""
+Program description
+Created by:	skeleton by Billy Koech
+Date:		Jan 4th 2018
+mru(most recent update):
+Sept 24th 2019
+Std and mean calculator for perf and pin outputs
+"""
+import re
+import numpy as np
+runtimes = {}
+perf_output_file = "measure.out"
+search_terms = ["mem_inst_retired.all_loads:u",\
+				"instructions:u", \
+				"mem_inst_retired.all_stores:u", \
+				"br_inst_retired.all_branches:u"]
+debugMode = False
+def main():
+	f = open(perf_output_file, "r")
+	for term in search_terms:
+		runtimes.update({term:[]})
+	if debugMode:
+		print(runtimes)
+	for line in f:
+		for term in search_terms:
+			if term in line:
+				numeric_value = int(re.findall("\d+", line)[0])
+				if debugMode:
+					print(numeric_value)
+				runtimes[term].append(numeric_value)
+	print("Parsing complete!")
+	f.close()
+	output_str = ""
+	for key in runtimes.keys():
+		std = np.std(runtimes[key])
+		mean = np.mean(runtimes[key])
+		output_str += key + " :\t" + str(std) +  ",\t" + str(mean) + "\n"
+	header = "Type of instruction: \t std, \t mean\n"
+	print(header + output_str)
+	report = open("perf_report.txt", "w+")
+	report.write(header + output_str)
+	report.close()
+if __name__ == '__main__':
+    main()

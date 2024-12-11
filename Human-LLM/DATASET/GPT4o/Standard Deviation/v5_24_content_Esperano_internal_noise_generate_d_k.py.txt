@@ -1,0 +1,82 @@
+import numpy as np
+import time
+
+# Generate the percent correct and percent agreement models.
+# Author: Bashar Awwad Shiekh Hasan
+# basharawwad.sh@gmail.com
+
+# Seed the random number generator
+seed = int(time.time() // 10**8)
+np.random.seed(seed)
+
+# Define parameters
+NO_TRIALS = 100
+NO_SIMULATIONS = 100
+EXT_NOISE_MEAN = 0
+SD = 1
+
+# Define range of d' (dprime) and internal noise values
+dprime_values = np.linspace(0, 10, 51)
+inoise_values = np.linspace(0, 10, 51)
+
+# Define the number of choices (classes)
+choice_values = list(range(10, 1, -1))
+
+# Initialize percent correct and percent agreement arrays
+percent_correct = np.zeros((len(choice_values), len(dprime_values), len(inoise_values)))
+percent_agreement = np.zeros((len(choice_values), len(dprime_values), len(inoise_values)))
+
+# Print the shape of percent_correct array
+print(percent_correct.shape)
+
+def simulate_classification(afc, dprime, inoise):
+    """
+    Simulates the classification process and returns the percent correct and percent agreement.
+    
+    Parameters:
+    afc (int): Number of choices (classes)
+    dprime (float): d' value
+    inoise (float): Internal noise value
+    
+    Returns:
+    tuple: (percent_correct, percent_agreement)
+    """
+    percent_correct_temp = []
+    percent_agreement_temp = []
+    
+    for _ in range(NO_SIMULATIONS):
+        # Generate external noise
+        noise_set = np.random.normal(EXT_NOISE_MEAN, SD, (afc, NO_TRIALS))
+        
+        # Add dprime to the first row (signal)
+        noise_set[0] += dprime
+        
+        # Duplicate the trials and add internal noise
+        noise_set = np.hstack((noise_set, noise_set))
+        noise_set += np.random.normal(size=noise_set.shape)
+        
+        # Determine responses
+        response = np.argmax(noise_set, axis=0) == 0
+        
+        # Calculate percent correct and percent agreement
+        percent_correct_temp.append(np.mean(response))
+        percent_agreement_temp.append(np.mean(response[:NO_TRIALS] == response[NO_TRIALS:]))
+    
+    return np.mean(percent_correct_temp), np.mean(percent_agreement_temp)
+
+# Simulate for each number of choices (afc)
+for afc in choice_values:
+    print(f"Simulating {afc} classes")
+    
+    # Iterate over dprime values
+    for dprime_pointer, dprime in enumerate(dprime_values):
+        
+        # Iterate over inoise values
+        for inoise_pointer, inoise in enumerate(inoise_values):
+            # Perform simulations and store the results
+            pc, pa = simulate_classification(afc, dprime, inoise)
+            percent_correct[afc-2, dprime_pointer, inoise_pointer] = pc
+            percent_agreement[afc-2, dprime_pointer, inoise_pointer] = pa
+
+# Save the results to a file
+np.savez("pc_pa_record", pc=percent_correct, pa=percent_agreement)

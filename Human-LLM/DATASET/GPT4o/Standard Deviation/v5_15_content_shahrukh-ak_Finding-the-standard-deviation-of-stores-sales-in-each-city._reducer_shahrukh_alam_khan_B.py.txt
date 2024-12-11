@@ -1,0 +1,51 @@
+import sys
+import math
+
+def update(existingAggregate, newValue):
+    """Update the running statistics for a new value."""
+    count, mean, M2 = existingAggregate
+    count += 1
+    delta = newValue - mean
+    mean += delta / count
+    delta2 = newValue - mean
+    M2 += delta * delta2
+    return count, mean, M2
+
+def finalize(existingAggregate):
+    """Finalize the calculation of mean, variance, and sample variance."""
+    count, mean, M2 = existingAggregate
+    if count < 2:
+        return float('nan'), float('nan'), float('nan')
+    variance = M2 / count
+    sampleVariance = M2 / (count - 1)
+    return mean, variance, sampleVariance
+
+def process_input():
+    """Process the input lines and compute standard deviation for each key."""
+    S = [0, 0, 0]
+    last_key = None
+    
+    for line in sys.stdin:
+        key, new_value = line.strip().split('\t')
+        new_value = float(new_value)
+        
+        if last_key and key != last_key:
+            print_stats(last_key, S)
+            S = [0, 0, 0]
+        
+        if last_key is None or key != last_key:
+            last_key = key
+        
+        S = update(S, new_value)
+    
+    if last_key:
+        print_stats(last_key, S)
+
+def print_stats(key, aggregate):
+    """Finalize and print the statistics for a given key."""
+    average, P_Variance, S_Variance = finalize(aggregate)
+    S_Deviation = math.sqrt(P_Variance)
+    print(f'{key}\t{S_Deviation:.2f}')
+
+if __name__ == "__main__":
+    process_input()

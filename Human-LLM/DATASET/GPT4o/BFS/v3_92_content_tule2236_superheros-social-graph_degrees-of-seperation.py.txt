@@ -1,0 +1,97 @@
+from pyspark import SparkConf, SparkContext
+
+def convert_to_bfs(line, start_character_id):
+    """
+    Convert a line of input into a BFS node.
+
+    :param line: A line from the input file representing a hero and their connections.
+    :param start_character_id: The starting character ID for the BFS.
+    :return: A tuple representing the BFS node (hero_id, (connections, distance, color)).
+    """
+    fields = line.split()
+    hero_id = int(fields[0])
+    connections = [int(connection) for connection in fields[1:]]
+    distance = float('inf')  # Use a large number to represent infinity
+    color = "WHITE"
+    
+    if hero_id == start_character_id:
+        color = "GRAY"
+        distance = 0
+
+    return (hero_id, (connections, distance, color))
+
+def bfs_map(node, target_character_id, hit_counter):
+    """
+    Map function for the BFS algorithm.
+
+    :param node: A tuple representing the BFS node.
+    :param target_character_id: The target character ID to find.
+    :param hit_counter: An accumulator to count the number of hits on the target character.
+    :return: A list of tuples representing the mapped results.
+    """
+    hero_id, (connections, distance, color) = node
+    results = []
+
+    if color == "GRAY":
+        for connection in connections:
+            new_distance = distance + 1
+            if connection == target_character_id:
+                hit_counter.add(1)
+            results.append((connection, ([], new_distance, "GRAY")))
+        color = "BLACK"
+    
+    results.append((hero_id, (connections, distance, color)))
+    return results
+
+def bfs_reduce(data1, data2):
+    """
+    Reduce function for the BFS algorithm.
+
+    :param data1: The first BFS node data.
+    :param data2: The second BFS node data.
+    :return: A tuple representing the combined BFS node data.
+    """
+    edges1, dist1, color1 = data1
+    edges2, dist2, color2 = data2
+
+    edges = edges1 if edges1 else edges2
+    distance = min(dist1, dist2)
+    color = max(color1, color2, key=lambda c: ("WHITE", "GRAY", "BLACK").index(c))
+
+    return (edges, distance, color)
+
+def main():
+    # Initialize Spark
+    conf = SparkConf().setMaster("local").setAppName("DegreesOfSeparation")
+    sc = SparkContext(conf=conf)
+
+    # Define the characters we wish to find the degree of separation between
+    start_character_id = 5306  # SpiderMan
+    target_character_id = 14  # ADAM 3,031
+    hit_counter = sc.accumulator(0)
+
+    # Load the graph data
+    graph = sc.textFile("Data/Marvel-Graph.txt")
+    rdd = graph.map(lambda line: convert_to_bfs(line, start_character_id))
+
+    # Run BFS iterations
+    for iteration in range(10):
+        print(f"Running BFS iteration# {iteration + 1}")
+        
+        # Perform BFS mapping
+        mapper = rdd.flatMap(lambda node: bfs_map(node, target_character_id, hit_counter))
+        print(f"Processing {mapper.count()} values")
+        
+        # Check if the target character has been found
+        if hit_counter.value > 0:
+            print(f"Hit the target character! From {hit_counter.value} different directions.")
+            break
+        
+        # Reduce the mapped values to combine the results
+        rdd = mapper.reduceByKey(bfs_reduce)
+
+    # Stop SparkContext
+    sc.stop()
+
+if __name__ == "__main__":
+    main()

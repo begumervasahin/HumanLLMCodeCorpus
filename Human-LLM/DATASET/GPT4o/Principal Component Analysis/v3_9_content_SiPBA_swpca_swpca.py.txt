@@ -1,0 +1,93 @@
+import numpy as np
+from scipy.linalg import svd
+from scipy.stats import f_oneway
+
+def swpca(dataset, catvar, k=0.05, trset=None):
+    """
+    Perform Sparse Weighted Principal Component Analysis (SWPCA) on the given dataset.
+    
+    Parameters:
+    - dataset: numpy array, shape (n_samples, n_features)
+    - catvar: numpy array, categorical variable for ANOVA
+    - k: float, parameter for calculating weights
+    - trset: numpy array or None, training set indicator; if None, use all data as training set
+    
+    Returns:
+    - Xhat: numpy array, reconstructed dataset
+    - weights: numpy array, weights for each principal component
+    - A: numpy array, transformation matrix
+    """
+    N, D = dataset.shape
+    
+    # Default training set to all samples if not provided
+    if trset is None:
+        trset = np.ones(N, dtype=bool)
+        training = False
+    else:
+        training = True
+
+    # Center the dataset by subtracting the mean of each subject
+    subj_mean = dataset.mean(axis=1)
+    X = (dataset.T - subj_mean).T
+
+    # Subtract the mean and normalize by the variance for the training set
+    mean_tr = X[trset].mean(axis=0)
+    X -= mean_tr
+    var_tr = X[trset].var(axis=0)
+    var_tr = np.maximum(var_tr, 1)
+    X /= var_tr
+
+    # Split the dataset into training and testing sets
+    X_train = X[trset]
+    X_test = X[~trset] if training else None
+
+    # Perform Singular Value Decomposition (SVD)
+    U, s, Wt = svd(X_train, full_matrices=False)
+    W = Wt.T
+
+    # Sort components by descending singular values
+    sort_indices = np.argsort(s)[::-1]
+    W = W[:, sort_indices]
+
+    # Project the training data onto the principal components
+    S_train = X_train.dot(W)
+    S_test = X_test.dot(W) if training else None
+
+    # Calculate ANOVA F-statistics and weights for each principal component
+    unique_labels = np.unique(catvar)
+    F, p_val = f_oneway(S_train[catvar[trset] == unique_labels[0]],
+                        S_train[catvar[trset] == unique_labels[1]])
+    weights = 1 - np.exp(-p_val / k)
+
+    # Reconstruct the data using the weights
+    A = np.linalg.pinv(W)
+    weight_matrix = np.diag(weights)
+    
+    if training:
+        X_train_hat = S_train.dot(weight_matrix).dot(A)
+        X_test_hat = S_test.dot(weight_matrix).dot(A)
+        X_hat = np.zeros((N, D))
+        X_hat[trset] = X_train_hat
+        X_hat[~trset] = X_test_hat
+    else:
+        X_hat = S_train.dot(weight_matrix).dot(A)
+
+    # Reverse normalization and centering
+    X_hat = (X_hat * var_tr) + mean_tr
+    X_hat = (X_hat.T + subj_mean).T
+
+    return X_hat, weights, A
+
+# Example usage
+if __name__ == "__main__":
+    # Example dataset and category variable
+    dataset = np.random.rand(100, 10)  # Replace with your dataset
+    catvar = np.random.randint(0, 2, 100)  # Replace with your categorical variable
+
+    # Run SWPCA
+    Xhat, weights, A = swpca(dataset, catvar)
+
+    # Print the results
+    print("Reconstructed Dataset:\n", Xhat)
+    print("Weights:\n", weights)
+    print("Transformation Matrix:\n", A)

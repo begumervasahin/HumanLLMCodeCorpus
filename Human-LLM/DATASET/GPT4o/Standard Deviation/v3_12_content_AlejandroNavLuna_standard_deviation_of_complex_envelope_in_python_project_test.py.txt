@@ -1,0 +1,68 @@
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+
+# Initialize parameters
+NUM_POINTS = 150
+NOISE_FACTOR = 0.1
+NUM_CLASSES = 4
+NUM_SAMPLES = 1
+PLOT_LIMIT = 1.5
+
+# Generate random data
+data = np.round((NUM_CLASSES - 1) * np.random.rand(NUM_SAMPLES, NUM_POINTS))
+
+# Initialize arrays for storing results
+mean_a1 = np.zeros(NUM_SAMPLES)
+var_a1 = np.zeros(NUM_SAMPLES)
+mean_b1 = np.zeros(NUM_SAMPLES)
+var_b1 = np.zeros(NUM_SAMPLES)
+std_deviation = np.zeros(NUM_SAMPLES)
+
+def plot_points(a_coords, b_coords, title):
+    """Plot points with given coordinates and title."""
+    plt.plot(a_coords, b_coords, 'ro')
+    plt.axis([-PLOT_LIMIT, PLOT_LIMIT, -PLOT_LIMIT, PLOT_LIMIT])
+    plt.title(title)
+    plt.show()
+
+def calculate_stats(filtered_a, filtered_b):
+    """Calculate mean, variance, and standard deviation for filtered points."""
+    mean_a = np.mean(filtered_a)
+    var_a = np.var(filtered_a, ddof=1)
+    mean_b = np.mean(filtered_b)
+    var_b = np.var(filtered_b, ddof=1)
+    std_dev = np.sqrt(var_a + var_b)
+    return mean_a, var_a, mean_b, var_b, std_dev
+
+# Loop through each sample in 'data'
+for i in range(NUM_SAMPLES):
+    angles = data[i, :] * 2 * math.pi / NUM_CLASSES
+    magnitudes = NOISE_FACTOR * np.random.normal(0, 1, NUM_POINTS) + 1
+    
+    # Calculate a and b coordinates
+    a_coords = magnitudes * np.cos(angles + NOISE_FACTOR * np.random.normal(0, 1, NUM_POINTS))
+    b_coords = magnitudes * np.sin(angles + NOISE_FACTOR * np.random.normal(0, 1, NUM_POINTS))
+    
+    # Plot all points
+    plot_points(a_coords, b_coords, "All Points")
+    
+    # Filter points within the specified range
+    filtered_a = a_coords[(0.5 < a_coords) & (a_coords < 1.5) & (b_coords < 0.5) & (b_coords > -0.5)]
+    filtered_b = b_coords[(0.5 < a_coords) & (a_coords < 1.5) & (b_coords < 0.5) & (b_coords > -0.5)]
+    
+    # Plot filtered points
+    plot_points(filtered_a, filtered_b, "Filtered Points")
+    
+    # Calculate statistics for filtered points
+    if filtered_a.shape[0] > 0:
+        mean_a1[i], var_a1[i], mean_b1[i], var_b1[i], std_deviation[i] = calculate_stats(filtered_a, filtered_b)
+    
+    print(f"Variance of b1 for sample {i}: {var_b1[i]}")
+    print(f"Variance of a1 for sample {i}: {var_a1[i]}")
+    print(f"Standard deviation for sample {i}: {std_deviation[i]}")
+
+# Find the signal with the minimum standard deviation
+best_signal_index = np.argmin(std_deviation)
+print(f'Best signal for the sample is signal: {best_signal_index}')
+print('Data of the best signal:', data[best_signal_index, :])

@@ -1,0 +1,62 @@
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+import matplotlib.pyplot as plt
+
+# Function to calculate the Compound Annual Growth Rate (CAGR)
+def CAGR(first, last, periods):
+    return ((last / first) ** (1 / periods) - 1) * 100
+
+# Load the historical Sensex data
+df = pd.read_csv('D:\\python3\\data\\SensexHistoricalData.csv')
+df['Date'] = pd.to_datetime(df['Date'])
+df.set_index('Date', inplace=True)
+
+# Convert the index to days since the epoch for regression analysis
+df.index = (df.index - pd.to_datetime('1970-01-01')).days
+
+# Prepare the data for the regression model
+y = df['Close'].values
+x = df.index.values
+
+# Initialize and fit the polynomial regression model
+regression_model = LinearRegression()
+poly = PolynomialFeatures(5)
+X_transform = poly.fit_transform(x.reshape(-1, 1))
+regression_model.fit(X_transform, y.reshape(-1, 1))
+
+# Predict the learned values
+y_learned = regression_model.predict(X_transform)
+
+# Extend the index for future predictions (next 10 years)
+newindex = np.arange(x[-1], x[-1] + 3650)
+X_extended_transform = poly.fit_transform(newindex.reshape(-1, 1))
+y_predict = regression_model.predict(X_extended_transform)
+
+# Calculate the predicted closing price in 2029
+closing_price_2029 = y_predict[-1][0]
+print(f"Closing price at 2029 would be around {closing_price_2029:.2f}")
+
+# Calculate the CAGR of the investments
+cagr_value = CAGR(y[-1], closing_price_2029, 10)
+print(f"Your investments will have a CAGR of {cagr_value:.2f}%")
+
+# Convert the index back to datetime for plotting
+x_dates = pd.to_datetime(df.index, origin='1970-01-01', unit='D')
+future_x_dates = pd.to_datetime(newindex, origin='1970-01-01', unit='D')
+
+# Plot the historical data, the model, and the future predictions
+plt.figure(figsize=(16, 8))
+plt.plot(x_dates, df['Close'], label='Close Price History')
+plt.plot(x_dates, y_learned, color='r', label='Mathematical Model')
+plt.plot(future_x_dates, y_predict, color='g', label='Future Predictions')
+plt.suptitle('Stock Market Predictions', fontsize=16)
+
+# Set the window title for the plot
+fig = plt.gcf()
+fig.canvas.manager.set_window_title('Stock Market Predictions')
+
+# Show the legend and display the plot
+plt.legend()
+plt.show()

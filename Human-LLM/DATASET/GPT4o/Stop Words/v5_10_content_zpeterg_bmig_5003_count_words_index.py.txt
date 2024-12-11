@@ -1,0 +1,97 @@
+import sys
+import json
+from getFile import getFile
+from filter import Filter
+from format import formatToLines
+from utils import dealArgs
+from writeFile import writeFile, writeCSV
+from getStats import getStats
+
+def get_and_filter(options):
+    """
+    Get and filter words from a file based on the provided options.
+
+    Args:
+        options (dict): Dictionary containing file and filter options.
+
+    Returns:
+        list: List of filtered words.
+    """
+    filter_instance = Filter(options)
+    words = getFile(options['file'], filter_instance.filter)
+    return words
+
+def process_options(options, words):
+    """
+    Process the options to either get statistics or format the words.
+
+    Args:
+        options (dict): Dictionary containing options like stats and format.
+        words (list): List of words to process.
+
+    Returns:
+        dict or list: Processed statistics or formatted words.
+    """
+    if options.get('stats'):
+        return getStats(words)
+    if options.get('format'):
+        return formatToLines(words)
+    return words
+
+def write_output(options, data):
+    """
+    Write the output to a file or print it to the console based on the options.
+
+    Args:
+        options (dict): Dictionary containing output options.
+        data (dict or list): Data to be written or printed.
+    """
+    if options.get('output'):
+        if options.get('csv'):
+            columns = ['Name']
+            if isinstance(data, dict):  # stats case
+                columns.append('Count')
+            writeCSV(data, options['output'], columns)
+        else:
+            output_data = json.dumps(data, indent=4)
+            writeFile(output_data, options['output'])
+        print(f"\nThe requested data has been written to file {options['output']}.")
+    else:
+        print_output(data)
+
+def print_output(data):
+    """
+    Print the output data to the console.
+
+    Args:
+        data (dict or list): Data to be printed.
+    """
+    if isinstance(data, dict):  # stats case
+        if len(data) <= 1:
+            print('No stats to print.')
+        else:
+            print('STATS:')
+            for stat, value in data.items():
+                print(f'{stat}: {value}')
+    else:
+        if len(data) <= 1:
+            print('No words to print.')
+        else:
+            print('WORDS:')
+            for word in data:
+                print(word)
+
+def run(args):
+    """
+    Run the main process with given arguments.
+
+    Args:
+        args (list): List of command-line arguments.
+    """
+    options = dealArgs(args).to_object()
+    words = get_and_filter(options)
+    data = process_options(options, words)
+    write_output(options, data)
+
+if __name__ == '__main__':
+    run(sys.argv)

@@ -1,0 +1,81 @@
+import binascii
+
+def to_binary_string(data, length):
+    """
+    Convert data to a binary string with a fixed length.
+    
+    Args:
+        data (str): The data to convert.
+        length (int): The length of the resulting binary string.
+
+    Returns:
+        str: The binary representation of the data, padded to the specified length.
+    """
+    return bin(int(binascii.hexlify(data.encode()), 16))[2:].zfill(length)
+
+def xor(binary_message, binary_key):
+    """
+    Perform XOR operation between two binary strings.
+    
+    Args:
+        binary_message (str): The binary string of the message.
+        binary_key (str): The binary string of the key.
+
+    Returns:
+        str: The result of the XOR operation as a binary string.
+    """
+    return ''.join(str(int(m) ^ int(k)) for m, k in zip(binary_message, binary_key))
+
+def binary_to_text(binary_data):
+    """
+    Convert a binary string to text.
+    
+    Args:
+        binary_data (str): The binary string to convert.
+
+    Returns:
+        str: The text representation of the binary string.
+    """
+    number = int(binary_data, 2)
+    hex_data = f'{number:x}'
+    return binascii.unhexlify(hex_data).decode()
+
+# Define the plaintext and keys
+plain_text = 'informationsecurity'
+key1 = 'vlaksjdhfgqodzmxncb'
+
+# Display plaintext and key
+print('The plain text is:', plain_text)
+print('The first key is:', key1, '\n')
+
+# Convert plaintext and key to binary
+key_length = len(key1) * 8
+plain_text_bin = to_binary_string(plain_text, key_length)
+key1_bin = to_binary_string(key1, key_length)
+
+print('Plain text in bits:', plain_text_bin)
+print('Key in bits:', key1_bin, '\n')
+
+# Encrypt the plaintext using the first key
+xor_result = xor(plain_text_bin, key1_bin)
+encrypted_text = binary_to_text(xor_result)
+
+print('XOR result for the encryption with the normal key:', xor_result)
+print('Encrypted text:', encrypted_text)
+
+# Decrypt the encrypted text using the same key
+decrypted_xor_result = xor(xor_result, key1_bin)
+decrypted_text = binary_to_text(decrypted_xor_result)
+
+print('\nDecryption result:', decrypted_xor_result)
+print('Decrypted text with the normal key:', decrypted_text, '\n')
+
+# Define and convert the alternative key to binary
+alternative_key = to_binary_string('tlftrffwmixor|{xbch', key_length)
+print('Alternative key in bits:', alternative_key, '\n')
+
+# Decrypt the encrypted text using the alternative key
+alternative_decryption_result = xor(xor_result, alternative_key)
+alternative_decrypted_text = binary_to_text(alternative_decryption_result)
+
+print('Decrypted text with the alternative key:', alternative_decrypted_text)

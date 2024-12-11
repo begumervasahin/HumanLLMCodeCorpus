@@ -1,0 +1,89 @@
+import os
+import nltk
+import time
+import string
+import operator
+import csv
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Ensure necessary NLTK resources are downloaded
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+def text_cleanup(text):
+    """
+    Cleans the input text by removing punctuation, stopwords, and converting to lowercase.
+    """
+    # Remove punctuation
+    text_without_punctuation = ''.join([char for char in text if char not in string.punctuation])
+    
+    # Remove stopwords
+    text_without_stopwords = ' '.join([
+        word for word in text_without_punctuation.split() 
+        if word.lower() not in stopwords.words('english')
+    ])
+    
+    # Convert to lowercase
+    cleaned_text = [word.lower() for word in text_without_stopwords.split()]
+    
+    return cleaned_text
+
+def process_file(file_path, lemmatizer, word_count):
+    """
+    Processes a single file: reads the content, cleans the text, and updates the word count dictionary.
+    """
+    with open(file_path, "r", encoding='utf-8', errors='ignore') as file:
+        words = text_cleanup(file.read())
+        for word in words:
+            if not word.isdigit() and len(word) > 2:
+                # Lemmatize the word
+                lemma = lemmatizer.lemmatize(word)
+                word_count[lemma] = word_count.get(lemma, 0) + 1
+
+def process_directory(input_directory, lemmatizer, word_count):
+    """
+    Iterates through all files in the directory and processes each file.
+    """
+    processed_files_count = 0
+
+    for file_name in os.listdir(input_directory):
+        file_path = os.path.join(os.getcwd(), input_directory, file_name)
+        process_file(file_path, lemmatizer, word_count)
+        processed_files_count += 1
+
+        if processed_files_count % 100 == 0:
+            print(f"Processed {processed_files_count} files")
+
+def write_word_counts_to_csv(word_count, output_file, min_count=100):
+    """
+    Writes the word counts to a CSV file, only including words that appear at least min_count times.
+    """
+    sorted_word_count = sorted(word_count.items(), key=operator.itemgetter(1), reverse=True)
+    
+    with open(output_file, "w+", newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['word', 'count'])
+        
+        for word, count in sorted_word_count:
+            if count < min_count:
+                break
+            writer.writerow([word, count])
+
+def main():
+    start_time = time.time()
+    lemmatizer = WordNetLemmatizer()
+    word_count = {}
+    input_directory = "emails/"
+
+    # Process all files in the directory
+    process_directory(input_directory, lemmatizer, word_count)
+
+    # Write the sorted word counts to a CSV file
+    write_word_counts_to_csv(word_count, "wordslist.csv")
+
+    elapsed_time = round(time.time() - start_time, 2)
+    print(f'Time (in seconds) to preprocess the emails: {elapsed_time}')
+
+if __name__ == "__main__":
+    main()

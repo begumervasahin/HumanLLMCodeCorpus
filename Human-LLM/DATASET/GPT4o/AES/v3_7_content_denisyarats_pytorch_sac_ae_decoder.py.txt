@@ -1,0 +1,87 @@
+import torch
+import torch.nn as nn
+
+# Simulated OUT_DIM dictionary from the encoder module
+OUT_DIM = {2: 8, 3: 16}  # Example values, modify according to your actual OUT_DIM values
+
+class PixelDecoder(nn.Module):
+    """
+    A class for decoding pixel observations from latent features using deconvolution.
+    """
+    def __init__(self, obs_shape, feature_dim, num_layers=2, num_filters=32):
+        super(PixelDecoder, self).__init__()
+        self.num_layers = num_layers
+        self.num_filters = num_filters
+        self.out_dim = OUT_DIM[num_layers]
+
+        # Fully connected layer to transform feature vector to initial deconvolution input
+        self.fc = nn.Linear(feature_dim, num_filters * self.out_dim * self.out_dim)
+
+        # Define deconvolution layers
+        self.deconvs = nn.ModuleList([
+            nn.ConvTranspose2d(num_filters, num_filters, 3, stride=1) for _ in range(num_layers - 1)
+        ])
+        self.deconvs.append(nn.ConvTranspose2d(num_filters, obs_shape[0], 3, stride=2, output_padding=1))
+
+        # Dictionary to store intermediate outputs for logging
+        self.outputs = {}
+
+    def forward(self, h):
+        h = torch.relu(self.fc(h))
+        self.outputs['fc'] = h
+
+        # Reshape the feature vector into a 4D tensor for deconvolution
+        deconv = h.view(-1, self.num_filters, self.out_dim, self.out_dim)
+        self.outputs['deconv1'] = deconv
+
+        # Pass through deconvolution layers
+        for i in range(self.num_layers - 1):
+            deconv = torch.relu(self.deconvs[i](deconv))
+            self.outputs[f'deconv{i + 1}'] = deconv
+
+        # Final deconvolution layer to produce the output observation
+        obs = self.deconvs[-1](deconv)
+        self.outputs['obs'] = obs
+
+        return obs
+
+    def log(self, logger, step, log_freq):
+        """Log intermediate and final outputs."""
+        if step % log_freq != 0:
+            return
+
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_decoder/{k}_hist', v, step)
+            if len(v.shape) > 2:
+                logger.log_image(f'train_decoder/{k}_i', v[0], step)
+
+        for i in range(self.num_layers):
+            logger.log_param(f'train_decoder/deconv{i + 1}', self.deconvs[i], step)
+
+        logger.log_param('train_decoder/fc', self.fc, step)
+
+# Dictionary to map decoder type to decoder class
+_AVAILABLE_DECODERS = {'pixel': PixelDecoder}
+
+def make_decoder(decoder_type, obs_shape, feature_dim, num_layers, num_filters):
+    """Factory function to create a decoder."""
+    assert decoder_type in _AVAILABLE_DECODERS, f"Decoder type '{decoder_type}' not available."
+    return _AVAILABLE_DECODERS[decoder_type](obs_shape, feature_dim, num_layers, num_filters)
+
+# Example usage
+if __name__ == '__main__':
+    # Example parameters (replace with actual values)
+    obs_shape = (3, 64, 64)  # Example observation shape (channels, height, width)
+    feature_dim = 128        # Example feature dimension
+    num_layers = 2           # Number of deconvolution layers
+    num_filters = 32         # Number of filters in deconvolution layers
+
+    # Create a PixelDecoder instance
+    decoder = make_decoder('pixel', obs_shape, feature_dim, num_layers, num_filters)
+
+    # Example input tensor (replace with actual input)
+    h = torch.randn((1, feature_dim))  # Batch size of 1, feature_dim
+
+    # Forward pass to generate the output observation
+    output = decoder(h)
+    print("Output shape:", output.shape)

@@ -1,0 +1,78 @@
+from time import time
+from numpy import log2, array, load, save
+from sklearn.decomposition import PCA
+from joblib import Parallel, delayed
+from open3d import read_point_cloud
+
+def log_var(pts):
+    """
+    Perform PCA on the given points and return the logarithm of the variance differences.
+    """
+    pca = PCA()
+    pca.fit(pts)
+    pca.explained_variance_[:-1] -= pca.explained_variance_[1:]
+    return log2(pca.explained_variance_)
+
+def export_pca(ply_vox, npy_knn, temp_out, n_jobs):
+    """
+    Read point cloud data from a PLY file, compute PCA for each set of points defined in the KNN file,
+    and save the result to a NPY file.
+    """
+    vox = array(read_point_cloud(ply_vox).points)
+    knn = load(npy_knn)
+    pca_results = Parallel(n_jobs=n_jobs, verbose=1)(
+        delayed(log_var)(vox[n]) for n in knn
+    )
+    save(temp_out, pca_results)
+
+def import_and_cleanup(module_name):
+    """
+    Import a module by name and then delete it to free memory.
+    """
+    module = __import__(module_name)
+    del module
+
+def main():
+    """
+    Main function to orchestrate the various steps of the process.
+    """
+    begin = int(input('begin: '))
+    end = int(input('end: '))
+    n_jobs = input('n_jobs: ')
+    n_jobs = int(n_jobs) if n_jobs else 8
+    
+    start_time = time()
+    
+    # Execute each step based on the given range
+    steps = [
+        ('0: vox', 'vox'),
+        ('1: mn', 'mn'),
+        ('2: pcamn', export_pca, [
+            ('vox1.ply', '128_1.npy', 'pca_1.npy', n_jobs),
+            ('vox2.ply', '128_2.npy', 'pca_2.npy', n_jobs),
+            ('vox4.ply', '128_4.npy', 'pca_4.npy', n_jobs)
+        ]),
+        ('3: concat', 'concat'),
+        ('4: propagate', 'propagate'),
+        ('5: test', 'test'),
+        ('6: vis', 'vis'),
+        ('7: treetop', 'treetop')
+    ]
+    
+    for step_name, module_or_func, *args in steps:
+        step_idx = int(step_name.split(':')[0])
+        if begin <= step_idx <= end:
+            print(step_name)
+            if isinstance(module_or_func, str):
+                import_and_cleanup(module_or_func)
+            else:
+                for arg in args[0]:
+                    module_or_func(*arg)
+    
+    # Write the elapsed time to a file
+    elapsed_time = time() - start_time
+    with open('time.txt', 'w') as w:
+        w.write(f"{elapsed_time:.2f} sec\n")
+
+if __name__ == "__main__":
+    main()

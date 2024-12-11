@@ -1,0 +1,64 @@
+import sys
+import string
+from collections import Counter
+
+DEFAULT_FILE = 'files/sample.txt'
+DEFAULT_STOPWORDS = 'stop_words.txt'
+
+def main():
+    if len(sys.argv) > 3:
+        print_usage()
+        sys.exit()
+
+    your_file, your_stopwords = get_file_paths()
+    print(f'Using {your_file} as file and {your_stopwords} as stop word reference.\n')
+    index_words(your_file, your_stopwords)
+
+def print_usage():
+    print("\nUsage: python indexer.py <yourFile> <stopWords>")
+    print(f"If no arguments are given, {DEFAULT_FILE} and {DEFAULT_STOPWORDS} will be used as default files\n")
+
+def get_file_paths():
+    """
+    Determine the file paths for the input file and stop words file based on command-line arguments.
+
+    Returns:
+    tuple: A tuple containing the file paths (input_file, stopwords_file).
+    """
+    if len(sys.argv) == 3:
+        return sys.argv[1], sys.argv[2]
+    elif len(sys.argv) == 2:
+        return sys.argv[1], DEFAULT_STOPWORDS
+    else:
+        return DEFAULT_FILE, DEFAULT_STOPWORDS
+
+def index_words(file_path, stopwords_path):
+    """
+    Index the words in the specified file, excluding the stop words.
+
+    Parameters:
+    file_path (str): Path to the file containing text to be indexed.
+    stopwords_path (str): Path to the file containing stop words.
+    """
+    # Read and process the text file
+    with open(file_path, 'r', encoding='utf-8') as file:
+        book_words = file.read().lower().split()
+    book_words = [word.strip(string.punctuation) for word in book_words]
+
+    # Read the stop words file
+    with open(stopwords_path, 'r', encoding='utf-8-sig') as file:
+        stop_words = set(file.read().splitlines())
+
+    # Filter out stop words
+    filtered_words = [word for word in book_words if word and word not in stop_words]
+
+    # Count word occurrences
+    word_counts = Counter(filtered_words)
+
+    # Sort and print the word counts
+    sorted_words = sorted(word_counts.items())
+    for word, count in sorted_words:
+        print(f'{word}: {count}')
+
+if __name__ == '__main__':
+    main()

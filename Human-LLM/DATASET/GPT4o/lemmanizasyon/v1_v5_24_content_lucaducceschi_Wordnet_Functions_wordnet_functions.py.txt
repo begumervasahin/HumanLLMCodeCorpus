@@ -1,0 +1,68 @@
+import nltk
+from nltk.corpus import wordnet as wn
+from nltk.tokenize import word_tokenize
+from nltk import pos_tag
+
+# Ensure you have the necessary NLTK data files
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('punkt')
+
+def get_hyponyms(noun):
+    """Get hyponyms for the given noun."""
+    synsets_with_noun = wn.synsets(noun)
+    filtered_synsets = [synset for synset in synsets_with_noun if noun in synset.lemma_names()]
+
+    def hyponyms_closure(synset):
+        return synset.hyponyms()
+
+    hyponyms_list = [list(synset.closure(hyponyms_closure, depth=1)) for synset in filtered_synsets]
+
+    return hyponyms_list
+
+def get_hypernyms(noun):
+    """Get hypernyms for the given noun."""
+    synsets_with_noun = wn.synsets(noun)
+    synset_strings = [str(synset.name()) for synset in synsets_with_noun if noun in synset.lemma_names()]
+
+    def hypernyms_closure(synset):
+        return synset.hypernyms()
+
+    hypernyms_list = [list(wn.synset(synset_str).closure(hypernyms_closure, depth=8)) for synset_str in synset_strings]
+
+    return synset_strings, hypernyms_list
+
+def universal_pos_converter(tag):
+    """Convert universal POS tags to WordNet POS tags."""
+    pos_tags_mapping = {"NOUN": "n", "VERB": "v", "ADJ": "a", "ADV": "r"}
+    return pos_tags_mapping.get(tag)
+
+def lemmatize_word(word_tuple):
+    """Lemmatize word based on its POS tag."""
+    lemma = wn.morphy(word_tuple[0], universal_pos_converter(word_tuple[1]))
+    return (lemma, word_tuple[1]) if lemma else word_tuple
+
+def tag_text(corpus):
+    """Lemmatize each word in the corpus."""
+    return [[lemmatize_word(word) for word in pos_tag(word_tokenize(line))] for line in corpus]
+
+# Example usage
+if __name__ == "__main__":
+    # Get hyponyms and hypernyms for a noun
+    noun = "dog"
+    print("Hyponyms of 'dog':")
+    hyponyms = get_hyponyms(noun)
+    for idx, hyponym_set in enumerate(hyponyms):
+        print(f"Set {idx+1}: {[synset.name() for synset in hyponym_set]}")
+
+    print("\nHypernyms of 'dog':")
+    synset_strings, hypernyms = get_hypernyms(noun)
+    for idx, hypernym_set in enumerate(hypernyms):
+        print(f"Set {idx+1}: {[synset.name() for synset in hypernym_set]}")
+
+    # Example corpus for lemmatization
+    corpus = ["Dogs are running in the park.", "He quickly ran to the store."]
+    tagged_corpus = tag_text(corpus)
+    print("\nTagged and Lemmatized Corpus:")
+    for line in tagged_corpus:
+        print(line)

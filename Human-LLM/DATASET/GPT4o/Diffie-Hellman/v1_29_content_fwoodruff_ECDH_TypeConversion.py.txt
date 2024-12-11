@@ -1,0 +1,93 @@
+import binascii
+
+# Alphabet used for base-58 encoding
+alphabet = '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
+base_count = len(alphabet)
+
+def string_to_big_int(s):
+    """
+    Maps a string to a big integer.
+    
+    Args:
+        s (str): The string to convert.
+    
+    Returns:
+        int: The corresponding big integer.
+    """
+    hex_string = binascii.hexlify(s.encode()).decode()
+    return int(hex_string, 16)
+
+def big_int_to_string(i):
+    """
+    Maps a big integer to a string.
+    
+    Args:
+        i (int): The big integer to convert.
+    
+    Returns:
+        str: The corresponding string.
+    """
+    hex_string = hex(i)[2:]  # Remove the '0x' prefix
+    byte_array = bytes.fromhex(hex_string)
+    return byte_array.decode()
+
+def int_to_b58(i):
+    """
+    Maps an integer to a base-58 string.
+    
+    Args:
+        i (int): The integer to convert.
+    
+    Returns:
+        str: The base-58 encoded string.
+    """
+    if i < 0:
+        raise ValueError("Negative numbers cannot be encoded in base-58.")
+    
+    encode = ''
+    while i >= base_count:
+        mod = i % base_count
+        encode = alphabet[mod] + encode
+        i //= base_count
+    if i:
+        encode = alphabet[i] + encode
+    
+    return encode
+
+def b58_to_int(s58):
+    """
+    Maps a base-58 string to an integer.
+    
+    Args:
+        s58 (str): The base-58 string to convert.
+    
+    Returns:
+        int: The corresponding integer.
+    """
+    i = 0
+    multi = 1
+    s58 = s58[::-1]  # Reverse the string to process from least significant digit
+    for char in s58:
+        i += multi * alphabet.index(char)
+        multi *= base_count
+    return i
+
+# Example usage
+if __name__ == "__main__":
+    # Example string to integer conversion
+    example_string = "Hello, World!"
+    big_int = string_to_big_int(example_string)
+    print(f"Big integer: {big_int}")
+
+    # Convert back to string
+    restored_string = big_int_to_string(big_int)
+    print(f"Restored string: {restored_string}")
+
+    # Example integer to base-58 conversion
+    example_int = 123456789
+    b58_string = int_to_b58(example_int)
+    print(f"Base-58 string: {b58_string}")
+
+    # Convert back to integer
+    restored_int = b58_to_int(b58_string)
+    print(f"Restored integer: {restored_int}")

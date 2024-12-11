@@ -1,0 +1,138 @@
+import numpy as np
+import pandas as pd
+from scipy.optimize import minimize
+from scipy.optimize import NonlinearConstraint
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+# Define the loss function for training data
+def calculate_training_loss(B):
+    B0 = B[0]
+    B = B[1:]
+    error = np.sum((response_train - B0 - np.dot(data_train, B)) ** 2)
+    return error
+
+# Define the loss function for test data
+def calculate_test_loss(B):
+    B0 = B[0]
+    B = B[1:]
+    error = np.sum((test_response - B0 - np.dot(test_data, B)) ** 2)
+    return error
+
+# Define the constraint function
+def l2_norm_constraint(B):
+    B = B[1:]
+    return np.dot(B, B)
+
+# Define the function to get the ith fold of k total folds
+def get_fold(data, i, k):
+    fold_size = len(data) // k
+    start_idx = i * fold_size
+    end_idx = start_idx + fold_size
+    
+    test_data = data[start_idx:end_idx]
+    train_data = np.concatenate((data[:start_idx], data[end_idx:]))
+    
+    return train_data, test_data
+
+# Load and preprocess the data
+def load_and_preprocess_data(file_path):
+    data = pd.read_excel(file_path).to_numpy()
+    data = (data - data.mean(axis=0)) / data.std(axis=0)
+    return data
+
+# Perform data augmentation
+def augment_data(data, augment_factor=2, noise_level=0.05):
+    augmented_data = [data]
+    for _ in range(augment_factor):
+        augmented_data.append(data * np.random.normal(1, noise_level, data.shape))
+    return np.concatenate(augmented_data)
+
+# Plot training and test errors
+def plot_errors(t_vals, train_errors, test_errors):
+    plt.figure()
+    plt.plot(t_vals, train_errors, label='Train')
+    plt.plot(t_vals, test_errors, label='Test')
+    plt.xlabel(r'$t$ where $\sum_j |\beta_j| \leq t$')
+    plt.ylabel('MSE')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+# Plot coefficients
+def plot_coefficients(t_vals, B_store, labels):
+    plt.figure()
+    for i in range(1, B_store.shape[1]):
+        plt.plot(t_vals, B_store[:, i])
+        plt.text(t_vals[-1], B_store[-1, i], labels[i - 1])
+    plt.grid()
+    plt.ylabel(r'$\beta$')
+    plt.xlabel(r'$t$ where $\sum_j |\beta_j| \leq t$')
+    plt.show()
+
+# Main function to run the entire process
+def main():
+    file_path = 'prostate_data.xlsx'
+    
+    # Load and preprocess the data
+    data = load_and_preprocess_data(file_path)
+    
+    # Data augmentation
+    data = augment_data(data)
+    
+    # Shuffle the data
+    np.random.shuffle(data)
+    
+    # Load column labels
+    labels = pd.read_excel(file_path, nrows=0).columns
+    
+    # Define constants
+    t_limit = 0.7
+    folds = 4
+    t_fidel = 20
+    t_vals = np.linspace(0, t_limit, t_fidel)
+    B_init = np.zeros(data.shape[1])
+    
+    # Initialize storage for bias and variance
+    bias = np.zeros((folds, t_fidel))
+    var = np.zeros((folds, t_fidel))
+    
+    # Perform k-fold cross-validation
+    for j in range(folds):
+        data_train_full, data_test_full = get_fold(data, j, folds)
+        global data_train, response_train, test_data, test_response
+        data_train = data_train_full[:, :-1]
+        response_train = data_train_full[:, -1:]
+        test_data = data_test_full[:, :-1]
+        test_response = data_test_full[:, -1:]
+        
+        for i in tqdm(range(t_fidel)):
+            t = t_vals[i]
+            constraint = NonlinearConstraint(l2_norm_constraint, 0, t)
+            sol = minimize(calculate_training_loss, B_init, constraints=[constraint], method='SLSQP')
+            B_opt = sol.x
+            bias[j, i] = sol.fun
+            var[j, i] = calculate_test_loss(B_opt)
+    
+    # Calculate mean bias and variance
+    bias_mean = np.mean(bias, axis=0) / len(data_train)
+    var_mean = np.mean(var, axis=0) / len(test_data)
+    
+    # Plot training and test errors
+    plot_errors(t_vals, bias_mean, var_mean)
+    
+    # Store the optimized coefficients
+    B_store = np.zeros((t_fidel, 1 + data.shape[1]))
+    
+    for i in tqdm(range(t_fidel)):
+        t = t_vals[i]
+        constraint = NonlinearConstraint(l2_norm_constraint, 0, t)
+        sol = minimize(calculate_training_loss, B_init, constraints=[constraint], method='SLSQP')
+        B_store[i, :] = sol.x
+    
+    # Plot the coefficients
+    plot_coefficients(t_vals, B_store, labels)
+
+# Run the main function
+if __name__ == "__main__":
+    main()

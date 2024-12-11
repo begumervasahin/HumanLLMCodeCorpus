@@ -1,0 +1,79 @@
+import pandas as pd
+from pandas.plotting import register_matplotlib_converters
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import os
+import datetime
+
+class PolarRRI:
+    def __init__(self, file_path=None):
+        if file_path is None:
+            self.rri_df = pd.DataFrame()
+            return
+
+        # Extract the file name from the provided path
+        file_name = os.path.basename(file_path)
+
+        # Read the CSV file into a DataFrame
+        src_df = pd.read_csv(file_path, header=None, sep=' ')
+        src_df = src_df.rename(columns={0: 'time', 1: 'rri'})
+
+        # Convert RRI values to milliseconds
+        src_df['rri'] = src_df['rri'] * 1000
+
+        # Extract the date and time from the file name
+        file_date, file_time = file_name.split('.')[0].split('_')
+        _, yy, MM, dd = file_date.split('-')
+        hh, mm, ss = file_time.split('-')
+
+        # Construct the start datetime object
+        start_datetime = datetime.datetime(int(yy), int(MM), int(dd), int(hh), int(mm), int(ss))
+
+        # Function to calculate the datetime for each RRI entry
+        src_df['datetime'] = src_df.apply(lambda x: start_datetime + datetime.timedelta(seconds=x[0]), axis=1)
+
+        # Set the datetime column as the index
+        self.rri_df = src_df.set_index(['datetime'])
+
+    def plot_rri(self):
+        # Register matplotlib converters for handling datetime conversions
+        register_matplotlib_converters()
+
+        # Create a new figure and axis for plotting
+        fig, ax = plt.figure(), plt.subplot(111)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+
+        # Plot the RRI values
+        ax.plot(self.rri_df.index, self.rri_df['rri'], marker='.')
+
+        # Display the plot
+        plt.show()
+
+    def del_outliers(self, thresh_min, thresh_max):
+        # Remove outliers that fall outside the specified threshold range
+        self.rri_df['rri'] = self.rri_df['rri'].where(self.rri_df['rri'] < thresh_max)
+        self.rri_df['rri'] = self.rri_df['rri'].where(self.rri_df['rri'] > thresh_min)
+
+    def get_rri_df(self):
+        # Return the DataFrame containing the RRI data
+        return self.rri_df
+
+    def write(self, file_path):
+        # Write the DataFrame to a CSV file
+        self.rri_df['rri'] = self.rri_df['rri'].astype('int')
+        self.rri_df.to_csv(file_path)
+
+    def import_rri(self, file_path):
+        # Import additional RRI data from a CSV file and append it to the existing DataFrame
+        rri_df = pd.read_csv(file_path)
+        rri_df['datetime'] = pd.to_datetime(rri_df['datetime'])
+        rri_df = rri_df.set_index(['datetime'])
+        self.rri_df = pd.concat([self.rri_df, rri_df])
+
+# Example usage:
+# polar_rri = PolarRRI('your_file_path.txt')
+# polar_rri.plot_rri()
+# polar_rri.del_outliers(thresh_min=500, thresh_max=1500)
+# polar_rri.write('output_file.csv')
+# polar_rri.import_rri('another_file.csv')
+# print(polar_rri.get_rri_df())

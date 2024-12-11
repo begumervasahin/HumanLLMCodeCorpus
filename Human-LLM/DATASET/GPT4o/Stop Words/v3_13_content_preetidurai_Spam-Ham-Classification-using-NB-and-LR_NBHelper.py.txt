@@ -1,0 +1,104 @@
+import os
+import re
+
+# Define the regular expression for matching words
+WORD_REGEX = re.compile(r"[a-zA-Z']+(?:-[a-zA-Z']+)?")
+
+def extract_words(text):
+    """
+    Extract words from the given text using a regular expression.
+
+    :param text: Input text.
+    :return: List of words.
+    """
+    return list(WORD_REGEX.findall(text.lower()))
+
+def extract_words_excluding_stop_words(text, stop_words):
+    """
+    Extract words from the given text, excluding stop words.
+
+    :param text: Input text.
+    :param stop_words: List of stop words to exclude.
+    :return: List of words excluding stop words.
+    """
+    words = extract_words(text)
+    return [word for word in words if word not in stop_words]
+
+def create_mail_dictionary(directory):
+    """
+    Read all files in the specified directory and create a dictionary
+    where the keys are filenames and the values are lists of words from each file.
+
+    :param directory: Directory containing mail files.
+    :return: Dictionary with filenames as keys and lists of words as values.
+    """
+    messages = {}
+    for file in os.listdir(directory):
+        file_path = os.path.join(directory, file)
+        if os.path.isfile(file_path):
+            with open(file_path, encoding='utf-8', errors='ignore') as mail_file:
+                messages[file] = extract_words(mail_file.read())
+    return messages
+
+def create_mail_dictionary_without_stop_words(directory, stop_words):
+    """
+    Read all files in the specified directory and create a dictionary
+    where the keys are filenames and the values are lists of words from each file,
+    excluding stop words.
+
+    :param directory: Directory containing mail files.
+    :param stop_words: List of stop words to exclude.
+    :return: Dictionary with filenames as keys and lists of words excluding stop words as values.
+    """
+    messages = {}
+    for file in os.listdir(directory):
+        file_path = os.path.join(directory, file)
+        if os.path.isfile(file_path):
+            with open(file_path, encoding='utf-8', errors='ignore') as mail_file:
+                messages[file] = extract_words_excluding_stop_words(mail_file.read(), stop_words)
+    return messages
+
+def load_stop_words(file_path):
+    """
+    Read stop words from a file.
+
+    :param file_path: Path to the stop words file.
+    :return: List of stop words.
+    """
+    with open(file_path, encoding='utf-8', errors='ignore') as stop_file:
+        return extract_words(stop_file.read())
+
+def extract_vocabulary(mail_dict):
+    """
+    Extract the vocabulary from the mail dictionary.
+
+    :param mail_dict: Dictionary with filenames as keys and lists of words as values.
+    :return: List of all words in the mail dictionary.
+    """
+    vocab = []
+    for words in mail_dict.values():
+        vocab.extend(words)
+    return vocab
+
+# Example usage
+if __name__ == "__main__":
+    # Define paths
+    mail_dir = "path_to_mails"  # Replace with the path to your mail directory
+    stop_words_file = "path_to_stopwords.txt"  # Replace with the path to your stop words file
+
+    # Load stop words
+    stop_words = load_stop_words(stop_words_file)
+
+    # Create mail dictionaries with and without stop words
+    mail_dict = create_mail_dictionary(mail_dir)
+    mail_dict_without_stop_words = create_mail_dictionary_without_stop_words(mail_dir, stop_words)
+
+    # Extract vocabularies
+    vocabulary = extract_vocabulary(mail_dict)
+    vocabulary_without_stop_words = extract_vocabulary(mail_dict_without_stop_words)
+
+    # Print results (for demonstration purposes)
+    print("Mail Dictionary:", mail_dict)
+    print("Mail Dictionary Without Stop Words:", mail_dict_without_stop_words)
+    print("Vocabulary:", vocabulary)
+    print("Vocabulary Without Stop Words:", vocabulary_without_stop_words)

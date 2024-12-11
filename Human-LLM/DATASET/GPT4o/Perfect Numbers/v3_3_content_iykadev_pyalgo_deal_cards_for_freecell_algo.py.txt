@@ -1,0 +1,37 @@
+import sys
+
+def random_generator(seed=1):
+    """
+    A generator for a pseudo-random number sequence.
+    """
+    max_int32 = (1 << 31) - 1
+    seed = seed & max_int32
+    while True:
+        seed = (seed * 214013 + 2531011) & max_int32
+        yield seed >> 16
+
+def deal(seed):
+    """
+    Deals a shuffled deck of cards using the given seed.
+    """
+    num_cards = 52
+    cards = list(range(num_cards - 1, -1, -1))
+    rnd = random_generator(seed)
+    for i in range(num_cards):
+        j = (num_cards - 1) - (next(rnd) % (num_cards - i))
+        cards[i], cards[j] = cards[j], cards[i]
+    return cards
+
+def show(cards):
+    """
+    Displays the shuffled deck of cards.
+    """
+    card_symbols = ["A23456789TJQK"[c // 4] + "CDHS"[c % 4] for c in cards]
+    for i in range(0, len(cards), 8):
+        print(" ", " ".join(card_symbols[i: i + 8]))
+
+if __name__ == '__main__':
+    seed = int(sys.argv[1]) if len(sys.argv) == 2 else 11982
+    print(f"Hand {seed}")
+    deck = deal(seed)
+    show(deck)

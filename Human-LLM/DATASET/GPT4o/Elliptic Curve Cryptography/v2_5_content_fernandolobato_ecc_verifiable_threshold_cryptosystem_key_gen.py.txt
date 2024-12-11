@@ -1,0 +1,79 @@
+import os
+from ecdsa.curves import SECP256k1
+import threshold_cryptosystem as threshold
+
+def big_num(num):
+    """
+    Converts a number to a BigNumber string for JavaScript.
+
+    Args:
+        num (int): The number to convert.
+
+    Returns:
+        str: The number as a BigNumber string.
+    """
+    return f"new BigNumber('{num}')"
+
+def stringify_point(point):
+    """
+    Converts an elliptic curve point to a BigNumber formatted string.
+
+    Args:
+        point (Point): The elliptic curve point to convert.
+
+    Returns:
+        str: The point as a BigNumber formatted string.
+    """
+    return f"{big_num(point.x())},{big_num(point.y())}"
+
+def write_to_file(filepath, content):
+    """
+    Writes content to a specified file.
+
+    Args:
+        filepath (str): The path to the file.
+        content (str): The content to write to the file.
+    """
+    with open(filepath, 'w') as file:
+        file.write(content)
+
+def generate_keys(num_keys):
+    """
+    Generates a specified number of private and public keys.
+
+    Args:
+        num_keys (int): The number of keys to generate.
+
+    Returns:
+        tuple: A tuple containing lists of private keys and public keys.
+    """
+    private_keys = [threshold.generate_key() for _ in range(num_keys)]
+    public_keys = [key * SECP256k1.generator for key in private_keys]
+    return private_keys, public_keys
+
+def main():
+    num_keys = 50
+    directory = 'keys/'
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Generate private and public keys
+    private_keys, public_keys = generate_keys(num_keys)
+
+    # Prepare JavaScript content
+    private_js_content = 'var secKeys = [{}]'.format(','.join([big_num(key) for key in private_keys]))
+    public_js_content = 'var pubKeys = [{}]'.format(','.join([f"[{stringify_point(key)}]" for key in public_keys]))
+
+    # Prepare text content
+    private_txt_content = '\n'.join(map(str, private_keys))
+    public_txt_content = '\n'.join([f"{key.x()},{key.y()}" for key in public_keys])
+
+    # Write contents to files
+    write_to_file(os.path.join(directory, 'private.js'), private_js_content)
+    write_to_file(os.path.join(directory, 'public.js'), public_js_content)
+    write_to_file(os.path.join(directory, 'private.txt'), private_txt_content)
+    write_to_file(os.path.join(directory, 'public.txt'), public_txt_content)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,35 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, to_datetime
+import statsmodels.tsa.stattools as st
+
+# Define a function to parse datetime
+def parser(x):
+    return to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+
+# Define a function to calculate mean absolute percentage error
+def mean_absolute_percentage_error(y_true, y_pred):
+    total_error = 0
+    for i in range(len(y_true)):
+        total_error += math.fabs(y_pred[i] - y_true[i]) / y_true[i]
+    return total_error / len(y_true)
+
+# Read the CSV file
+file_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+selected_columns = [2, 3]
+date_columns = [0]
+
+series = read_csv(file_path, usecols=selected_columns, header=0, parse_dates=date_columns, 
+                  index_col=0, squeeze=True, date_parser=parser)
+
+# Extract values from the series
+data_values = series.values
+
+# Define the start and size for training data
+start_index = 2
+training_size = 200
+arima_train_data = data_values[start_index:start_index + training_size]
+
+# Print the Augmented Dickey-Fuller test result for stationarity
+adf_test_result = st.adfuller(arima_train_data)
+print(adf_test_result)

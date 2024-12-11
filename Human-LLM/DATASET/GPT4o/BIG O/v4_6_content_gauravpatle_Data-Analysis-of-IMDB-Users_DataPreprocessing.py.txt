@@ -1,0 +1,28 @@
+import pandas as pd
+
+# Load data
+data = pd.read_csv('u_item_cleaned.txt', sep='\t', encoding='unicode_escape', header=None)
+
+# Extract genre columns and set their names
+genre = data.iloc[:, 4:23]
+genre.columns = [
+    "unknown", "Action", "Adventure", "Animation", "Children", "Comedy", "Crime", 
+    "Documentary", "Drama", "Fantasy", "Film_Noir", "Horror", "Musical", "Mystery", 
+    "Romance", "Sci_Fi", "Thriller", "War", "Western"
+]
+
+# Initialize GENRE column
+genre['GENRE'] = ""
+
+# Iterate over each row to build the GENRE string
+for index, row in genre.iterrows():
+    genres = [genre for genre in genre.columns[:-1] if row[genre] == 1]
+    genre.at[index, 'GENRE'] = ','.join(genres)
+
+# Combine necessary columns to create the final dataframe
+data_part1 = data.iloc[:, 0:3]
+data_part2 = genre['GENRE']
+final_genre = pd.concat([data_part1, data_part2], axis=1)
+
+# Save the final dataframe to a CSV file
+final_genre.to_csv('movie_details.csv', sep='\t', index=False, header=False)

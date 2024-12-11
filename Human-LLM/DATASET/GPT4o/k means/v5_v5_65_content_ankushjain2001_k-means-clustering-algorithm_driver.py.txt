@@ -1,0 +1,62 @@
+# Import necessary libraries
+import kmeans  # Assuming kmeans is a custom module
+from sklearn import datasets
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
+
+def main():
+    # Load the iris dataset
+    iris = datasets.load_iris()
+    data, y_truth = iris.data, iris.target
+
+    # Define parameters for KMeans clustering
+    num_clusters = 3
+    max_iterations = 100
+    init_method = 'kmeans++'
+
+    # Perform KMeans clustering using custom implementation
+    y_pred_custom = kmeans.KMeans(data, num_clusters, max_iterations, init_method)
+
+    # Perform KMeans clustering using sklearn
+    kmeans_sklearn = KMeans(n_clusters=num_clusters, init=init_method, max_iter=max_iterations)
+    y_pred_sklearn = kmeans_sklearn.fit_predict(data)
+
+    # Plot the true labels and the predicted labels from both methods
+    plot_results(data, y_truth, 'True Labels')
+    plot_results(data, y_pred_custom, 'Custom KMeans Output')
+    plot_results(data, y_pred_sklearn, 'SKLearn KMeans Output')
+
+    # Compute and print confusion matrices for evaluation
+    print_confusion_matrices(y_truth, y_pred_custom, y_pred_sklearn)
+
+def plot_results(data, labels, title):
+    """
+    Plot the clustering results.
+
+    Args:
+        data (ndarray): The input data.
+        labels (ndarray): The cluster labels.
+        title (str): The title for the plot.
+    """
+    kmeans.drawPlot(data, labels, title)
+
+def print_confusion_matrices(y_truth, y_pred_custom, y_pred_sklearn):
+    """
+    Print confusion matrices to evaluate clustering performance.
+
+    Args:
+        y_truth (ndarray): The true labels.
+        y_pred_custom (ndarray): The predicted labels from the custom KMeans implementation.
+        y_pred_sklearn (ndarray): The predicted labels from the sklearn KMeans implementation.
+    """
+    print('Confusion Matrix of True Labels vs Custom KMeans Predicted Labels:')
+    print(confusion_matrix(y_truth, y_pred_custom))
+    
+    print('Confusion Matrix of True Labels vs SKLearn KMeans Predicted Labels:')
+    print(confusion_matrix(y_truth, y_pred_sklearn))
+    
+    print('Confusion Matrix of Custom KMeans Predicted Labels vs SKLearn KMeans Predicted Labels:')
+    print(confusion_matrix(y_pred_custom, y_pred_sklearn))
+
+if __name__ == "__main__":
+    main()

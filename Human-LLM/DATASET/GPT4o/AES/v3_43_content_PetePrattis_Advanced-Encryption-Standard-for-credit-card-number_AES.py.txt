@@ -1,0 +1,74 @@
+from Crypto.Cipher import AES
+from Crypto import Random
+
+def xor(a, b):
+    """XOR two hexadecimal strings after converting them to binary."""
+    a_bin = '{:032b}'.format(int(a, 16))
+    b_bin = '{:032b}'.format(int(b, 16))
+    return ''.join(str(int(a_bin[i]) ^ int(b_bin[i])) for i in range(len(a_bin)))
+
+def encrypt(card_number, rounds, produce_keys, round_keys):
+    """Encrypt the card number using a Feistel network."""
+    encoded_number = '{:054b}'.format(int(card_number))
+    l, r = encoded_number[:27], encoded_number[27:]
+
+    if produce_keys:
+        for _ in range(rounds):
+            key = Random.new().read(16).hex()
+            round_keys.append(key)
+
+    for i in range(rounds):
+        key = round_keys[i]
+        aes = AES.new(bytes.fromhex(key))
+        hex_r = '{:08x}'.format(int(r + '0' * 5, 2))
+        b = hex_r + '0' * 23 + str(i + 1)
+        enc_res = aes.encrypt(bytes.fromhex(b)).hex()[:7] + '0'
+        l, r = r, xor(enc_res, l + '0' * 5)
+
+    return l, r
+
+def decrypt(cipher, rounds, round_keys):
+    """Decrypt the cipher using a Feistel network."""
+    encoded_number = '{:054b}'.format(int(cipher))
+    l, r = encoded_number[:27], encoded_number[27:]
+
+    for i in range(rounds, 0, -1):
+        key = round_keys[i - 1]
+        aes = AES.new(bytes.fromhex(key))
+        hex_l = '{:08x}'.format(int(l + '0' * 5, 2))
+        b = hex_l + '0' * 23 + str(i)
+        enc_res = aes.encrypt(bytes.fromhex(b)).hex()[:7] + '0'
+        l, r = xor(enc_res, r + '0' * 5), l
+
+    return l, r
+
+def feistel_encrypt_decrypt(card_number, rounds, encrypt_rounds, decrypt_rounds):
+    round_keys = []
+    l, r = encrypt(card_number, rounds, True, round_keys)
+    final = int(l + r, 2)
+
+    while final > 9999999999999999:
+        l, r = encrypt(final, rounds, False, round_keys)
+        final = int(l + r, 2)
+
+    print('Encoded number =', final)
+    print('Decrypting ...')
+    
+    l, r = decrypt(final, rounds, round_keys)
+    final = int(l + r, 2)
+
+    while final > 9999999999999999:
+        l, r = decrypt(final, rounds, round_keys)
+        final = int(l + r, 2)
+
+    return final
+
+def main():
+    credit_card_number = "4532294977918448"
+    print('Number to encrypt =', credit_card_number)
+    rounds = 6
+    final = feistel_encrypt_decrypt(credit_card_number, rounds, encrypt, decrypt)
+    print('Decrypted number =', final)
+
+if __name__ == "__main__":
+    main()

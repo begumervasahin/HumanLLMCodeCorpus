@@ -1,0 +1,100 @@
+import random
+import time
+import copy
+
+class Node:
+    def __init__(self, x, y):
+        self.xloc = x
+        self.yloc = y
+        self.adjList = {}
+
+    def add_edge(self, node, weight):
+        self.adjList[node] = weight
+
+def generate_graph(total_nodes, graph_size, max_weight, kval, edge_method):
+    nodes = [Node(random.randint(0, graph_size), random.randint(0, graph_size)) for _ in range(total_nodes)]
+
+    trees = []
+    for node in nodes:
+        for other_node in nodes:
+            if node != other_node and random.random() < kval:
+                weight = random.randint(1, max_weight) if edge_method == 2 else ((node.xloc - other_node.xloc)**2 + (node.yloc - other_node.yloc)**2)**0.5
+                node.add_edge(other_node, weight)
+        trees.append([node])
+    return trees
+
+def run_prims(trees):
+    # Placeholder for Prim's algorithm
+    return trees
+
+def run_kruskals(trees):
+    # Placeholder for Kruskal's algorithm
+    return trees
+
+def run_sollins(trees):
+    # Placeholder for Sollin's algorithm
+    return trees
+
+def print_trees(trees, term):
+    print(f"{term}s:")
+    for tree in trees:
+        print(f"{term}:{{")
+        for node in tree:
+            print(f"{print_node(node)}: {{", end="")
+            for neighbor, weight in node.adjList.items():
+                print(f"({print_node(neighbor)}, {round(weight, 2)})", end=" ")
+            print("}")
+        print("}")
+
+def print_node(node):
+    return f"({node.xloc},{node.yloc})"
+
+def driver():
+    print("Hello! This is a program which randomly generates nodes and edges to connect those nodes.")
+    print("After the graph is generated, you can then choose from finding an MST of each tree created")
+    print("by using either Prim's, Kruskal's, or Sollin's algorithm. Additionally, there are two methods")
+    print("of generating edges. The first method is to randomly assign a weight between 1 and the user-defined")
+    print("maximum edge weight, the second is to assign the weight based on the actual distance between")
+    print("the two nodes. Finally, the amount of nodes in the graph, the size of the graph, and the k-value,")
+    print("which determines the likelihood any two nodes will have an edge between them.")
+    
+    edge_method = int(input("Which method of edge generation would you like to use?\n1: Weight based on actual distance between nodes\n2: Weight based on user-defined maximum edge weight\n> "))
+    total_nodes = int(input("How many nodes are in the graph (any number greater than 0)?\n> "))
+    graph_size = int(input("How big is the graph (any number greater than 0)?\n> "))
+    kval = int(input("What is the k-value that should be used (any number greater than 0)?\n> "))
+    
+    max_weight = 0
+    if edge_method == 2:
+        max_weight = int(input("What is the maximum weight of an edge (any number greater than 0)?\n> "))
+    
+    trees = generate_graph(total_nodes, graph_size, max_weight, kval, edge_method)
+    print("Here are the adjacency lists of the trees randomly generated using your inputs (format = ((x,y,) weight)):")
+    print_trees(trees, "Tree")
+    print("Here are the MSTs for each of the generated trees.")
+    
+    p_trees = copy.deepcopy(trees)
+    start = time.perf_counter()
+    MSTs = run_prims(p_trees)
+    p_tot = time.perf_counter() - start
+    print("Result of Prim's")
+    print_trees(MSTs, "MST")
+    
+    k_trees = copy.deepcopy(trees)
+    start = time.perf_counter()
+    MSTs = run_kruskals(k_trees)
+    k_tot = time.perf_counter() - start
+    print("Result of Kruskal's")
+    print_trees(MSTs, "MST")
+    
+    s_trees = copy.deepcopy(trees)
+    start = time.perf_counter()
+    MSTs = run_sollins(s_trees)
+    s_tot = time.perf_counter() - start
+    print("Result of Sollin's")
+    print_trees(MSTs, "MST")
+    
+    print(f"Prim's Algorithm Run Time = {p_tot}")
+    print(f"Kruskal's Algorithm Run Time = {k_tot}")
+    print(f"Sollin's Algorithm Run Time = {s_tot}")
+
+driver()

@@ -1,0 +1,58 @@
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+
+    def add(self, item):
+        """Add a new item to the disjoint set."""
+        self.parent[item] = item
+
+    def find(self, item):
+        """Find the root of the item with path compression."""
+        root = item
+        while self.parent[root] != root:
+            root = self.parent[root]
+        # Path compression
+        while item != root:
+            parent = self.parent[item]
+            self.parent[item] = root
+            item = parent
+        return root
+
+    def union(self, item1, item2):
+        """Union the sets containing item1 and item2."""
+        root1 = self.find(item1)
+        root2 = self.find(item2)
+        if root1 != root2:
+            self.parent[root2] = root1
+
+def kruskal(nodes, sorted_edges):
+    """Kruskal's algorithm to find the Minimum Spanning Tree (MST)."""
+    forest = DisjointSet()
+    mst = []
+
+    # Initialize the forest: every node is its own tree
+    for node in nodes:
+        forest.add(node)
+
+    # We need to add exactly len(nodes) - 1 edges to the MST
+    edges_needed = len(nodes) - 1
+
+    # Process the edges in increasing order of weight
+    for edge in sorted_edges:
+        src, dest, weight = edge
+
+        # Find the roots of the trees containing src and dest
+        root_src = forest.find(src)
+        root_dest = forest.find(dest)
+
+        # If src and dest are in different trees, unite them and add the edge to the MST
+        if root_src != root_dest:
+            mst.append(edge)
+            forest.union(src, dest)
+            edges_needed -= 1
+
+            # If we've added enough edges, we're done
+            if edges_needed == 0:
+                break
+
+    return mst

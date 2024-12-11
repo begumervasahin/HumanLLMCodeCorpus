@@ -1,0 +1,64 @@
+import socket
+from binascii import hexlify
+import DiffieHellman
+import nacl.secret
+
+def initialize_server(server_address=('localhost', 5555)):
+    """
+    Initialize the Diffie-Hellman server and set up the socket connection.
+
+    Args:
+        server_address (tuple): A tuple containing the server IP address and port number.
+
+    Returns:
+        tuple: A tuple containing the server object and the socket object.
+    """
+    server = DiffieHellman.D_H()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(server_address)
+    sock.listen(1)
+    return server, sock
+
+def handle_client_connection(connection, server):
+    """
+    Handle the client connection, perform key exchange, and communicate securely.
+
+    Args:
+        connection (socket.socket): The client connection socket.
+        server (DiffieHellman.D_H): The Diffie-Hellman server object.
+    """
+    echo_string = "I have received | "
+    
+    client_pubkey = connection.recv(9000)
+    connection.sendall(str(server.pubKey).encode())
+    server.genKey(int(client_pubkey.decode()))
+    secret_key = server.getKey()
+    print("Secret key:", hexlify(secret_key).decode())
+    box = nacl.secret.SecretBox(secret_key)
+
+    while True:
+        msg = connection.recv(9000)
+        if msg:
+            decrypted_msg = box.decrypt(msg).decode()
+            print(f'Received "{decrypted_msg}", echoing back to client.')
+            response_msg = echo_string + decrypted_msg
+            connection.sendall(box.encrypt(response_msg.encode()))
+        else:
+            break
+    
+    print('Closing socket.')
+    connection.close()
+
+def main():
+    """
+    Main function to initialize the server, accept client connections, and handle communication.
+    """
+    while True:
+        server, sock = initialize_server()
+        print('Server is waiting for a connection...')
+        connection, client_address = sock.accept()
+        print('Connection from IP:', client_address)
+        handle_client_connection(connection, server)
+
+if __name__ == "__main__":
+    main()

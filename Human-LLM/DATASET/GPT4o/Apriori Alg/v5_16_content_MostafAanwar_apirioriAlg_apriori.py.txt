@@ -1,0 +1,89 @@
+import itertools
+import pandas as pd
+from collections import defaultdict
+from itertools import chain, permutations
+
+def read_dataset(file_path, percentage):
+    """
+    Read a specified percentage of records from a dataset.
+
+    :param file_path: Path to the dataset file
+    :param percentage: Percentage of records to read
+    :return: Numpy array of records
+    """
+    total_lines = sum(1 for _ in open(file_path))
+    records_to_read = int((percentage / 100) * total_lines)
+    return pd.read_csv(file_path, sep=' ', header=None, nrows=records_to_read).values
+
+def generate_combinations(data_set):
+    """
+    Generate all possible item combinations from the dataset.
+
+    :param data_set: Array of transactions
+    :return: Dictionary with combinations as keys and their counts as values
+    """
+    combination_counts = defaultdict(int)
+    for transaction in data_set:
+        for i in range(1, len(transaction) + 1):
+            for combination in itertools.combinations(transaction, i):
+                combination_counts[combination] += 1
+    return combination_counts
+
+def filter_by_support(combination_counts, min_support):
+    """
+    Filter item combinations based on minimum support.
+
+    :param combination_counts: Dictionary with combinations and their counts
+    :param min_support: Minimum support threshold
+    :return: Filtered dictionary with combinations meeting the support threshold
+    """
+    return {item: count for item, count in combination_counts.items() if count >= min_support}
+
+def calculate_confidence(combination_counts, min_confidence):
+    """
+    Calculate confidence values and generate permutations.
+
+    :param combination_counts: Dictionary of filtered item combinations
+    :param min_confidence: Minimum confidence threshold
+    :return: Tuple of confidence values, combinations, and permutations
+    """
+    max_size = max(len(item) for item in combination_counts)
+    large_itemsets = [item for item in combination_counts if len(item) == max_size]
+    confidence_values = [combination_counts[item] for item in large_itemsets]
+    confidence_subset = set(chain.from_iterable(large_itemsets))
+    
+    # Generate combinations and permutations
+    combinations = [subset for itemset in large_itemsets 
+                    for i in range(1, len(itemset)) 
+                    for subset in itertools.combinations(itemset, i)]
+    permutations_list = list(permutations(confidence_subset, max_size))
+
+    return confidence_values, combinations, permutations_list
+
+def main():
+    # Get user input
+    percentage = int(input("Enter the percentage of records to read: "))
+    min_support = int(input("Enter the minimum support: "))
+    min_confidence = int(input("Enter the minimum confidence percentage: "))
+
+    # File path
+    file_path = "CarSales.txt"
+    
+    # Read dataset
+    data_set = read_dataset(file_path, percentage)
+
+    # Generate item combinations and filter by support
+    combination_counts = generate_combinations(data_set)
+    filtered_combinations = filter_by_support(combination_counts, min_support)
+    
+    print("Filtered Itemsets:", filtered_combinations)
+    
+    # Calculate confidence
+    confidence_values, combinations, permutations_list = calculate_confidence(filtered_combinations, min_confidence)
+    
+    print("Confidence Values:", confidence_values)
+    print("Combinations:", combinations)
+    print("Permutations:", permutations_list)
+
+if __name__ == "__main__":
+    main()

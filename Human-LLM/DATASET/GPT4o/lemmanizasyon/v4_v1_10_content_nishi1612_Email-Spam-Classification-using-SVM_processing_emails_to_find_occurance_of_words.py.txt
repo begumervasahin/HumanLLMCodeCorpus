@@ -1,0 +1,62 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Start the timer
+start_time = time()
+
+# Read the wordslist.csv file
+words_df = pd.read_csv('wordslist.csv', header=0)
+words = words_df['word']
+lemmatizer = WordNetLemmatizer()
+
+# Define the directory containing the email files
+emails_directory = "emails/"
+encoded_directory = os.fsencode(emails_directory)
+
+# Create and write headers to the frequency.csv file
+with open("frequency.csv", "w+") as freq_file:
+    freq_file.write(','.join(words) + ',output\n')
+
+# Process each email file in the directory
+file_count = 0
+for file in os.listdir(encoded_directory):
+    file_name = os.fsdecode(file)
+    full_file_path = os.path.join(os.getcwd(), 'emails', file_name)
+
+    file_count += 1
+
+    # Read the email file
+    with open(full_file_path, "r", encoding='utf-8', errors='ignore') as email_file:
+        word_frequencies = np.zeros(len(words))
+
+        # Process each word in the file
+        for word in email_file.read().split():
+            word = lemmatizer.lemmatize(word.lower())
+            if word in stopwords.words('english') or word in string.punctuation or len(word) <= 2 or word.isdigit():
+                continue
+            if word in words.values:
+                word_index = words[words == word].index[0]
+                word_frequencies[word_index] += 1
+
+        # Write the word frequencies to the frequency.csv file
+        with open("frequency.csv", "a") as freq_file:
+            freq_file.write(','.join(map(str, word_frequencies.astype(int))) + ',')
+
+            # Determine the output value based on the file name length
+            if len(full_file_path) == 68:
+                freq_file.write("-1")
+            elif len(full_file_path) == 71:
+                freq_file.write("1")
+            freq_file.write('\n')
+
+    # Print progress every 100 files
+    if file_count % 100 == 0:
+        print(f"Processed {file_count} files")
+
+# Print the time taken to process the dataset
+print(f"Time (in seconds) to process the dataset: {round(time() - start_time, 2)}")

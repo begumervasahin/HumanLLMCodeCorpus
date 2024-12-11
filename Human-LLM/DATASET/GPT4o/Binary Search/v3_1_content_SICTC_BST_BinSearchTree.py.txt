@@ -1,0 +1,173 @@
+class BinarySearchTree:
+    class Node:
+        """Represents a single node in the binary search tree."""
+        
+        def __init__(self, key, value):
+            self.key = key
+            self.value = value
+            self.left = None  # Left child node
+            self.right = None  # Right child node
+
+    def __init__(self):
+        """Initialize an empty binary search tree."""
+        self.make_empty()
+
+    def make_empty(self):
+        """Reset the tree to an empty state."""
+        self._root = None
+        self._count = 0
+        self._removed_value = None
+        self._traversal_order = "pre"  # Default traversal order
+
+    def insert(self, key, value):
+        """Insert a new key-value pair into the tree."""
+        self._root = self._insert(self._root, key, value)
+        self._count += 1
+
+    def _insert(self, node, key, value):
+        """Helper method to recursively insert a new key-value pair."""
+        if node is None:
+            return BinarySearchTree.Node(key, value)
+
+        if key < node.key:
+            node.left = self._insert(node.left, key, value)
+        else:
+            node.right = self._insert(node.right, key, value)
+        
+        return node
+
+    def lookup(self, key):
+        """Find and return the value associated with the given key."""
+        return self._lookup(self._root, key)
+
+    def _lookup(self, node, key):
+        """Helper method to recursively find a key."""
+        if node is None:
+            return None
+        
+        if key == node.key:
+            return node.value
+        elif key < node.key:
+            return self._lookup(node.left, key)
+        else:
+            return self._lookup(node.right, key)
+
+    def remove(self, key):
+        """Remove the node with the specified key from the tree."""
+        self._removed_value = None
+        self._root = self._remove(self._root, key)
+        return self._removed_value
+
+    def _remove(self, node, key):
+        """Helper method to recursively remove a node with the given key."""
+        if node is None:
+            return None
+
+        if key == node.key:
+            # Node with the key found
+            self._removed_value = node.value
+            self._count -= 1
+
+            if node.left is None and node.right is None:  # Node is a leaf
+                return None
+            if node.right is None:  # Node has only left child
+                return node.left
+            if node.left is None:  # Node has only right child
+                return node.right
+
+            # Node has two children, find the minimum node in the right subtree
+            min_larger_node = self._find_min(node.right)
+            node.key, node.value = min_larger_node.key, min_larger_node.value
+            node.right = self._remove(node.right, min_larger_node.key)
+        elif key < node.key:
+            node.left = self._remove(node.left, key)
+        else:
+            node.right = self._remove(node.right, key)
+
+        return node
+
+    def _find_min(self, node):
+        """Helper method to find the node with the minimum key."""
+        while node.left is not None:
+            node = node.left
+        return node
+
+    def preorder(self):
+        """Set the traversal order to pre-order and return the tree itself."""
+        self._traversal_order = "pre"
+        return self
+
+    def inorder(self):
+        """Set the traversal order to in-order and return the tree itself."""
+        self._traversal_order = "in"
+        return self
+
+    def postorder(self):
+        """Set the traversal order to post-order and return the tree itself."""
+        self._traversal_order = "post"
+        return self
+
+    def __iter__(self):
+        """Return an iterator that traverses the tree in the selected order."""
+        return self._traverse(self._root)
+
+    def _traverse(self, node):
+        """Helper method to recursively traverse the tree."""
+        if node is None:
+            return
+        
+        if self._traversal_order == "pre":
+            yield node.value
+        
+        if node.left is not None:
+            yield from self._traverse(node.left)
+        
+        if self._traversal_order == "in":
+            yield node.value
+        
+        if node.right is not None:
+            yield from self._traverse(node.right)
+        
+        if self._traversal_order == "post":
+            yield node.value
+
+    def __len__(self):
+        """Return the number of nodes in the tree."""
+        return self._count
+
+
+# Example usage of the BinarySearchTree class
+if __name__ == "__main__":
+    bst = BinarySearchTree()
+    
+    # Inserting values into the tree
+    bst.insert(10, "Value for 10")
+    bst.insert(5, "Value for 5")
+    bst.insert(15, "Value for 15")
+    bst.insert(3, "Value for 3")
+    bst.insert(7, "Value for 7")
+    
+    # Looking up values
+    print("Lookup 10:", bst.lookup(10))  # Output: "Value for 10"
+    print("Lookup 5:", bst.lookup(5))    # Output: "Value for 5"
+    print("Lookup 20:", bst.lookup(20))  # Output: None
+    
+    # Removing a value
+    print("Remove 5:", bst.remove(5))    # Output: "Value for 5"
+    print("Lookup 5:", bst.lookup(5))    # Output: None
+    
+    # Traversing the tree
+    print("In-order traversal:")
+    for value in bst.inorder():
+        print(value)
+    
+    print("Pre-order traversal:")
+    for value in bst.preorder():
+        print(value)
+    
+    print("Post-order traversal:")
+    for value in bst.postorder():
+        print(value)
+    
+    # Checking the number of nodes in the tree
+    print("Number of nodes:", len(bst))  # Output: 4 (after removal)

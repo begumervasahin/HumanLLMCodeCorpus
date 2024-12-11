@@ -1,0 +1,112 @@
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+from sklearn.decomposition import PCA as sklearnPCA
+
+# Load the Iris dataset
+def load_dataset(filepath):
+    df = pd.read_csv(filepath, header=None, sep=',')
+    df.columns = ['sepal_len', 'sepal_wid', 'petal_len', 'petal_wid', 'class']
+    df.dropna(how="all", inplace=True)
+    return df
+
+# Standardize the features
+def standardize_features(X):
+    scaler = StandardScaler()
+    X_std = scaler.fit_transform(X)
+    return X_std
+
+# Compute covariance matrix
+def compute_covariance_matrix(X_std):
+    return np.cov(X_std.T)
+
+# Compute eigenvalues and eigenvectors
+def compute_eigen_decomposition(matrix):
+    eig_vals, eig_vecs = np.linalg.eig(matrix)
+    return eig_vals, eig_vecs
+
+# Validate eigenvectors
+def validate_eigenvectors(eig_vecs):
+    for ev in eig_vecs:
+        np.testing.assert_array_almost_equal(1.0, np.linalg.norm(ev))
+    print('Eigenvector validation: Everything is ok!')
+
+# Sort eigenvalues and eigenvectors
+def sort_eigen_pairs(eig_vals, eig_vecs):
+    eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(len(eig_vals))]
+    eig_pairs.sort(key=lambda x: x[0], reverse=True)
+    return eig_pairs
+
+# Calculate explained variance
+def calculate_explained_variance(eig_vals):
+    total = sum(eig_vals)
+    var_exp = [(i / total) * 100 for i in sorted(eig_vals, reverse=True)]
+    cum_var_exp = np.cumsum(var_exp)
+    return var_exp, cum_var_exp
+
+# Create the projection matrix
+def create_projection_matrix(eig_pairs, n_components=2):
+    matrix_w = np.hstack([eig_pairs[i][1].reshape(4, 1) for i in range(n_components)])
+    return matrix_w
+
+# Project data onto new feature space
+def project_data(X_std, matrix_w):
+    return X_std.dot(matrix_w)
+
+# Perform PCA using scikit-learn
+def sklearn_pca_transform(X_std, n_components=2):
+    pca = sklearnPCA(n_components=n_components)
+    return pca.fit_transform(X_std)
+
+def main():
+    # Filepath to the Iris dataset
+    filepath = '/media/hossam/MyFiles/MachineLearning/PCA/PCA/IrisDataSet/iris.data'
+    
+    # Load and display the dataset
+    df = load_dataset(filepath)
+    print("First 5 rows of the dataset:\n", df.head())
+
+    # Split the dataset into features (X) and target (y)
+    X = df.iloc[:, 0:4].values
+    y = df.iloc[:, 4].values
+
+    # Standardize the features
+    X_std = standardize_features(X)
+
+    # Compute the covariance matrix
+    cov_mat = compute_covariance_matrix(X_std)
+    print('Covariance matrix:\n', cov_mat)
+
+    # Compute eigenvalues and eigenvectors
+    eig_vals, eig_vecs = compute_eigen_decomposition(cov_mat)
+    print('Eigenvectors:\n', eig_vecs)
+    print('Eigenvalues:\n', eig_vals)
+
+    # Validate eigenvectors
+    validate_eigenvectors(eig_vecs)
+
+    # Sort eigenvalues and eigenvectors
+    eig_pairs = sort_eigen_pairs(eig_vals, eig_vecs)
+
+    # Display eigenvalues in descending order
+    print('Eigenvalues in descending order:')
+    for eig_val, eig_vec in eig_pairs:
+        print(eig_val)
+
+    # Calculate explained variance
+    var_exp, cum_var_exp = calculate_explained_variance(eig_vals)
+
+    # Create the projection matrix
+    matrix_w = create_projection_matrix(eig_pairs)
+    print('Projection matrix W:\n', matrix_w)
+
+    # Project the data onto the new feature space
+    Y_manual = project_data(X_std, matrix_w)
+    print("Projection by manual PCA:\n", Y_manual[:5])
+
+    # Perform PCA using scikit-learn
+    Y_sklearn = sklearn_pca_transform(X_std)
+    print("Projection by sklearn PCA:\n", Y_sklearn[:5])
+
+if __name__ == "__main__":
+    main()

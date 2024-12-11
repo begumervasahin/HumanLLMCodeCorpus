@@ -1,0 +1,143 @@
+from random import randint, choice
+
+class Car:
+    def __init__(self, coal, serial):
+        self.serial = serial
+        self.coal = coal
+
+    def __repr__(self):
+        return f'Car(serial={self.serial}, coal={self.coal})'
+
+    def __eq__(self, other):
+        if isinstance(other, Car):
+            return self.coal == other.coal
+        return self.coal == other
+
+    def __gt__(self, other):
+        if isinstance(other, Car):
+            return self.coal > other.coal
+        return self.coal > other
+
+    def __lt__(self, other):
+        if isinstance(other, Car):
+            return self.coal < other.coal
+        return self.coal < other
+
+    def __ge__(self, other):
+        if isinstance(other, Car):
+            return self.coal >= other.coal
+        return self.coal >= other
+
+    def __le__(self, other):
+        if isinstance(other, Car):
+            return self.coal <= other.coal
+        return self.coal <= other
+
+    def __ne__(self, other):
+        if isinstance(other, Car):
+            return self.coal != other.coal
+        return self.coal != other
+
+class Train:
+    def __init__(self, num_cars):
+        self.cars = [Car(randint(1, 74), randint(1, 1000)) for _ in range(num_cars)]
+
+    def __repr__(self):
+        text = f'This is a train with {len(self.cars)} cars:'
+        for car in self.cars:
+            text += f'\n\t{car}'
+        return text
+
+    def add_car(self, num, type='coal'):
+        if type == 'coal':
+            car = Car(num, randint(1, 1000))
+        else:
+            car = Car(randint(1, 74), num)
+        self.cars.append(car)
+        return car
+
+    def bubble_sort(self, ascending=True, attribute='coal'):
+        for i in range(len(self.cars) - 1, 0, -1):
+            swapped = False
+            for j in range(i):
+                if (getattr(self.cars[j], attribute) > getattr(self.cars[j + 1], attribute)) == ascending:
+                    self.cars[j], self.cars[j + 1] = self.cars[j + 1], self.cars[j]
+                    swapped = True
+            if not swapped:
+                break
+
+    def insertion_sort(self, ascending=True, attribute='coal'):
+        for i in range(1, len(self.cars)):
+            current_car = self.cars[i]
+            index = i - 1
+            while index >= 0 and (getattr(current_car, attribute) < getattr(self.cars[index], attribute)) == ascending:
+                self.cars[index + 1] = self.cars[index]
+                index -= 1
+            self.cars[index + 1] = current_car
+
+    def selection_sort(self, ascending=True, attribute='coal'):
+        for i in range(len(self.cars)):
+            min_index = i
+            for j in range(i + 1, len(self.cars)):
+                if (getattr(self.cars[j], attribute) < getattr(self.cars[min_index], attribute)) == ascending:
+                    min_index = j
+            if min_index != i:
+                self.cars[i], self.cars[min_index] = self.cars[min_index], self.cars[i]
+
+    def binary_search(self, value, attribute='coal', ascending=True):
+        low, high = 0, len(self.cars) - 1
+        while low <= high:
+            mid = (low + high) // 2
+            mid_value = getattr(self.cars[mid], attribute)
+            if mid_value == value:
+                return self.cars[mid]
+            elif (mid_value < value) == ascending:
+                low = mid + 1
+            else:
+                high = mid - 1
+        return None
+
+    def find(self, value, attribute='coal', ascending=True):
+        sorter = choice([self.selection_sort, self.insertion_sort, self.bubble_sort])
+        sorter(ascending, attribute)
+        return self.binary_search(value, attribute, ascending)
+
+    def find_by_serial(self, serial):
+        self.insertion_sort(attribute='serial')
+        return self.binary_search(serial, attribute='serial')
+
+    def destroy(self, car):
+        self.cars.remove(car)
+        return car
+
+class Depot:
+    train = None
+
+    @classmethod
+    def generate(cls, num_cars):
+        cls.train = Train(num_cars)
+
+    @classmethod
+    def boom(cls):
+        cls.train = None
+
+# Example Usage:
+if __name__ == "__main__":
+    Depot.generate(10)
+    print(Depot.train)
+
+    print("\nAdding a car with 50 coal:")
+    Depot.train.add_car(50)
+    print(Depot.train)
+
+    print("\nFinding a car with 50 coal:")
+    found_car = Depot.train.find(50, 'coal')
+    print(found_car)
+
+    print("\nSorting cars by coal in ascending order:")
+    Depot.train.bubble_sort()
+    print(Depot.train)
+
+    print("\nDestroying the found car:")
+    Depot.train.destroy(found_car)
+    print(Depot.train)

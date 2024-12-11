@@ -1,0 +1,57 @@
+import csv
+import math
+import operator
+def calcdistance(set1, set2, length):
+	distance = 0
+	for x in range(length):
+		distance += pow((set1[x] - set2[x]), 2)
+	return math.sqrt(distance)
+def neighbors(givendata, sample, k):
+	distances = []
+	length = len(sample)
+	for x in range(len(givendata)):
+		dist = calcdistance(sample, givendata[x], length)
+		distances.append((givendata[x], dist))
+	print '\n'.join(map(str,distances))
+	distances.sort(key=operator.itemgetter(1))
+	nearestneighbors = []
+	for x in range(k):
+		nearestneighbors.append(distances[x][0])
+	return nearestneighbors
+def predict(neighbors):
+	labels = {}
+	for x in range(len(neighbors)):
+		label = neighbors[x][-1]
+		print label
+		if label in labels:
+			labels[label] += 1
+		else:
+			labels[label] = 1
+	prediction = sorted(labels.iteritems(), key=operator.itemgetter(1), reverse=True)
+	print prediction
+	return prediction[0][0]
+def main():
+    with open('data.csv','rb') as csvfile:
+        indata=csv.reader(csvfile)
+        trdata=list(indata)
+        for x in range(len(trdata)):
+            for y in range(3):
+                if y == 3:
+                    if trdata[x][y] == 'M':
+                        trdata[x][y] = 1
+                    else:
+                        trdata [x][y] = 2
+                trdata[x][y]=float(trdata[x][y])
+            trdata.append(trdata[x])
+    k=input('enter number of predictions to use')
+    testSet= input('enter data to be predicted')
+    kNearneighbors=neighbors(trdata,testSet,k)
+    result=predict(kNearneighbors)
+    print 'nearest neibhbors are'
+    print kNearneighbors
+    print'Prediction for gender with given data is'
+    if result == 1:
+        print 'M'
+    else:
+        print 'w'
+main()

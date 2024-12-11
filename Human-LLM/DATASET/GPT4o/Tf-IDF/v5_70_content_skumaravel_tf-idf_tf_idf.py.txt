@@ -1,0 +1,72 @@
+import math
+import string
+
+def preprocess_text(text):
+    """
+    Convert text to lowercase and remove punctuation.
+
+    :param text: The input text string
+    :return: Cleaned text string
+    """
+    text = text.lower()
+    exclude = set(string.punctuation)
+    return ''.join(ch for ch in text if ch not in exclude)
+
+def calculate_term_frequency(document, term):
+    """
+    Calculate the term frequency (TF) of a term in a document.
+
+    :param document: The preprocessed document as a list of terms
+    :param term: The term for which to calculate the TF
+    :return: Term frequency of the term in the document
+    """
+    term_count = document.count(term)
+    total_terms = len(document)
+    return term_count / total_terms
+
+def calculate_inverse_document_frequency(corpus, term):
+    """
+    Calculate the inverse document frequency (IDF) of a term in a corpus.
+
+    :param corpus: List of preprocessed documents (each document is a list of terms)
+    :param term: The term for which to calculate the IDF
+    :return: Inverse document frequency of the term in the corpus
+    """
+    num_docs_with_term = sum(1 for doc in corpus if term in doc)
+    total_documents = len(corpus)
+    if num_docs_with_term > 0:
+        return math.log(total_documents / num_docs_with_term)
+    else:
+        return 0
+
+def tf_idf(corpus, document, term):
+    """
+    Calculate the TF-IDF score for a given term in a document within a corpus.
+
+    :param corpus: List of documents (each document is a string)
+    :param document: The document in which to calculate the TF-IDF for the term
+    :param term: The term for which to calculate the TF-IDF
+    :return: TF-IDF score for the term in the document
+    """
+    # Preprocess the corpus and document
+    preprocessed_corpus = [preprocess_text(doc).split() for doc in corpus]
+    preprocessed_document = preprocess_text(document).split()
+    
+    # Calculate TF and IDF
+    tf = calculate_term_frequency(preprocessed_document, term)
+    idf = calculate_inverse_document_frequency(preprocessed_corpus, term)
+    
+    # Return the TF-IDF score
+    return tf * idf
+
+# Example usage
+corpus = [
+    "This is a sample document.",
+    "This document is another sample document.",
+    "And this is a different document."
+]
+document = "This is a sample document."
+term = "sample"
+
+tf_idf_score = tf_idf(corpus, document, term)
+print(f"TF-IDF score for term '{term}' in the document: {tf_idf_score}")

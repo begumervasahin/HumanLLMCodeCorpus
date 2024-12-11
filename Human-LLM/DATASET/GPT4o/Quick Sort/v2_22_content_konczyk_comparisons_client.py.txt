@@ -1,0 +1,73 @@
+import argparse
+import random
+import sys
+from comparisons import Comparisons
+import pivots
+
+# Dictionary to map pivot choice to corresponding functions
+PIVOTS = {
+    'first': pivots.first_index,
+    'last': pivots.last_index,
+    'median': pivots.median_of_three_index
+}
+
+def parse_arguments():
+    """
+    Parse and return the command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description='Client to compare pivot functions.',
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    # Add mutually exclusive group for upper bound number or input file
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-b', '--bound', type=int, help='Upper bound for number generation')
+    group.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Input file with numbers (default: stdin)')
+
+    # Add argument for pivot choice
+    parser.add_argument(
+        '-p', '--pivot',
+        choices=PIVOTS.keys(),
+        metavar='PIVOT',
+        default='first',
+        help='Choose pivot:\n'
+             'first: use first element as pivot (default)\n'
+             'last: use last element as pivot\n'
+             'median: use median of three elements as pivot'
+    )
+
+    return parser.parse_args()
+
+def generate_numbers(bound):
+    """
+    Generate a shuffled list of numbers from 1 to bound.
+    """
+    numbers = list(range(1, bound + 1))
+    random.shuffle(numbers)
+    return numbers
+
+def read_numbers_from_file(file):
+    """
+    Read and return a list of numbers from the given file.
+    """
+    return [int(num) for num in file]
+
+def main():
+    args = parse_arguments()
+
+    # Generate or read the list of numbers
+    if args.bound is not None:
+        numbers = generate_numbers(args.bound)
+    else:
+        numbers = read_numbers_from_file(args.infile)
+
+    # Create Comparisons instance with the chosen pivot function
+    pivot_function = PIVOTS[args.pivot]
+    comparisons = Comparisons(numbers, pivot_function)
+
+    # Print the count of comparisons
+    print(comparisons.count())
+
+if __name__ == "__main__":
+    main()

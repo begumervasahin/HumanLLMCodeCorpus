@@ -1,0 +1,94 @@
+# Global dictionaries to store parent and rank of each vertex
+parent = {}
+rank = {}
+
+def make_set(vertex):
+    """
+    Initializes a set for a given vertex. Each vertex is its own parent initially, 
+    and the rank is set to 0.
+
+    Parameters:
+        vertex: The vertex to initialize in the disjoint set.
+    """
+    parent[vertex] = vertex
+    rank[vertex] = 0
+
+def find(vertex):
+    """
+    Finds the representative of the set containing the given vertex with path compression.
+
+    Parameters:
+        vertex: The vertex whose set representative is to be found.
+
+    Returns:
+        The representative (root) of the set containing the vertex.
+    """
+    if parent[vertex] != vertex:
+        parent[vertex] = find(parent[vertex])  # Path compression
+    return parent[vertex]
+
+def union(vertex1, vertex2):
+    """
+    Unites two sets containing the given vertices by rank.
+
+    Parameters:
+        vertex1: The first vertex.
+        vertex2: The second vertex.
+    """
+    root1 = find(vertex1)
+    root2 = find(vertex2)
+
+    if root1 != root2:
+        # Union by rank
+        if rank[root1] > rank[root2]:
+            parent[root2] = root1
+        else:
+            parent[root1] = root2
+            if rank[root1] == rank[root2]:
+                rank[root2] += 1
+
+def kruskal(graph):
+    """
+    Implements Kruskal's algorithm to find the Maximum Bandwidth Path (MST) of a graph.
+
+    Parameters:
+        graph: A dictionary representing the graph with 'vertices' and 'edges'.
+               - 'vertices': A list of vertices in the graph.
+               - 'edges': A list of edges, where each edge is represented as a tuple 
+                          (weight, vertex1, vertex2).
+
+    Returns:
+        max_bandwidth_path: A set of edges representing the Maximum Bandwidth Path (MST).
+    """
+    # Initialize disjoint sets for each vertex
+    for vertex in graph['vertices']:
+        make_set(vertex)
+
+    max_bandwidth_path = set()
+    edges = sorted(graph['edges'])  # Sort edges by weight
+
+    # Process each edge in ascending order of weight
+    for edge in edges:
+        weight, vertex1, vertex2 = edge
+
+        # If the vertices are in different sets, include this edge in the MST
+        if find(vertex1) != find(vertex2):
+            union(vertex1, vertex2)
+            max_bandwidth_path.add(edge)
+
+    return max_bandwidth_path
+
+# Example usage:
+# graph = {
+#     'vertices': ['A', 'B', 'C', 'D', 'E'],
+#     'edges': [
+#         (1, 'A', 'B'),
+#         (2, 'B', 'C'),
+#         (3, 'A', 'C'),
+#         (4, 'C', 'D'),
+#         (5, 'D', 'E'),
+#         (6, 'B', 'E')
+#     ]
+# }
+# mst = kruskal(graph)
+# print(mst)

@@ -1,0 +1,81 @@
+import numpy as np
+from scipy.optimize import minimize
+
+# Convert flower names to float
+def flower_to_float(s):
+    d = {b'Iris-setosa': 0., b'Iris-versicolor': 1., b'Iris-virginica': 2.}
+    return d[s]
+
+# Feature mapping function
+def phi(_x, _i):
+    phi1 = np.ones(5)
+    phi1[1:5] = _x[_i, 1:5]
+    return phi1
+
+# Objective function for logistic regression with softmax output
+def f(_w, training_x, training_y, prior):
+    N = training_x.shape[0]
+    K = 3
+    log_likelihood = 0.
+    for n in range(N):
+        ll2 = 0.
+        ll3 = 0.
+        for k in range(K):
+            ll2 += training_y[n, k] * _w[5*k:(5*k)+5].T.dot(phi(training_x, n))
+        for l in range(K):
+            ll3 += np.exp(_w[5*l:(5*l)+5].T.dot(phi(training_x, n)))
+        log_likelihood += ll2
+        log_likelihood -= np.log(ll3)
+        if log_likelihood == -np.inf:
+            log_likelihood = 0.
+    return prior - log_likelihood
+
+# Load and preprocess iris dataset
+irises = np.loadtxt('iris.txt', delimiter=',', converters={4: flower_to_float})
+M = irises.shape[0]
+K = 3
+x = np.array(irises[:, :4])
+x = np.concatenate((np.ones(shape=(M, 1)), x), axis=1)
+y = np.zeros(shape=(M, K))
+for i in range(M):
+    y[i, int(irises[i, 4])] = 1
+
+# Shuffle and split data into training and testing sets
+r = np.arange(M)
+np.random.shuffle(r)
+x = np.array(x[r.reshape(-1)])
+y = np.array(y[r.reshape(-1)])
+training_x = x[:int(M/2)]
+training_y = y[:int(M/2)]
+test_x = x[int(M/2):]
+test_y = y[int(M/2):]
+
+# Set regularization parameter and initial weights
+alpha = 0.0031257
+w_init = np.ones(15)
+prior = (alpha/2.) * w_init.T.dot(w_init)
+
+# Optimize weights using scipy's minimize function
+w_hat = minimize(f, w_init, args=(training_x, training_y, prior)).x
+
+# Predict on the test set
+b = []
+c = []
+for i in range(test_x.shape[0]):
+    z = np.zeros(K)
+    for k in range(K):
+        z[k] = np.exp(w_hat[5*k:(5*k)+5].T.dot(phi(test_x, i)))
+        if z[k] == np.inf:
+            z[k] = 1000.
+    s = z / np.sum(z)
+    q = np.amax(s)
+    b.append((s.tolist()).index(q))
+
+for i in range(test_y.shape[0]):
+    s = test_y[i, :]
+    q = np.amax(s)
+    c.append((s.tolist()).index(q))
+
+# Calculate and print overall classification accuracy
+k = np.equal(b, c)
+print("Overall classification accuracy = ", float(np.sum(k) / len(test_y)) * 100., '%')

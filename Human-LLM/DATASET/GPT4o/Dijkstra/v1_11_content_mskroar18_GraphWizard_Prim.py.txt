@@ -1,0 +1,66 @@
+class Edge:
+    def __init__(self, vertex1, vertex2, weight):
+        self.Vertex1 = vertex1
+        self.Vertex2 = vertex2
+        self.weight = weight
+        self.selected = False
+        self.extra = 1
+
+def returnweight(edge):
+    return edge.weight
+
+class Graph:
+    def __init__(self, edges, nodecount):
+        self.edges = edges
+        self.nodecount = nodecount
+
+    def runPrim(self):
+        self.edges.sort(key=returnweight)
+        setlist = set()
+        self.edges[0].selected = True
+        setlist.add(self.edges[0])
+        flag = 0
+        self.edges[0].extra = 0
+
+        while flag < self.nodecount - 1:
+            count = 1
+            not_set = False
+            while count < len(self.edges) and not_set is False:
+                foundfirst = False
+                foundsecond = False
+                discard = False
+                if self.edges[count].extra == 1:
+                    for k in setlist:
+                        if self.edges[count].Vertex2 == k.Vertex1 or self.edges[count].Vertex2 == k.Vertex2:
+                            foundsecond = True
+                        if self.edges[count].Vertex1 == k.Vertex1 or self.edges[count].Vertex1 == k.Vertex2:
+                            foundfirst = True
+                    if foundfirst and foundsecond:
+                        discard = True
+                        self.edges[count].extra = 0
+                    elif (foundsecond or foundfirst) and not discard:
+                        setlist.add(self.edges[count])
+                        self.edges[count].selected = True
+                        self.edges[count].extra = 0
+                        not_set = True
+                count += 1
+            flag += 1
+
+        return setlist
+
+# Example usage
+if __name__ == "__main__":
+    edges = [
+        Edge('A', 'B', 1),
+        Edge('A', 'C', 3),
+        Edge('B', 'C', 1),
+        Edge('B', 'D', 6),
+        Edge('C', 'D', 5),
+    ]
+    nodecount = 4
+    graph = Graph(edges, nodecount)
+    mst = graph.runPrim()
+
+    print("Edges in the Minimum Spanning Tree:")
+    for edge in mst:
+        print(f"{edge.Vertex1} - {edge.Vertex2}: {edge.weight}")

@@ -1,0 +1,82 @@
+class FileAccess:
+    def get_stop_words(self):
+        """
+        This method returns a list of stop words.
+        """
+        return ['the', 'is', 'in', 'at', 'of', 'a', 'and']
+
+class SnippetGenerator:
+    def __init__(self, max_length=150):
+        self.max_length = max_length
+
+    def generate_snippet(self, doc, query):
+        """
+        Generates a snippet from the document with query words highlighted.
+        
+        Parameters:
+        doc (str): The document text.
+        query (str): The search query.
+        
+        Returns:
+        str: The document with query words highlighted.
+        """
+        fa = FileAccess()
+        stop_words = fa.get_stop_words()
+
+        query_words = self._remove_stop_words(query, stop_words)
+        positions = self._find_query_positions(doc, query_words)
+        
+        highlighted_doc = self._highlight_words(doc, positions)
+        
+        return highlighted_doc
+
+    def _remove_stop_words(self, query, stop_words):
+        """
+        Removes stop words from the query.
+        
+        Parameters:
+        query (str): The search query.
+        stop_words (list): The list of stop words.
+        
+        Returns:
+        list: Query words with stop words removed.
+        """
+        return [word for word in query.split() if word not in stop_words]
+
+    def _find_query_positions(self, doc, query_words):
+        """
+        Finds positions of query words in the document.
+        
+        Parameters:
+        doc (str): The document text.
+        query_words (list): The query words.
+        
+        Returns:
+        list: Positions of query words in the document.
+        """
+        doc_words = doc.split()
+        return [i for i, word in enumerate(doc_words) if word in query_words]
+
+    def _highlight_words(self, doc, positions):
+        """
+        Highlights the query words in the document.
+        
+        Parameters:
+        doc (str): The document text.
+        positions (list): Positions of query words in the document.
+        
+        Returns:
+        str: The document with query words highlighted.
+        """
+        doc_words = doc.split()
+        return ' '.join(
+            ['"' + word + '"' if i in positions else word for i, word in enumerate(doc_words)]
+        )
+
+# Example usage
+if __name__ == "__main__":
+    doc = "This is an example document that contains several words and we will highlight some of them."
+    query = "example document highlight"
+    snippet_generator = SnippetGenerator()
+    snippet = snippet_generator.generate_snippet(doc, query)
+    print(snippet)

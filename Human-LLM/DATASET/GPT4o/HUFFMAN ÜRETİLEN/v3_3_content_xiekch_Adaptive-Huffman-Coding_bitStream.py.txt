@@ -1,0 +1,59 @@
+class BitStream:
+    def __init__(self, file_name, mode):
+        """Initialize the BitStream with a file and mode."""
+        self.file = open(file_name, mode)
+        self.word = 0
+        self.mode = mode
+        self.pos = 7 if 'w' in mode else -1
+
+    def read(self, num_bits):
+        """Read a specified number of bits from the file."""
+        bits = []
+        for _ in range(num_bits):
+            if self.pos == -1:
+                byte = self.file.read(1)
+                if not byte:
+                    break
+                self.word = ord(byte)
+                self.pos = 7
+            bits.append('1' if self.word & (1 << self.pos) else '0')
+            self.pos -= 1
+        return ''.join(bits)
+
+    def write(self, bit_string):
+        """Write a string of bits to the file."""
+        for bit in bit_string:
+            if bit in ('0', '1'):
+                self.word = (self.word << 1) | int(bit)
+                self.pos -= 1
+                if self.pos == -1:
+                    self._flush()
+
+    def _flush(self):
+        """Flush the remaining bits to the file."""
+        if self.pos != 7:
+            padded_word = self.word << (self.pos + 1)
+            self.file.write(padded_word.to_bytes(1, byteorder='little'))
+        self.word = 0
+        self.pos = 7
+
+    def close(self):
+        """Flush remaining bits and close the file."""
+        if 'w' in self.mode:
+            self._flush()
+        self.file.close()
+
+
+if __name__ == '__main__':
+    input_file = BitStream('./test.txt', 'rb')
+    output_file = BitStream('./temp.txt', 'wb')
+
+    while True:
+        bit = input_file.read(1)
+        if not bit:
+            break
+        print(bit, end='')
+        output_file.write(bit)
+
+    input_file.close()
+    output_file.close()

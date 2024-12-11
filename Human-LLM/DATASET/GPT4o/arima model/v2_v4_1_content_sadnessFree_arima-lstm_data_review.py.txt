@@ -1,0 +1,51 @@
+import math
+import matplotlib.pyplot as plt
+import pandas as pd
+from datetime import datetime
+
+# Define a function to parse date strings
+def parse_date(date_string):
+    """Convert a date string into a datetime object."""
+    return datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
+
+# Define a function to calculate the mean absolute percentage error (MAPE)
+def calculate_mape(actual, predicted):
+    """Calculate the Mean Absolute Percentage Error (MAPE) between actual and predicted values."""
+    total_error = sum(abs(pred - act) / act for act, pred in zip(actual, predicted))
+    return total_error / len(actual)
+
+# Read the CSV file and extract relevant columns
+def read_traffic_data(file_path):
+    """Read traffic data from a CSV file and parse date columns."""
+    data = pd.read_csv(file_path,
+                       usecols=[2, 3],
+                       header=0,
+                       parse_dates=[0],
+                       index_col=0,
+                       squeeze=True,
+                       date_parser=parse_date)
+    return data
+
+# Plot the traffic volume data
+def plot_traffic_volume(data, title="Traffic Volume over Time"):
+    """Plot the traffic volume data."""
+    plt.figure(figsize=(12, 6))
+    plt.plot(data, '-', label="Real Flow")
+    plt.legend(loc='upper right')
+    plt.xlabel("Period (15-minute intervals)")
+    plt.ylabel("Volume (vehicles/period)")
+    plt.title(title)
+    plt.show()
+
+if __name__ == "__main__":
+    # Define the file path to the CSV file
+    csv_file_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15.csv'
+    
+    # Read the traffic data from the CSV file
+    traffic_series = read_traffic_data(csv_file_path)
+    
+    # Select a subset of the data for analysis (first 1000 rows)
+    traffic_data_subset = traffic_series.values[0:1000]
+    
+    # Plot the selected subset of traffic volume data
+    plot_traffic_volume(traffic_data_subset)

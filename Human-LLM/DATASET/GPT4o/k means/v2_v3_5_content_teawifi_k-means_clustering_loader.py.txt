@@ -1,0 +1,69 @@
+import os
+import re
+import pandas as pd
+
+# Define the text encoding to use
+ENCODING = 'utf-8'
+
+def load_data(path_to_dir):
+    """
+    Load and filter data from text files in a specified directory.
+
+    :param path_to_dir: Path to the directory containing text files.
+    :return: List of filtered data containing numerical values.
+    """
+    data = []
+
+    # Get a list of all '.txt' files in the directory
+    files = [file for file in os.listdir(path_to_dir)
+             if os.path.isfile(os.path.join(path_to_dir, file)) and file.endswith(".txt")]
+
+    # Read content from each file and collect the data
+    for file in files:
+        file_path = os.path.join(path_to_dir, file)
+        with open(file_path, "r", encoding=ENCODING) as f:
+            content = f.readlines()
+            data.extend(content)
+
+    # Filter the data to extract numerical values
+    filtered_data = [filter_data(item) for item in data]
+    return filtered_data
+
+def filter_data(data):
+    """
+    Extract the first three numerical values from a given string.
+
+    :param data: Input string to be filtered.
+    :return: List of the first three numerical values found in the string.
+    """
+    # Regular expression pattern to find numerical values
+    pattern = r"[0-9]+"
+    matches = re.findall(pattern, data)
+    numbers = [float(num) for num in matches]
+
+    # Return the first three numerical values
+    return numbers[:3]
+
+def save_to_csv(data, file_path):
+    """
+    Save the filtered data to a CSV file.
+
+    :param data: List of filtered data to be saved.
+    :param file_path: Path where the CSV file will be saved.
+    """
+    df = pd.DataFrame(data, columns=['x', 'y', 'z'])
+    df.to_csv(file_path, index=False, encoding=ENCODING)
+
+if __name__ == "__main__":
+    # Example usage:
+    
+    # Directory containing the text files
+    data_directory = "/path/to/directory"
+    # Output file path
+    output_file = "output.csv"
+
+    # Load and filter data from the specified directory
+    filtered_data = load_data(data_directory)
+
+    # Save the filtered data to a CSV file
+    save_to_csv(filtered_data, output_file)

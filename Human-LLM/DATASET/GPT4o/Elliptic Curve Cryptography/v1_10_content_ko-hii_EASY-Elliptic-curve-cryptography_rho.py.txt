@@ -1,0 +1,81 @@
+from math import gcd
+from random import randint
+
+def mapping_func(x):
+    """
+    Mapping function used in Pollard's rho algorithm.
+    
+    Args:
+        x (int): Input integer.
+        
+    Returns:
+        int: Mapped integer.
+    """
+    return pow(x, 2) + x + 1
+
+def rho(n):
+    """
+    Pollard's rho algorithm to check if a number is composite.
+    
+    Args:
+        n (int): The number to be checked.
+        
+    Returns:
+        bool: False if n is composite, True otherwise.
+    """
+    if n < 2:
+        return False
+    elif n < 4:
+        return True
+    
+    x = 1
+    x_list = []
+    result = 1
+    
+    while result == 1:
+        x = mapping_func(x) % n
+        for past_x in x_list:
+            result = gcd(x - past_x, n)
+            if result > 1:
+                break
+        x_list.append(x)
+    
+    if result == n:
+        return True
+    else:
+        return False
+
+def get_prime(length):
+    """
+    Generates a prime number of specified length using random generation and Pollard's rho algorithm.
+    
+    Args:
+        length (int): The length of the prime number to be generated.
+        
+    Returns:
+        int: A prime number of the specified length.
+    """
+    while True:
+        # Generate a random number of specified length
+        n = str(randint(1, 9))
+        for i in range(length - 2):
+            n += str(randint(0, 9))
+        n += str(randint(1, 5) * 2 - 1)
+        
+        # Check if the number ends with 5 or is divisible by 3
+        if n[length - 1] == '5':
+            continue
+        if sum(int(i) for i in n) % 3 == 0:
+            continue
+        
+        # Check if the number is composite using Pollard's rho algorithm
+        if rho(int(n)):
+            break
+    
+    return int(n)
+
+# Example usage
+if __name__ == "__main__":
+    prime_length = 10  # Specify the length of the prime number
+    prime_number = get_prime(prime_length)
+    print(f"Generated prime number of length {prime_length}: {prime_number}")

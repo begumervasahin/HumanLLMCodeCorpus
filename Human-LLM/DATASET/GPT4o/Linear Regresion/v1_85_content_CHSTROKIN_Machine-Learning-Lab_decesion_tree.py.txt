@@ -1,0 +1,148 @@
+from math import log2
+from collections import Counter
+import operator
+
+def calculate_shannon_entropy(dataset):
+    """
+    Calculate the Shannon entropy of a dataset.
+    
+    :param dataset: List of data points, where the last element is the label.
+    :return: Shannon entropy value.
+    """
+    num_entries = len(dataset)
+    label_count = Counter([data[-1] for data in dataset])
+    shannon_entropy = -sum((count / num_entries) * log2(count / num_entries) for count in label_count.values())
+    return shannon_entropy
+
+def create_dataset():
+    """
+    Create a sample dataset and corresponding labels.
+    
+    :return: Tuple of dataset and labels.
+    """
+    dataset = [
+        [1, 1, 'yes'],
+        [1, 1, 'yes'],
+        [1, 0, 'no'],
+        [0, 1, 'no'],
+        [0, 1, 'no']
+    ]
+    labels = ['input 1', 'input 2']
+    return dataset, labels
+
+def split_dataset(dataset, axis, value):
+    """
+    Split the dataset based on a feature axis and a feature value.
+    
+    :param dataset: List of data points.
+    :param axis: Feature index to split on.
+    :param value: Feature value to split on.
+    :return: Subset of the dataset.
+    """
+    return [feat[:axis] + feat[axis + 1:] for feat in dataset if feat[axis] == value]
+
+def choose_best_feature_to_split(dataset):
+    """
+    Choose the best feature to split on based on information gain.
+    
+    :param dataset: List of data points.
+    :return: Index of the best feature to split on.
+    """
+    num_features = len(dataset[0]) - 1
+    base_entropy = calculate_shannon_entropy(dataset)
+    best_info_gain = 0.0
+    best_feature = -1
+    
+    for i in range(num_features):
+        feature_values = set([data[i] for data in dataset])
+        new_entropy = sum((len(subset) / len(dataset)) * calculate_shannon_entropy(subset)
+                          for value in feature_values
+                          for subset in [split_dataset(dataset, i, value)])
+        info_gain = base_entropy - new_entropy
+        
+        if info_gain > best_info_gain:
+            best_info_gain = info_gain
+            best_feature = i
+            
+    return best_feature
+
+def majority_count(class_list):
+    """
+    Return the majority class in a list of classes.
+    
+    :param class_list: List of classes.
+    :return: Majority class.
+    """
+    return Counter(class_list).most_common(1)[0][0]
+
+def create_tree(dataset, labels):
+    """
+    Create a decision tree using the given dataset and labels.
+    
+    :param dataset: List of data points.
+    :param labels: List of feature labels.
+    :return: Decision tree.
+    """
+    class_list = [data[-1] for data in dataset]
+    
+    if class_list.count(class_list[0]) == len(class_list):
+        return class_list[0]
+    
+    if len(dataset[0]) == 1:
+        return majority_count(class_list)
+    
+    best_feature = choose_best_feature_to_split(dataset)
+    best_feature_label = labels[best_feature]
+    tree = {best_feature_label: {}}
+    
+    del(labels[best_feature])
+    feature_values = set([data[best_feature] for data in dataset])
+    
+    for value in feature_values:
+        sub_labels = labels[:]
+        subtree = create_tree(split_dataset(dataset, best_feature, value), sub_labels)
+        tree[best_feature_label][value] = subtree
+    
+    return tree
+
+def classify(input_tree, feature_labels, test_vector):
+    """
+    Classify a test vector using the decision tree.
+    
+    :param input_tree: Decision tree.
+    :param feature_labels: List of feature labels.
+    :param test_vector: Test data point.
+    :return: Classification result.
+    """
+    first_feature = list(input_tree.keys())[0]
+    second_dict = input_tree[first_feature]
+    feature_index = feature_labels.index(first_feature)
+    key = test_vector[feature_index]
+    value_of_feature = second_dict[key]
+    
+    if isinstance(value_of_feature, dict):
+        return classify(value_of_feature, feature_labels, test_vector)
+    else:
+        return value_of_feature
+
+if __name__ == '__main__':
+    dataset, labels = create_dataset()
+    print("Shannon Entropy of the dataset:", calculate_shannon_entropy(dataset))
+    print("Best feature to split on:", choose_best_feature_to_split(dataset))
+    
+    print('_______________________________________')
+    print("Split dataset on feature 0 with value 1:", split_dataset(dataset, 0, 1))
+    print("Shannon Entropy after split:", calculate_shannon_entropy(split_dataset(dataset, 0, 1)))
+    
+    print('_____________________________________')
+    print("Split dataset on feature 0 with value 0:", split_dataset(dataset, 0, 0))
+    print("Shannon Entropy after split:", calculate_shannon_entropy(split_dataset(dataset, 0, 0)))
+    
+    print('_____________________________________')
+    decision_tree = create_tree(dataset, labels)
+    print("Decision tree:", decision_tree)
+    
+    # Example classification
+    test_vector = [1, 0]
+    result = classify(decision_tree, ['input 1', 'input 2'], test_vector)
+    print("Classification result for test vector", test_vector, ":", result)

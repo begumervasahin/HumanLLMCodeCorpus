@@ -1,0 +1,96 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def load_data(path):
+    """
+    Load data from a CSV file.
+    
+    Parameters:
+    path (str): Path to the CSV file.
+    
+    Returns:
+    pd.DataFrame: Loaded data as a pandas DataFrame.
+    """
+    return pd.read_csv(path)
+
+def compute_weights(query_point, data, bandwidth):
+    """
+    Compute the weights for local regression based on the distance to the query point.
+    
+    Parameters:
+    query_point (np.array): The point at which to compute weights.
+    data (np.array): The training data.
+    bandwidth (float): Bandwidth parameter controlling the rate of weight decay.
+    
+    Returns:
+    np.matrix: Diagonal matrix with weights for each training example.
+    """
+    num_samples = data.shape[0]
+    weights = np.mat(np.eye(num_samples))
+    
+    for i in range(num_samples):
+        diff = data[i] - query_point
+        weights[i, i] = np.exp(diff @ diff.T / (-2.0 * bandwidth**2))
+    
+    return weights
+
+def compute_local_weights(query_point, data, target, bandwidth):
+    """
+    Compute the local regression parameters by solving the weighted least squares problem.
+    
+    Parameters:
+    query_point (np.array): The point at which to compute regression parameters.
+    data (np.array): The training data.
+    target (np.array): The target values.
+    bandwidth (float): Bandwidth parameter controlling the rate of weight decay.
+    
+    Returns:
+    np.matrix: Regression parameters that minimize the weighted least squares error.
+    """
+    weights = compute_weights(query_point, data, bandwidth)
+    theta = (data.T @ (weights @ data)).I @ (data.T @ (weights @ target.T))
+    
+    return theta
+
+def local_weight_regression(data, target, bandwidth, show_process=False):
+    """
+    Perform local weighted regression and predict values for the training data.
+    
+    Parameters:
+    data (np.array): The training data.
+    target (np.array): The target values.
+    bandwidth (float): Bandwidth parameter controlling the rate of weight decay.
+    show_process (bool): If True, print intermediate regression parameters.
+    
+    Returns:
+    np.array: Predicted values for each training example.
+    """
+    num_samples = data.shape[0]
+    predictions = np.zeros(num_samples)
+    
+    for i in range(num_samples):
+        predictions[i] = data[i] @ compute_local_weights(data[i], data, target, bandwidth)
+        if show_process:
+            theta = compute_local_weights(data[i], data, target, bandwidth)
+            print(f"h(θ) = {theta[0]} + {theta[1]}")
+    
+    return predictions
+
+def visualize_data(data, plot_title, x_label, y_label):
+    """
+    Visualize the data using a scatter plot.
+    
+    Parameters:
+    data (pd.DataFrame): The data to be visualized.
+    plot_title (str): The title of the plot.
+    x_label (str): The label for the x-axis.
+    y_label (str): The label for the y-axis.
+    
+    Returns:
+    None
+    """
+    ax = sns.scatterplot(x=x_label, y=y_label, data=data)
+    ax.set_title(plot_title)
+    plt.show()

@@ -1,0 +1,87 @@
+from scratch import MyLinearRegression, MyLogisticRegression, MyPreProcessor
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Initialize preprocessor
+preprocessor = MyPreProcessor()
+
+# Linear Regression
+def perform_linear_regression(preprocessor):
+    print('Linear Regression')
+    X, y = preprocessor.pre_process(0)
+    numberOfRows = int(X.shape[0] * 0.7)
+    X_train, X_test = X[:numberOfRows], X[numberOfRows:]
+    y_train, y_test = y[:numberOfRows], y[numberOfRows:]
+
+    linear = MyLinearRegression()
+    k = 5
+    X_folds = np.array_split(X_train, k)
+    y_folds = np.array_split(y_train, k)
+
+    for i in range(k):
+        X_data_train = X_folds[:i] + X_folds[i+1:]
+        y_data_train = y_folds[:i] + y_folds[i+1:]
+        X_data_train = np.concatenate(X_data_train)
+        y_data_train = np.concatenate(y_data_train)
+
+        X_data_test = X_folds[i]
+        y_data_test = y_folds[i]
+
+        RMSE_errors, MAE_errors, Rmse_coef, Rmse_intercept, Mae_coef, Mae_intercept = linear.fit(X_data_train, y_data_train)
+        RMSE_validation, MAE_validation = linear.validationLoss(X_data_test, y_data_test, Rmse_coef, Rmse_intercept, Mae_coef, Mae_intercept)
+
+        plt.plot(RMSE_errors, color='red', linewidth=2, label='RMSE Training Loss')
+        plt.plot(RMSE_validation, color='orange', linewidth=2, label='RMSE Validation Loss')
+        plt.xlabel("Number of Iterations")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.show()
+        plt.clf()
+        print('RMSE Error on Test Data:', RMSE_validation[-1])
+
+        plt.plot(MAE_errors, color='red', linewidth=2, label='MAE Training Loss')
+        plt.plot(MAE_validation, color='blue', linewidth=2, label='MAE Validation Loss')
+        plt.xlabel("Number of Iterations")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.show()
+        plt.clf()
+        print('MAE Error on Test Data:', MAE_validation[-1])
+
+# Logistic Regression
+def perform_logistic_regression(preprocessor):
+    print('Logistic Regression')
+    X, y = preprocessor.pre_process(2)
+    numberOfRows = int(X.shape[0] * 0.1)
+    X_train, X_eval, X_test = X[:numberOfRows * 7], X[numberOfRows * 7:numberOfRows * 8], X[numberOfRows * 8:]
+    y_train, y_eval, y_test = y[:numberOfRows * 7], y[numberOfRows * 7:numberOfRows * 8], y[numberOfRows * 8:]
+
+    logistic = MyLogisticRegression()
+    Batch_errors, Stochastic_errors, Batch_coef, Batch_intercept, Stochastic_coef, Stochastic_intercept = logistic.fit(X_train, y_train)
+    Batch_test, Stochastic_test = logistic.validationLoss(X_test, y_test, Batch_coef, Batch_intercept, Stochastic_coef, Stochastic_intercept)
+
+    print("Accuracy on Train data using Batch Gradient Descent:", logistic.accuracy(X_train, y_train, Batch_coef[-1], Batch_intercept[-1]))
+    print("Accuracy on Test data using Batch Gradient Descent:", logistic.accuracy(X_test, y_test, Batch_coef[-1], Batch_intercept[-1]))
+
+    plt.plot(Batch_errors, color='red', linewidth=1, label='Test errors')
+    plt.plot(Batch_test, color='orange', linewidth=1, label='Validation loss')
+    plt.ylabel("Loss")
+    plt.xlabel("Iterations")
+    plt.legend()
+    plt.show()
+    plt.clf()
+
+    print("Accuracy on Train data using Stochastic Gradient Descent:", logistic.accuracy(X_train, y_train, Stochastic_coef[-1], Stochastic_intercept[-1]))
+    print("Accuracy on Test data using Stochastic Gradient Descent:", logistic.accuracy(X_test, y_test, Stochastic_coef[-1], Stochastic_intercept[-1]))
+
+    plt.plot(Stochastic_errors, color='red', linewidth=1, label='Test errors')
+    plt.plot(Stochastic_test, color='orange', linewidth=1, label='Validation loss')
+    plt.ylabel("Loss")
+    plt.xlabel("Iterations")
+    plt.legend()
+    plt.show()
+    plt.clf()
+
+# Execute functions
+perform_linear_regression(preprocessor)
+perform_logistic_regression(preprocessor)

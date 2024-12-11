@@ -1,0 +1,62 @@
+import pandas as pd
+import numpy as np
+import datetime
+import calendar
+from pandas_datareader import data as web
+
+def main():
+    start = datetime.date(2016, 1, 1)
+    end = datetime.date(2016, 12, 31)
+    ticker = 'AAPL'
+    data_source = 'yahoo'  # 'morningstar' is not supported in pandas_datareader anymore
+    
+    stock_prices_all = web.DataReader(ticker, data_source, start, end)
+    stock_prices = stock_prices_all[~stock_prices_all['Volume'].isin([0])]
+    
+    stock_prices.reset_index(inplace=True)
+    
+    all_monthly_data = month_separate(stock_prices)
+    monthly_avg_prices = mean_calculator(all_monthly_data)
+    print(monthly_avg_prices)
+
+def month_separate(stock_prices):
+    current_month = 0
+    month_dict = {}
+    month_array = []
+    months_of_interest = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    
+    for index, row in stock_prices.iterrows():
+        day_month = row['Date'].month
+        day_month_name = calendar.month_name[day_month]
+        
+        if day_month == current_month:
+            month_array.append(row)
+        else:
+            if current_month != 0 and current_month in months_of_interest:
+                monthly_data = pd.DataFrame(month_array)
+                month_dict[last_month] = monthly_data
+            month_array = [row]
+            current_month = day_month
+            last_month = day_month_name
+    
+    if month_array:
+        monthly_data = pd.DataFrame(month_array)
+        month_dict[day_month_name] = monthly_data
+    
+    return month_dict
+
+def mean_calculator(all_monthly_data):
+    data_per_month = list(all_monthly_data.values())
+    name_of_months = list(all_monthly_data.keys())
+    monthly_average_price = []
+    index_mean = ["Mean Closing Price"]
+    
+    for i in data_per_month:
+        list_end_prices = i['Close']
+        monthly_average_price.append(np.mean(list_end_prices))
+    
+    avg_price = pd.DataFrame(data=monthly_average_price, index=name_of_months, columns=index_mean)
+    return avg_price
+
+if __name__ == "__main__":
+    main()

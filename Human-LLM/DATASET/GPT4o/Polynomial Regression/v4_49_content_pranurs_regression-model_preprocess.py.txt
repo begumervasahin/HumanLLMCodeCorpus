@@ -1,0 +1,73 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+def normalize(x, norm_type='min_max_normalization'):
+    """
+    Perform normalization on the given vector according to the specified type.
+    
+    Parameters:
+    x (array-like): The vector to be normalized.
+    norm_type (str): The type of normalization ('standardization' or 'min_max_normalization').
+                     Defaults to 'min_max_normalization'.
+                     
+    Returns:
+    array-like: The normalized vector.
+    """
+    if norm_type == 'standardization':
+        return (x - np.mean(x)) / np.std(x)
+    else:
+        return (x - np.min(x)) / (np.max(x) - np.min(x))
+
+def train_test_val_split(x1, x2, Y):
+    """
+    Perform a train/test/validation split on the given data in the ratio 0.8/0.1/0.1.
+    
+    Parameters:
+    x1 (array-like): Vector representing latitudes in data.
+    x2 (array-like): Vector representing longitudes in data.
+    Y (array-like): Vector representing the target variable altitude in data.
+    
+    Returns:
+    tuple: Splits of the data into train, test, and validation sets.
+           (x1_train, x1_test, x1_val, x2_train, x2_test, x2_val, Y_train, Y_test, Y_val)
+    """
+    x1 = np.reshape(x1, (x1.shape[0], 1))
+    x2 = np.reshape(x2, (x2.shape[0], 1))
+    X = np.concatenate((x1, x2), axis=1)
+    Y = np.reshape(Y, (Y.shape[0], 1))
+
+    X_train, X_temp, Y_train, Y_temp = train_test_split(X, Y, test_size=0.2, random_state=0)
+    X_test, X_val, Y_test, Y_val = train_test_split(X_temp, Y_temp, test_size=0.5, random_state=3)
+
+    x1_train = X_train[:, 0].reshape(-1, 1)
+    x1_test = X_test[:, 0].reshape(-1, 1)
+    x1_val = X_val[:, 0].reshape(-1, 1)
+    x2_train = X_train[:, 1].reshape(-1, 1)
+    x2_test = X_test[:, 1].reshape(-1, 1)
+    x2_val = X_val[:, 1].reshape(-1, 1)
+
+    return x1_train, x1_test, x1_val, x2_train, x2_test, x2_val, Y_train, Y_test, Y_val
+
+def generate_feature_matrix(x1, x2, degree):
+    """
+    Generate the feature matrix for a polynomial of the specified degree with two variables.
+    
+    Parameters:
+    x1 (array-like): Vector representing the first variable (e.g., latitudes).
+    x2 (array-like): Vector representing the second variable (e.g., longitudes).
+    degree (int): The degree of the polynomial.
+    
+    Returns:
+    array-like: The feature matrix for the specified degree.
+    """
+    X = np.concatenate((x1, x2), axis=1)
+    feature_matrix = np.ones((X.shape[0], 1))  # Start with a column of ones for the bias term
+
+    for d in range(1, degree + 1):
+        for i in range(d + 1):
+            feature = (x1 ** (d - i)) * (x2 ** i)
+            feature = feature.reshape(-1, 1)
+            feature_matrix = np.concatenate((feature_matrix, feature), axis=1)
+
+    return feature_matrix

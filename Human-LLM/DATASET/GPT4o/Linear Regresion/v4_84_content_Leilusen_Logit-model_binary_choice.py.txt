@@ -1,0 +1,118 @@
+import pandas as pd
+import numpy as np
+
+class BinaryChoiceModel:
+    def __init__(self, data=None, x_cols=None, y_col=None, learning_rate=0.000001, tolerance=1e-7):
+        self.learning_rate = learning_rate
+        self.tolerance = tolerance
+        self.data = data
+        self.n = len(data)
+        
+        # Prepare the feature matrix (adding a column of ones for the intercept) and target vector
+        self.x = np.c_[np.ones(self.n), self.data.loc[:, x_cols]]
+        self.y = np.expand_dims(np.array(self.data[y_col]), axis=1)
+        
+        # Estimate the model parameters
+        self.iterations, self.log_likelihood, self.weights = self.estimate_parameters(self.x, self.y)
+        
+        # Calculate standard errors of the coefficients
+        self.standard_errors = self.calculate_standard_errors(self.x, self.weights)
+        
+        # Calculate R-squared values
+        self.mcfadden_r_squared, self.nagelkerke_r_squared = self.calculate_r_squared()
+        
+        # Prepare the result DataFrame
+        self.result = self.prepare_results(x_cols)
+    
+    def sigmoid(self, x, weights):
+        """Compute the sigmoid function."""
+        pred = np.dot(x, weights)
+        return np.where(pred >= 0, 1 / (1 + np.exp(-pred)), np.exp(pred) / (1 + np.exp(pred)))
+    
+    def update_weights(self, probabilities, x, y, weights):
+        """Update weights using gradient ascent."""
+        gradient = np.dot(x.T, y - probabilities)
+        weights += self.learning_rate * gradient
+        return weights
+    
+    def compute_log_likelihood(self, probabilities, y):
+        """Compute the log-likelihood of the model."""
+        log_likelihood = (np.dot(y.T, np.log(probabilities + 1e-10)) + 
+                          np.dot((1 - y).T, np.log(1 - probabilities + 1e-10)))
+        return log_likelihood
+    
+    def estimate_parameters(self, x, y):
+        """Estimate the model parameters using gradient ascent."""
+        iterations = 1
+        weights = np.zeros((x.shape[1], 1))
+        probabilities = self.sigmoid(x, weights)
+        log_likelihood = self.compute_log_likelihood(probabilities, y)
+        
+        while True:
+            new_weights = self.update_weights(probabilities, x, y, weights)
+            new_probabilities = self.sigmoid(x, new_weights)
+            new_log_likelihood = self.compute_log_likelihood(new_probabilities, y)
+            
+            if log_likelihood >= new_log_likelihood:
+                break
+            
+            log_likelihood = new_log_likelihood
+            weights = new_weights
+            probabilities = new_probabilities
+            iterations += 1
+        
+        return iterations, log_likelihood, weights
+    
+    def calculate_standard_errors(self, x, weights):
+        """Calculate the standard errors of the estimated coefficients."""
+        w_diag = np.zeros((x.shape[0], x.shape[0]))
+        
+        for i in range(x.shape[0]):
+            pred = np.dot(weights.T, x[i])
+            w_diag[i, i] = np.where(pred >= 0, 
+                                    (1 / np.exp(-pred)) / (1 + 1 / np.exp(-pred)) ** 2,
+                                    np.exp(pred) / (1 + np.exp(pred)) ** 2)
+        
+        xt_wx_inv = np.linalg.solve(np.dot(x.T, np.dot(w_diag, x)), np.identity(x.shape[1]))
+        return [np.sqrt(xt_wx_inv[i, i]) for i in range(len(weights))]
+    
+    def calculate_r_squared(self):
+        """Calculate McFadden and Nagelkerke R-squared values."""
+        log_likelihood = self.log_likelihood
+        log_likelihood_intercept = self.compute_log_likelihood_intercept()
+        
+        mcfadden_r_squared = 1 - log_likelihood / log_likelihood_intercept
+        nagelkerke_r_squared = ((1 - np.exp(log_likelihood_intercept - log_likelihood) ** (2 / self.n)) /
+                                (1 - np.exp(log_likelihood_intercept) ** (2 / self.n)))
+        
+        return mcfadden_r_squared, nagelkerke_r_squared
+    
+    def compute_log_likelihood_intercept(self):
+        """Compute the log-likelihood for the intercept-only model."""
+        x_intercept_only = self.x[:, :1]
+        _, log_likelihood_intercept, _ = self.estimate_parameters(x_intercept_only, self.y)
+        return log_likelihood_intercept
+    
+    def prepare_results(self, x_cols):
+        """Prepare the results DataFrame with coefficients, standard errors, and z-values."""
+        index = ['const'] + x_cols
+        result = pd.DataFrame(0, index=index, columns=['Coefficient', 'Std. Error', 'Z-value'])
+        
+        for i, feature in enumerate(index):
+            z_value = self.weights[i, 0] / self.standard_errors[i]
+            result.loc[feature, 'Coefficient'] = round(self.weights[i, 0], 3)
+            result.loc[feature, 'Std. Error'] = round(self.standard_errors[i], 3)
+            result.loc[feature, 'Z-value'] = round(z_value, 3)
+        
+        return result
+    
+    def __repr__(self):
+        return (f"Regression results:\n\n{self.result}\n\n"
+                f"Log-likelihood: {round(self.log_likelihood[0, 0], 3)}\n\n"
+                f"McFadden R squared: {round(self.mcfadden_r_squared[0, 0], 3)}\n\n"
+                f"Nagelkerke R squared: {round(self.nagelkerke_r_squared[0, 0], 3)}")
+
+# Example usage:
+# data = pd.read_csv('your_data.csv')
+# model = BinaryChoiceModel(data=data, x_cols=['feature1', 'feature2'], y_col='target')
+# print(model)

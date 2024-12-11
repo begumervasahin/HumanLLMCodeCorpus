@@ -1,0 +1,135 @@
+class HTable:
+    def __init__(self, size):
+        """Initialize the hash table with a given size."""
+        self.size = size
+        self.buckets = [[] for _ in range(size)]
+
+    def hash(self, key):
+        """Compute the hash value for a given key."""
+        return hash(key) % self.size
+
+    def put(self, key, value):
+        """Insert or update a key-value pair in the hash table."""
+        index = self.hash(key)
+        for i, (k, v) in enumerate(self.buckets[index]):
+            if k == key:
+                self.buckets[index][i] = (key, value)
+                return
+        self.buckets[index].append((key, value))
+
+    def __str__(self):
+        """Return the string representation of the hash table."""
+        items = [f"{k}:{v}" for bucket in self.buckets for k, v in bucket]
+        return "{" + ", ".join(items) + "}"
+
+    def buckets_str(self):
+        """Return the string representation of the hash table buckets."""
+        result = []
+        for i, bucket in enumerate(self.buckets):
+            bucket_items = ", ".join(f"{k}:{v}" for k, v in bucket)
+            result.append(f"{i:04}->" + bucket_items)
+        return "\n".join(result)
+
+def htable_put(table, key, value):
+    """Helper function to insert or update a key-value pair in the hash table."""
+    table.put(key, value)
+
+def htable_str(table):
+    """Helper function to get the string representation of the hash table."""
+    return str(table)
+
+def htable_buckets_str(table):
+    """Helper function to get the string representation of the hash table buckets."""
+    return table.buckets_str()
+
+def test_empty():
+    """Test case for an empty hash table."""
+    table = HTable(5)
+    assert htable_str(table) == "{}"
+    assert htable_buckets_str(table) == """0000->
+0001->
+0002->
+0003->
+0004->
+"""
+
+def test_single():
+    """Test case for inserting a single key-value pair into the hash table."""
+    table = HTable(5)
+    htable_put(table, "parrt", 99)
+    assert htable_str(table) == "{parrt:99}"
+    assert htable_buckets_str(table) == """0000->
+0001->
+0002->
+0003->parrt:99
+0004->
+"""
+
+def test_singleon():
+    """Test case for inserting a single key-value pair with a set as the value."""
+    table = HTable(5)
+    htable_put(table, "parrt", {99})
+    assert htable_str(table) == "{parrt:{99}}"
+    assert htable_buckets_str(table) == """0000->
+0001->
+0002->
+0003->parrt:{99}
+0004->
+"""
+
+def test_int_to_int():
+    """Test case for inserting multiple integer key-value pairs into the hash table."""
+    table = HTable(5)
+    for i in range(1, 11):
+        htable_put(table, i, i)
+    s = htable_str(table)
+    assert s == "{5:5, 10:10, 1:1, 6:6, 2:2, 7:7, 3:3, 8:8, 4:4, 9:9}"
+    s = htable_buckets_str(table)
+    assert s == """0000->5:5, 10:10
+0001->1:1, 6:6
+0002->2:2, 7:7
+0003->3:3, 8:8
+0004->4:4, 9:9
+"""
+
+def test_str_to_str():
+    """Test case for inserting multiple string key-value pairs into the hash table."""
+    table = HTable(5)
+    htable_put(table, "a", "x")
+    htable_put(table, "b", "y")
+    htable_put(table, "c", "z")
+    htable_put(table, "f", "i")
+    htable_put(table, "g", "j")
+    htable_put(table, "k", "k")
+    s = htable_str(table)
+    assert s == "{a:x, f:i, k:k, b:y, g:j, c:z}", "found " + s
+    s = htable_buckets_str(table)
+    assert s == """0000->
+0001->
+0002->a:x, f:i, k:k
+0003->b:y, g:j
+0004->c:z
+"""
+
+def test_str_to_set():
+    """Test case for inserting multiple string keys with list values into the hash table."""
+    table = HTable(5)
+    htable_put(table, "parrt", [2, 99, 3942])
+    htable_put(table, "tombu", [6, 3, 1024, 99, 102342])
+    assert htable_str(table) == "{tombu:[6, 3, 1024, 99, 102342], parrt:[2, 99, 3942]}"
+    assert htable_buckets_str(table) == """0000->
+0001->tombu:[6, 3, 1024, 99, 102342]
+0002->
+0003->parrt:[2, 99, 3942]
+0004->
+"""
+
+# Running the tests
+if __name__ == "__main__":
+    test_empty()
+    test_single()
+    test_singleon()
+    test_int_to_int()
+    test_str_to_str()
+    test_str_to_set()
+    print("All tests passed.")

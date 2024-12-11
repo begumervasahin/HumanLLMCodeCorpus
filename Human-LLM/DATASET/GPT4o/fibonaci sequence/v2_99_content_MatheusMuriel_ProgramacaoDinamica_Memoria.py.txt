@@ -1,0 +1,71 @@
+class Cerebro:
+    def __init__(self, limite, taxa_de_limpeza):
+        """
+        Initialize the Cerebro class.
+
+        Args:
+            limite (int): The memory limit for the Cerebro instance.
+            taxa_de_limpeza (float): The cleaning rate for the Cerebro instance.
+        """
+        self.memoria = {}
+        self.usos = {}
+        self.limite = limite
+        self.taxa_de_limpeza = taxa_de_limpeza
+
+    def nova_memoria(self, nome, valor):
+        """
+        Add a new memory.
+
+        Args:
+            nome (str): The name of the memory.
+            valor (int): The value of the memory.
+        """
+        nome = str(nome)
+        valor = int(valor)
+        if len(self.memoria) >= self.limite:
+            self.limpar_memoria(nome)
+        self.memoria[nome] = valor
+        self.usos[nome] = 1
+
+    def get_lembranca(self, nome):
+        """
+        Retrieve a memory if it exists.
+
+        Args:
+            nome (str): The name of the memory.
+
+        Returns:
+            int: The value of the memory if it exists, otherwise -1.
+        """
+        if nome in self.memoria:
+            self.usos[nome] += 1
+            return self.memoria[nome]
+        else:
+            return -1
+
+    def limpar_memoria(self, iteracao_atual):
+        """
+        Clean the memory when the limit is reached.
+
+        Args:
+            iteracao_atual (str): The current iteration name.
+        """
+        print("Chamada de limpeza na iteração", iteracao_atual)
+        while len(self.memoria) > self.limite * self.taxa_de_limpeza:
+            menor_registro = min(self.usos.items(), key=lambda x: x[1])
+            self.memoria.pop(menor_registro[0])
+            self.usos.pop(menor_registro[0])
+
+if __name__ == "__main__":
+    # Example usage of the Cerebro class
+    cerebro = Cerebro(limite=5, taxa_de_limpeza=0.7)
+    cerebro.nova_memoria("1", 1)
+    cerebro.nova_memoria("2", 1)
+    cerebro.nova_memoria("3", 2)
+    cerebro.nova_memoria("4", 3)
+    cerebro.nova_memoria("5", 5)
+    print(cerebro.get_lembranca("1"))  # Output: 1
+    cerebro.nova_memoria("6", 8)
+    # This should trigger cleaning since the limit is exceeded
+    print(cerebro.get_lembranca("1"))  # Output: -1 if "1" was cleaned
+    print(cerebro.get_lembranca("6"))  # Output: 8

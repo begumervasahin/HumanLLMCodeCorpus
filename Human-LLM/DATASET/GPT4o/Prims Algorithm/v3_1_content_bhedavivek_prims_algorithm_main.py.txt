@@ -1,0 +1,105 @@
+import sys
+
+class Vertex:
+    def __init__(self, id, parent_id=0, distance=float('inf')):
+        self.id = id
+        self.position = 0
+        self.parent_id = parent_id
+        self.distance = distance
+
+class Graph:
+    def __init__(self, num_vertices):
+        self.adjacency_list = [[] for _ in range(num_vertices)]
+
+    def add_edge(self, u, v, w):
+        vertex = Vertex(v, u, w)
+        self.adjacency_list[u - 1].append(vertex)
+
+def insert_into_heap(vertex, heap, vertex_vector):
+    heap.append(vertex)
+    heap[0] = len(heap) - 1
+    heapify_up(heap, heap[0], vertex_vector)
+
+def heapify_up(heap, index, vertex_vector):
+    while index > 1:
+        parent_index = index // 2
+        if heap[parent_index].distance > heap[index].distance:
+            swap(heap, index, parent_index, vertex_vector)
+            index = parent_index
+        else:
+            break
+
+def extract_min_from_heap(heap, vertex_vector):
+    swap(heap, 1, heap[0], vertex_vector)
+    min_vertex = heap.pop()
+    heap[0] -= 1
+    if heap[0] > 1:
+        heapify_down(heap, 1, vertex_vector)
+    return min_vertex
+
+def decrease_key_in_heap(heap, index, new_distance, parent_id, vertex_vector):
+    if index > 0:
+        heap[index].distance = new_distance
+        heap[index].parent_id = parent_id
+        heapify_up(heap, index, vertex_vector)
+
+def heapify_down(heap, index, vertex_vector):
+    while 2 * index <= heap[0]:
+        child_index = 2 * index
+        if child_index < heap[0] and heap[child_index].distance > heap[child_index + 1].distance:
+            child_index += 1
+        if heap[child_index].distance < heap[index].distance:
+            swap(heap, index, child_index, vertex_vector)
+            index = child_index
+        else:
+            break
+
+def swap(heap, i, j, vertex_vector):
+    vertex_vector[heap[i].id - 1].position, vertex_vector[heap[j].id - 1].position = j, i
+    heap[i], heap[j] = heap[j], heap[i]
+
+def prim_mst(graph, start_vertex, vertex_vector):
+    heap = [0]
+    insert_into_heap(start_vertex, heap, vertex_vector)
+    mst = []
+
+    while len(heap) > 1:
+        current_vertex = extract_min_from_heap(heap, vertex_vector)
+        mst.append(current_vertex)
+
+        for neighbor in graph.adjacency_list[current_vertex.id - 1]:
+            if neighbor.distance < vertex_vector[neighbor.id - 1].distance:
+                vertex_vector[neighbor.id - 1].distance = neighbor.distance
+                decrease_key_in_heap(heap, vertex_vector[neighbor.id - 1].position, neighbor.distance, current_vertex.id, vertex_vector)
+
+    return mst
+
+def main(input_path, output_path):
+    with open(input_path, "r") as file:
+        lines = [line.strip() for line in file]
+
+    num_vertices = int(lines[0])
+    graph = Graph(num_vertices)
+
+    for line in lines[1:]:
+        u, v, w = map(int, line.split())
+        graph.add_edge(u, v, w)
+        graph.add_edge(v, u, w)
+
+    vertex_vector = [Vertex(i + 1) for i in range(num_vertices)]
+    start_vertex = Vertex(1)
+
+    mst = prim_mst(graph, start_vertex, vertex_vector)
+    total_distance = sum(vertex.distance for vertex in mst if vertex.id != 0 and vertex.parent_id != 0)
+    mst = sorted(mst, key=lambda v: (v.id, v.parent_id))
+
+    with open(output_path, "w") as writer:
+        writer.write(f"{total_distance}\n")
+        for vertex in mst:
+            if vertex.id != 0 and vertex.parent_id != 0:
+                writer.write(f"{vertex.id} {vertex.parent_id} {vertex.distance}\n")
+
+if __name__ == "__main__":
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
+    main(input_path, output_path)

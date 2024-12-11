@@ -1,0 +1,78 @@
+"""
+file: datagen.py
+python version: 3.5
+Authors: Kantha Girish, Akshay Karki
+description: This file contains functions to generate random string sequences for testing LCS
+algorithms.
+"""
+
+import numpy.random as rand
+import sys
+
+# Constants
+ACGT = "acgt"
+BITS = "01"
+
+def get_random_acgt(length, delta=None):
+    """
+    Generate random sequences of 'acgt' characters.
+
+    :param length: Length of the strings to generate.
+    :param delta: Number of characters that should differ between x and y. 0 < delta < length.
+    :return: Generated strings x and y which contain sequences of letters 'acgt'.
+    """
+    x = "".join([ACGT[rand.randint(0, len(ACGT))] for _ in range(length)])
+    
+    if delta is None:
+        return x, x
+    
+    delta_idx = rand.permutation(len(x))[:delta]
+    y = "".join(
+        [ACGT[rand.randint(0, len(ACGT))] if i in delta_idx else x[i] for i in range(len(x))]
+    )
+    
+    return x, y
+
+def get_random_bits(length, delta=None):
+    """
+    Generate random sequences of '01' characters.
+
+    :param length: Length of the string sequences to generate.
+    :param delta: Number of characters that should differ between x and y. 0 < delta < length.
+    :return: Generated strings x and y which contain sequences of bits '01'.
+    """
+    x = "".join([BITS[rand.randint(0, len(BITS))] for _ in range(length)])
+    
+    if delta is None:
+        return x, x
+    
+    delta_idx = rand.permutation(len(x))[:delta]
+    y = "".join(
+        [BITS[rand.randint(0, len(BITS))] if i in delta_idx else x[i] for i in range(len(x))]
+    )
+    
+    return x, y
+
+# Dictionary to map types to functions
+functions = {
+    "bits": get_random_bits,
+    "acgt": get_random_acgt
+}
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print(f"Usage: python {__file__} acgt/bits N")
+        print("acgt - generate sequences of acgt")
+        print("bits - generate sequences of binary digits")
+        print("N - length of the random strings to generate")
+    else:
+        seq_type = sys.argv[1]
+        size = int(sys.argv[2])
+        delta = round(size * 0.3)
+        
+        if seq_type in functions:
+            x, y = functions[seq_type](size, delta)
+            with open(f"{seq_type}.txt", 'w') as f:
+                f.write(f"{x}\n{y}")
+        else:
+            print("Unknown type. Please specify a valid type (acgt/bits).")

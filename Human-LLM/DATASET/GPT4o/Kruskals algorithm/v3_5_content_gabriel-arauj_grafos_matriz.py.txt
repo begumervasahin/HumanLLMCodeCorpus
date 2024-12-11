@@ -1,0 +1,138 @@
+import networkx as nx
+from random import randint
+
+class GraphManager:
+    def __init__(self):
+        """
+        Initialize the GraphManager with an empty adjacency matrix and vertex count.
+        """
+        self.vertex_count = 0
+        self.adjacency_matrix = []
+
+    def load_from_matrix(self, matrix):
+        """
+        Load the graph from a given adjacency matrix.
+        
+        Args:
+            matrix (list of list of int): The adjacency matrix representing the graph.
+        """
+        self.adjacency_matrix = matrix
+        self.vertex_count = len(matrix)
+
+    def to_graph(self):
+        """
+        Convert the adjacency matrix to a NetworkX graph.
+        
+        Returns:
+            networkx.Graph: A NetworkX graph representing the adjacency matrix.
+        """
+        graph = nx.Graph()
+        
+        for i in range(self.vertex_count):
+            graph.add_node(i)
+        
+        for i in range(self.vertex_count):
+            for j in range(i, self.vertex_count):  # Traverse only the upper triangle
+                weight = self.adjacency_matrix[i][j]
+                if weight > 0:
+                    graph.add_edge(i, j, weight=weight)
+        
+        return graph
+
+    def generate_random_graph(self):
+        """
+        Generate a random connected graph using the Watts-Strogatz model.
+        
+        Returns:
+            networkx.Graph: A random connected graph.
+        """
+        graph = self._generate_connected_watts_strogatz_graph()
+        self._initialize_adjacency_matrix(graph)
+        
+        return graph
+
+    def get_adjacency_matrix(self):
+        """
+        Retrieve the current adjacency matrix.
+        
+        Returns:
+            list of list of int: The adjacency matrix of the graph.
+        """
+        return self.adjacency_matrix
+
+    def clear_matrix(self):
+        """
+        Clear the adjacency matrix and reset the vertex count.
+        """
+        self.vertex_count = 0
+        self.adjacency_matrix = []
+
+    def generate_complete_graph(self, num_vertices):
+        """
+        Generate a complete graph with a specified number of vertices and random weights.
+        
+        Args:
+            num_vertices (int): The number of vertices in the graph.
+        
+        Returns:
+            networkx.Graph: A complete graph with random edge weights.
+        """
+        self.vertex_count = num_vertices
+        graph = nx.complete_graph(num_vertices)
+        
+        self._initialize_adjacency_matrix(graph)
+        
+        return graph
+
+    def _generate_connected_watts_strogatz_graph(self):
+        """
+        Generate a connected Watts-Strogatz graph.
+        
+        Returns:
+            networkx.Graph: A connected Watts-Strogatz graph.
+        """
+        num_nodes = self.vertex_count
+        k = randint(int(num_nodes / 2), num_nodes - 1)
+        return nx.connected_watts_strogatz_graph(num_nodes, k, 0.5, tries=100)
+
+    def _initialize_adjacency_matrix(self, graph):
+        """
+        Initialize the adjacency matrix from the given graph with random weights.
+        
+        Args:
+            graph (networkx.Graph): The graph to initialize the adjacency matrix from.
+        """
+        self.adjacency_matrix = [[0] * self.vertex_count for _ in range(self.vertex_count)]
+        
+        for v1, v2 in graph.edges():
+            weight = randint(1, 50)
+            self.adjacency_matrix[v1][v2] = weight
+            self.adjacency_matrix[v2][v1] = weight
+            graph.edges[v1, v2]['weight'] = weight
+
+# Example usage
+if __name__ == "__main__":
+    gm = GraphManager()
+
+    # Load a predefined adjacency matrix
+    matrix = [
+        [0, 2, 0, 6, 0],
+        [2, 0, 3, 8, 5],
+        [0, 3, 0, 0, 7],
+        [6, 8, 0, 0, 9],
+        [0, 5, 7, 9, 0]
+    ]
+    gm.load_from_matrix(matrix)
+    
+    # Convert to graph and print edges
+    graph_from_matrix = gm.to_graph()
+    print("Edges from loaded matrix:", graph_from_matrix.edges(data=True))
+
+    # Generate and print a random graph
+    gm.vertex_count = 10
+    random_graph = gm.generate_random_graph()
+    print("Random graph edges:", random_graph.edges(data=True))
+
+    # Generate and print a complete graph
+    complete_graph = gm.generate_complete_graph(5)
+    print("Complete graph edges:", complete_graph.edges(data=True))

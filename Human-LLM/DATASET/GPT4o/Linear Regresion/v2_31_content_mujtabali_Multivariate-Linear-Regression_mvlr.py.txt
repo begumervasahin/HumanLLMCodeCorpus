@@ -1,0 +1,133 @@
+import numpy as np
+import pandas as pd
+import sys
+import matplotlib.pyplot as plt
+
+def compute_cost(X, y, theta):
+    """
+    Compute the cost for linear regression.
+    """
+    errors = X @ theta.T - y
+    return np.sum(np.power(errors, 2)) / (2 * len(X))
+
+def gradient_descent(X, y, theta, iters, alpha):
+    """
+    Perform gradient descent to learn theta.
+    """
+    cost_history = np.zeros(iters)
+    
+    for i in range(iters):
+        errors = X @ theta.T - y
+        gradient = X.T @ errors
+        gradient = (alpha / len(X)) * gradient
+        theta = theta - gradient.T
+        cost_history[i] = compute_cost(X, y, theta)
+    
+    return cost_history, theta
+
+def get_training_test_split(data):
+    """
+    Split the data into training and test sets.
+    """
+    X = data.iloc[:, :-1]
+    ones = np.ones([X.shape[0], 1])
+    X = np.concatenate((ones, X), axis=1)
+    y = data.iloc[:, -1].values.reshape(-1, 1)
+    
+    train_size = round(len(X) * 0.8)
+    train_X = X[:train_size, :]
+    test_X = X[train_size:, :]
+    train_y = y[:train_size, :]
+    test_y = y[train_size:, :]
+    
+    return train_X, train_y, test_X, test_y
+
+def get_error(predicted_y, actual_y):
+    """
+    Compute the root mean squared error.
+    """
+    error = predicted_y - actual_y
+    return np.sqrt((error.T @ error) / len(actual_y))[0, 0]
+
+def compute_cost_with_regularization(X, y, theta, lamda):
+    """
+    Compute the cost with regularization.
+    """
+    cost = compute_cost(X, y, theta)
+    regularization_term = lamda * np.sum(np.power(theta[:, 1:], 2))
+    return cost + regularization_term
+
+def gradient_descent_with_regularization(X, y, theta, iters, alpha, lamda):
+    """
+    Perform gradient descent with regularization.
+    """
+    cost_history = np.zeros(iters)
+    regularization_term = 1 - lamda * (alpha / len(X))
+    regularization_matrix = np.concatenate((np.ones(1), np.ones(theta.shape[1] - 1) * regularization_term))
+    
+    for i in range(iters):
+        errors = X @ theta.T - y
+        gradient = X.T @ errors
+        gradient = (alpha / len(X)) * gradient
+        theta = theta * regularization_matrix
+        theta = theta - gradient.T
+        cost_history[i] = compute_cost_with_regularization(X, y, theta, lamda)
+    
+    return cost_history, theta
+
+def predict(X, theta):
+    """
+    Predict using learned theta.
+    """
+    return X @ theta.T
+
+if len(sys.argv) < 2:
+    print("Usage: python3 script.py (filename)")
+    sys.exit()
+
+filename = sys.argv[1]
+data = pd.read_csv(filename)
+data = (data - data.mean()) / data.std()
+
+train_X, train_y, test_X, test_y = get_training_test_split(data)
+theta = np.zeros([1, train_X.shape[1]], dtype=np.float64)
+iterations = 1000
+alphas = [0.0001, 0.001, 0.01, 0.1]
+min_error = float('inf')
+optimal_alpha = 0
+
+plt.figure()
+
+for alpha in alphas:
+    theta = np.zeros([1, train_X.shape[1]], dtype=np.float64)
+    cost_history, theta_optimized = gradient_descent(train_X, train_y, theta, iterations, alpha)
+    plt.plot(range(iterations), cost_history, label=f'alpha = {alpha}')
+    
+    predicted_y = predict(test_X, theta_optimized)
+    error = get_error(predicted_y, test_y)
+    
+    if error < min_error:
+        min_error = error
+        optimal_alpha = alpha
+    
+    print(f"For alpha = {alpha}")
+    print(f"Theta: {theta_optimized}")
+    print(f"RMSE = {error}")
+
+print("\n")
+lambdas = [0, 1, 10, 100]
+
+for lamda in lambdas:
+    cost_history, theta_regularized = gradient_descent_with_regularization(train_X, train_y, theta, iterations, optimal_alpha, lamda)
+    predicted_y = predict(test_X, theta_regularized)
+    
+    print(f"After regularization with lambda = {lamda}")
+    print(f"Theta: {theta_regularized}")
+    print(f"Error = {get_error(predicted_y, test_y)}")
+
+plt.title('Variation of Cost with Iterations for Different Values of Alpha')
+plt.xlabel('Iterations')
+plt.ylabel('Cost')
+plt.legend()
+plt.savefig('Cost_vs_iters.png')
+plt.show()

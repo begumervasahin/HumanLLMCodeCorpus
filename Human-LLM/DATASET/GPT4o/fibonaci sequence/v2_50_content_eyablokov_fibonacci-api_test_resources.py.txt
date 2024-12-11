@@ -1,0 +1,44 @@
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+def generate_fibonacci_sequence(n):
+    if n < 0:
+        raise ValueError("Size must be a positive integer.")
+    if n > 1000:
+        raise ValueError("Size must be a positive integer <= 1000.")
+    
+    sequence = [0, 1]
+    for _ in range(2, n):
+        sequence.append(sequence[-1] + sequence[-2])
+    
+    return sequence[:n]
+
+@app.route('/fibonacci/<value>', methods=['GET'])
+def fibonacci(value):
+    try:
+        n = int(value)
+        if n < 0:
+            return jsonify({"message": f"Size must be a positive integer. Actual {n}"}), 400
+        if n > 1000:
+            return jsonify({"message": f"Size must be a positive integer <= 1000. Actual {n}"}), 400
+        
+        sequence = generate_fibonacci_sequence(n)
+        return jsonify({"fibonacci": sequence}), 200
+    
+    except ValueError:
+        return jsonify({"message": f"Size must be a positive integer. Actual {value}"}), 400
+    
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"message": "Not found"}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({"message": "Method not allowed"}), 405
+
+if __name__ == '__main__':
+    app.run(debug=True)

@@ -1,0 +1,64 @@
+import codecs
+import sys
+from os import urandom
+
+# Constants
+DEFAULT_OUTPUT_FILE_NAME = 'keyfile.sec'
+NUM_OTP_KEYS = 500
+OTP_BIT_LEN = 2048
+OTP_BYTE_LEN = OTP_BIT_LEN // 8
+
+def get_bin_str(char):
+    """
+    Returns a length 8 binary string (without the leading '0b') derived from char.
+    
+    Parameters:
+    char (int): A byte value (0-255)
+    
+    Returns:
+    str: An 8-character long binary string
+    """
+    bit_str = bin(char)[2:]
+    return '0' * (8 - len(bit_str)) + bit_str
+
+def calculate_key_id_length(num_keys):
+    """
+    Calculates the length of the key ID based on the number of keys.
+    
+    Parameters:
+    num_keys (int): The number of OTP keys
+    
+    Returns:
+    int: The length of the key ID
+    """
+    key_id_len = 0
+    while num_keys:
+        num_keys //= 10
+        key_id_len += 1
+    return key_id_len
+
+def generate_otp_keys(output_file_name, num_keys, byte_len):
+    """
+    Generates OTP keys and writes them to the output file.
+    
+    Parameters:
+    output_file_name (str): The name of the output file
+    num_keys (int): The number of OTP keys to generate
+    byte_len (int): The length of each OTP key in bytes
+    """
+    key_id_len = calculate_key_id_length(num_keys)
+    format_str = f"{{:0{key_id_len}d}}"
+
+    with codecs.open(output_file_name, 'w', encoding='utf8') as output_file:
+        for key_count in range(num_keys):
+            key_id = format_str.format(key_count + 1)
+            key_bytes = urandom(byte_len)
+            key_bits = ''.join(get_bin_str(char) for char in key_bytes)
+            output_file.write(f"{key_id} {key_bits}")
+            if key_count < num_keys - 1:
+                output_file.write('\n')
+        print('Keys written to', output_file_name)
+
+if __name__ == '__main__':
+    output_file_name = sys.argv[1] if len(sys.argv) == 2 else DEFAULT_OUTPUT_FILE_NAME
+    generate_otp_keys(output_file_name, NUM_OTP_KEYS, OTP_BYTE_LEN)

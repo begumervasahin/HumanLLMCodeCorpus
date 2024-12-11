@@ -1,0 +1,58 @@
+import sys
+import time
+from visualize import plot_error, plot
+
+# Conversion constants
+KM_PER_MI = 1.60934
+MI_PER_KM = 0.621371
+
+def fib(n):
+    """Calculate the n-th Fibonacci number recursively."""
+    if n <= 0:
+        print("Invalid input")
+        return None
+    elif n == 1:
+        return 0
+    elif n == 2:
+        return 1
+    else:
+        return fib(n - 1) + fib(n - 2)
+
+def load_fib(file_path='fib.csv'):
+    """Load Fibonacci numbers from a CSV file into a list."""
+    fib_list = []
+    with open(file_path) as fp:
+        for cnt, line in enumerate(fp, start=1):
+            line = line.strip()
+            if line:
+                fib_list.append(float(line))
+            if cnt >= 1000:
+                break
+    return fib_list
+
+def km_to_mi(km):
+    """Convert kilometers to miles."""
+    return km * MI_PER_KM
+
+def mi_to_km(mi):
+    """Convert miles to kilometers."""
+    return mi * KM_PER_MI
+
+def calculate_loss(n, fib_list):
+    """Calculate the percentage loss between the actual and expected Fibonacci distances."""
+    mi = fib_list[n]
+    fib_km = fib_list[n + 1]
+    actual_km = mi_to_km(mi)
+    return abs((actual_km - fib_km) / actual_km) * 100
+
+def main():
+    fib_list = load_fib()
+    for i in range(1, len(fib_list) - 1):
+        error = calculate_loss(i, fib_list)
+        plot_error(i, error, 'Error', 'Fibonacci Index')
+        plot(i, fib_list[i], 'Fibonacci Index', 'Distance', 'Miles')
+        plot(i, fib_list[i + 1], 'Fibonacci Index', 'Distance', 'Kilometers')
+        time.sleep(0.2)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,146 @@
+import re
+
+class CurrencyExchange:
+    def __init__(self, from_currency, to_currency, exchange_rate):
+        """
+        Initialize a CurrencyExchange object.
+
+        Args:
+            from_currency (str): The source currency code.
+            to_currency (str): The target currency code.
+            exchange_rate (float): The exchange rate from source to target currency.
+        """
+        self._from_currency = from_currency
+        self._to_currency = to_currency
+        self._exchange_rate = float(exchange_rate)
+
+    def __str__(self):
+        """
+        Return the string representation of the CurrencyExchange object.
+
+        Returns:
+            str: A string representation of the object in the format 'from_currency -> to_currency: exchange_rate'.
+        """
+        return f"{self._from_currency} -> {self._to_currency}: {self._exchange_rate}"
+
+    def __repr__(self):
+        """
+        Return the official string representation of the CurrencyExchange object.
+
+        Returns:
+            str: The string representation of the object.
+        """
+        return self.__str__()
+
+    @property
+    def from_currency(self):
+        """
+        Return the source currency code.
+
+        Returns:
+            str: The source currency code.
+        """
+        return self._from_currency
+
+    @property
+    def to_currency(self):
+        """
+        Return the target currency code.
+
+        Returns:
+            str: The target currency code.
+        """
+        return self._to_currency
+
+    @property
+    def exchange_rate(self):
+        """
+        Return the exchange rate from source to target currency.
+
+        Returns:
+            float: The exchange rate.
+        """
+        return self._exchange_rate
+
+
+class CurrencyExchangeReader:
+    def __init__(self, iFileName):
+        self._fileName = iFileName
+
+    def parseCurrencyName(self, iNameLine):
+        """
+        Parse a line containing a currency code and name.
+
+        Args:
+            iNameLine (str): The line containing the currency code and name.
+
+        Returns:
+            list: A list containing the currency code and name.
+        """
+        currencyCodeNameList = iNameLine.split(" ", 1)
+        assert len(currencyCodeNameList) == 2
+        return currencyCodeNameList
+
+    def parseCurrencyExchangeRate(self, iRateLine):
+        """
+        Parse a line containing a currency exchange rate.
+
+        Args:
+            iRateLine (str): The line containing the currency exchange rate.
+
+        Returns:
+            CurrencyExchange: A CurrencyExchange object.
+        """
+        exchangeInfoList = iRateLine.split(" ", 2)
+        assert len(exchangeInfoList) == 3
+        return CurrencyExchange(*exchangeInfoList)
+
+    def readData(self):
+        """
+        Read and parse data from the file.
+
+        Returns:
+            tuple: A dictionary mapping currency codes to names and a list of CurrencyExchange objects.
+        """
+        currencyNameRegEx = re.compile(r"[A-Z]{3} [A-Z\(\)\.& \-]+")
+        currencyExchangeRateRegEx = re.compile(r"[A-Z]{3} [A-Z]{3} \d+(\.\d+)?")
+        currencyCodeNameMap = {}
+        currencyExchangeRateList = []
+
+        try:
+            with open(self._fileName, 'r') as fileHandle:
+                for line in fileHandle:
+                    line = line.rstrip("\n\r")
+                    if re.match(currencyExchangeRateRegEx, line):
+                        currencyExchangeRateList.append(self.parseCurrencyExchangeRate(line))
+                    elif re.match(currencyNameRegEx, line):
+                        currencyCode, currencyName = self.parseCurrencyName(line)
+                        currencyCodeNameMap[currencyCode] = currencyName
+                    else:
+                        raise Exception(f"Invalid line in file {self._fileName}: {line}")
+        except IOError as exception:
+            print(f"Cannot open file {self._fileName}: {exception}")
+
+        return currencyCodeNameMap, currencyExchangeRateList
+
+
+def main():
+    """
+    Main function to demonstrate the usage of the CurrencyExchangeReader class.
+    """
+    fileName = "currency_data.txt"  # Replace with your file name
+    reader = CurrencyExchangeReader(fileName)
+
+    currencyCodeNameMap, currencyExchangeRateList = reader.readData()
+
+    print("Currency Codes and Names:")
+    for code, name in currencyCodeNameMap.items():
+        print(f"{code}: {name}")
+
+    print("\nCurrency Exchange Rates:")
+    for exchange in currencyExchangeRateList:
+        print(exchange)
+
+
+if __name__ == "__main__":
+    main()

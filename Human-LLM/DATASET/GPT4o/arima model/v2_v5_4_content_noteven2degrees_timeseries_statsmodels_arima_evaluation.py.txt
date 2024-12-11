@@ -1,0 +1,70 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error
+
+# Setting plot size
+plt.rcParams['figure.figsize'] = 12, 6
+
+# Load the dataset
+data = pd.read_csv('./data/AirPassengers.csv', parse_dates=['Month'], index_col='Month')
+print("First few rows of data:\n", data.head())
+
+# Decompose the time series into trend, seasonal, and residual components
+decomposition = seasonal_decompose(data['Passengers'], two_sided=False)
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid
+
+# Drop missing values in the residual component
+residual.dropna(inplace=True)
+
+# Split the residual data into training and testing sets (80% training, 20% testing)
+train_size = int(len(residual) * 0.8)
+train, test = residual[:train_size], residual[train_size:]
+
+# Plot the training and testing sets
+plt.plot(train, color='blue', label='Training set')
+plt.plot(test, color='green', label='Testing set')
+plt.legend()
+plt.title('Training and Testing Sets')
+plt.show()
+
+# Function to evaluate ARIMA models
+def evaluate_ARIMA(order, forecast_only=True):
+    history = [x for x in train]
+    predictions = []
+
+    for t in range(len(test)):
+        model = ARIMA(history, order=order)
+        model_fit = model.fit(disp=0)
+        if forecast_only:
+            yhat = model_fit.forecast()[0]
+        else:
+            yhat = model_fit.predict(start=len(history), end=len(history))[0]
+        predictions.append(yhat)
+        history.append(test[t])
+
+    mse = mean_squared_error(test, predictions)
+    return predictions, mse
+
+# List of ARIMA orders to evaluate
+orders = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0, 1), (1, 1, 1)]
+mse_results = {}
+
+# Evaluate each ARIMA model order
+for order in orders:
+    predictions, mse = evaluate_ARIMA(order)
+    mse_results[order] = mse
+    
+    # Plot predictions against actual test data
+    plt.plot(test, label='Ground Truth')
+    plt.plot(predictions, label=f'ARIMA{order}', alpha=0.7)
+    plt.legend()
+    plt.title(f'ARIMA{order} Predictions')
+    plt.show()
+
+# Display the Mean Squared Error for each ARIMA model
+for order, mse in mse_results.items():
+    print(f'MSE for ARIMA{order}: {mse:.4f}')
