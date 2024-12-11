@@ -1,0 +1,16 @@
+
+class class1:
+    def fonk1(self, b1, b2, b3, b4):
+        self.b1 = b1
+        self.b2 = b2
+        self.b3 = b3
+        self.b4 = b4
+    def fonk2(self, other_node):
+        return (self.b1 = = other_node.b1 and
+                self.b2 = = other_node.b2 and
+                self.b3 = = other_node.b3)
+b5 = class1(1, 2, 3, [4, 5, 6])
+b6 = class1(1, 2, 3, [4, 5, 6])
+b7 = class1(4, 5, 6, [7, 8, 9])
+print("Is b5 equal to b6?", b5 = = b6)
+print("Is b5 equal to b7?", b5 = = b7)

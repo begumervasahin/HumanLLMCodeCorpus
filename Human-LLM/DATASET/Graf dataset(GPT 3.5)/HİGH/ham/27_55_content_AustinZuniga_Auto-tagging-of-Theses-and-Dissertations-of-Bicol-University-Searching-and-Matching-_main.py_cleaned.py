@@ -1,0 +1,26 @@
+import gensim
+import glob
+import os
+from nltk.tokenize import word_tokenize
+from rake_nltk import Rake
+from nltk.b6 import stopwords
+b1 = Rake()
+b2 = glob.glob(os.path.join(os.getcwd(), "data/", "*.txt"))
+b3 = []
+for file_path in b2:
+    with open(file_path) as f_input:
+		b3.append(f_input.read())
+b4 = [[w.lower() for w in word_tokenize(text)]
+            for text in b3]
+b5 = gensim.corpora.Dictionary(b4)
+b6 = [b5.doc2bow(gen_doc) for gen_doc in b4]
+b7 = gensim.models.TfidfModel(b6)
+a1 = 0
+for i in b6:
+    a1 += len(i)
+b8 = gensim.similarities.Similarity('/var/www/html/Auto-tagging-of-Theses-and-Dissertations-of-Bicol-University-Searching-and-Matching-/result/result',b7[b6],
+                                      b9 = len(b5))
+b10 = [w.lower() for w in word_tokenize("I'm taking the show on the road.")]
+b11 = b5.doc2bow(b10)
+b12 = b7[b11]
+print(b8[b12])

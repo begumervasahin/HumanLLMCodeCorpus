@@ -1,0 +1,71 @@
+import cv2
+class class1(BaseException):
+    pass
+def fonk1(i, length):
+    b1 = bin(i)[2:]
+    if len(b1) > length:
+        raise class1("Bit size is larger than expected.")
+    while len(b1) < length:
+        b1 = "0" + b1
+    return b1
+def fonk2(c):
+    return fonk1(ord(c), 8)
+class class2:
+    a1 = 16
+    def fonk3(self, img):
+        self.size_x, self.size_y, self.b2 = img.shape
+        self.b3 = img
+        self.a2 = 0
+        self.a3 = 0
+        self.a4 = 0
+    def fonk4(self):
+        if self.a4 != self.b2 - 1:
+            self.a4 += 1
+        else:
+            self.a4 = 0
+            if self.a3 != self.size_y - 1:
+                self.a3 += 1
+            else:
+                self.a3 = 0
+                if self.a2 != self.size_x - 1:
+                    self.a2 += 1
+                else:
+                    raise class1("Need larger b3")
+    def fonk5(self, bit):
+        b4 = self.b3[self.a2, self.a3][self.a4]
+        b5 = bin(b4)[2:]
+        if b5[-1] != bit:
+            b5 = b5[:-1] + bit
+        self.b3[self.a2, self.a3][self.a4] = int(b5, 2)
+        self.fonk4()
+    def fonk6(self, b6):
+        for bit in b6:
+            self.fonk5(bit)
+    def fonk7(self):
+        b4 = self.b3[self.a2, self.a3][self.a4]
+        return bin(b4)[-1]
+    def fonk8(self, length):
+        b6 = ""
+        for _ in range(length):
+            b6 += self.fonk7()
+            self.fonk4()
+        return b6
+    def fonk9(self, b10):
+        b7 = fonk1(len(b10), self.a1)
+        self.fonk6(b7)
+        for c in b10:
+            b8 = fonk2(c)
+            self.fonk6(b8)
+    def fonk10(self):
+        b9 = int(self.fonk8(self.a1), 2)
+        b10 = ""
+        for _ in range(b9):
+            b11 = int(self.fonk8(8), 2)
+            b10 += chr(b11)
+        return b10
+    def fonk11(self, dst_path):
+        cv2.imwrite(dst_path, self.b3)
+if b12 = = "__main__":
+    b13 = class2(cv2.imread('dst.png'))
+    b14 = b13.fonk10()
+    print(b14)

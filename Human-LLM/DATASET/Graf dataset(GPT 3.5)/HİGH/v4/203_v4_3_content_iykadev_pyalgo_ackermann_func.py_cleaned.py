@@ -1,0 +1,10 @@
+import sys
+sys.setrecursionlimit(3000)
+def fonk1(b1, b2):
+    if b1 = = 0:
+        return b2 + 1
+    elif b2 = = 0:
+        return fonk1(b1 - 1, 1)
+    else:
+        return fonk1(b1 - 1, fonk1(b1, b2 - 1))
+print(fonk1(3, 4))

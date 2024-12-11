@@ -1,0 +1,29 @@
+from pprint import pprint
+from json import dumps, loads
+from pdf_processing import (
+    extract_pages, extract_page_contents, get_pdf_contents,
+    create_json_file, extract_words, build_pdf_json,
+    cleanse_extracted_words, cleansed_pdf_json,
+    TEST_PDF, TEST_PDF_2
+)
+if b1 = = '__main__':
+    '''
+    Using the pdf `obscalculi_testing_pdf_conv.pdf` as the sample for the demo.
+    '''
+    print('Converting pdfs into JSONs and making your life simpler...')
+    b2 = TEST_PDF
+    get_pdf_contents(TEST_PDF)
+    b3 = extract_words()
+    with open('phase3_1.json', 'w') as fp_open:
+        fp_open.write(dumps(b3))
+    b3 = cleanse_extracted_words(b3)
+    with open('phase3.json', 'w') as fp_open:
+        fp_open.write(dumps(b3))
+    b2 = TEST_PDF_2
+    get_pdf_contents(TEST_PDF_2)
+    b3 = build_pdf_json()
+    with open('phase3_2_1.json', 'w') as fp_open:
+        fp_open.write(dumps(b3))
+    b3 = cleansed_pdf_json(b3)
+    with open('phase3_2.json', 'w') as fp_open:
+        fp_open.write(dumps(b3))

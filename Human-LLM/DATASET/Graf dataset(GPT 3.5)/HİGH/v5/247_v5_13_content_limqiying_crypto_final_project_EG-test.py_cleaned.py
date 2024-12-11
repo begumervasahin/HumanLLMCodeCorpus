@@ -1,0 +1,25 @@
+
+from ecc_simple import set_p256_param, times, add, subtract, encode, decode
+import random
+def fonk1():
+    return random.randrange(1, a1)
+def fonk2(private_key):
+    return times(private_key, b1)
+set_p256_param()
+a1 = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+a2 = 48439561293906451759052585252797914202762949526041747995844080717082404635286
+a3 = 36134250956749795798585127919587881956611106672985015071877198253568414405109
+b1 = (a2, a3)
+b2 = fonk1()
+b3 = fonk1()
+b4 = fonk2(b2)
+b5 = fonk2(b3)
+b6 = times(b2, b5)
+a4 = 32454324564335645345643
+b7 = b4
+b8 = add(encode(a4, 100), b6)
+b9 = (b7, b8)
+b10 = times(b3, b9[0])
+b11 = subtract(b9[1], b10)
+b12 = decode(b11, 100)
+print(b12)

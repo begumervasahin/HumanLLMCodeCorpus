@@ -1,0 +1,60 @@
+import sys
+from PyQt5 import QtCore, QtGui, QtWidgets
+class class1(object):
+    def fonk1(self, Form):
+        Form.setObjectName("Form")
+        Form.resize(1069, 719)
+        self.fonk2(Form)
+        self.fonk3(Form)
+        self.fonk4(Form)
+        self.fonk5(Form)
+        QtCore.QMetaObject.connectSlotsByName(Form)
+    def fonk2(self, Form):
+        self.b1 = QtWidgets.QGroupBox(Form)
+        self.b1.setGeometry(QtCore.QRect(20, 30, 311, 181))
+        self.b1.setTitle("Encode String")
+        self.b2 = QtWidgets.QPlainTextEdit(self.b1)
+        self.b2.setGeometry(QtCore.QRect(10, 30, 171, 141))
+        self.b3 = QtWidgets.QPushButton(self.b1)
+        self.b3.setGeometry(QtCore.QRect(180, 50, 113, 32))
+        self.b3.setText("Encode")
+        self.b4 = QtWidgets.QPushButton(self.b1)
+        self.b4.setGeometry(QtCore.QRect(180, 120, 113, 32))
+        self.b4.setText("Reset")
+    def fonk3(self, Form):
+        self.b5 = QtWidgets.QGroupBox(Form)
+        self.b5.setGeometry(QtCore.QRect(20, 220, 311, 471))
+        self.b5.setTitle("Decode String")
+        self.b6 = QtWidgets.QPlainTextEdit(self.b5)
+        self.b6.setGeometry(QtCore.QRect(10, 40, 281, 41))
+        self.b7 = QtWidgets.QPushButton(self.b5)
+        self.b7.setGeometry(QtCore.QRect(90, 100, 113, 32))
+        self.b7.setText("Decode")
+        self.b8 = QtWidgets.QPlainTextEdit(self.b5)
+        self.b8.setGeometry(QtCore.QRect(10, 140, 281, 51))
+    def fonk4(self, Form):
+        self.b9 = QtWidgets.QGroupBox(Form)
+        self.b9.setGeometry(QtCore.QRect(340, 40, 681, 641))
+        self.b9.setTitle("Encode Table")
+        self.b10 = QtWidgets.QTableWidget(self.b9)
+        self.b10.setGeometry(QtCore.QRect(40, 210, 211, 241))
+        self.b10.setColumnCount(2)
+        self.b10.setRowCount(0)
+        b11 = QtWidgets.QTableWidgetItem()
+        b11.setText("Key")
+        self.b10.setHorizontalHeaderItem(0, b11)
+        b11 = QtWidgets.QTableWidgetItem()
+        b11.setText("Code")
+        self.b10.setHorizontalHeaderItem(1, b11)
+    def fonk5(self, Form):
+        Form.setWindowTitle("Form")
+class class2(QtWidgets.QWidget):
+    def fonk6(self):
+        super().fonk6()
+        self.b12 = class1()
+        self.b12.fonk1(self)
+if b13 = = "__main__":
+    b14 = QtWidgets.QApplication(sys.argv)
+    b15 = class2()
+    b15.show()
+    sys.exit(b14.exec_())

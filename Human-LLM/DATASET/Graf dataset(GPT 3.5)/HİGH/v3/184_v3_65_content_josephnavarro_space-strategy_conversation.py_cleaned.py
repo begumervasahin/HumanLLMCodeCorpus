@@ -1,0 +1,28 @@
+from text import Text
+class class1:
+    def fonk1(self, strings, b1):
+        self.b1 = b1
+        self.b2 = []
+        b3 = []
+        a1 = 0
+        for b5 in strings:
+            b3.append(Text(b5, b4 = True))
+            a1 += 1
+            if a1 >= 3 or b5 = = strings[-1]:
+                b6 = 3 - len(b3)
+                for _ in range(b6):
+                    b3.append(Text('', b4 = True))
+                self.b2.append(b3)
+                b3 = []
+                a1 = 0
+        self.b7 = False
+        self.a2 = 0
+    def fonk2(self, surface, b1 = (0, 0)):
+        a3 = 0
+        if self.b2:
+            for text in self.b2[self.a2]:
+                text.fonk2(surface, (b1[0], b1[1] + a3 * 16))
+                if text.a2 < len(text.text):
+                    break
+                else:
+                    a3 += 1

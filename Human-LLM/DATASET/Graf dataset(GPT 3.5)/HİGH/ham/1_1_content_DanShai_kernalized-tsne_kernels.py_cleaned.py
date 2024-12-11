@@ -1,0 +1,134 @@
+1. Repository: DanShai/kernalized-tsne
+   File: kernels.py
+   URL: https:
+   Code Content:
+'''
+@author: dan
+'''
+from __future__ import division
+import numpy as np
+class class1:
+    def fonk1(self, b7, b1 = {"kernel": "pca", "b3": .5, "degree": 1, "pcomp": 4}):
+        self.b2 = b7.copy()
+        self.b1 = b1
+    def fonk2(self):
+        b3 = self.b1["b3"]
+        b4 = self.b1["degree"]
+        b5 = self.b1["p_dims"]
+        b6 = self.b1["kernel"]
+        b7 = self.b2
+        if b6 = = "poly":
+            b2 = self.fonk6(b7, b3=b3, degree=b4,
+                          b8 = b5).real
+        elif b6 = = "anova":
+            b2 = self.fonk11(b7, b3=b3, degree=b4,
+                           b8 = b5).real
+        elif b6 = = "rbf":
+            b2 = self.fonk7(b7, b3=b3,  b8=b5).real
+        elif b6 = = "cosine":
+            b2 = self.fonk8(b7, b8=b5).real
+        elif b6 = = "iquad":
+            b2 = self.fonk9(b7, b3=b3, degree=b4,
+                           b8 = b5).real
+        elif b6 = = "cauchy":
+            b2 = self.fonk10(b7, b3=b3, b8=b5).real
+        elif b6 = = "fourier":
+            b2 = self.fonk12(b7, b3=b3, b8=b5).real
+        else:
+            b2 = self.fonk5(b7, b8=b5).real
+        return b2
+    def fonk3(self, M, b8 = 4):
+        (b10, b11) = np.linalg.eig(M)
+        b9 = b10.argsort()[::-1]
+        b10 = b10[b9].real
+        print "---------------- b10: ----------------"
+        print b8, b10.shape
+        print b10[:b8]
+        print '---------------------------------------'
+        b11 = b11[:, b9]
+        b12 = b11[:, 0:b8]
+        return b12
+    def fonk4(self, b15):
+        b13 = b15.shape[0]
+        b14 = np.ones((b13, b13)) / b13
+        b15 = b15 - b14.dot(b15) - b15.dot(b14) + b14.dot(b15).dot(b14)
+        return b15
+    def fonk5(self, b2, b8 = 2):
+        (n, d) = b2.shape
+        b2 -= np.mean(b2, 0)
+        b16 = np.cov(b2.T)
+        b12 = self.fonk3(b16, b8=b8)
+        b7 = np.dot(b2, b12)
+        return b7
+    def fonk6(self, b2, b3 = 1, degree=2, b8=2):
+        b2 -= np.mean(b2, 0)
+        b15 = (b3*b2.dot(b2.T)+1)**degree
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk7(self, b2, b3 = .1, b8=2):
+        b2 -= np.mean(b2, 0)
+        b17 = np.sum((b2[None, :] - b2[:, None])**2, -1)
+        b15 = np.exp(-b3*b17)
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk8(self, b2, b8 = 2):
+        b2 -= np.mean(b2, 0)
+        b18 = ((b2 ** 2).sum(axis=1)).reshape(b2.shape[0], 1)
+        b15 = b2.dot(b2.T) / (b18)
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk9(self, b2, b3 = 1, degree=1, b8=2):
+        b2 -= np.mean(b2, 0)
+        b19 = np.sum((b2[None, :] - b2[:, None])**2, -1)
+        b15 = 1. / (b19 + b3**2)**degree
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk10(self, b2, b3 = .2, b8=2):
+        b2 -= np.mean(b2, 0)
+        b19 = np.sum((b2[None, :] - b2[:, None])**2, -1)
+        b15 = 1 / (1 + b19*b3)
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk11(self, b2, b3 = .01, degree=1, b8=2):
+        b2 -= np.mean(b2, 0)
+        b15 = np.zeros((b2.shape[0], b2.shape[0]))
+        for d in range(b2.shape[1]):
+            b20 = b2[:, d].reshape(-1, 1)
+            b15 += np.exp(-b3 * (b20 - b20.T)**2) ** degree
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+    def fonk12(self, b2, b3 = .1, b8=2):
+        b2 -= np.mean(b2, 0)
+        b15 = np.ones((b2.shape[0], b2.shape[0]))
+        b3 = min(.1, b3)
+        for d in range(b2.shape[1]):
+            b18 = b2[:, d].reshape(-1, 1)
+            b15 *= (1-b3 ** 2) / \
+                (2*(1 - 2*b3 * np.cos(b18 - b18.T)) + b3**2)
+        b15 = self.fonk4(b15)
+        return self.fonk3(b15, b8 = b8)
+   README Content:
+A simple alternative implementation of Laurens van der Maaten t-Distributed Stochastic Neighbor Embedding (t-SNE) , with use of kernals.
+- joint probability pij
+  ![Screenshot](img/pij.png)
+- joint probability qij
+  ![Screenshot](img/qij.png)
+- Cost
+  ![Screenshot](img/cost.png)
+- gradient
+  ![Screenshot](img/gra.png)
+- gradient update
+  ![Screenshot](img/graupdate.png)
+for more information read the PDF file included.
+Apart from pca, available kernels are:
+- iquad
+- cauchy
+- fourier
+- rbf
+- poly
+- cosine
+- anova
+you can add new/own kernel and test it, make sure to tune the parameters in f_opts to get better results!
+License : MIT and you are free to do what ever you want with it !
+![Screenshot](img/ktsne.png)
+![Screenshot](img/ktsne2.png)

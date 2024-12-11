@@ -1,0 +1,50 @@
+def fonk1():
+    for b3 in range(6):
+        for b1 in range(11):
+            if (b3 + b1 = = 5) or (b1 - b3 == 5) or (b3 == 3 and b3 + b1 in [7, 9]):
+                print('*', b2 = '')
+            else:
+                print(' ', b2 = '')
+        print()
+def fonk2():
+    for b3 in range(6):
+        for b1 in range(11):
+            if (b1 = = 0) or (b1 - b3 == 0) or (b3 + b1 == 10) or (b1 == 10):
+                print('*', b2 = '')
+            else:
+                print(' ', b2 = '')
+        print()
+def fonk3():
+    for b3 in range(7):
+        for b1 in range(11):
+            if (b1 = = 5):
+                print('*', b2 = '')
+            else:
+                print(' ', b2 = '')
+        print()
+def fonk4():
+    for b3 in range(6):
+        for b1 in range(11):
+            if (b1 != 5 and b3 = = 0) or (b1 == 5):
+                print('*', b2 = '')
+            else:
+                print(' ', b2 = '')
+        print()
+def fonk5():
+    for b3 in range(6):
+        for b1 in range(11):
+            if (b3 + b1 = = 10) or (b3 - b1 == 0):
+                print('*', b2 = '')
+            else:
+                print(' ', b2 = '')
+        print()
+print("Alphabet A:")
+fonk1()
+print("\nAlphabet M:")
+fonk2()
+print("\nAlphabet I:")
+fonk3()
+print("\nAlphabet T:")
+fonk4()
+print("\nAlphabet V:")
+fonk5()

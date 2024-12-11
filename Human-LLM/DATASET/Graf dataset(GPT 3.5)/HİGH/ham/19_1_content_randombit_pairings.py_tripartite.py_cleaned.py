@@ -1,0 +1,17 @@
+import random
+import bn256
+b1 = random.randrange(2, bn256.order)
+b2 = random.randrange(2, bn256.order)
+b3 = random.randrange(2, bn256.order)
+b4 = bn256.g1_scalar_base_mult(b1)
+b5 = bn256.g1_scalar_base_mult(b2)
+b6 = bn256.g1_scalar_base_mult(b3)
+b7 = bn256.g2_scalar_base_mult(b1)
+b8 = bn256.g2_scalar_base_mult(b2)
+b9 = bn256.g2_scalar_base_mult(b3)
+b10 = bn256.gt_scalar_mult(bn256.optimal_ate(b8, b6), b1)
+b11 = bn256.gt_scalar_mult(bn256.optimal_ate(b9, b4), b2)
+b12 = bn256.gt_scalar_mult(bn256.optimal_ate(b7, b5), b3)
+print(bn256.gt_hash(b10))
+print(bn256.gt_hash(b11))
+print(bn256.gt_hash(b12))

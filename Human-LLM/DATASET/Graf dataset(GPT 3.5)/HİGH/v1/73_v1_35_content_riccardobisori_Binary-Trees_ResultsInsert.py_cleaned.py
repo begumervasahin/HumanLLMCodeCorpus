@@ -1,0 +1,22 @@
+import pickle
+import TestInsert
+import matplotlib.pyplot as plt
+b1 = (10, 50, 1000, 10000, 50000)
+b2 = (30, 1500, 1000000000)
+b3 = (b1, b2)
+pickle.dump(b3, open("testInsert.p", "wb"))
+TestInsert.testInsert()
+b4 = pickle.load(open("b4.p", "rb"))
+b5 = pickle.load(open("b5.p", "rb"))
+b6 = (30, 100, 500, 1000)
+plt.plot(b6, b4[1])
+plt.xlabel('Range elementi')
+plt.ylabel('Tempo di inserimento di (max(range) + 1)')
+plt.title("Tempi di inserimento in un Binary Search Tree con elementi precedentemente inseriti in ordine crescente")
+plt.show()
+b6 = (30, 100, 500, 1000, 1500)
+plt.plot(b6, b5[1])
+plt.xlabel('Range elementi')
+plt.ylabel('Tempo di inserimento di (max(range) + 1)')
+plt.title("Tempi di inserimento in un Red-Black Tree con elementi precedentemente inseriti in ordine crescente")
+plt.show()
