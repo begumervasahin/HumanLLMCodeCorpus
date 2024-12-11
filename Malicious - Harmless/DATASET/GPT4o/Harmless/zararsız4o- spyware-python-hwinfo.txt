@@ -1,0 +1,80 @@
+import platform
+import psutil
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+
+def gather_system_info():
+    system_info = {
+        'Platform': platform.system(),
+        'Platform Release': platform.release(),
+        'Platform Version': platform.version(),
+        'Architecture': platform.architecture(),
+        'Hostname': platform.node(),
+        'IP Address': psutil.net_if_addrs()['eth0'][0].address,
+        'MAC Address': psutil.net_if_addrs()['eth0'][0].mac,
+        'Processor': platform.processor(),
+        'RAM': f"{psutil.virtual_memory().total / (1024 ** 3)} GB",
+        'Disk': f"{psutil.disk_usage('/').total / (1024 ** 3)} GB",
+    }
+    
+    return system_info
+
+def write_info_to_file(info, filename='system_info.txt'):
+    with open(filename, 'w') as file:
+        for key, value in info.items():
+            file.write(f"{key}: {value}\n")
+
+def send_email(subject, body, to_email, from_email, from_password, attachment_filename):
+    # Create the email
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    
+    # Attach the body with the msg instance
+    msg.attach(MIMEText(body, 'plain'))
+    
+    # Open the file to be sent
+    attachment = open(attachment_filename, "rb")
+    
+    # Instance of MIMEBase and named as p
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f"attachment; filename= {attachment_filename}")
+    
+    # Attach the instance 'part' to instance 'msg'
+    msg.attach(part)
+    
+    # Create SMTP session for sending the mail
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587) # Use gmail with port
+        server.starttls() # Enable security
+        server.login(from_email, from_password) # Login with mail_id and password
+        text = msg.as_string()
+        server.sendmail(from_email, to_email, text)
+        server.quit()
+        print(f"Email sent successfully to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+if __name__ == "__main__":
+    # Gather system information
+    info = gather_system_info()
+    
+    # Write system information to a file
+    filename = 'system_info.txt'
+    write_info_to_file(info, filename)
+    
+    # Email details
+    subject = "System Information Report"
+    body = "Please find the attached system information report."
+    to_email = "recipient@example.com"
+    from_email = "your_email@example.com"
+    from_password = "your_email_password"
+    
+    # Send the email with the attachment
+    send_email(subject, body, to_email, from_email, from_password, filename)

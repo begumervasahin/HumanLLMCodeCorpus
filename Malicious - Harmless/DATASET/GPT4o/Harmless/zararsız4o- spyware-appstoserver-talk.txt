@@ -1,0 +1,45 @@
+import pkg_resources
+import subprocess
+import requests
+
+def list_installed_packages():
+    packages = sorted([(d.project_name, d.version) for d in pkg_resources.working_set])
+    return packages
+
+def get_system_info():
+    uname = subprocess.run(['uname', '-a'], capture_output=True, text=True)
+    return uname.stdout.strip()
+
+def get_weather_data(city, api_key):
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+def main():
+    # List installed packages
+    print("Installed Packages:")
+    packages = list_installed_packages()
+    for package in packages:
+        print(f"{package[0]}=={package[1]}")
+    
+    # Get system information
+    print("\nSystem Information:")
+    system_info = get_system_info()
+    print(system_info)
+    
+    # Get weather data
+    city = "London"
+    api_key = "your_openweather_api_key"  # Replace with your actual OpenWeather API key
+    print(f"\nCurrent Weather in {city}:")
+    weather_data = get_weather_data(city, api_key)
+    if weather_data:
+        print(f"Temperature: {weather_data['main']['temp']}°C")
+        print(f"Weather: {weather_data['weather'][0]['description']}")
+    else:
+        print("Failed to retrieve weather data")
+
+if __name__ == "__main__":
+    main()

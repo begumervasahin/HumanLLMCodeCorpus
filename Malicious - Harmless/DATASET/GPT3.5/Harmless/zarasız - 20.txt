@@ -1,0 +1,42 @@
+import pyshark
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def capture_packets(interface, packet_count):
+    print(f"Capturing {packet_count} packets on interface {interface}")
+    capture = pyshark.LiveCapture(interface=interface, display_filter='http', only_summaries=True)
+    packets = []
+    for packet in capture.sniff_continuously(packet_count=packet_count):
+        packets.append(packet)
+    return packets
+
+def send_email(sender_email, sender_password, recipient_email, subject, body):
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    server = smtplib.SMTP('smtp.example.com', 587)
+    server.starttls()
+    server.login(sender_email, sender_password)
+    text = msg.as_string()
+    server.sendmail(sender_email, recipient_email, text)
+    server.quit()
+
+def main():
+    # Paket yakalama işlemi
+    captured_packets = capture_packets("eth0", 5)
+
+    # E-posta gönderme işlemi
+    sender_email = "your_email@example.com"
+    sender_password = "your_email_password"
+    recipient_email = "recipient@example.com"
+    subject = "Captured Packets"
+    body = "\n".join([str(packet) for packet in captured_packets])
+
+    send_email(sender_email, sender_password, recipient_email, subject, body)
+
+if __name__ == "__main__":
+    main()

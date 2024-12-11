@@ -1,0 +1,53 @@
+import requests
+import pygame
+import os
+from pynput import mouse, keyboard
+
+# Resmi İnternetten İndiren Fonksiyon
+def download_image(url, filename):
+    response = requests.get(url)
+    with open(filename, 'wb') as file:
+        file.write(response.content)
+
+# Resmi Gösteren Fonksiyon
+def show_image(image_path):
+    pygame.init()
+    screen = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption("Resim Görüntüleyici")
+
+    image = pygame.image.load(image_path)
+    screen.blit(image, (0, 0))
+    pygame.display.flip()
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+    pygame.quit()
+
+# Ana Program
+def main():
+    # Resmin İndirileceği URL
+    image_url = "https://www.example.com/example.jpg"
+    # İndirilen Resmin Kaydedileceği Dosya Yolu
+    image_path = "example.jpg"
+
+    # Resmi İndir
+    download_image(image_url, image_path)
+
+    # Resmi Göster
+    show_image(image_path)
+
+    os.remove(image_path)  # Program sonlandığında resmi sil
+
+# Klavye İşlemlerini Takip Eden Fonksiyon
+def on_press(key):
+    if key == keyboard.Key.esc:
+        os._exit(0)  # Programı kapat
+
+# Klavye İşlemlerini Takip Etme
+with keyboard.Listener(on_press=on_press) as listener:
+    main()
+    listener.join()

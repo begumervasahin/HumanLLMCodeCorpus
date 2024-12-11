@@ -1,0 +1,40 @@
+import multiprocessing
+
+def toplam_hesapla(sayilar, sonuc_kuyrugu):
+    toplam = sum(sayilar)
+    sonuc_kuyrugu.put(toplam)
+
+if __name__ == "__main__":
+    # İşlem sayısı belirle
+    islem_sayisi = 3
+
+    # Toplanacak sayıları belirle
+    sayilar = list(range(1, 101))
+
+    # Sonuçları almak için bir kuyruk oluştur
+    sonuc_kuyrugu = multiprocessing.Queue()
+
+    # Her bir işlem için eşit sayıda sayıyı böl
+    sayilar_bolunmus = [sayilar[i::islem_sayisi] for i in range(islem_sayisi)]
+
+    # İşlemleri oluştur
+    islemler = []
+    for i in range(islem_sayisi):
+        islem = multiprocessing.Process(target=toplam_hesapla, args=(sayilar_bolunmus[i], sonuc_kuyrugu))
+        islemler.append(islem)
+
+    # İşlemleri başlat
+    for islem in islemler:
+        islem.start()
+
+    # İşlemlerin bitmesini bekle
+    for islem in islemler:
+        islem.join()
+
+    # Kuyruktan sonuçları al
+    toplam_sonuclar = []
+    while not sonuc_kuyrugu.empty():
+        toplam_sonuclar.append(sonuc_kuyrugu.get())
+
+    # Toplam sonucu ekrana yazdır
+    print(f"Toplam: {sum(toplam_sonuclar)}")

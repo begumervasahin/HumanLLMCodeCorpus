@@ -1,0 +1,28 @@
+import multiprocessing
+import os
+
+def get_file_size(filename):
+    """Function to get the size of a single file."""
+    try:
+        size = os.path.getsize(filename)
+        return filename, size
+    except OSError as e:
+        return filename, 0
+
+def process_files(file_list):
+    """Function to process a list of files using multiprocessing."""
+    with multiprocessing.Pool() as pool:
+        results = pool.map(get_file_size, file_list)
+    return results
+
+if __name__ == "__main__":
+    # Get the list of files in the current directory
+    current_dir = os.getcwd()
+    files = [os.path.join(current_dir, f) for f in os.listdir(current_dir) if os.path.isfile(os.path.join(current_dir, f))]
+
+    # Process files to get their sizes
+    file_sizes = process_files(files)
+
+    # Print the results
+    for filename, size in file_sizes:
+        print(f"{filename}: {size} bytes")

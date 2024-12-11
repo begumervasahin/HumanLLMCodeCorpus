@@ -1,0 +1,34 @@
+import winreg
+import requests
+
+def get_installed_apps():
+    apps = []
+    uninstall_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, uninstall_key) as key:
+        for i in range(1024):
+            try:
+                subkey_name = winreg.EnumKey(key, i)
+                with winreg.OpenKey(key, subkey_name) as subkey:
+                    app_name = winreg.QueryValueEx(subkey, "DisplayName")[0]
+                    apps.append(app_name)
+            except OSError:
+                break
+    return apps
+
+def write_to_file(apps, filename):
+    with open(filename, 'w') as file:
+        for app in apps:
+            file.write(app + '\n')
+
+def send_file_to_server(filename, url):
+    files = {'file': open(filename, 'rb')}
+    response = requests.post(url, files=files)
+    return response
+
+if __name__ == "__main__":
+    installed_apps = get_installed_apps()
+    filename = 'installed_apps.txt'
+    write_to_file(installed_apps, filename)
+    server_url = 'http://example.com/upload'
+    response = send_file_to_server(filename, server_url)
+    print("Response from server:", response.text)

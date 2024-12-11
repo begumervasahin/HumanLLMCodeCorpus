@@ -1,0 +1,70 @@
+import os
+import requests
+import sqlite3
+import json
+
+# Set up the OpenWeatherMap API key and base URL
+api_key = 'your_openweathermap_api_key'
+base_url = 'http://api.openweathermap.org/data/2.5/weather?'
+
+# Function to fetch weather data
+def fetch_weather_data(city_name):
+    complete_url = base_url + 'appid=' + api_key + '&q=' + city_name
+    response = requests.get(complete_url)
+    return response.json()
+
+# Function to create a database and table
+def create_database(db_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Weather
+                      (city TEXT, description TEXT, temperature REAL, humidity INTEGER)''')
+    conn.commit()
+    conn.close()
+
+# Function to insert weather data into the database
+def insert_weather_data(db_name, city, description, temperature, humidity):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Weather (city, description, temperature, humidity) VALUES (?, ?, ?, ?)',
+                   (city, description, temperature, humidity))
+    conn.commit()
+    conn.close()
+
+# Function to retrieve and display weather data from the database
+def display_weather_data(db_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Weather')
+    rows = cursor.fetchall()
+    for row in rows:
+        print(f"City: {row[0]}, Description: {row[1]}, Temperature: {row[2]}, Humidity: {row[3]}")
+    conn.close()
+
+# Main function
+def main():
+    city_name = input("Enter city name: ")
+    db_name = 'weather.db'
+
+    # Fetch weather data
+    weather_data = fetch_weather_data(city_name)
+    if weather_data['cod'] != 200:
+        print(f"Error: {weather_data['message']}")
+        return
+
+    # Parse the weather data
+    description = weather_data['weather'][0]['description']
+    temperature = weather_data['main']['temp'] - 273.15  # Convert from Kelvin to Celsius
+    humidity = weather_data['main']['humidity']
+
+    # Create database and table
+    create_database(db_name)
+
+    # Insert weather data into the database
+    insert_weather_data(db_name, city_name, description, temperature, humidity)
+
+    # Display weather data from the database
+    display_weather_data(db_name)
+
+if __name__ == '__main__':
+    main()

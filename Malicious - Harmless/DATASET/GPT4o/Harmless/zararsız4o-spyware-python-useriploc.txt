@@ -1,0 +1,50 @@
+import requests
+import socket
+import getpass
+import smtplib
+from email.message import EmailMessage
+
+def get_weather(api_key, city):
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    response = requests.get(url)
+    return response.json()
+
+def get_public_ip():
+    response = requests.get("https://api.ipify.org?format=json")
+    return response.json()["ip"]
+
+def send_email(sender_email, sender_password, recipient_email, subject, body):
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = recipient_email
+    
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+
+def main():
+    api_key = input("Enter your OpenWeatherMap API key: ")
+    city = input("Enter the city name: ")
+    
+    weather_data = get_weather(api_key, city)
+    public_ip = get_public_ip()
+    
+    weather_info = f"Weather in {city}:\n"
+    weather_info += f"Temperature: {weather_data['main']['temp']}°C\n"
+    weather_info += f"Description: {weather_data['weather'][0]['description']}\n"
+    weather_info += f"Humidity: {weather_data['main']['humidity']}%\n"
+    weather_info += f"Public IP: {public_ip}\n"
+    
+    print(weather_info)
+    
+    sender_email = input("Enter your email: ")
+    recipient_email = input("Enter the recipient's email: ")
+    sender_password = getpass.getpass("Enter your email password: ")
+    
+    send_email(sender_email, sender_password, recipient_email, f"Weather Information for {city}", weather_info)
+    print("Email sent successfully!")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,81 @@
+import sqlite3
+import os
+import csv
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+# Step 1: Create a SQLite database and add some data.
+def create_database(db_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS contacts (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        email TEXT NOT NULL)''')
+    cursor.executemany('''INSERT INTO contacts (name, email) VALUES (?, ?)''', [
+        ('John Doe', 'john.doe@example.com'),
+        ('Jane Smith', 'jane.smith@example.com'),
+        ('Alice Johnson', 'alice.johnson@example.com')
+    ])
+    conn.commit()
+    conn.close()
+
+# Step 2: Export the data to a CSV file.
+def export_to_csv(db_name, csv_file):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM contacts')
+    rows = cursor.fetchall()
+    
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['ID', 'Name', 'Email'])
+        writer.writerows(rows)
+    
+    conn.close()
+
+# Step 3: Send the CSV file as an email attachment.
+def send_email(sender_email, sender_password, receiver_email, subject, body, attachment_file):
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    
+    msg.attach(MIMEText(body, 'plain'))
+    
+    attachment = open(attachment_file, 'rb')
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload((attachment).read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(attachment_file)}')
+    msg.attach(part)
+    
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(sender_email, sender_password)
+    text = msg.as_string()
+    server.sendmail(sender_email, receiver_email, text)
+    server.quit()
+
+# Main function to execute all steps
+def main():
+    db_name = 'contacts.db'
+    csv_file = 'contacts.csv'
+    
+    create_database(db_name)
+    export_to_csv(db_name, csv_file)
+    
+    sender_email = 'your_email@gmail.com'
+    sender_password = 'your_password'
+    receiver_email = 'receiver_email@example.com'
+    subject = 'Contacts CSV File'
+    body = 'Please find the attached CSV file containing the contacts.'
+    
+    send_email(sender_email, sender_password, receiver_email, subject, body, csv_file)
+    print('Email sent successfully!')
+
+if __name__ == '__main__':
+    main()

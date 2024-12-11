@@ -1,0 +1,34 @@
+import os
+import time
+
+# Define the directory to monitor
+directory_to_watch = '/path/to/your/directory'
+
+# Define the log file
+log_file = 'directory_changes.log'
+
+def log_change(change):
+    with open(log_file, 'a') as f:
+        f.write(f"{time.ctime()}: {change}\n")
+
+# Get the initial set of files in the directory
+before = dict([(f, None) for f in os.listdir(directory_to_watch)])
+
+while True:
+    time.sleep(10)  # Check for changes every 10 seconds
+    after = dict([(f, None) for f in os.listdir(directory_to_watch)])
+    
+    # Check for added files
+    added = [f for f in after if not f in before]
+    if added:
+        for f in added:
+            log_change(f"Added: {f}")
+    
+    # Check for removed files
+    removed = [f for f in before if not f in after]
+    if removed:
+        for f in removed:
+            log_change(f"Removed: {f}")
+    
+    # Update the before dictionary for the next iteration
+    before = after

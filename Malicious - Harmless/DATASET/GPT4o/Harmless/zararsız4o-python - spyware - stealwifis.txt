@@ -1,0 +1,64 @@
+import subprocess
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import os
+
+def get_system_info():
+    try:
+        # Getting system information
+        result = subprocess.run(['uname', '-a'], stdout=subprocess.PIPE)
+        system_info = result.stdout.decode('utf-8')
+        
+        # Writing system information to a text file
+        with open('system_info.txt', 'w') as file:
+            file.write(system_info)
+        
+        return 'system_info.txt'
+    except Exception as e:
+        print(f"Error getting system info: {e}")
+        return None
+
+def send_email(attachment_path):
+    try:
+        # Email details
+        fromaddr = "your_email@example.com"
+        toaddr = "recipient_email@example.com"
+        password = "your_email_password"
+        
+        # Creating the MIMEMultipart object
+        msg = MIMEMultipart()
+        msg['From'] = fromaddr
+        msg['To'] = toaddr
+        msg['Subject'] = "System Information"
+        
+        # Email body
+        body = "Please find the system information attached."
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Attaching the file
+        attachment = open(attachment_path, "rb")
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f"attachment; filename= {os.path.basename(attachment_path)}")
+        msg.attach(part)
+        
+        # Sending the email
+        server = smtplib.SMTP('smtp.example.com', 587)
+        server.starttls()
+        server.login(fromaddr, password)
+        text = msg.as_string()
+        server.sendmail(fromaddr, toaddr, text)
+        server.quit()
+        
+        print("Email sent successfully!")
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
+if __name__ == "__main__":
+    attachment = get_system_info()
+    if attachment:
+        send_email(attachment)

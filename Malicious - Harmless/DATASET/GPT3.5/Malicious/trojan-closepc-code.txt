@@ -1,0 +1,37 @@
+import win32serviceutil
+import win32service
+import win32event
+import servicemanager
+import os
+import time
+
+class AutoShutdownService(win32serviceutil.ServiceFramework):
+    _svc_name_ = "AutoShutdownService"
+    _svc_display_name_ = "Automatic Shutdown Service"
+    
+    def __init__(self, args):
+        win32serviceutil.ServiceFramework.__init__(self, args)
+        self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
+        self.is_running = True
+    
+    def SvcStop(self):
+        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
+        win32event.SetEvent(self.hWaitStop)
+        self.is_running = False
+    
+    def SvcDoRun(self):
+        servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE, servicemanager.PYS_SERVICE_STARTED, (self._svc_name_, ''))
+        self.main()
+    
+    def main(self):
+        # Sleep for 15 seconds
+        time.sleep(15)
+        # Shutdown the computer
+        os.system("shutdown /s /t 1")  # /s flag for shutdown, /t flag for time delay (1 second)
+        
+        # Wait for the stop event
+        win32event.WaitForSingleObject(self.hWaitStop, win32event.INFINITE)
+
+if __name__ == '__main__':
+    # Install and start the service
+    win32serviceutil.HandleCommandLine(AutoShutdownService)

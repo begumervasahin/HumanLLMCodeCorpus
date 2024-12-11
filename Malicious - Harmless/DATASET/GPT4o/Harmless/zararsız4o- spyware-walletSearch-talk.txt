@@ -1,0 +1,55 @@
+import os
+import shutil
+import re
+import requests
+from nltk.corpus import words
+import nltk
+
+# Ensure the NLTK words corpus is downloaded
+nltk.download('words')
+
+def create_directory(dir_name):
+    """Create a directory if it does not exist."""
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    print(f"Directory '{dir_name}' is ready.")
+
+def download_text_file(url, save_path):
+    """Download a text file from a URL."""
+    response = requests.get(url)
+    with open(save_path, 'w', encoding='utf-8') as file:
+        file.write(response.text)
+    print(f"File downloaded and saved to '{save_path}'.")
+
+def filter_english_words(file_path, output_path):
+    """Filter valid English words from a text file and save to a new file."""
+    english_words = set(words.words())
+    with open(file_path, 'r', encoding='utf-8') as file:
+        text = file.read()
+    
+    # Use regex to extract words
+    words_in_text = re.findall(r'\b[a-zA-Z]+\b', text)
+    valid_words = [word for word in words_in_text if word.lower() in english_words]
+    
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write('\n'.join(valid_words))
+    print(f"Filtered words saved to '{output_path}'.")
+
+def main():
+    # Define directory and file paths
+    dir_name = 'text_files'
+    url = 'https://www.gutenberg.org/files/11/11-0.txt'  # Example text file (Alice in Wonderland)
+    downloaded_file = os.path.join(dir_name, 'downloaded.txt')
+    filtered_file = os.path.join(dir_name, 'filtered_words.txt')
+    
+    # Create directory
+    create_directory(dir_name)
+    
+    # Download text file
+    download_text_file(url, downloaded_file)
+    
+    # Filter English words and save to a new file
+    filter_english_words(downloaded_file, filtered_file)
+
+if __name__ == "__main__":
+    main()

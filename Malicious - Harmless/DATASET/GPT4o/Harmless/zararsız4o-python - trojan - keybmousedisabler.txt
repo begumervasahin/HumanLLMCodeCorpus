@@ -1,0 +1,88 @@
+import keyboard
+import mouse
+import threading
+import time
+import json
+
+# Variables to store the recorded events
+keyboard_events = []
+mouse_events = []
+recording = False
+
+def record_keyboard():
+    global keyboard_events
+    keyboard_events = keyboard.record(until='esc')
+
+def record_mouse():
+    global mouse_events
+    mouse.hook(mouse_events.append)
+    while recording:
+        time.sleep(0.1)
+    mouse.unhook(mouse_events.append)
+
+def save_events():
+    with open('keyboard_events.json', 'w') as f:
+        json.dump([e.to_json() for e in keyboard_events], f)
+    with open('mouse_events.json', 'w') as f:
+        json.dump(mouse_events, f)
+
+def load_events():
+    global keyboard_events, mouse_events
+    with open('keyboard_events.json', 'r') as f:
+        keyboard_events = [keyboard.KeyboardEvent.from_json(e) for e in json.load(f)]
+    with open('mouse_events.json', 'r') as f:
+        mouse_events = json.load(f)
+
+def play_keyboard_events():
+    keyboard.play(keyboard_events)
+
+def play_mouse_events():
+    for event in mouse_events:
+        event_type = event['event_type']
+        x, y = event['x'], event['y']
+        if event_type == 'move':
+            mouse.move(x, y)
+        elif event_type == 'click':
+            mouse.click(button=event['button'], x=x, y=y)
+        elif event_type == 'double_click':
+            mouse.double_click(button=event['button'], x=x, y=y)
+        elif event_type == 'wheel':
+            mouse.wheel(delta=event['delta'])
+
+def record():
+    global recording
+    recording = True
+    keyboard_thread = threading.Thread(target=record_keyboard)
+    mouse_thread = threading.Thread(target=record_mouse)
+    keyboard_thread.start()
+    mouse_thread.start()
+    keyboard_thread.join()
+    recording = False
+    mouse_thread.join()
+    save_events()
+
+def play():
+    load_events()
+    keyboard_thread = threading.Thread(target=play_keyboard_events)
+    mouse_thread = threading.Thread(target=play_mouse_events)
+    keyboard_thread.start()
+    mouse_thread.start()
+    keyboard_thread.join()
+    mouse_thread.join()
+
+if __name__ == '__main__':
+    print("Press 'r' to start recording, 'p' to play, and 'esc' to exit")
+    while True:
+        if keyboard.is_pressed('r'):
+            print("Recording...")
+            record()
+            print("Recording stopped.")
+            time.sleep(1)  # To prevent immediate re-trigger
+        elif keyboard.is_pressed('p'):
+            print("Playing...")
+            play()
+            print("Playback finished.")
+            time.sleep(1)  # To prevent immediate re-trigger
+        elif keyboard.is_pressed('esc'):
+            print("Exiting...")
+            break

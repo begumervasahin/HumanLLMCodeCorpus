@@ -1,0 +1,47 @@
+import http.cookiejar
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email():
+    # E-posta gönderilecek bilgileri al
+    sender_email = input("Gönderen E-posta Adresi: ")
+    password = input("Gönderen E-posta Şifresi: ")
+    receiver_email = input("Alıcı E-posta Adresi: ")
+    subject = input("E-posta Konusu: ")
+    body = input("E-posta İçeriği: ")
+
+    # E-posta oluştur
+    message = MIMEMultipart()
+    message['From'] = sender_email
+    message['To'] = receiver_email
+    message['Subject'] = subject
+
+    # E-posta içeriği
+    message.attach(MIMEText(body, 'plain'))
+
+    # SMTP sunucu bilgileri
+    smtp_server = input("SMTP Sunucu Adresi: ")
+    smtp_port = int(input("SMTP Sunucu Portu: "))
+
+    # SMTP bağlantısı oluştur
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    server.starttls()
+
+    try:
+        # SMTP sunucusuna giriş yap
+        server.login(sender_email, password)
+
+        # E-postayı gönder
+        server.sendmail(sender_email, receiver_email, message.as_string())
+        print("E-posta başarıyla gönderildi.")
+    except smtplib.SMTPAuthenticationError:
+        print("Giriş başarısız. E-posta adresi veya şifre hatalı.")
+    except smtplib.SMTPException as e:
+        print(f"E-posta gönderilirken bir hata oluştu: {e}")
+    finally:
+        # SMTP bağlantısını kapat
+        server.quit()
+
+if __name__ == "__main__":
+    send_email()

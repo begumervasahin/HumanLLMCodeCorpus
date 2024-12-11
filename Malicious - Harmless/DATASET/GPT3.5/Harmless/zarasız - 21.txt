@@ -1,0 +1,50 @@
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+def send_email(subject, body, to_email, attachment_path=None):
+    # E-posta gönderen ve şifresi
+    sender_email = 'your_email@gmail.com'
+    sender_password = 'your_email_password'
+
+    # E-posta başlık ve içeriği
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Eğer dosya eklenmişse
+    if attachment_path:
+        attachment = open(attachment_path, 'rb')
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(attachment_path)}')
+        msg.attach(part)
+
+    # SMTP sunucu bağlantısı
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    server.starttls()
+
+    # SMTP sunucu girişi
+    server.login(sender_email, sender_password)
+
+    # E-posta gönderme işlemi
+    server.sendmail(sender_email, to_email, msg.as_string())
+
+    # SMTP sunucu bağlantısını kapatma
+    server.quit()
+
+# Kullanım örneği
+email_subject = 'Konu: Test E-posta'
+email_body = 'Merhaba, bu bir test e-postasıdır.'
+recipient_email = 'recipient@example.com'
+attachment_path = 'path/to/your/file.txt'  # Opsiyonel: Dosya eklemek istemiyorsanız None olarak bırakabilirsiniz.
+
+send_email(email_subject, email_body, recipient_email, attachment_path)

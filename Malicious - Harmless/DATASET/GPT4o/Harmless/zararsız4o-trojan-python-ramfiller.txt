@@ -1,0 +1,48 @@
+import numpy as np
+import pandas as pd
+import psutil
+import time
+
+# Function to get memory usage statistics
+def get_memory_stats():
+    mem = psutil.virtual_memory()
+    return {
+        "total": mem.total,
+        "available": mem.available,
+        "used": mem.used,
+        "free": mem.free,
+        "percent": mem.percent
+    }
+
+# Collect memory stats over a period of time
+def collect_memory_data(duration=60, interval=5):
+    data = []
+    for _ in range(int(duration / interval)):
+        stats = get_memory_stats()
+        stats['timestamp'] = time.time()
+        data.append(stats)
+        time.sleep(interval)
+    return data
+
+# Function to create a pandas DataFrame from collected data
+def create_dataframe(data):
+    df = pd.DataFrame(data)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+    return df
+
+# Function to summarize memory statistics
+def summarize_memory_stats(df):
+    summary = df.describe(percentiles=np.arange(0, 1.1, 0.1))
+    return summary
+
+# Main code execution
+duration = 60  # Duration to collect data (in seconds)
+interval = 5   # Interval between data collection (in seconds)
+
+print("Collecting memory data...")
+data = collect_memory_data(duration, interval)
+df = create_dataframe(data)
+summary = summarize_memory_stats(df)
+
+print("\nMemory Usage Summary:")
+print(summary)

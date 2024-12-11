@@ -1,0 +1,166 @@
+Information about the hardware components of the computer (processor, memory, storage, graphics card, etc.) with Python. Can you write the code that puts all the information about the txt file?
+
+ChatGPT
+Sure, I can help you write a Python script that gathers information about the hardware components of the computer and saves it to a text file. We'll use the platform and psutil libraries to gather this information.
+
+First, if you haven't already, you may need to install the psutil library. You can install it using pip:
+
+bash
+Kodu kopyala
+pip install psutil
+Now, here's a Python script that retrieves information about the processor, memory, storage, and graphics card (if available), and saves it into a text file:
+
+python
+Kodu kopyala
+import platform
+import psutil
+
+def get_system_info():
+    info = {}
+    
+    # Processor information
+    info['Processor'] = platform.processor()
+    
+    # Memory information
+    memory = psutil.virtual_memory()
+    info['Total Memory (RAM)'] = f"{memory.total // (1024 ** 3)} GB"
+    
+    # Storage information
+    partitions = psutil.disk_partitions()
+    for partition in partitions:
+        try:
+            partition_usage = psutil.disk_usage(partition.mountpoint)
+            info[f"{partition.device} Total Storage"] = f"{partition_usage.total // (1024 ** 3)} GB"
+        except PermissionError:
+            continue
+    
+    # Graphics card information
+    try:
+        import wmi
+        w = wmi.WMI()
+        info['GPU'] = w.Win32_VideoController()[0].Name
+    except ImportError:
+        info['GPU'] = 'Information not available (WMI module not installed)'
+    except:
+        info['GPU'] = 'Information not available'
+    
+    return info
+
+def save_info_to_file(info, filename):
+    with open(filename, 'w') as f:
+        for key, value in info.items():
+            f.write(f"{key}: {value}\n")
+
+if __name__ == "__main__":
+    system_info = get_system_info()
+    filename = 'system_info.txt'
+    save_info_to_file(system_info, filename)
+    print(f"System information saved to {filename}")
+Explanation:
+get_system_info(): This function collects information about the system using platform and psutil libraries. It retrieves the processor name, total RAM, total storage for each partition, and attempts to get the GPU information using wmi module (Windows Management Instrumentation).
+
+save_info_to_file(info, filename): This function takes the collected info dictionary and saves it to a text file (filename).
+
+Main block: Executes the get_system_info() function to retrieve system information, saves it to a file named system_info.txt, and prints a confirmation message.
+
+Notes:
+This script provides basic hardware information and may need adjustments based on your specific requirements or system setup (e.g., handling multiple GPUs, different OS-specific configurations).
+Ensure you have appropriate permissions to access system information, especially when dealing with storage partitions.
+Run this script on your system, and it will create a system_info.txt file in the same directory containing the gathered hardware information.
+
+
+
+
+Can you add the code that sends this txt by e-mail?
+
+ChatGPT
+Certainly! To send an email with the generated system_info.txt file as an attachment, you can use Python's smtplib library for sending emails and email library for constructing the email message. Here's how you can modify the previous script to include email sending functionality:
+
+python
+Kodu kopyala
+import platform
+import psutil
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+
+def get_system_info():
+    info = {}
+    
+    # Processor information
+    info['Processor'] = platform.processor()
+    
+    # Memory information
+    memory = psutil.virtual_memory()
+    info['Total Memory (RAM)'] = f"{memory.total // (1024 ** 3)} GB"
+    
+    # Storage information
+    partitions = psutil.disk_partitions()
+    for partition in partitions:
+        try:
+            partition_usage = psutil.disk_usage(partition.mountpoint)
+            info[f"{partition.device} Total Storage"] = f"{partition_usage.total // (1024 ** 3)} GB"
+        except PermissionError:
+            continue
+    
+    # Graphics card information
+    try:
+        import wmi
+        w = wmi.WMI()
+        info['GPU'] = w.Win32_VideoController()[0].Name
+    except ImportError:
+        info['GPU'] = 'Information not available (WMI module not installed)'
+    except:
+        info['GPU'] = 'Information not available'
+    
+    return info
+
+def save_info_to_file(info, filename):
+    with open(filename, 'w') as f:
+        for key, value in info.items():
+            f.write(f"{key}: {value}\n")
+
+def send_email(filename, receiver_email):
+    # Email account credentials
+    sender_email = "your_email@example.com"
+    password = "your_password"
+    
+    # Create a multipart message and set headers
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = "System Information Report"
+    
+    # Attach file
+    with open(filename, 'rb') as f:
+        attachment = MIMEBase('application', 'octet-stream')
+        attachment.set_payload(f.read())
+    
+    encoders.encode_base64(attachment)
+    attachment.add_header('Content-Disposition', f'attachment; filename= {filename}')
+    msg.attach(attachment)
+
+    # Send email
+    with smtplib.SMTP_SSL('smtp.example.com', 465) as smtp:
+        smtp.login(sender_email, password)
+        smtp.send_message(msg)
+
+if __name__ == "__main__":
+    system_info = get_system_info()
+    filename = 'system_info.txt'
+    save_info_to_file(system_info, filename)
+    receiver_email = "recipient@example.com"
+    send_email(filename, receiver_email)
+    print(f"System information sent to {receiver_email}")
+Explanation:
+send_email(filename, receiver_email): This function sends an email with the specified filename as an attachment to the receiver_email address. It uses the smtplib library to connect to the SMTP server (replace smtp.example.com with your SMTP server address) and sends the email securely over SSL.
+
+Email Configuration: Replace "your_email@example.com" with your sender email address and "your_password" with your email account password. Ensure your email provider supports SMTP access and secure authentication.
+
+Attachment Handling: The script attaches the system_info.txt file to the email using MIMEBase and encoders.encode_base64() for encoding the attachment properly.
+
+Main block: Calls get_system_info() to retrieve system information, saves it to system_info.txt, specifies the recipient email address (receiver_email), sends the email using send_email(), and prints a confirmation message.
+
+Make sure to replace placeholders (your_email@example.com, your_password, smtp.example.com, recipient@example.com) with your actual email credentials and SMTP server details. This script will generate the system_info.txt file and send it as an attachment to the specified email address.
