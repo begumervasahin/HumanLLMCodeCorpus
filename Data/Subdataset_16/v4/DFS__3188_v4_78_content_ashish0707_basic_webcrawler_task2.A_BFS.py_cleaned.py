@@ -1,0 +1,12 @@
+from Webcrawler import Crawler
+from bfs import BFS
+def fonk1():
+    b1 = "https:
+    b2 = BFS()
+    b3 = Crawler(b1, b2)
+    b3.add_to_mandatory_list('/wiki/')
+    b3.add_to_disallowed_list(':')
+    b3.set_focused_text('solar')
+    b3.start()
+if b4 = = "__main__":
+    fonk1()

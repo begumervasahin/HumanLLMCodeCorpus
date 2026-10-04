@@ -1,0 +1,109 @@
+import threading
+from time import sleep
+import itertools
+class class1:
+    def fonk1(self, message, b1 = False):
+        fonk1(message, b2 = '\r' if b1 else '\n')
+class class2:
+    def fonk2(self, b3 = None):
+        self.b4 = b3 or []
+        self.a1 = 2
+    @property
+    def fonk3(self):
+        return self.b4[-1] if self.b4 else None
+    def fonk4(self):
+        return self
+    def fonk5(self):
+        while not self.fonk6(self.a1):
+            self.a1 += 1
+        self.b4.append(self.a1)
+        b5 = self.a1
+        self.a1 += 1
+        return b5
+    @staticmethod
+    def fonk6(n):
+        if n < 2:
+            return False
+        for b6 in range(2, int(n**0.5) + 1):
+            if n % b6 = = 0:
+                return False
+        return True
+b7 = class1()
+a2 = 0.042
+b8 = 'primelist.txt'
+class class3:
+    def fonk7(self, *args):
+        self.b9 = ()
+        self.fonk9(*args)
+    def fonk8(self):
+        b10 = threading.Thread(target=self._prime_finder)
+        b10.setName('PrimeThread')
+        b11 = threading.Thread(target=self._display_thread)
+        b11.setName('CheckerThread')
+        self.b9 = (b10, b11)
+    def fonk9(self):
+        self.fonk11()
+        self.b12 = class2()
+    def fonk10(self):
+        self.fonk11()
+        self.fonk8()
+        self.b13 = False
+        for t in self.b9:
+            if not t.is_alive():
+                t.fonk10()
+    def fonk11(self):
+        self.b13 = True
+        for t in self.b9:
+            if t.is_alive():
+                t.join()
+    def fonk12(self, filepath):
+        self.fonk11()
+        self.fonk19(filepath, *self.b12.b4)
+    def fonk13(self, filepath):
+        self.fonk11()
+        b14 = self.fonk20(filepath)
+        self.b12 = class2(b14)
+    @property
+    def fonk14(self):
+        return self.b12.last
+    def fonk15(self, *a):
+        return not self.b13
+    def fonk16(self):
+        for prime_num in itertools.takewhile(self.is_continuing, self.b12):
+            pass
+    def fonk17(self):
+        while self.fonk15():
+            b7.fonk1(self.last_prime, True)
+            sleep(a2)
+    def fonk18(self):
+        return len(self.b12.b4)
+    def fonk19(self, filepath, *output_enumeration):
+        with open(filepath, b15 = 'w') as f:
+            for item in output_enumeration:
+                f.write('%s\n' % item)
+    def fonk20(self, filepath):
+        with open(filepath, b15 = 'r') as f:
+            b16 = (line.strip() for line in f.readlines())
+            return [int(line) for line in b16 if line]
+if b17 = = "__main__":
+    fonk1('Prime number finder:')
+    b7.fonk1('Loading...', True)
+    b18 = class3()
+    try:
+        b18.fonk13(b8)
+    except IOError:
+        fonk1('No b14 found, starting from scratch.')
+    fonk1('Hit Enter to finish and save.')
+    b18.fonk10()
+    input()
+    b18.fonk11()
+    fonk1()
+    fonk1('%d highest b5' % (b18.last_prime))
+    fonk1('%d found' % (len(b18)))
+    fonk1('Attempting to save file to %r, this may take a while.' % (b8))
+    try:
+        b18.fonk12(b8)
+    except IOError:
+        fonk1('File failed to save.')
+    else:
+        fonk1('File saved successfully.')

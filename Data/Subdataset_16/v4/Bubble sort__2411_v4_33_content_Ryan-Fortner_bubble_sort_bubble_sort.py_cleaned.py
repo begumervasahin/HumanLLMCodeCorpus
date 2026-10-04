@@ -1,0 +1,20 @@
+b1 = [1, 5, 3, 2, 0, 8]
+def fonk1(b1):
+    a1 = 0
+    b2 = len(b1)
+    for j in range(b2 - 1):
+        print("\b2\b2", "-" * 50, "Iteration", j + 1)
+        for i in range(b2 - 1 - j):
+            a1 += 1
+            print("\b2", "*" * 80, "\nComparing", b1[i], "and", b1[i + 1])
+            if b1[i] > b1[i + 1]:
+                b1[i], b1[i + 1] = b1[i + 1], b1[i]
+                print("Swapped", b1[i], "and", b1[i + 1])
+                print("Array is now", b1)
+            else:
+                print("No need to swap", b1[i], "and", b1[i + 1])
+    print("Number of b3 = ", a1)
+    return b1
+print("Original array:", b1)
+b4 = fonk1(b1)
+print("Sorted array:", b4)

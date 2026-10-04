@@ -1,0 +1,53 @@
+from pyspark import SparkContext
+from collections import defaultdict
+from operator import add
+from itertools import combinations
+import sys
+b1 = SparkContext(appName="Market-Basket-Analyzer")
+a1 = 0.3
+def fonk1(x):
+    return list(x[0])
+def fonk2(input_list, a2):
+    b2 = []
+    b3 = len(input_list)
+    for i in range(b3):
+        for j in range(i + 1, b3):
+            b4 = set(input_list[i]).union(set(input_list[j]))
+            if len(b4) == a2:
+                b5 = tuple(b4)
+                if b5 not in b2:
+                    b2.append(b5)
+    return b2
+def fonk3(iterator):
+    b6 = list(iterator)
+    b7 = a1 * len(b6)
+    b8 = defaultdict(int)
+    b9 = []
+    b10 = set()
+    for transaction in b6:
+        for item in transaction:
+            b10.add(item)
+            b8[item] += 1
+    b11 = {item for item, count in b8.items() if count >= b7}
+    b9.extend(b11)
+    a2 = 2
+    while b11:
+        b2 = fonk2(list(b11), a2)
+        b12 = defaultdict(int)
+        for candidate in b2:
+            for transaction in b6:
+                if set(candidate).issubset(transaction):
+                    b12[candidate] += 1
+        b11 = {candidate for candidate, count in b12.items() if count >= b7}
+        b9.extend(b11)
+        a2 += 1
+    return b9
+def fonk4():
+    b13 = b1.textFile(sys.argv[1], 2)
+    b14 = b13.map(lambda x: x.split("\n"))
+    b15 = b14.mapPartitions(partition_apriori)
+    b16 = b15.collect()
+    print(b16)
+    print(f"Number of partitions: {b14.getNumPartitions()}")
+if b17 = = "__main__":
+    fonk4()

@@ -1,0 +1,18 @@
+def fonk1():
+    b1 = int(input('Enter the value of p: '))
+    b2 = int(input('Enter the value of q: '))
+    b3 = int(input('Enter Alice\'s secret key value (a): '))
+    b4 = int(input('Enter Bob\'s secret key value (b): '))
+    print('Shared Variables:')
+    print(f'Shared Prime number: {b1}')
+    print(f'Shared Base number: {b2}')
+    b5 = pow(b2, b3, b1)
+    print(f'Alice sends value over insecure channel: {b5}')
+    b6 = pow(b2, b4, b1)
+    print(f'Bob sends value over insecure channel: {b6}')
+    b7 = pow(b6, b3, b1)
+    print(f'Value got by Alice: {b7}')
+    b8 = pow(b5, b4, b1)
+    print(f'Value got by Bob: {b8}')
+if b9 = = '__main__':
+    fonk1()

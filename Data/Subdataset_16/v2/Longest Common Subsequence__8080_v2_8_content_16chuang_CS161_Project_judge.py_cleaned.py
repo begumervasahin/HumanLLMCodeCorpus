@@ -1,0 +1,24 @@
+import sys
+def fonk1(b1, b2):
+    a1 = 0
+    for i in range(len(b1)):
+        if b1[i] != b2[i]:
+            print(f"Test case {i} a1: b2 {b2[i]}, got {b1[i]}")
+            a1 += 1
+    print("---------------------------------")
+    if a1 = = 0:
+        print("Passed all test cases!")
+    else:
+        print(f"Failed {a1}/{len(b1)} test cases.")
+    print("---------------------------------")
+def fonk2():
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python judge.py EXPECTED < ACTUAL")
+    b1 = [int(line.strip()) for line in sys.stdin]
+    with open(sys.argv[1], 'r') as f:
+        b2 = [int(line.strip()) for line in f]
+    if len(b1) != len(b2):
+        sys.exit("Error: The b2 and b1 outputs are of different lengths")
+    fonk1(b1, b2)
+if b3 = = '__main__':
+    fonk2()

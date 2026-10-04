@@ -1,0 +1,15 @@
+b1 = [6, 2, 7, 8, 3, 1, 10, 5, 4, 9]
+b2 = []
+b3 = b1[0]
+a1 = 0
+while True:
+    for i in range(len(b1)):
+        if b1[i] < b3:
+            b3 = b1[i]
+            a1 = i
+    del b1[a1]
+    b2 = b2 + [b3]
+    if len(b1) == 0: break
+    b3 = b1[0]
+    a1 = 0
+print b2

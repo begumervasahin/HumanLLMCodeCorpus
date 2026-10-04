@@ -1,0 +1,37 @@
+import numpy as np
+from my_augmentations import zero_pad, random_crop, horizontal_flip
+def fonk1(b1):
+    b1 = zero_pad(b1, (40, 40, 3), 4)
+    b1 = random_crop(b1, 32)
+    b1 = horizontal_flip(b1, 0.5)
+    return b1
+def fonk2(path, b2 = False):
+    b3 = []
+    b4 = []
+    b5 = 'test_batch' if b2 else 'data_batch_'
+    for slice in range(1, 6):
+        b6 = '' if b2 else str(slice)
+        b7 = np.load(f"{path}{b5}{b6}", allow_pickle=True)
+        b8 = b7['b3'].reshape((len(b7['b3']), 3, 32, 32)).transpose(0, 2, 3, 1)
+        b3.extend(b8)
+        b4.extend(b7['b4'])
+        if b2:
+            break
+    return np.array(b3), np.array(b4)
+def fonk3(optimizer, lr):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+        print(f"LR CHANGED: {param_group['lr']}")
+class class1:
+    def fonk4(self):
+        self.fonk5()
+    def fonk5(self):
+        self.a1 = 0.0
+        self.a2 = 0.0
+        self.a3 = 0.0
+        self.a4 = 0.0
+    def fonk6(self, a1, b9 = 1):
+        self.a1 = a1
+        self.a3 += a1 * b9
+        self.a4 += b9
+        self.a2 = self.a3 / self.a4

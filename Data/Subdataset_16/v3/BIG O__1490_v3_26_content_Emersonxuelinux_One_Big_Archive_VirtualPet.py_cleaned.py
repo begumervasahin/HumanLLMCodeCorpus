@@ -1,0 +1,128 @@
+import wx
+from PythonCard import model, timer, dialog
+import pickle
+import datetime
+class class1(model.Background):
+    def fonk1(self, event):
+        self.b1 = False
+        self.b2 = False
+        self.b3 = False
+        self.b4 = False
+        self.b5 = False
+        self.a1 = 0
+        self.a2 = 0
+        self.a3 = 8
+        self.a4 = 8
+        self.b6 = False
+        self.b7 = ["sleep1.gif", "sleep2.gif", "sleep3.gif", "sleep4.gif"]
+        self.b8 = ["eat1.gif", "eat2.gif"]
+        self.b9 = ["walk1.gif", "walk2.gif", "walk3.gif", "walk4.gif"]
+        self.b10 = ["play1.gif", "play2.gif"]
+        self.b11 = ["doc1.gif", "doc2.gif"]
+        self.b12 = ["pet1.gif", "pet2.gif", "pet3.gif"]
+        self.b13 = self.b12
+        self.a5 = 0
+        self.b14 = timer.Timer(self.components.petwindow, -1)
+        self.b14.Start(500)
+        self.b15 = timer.Timer(self.components.HungerGauge, -1)
+        self.b15.Start(5000)
+        self.fonk2()
+    def fonk2(self):
+        try:
+            with open("savedata_vp.pkl", "rb") as b20:
+                b16 = pickle.load(b20)
+        except FileNotFoundError:
+            b16 = [8, 8, 0, datetime.datetime.now(), 0]
+        self.a3, self.a4, self.a2, last_saved_time, self.a1 = b16
+        b17 = datetime.datetime.now() - last_saved_time
+        b18 = int(b17.total_seconds() / 50)
+        for _ in range(b18):
+            self.fonk12()
+        if self.b3:
+            self.b13 = self.b7
+        else:
+            self.b13 = self.b12
+    def fonk3(self):
+        if self.b3:
+            b19 = dialog.messageDialog(self,
+                "WARNING!\nYour pet is b3. Waking it up will make it unhappy.\nDo you want to proceed?",
+                'WARNING!', wx.ICON_EXCLAMATION | wx.YES_NO | wx.NO_DEFAULT)
+            if b19.accepted:
+                self.b3 = False
+                self.a3 -= 4
+                self.b6 = True
+                return True
+            return False
+        return True
+    def fonk4(self, event):
+        if self.fonk3():
+            self.b13 = self.b11
+            self.fonk9(b1 = True)
+    def fonk5(self, event):
+        if self.fonk3():
+            self.b13 = self.b8
+            self.fonk9(b5 = True)
+    def fonk6(self, event):
+        if self.fonk3():
+            self.b13 = self.b10
+            self.fonk9(b4 = True)
+    def fonk7(self, event):
+        if self.fonk3():
+            self.b13 = self.b9
+            self.fonk9(b2 = True)
+    def fonk8(self, event):
+        if not self.b3:
+            self.b13 = self.b12
+            self.fonk9()
+    def fonk9(self, b1 = False, b5=False, b4=False, b2=False):
+        self.b1 = b1
+        self.b5 = b5
+        self.b4 = b4
+        self.b2 = b2
+    def fonk10(self, event):
+        if self.b3 and not self.b6:
+            self.b13 = self.b7
+        self.a5 = (self.a5 + 1) % len(self.b13)
+        self.components.petwindow.b20 = self.b13[self.a5]
+        self.fonk13()
+    def fonk11(self, event):
+        self.fonk12()
+        self.fonk13()
+    def fonk12(self):
+        self.a1 = (self.a1 + 1) % 60
+        if self.a1 <= 48 or self.b6:
+            self.b3 = False
+        else:
+            self.b3 = True
+        if self.a1 = = 0:
+            self.b6 = False
+        if self.b1:
+            self.a4 = min(self.a4 + 1, 8)
+        elif self.b2 and self.a1 % b21 = = 0:
+            self.a3 = min(self.a3 + 1, 8)
+            self.a4 = min(self.a4 + 1, 8)
+        elif self.b4:
+            self.a3 = min(self.a3 + 1, 8)
+        elif self.b5:
+            self.a2 = max(self.a2 - 1, 0)
+        elif self.b3 and self.a1 % b22 = = 0:
+            self.a2 = min(self.a2 + 1, 8)
+        else:
+            self.a2 = min(self.a2 + 1, 8)
+            if self.a1 % b21 = = 0:
+                self.a3 = max(self.a3 - 1, 0)
+        if self.a2 >= 7 and self.a1 % b21 = = 0:
+            self.a4 = max(self.a4 - 1, 0)
+        if self.a2 = = 8:
+            self.a4 = max(self.a4 - 1, 0)
+    def fonk13(self):
+        self.components.HappyGauge.b23 = self.a3
+        self.components.HealthGauge.b23 = self.a4
+        self.components.HungerGauge.b23 = self.a2
+    def fonk14(self, event):
+        with open("savedata_vp.pkl", "wb") as b20:
+            b16 = [self.a3, self.a4, self.a2, datetime.datetime.now(), self.a1]
+            pickle.dump(b16, b20)
+        event.Skip()
+b24 = model.Application(class1)
+b24.MainLoop()

@@ -1,0 +1,122 @@
+from tkinter import *
+from tkinter import messagebox
+def fonk1():
+    b1 = Tk()
+    b1.title("Check Prime Number")
+    b1.geometry("500x500")
+    b1.configure(b2 = 'yellow')
+    b3 = StringVar()
+    b4 = Entry(b1, textvariable=b3, font=('Arial', 20, 'bold'))
+    b4.pack()
+    def fonk2():
+        b5 = b4.get()
+        b5 = int(b5)
+        if b5 <= 1:
+            b6 = False
+        else:
+            b6 = all(b5 % i != 0 for i in range(2, int(b5 ** 0.5) + 1))
+        if b6:
+            Label(b1, b7 = f'{b5} is prime').pack()
+        else:
+            Label(b1, b7 = f'{b5} is not prime').pack()
+    b8 = Button(b1, b7='Calculate', command=primeNumber, font=('Arial', 20, 'bold'))
+    b8.pack()
+def fonk3():
+    b9 = Tk()
+    b9.title('Radian to Degree')
+    b9.geometry("500x500")
+    b9.configure(b2 = 'yellow')
+    Label(b9, b7 = "Enter Radian value to convert into degrees", bg='yellow', font=('Arial', 15, 'bold')).pack()
+    b10 = StringVar()
+    b11 = Entry(b9, textvariable=b10, font=('Arial', 15, 'bold'))
+    b11.pack()
+    def fonk4():
+        b10 = b11.get()
+        b10 = float(b10)
+        b12 = b10 * 180 / 3.14
+        Label(b9, b7 = "degrees = " + str(b12)).pack()
+    b13 = Button(b9, b7='Calculate', font=('Arial', 20, 'bold'), command=radian_to_degree)
+    b13.pack()
+def fonk5():
+    b14 = Tk()
+    b14.title('Degree to Radian')
+    b14.geometry("500x500")
+    b14.configure(b2 = 'yellow')
+    Label(b14, b7 = "Enter Degrees value to convert into radian", bg='yellow', font=('Arial', 15, 'bold')).pack()
+    b10 = StringVar()
+    b11 = Entry(b14, textvariable=b10, font=('Arial', 15, 'bold'))
+    b11.pack()
+    def fonk6():
+        b10 = b11.get()
+        b10 = float(b10)
+        b12 = b10 * 3.14 / 180
+        Label(b14, b7 = "radians = " + str(b12)).pack()
+    b13 = Button(b14, b7='Calculate', command=degrees_to_radian, font=('Arial', 20, 'bold'))
+    b13.pack()
+def fonk7():
+    b15 = Tk()
+    b15.title('Compute Arc Length of an Angle')
+    b15.geometry("500x500")
+    b15.configure(b2 = 'yellow')
+    Label(b15, b7 = "Please Enter Values To find Arc Length", bg='yellow', font=('Arial', 15, 'bold')).pack()
+    b12 = StringVar()
+    b16 = StringVar()
+    Label(b15, b7 = "Please Enter Diameter here: ", bg='yellow', font=('Arial', 12, 'bold')).pack()
+    b3 = Entry(b15, textvariable=b12, font=('Arial', 20, 'bold'))
+    b3.pack()
+    Label(b15, b7 = "Please Enter Angle here: ", bg='yellow', font=('Arial', 12, 'bold')).pack()
+    b17 = Entry(b15, textvariable=b16, font=('Arial', 20, 'bold'))
+    b17.pack()
+    def fonk8():
+        b18 = float(b3.get())
+        b19 = float(b17.get())
+        a1 = 3.14
+        if b19 >= 360:
+            Label(b15, b7 = "Angle not possible", font=('Arial', 20, 'bold')).pack()
+            return
+        b20 = (a1 * b18) * (b19 / 360)
+        Label(b15, b7 = "Arc Length is: " + str(b20), font=('Arial', 15, 'bold')).pack()
+    b13 = Button(b15, b7="Calculate", command=b20, font=('Arial', 20, 'bold'))
+    b13.pack()
+def fonk9():
+    b21 = Tk()
+    b21.title('Compute Area Of Sector')
+    b21.geometry("500x500")
+    b21.configure(b2 = 'yellow')
+    Label(b21, b7 = "Please Enter Radius Here", bg='yellow', font=('Arial', 20, 'bold')).pack()
+    b22 = StringVar()
+    b23 = StringVar()
+    b3 = Entry(b21, textvariable=b22, font=('Arial', 20, 'bold'))
+    b3.pack()
+    Label(b21, b7 = "Please Enter Angle Here", bg='yellow', font=('Arial', 20, 'bold')).pack()
+    b17 = Entry(b21, textvariable=b23, font=('Arial', 20, 'bold'))
+    b17.pack()
+    def fonk10():
+        b16 = float(b3.get())
+        b24 = float(b17.get())
+        b25 = 0.5 * b16 * b16 * (b24 * 3.14 / 180)
+        Label(b21, b7 = "Area of Sector: " + str(b25), font=('Arial', 20, 'bold')).pack()
+    b13 = Button(b21, b7="Calculate", command=b31, font=('Arial', 20, 'bold'))
+    b13.pack()
+def fonk11():
+    b26 = Tk()
+    b26.title('Unknown')
+    b26.geometry("300x300")
+b27 = Tk()
+b27.title("Part B")
+b27.geometry("500x500")
+b27.configure(b2 = 'powder blue')
+Label(b27, b7 = "Please Select b16 method from below", bg='powder blue', font=("Arial", 20, 'bold')).pack()
+b28 = Button(b27, b7="Check Prime", font=('Arial', 20, 'bold'), command=Check_Prime_No)
+b28.pack()
+b29 = Button(b27, b7="Radians to Degrees", font=('Arial', 20, 'bold'), command=Radian_to_degree)
+b29.pack()
+b30 = Button(b27, b7="Degrees to Radians", font=('Arial', 20, 'bold'), command=Degree_to_radian)
+b30.pack()
+b20 = Button(b27, b7="Compute Arc Length of an b19", font=('Arial', 20, 'bold'), command=Compute_Arc_Length)
+b20.pack()
+b31 = Button(b27, b7="Area of Sector", font=('Arial', 20, 'bold'), command=Area_of_sector)
+b31.pack()
+b32 = Button(b27, b7="Unknown", font=('Arial', 20, 'bold'), command=UnKnown)
+b32.pack()
+b27.mainloop()

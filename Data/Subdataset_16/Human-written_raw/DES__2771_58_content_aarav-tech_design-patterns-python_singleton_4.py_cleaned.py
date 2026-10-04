@@ -1,0 +1,24 @@
+
+class class1(type):
+    b1 = {}
+    def fonk1(cls, *args, **kwargs):
+        if cls not in cls.b1:
+            cls.b1[cls] = super().fonk1(*args, **kwargs)
+        print(cls.b1)
+        return cls.b1[cls]
+class class2(b2 = class1):
+    def fonk2(self):
+        self.b3 = "Not Connected"
+    def fonk3(self):
+        self.b3 = "Disconnected"
+    def fonk4(self):
+        self.b3 = "Connected"
+b4 = class2()
+print("Client 1 ", b4)
+print(b4.b3)
+b5 = class2()
+print("Client 2 ", b5)
+b5.fonk4()
+print(b4.b3)
+b4.fonk3()
+print(b5.b3)

@@ -1,0 +1,28 @@
+def fonk1(s1, s2, max_offset):
+    a1 = 0
+    a2 = 0
+    a3 = 0
+    while a1 < len(s1) and a2 < len(s2):
+        if s1[a1] == s2[a2]:
+            a3 += 1
+        else:
+            b1 = False
+            for i in range(1, max_offset + 1):
+                if a1 + i < len(s1) and s1[a1 + i] == s2[a2]:
+                    a1 += i
+                    b1 = True
+                    break
+                if a2 + i < len(s2) and s1[a1] == s2[a2 + i]:
+                    a2 += i
+                    b1 = True
+                    break
+            if not b1:
+                a1 += 1
+                a2 += 1
+        else:
+            a1 += 1
+            a2 += 1
+    b2 = (len(s1) + len(s2)) / 2
+    b3 = b2 - a3
+    return b3
+print(fonk1('sercan', 'serdar', 5))

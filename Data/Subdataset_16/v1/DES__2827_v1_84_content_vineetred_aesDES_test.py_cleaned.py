@@ -1,0 +1,33 @@
+from collections import deque
+def fonk1(test):
+    b1 = []
+    b2 = []
+    a1 = 0
+    for j in range(b4):
+        for i in range(b4):
+            b2.append(test[(8 * i) + a1 : (8 * i) + 2 + a1])
+        a1 += 2
+        b1.append(b2)
+        b2 = []
+    return b1
+def fonk2(bytes_data):
+    b3 = []
+    for i, byte in enumerate(bytes_data):
+        if i % b4 = = 0:
+            b3.append([byte])
+        else:
+            b3[i
+    return b3
+def fonk3(key):
+    b5 = fonk2(bytes.fromhex(key))
+    for j in range(b4, 44):
+        x0, x1, x2, b6 = b5[j - b4]
+        b7 = [b6, x0, x1, x2]
+        b5.append(b7)
+    return b5
+b8 = "7750f228896eb4561b9cd67497aad0b1"
+b9 = fonk3(b8)
+print(len(b9))
+b10 = "example string for column break"
+b1 = fonk1(b10)
+print(b1)

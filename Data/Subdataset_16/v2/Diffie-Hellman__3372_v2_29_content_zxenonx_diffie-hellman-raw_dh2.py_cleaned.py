@@ -1,0 +1,25 @@
+import random
+import hashlib
+a1 = 9
+a2 = 1001
+b1 = random.randint(5, 10)
+b2 = random.randint(10, 20)
+b3 = pow(a1, b1, a2)
+b4 = pow(a1, b2, a2)
+print(f"Shared parameters:")
+print(f"  Base (a1): {a1}")
+print(f"  Prime (a2): {a2}")
+print("\nAlice's calculations:")
+print(f"  Alice's secret (a): {b1}")
+print(f"  Alice's public value (A): {b3} (a1^a mod a2)")
+print("\nBob's calculations:")
+print(f"  Bob's secret (b): {b2}")
+print(f"  Bob's public value (B): {b4} (a1^b mod a2)")
+print("\nAlice computes the shared key:")
+b5 = pow(b4, b1, a2)
+print(f"  Shared key (computed by Alice): {b5}")
+print(f"  SHA-256 hash of Alice's shared key: {hashlib.sha256(str(b5).encode()).hexdigest()}")
+print("\nBob computes the shared key:")
+b6 = pow(b3, b2, a2)
+print(f"  Shared key (computed by Bob): {b6}")
+print(f"  SHA-256 hash of Bob's shared key: {hashlib.sha256(str(b6).encode()).hexdigest()}")

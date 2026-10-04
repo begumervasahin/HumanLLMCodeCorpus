@@ -1,0 +1,48 @@
+import utils
+import filenames
+class class1:
+    def fonk1(self, b2, b3, b4):
+        self.b1 = ""
+        self.b2 = b2
+        self.b3 = b3
+        self.b4 = b4
+    def fonk2(self):
+        b5 = filenames.b12(self.b2, self.b3, self.b4)
+        with open(b5, "w") as file:
+            file.write(self.b1)
+    def fonk3(self, description, time):
+        b6 = utils.humanize_time(time)
+        self.b1 += f"{description} {b6}.\n"
+    def fonk4(self, time):
+        self.fonk3("Time for getting all the local descriptors of the training images was", time)
+    def fonk5(self, time):
+        self.fonk3("Time for generating the codebook with b2-means was", time)
+    def fonk6(self, time):
+        self.fonk3("Time for getting VLAD global descriptors of the training images was", time)
+    def fonk7(self, time):
+        self.fonk3("Time for calculating the SVM was", time)
+    def fonk8(self, time):
+        self.fonk3("Time for getting VLAD global descriptors of the testing images was", time)
+    def fonk9(self, time):
+        self.fonk3("Elapsed time predicting the testing set is", time)
+    def fonk10(self, accuracy):
+        self.b1 += f"b7 = {accuracy}.\n"
+    def fonk11(self, classes):
+        self.b1 += f"b8 = {classes}\n"
+    def fonk12(self, classes_counts):
+        self.b1 += f"b8 Local Descriptors b9 = {classes_counts}\n"
+    def fonk13(self, conf_mat):
+        self.b1 += f"Confusion b10 = \n{conf_mat}\n"
+if b11 = = "__main__":
+    b12 = class1(b2=10, b3="SIFT", b4="linear")
+    b12.fonk4(120)
+    b12.fonk5(300)
+    b12.fonk6(180)
+    b12.fonk7(60)
+    b12.fonk8(90)
+    b12.fonk9(30)
+    b12.fonk10(0.85)
+    b12.fonk11(["cat", "dog"])
+    b12.fonk12({"cat": 100, "dog": 120})
+    b12.fonk13([[90, 10], [20, 100]])
+    b12.fonk2()

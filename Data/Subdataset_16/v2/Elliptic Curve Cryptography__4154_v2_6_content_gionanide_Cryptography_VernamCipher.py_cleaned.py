@@ -1,0 +1,27 @@
+import binascii
+b1 = 'informationsecurity'
+b2 = 'vlaksjdhfgqodzmxncb'
+print('The plain text is:', b1)
+print('The first key is:', b2, '\n')
+b3 = bin(int(binascii.hexlify(b1.encode()), 16))[2:].zfill(len(b2) * 8)
+b4 = bin(int(binascii.hexlify(b2.encode()), 16))[2:].zfill(len(b2) * 8)
+print('Plain text in bits:', b3)
+print('Key in bits:', b4, '\n')
+def fonk1(binary_message, binary_key):
+    return ''.join(str(int(m) ^ int(k)) for m, k in zip(binary_message, binary_key))
+b5 = fonk1(b3, b4)
+b6 = int(b5, 2)
+b7 = binascii.unhexlify(f'{b6:x}').decode()
+print('XOR result for the encryption with the normal key:', b5)
+print('Encrypted text:', b7)
+b8 = fonk1(b5, b4)
+b9 = int(b8, 2)
+b10 = binascii.unhexlify(f'{b9:x}').decode()
+print('\nDecryption result:', b8)
+print('Decrypted text with the normal key:', b10, '\n')
+b11 = bin(int(binascii.hexlify('tlftrffwmixor|{xbch'.encode()), 16))[2:].zfill(len(b2) * 8)
+print('Alternative key in bits:', b11, '\n')
+b12 = fonk1(b5, b11)
+b13 = int(b12, 2)
+b14 = binascii.unhexlify(f'{b13:x}').decode()
+print('Decrypted text with the alternative key:', b14)

@@ -1,0 +1,56 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn import linear_model
+from sklearn.metrics import r2_score
+b1 = pd.read_csv("FuelConsumption.csv")
+b2 = b1[['ENGINESIZE', 'CYLINDERS', 'FUELCONSUMPTION_COMB', 'CO2EMISSIONS']]
+plt.scatter(b2.ENGINESIZE, b2.CO2EMISSIONS, b3 = 'blue')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+b4 = np.random.rand(len(b1)) < 0.8
+b5 = b2[b4]
+b6 = b2[~b4]
+b7 = np.asanyarray(b5[['ENGINESIZE']])
+b8 = np.asanyarray(b5[['CO2EMISSIONS']])
+b9 = np.asanyarray(b6[['ENGINESIZE']])
+b10 = np.asanyarray(b6[['CO2EMISSIONS']])
+b11 = PolynomialFeatures(degree=2)
+b12 = b11.fit_transform(b7)
+b13 = linear_model.LinearRegression()
+b13.fit(b12, b8)
+print('Degree 2 Polynomial Regression:')
+print('Coefficients: ', b13.coef_)
+print('Intercept: ', b13.intercept_)
+plt.scatter(b5.ENGINESIZE, b5.CO2EMISSIONS, b3 = 'blue')
+b14 = np.arange(0.0, 10.0, 0.1)
+b15 = b13.intercept_[0] + b13.coef_[0][1] * b14 + b13.coef_[0][2] * np.power(b14, 2)
+plt.plot(b14, b15, '-r')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+b16 = b11.transform(b9)
+b17 = b13.predict(b16)
+print("Mean absolute error: %.2f" % np.mean(np.absolute(b17 - b10)))
+print("Residual sum of squares (MSE): %.2f" % np.mean((b17 - b10) ** 2))
+print("R2-score: %.2f" % r2_score(b17, b10))
+b18 = PolynomialFeatures(degree=3)
+b19 = b18.fit_transform(b7)
+b20 = linear_model.LinearRegression()
+b20.fit(b19, b8)
+print('Degree 3 Polynomial Regression:')
+print('Coefficients: ', b20.coef_)
+print('Intercept: ', b20.intercept_)
+plt.scatter(b5.ENGINESIZE, b5.CO2EMISSIONS, b3 = 'blue')
+b15 = b20.intercept_[0] + b20.coef_[0][1] * b14 + b20.coef_[0][2] * np.power(b14, 2) + b20.coef_[0][3] * np.power(b14, 3)
+plt.plot(b14, b15, '-r')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+b21 = b18.transform(b9)
+b22 = b20.predict(b21)
+print("Mean absolute error: %.2f" % np.mean(np.absolute(b22 - b10)))
+print("Residual sum of squares (MSE): %.2f" % np.mean((b22 - b10) ** 2))
+print("R2-score: %.2f" % r2_score(b22, b10))

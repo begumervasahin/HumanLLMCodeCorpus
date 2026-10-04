@@ -1,0 +1,24 @@
+import unittest
+def fonk1(number):
+    if number % b1 = = 0 and number % b2 == 0:
+        return 'FizzBuzz'
+    if number % b1 = = 0:
+        return 'Fizz'
+    if number % b2 = = 0:
+        return 'Buzz'
+    return number
+class class1(unittest.TestCase):
+    def fonk2(self):
+        self.assertEqual(fonk1(b1), 'Fizz', b3 = 'Should return "Fizz" for number divisible by b1')
+        self.assertEqual(fonk1(33), 'Fizz', b3 = 'Should return "Fizz" for number divisible by b1')
+    def fonk3(self):
+        self.assertEqual(fonk1(b2), 'Buzz', b3 = 'Should return "Buzz" for number divisible by b2')
+        self.assertEqual(fonk1(25), 'Buzz', b3 = 'Should return "Buzz" for number divisible by b2')
+    def fonk4(self):
+        self.assertEqual(fonk1(15), 'FizzBuzz', b3 = 'Should return "FizzBuzz" for number divisible by b1 and b2')
+        self.assertEqual(fonk1(105), 'FizzBuzz', b3 = 'Should return "FizzBuzz" for number divisible by b1 and b2')
+    def fonk5(self):
+        self.assertEqual(fonk1(101), 101, b3 = 'Should return the number if it is indivisible by neither b1 nor b2')
+        self.assertEqual(fonk1(8), 8, b3 = 'Should return the number if it is indivisible by neither b1 nor b2')
+if b4 = = '__main__':
+    unittest.main()

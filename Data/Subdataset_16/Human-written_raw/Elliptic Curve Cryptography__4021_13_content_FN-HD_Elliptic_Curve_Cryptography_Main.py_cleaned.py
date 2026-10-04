@@ -1,0 +1,15 @@
+from Mods.EC.Elliptic_Curve import EllipticCurve
+from Mods.EC.Rational_Point_In_EC import RationalPointInEC
+print(EllipticCurve.get_instance(0, -2))
+b1 = RationalPointInEC()
+b2 = RationalPointInEC(-1, 1)
+b3 = RationalPointInEC(2, 2)
+print('show value')
+print('b1 = ' + str(b1))
+print('b2 = '+str(b2))
+print('b3 = '+str(b3))
+print('show calculation')
+print('b2 + b1 = '+str(b2 + b1))
+print('b3 + b2 = '+str(b3 + b2))
+print('2 * b2 = '+str(2*b2))
+print('\"4*b2 = = 3*b2 + b2\" is ' + str(4*b2 == 3*b2 + b2))

@@ -1,0 +1,84 @@
+from __future__ import print_function
+import pickle
+import os.path
+from googleapiclient.discovery import build
+from google_auth_oauthlib.b9 import InstalledAppFlow
+from google.auth.transport.b5 import Request
+from printRequest import PrintRequest
+b1 = []
+b2 = []
+b3 = []
+b4 = []
+b5 = [b2, b1, b3, b4]
+b6 = ['TODO', 'IN PROGRESS', 'FINISHED', 'FAILED']
+b7 = ['https:
+def fonk1():
+    b8 = None
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            b8 = pickle.load(token)
+    if not b8 or not b8.valid:
+        if b8 and b8.expired and b8.refresh_token:
+            b8.refresh(Request())
+        else:
+            b9 = InstalledAppFlow.from_client_secrets_file('credentials.json', b7)
+            b8 = b9.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(b8, token)
+    b10 = build('sheets', 'v4', credentials=b8)
+    b11 = b10.spreadsheets()
+    b12 = b11.b13().get(spreadsheetId='1EEsBJlw6jhqebXVfwkq1No_FUnWRGejBe7l7Dnier24', range='Form Responses 1').execute()
+    b13 = b12.get('b13', [])
+    if not b13:
+        print('No data found.')
+    else:
+        fonk6(b13)
+def fonk2(b17):
+    b14 = fonk4()
+    if isinstance(b14, int):
+        print(b17[b14])
+def fonk3():
+    while True:
+        print('TODO[0]\nIN PROGRESS[1]\nFINISHED[2]\nFAILED[3]')
+        b14 = fonk4()
+        if isinstance(b14, str):
+            continue
+        fonk5(b14)
+def fonk4():
+    print("Input selection: (q) to quit (m) to return to menu")
+    b15 = input()
+    if b15.lower() == 'q':
+        quit()
+    elif b15.lower() == 'm':
+        return 'm'
+    else:
+        try:
+            return int(b15)
+        except ValueError:
+            return 'm'
+def fonk5(b14):
+    os.system('cls' if os.b16 = = 'nt' else 'clear')
+    b17 = b5[b14]
+    print('\t NOW VIEWING ' + b6[b14] + '\n')
+    for x in range(len(b17)):
+        try:
+            print(f'[{x}] {b17[x]}\n')
+        except Exception as e:
+            print(f"Unable to print: {e}")
+    fonk2(b17)
+def fonk6(b13):
+    a1 = 1
+    for row in b13:
+        b18 = PrintRequest(row, a1)
+        a1 += 1
+        if b18.b19 = = '0':
+            b2.append(b18)
+        elif b18.b19 = = '1':
+            b1.append(b18)
+        elif b18.b19 = = '2':
+            b3.append(b18)
+        elif b18.b19 = = '3':
+            b4.append(b18)
+    fonk3()
+if b20 = = '__main__':
+    fonk1()

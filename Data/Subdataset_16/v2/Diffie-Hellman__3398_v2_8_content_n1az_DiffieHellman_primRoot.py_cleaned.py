@@ -1,0 +1,40 @@
+from math import gcd as builtin_gcd
+def fonk1(n):
+    if n <= 1:
+        return False
+    if n <= 3:
+        return True
+    if n % b1 = = 0 or n % 3 == 0:
+        return False
+    a1 = 5
+    while a1 * a1 <= n:
+        if n % a1 = = 0 or n % (a1 + b1) == 0:
+            return False
+        a1 += 6
+    return True
+def fonk2(prime):
+    if not fonk1(prime):
+        return []
+    b2 = {num for num in range(1, prime) if builtin_gcd(num, prime) == 1}
+    b3 = []
+    for candidate in range(1, prime):
+        if b2 = = {pow(candidate, power, prime) for power in range(1, prime)}:
+            b3.append(candidate)
+    return b3
+def fonk3():
+    print('Enter a prime b5: ', b4 = '')
+    try:
+        b5 = int(input())
+        if fonk1(b5):
+            print('Checked: Number is a PRIME')
+            b6 = fonk2(b5)
+            if b6:
+                print('Primitive root(s):', b6)
+            else:
+                print('No primitive b6 found')
+        else:
+            print('Warning: Number is not a PRIME')
+    except ValueError:
+        print('Error: Invalid input. Please enter a valid integer.')
+if b7 = = '__main__':
+    fonk3()

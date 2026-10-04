@@ -1,0 +1,91 @@
+
+import BST_Iter as BST
+def fonk1(b2, b1 = False):
+    print("\nTree Structure:")
+    print("In order:  ", b2.inOrder())
+    print("Pre order: ", b2.preOrder())
+    print("BFS:       ", b2.BFS())
+    if b1:
+        print("Nodes (in BFS order):")
+        for node in b2.BFS():
+            b2.find(node).printNode()
+    print()
+def fonk2():
+    b2 = BST.BinarySearchTree(BST.Node(7))
+    b2.insert(4)
+    b2.insert(1)
+    b2.insert(6)
+    b2.insert(13)
+    b2.insert(15)
+    b2.insert(10)
+    return b2, b2.getRoot()
+def fonk3():
+    b2, b3 = fonk2()
+    print("\nTree Traversals:")
+    print("In order:  ", b2.inOrder())
+    print("Pre order: ", b2.preOrder())
+    print("Post order:", b2.postOrder())
+    print("BFS:       ", b2.BFS())
+    print("Root Node:", b4 = ' ')
+    b3.printNode()
+    print("\nSearch Results:")
+    for key in [0, 1, 2, 5, 6, 7, 8, 12, 13, 14, 15, 20]:
+        print(f"Search for {key}: {b2.find(key)}")
+    print("\nNext Node Results:")
+    for key in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        b5 = b2.next(b2.find(key))
+        print(f"Next node after {key}: {b5}")
+    print("\nPrevious Node Results:")
+    for key in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        b6 = b2.previous(b2.find(key))
+        print(f"Previous node before {key}: {b6}")
+    print("\nRange Search Results (5 to 12):")
+    for node in b2.rangeSearch(5, 12):
+        print(node, b4 = ' ')
+    print()
+    if False:
+        print("\nInsert Test:")
+        print("Before Insertion:")
+        fonk1(b2)
+        b2.insert(3)
+        print(f"After inserting 3:")
+        fonk1(b2)
+        b2.insert(5)
+        print(f"After inserting 5:")
+        fonk1(b2)
+    if False:
+        print("\nDelete Test:")
+        print("Before Deletion:")
+        fonk1(b2)
+        b2.delete(b2.find(7))
+        print(f"After deleting 7:")
+        fonk1(b2)
+        try:
+            print(f"This is the node under which the deleted node, 7, would come: {b2.find(7)}.")
+            b2.find(7).printNode()
+        except AttributeError:
+            print("New b3:", b4 = ' ')
+            b2.getRoot().printNode()
+    print("\nRotation Tests:")
+    print("Initial Tree:")
+    fonk1(b2, b1 = True)
+    print("\nRotating Right at Node 7:")
+    b2.rotateRight(b2.find(7))
+    fonk1(b2, b1 = True)
+    print("\nRotating Left at Node 1:")
+    b2.rotateLeft(b2.find(1))
+    fonk1(b2, b1 = True)
+def fonk4():
+    b2 = BST.BinarySearchTree(BST.Node(3))
+    b2.insert(1)
+    b2.insert(4)
+    b2.insert(5)
+    fonk1(b2, True)
+    b2.delete(b2.find(3))
+    fonk1(b2, True)
+def fonk5():
+    b2, b3 = fonk2()
+    fonk1(b2, True)
+    b2.delete(b2.find(7))
+    fonk1(b2, True)
+fonk3()
