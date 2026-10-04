@@ -1,0 +1,61 @@
+from Student import Student
+comparison_times = 0
+swap_times = 0
+def bubble_sort(arr):
+    global comparison_times, swap_times
+    is_sorted = False
+    while not is_sorted:
+        is_sorted = True
+        for i in range(len(arr) - 1):
+            comparison_times += 1
+            if int(arr[i].rating) < int(arr[i + 1].rating):
+                swap_times += 1
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                is_sorted = False
+    print("BubbleSort")
+    print(f"Comparison times: {comparison_times}")
+    print(f"Swap times: {swap_times}")
+    comparison_times = 0
+    swap_times = 0
+def partition(arr, low, high):
+    global comparison_times, swap_times
+    pivot = arr[low]
+    left = low + 1
+    right = high
+    done = False
+    while not done:
+        while left <= right and int(arr[left].growth) <= int(pivot.growth):
+            comparison_times += 1
+            left += 1
+        while int(arr[right].growth) >= int(pivot.growth) and right >= left:
+            comparison_times += 1
+            right -= 1
+        if right < left:
+            done = True
+        else:
+            arr[left], arr[right] = arr[right], arr[left]
+            swap_times += 1
+    arr[low], arr[right] = arr[right], arr[low]
+    swap_times += 1
+    return right
+def quick_sort(arr, low, high):
+    if low < high:
+        pivot_index = partition(arr, low, high)
+        quick_sort(arr, low, pivot_index - 1)
+        quick_sort(arr, pivot_index + 1, high)
+if __name__ == "__main__":
+    students = [Student("Alice", 85, 5), Student("Bob", 95, 6), Student("Charlie", 78, 4)]
+    print("Original List:")
+    for student in students:
+        print(student)
+    print("\nSorting by Rating using Bubble Sort:")
+    bubble_sort(students)
+    for student in students:
+        print(student)
+    students = [Student("Alice", 85, 5), Student("Bob", 95, 6), Student("Charlie", 78, 4)]
+    print("\nSorting by Growth using Quick Sort:")
+    quick_sort(students, 0, len(students) - 1)
+    for student in students:
+        print(student)
+    print(f"Comparison times: {comparison_times}")
+    print(f"Swap times: {swap_times}")

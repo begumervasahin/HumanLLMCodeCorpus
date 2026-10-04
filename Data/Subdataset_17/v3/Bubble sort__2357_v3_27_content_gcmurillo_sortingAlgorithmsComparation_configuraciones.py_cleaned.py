@@ -1,0 +1,24 @@
+import random
+def generate_configurations(algorithm, num_samples, sample_size, file_prefix):
+    configurations = []
+    for n in range(1, num_samples + 1):
+        configuration = random.sample(range(1000000000, 9999999999), sample_size)
+        configurations.append(configuration)
+        print(f"Generated sample {n} of {num_samples}")
+    file_name = f'{file_prefix}Inicial{algorithm}.txt'
+    with open(file_name, 'a') as file:
+        for config in configurations:
+            file.write(f'{config}\n')
+    return configurations
+def confA(algorithm):
+    return generate_configurations(algorithm, 100000, 10, 'confA')
+def confB(algorithm):
+    return generate_configurations(algorithm, 10000, 100, 'confB')
+def confC(algorithm):
+    return generate_configurations(algorithm, 1000, 1000, 'confC')
+def confD(algorithm):
+    return generate_configurations(algorithm, 100, 10000, 'confD')
+def confE(algorithm):
+    return generate_configurations(algorithm, 10, 100000, 'confE')
+def confF(algorithm):
+    return generate_configurations(algorithm, 1, 1000000, 'confF')

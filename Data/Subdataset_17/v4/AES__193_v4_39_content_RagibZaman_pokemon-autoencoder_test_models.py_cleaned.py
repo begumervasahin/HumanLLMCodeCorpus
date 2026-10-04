@@ -1,0 +1,43 @@
+import unittest
+import torch
+from torch.autograd import Variable
+import models
+class TestEncoder(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 32
+        self.image_size = 64
+        self.latent_size = 128
+        self.encoder = models.Encoder(self.latent_size, self.image_size)
+        self.input_tensor = Variable(2.0 * (torch.rand((self.batch_size, 3, self.image_size, self.image_size)) - 0.5))
+    def test_output_size(self):
+        output_tensor = self.encoder(self.input_tensor)
+        self.assertEqual(output_tensor.size(), torch.Size([self.batch_size, self.latent_size]))
+    def test_layer_sizes(self):
+        reshaped_tensor = self.input_tensor.view(self.batch_size, -1)
+        hidden_output = self.encoder.hidden_layer(reshaped_tensor)
+        self.assertEqual(hidden_output.size(), torch.Size([self.batch_size, self.latent_size]))
+        output_tensor = self.encoder.output_layer(hidden_output)
+        self.assertEqual(output_tensor.size(), torch.Size([self.batch_size, self.latent_size]))
+class TestDecoder(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 32
+        self.image_size = 64
+        self.latent_size = 128
+        self.decoder = models.Decoder(self.latent_size, self.image_size)
+        self.input_tensor = Variable(2.0 * (torch.rand((self.batch_size, self.latent_size, 1, 1)) - 0.5))
+    def test_output_size(self):
+        output_tensor = self.decoder(self.input_tensor)
+        self.assertEqual(output_tensor.size(), torch.Size([self.batch_size, 3, self.image_size, self.image_size]))
+    def test_layer_sizes(self):
+        layer1_output = self.decoder.layer1(self.input_tensor)
+        self.assertEqual(layer1_output.size(), torch.Size([self.batch_size, 128, 7, 7]))
+        layer2_output = self.decoder.layer2(layer1_output)
+        self.assertEqual(layer2_output.size(), torch.Size([self.batch_size, 64, 15, 15]))
+        layer3_output = self.decoder.layer3(layer2_output)
+        self.assertEqual(layer3_output.size(), torch.Size([self.batch_size, 64, 31, 31]))
+        layer4_output = self.decoder.layer4(layer3_output)
+        self.assertEqual(layer4_output.size(), torch.Size([self.batch_size, 32, 63, 63]))
+        final_output = self.decoder.layer5(layer4_output)
+        self.assertEqual(final_output.size(), torch.Size([self.batch_size, 3, self.image_size, self.image_size]))
+if __name__ == '__main__':
+    unittest.main()

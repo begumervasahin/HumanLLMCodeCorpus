@@ -1,0 +1,77 @@
+import random
+import pickle
+import time
+import matplotlib.pyplot as plt
+global time_list_bubble_sort
+time_list_bubble_sort = []
+global time_list_insertion_sort
+time_list_insertion_sort = []
+global avg_time_bubble_sort
+avg_time_bubble_sort = []
+global avg_time_insertion_sort
+avg_time_insertion_sort = []
+def generate_and_store_array():
+    ar = random.sample(range(1, 300000), 200000)
+    with open("data.txt", 'wb') as fp:
+        pickle.dump(ar, fp)
+    return ar
+def load_array():
+    with open("data.txt", 'rb') as fp:
+        ar = pickle.load(fp)
+    return ar
+def measure_sorting_times(ar):
+    k = 2000
+    for i in range(25):
+        time_list_bubble_sort = []
+        time_list_insertion_sort = []
+        sum_time_bubble_sort = 0.0
+        sum_time_insertion_sort = 0.0
+        for j in range(10):
+            ar1 = random.sample(ar, k)
+            ar2 = random.sample(ar, k)
+            start_time_bubble_sort = time.time()
+            bubble_sort(ar1)
+            end_time_bubble_sort = time.time()
+            total_time_bubble_sort = end_time_bubble_sort - start_time_bubble_sort
+            time_list_bubble_sort.append(total_time_bubble_sort)
+            sum_time_bubble_sort += time_list_bubble_sort[j]
+            start_time_insertion_sort = time.time()
+            insertion_sort(ar2)
+            end_time_insertion_sort = time.time()
+            total_time_insertion_sort = end_time_insertion_sort - start_time_insertion_sort
+            time_list_insertion_sort.append(total_time_insertion_sort)
+            sum_time_insertion_sort += time_list_insertion_sort[j]
+        avg_time_bubble_sort.append(sum_time_bubble_sort / 10)
+        avg_time_insertion_sort.append(sum_time_insertion_sort / 10)
+        print(f"Average time for bubble sort at {k} elements: {avg_time_bubble_sort[-1]}")
+        print(f"Average time for insertion sort at {k} elements: {avg_time_insertion_sort[-1]}")
+        k += 2000
+def plot_results():
+    input_list = [2000 * i for i in range(1, 26)]
+    plt.plot(input_list, avg_time_bubble_sort, 'r--', label='Bubble Sort')
+    plt.plot(input_list, avg_time_insertion_sort, 'b--', label='Insertion Sort')
+    plt.xlabel('Number of Elements')
+    plt.ylabel('Average Time (seconds)')
+    plt.legend()
+    plt.show()
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        for j in range(n - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+def insertion_sort(arr):
+    n = len(arr)
+    for j in range(1, n):
+        key = arr[j]
+        i = j - 1
+        while i >= 0 and arr[i] > key:
+            arr[i + 1] = arr[i]
+            i -= 1
+        arr[i + 1] = key
+def main():
+    ar = generate_and_store_array()
+    measure_sorting_times(ar)
+    plot_results()
+if __name__ == "__main__":
+    main()

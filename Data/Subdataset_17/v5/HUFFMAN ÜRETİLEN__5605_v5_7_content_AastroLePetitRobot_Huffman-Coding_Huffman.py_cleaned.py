@@ -1,0 +1,65 @@
+from queue import PriorityQueue
+class Node:
+    def __init__(self, data=' ', frequency=0, left=None, right=None):
+        self.data = data
+        self.frequency = frequency
+        self.left = left
+        self.right = right
+    def __lt__(self, other):
+        return self.frequency < other.frequency
+    def __repr__(self):
+        return (
+            f"Node(data='{self.data}', frequency={self.frequency}, "
+            f"left={self.left}, right={self.right})"
+        )
+def build_frequency_queue(text):
+    frequency_table = {char: text.count(char) for char in set(text)}
+    pq = PriorityQueue()
+    for char, freq in frequency_table.items():
+        pq.put(Node(char, freq))
+    return pq
+def build_huffman_tree(frequency_queue):
+    while frequency_queue.qsize() > 1:
+        left = frequency_queue.get()
+        right = frequency_queue.get()
+        merged_node = Node(frequency=left.frequency + right.frequency, left=left, right=right)
+        frequency_queue.put(merged_node)
+    return frequency_queue.get()
+def build_huffman_table(node, code='', huffman_table=None):
+    if huffman_table is None:
+        huffman_table = {}
+    if not node.left and not node.right:
+        huffman_table[node.data] = code
+    else:
+        if node.left:
+            build_huffman_table(node.left, code + '0', huffman_table)
+        if node.right:
+            build_huffman_table(node.right, code + '1', huffman_table)
+    return huffman_table
+def encode_string(text, huffman_table):
+    return ''.join(huffman_table[char] for char in text)
+def decode_string(encoded_text, huffman_tree):
+    decoded_text = []
+    current_node = huffman_tree
+    for bit in encoded_text:
+        current_node = current_node.left if bit == '0' else current_node.right
+        if not current_node.left and not current_node.right:
+            decoded_text.append(current_node.data)
+            current_node = huffman_tree
+    return ''.join(decoded_text)
+def main():
+    input_file = 'texteEncode.txt'
+    with open(input_file, 'r') as file:
+        input_text = file.read()
+    frequency_queue = build_frequency_queue(input_text)
+    huffman_tree = build_huffman_tree(frequency_queue)
+    huffman_table = build_huffman_table(huffman_tree)
+    encoded_text = encode_string(input_text, huffman_table)
+    with open(input_file, 'w') as file:
+        file.write(encoded_text)
+    decoded_text = decode_string(encoded_text, huffman_tree)
+    print("Original Text:", input_text)
+    print("Encoded Text:", encoded_text)
+    print("Decoded Text:", decoded_text)
+if __name__ == "__main__":
+    main()

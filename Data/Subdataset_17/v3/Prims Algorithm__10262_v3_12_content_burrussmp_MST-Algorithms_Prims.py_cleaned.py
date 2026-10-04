@@ -1,0 +1,130 @@
+import math
+import random
+class Edge:
+    def __init__(self, src, dest, weight):
+        self.src = src
+        self.dest = dest
+        self.weight = weight
+    def __repr__(self):
+        return f"({self.src} - {self.dest}: {self.weight})"
+class AdjacencyList:
+    def __init__(self, vertices, edges):
+        self.vertices = vertices
+        self.edges = edges
+        self.adj_list = {vertex: [] for vertex in vertices}
+        for edge in edges:
+            self.adj_list[edge.src].append((edge.dest, edge.weight))
+            self.adj_list[edge.dest].append((edge.src, edge.weight))
+    def get_vertices(self):
+        return self.vertices
+    def add_edge(self, edge):
+        self.edges.append(edge)
+        self.adj_list[edge.src].append((edge.dest, edge.weight))
+        self.adj_list[edge.dest].append((edge.src, edge.weight))
+    def number_of_neighbors_to(self, vertex):
+        return len(self.adj_list[vertex])
+    def adjacent_to(self, vertex, index):
+        return self.adj_list[vertex][index]
+    def print(self):
+        for vertex in self.vertices:
+            print(f"{vertex}: {self.adj_list[vertex]}")
+class DataGenerator:
+    def __init__(self, num_vertices, density, method=2):
+        self.num_vertices = num_vertices
+        self.density = density
+        self.method = method
+    def generate_data(self):
+        vertices = [i for i in range(self.num_vertices)]
+        edges = []
+        for i in range(self.num_vertices):
+            for j in range(i + 1, self.num_vertices):
+                if random.random() <= self.density:
+                    weight = random.randint(1, 10)
+                    edges.append(Edge(i, j, weight))
+        return AdjacencyList(vertices, edges)
+class MinHeapPrim:
+    def __init__(self, vertices):
+        self.heap = []
+        self.positions = []
+        self.parents = []
+        self.size = len(vertices)
+        for i in range(len(vertices)):
+            if i == 0:
+                self.heap.append((0, 0))
+                self.positions.append(0)
+                self.parents.append(-1)
+            else:
+                self.heap.append((i, math.inf))
+                self.positions.append(i)
+                self.parents.append(-1)
+        self.total_cost = 0
+    def print(self):
+        for i in range(self.size):
+            print(f"(v={self.heap[i][0]} w={self.heap[i][1]}) ", end='')
+        print('')
+    def set_parent(self, vertex, parent):
+        self.parents[vertex] = parent
+    def get_min_node(self, mst, added_vertices):
+        smallest = self.heap[0][0]
+        if self.parents[smallest] != -1 and added_vertices[smallest] == 0:
+            mst.add_edge(Edge(self.parents[smallest], smallest, self.heap[0][1]))
+            added_vertices[smallest] = 1
+        self.heap[0] = self.heap[self.size - 1]
+        self.positions[smallest] = -1
+        self.positions[self.heap[0][0]] = 0
+        self.size -= 1
+        self.min_heapify(0)
+        return smallest
+    def min_heapify(self, index):
+        smallest = index
+        left = 2 * index + 1
+        right = 2 * index + 2
+        if left < self.size and self.heap[smallest][1] > self.heap[left][1]:
+            smallest = left
+        if right < self.size and self.heap[smallest][1] > self.heap[right][1]:
+            smallest = right
+        if smallest != index:
+            self.swap(index, smallest)
+            self.min_heapify(smallest)
+    def swap(self, i, j):
+        self.heap[i], self.heap[j] = self.heap[j], self.heap[i]
+        self.positions[self.heap[i][0]], self.positions[self.heap[j][0]] = (
+            self.positions[self.heap[j][0]], self.positions[self.heap[i][0]]
+        )
+    def decrease_key_value(self, index, vertex):
+        while index > 0:
+            parent_index = (index - 1)
+            if self.heap[parent_index][1] > self.heap[index][1]:
+                self.swap(index, parent_index)
+                index = parent_index
+            else:
+                break
+    def is_empty(self):
+        return self.size == 0
+    def get_weight(self, vertex):
+        return self.heap[self.positions[vertex]][1]
+    def update_heap(self, vertex, weight):
+        index = self.positions[vertex]
+        self.heap[index] = (vertex, weight)
+        self.decrease_key_value(index, vertex)
+def prim(adj_list):
+    vertices = adj_list.get_vertices()
+    mst = AdjacencyList(vertices, [])
+    added_vertices = [0] * len(vertices)
+    min_heap = MinHeapPrim(vertices)
+    while not min_heap.is_empty():
+        u = min_heap.get_min_node(mst, added_vertices)
+        for i in range(adj_list.number_of_neighbors_to(u)):
+            neighbor, weight = adj_list.adjacent_to(u, i)
+            if added_vertices[neighbor] == 0 and min_heap.get_weight(neighbor) > weight:
+                min_heap.set_parent(neighbor, u)
+                min_heap.update_heap(neighbor, weight)
+    return mst
+if __name__ == '__main__':
+    print("Original Adjacency List")
+    data_generator = DataGenerator(100, 0.1, method=2)
+    graph = data_generator.generate_data()
+    graph.print()
+    mst = prim(graph)
+    print("MST: Prim's Algorithm")
+    mst.print()

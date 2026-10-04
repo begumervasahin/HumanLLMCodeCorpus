@@ -1,0 +1,44 @@
+import queue
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+def display(root, depth):
+    if root is None:
+        return
+    if depth == 0:
+        print(root.data, end=" ")
+    display(root.left, depth - 1)
+    display(root.right, depth - 1)
+def display_levels(root):
+    if root is None:
+        return
+    nodes_queue = queue.Queue()
+    nodes_queue.put(root)
+    while not nodes_queue.empty():
+        level_size = nodes_queue.qsize()
+        while level_size > 0:
+            node = nodes_queue.get()
+            print(node.data, end=" ")
+            if node.left is not None:
+                nodes_queue.put(node.left)
+            if node.right is not None:
+                nodes_queue.put(node.right)
+            level_size -= 1
+        print("")
+if __name__ == "__main__":
+    root = Node(1)
+    root.left = Node(4)
+    root.right = Node(5)
+    root.left.left = Node(2)
+    root.left.right = Node(8)
+    root.right.left = Node(3)
+    root.right.right = Node(7)
+    root.left.left.left = Node(0)
+    root.left.left.right = Node(1)
+    root.left.right.left = Node(3)
+    root.left.right.right = Node(9)
+    root.right.right.left = Node(1)
+    root.right.right.right = Node(10)
+    display_levels(root)

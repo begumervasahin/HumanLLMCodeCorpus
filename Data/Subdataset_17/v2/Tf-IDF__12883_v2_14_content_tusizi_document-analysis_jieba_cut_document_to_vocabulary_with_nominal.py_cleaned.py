@@ -1,0 +1,24 @@
+import json
+import jieba.posseg as pseg
+from pyspark import SparkContext
+sc = SparkContext(appName='CutDocument')
+def cut(text):
+    seg_list = list(pseg.cut(text))
+    allowed_pos = {
+        "n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng",
+        "s", "f", "v", "vd", "vn", "vf", "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"
+    }
+    filtered_list = [word for word, flag in seg_list if flag in allowed_pos]
+    encoded_list = [word.encode("utf-8") for word in filtered_list]
+    return encoded_list
+def output(items):
+    filename = "/vagrant/vocabulary/mominal.txt"
+    joined_text = " ".join(items)
+    with open(filename, "a+") as file:
+        file.write(joined_text + "\n")
+def filter_stopword(words):
+    return [word for word in words if word not in stopWordRdd]
+src_file = '/vagrant/data/data.txt'
+rdd = sc.textFile(src_file).map(lambda x: json.loads(x)['content'])
+stopWordRdd = set(sc.textFile("stop_words.txt").map(lambda x: x.encode("utf-8")).collect())
+result = rdd.map(cut).map(filter_stopword).foreach(output)

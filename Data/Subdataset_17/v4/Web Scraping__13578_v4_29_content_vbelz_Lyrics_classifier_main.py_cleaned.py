@@ -1,0 +1,50 @@
+from make_data_base import create_database_save_to_disk, merge_databases_into_one
+from prepare_for_training import prepare_training
+import pandas as pd
+from training import train_bayes, train_logistic
+from prediction import predict_from_text
+from args import parser
+import os
+def main():
+    args = parser.parse_args()
+    folder_save = args.weights_folder
+    nb_artist = args.nb_artist
+    artist = args.list_artist
+    mode = args.mode
+    data_folder = args.data_folder
+    file_name_to_save = args.name_file_to_save
+    file_name_to_read = args.name_file_to_read
+    scraping_mode = mode == 'scraping'
+    training_mode = mode == 'training'
+    prediction_mode = mode == 'prediction'
+    if scraping_mode:
+        handle_scraping(artist, nb_artist, data_folder, file_name_to_save)
+    elif training_mode:
+        handle_training(data_folder, file_name_to_read, folder_save)
+    elif prediction_mode:
+        handle_prediction(artist, folder_save)
+    else:
+        print("Invalid mode selected. Choose from 'scraping', 'training', or 'prediction'.")
+def handle_scraping(artist, nb_artist, data_folder, file_name_to_save):
+    if artist != parser.get_default('list_artist'):
+        artist = [name.strip().lower() for name in ','.join(artist).split(',')]
+    if nb_artist == len(artist):
+        print(f'You are going to scrape for {nb_artist} artists with names: {", ".join(artist)}')
+        for artist_name in artist:
+            create_database_save_to_disk(artist_name, data_folder)
+        merge_databases_into_one(artist, data_folder, file_name_to_save)
+    else:
+        print("There is inconsistency between the number of artists and the list of artists. Relaunch the command line following recommendations.")
+def handle_training(data_folder, file_name_to_read, folder_save):
+    print(f'You are going to train the models on this database: {os.path.join(data_folder, file_name_to_read)}')
+    df_read = pd.read_csv(os.path.join(data_folder, file_name_to_read))
+    X, y = prepare_training(df_read, folder_save)
+    train_bayes(X, y, folder_save)
+    train_logistic(X, y, folder_save)
+def handle_prediction(artist, folder_save):
+    if artist != parser.get_default('list_artist'):
+        artist = [name.strip() for name in ','.join(artist).split(',')]
+    text = input(f'Give me some text from Lyrics between {", ".join(artist)}: ')
+    predict_from_text(text, folder_save)
+if __name__ == '__main__':
+    main()

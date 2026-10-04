@@ -1,0 +1,123 @@
+import warnings
+import os
+import numpy as np
+import tensorflow as tf
+from keras import backend as K
+from argparse import ArgumentParser
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
+from pnas.encoder import Encoder, StateSpace
+from pnas.manager import NetworkManager
+from pnas.model import model_fn
+from mnist.mnist_data import get_dataset
+import ast
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+ARCHITECTURE_DIR = 'architectures/'
+os.makedirs(ARCHITECTURE_DIR, exist_ok=True)
+def get_action(representation_string):
+    formatted_string = ",".join(representation_string.split())
+    return ast.literal_eval(f"[{formatted_string}]")
+def log_architecture(experiment_name, log_string):
+    log_file_path = os.path.join(ARCHITECTURE_DIR, f'{experiment_name}.txt')
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(log_string)
+def get_architecture_from_action(action):
+    return f'"{" ".join(np.array_str(a) for a in action)}"'
+def parse_arguments():
+    parser = ArgumentParser(description="PNAS architecture training and evaluation.")
+    parser.add_argument("-ta", "--train_arc", action='store_true', default=False,
+                        help="Set to True for training an architecture (default: False).")
+    return parser.parse_args()
+def setup_session():
+    session = tf.Session()
+    K.set_session(session)
+    return session
+def initialize_experiment_settings():
+    settings = {
+        "experiment_name": "HARD-LIMIT-3mul10pow6-REMOVE-SKIP",
+        "B": 3,
+        "K_": 64,
+        "regularization": 0,
+        "controller_cells": 100,
+        "rnn_training_epochs": 15,
+        "restore_controller": True,
+        "dropout": (False, 0.2, 0.5),
+        "max_epochs": 6,
+        "batch_size": 128,
+        "num_cells": 3,
+        "num_cell_filters": [16, 24, 32],
+        "dense_layers": [32, 10],
+        "use_expansion": False,
+        "operators": ['3x3 sep-bconv', '5x5 sep-bconv', '1x7-7x1 conv', '3x3 bconv'],
+        "num_epochs": 200,
+        "representation_string": "[[1. 0. 0.]] [[1. 0. 0. 0.]] [[1. 0. 0.]] [[1. 0. 0. 0.]]",
+        "load_saved": False
+    }
+    return settings
+def main():
+    args = parse_arguments()
+    session = setup_session()
+    settings = initialize_experiment_settings()
+    dataset = get_dataset(settings['use_expansion'])
+    state_space = StateSpace(
+        settings['B'],
+        input_lookback_depth=0,
+        input_lookforward_depth=0,
+        operators=settings['operators']
+    )
+    if not args.train_arc:
+        manager = NetworkManager(dataset, settings['experiment_name'],
+                                 epochs=settings['max_epochs'], batchsize=settings['batch_size'])
+        state_space.print_state_space()
+        state_space.print_total_models(settings['K_'])
+        with session.as_default():
+            controller = Encoder(
+                session, state_space, settings['experiment_name'], B=settings['B'], K=settings['K_'],
+                train_iterations=settings['rnn_training_epochs'], reg_param=settings['regularization'],
+                controller_cells=settings['controller_cells'], restore_controller=settings['restore_controller']
+            )
+        log_architecture(settings['experiment_name'], 'All evaluated architectures will be logged here.\n\n\n')
+        for trial in range(settings['B']):
+            log_architecture(settings['experiment_name'], f'---- B= {trial} Architectures ----\n')
+            with session.as_default():
+                K.set_session(session)
+                k = None if trial == 0 else settings['K_']
+                actions = controller.get_actions(top_k=k)
+            rewards = []
+            for t, action in enumerate(actions):
+                state_space.print_actions(action)
+                print(f"Model {t + 1}")
+                parsed_action = state_space.parse_state_space_list(action)
+                print(f"Predicted actions: {parsed_action}")
+                reward, _ = manager.get_rewards(
+                    model_fn, parsed_action,
+                    settings['num_cells'], settings['num_cell_filters'],
+                    settings['dense_layers'], settings['load_saved'], settings['dropout']
+                )
+                print(f"Final Accuracy: {reward}")
+                rewards.append(reward)
+                print(f"\nFinished {t + 1} out of {len(actions)} models!\n")
+                log_str = (f"\nSr. No: {t + 1}\nReward: {reward}\n"
+                           f"Architecture: {parsed_action}\n"
+                           f"Representation String: {get_architecture_from_action(action)}\n")
+                log_architecture(settings['experiment_name'], log_str)
+            with session.as_default():
+                K.set_session(session)
+                loss = controller.train_step(rewards)
+                print(f"Trial {trial + 1}: Encoder loss: {loss:.6f}")
+                controller.update_step()
+        log_architecture(settings['experiment_name'], "\n\n--------------------EXPERIMENT FINISHED-------------------\n\n")
+    else:
+        manager = NetworkManager(dataset, settings['experiment_name'], epochs=settings['num_epochs'], batchsize=settings['batch_size'])
+        action = get_action(settings['representation_string'])
+        parsed_action = state_space.parse_state_space_list(action)
+        print(f"Predicted actions: {parsed_action}")
+        reward = manager.get_rewards(
+            model_fn, parsed_action,
+            settings['num_cells'], settings['num_cell_filters'],
+            settings['dense_layers'], settings['load_saved'], settings['dropout']
+        )
+        print(f"Final Accuracy: {reward}")
+    print("Finished!")
+if __name__ == "__main__":
+    main()

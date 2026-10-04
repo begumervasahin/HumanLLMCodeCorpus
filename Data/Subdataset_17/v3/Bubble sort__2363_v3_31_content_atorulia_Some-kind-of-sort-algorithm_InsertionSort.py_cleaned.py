@@ -1,0 +1,21 @@
+import random
+arr = [random.randrange(100) for _ in range(10)]
+def is_sorted(array) -> bool:
+    return all(array[i] <= array[i + 1] for i in range(len(array) - 1))
+def insertion_sort(array):
+    for i in range(1, len(array)):
+        key = array[i]
+        j = i - 1
+        while j >= 0 and array[j] > key:
+            array[j + 1] = array[j]
+            j -= 1
+        array[j + 1] = key
+    return array
+def main():
+    print("Original array:", arr)
+    sorted_arr = insertion_sort(arr.copy())
+    print("Sorted array:", sorted_arr)
+    is_sorted_correctly = is_sorted(sorted_arr)
+    print("Is the array sorted correctly?", is_sorted_correctly)
+if __name__ == "__main__":
+    main()

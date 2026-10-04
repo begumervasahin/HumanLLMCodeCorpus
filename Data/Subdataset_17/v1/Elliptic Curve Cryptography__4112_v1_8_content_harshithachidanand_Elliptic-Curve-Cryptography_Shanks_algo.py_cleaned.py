@@ -1,0 +1,20 @@
+def print_shanks_algorithm():
+    print("Shank's Algorithm!\n")
+    print("\n\nS table\n")
+    for x in range(0, 46):
+        val = (5**(45 * x)) % 2017
+        print(f"{x} {val}\n")
+    print("\n\nT table\n")
+    for y in range(0, 46):
+        val = (1736 * (5**y)) % 2017
+        print(f"{y}  {val}\n")
+    print("\n\nMatching Values\n")
+    s_values = {}
+    for x in range(0, 46):
+        x_val = (5**(45 * x)) % 2017
+        s_values[x_val] = x
+    for y in range(0, 46):
+        y_val = (1736 * (5**y)) % 2017
+        if y_val in s_values:
+            print(f"{s_values[y_val]} {y}\n")
+print_shanks_algorithm()

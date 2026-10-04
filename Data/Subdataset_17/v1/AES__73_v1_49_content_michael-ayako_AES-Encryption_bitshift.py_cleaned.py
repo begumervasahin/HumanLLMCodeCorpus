@@ -1,0 +1,39 @@
+import numpy as np
+def shift_left(bits):
+    final_shift = []
+    for bit_string in bits:
+        matrix = np.array(list(bit_string)).reshape(4, 4)
+        shifted_matrix = []
+        for count, row in enumerate(matrix):
+            shifted_row = np.roll(row, -count)
+            shifted_matrix.append(shifted_row)
+        final_shift.append(np.array(shifted_matrix).reshape(4, 4))
+    return [''.join(matrix.flatten()) for matrix in final_shift]
+def shift_right(bits):
+    final_shift = []
+    for bit_string in bits:
+        matrix = np.array(list(bit_string)).reshape(4, 4)
+        shifted_matrix = []
+        for count, row in enumerate(matrix):
+            shifted_row = np.roll(row, count)
+            shifted_matrix.append(shifted_row)
+        final_shift.append(np.array(shifted_matrix).reshape(4, 4))
+    return [''.join(matrix.flatten()) for matrix in final_shift]
+def main():
+    bits = [
+        "00010010001101000101011001111000",
+        "11110000101010101111000010101010"
+    ]
+    left_shifted_bits = shift_left(bits)
+    right_shifted_bits = shift_right(bits)
+    print("Original bits:")
+    for bit_string in bits:
+        print(bit_string)
+    print("\nLeft shifted bits:")
+    for bit_string in left_shifted_bits:
+        print(bit_string)
+    print("\nRight shifted bits:")
+    for bit_string in right_shifted_bits:
+        print(bit_string)
+if __name__ == "__main__":
+    main()

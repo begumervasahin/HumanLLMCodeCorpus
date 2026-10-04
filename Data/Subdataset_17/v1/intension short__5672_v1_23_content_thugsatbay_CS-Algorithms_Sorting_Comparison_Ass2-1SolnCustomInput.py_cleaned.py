@@ -1,0 +1,97 @@
+import random
+import time
+import sys
+def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        current_value = arr[i]
+        position = i
+        while position > 0 and arr[position - 1] > current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+        arr[position] = current_value
+    return arr
+def insertion_sort_reverse(arr):
+    for i in range(1, len(arr)):
+        current_value = arr[i]
+        position = i
+        while position > 0 and arr[position - 1] < current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+        arr[position] = current_value
+    return arr
+def quicksort_fixed_pivot(arr, start, end):
+    if start < end:
+        pivot_index = partition(arr, start, end)
+        quicksort_fixed_pivot(arr, start, pivot_index - 1)
+        quicksort_fixed_pivot(arr, pivot_index + 1, end)
+def quicksort_random_pivot(arr, start, end):
+    if start < end:
+        pivot_index = random_partition(arr, start, end)
+        quicksort_random_pivot(arr, start, pivot_index - 1)
+        quicksort_random_pivot(arr, pivot_index + 1, end)
+def partition(arr, start, end):
+    pivot = arr[end]
+    i = start - 1
+    for j in range(start, end):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[end] = arr[end], arr[i + 1]
+    return i + 1
+def random_partition(arr, start, end):
+    random_index = random.randint(start, end)
+    arr[end], arr[random_index] = arr[random_index], arr[end]
+    return partition(arr, start, end)
+def run_experiment(experiment_type, array_size):
+    if experiment_type == 'a':
+        arr = random.sample(range(array_size), array_size)
+        test_insertion_sort(arr)
+        test_quicksort_fixed_pivot(arr)
+    elif experiment_type == 'b':
+        arr = random.sample(range(array_size), array_size)
+        test_quicksort_fixed_pivot(arr)
+        test_quicksort_random_pivot(arr)
+    elif experiment_type == 'c':
+        arr = list(range(array_size))
+        test_insertion_sort(arr)
+        test_quicksort_fixed_pivot(arr)
+    elif experiment_type == 'd':
+        arr = list(range(array_size))
+        arr = insertion_sort_reverse(arr)
+        test_insertion_sort(arr)
+        test_quicksort_fixed_pivot(arr)
+def test_insertion_sort(arr):
+    start_time = time.time()
+    insertion_sort(arr.copy())
+    elapsed_time = time.time() - start_time
+    print(f"Insertion Sort Time: {elapsed_time:.6f} seconds")
+def test_quicksort_fixed_pivot(arr):
+    start_time = time.time()
+    quicksort_fixed_pivot(arr.copy(), 0, len(arr) - 1)
+    elapsed_time = time.time() - start_time
+    print(f"Quicksort with Fixed Pivot Time: {elapsed_time:.6f} seconds")
+def test_quicksort_random_pivot(arr):
+    start_time = time.time()
+    quicksort_random_pivot(arr.copy(), 0, len(arr) - 1)
+    elapsed_time = time.time() - start_time
+    print(f"Quicksort with Random Pivot Time: {elapsed_time:.6f} seconds")
+def main():
+    print("Hi, Question 1 - Assignment 2 Algorithm has started.")
+    while True:
+        print("Choose one of the following options (A, B, C, D) to run the corresponding module or press E to exit:")
+        print("A: Insertion Sort vs Quicksort with Fixed Pivot")
+        print("B: Quicksort with Fixed Pivot vs Quicksort with Random Pivot")
+        print("C: Insertion Sort vs Quicksort with Fixed Pivot (Ordered Array)")
+        print("D: Insertion Sort vs Quicksort with Fixed Pivot (Reversed Array)")
+        print("E: Exit")
+        response = input("Enter your choice (A, B, C, D, or E): ").lower()
+        if response in ['a', 'b', 'c', 'd']:
+            array_size = int(input("Enter size of array N: ").strip())
+            run_experiment(response, array_size)
+        elif response == 'e':
+            print("Exiting...")
+            break
+        else:
+            print("Invalid input. Please try again.")
+if __name__ == "__main__":
+    main()

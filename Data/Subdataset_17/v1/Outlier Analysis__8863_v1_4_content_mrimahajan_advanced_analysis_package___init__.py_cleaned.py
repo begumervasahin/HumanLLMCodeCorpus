@@ -1,0 +1,67 @@
+
+import pandas as pd
+import numpy as np
+class AdvancedAnalysis:
+    def __init__(self, data_file):
+        self.data_file = data_file
+        self.data = self.load_data()
+    def load_data(self):
+        try:
+            data = pd.read_csv(self.data_file)
+            print("Data loaded successfully.")
+            return data
+        except FileNotFoundError:
+            print(f"File {self.data_file} not found.")
+            return None
+    def summary_statistics(self):
+        if self.data is not None:
+            summary = self.data.describe()
+            print("Summary statistics calculated.")
+            return summary
+        else:
+            print("Data not loaded.")
+            return None
+    def missing_values(self):
+        if self.data is not None:
+            missing = self.data.isnull().sum()
+            print("Missing values counted.")
+            return missing
+        else:
+            print("Data not loaded.")
+            return None
+    def fill_missing_values(self, strategy='mean'):
+        if self.data is not None:
+            if strategy == 'mean':
+                self.data = self.data.fillna(self.data.mean())
+            elif strategy == 'median':
+                self.data = self.data.fillna(self.data.median())
+            elif strategy == 'mode':
+                self.data = self.data.fillna(self.data.mode().iloc[0])
+            else:
+                print("Invalid strategy. Choose from 'mean', 'median', or 'mode'.")
+                return
+            print(f"Missing values filled using {strategy} strategy.")
+        else:
+            print("Data not loaded.")
+    def correlation_matrix(self):
+        if self.data is not None:
+            correlation = self.data.corr()
+            print("Correlation matrix calculated.")
+            return correlation
+        else:
+            print("Data not loaded.")
+            return None
+    def export_to_csv(self, output_file):
+        if self.data is not None:
+            self.data.to_csv(output_file, index=False)
+            print(f"Data exported to {output_file}.")
+        else:
+            print("Data not loaded.")
+if __name__ == "__main__":
+    analysis = AdvancedAnalysis('data.csv')
+    print("Summary Statistics:\n", analysis.summary_statistics())
+    print("Missing Values:\n", analysis.missing_values())
+    analysis.fill_missing_values(strategy='mean')
+    print("Missing Values After Filling:\n", analysis.missing_values())
+    print("Correlation Matrix:\n", analysis.correlation_matrix())
+    analysis.export_to_csv('processed_data.csv')

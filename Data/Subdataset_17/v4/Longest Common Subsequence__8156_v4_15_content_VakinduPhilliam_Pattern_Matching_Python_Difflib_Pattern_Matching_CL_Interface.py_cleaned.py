@@ -1,0 +1,46 @@
+import sys
+import os
+import difflib
+import argparse
+from datetime import datetime, timezone
+def file_mtime(path):
+    t = datetime.fromtimestamp(os.stat(path).st_mtime, timezone.utc)
+    return t.astimezone().isoformat()
+def main():
+    parser = argparse.ArgumentParser(description="Provide diffs in various formats.")
+    parser.add_argument('-c', action='store_true', default=False,
+                        help='Produce a context format diff (default)')
+    parser.add_argument('-u', action='store_true', default=False,
+                        help='Produce a unified format diff')
+    parser.add_argument('-m', action='store_true', default=False,
+                        help='Produce HTML side-by-side diff '
+                             '(can use -c and -l in conjunction)')
+    parser.add_argument('-n', action='store_true', default=False,
+                        help='Produce an ndiff format diff')
+    parser.add_argument('-l', '--lines', type=int, default=3,
+                        help='Set number of context lines (default 3)')
+    parser.add_argument('fromfile', help='The original file')
+    parser.add_argument('tofile', help='The modified file')
+    options = parser.parse_args()
+    fromfile = options.fromfile
+    tofile = options.tofile
+    fromdate = file_mtime(fromfile)
+    todate = file_mtime(tofile)
+    with open(fromfile) as ff:
+        fromlines = ff.readlines()
+    with open(tofile) as tf:
+        tolines = tf.readlines()
+    if options.u:
+        diff = difflib.unified_diff(fromlines, tolines, fromfile, tofile, fromdate, todate, n=options.lines)
+    elif options.n:
+        diff = difflib.ndiff(fromlines, tolines)
+    elif options.m:
+        diff = difflib.HtmlDiff().make_file(fromlines, tolines, fromfile, tofile, context=options.c, numlines=options.lines)
+    else:
+        diff = difflib.context_diff(fromlines, tolines, fromfile, tofile, fromdate, todate, n=options.lines)
+    if options.m:
+        sys.stdout.write(diff)
+    else:
+        sys.stdout.writelines(diff)
+if __name__ == '__main__':
+    main()

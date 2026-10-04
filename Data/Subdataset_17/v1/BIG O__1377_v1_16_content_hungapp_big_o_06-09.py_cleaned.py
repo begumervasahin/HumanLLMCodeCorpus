@@ -1,0 +1,109 @@
+import queue
+INF = int(1e9)
+class Node:
+    def __init__(self, vertex, weight):
+        self.vertex = vertex
+        self.weight = weight
+    def __lt__(self, other):
+        return self.weight <= other.weight
+def dijkstra(graph, start, distances):
+    pq = queue.PriorityQueue()
+    pq.put(Node(start, 0))
+    distances[start] = 0
+    while not pq.empty():
+        top = pq.get()
+        u = top.vertex
+        current_distance = top.weight
+        for neighbor in graph[u]:
+            if current_distance + neighbor.weight < distances[neighbor.vertex]:
+                distances[neighbor.vertex] = current_distance + neighbor.weight
+                pq.put(Node(neighbor.vertex, distances[neighbor.vertex]))
+def bfs(graph, start, distances):
+    q = queue.Queue()
+    q.put(start)
+    distances[start] = 0
+    while not q.empty():
+        u = q.get()
+        for neighbor in graph[u]:
+            if distances[neighbor] == INF:
+                distances[neighbor] = distances[u] + 1
+                q.put(neighbor)
+def problem_1():
+    n = int(input())
+    e = int(input())
+    t = int(input())
+    m = int(input())
+    graph = [[] for _ in range(n + 1)]
+    time = [INF for _ in range(n + 1)]
+    for _ in range(m):
+        a, b, w = map(int, input().split())
+        graph[b].append(Node(a, w))
+    dijkstra(graph, e, time)
+    count = sum(1 for i in range(1, n + 1) if time[i] <= t)
+    print(count)
+def problem_2():
+    tc = int(input())
+    for _ in range(tc):
+        n = int(input())
+        graph = [[] for _ in range(n + 1)]
+        cities = []
+        for i in range(n):
+            city = input().strip()
+            cities.append(city)
+            p = int(input())
+            for j in range(p):
+                nr, c = map(int, input().split())
+                graph[i + 1].append(Node(nr, c))
+        r = int(input())
+        for i in range(r):
+            cost = [INF for _ in range(n + 1)]
+            source, destination = input().split()
+            start = cities.index(source) + 1
+            end = cities.index(destination) + 1
+            dijkstra(graph, start, cost)
+            print(cost[end])
+        input()
+def problem_3():
+    n, m, k, x = map(int, input().split())
+    ks = list(map(int, input().split()))
+    graph = [[] for _ in range(n + 1)]
+    for i in range(m):
+        u, v, d = map(int, input().split())
+        graph[u].append(Node(v, d))
+        graph[v].append(Node(u, d))
+    a, b = map(int, input().split())
+    distA = [INF for _ in range(n + 1)]
+    dijkstra(graph, a, distA)
+    distB = [INF for _ in range(n + 1)]
+    dijkstra(graph, b, distB)
+    min_time = min((distA[ks[i]] + distB[ks[i]] for i in range(k) if distB[ks[i]] <= x), default=INF)
+    print(min_time if min_time < INF else -1)
+def problem_4():
+    t = int(input())
+    for c in range(t):
+        n = int(input())
+        graph = [[] for _ in range(n)]
+        r = int(input())
+        for i in range(r):
+            u, v = map(int, input().split())
+            graph[u].append(v)
+            graph[v].append(u)
+        s, d = map(int, input().split())
+        distS = [INF for _ in range(n)]
+        distD = [INF for _ in range(n)]
+        bfs(graph, s, distS)
+        bfs(graph, d, distD)
+        max_time = max(distS[i] + distD[i] for i in range(n) if distS[i] != INF and distD[i] != INF)
+        print(f'Case {c + 1}: {max_time}')
+if __name__ == "__main__":
+    problem_selection = int(input("Select problem to solve (1-4): "))
+    if problem_selection == 1:
+        problem_1()
+    elif problem_selection == 2:
+        problem_2()
+    elif problem_selection == 3:
+        problem_3()
+    elif problem_selection == 4:
+        problem_4()
+    else:
+        print("Invalid selection.")

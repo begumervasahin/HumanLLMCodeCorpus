@@ -1,0 +1,58 @@
+import os
+import numpy as np
+from collections import Counter
+NUMBER_OF_WORDS_IN_DICT = 3000
+TRAIN_DIR = 'train-mails'
+TEST_DIR = 'test-mails'
+def make_dictionary(mail_dir):
+    emails = [os.path.join(mail_dir, f) for f in os.listdir(mail_dir)]
+    all_words = []
+    for mail in emails:
+        with open(mail) as m:
+            for i, line in enumerate(m):
+                if i == 2:
+                    words = line.split()
+                    all_words += words
+    dictionary = Counter(all_words)
+    list_to_remove = list(dictionary.keys())
+    for item in list_to_remove:
+        if not item.isalpha() or len(item) == 1:
+            del dictionary[item]
+    most_common_words = dictionary.most_common(NUMBER_OF_WORDS_IN_DICT)
+    return most_common_words
+def extract_features(mail_dir, dictionary):
+    files = [os.path.join(mail_dir, fi) for fi in os.listdir(mail_dir)]
+    features_matrix = np.zeros((len(files), NUMBER_OF_WORDS_IN_DICT))
+    for doc_id, file in enumerate(files):
+        with open(file) as f:
+            for i, line in enumerate(f):
+                if i == 2:
+                    words = line.split()
+                    for word in words:
+                        for word_id, (dict_word, _) in enumerate(dictionary):
+                            if dict_word == word:
+                                features_matrix[doc_id, word_id] = words.count(word)
+    return features_matrix
+def get_all_filenames(mail_dir):
+    emails = [os.path.splitext(os.path.basename(fi))[0] for fi in os.listdir(mail_dir)]
+    return emails
+def save_arff(filename, matrix, dictionary, labels):
+    with open(filename, 'w') as file:
+        file.write("% 1. Title: Spam Dataset\n%\n% 2. Sources: Hasil Feature Matrix\n%\n@RELATION spam\n")
+        for word, _ in dictionary:
+            attribute_name = "class_" if word == "class" else word
+            file.write(f"@ATTRIBUTE {attribute_name} NUMERIC\n")
+        file.write("@ATTRIBUTE class {spam, not-spam}\n@DATA\n")
+        for i, row in enumerate(matrix):
+            row_str = ','.join(map(str, row))
+            file.write(f"{row_str},{labels[i]}\n")
+def main():
+    dictionary = make_dictionary(TRAIN_DIR)
+    train_matrix = extract_features(TRAIN_DIR, dictionary)
+    train_labels = ["spam" if fname.startswith('s') else "not-spam" for fname in get_all_filenames(TRAIN_DIR)]
+    save_arff('training_matrix.arff', train_matrix, dictionary, train_labels)
+    test_matrix = extract_features(TEST_DIR, dictionary)
+    test_labels = ["spam" if fname.startswith('s') else "not-spam" for fname in get_all_filenames(TEST_DIR)]
+    save_arff('test_matrix.arff', test_matrix, dictionary, test_labels)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,70 @@
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+from math import sqrt
+from numpy import concatenate
+from pandas import DataFrame, read_csv
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+from matplotlib import pyplot as plt
+def fonk1(data, b1 = 1, n_out=1, dropnan=True):
+    b2 = 1 if type(data) is list else data.shape[1]
+    b3 = DataFrame(data)
+    cols, b4 = [], []
+    for b5 in range(b1, 0, -1):
+        cols.append(b3.shift(b5))
+        b4 += [('var%d(t-%d)' % (j+1, b5)) for j in range(b2)]
+    for b5 in range(0, n_out):
+        cols.append(b3.shift(-b5))
+        if b5 = = 0:
+            b4 += [('var%d(t)' % (j+1)) for j in range(b2)]
+        else:
+            b4 += [('var%d(t+%d)' % (j+1, b5)) for j in range(b2)]
+    b6 = concat(cols, b14=1)
+    b6.b7 = b4
+    if dropnan:
+        b6.dropna(b8 = True)
+    return b6
+b9 = read_csv('ReducedFeatureSet.csv', header=0, index_col=0)
+b10 = b9.b10.astype('float32')
+b11 = MinMaxScaler(feature_range=(0, 1))
+b12 = b11.fit_transform(b10)
+b13 = fonk1(b12, 1, 1)
+b13.drop(b13.b7[[6, 7, 8, 9]], b14 = 1, b8=True)
+b10 = b13.b10
+b15 = 365*2 + (365 - 30)
+b16 = b10[:b15, :]
+b17 = b10[b15:, :]
+b20, b18 = b16[:, :-1], b16[:, -1]
+b21, b19 = b17[:, :-1], b17[:, -1]
+b20 = b20.reshape((b20.shape[0], 1, b20.shape[1]))
+b21 = b21.reshape((b21.shape[0], 1, b21.shape[1]))
+b22 = Sequential()
+b22.add(LSTM(300, b23 = (b20.shape[1], b20.shape[2])))
+b22.add(Dense(1))
+b22.compile(b24 = 'mae', optimizer='adam')
+b25 = b22.fit(b20, b18, epochs=100, batch_size=50, validation_data=(b21, b19), verbose=2, shuffle=False)
+plt.plot(b25.b25['b24'], b26 = 'b16')
+plt.plot(b25.b25['val_loss'], b26 = 'b17')
+plt.legend()
+plt.title('RNN Fitting')
+plt.xlabel('Epochs', b27 = 16)
+plt.ylabel('Value Loss', b27 = 16)
+plt.show()
+b28 = b22.predict(b21)
+b21 = b21.reshape((b21.shape[0], b21.shape[2]))
+b29 = concatenate((b28, b21[:, 1:]), b14=1)
+b29 = b11.inverse_transform(b29)
+b29 = b29[:, 0]
+b19 = b19.reshape((len(b19), 1))
+b30 = concatenate((b19, b21[:, 1:]), b14=1)
+b30 = b11.inverse_transform(b30)
+b30 = b30[:, 0]
+plt.plot(b30, b31 = 'o', linestyle='-', color='b', b26='Actual Price')
+plt.plot(b29, b31 = 'o', linestyle='-', color='r', b26='Forecasted Price using LSTM RNN')
+plt.legend()
+plt.title("Testing over past 30 days")
+plt.xlabel('Days', b27 = 18)
+plt.ylabel('Bitcoin Price ($)', b27 = 16)
+plt.show()
+b32 = sqrt(mean_squared_error(b30, b29))
+print('Test RMSE: %.3f' % b32)

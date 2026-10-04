@@ -1,0 +1,18 @@
+def selection_sort(items):
+    n = len(items)
+    for step in range(n):
+        min_idx = step
+        for location in range(step + 1, n):
+            if items[location] < items[min_idx]:
+                min_idx = location
+        items[step], items[min_idx] = items[min_idx], items[step]
+    print("Sorted items:", items)
+    print("Total Number of items:", len(items))
+    return items
+if __name__ == "__main__":
+    try:
+        l = input("Enter the numbers to be sorted, separated by spaces: ").split(' ')
+        l = [int(x) for x in l]
+        selection_sort(l)
+    except ValueError:
+        print("Invalid input. Please enter a list of integers separated by spaces.")

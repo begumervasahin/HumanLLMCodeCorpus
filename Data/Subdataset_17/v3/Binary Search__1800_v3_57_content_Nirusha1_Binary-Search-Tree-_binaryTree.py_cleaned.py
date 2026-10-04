@@ -1,0 +1,104 @@
+class BinarySearchTree:
+    class _BSTNode:
+        def __init__(self, key, value):
+            self.key = key
+            self.value = value
+            self.left = None
+            self.right = None
+    def __init__(self):
+        self._root = None
+        self._size = 0
+    def add(self, key, value):
+        new_node = self._BSTNode(key, value)
+        if self._root is None:
+            self._root = new_node
+        else:
+            self._add_node(self._root, new_node)
+        self._size += 1
+    def _add_node(self, current, new_node):
+        if new_node.key < current.key:
+            if current.left is None:
+                current.left = new_node
+            else:
+                self._add_node(current.left, new_node)
+        else:
+            if current.right is None:
+                current.right = new_node
+            else:
+                self._add_node(current.right, new_node)
+    def smallest(self):
+        if self._root is None:
+            return None
+        return self._find_min(self._root).key
+    def _find_min(self, node):
+        current = node
+        while current.left is not None:
+            current = current.left
+        return current
+    def largest(self):
+        if self._root is None:
+            return None
+        return self._find_max(self._root).key
+    def _find_max(self, node):
+        current = node
+        while current.right is not None:
+            current = current.right
+        return current
+    def search(self, key):
+        return self._search(self._root, key)
+    def _search(self, node, key):
+        if node is None:
+            return False
+        if key == node.key:
+            return True
+        elif key < node.key:
+            return self._search(node.left, key)
+        else:
+            return self._search(node.right, key)
+    def is_empty(self):
+        return self._size == 0
+    def size(self):
+        return self._size
+    def inorder_walk(self):
+        nodes = []
+        self._inorder_walk(self._root, nodes)
+        return nodes
+    def _inorder_walk(self, node, nodes):
+        if node is not None:
+            self._inorder_walk(node.left, nodes)
+            nodes.append(node.key)
+            self._inorder_walk(node.right, nodes)
+    def preorder_walk(self):
+        nodes = []
+        self._preorder_walk(self._root, nodes)
+        return nodes
+    def _preorder_walk(self, node, nodes):
+        if node is not None:
+            nodes.append(node.key)
+            self._preorder_walk(node.left, nodes)
+            self._preorder_walk(node.right, nodes)
+    def postorder_walk(self):
+        nodes = []
+        self._postorder_walk(self._root, nodes)
+        return nodes
+    def _postorder_walk(self, node, nodes):
+        if node is not None:
+            self._postorder_walk(node.left, nodes)
+            self._postorder_walk(node.right, nodes)
+            nodes.append(node.key)
+if __name__ == "__main__":
+    bst = BinarySearchTree()
+    bst.add(10, "Ten")
+    bst.add(20, "Twenty")
+    bst.add(5, "Five")
+    bst.add(7, "Seven")
+    bst.add(30, "Thirty")
+    print("Smallest key:", bst.smallest())
+    print("Largest key:", bst.largest())
+    print("Search for key 20:", bst.search(20))
+    print("Search for key 15:", bst.search(15))
+    print("Inorder traversal:", bst.inorder_walk())
+    print("Preorder traversal:", bst.preorder_walk())
+    print("Postorder traversal:", bst.postorder_walk())
+    print("Is the BST empty?", bst.is_empty())
+    print("Size of the BST:", bst.size())

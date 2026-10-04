@@ -1,0 +1,44 @@
+import numpy as np
+import os
+def compute_euclidean_distance(point, centroid):
+    return np.linalg.norm(point - centroid)
+def assign_label_to_cluster(distances, data_point, centroids):
+    nearest_centroid_index = min(distances, key=distances.get)
+    return [nearest_centroid_index, data_point, centroids[nearest_centroid_index]]
+def compute_new_centroids(cluster_labels, centroids):
+    new_centroids = []
+    for i in range(len(centroids)):
+        points_assigned_to_centroid = [data[1] for data in cluster_labels if data[0] == i]
+        if points_assigned_to_centroid:
+            new_centroid = np.mean(points_assigned_to_centroid, axis=0)
+        else:
+            new_centroid = centroids[i]
+        new_centroids.append(new_centroid)
+    return np.array(new_centroids)
+def k_means_clustering(data_points, centroids, total_iterations):
+    for iteration in range(total_iterations):
+        cluster_labels = []
+        for point in data_points:
+            distances = {i: compute_euclidean_distance(point, centroids[i]) for i in range(len(centroids))}
+            label = assign_label_to_cluster(distances, point, centroids)
+            cluster_labels.append(label)
+        centroids = compute_new_centroids(cluster_labels, centroids)
+    return cluster_labels, centroids
+def display_clustering_results(results):
+    cluster_labels, final_centroids = results
+    print("Result of k-Means Clustering:\n")
+    for label in cluster_labels:
+        print(f"Data point: {label[1]}")
+        print(f"Cluster number: {label[0]}\n")
+    print("Final centroids position:\n", final_centroids)
+def initialize_centroids():
+    return np.array([[5.0, 0.0], [45.0, 70.0], [50.0, 90.0]])
+def load_data(file_path):
+    return np.genfromtxt(file_path, delimiter=",")
+if __name__ == "__main__":
+    file_path = os.path.join(os.path.dirname(__file__), "data-example-1.csv")
+    data_points = load_data(file_path)
+    initial_centroids = initialize_centroids()
+    num_iterations = 100
+    clustering_results = k_means_clustering(data_points, initial_centroids, num_iterations)
+    display_clustering_results(clustering_results)

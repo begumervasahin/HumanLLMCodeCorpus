@@ -1,0 +1,71 @@
+class HashTable:
+    def __init__(self, size):
+        self.size = size
+        self.table = [[] for _ in range(size)]
+    def _hash(self, key):
+        return hash(key) % self.size
+    def put(self, key, value):
+        hashed_key = self._hash(key)
+        for item in self.table[hashed_key]:
+            if item[0] == key:
+                item[1] = value
+                return
+        self.table[hashed_key].append([key, value])
+    def __str__(self):
+        items = []
+        for bucket in self.table:
+            for key, value in bucket:
+                value_str = f'set({list(value)})' if isinstance(value, set) else str(value)
+                items.append(f'{key}:{value_str}')
+        return '{' + ', '.join(items) + '}'
+    def buckets_str(self):
+        result = []
+        for i, bucket in enumerate(self.table):
+            bucket_items = ', '.join(f'{key}:{value}' for key, value in bucket)
+            result.append(f'{i:04}->' + bucket_items)
+        return '\n'.join(result)
+def test_empty_hash_table():
+    table = HashTable(5)
+    assert str(table) == "{}"
+    assert table.buckets_str() ==
+def test_single_key_value_pair():
+    table = HashTable(5)
+    table.put("parrt", 99)
+    assert str(table) == "{parrt:99}"
+    assert table.buckets_str() ==
+def test_single_key_set_pair():
+    table = HashTable(5)
+    table.put("parrt", {99})
+    assert str(table) == "{parrt:set([99])}"
+    assert table.buckets_str() ==
+def test_int_keys_and_values():
+    table = HashTable(5)
+    for i in range(1, 11):
+        table.put(i, i)
+    assert str(table) == "{5:5, 10:10, 1:1, 6:6, 2:2, 7:7, 3:3, 8:8, 4:4, 9:9}"
+    assert table.buckets_str() ==
+def test_string_keys_and_values():
+    table = HashTable(5)
+    table.put("a", "x")
+    table.put("b", "y")
+    table.put("c", "z")
+    table.put("f", "i")
+    table.put("g", "j")
+    table.put("k", "k")
+    assert str(table) == '{a:x, f:i, k:k, b:y, g:j, c:z}'
+    assert table.buckets_str() ==
+def test_string_keys_and_list_values():
+    table = HashTable(5)
+    table.put("parrt", [2, 99, 3942])
+    table.put("tombu", [6, 3, 1024, 99, 102342])
+    assert str(table) == "{tombu:[6, 3, 1024, 99, 102342], parrt:[2, 99, 3942]}"
+    assert table.buckets_str() ==
+def run_tests():
+    test_empty_hash_table()
+    test_single_key_value_pair()
+    test_single_key_set_pair()
+    test_int_keys_and_values()
+    test_string_keys_and_values()
+    test_string_keys_and_list_values()
+    print("All tests passed!")
+run_tests()

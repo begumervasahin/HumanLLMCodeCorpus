@@ -1,0 +1,68 @@
+import random
+import secrets
+import math
+class RSA:
+    def __init__(self):
+        self.P, self.Q = self._find_two_primes()
+        self.N = self.P * self.Q
+        self.L = ((self.P - 1) * (self.Q - 1))
+    def _is_prime(self, n):
+        if n in (2, 3):
+            return True
+        if n == 1 or n % 2 == 0:
+            return False
+        d = n - 1
+        while d % 2 == 0:
+            d
+        for _ in range(100):
+            a = random.randint(2, n - 2)
+            x = pow(a, d, n)
+            if x in (1, n - 1):
+                continue
+            while d != n - 1:
+                x = pow(x, 2, n)
+                d *= 2
+                if x == 1:
+                    return False
+                if x == n - 1:
+                    break
+            else:
+                return False
+        return True
+    def _find_two_primes(self):
+        primes = []
+        while len(primes) < 2:
+            candidate = secrets.randbits(10)
+            if candidate > 1 and self._is_prime(candidate):
+                primes.append(candidate)
+        return primes
+    def generate_public_key(self):
+        self.E = random.randint(2, self.L - 1)
+        while math.gcd(self.E, self.L) != 1:
+            self.E = random.randint(2, self.L - 1)
+        return self.E, self.N
+    def generate_private_key(self):
+        self.D = random.randint(2, self.L - 1)
+        while (self.E * self.D) % self.L != 1:
+            self.D = random.randint(2, self.L - 1)
+        return self.D, self.N
+def encrypt_text(e, n, text):
+    text_int = [ord(char) for char in text]
+    encrypted_int = [str(pow(i, e, n)) for i in text_int]
+    return " ".join(encrypted_int)
+def decrypt_text(d, n, encrypted_text):
+    encrypted_int = encrypted_text.split()
+    decrypted_int = [pow(int(i), d, n) for i in encrypted_int]
+    decrypted_text = ''.join(chr(i) for i in decrypted_int)
+    return decrypted_text
+if __name__ == "__main__":
+    rsa = RSA()
+    e, n = rsa.generate_public_key()
+    d, n = rsa.generate_private_key()
+    text = input("Enter the text to encrypt: ")
+    encrypted_text = encrypt_text(e, n, text)
+    print("Encrypted text:", encrypted_text)
+    decrypted_text = decrypt_text(d, n, encrypted_text)
+    print("Decrypted text:", decrypted_text)
+    print("-----------------------------------------------------")
+    print(f"Private key (d, n): ({d}, {n})")

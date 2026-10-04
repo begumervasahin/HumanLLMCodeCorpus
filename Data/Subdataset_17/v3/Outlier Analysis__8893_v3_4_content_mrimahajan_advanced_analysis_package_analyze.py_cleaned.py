@@ -1,0 +1,96 @@
+import pandas as pd
+import numpy as np
+from scipy.stats import skew, kurtosis, chisquare
+from statsmodels.formula.api import ols
+import statsmodels.api as sm
+from matplotlib import pyplot as plt
+from pandas.plotting import table
+def divide_columns_by_type(df):
+    numerical_columns = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    categorical_columns = [col for col in df.columns if not pd.api.types.is_numeric_dtype(df[col])]
+    return numerical_columns, categorical_columns
+def calculate_edd(data, dependent_var=None, regression=True, percentiles=[0.01, 0.05, 0.1, 0.5, 0.9, 0.95, 0.99], std_multipliers=[2, 3]):
+    numerical_columns, categorical_columns = divide_columns_by_type(data)
+    numerical_stats = data.describe().transpose()
+    numerical_stats['Var'] = numerical_stats.index
+    numerical_stats.reset_index(drop=True, inplace=True)
+    numerical_stats['skewness'] = numerical_stats['Var'].apply(lambda x: skew(data[x].dropna()))
+    numerical_stats['kurtosis'] = numerical_stats['Var'].apply(lambda x: kurtosis(data[x].dropna(), fisher=False))
+    for pct in percentiles:
+        numerical_stats[f'p{int(pct*100)}'] = numerical_stats['Var'].apply(lambda x: data[x].quantile(pct))
+    for std_multiplier in std_multipliers:
+        numerical_stats[f'mean-{std_multiplier}sigma'] = numerical_stats['mean'] - std_multiplier * numerical_stats['std']
+        numerical_stats[f'mean+{std_multiplier}sigma'] = numerical_stats['mean'] + std_multiplier * numerical_stats['std']
+    numerical_stats['type'] = 'numeric'
+    categorical_stats = pd.DataFrame({'Var': categorical_columns, 'type': 'categorical'})
+    for col in numerical_stats.columns:
+        if col not in ['Var', 'type']:
+            categorical_stats[col] = np.nan
+    for col in categorical_columns:
+        value_counts = data[col].value_counts(ascending=True, dropna=False).cumsum() / data.shape[0]
+        value_counts_df = pd.DataFrame(value_counts).reset_index()
+        value_counts_df.columns = ['categories', 'cum_pct']
+        categorical_stats.loc[categorical_stats['Var'] == col, 'min'] = value_counts_df['categories'].iloc[0]
+        categorical_stats.loc[categorical_stats['Var'] == col, 'max'] = value_counts_df['categories'].iloc[-1]
+        for pct in percentiles:
+            cumulative_pct_value = value_counts_df[value_counts_df['cum_pct'] >= pct]['categories'].iloc[0]
+            categorical_stats.loc[categorical_stats['Var'] == col, f'p{int(pct*100)}'] = cumulative_pct_value
+    edd_df = pd.concat([numerical_stats, categorical_stats])
+    edd_df['count'] = edd_df['Var'].apply(lambda x: data[x].notnull().sum())
+    edd_df['nmiss'] = data.shape[0] - edd_df['count']
+    edd_df['missing_rate'] = edd_df['nmiss'] / data.shape[0] * 100
+    edd_df['unique'] = edd_df['Var'].apply(lambda x: data[x].nunique())
+    column_order = ['Var', 'type', 'count', 'nmiss', 'missing_rate', 'unique', 'std', 'skewness', 'kurtosis', 'mean', 'min'] + \
+                   [f'mean-{std_multiplier}sigma' for std_multiplier in std_multipliers] + \
+                   [f'p{int(pct*100)}' for pct in percentiles] + \
+                   [f'mean+{std_multiplier}sigma' for std_multiplier in std_multipliers] + ['max']
+    edd_df = edd_df[column_order]
+    if dependent_var:
+        edd_df['correlation/p_value'] = np.nan
+        if regression:
+            corr_matrix = data.corr()
+            for col in numerical_columns:
+                edd_df.loc[edd_df['Var'] == col, 'correlation/p_value'] = corr_matrix.loc[col, dependent_var]
+            for col in categorical_columns:
+                model = ols(f'{dependent_var} ~ C({col})', data=data).fit()
+                aov_table = sm.stats.anova_lm(model, typ=2)
+                edd_df.loc[edd_df['Var'] == col, 'correlation/p_value'] = aov_table.loc[col, 'PR(>F)']
+        else:
+            for col in numerical_columns:
+                model = ols(f'{col} ~ C({dependent_var})', data=data).fit()
+                aov_table = sm.stats.anova_lm(model, typ=2)
+                edd_df.loc[edd_df['Var'] == col, 'correlation/p_value'] = aov_table.loc[dependent_var, 'PR(>F)']
+            for col in categorical_columns:
+                contingency_table = pd.crosstab(data[dependent_var], data[col], dropna=False)
+                edd_df.loc[edd_df['Var'] == col, 'correlation/p_value'] = chisquare(contingency_table.values.ravel()).pvalue
+    edd_df.reset_index(drop=True, inplace=True)
+    return edd_df
+def generate_graphical_analysis(data, dependent_var, path='', regression=True):
+    numerical_columns, categorical_columns = divide_columns_by_type(data)
+    if regression:
+        for col in numerical_columns:
+            if col != dependent_var:
+                ax = data.plot.scatter(x=col, y=dependent_var)
+                fig = ax.get_figure()
+                fig.savefig(f'{path}{col}.png', dpi=1000)
+        for col in categorical_columns:
+            if col != dependent_var:
+                ax = data.boxplot(column=dependent_var, by=col)
+                fig = ax.get_figure()
+                fig.savefig(f'{path}{col}.png', dpi=1000)
+    else:
+        for col in numerical_columns:
+            if col != dependent_var:
+                ax = data.boxplot(column=col, by=dependent_var)
+                fig = ax.get_figure()
+                fig.savefig(f'{path}{col}.png', dpi=1000)
+        for col in categorical_columns:
+            if col != dependent_var:
+                contingency_table = pd.crosstab(data[dependent_var], data[col], dropna=False)
+                for cat in contingency_table.columns:
+                    contingency_table[cat] = contingency_table[cat].apply(lambda x: x / contingency_table[cat].sum() * 100)
+                ax = plt.subplot(111, frame_on=False)
+                ax.xaxis.set_visible(False)
+                ax.yaxis.set_visible(False)
+                table(ax, contingency_table)
+                plt.savefig(f'{path}{col}.png', dpi=1000)

@@ -1,0 +1,51 @@
+import numpy as np
+class MatrixOperations:
+    @staticmethod
+    def get_matrix_inverse(matrix, tol=1e-9):
+        return np.linalg.inv(matrix)
+    @staticmethod
+    def multiply(matrix1, matrix2):
+        return np.dot(matrix1, matrix2)
+    @staticmethod
+    def transpose_matrix(matrix):
+        return np.transpose(matrix)
+class PolynomialRegression:
+    def __init__(self, order):
+        self.order = order
+    def fit(self, independent, dependent):
+        if len(independent) != len(dependent):
+            raise ValueError('Number of samples of dependent and independent variables must be the same')
+        data = np.column_stack((independent, dependent))
+        return self._fit(data)
+    def _fit(self, data):
+        A = self._get_coefficient_matrix(data)
+        b = self._get_result_vector(data)
+        A_inverse = MatrixOperations.get_matrix_inverse(A, tol=1e-9)
+        X = MatrixOperations.multiply(A_inverse, b)
+        return MatrixOperations.transpose_matrix(X)[0]
+    def _get_coefficient_matrix(self, data):
+        dependent_variable_sum = {}
+        power = 0
+        while power <= self.order * 2:
+            sum_val = np.sum(np.power(data[:, 0], power))
+            dependent_variable_sum[power] = sum_val
+            power += 1
+        dim = self.order + 1
+        coefficient_matrix = np.zeros((dim, dim))
+        for i in range(dim):
+            for j in range(dim):
+                coefficient_matrix[i][j] = dependent_variable_sum[i + j]
+        return coefficient_matrix
+    def _get_result_vector(self, data):
+        dim = self.order + 1
+        result_vector = np.zeros((dim, 1))
+        for j in range(dim):
+            result_vector[j] = np.sum(np.power(data[:, 0], j) * data[:, 1])
+        return result_vector
+if __name__ == "__main__":
+    independent = [1, 2, 3, 4, 5]
+    dependent = [1, 4, 9, 16, 25]
+    order = 2
+    model = PolynomialRegression(order)
+    coefficients = model.fit(independent, dependent)
+    print("Coefficients:", coefficients)

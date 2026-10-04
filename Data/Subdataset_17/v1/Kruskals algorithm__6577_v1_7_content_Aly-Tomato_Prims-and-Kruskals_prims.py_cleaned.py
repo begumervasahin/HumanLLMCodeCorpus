@@ -1,0 +1,53 @@
+
+WGRAPH = {}
+Vr = []
+MST = []
+def read_graph(file, delimiter):
+    with open(file) as file_path:
+        for line in file_path:
+            nodes = [x.strip() for x in line.split(delimiter)]
+            e1, e2, weight = nodes[0], nodes[1], nodes[2]
+            if e1 in WGRAPH:
+                WGRAPH[e1][e2] = weight
+            else:
+                WGRAPH[e1] = {e2: weight}
+    return WGRAPH
+def add_visited(vertex):
+    if vertex in Vr:
+        return False
+    Vr.append(vertex)
+    return True
+def get_min():
+    min_vertex1 = None
+    min_vertex2 = None
+    min_distance = float('inf')
+    for v1 in Vr:
+        neighbors = WGRAPH.get(v1, {})
+        for v2, weight in neighbors.items():
+            if v2 in Vr or v1 == v2:
+                continue
+            weight = int(weight)
+            if weight < min_distance:
+                min_vertex1 = v1
+                min_vertex2 = v2
+                min_distance = weight
+    return (min_vertex1, min_vertex2, min_distance)
+def prims():
+    total_distance = 0
+    num_vertices = len(WGRAPH)
+    start_vertex = list(WGRAPH.keys())[0]
+    add_visited(start_vertex)
+    for _ in range(num_vertices - 1):
+        v1, v2, edge_distance = get_min()
+        if v1 is not None and v2 is not None:
+            total_distance += edge_distance
+            MST.append((v1, v2, str(edge_distance), str(total_distance)))
+            add_visited(v2)
+    return (MST, total_distance)
+if __name__ == "__main__":
+    graph_file = 'filename.txt'
+    delimiter = ','
+    read_graph(graph_file, delimiter)
+    mst_result, total_cost = prims()
+    print("Minimum Spanning Tree:", mst_result)
+    print("Total Cost:", total_cost)

@@ -1,0 +1,70 @@
+import random
+import pickle
+import array
+import re
+from sympy import isprime
+class ElGamal:
+    def __init__(self):
+        pass
+    @staticmethod
+    def read_file(filename):
+        with open(filename, 'rb') as file:
+            return file.read()
+    @staticmethod
+    def read_file_list(filename):
+        with open(filename, 'rb') as file:
+            return pickle.load(file)
+    @staticmethod
+    def write_file(filename, data):
+        with open(filename, 'wb') as file:
+            file.write(data)
+    @staticmethod
+    def write_file_list(filename, data):
+        with open(filename, 'wb') as file:
+            pickle.dump(data, file)
+    def key_gen(self, p):
+        if not isprime(p):
+            raise ValueError("P is not prime")
+        g = random.randrange(2, p)
+        x = random.randrange(1, p - 1)
+        y = pow(g, x, p)
+        key_public = [y, g, p]
+        key_private = [x, p]
+        self.write_file_list("key.pub", key_public)
+        self.write_file_list("key.pri", key_private)
+        return key_public, key_private
+    def encrypt(self, filename, key_public):
+        plaintext = self.read_file(filename)
+        list_plain_int = list(plaintext)
+        y, g, p = self.read_file_list(key_public)
+        k = random.randrange(1, p - 1)
+        list_cipher_int = []
+        for plain_int in list_plain_int:
+            a = pow(g, k, p)
+            b = (pow(y, k, p) * plain_int) % p
+            list_cipher_int.extend([a, b])
+        regex = re.compile(r'\.\w+').findall(filename)
+        cipher_filename = f"cipher{regex[-1]}"
+        self.write_file_list(cipher_filename, list_cipher_int)
+        return list_cipher_int
+    def decrypt(self, filename, key_private):
+        list_cipher_int = self.read_file_list(filename)
+        x, p = self.read_file_list(key_private)
+        list_plain_int = []
+        for i in range(0, len(list_cipher_int), 2):
+            a, b = list_cipher_int[i], list_cipher_int[i + 1]
+            ax_inv = pow(a, p - 1 - x, p)
+            message = (ax_inv * b) % p
+            list_plain_int.append(message)
+        regex = re.compile(r'\.\w+').findall(filename)
+        output_filename = f"out{regex[-1]}"
+        self.write_file(output_filename, array.array('B', list_plain_int).tobytes())
+        return list_plain_int
+if __name__ == '__main__':
+    elgamal = ElGamal()
+    p = 233
+    key_public, key_private = elgamal.key_gen(p)
+    print("Public Key:", key_public)
+    print("Private Key:", key_private)
+    elgamal.encrypt("plain.txt", "key.pub")
+    elgamal.decrypt("cipher.txt", "key.pri")

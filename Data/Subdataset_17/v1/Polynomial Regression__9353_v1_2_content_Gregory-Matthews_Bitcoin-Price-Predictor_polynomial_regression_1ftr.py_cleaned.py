@@ -1,0 +1,48 @@
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.optimizers import SGD
+import data
+learning_rate = 0.3
+training_epochs = 20000
+display_step = 500
+random = np.random
+n = 4
+_, Y = data.get_data("BCHAIN/MKPRU", 365)
+_, X = data.get_data("BCHAIN/BLCHS", 365)
+m = Y.shape[0]
+train_X = np.zeros([n, m])
+for i in range(n):
+    X_temp = np.power(X, i + 1)
+    train_X[i, :] = (X_temp - np.mean(X_temp)) / np.std(X_temp, axis=0)
+train_X = train_X.T
+Y = Y.reshape(-1, 1)
+theta = tf.Variable(tf.random.uniform([n, 1], -1.0, 1.0, dtype=tf.float64), name="theta")
+bias = tf.Variable(tf.random.uniform([1], -1.0, 1.0, dtype=tf.float64), name="bias")
+def hypothesis(X):
+    return tf.matmul(X, theta) + bias
+def cost_fn():
+    return tf.reduce_mean(tf.square(hypothesis(train_X) - Y)) / (2 * m)
+optimizer = SGD(learning_rate=learning_rate)
+for epoch in range(training_epochs):
+    with tf.GradientTape() as tape:
+        cost = cost_fn()
+    grads = tape.gradient(cost, [theta, bias])
+    optimizer.apply_gradients(zip(grads, [theta, bias]))
+    if (epoch + 1) % display_step == 0:
+        print("Epoch:", '%04d' % (epoch + 1), "cost=", "{:.9f}".format(cost.numpy()),
+              "theta=", theta.numpy().T, "bias=", bias.numpy())
+training_cost = cost_fn().numpy()
+print("Training cost=", training_cost, "theta=", theta.numpy().T, "bias=", bias.numpy(), '\n')
+plt.plot(X, Y, 'r', label='Market Price (training)')
+plt.plot(X, hypothesis(train_X).numpy(), label='Polynomial Regression Line')
+plt.title("Bitcoin Price Prediction: Training Polynomial Regression")
+plt.xlabel("BlockChain Size")
+plt.ylabel("Price ($)")
+plt.legend()
+plt.show()
+test_X = np.array([100000, 150000])
+test_X_scaled = (test_X - np.mean(X)) / np.std(X, axis=0)
+for test in test_X_scaled:
+    prediction = np.dot(test ** np.arange(1, n + 1), theta.numpy().flatten()) + bias.numpy()
+    print(f"Given Blockchain Size = {test * np.std(X, axis=0) + np.mean(X)} -> Hypothesis = {prediction}")

@@ -1,0 +1,233 @@
+class Node:
+    def __init__(self, data=None, link=None):
+        self.data = data
+        self.link = link
+    def update_data(self, data):
+        self.data = data
+    def set_link(self, node):
+        self.link = node
+    def get_data(self):
+        return self.data
+    def get_next_node(self):
+        return self.link
+class LinkedList:
+    def __init__(self):
+        self.head = None
+    def add_to_start(self, data):
+        temp_node = Node(data)
+        temp_node.set_link(self.head)
+        self.head = temp_node
+    def add_to_end(self, data):
+        if self.head is None:
+            self.head = Node(data)
+            return True
+        start = self.head
+        temp_node = Node(data)
+        while start.get_next_node():
+            start = start.get_next_node()
+        start.set_link(temp_node)
+        return True
+    def display(self):
+        start = self.head
+        if start is None:
+            print("Empty List!!!")
+            return False
+        while start:
+            print(str(start.get_data()), end=" ")
+            start = start.get_next_node()
+            if start:
+                print("-->", end=" ")
+        print()
+    def length(self):
+        start = self.head
+        size = 0
+        while start:
+            size += 1
+            start = start.get_next_node()
+        return size
+    def index(self, data):
+        start = self.head
+        position = 0
+        while start:
+            if start.get_data() == data:
+                return position
+            else:
+                position += 1
+                start = start.get_next_node()
+        return -1
+    def remove(self, item):
+        start = self.head
+        previous = None
+        while start:
+            if start.get_data() == item:
+                if previous is None:
+                    self.head = start.get_next_node()
+                else:
+                    previous.set_link(start.get_next_node())
+                return True
+            else:
+                previous = start
+                start = start.get_next_node()
+        return False
+    def get_max(self):
+        if self.head is None:
+            return None
+        start = self.head
+        largest = start.get_data()
+        while start:
+            if largest < start.get_data():
+                largest = start.get_data()
+            start = start.get_next_node()
+        return largest
+    def get_min(self):
+        if self.head is None:
+            return None
+        start = self.head
+        smallest = start.get_data()
+        while start:
+            if smallest > start.get_data():
+                smallest = start.get_data()
+            start = start.get_next_node()
+        return smallest
+    def push(self, data):
+        return self.add_to_end(data)
+    def pop(self):
+        if self.head is None:
+            return None
+        start = self.head
+        previous = None
+        while start.get_next_node():
+            previous = start
+            start = start.get_next_node()
+        if previous is None:
+            self.head = None
+        else:
+            previous.set_link(None)
+        return start.get_data()
+    def at_index(self, position):
+        start = self.head
+        pos = 0
+        while pos != position and start:
+            start = start.get_next_node()
+            pos += 1
+        if start is None:
+            raise IndexError("Index out of range")
+        return start.get_data()
+    def copy(self):
+        temp = LinkedList()
+        start = self.head
+        if start is None:
+            return temp
+        temp.add_to_start(start.get_data())
+        start = start.get_next_node()
+        while start:
+            temp.add_to_end(start.get_data())
+            start = start.get_next_node()
+        return temp
+    def clear(self):
+        self.head = None
+    def remove_position(self, position):
+        data = self.at_index(position)
+        self.remove(data)
+        return data
+    def to_string(self, separator=""):
+        start = self.head
+        final_string = ""
+        while start:
+            final_string += str(start.get_data())
+            start = start.get_next_node()
+            if start:
+                final_string += separator
+        return final_string
+    def count(self, element):
+        start = self.head
+        count = 0
+        while start:
+            if start.get_data() == element:
+                count += 1
+            start = start.get_next_node()
+        return count
+    def to_list(self):
+        start = self.head
+        temp_list = []
+        while start:
+            temp_list.append(start.get_data())
+            start = start.get_next_node()
+        return temp_list
+    def to_set(self):
+        start = self.head
+        temp_set = set()
+        while start:
+            temp_set.add(start.get_data())
+            start = start.get_next_node()
+        return temp_set
+    def reverse(self):
+        start = self.head
+        previous_node = None
+        while start:
+            next_node = start.get_next_node()
+            start.set_link(previous_node)
+            previous_node = start
+            start = next_node
+        self.head = previous_node
+    def sort(self):
+        if self.head is None:
+            return
+        start = self.head
+        while start:
+            current = start
+            smallest = current
+            while current:
+                if current.get_data() < smallest.get_data():
+                    smallest = current
+                current = current.get_next_node()
+            start_data = start.get_data()
+            start.update_data(smallest.get_data())
+            smallest.update_data(start_data)
+            start = start.get_next_node()
+    def sorted(self):
+        temp_list = self.to_list()
+        temp_list.sort()
+        sorted_list = LinkedList()
+        for data in temp_list:
+            sorted_list.add_to_end(data)
+        return sorted_list
+my_list = LinkedList()
+my_list.add_to_start(5)
+my_list.add_to_start(4)
+my_list.add_to_start(3)
+my_list.add_to_start(2)
+my_list.add_to_start(1)
+my_list.display()
+my_list.add_to_end(12)
+my_list.add_to_end(13)
+my_list.add_to_end(3)
+my_list.display()
+print(my_list.length())
+print(my_list.index(3))
+print(my_list.at_index(5))
+print(my_list.remove(12))
+my_list.remove_position(2)
+my_list.display()
+print(my_list.get_max())
+print(my_list.get_min())
+print(my_list.push(31))
+my_list.display()
+print(my_list.pop())
+my_list.display()
+my_list2 = my_list.copy()
+my_list2.display()
+my_list2.clear()
+my_list2.display()
+print(my_list.to_string(","))
+print(my_list.count(3))
+new_list = my_list.to_list()
+print(new_list)
+new_set = my_list.to_set()
+print(new_set)
+my_list.reverse()
+my_list.display()
+my_list3 = my_list.sorted()
+my_list3.display()
+my_list.sort()
+my_list.display()

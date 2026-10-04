@@ -1,0 +1,50 @@
+import json
+from time import perf_counter
+from typing import List, Any, Generator
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+import config
+def load_tracks_from_json(file_path: str) -> List[dict]:
+    with open(file_path, 'r') as json_file:
+        return json.load(json_file)
+def chunker(seq: List[Any], size: int) -> Generator[List[Any], None, None]:
+    for pos in range(0, len(seq), size):
+        yield seq[pos:pos + size]
+def retrieve_spotify_token(username: str, scope: str, client_id: str, client_secret: str, redirect_uri: str) -> str:
+    try:
+        sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope=scope, username=username)
+        token_info = sp_oauth.get_access_token(as_dict=False)
+        return token_info
+    except Exception as e:
+        print(f"Failed to obtain token for user {username}: {e}")
+        return None
+def retrieve_audio_features(spotify_client: spotipy.Spotify, track_ids: List[str], chunk_size: int = 50) -> List[dict]:
+    audio_features = []
+    for chunk in chunker(track_ids, chunk_size):
+        audio_features.extend(spotify_client.audio_features(chunk))
+    return [feature for feature in audio_features if feature]
+def save_to_json(data: List[dict], file_path: str):
+    with open(file_path, 'w') as outfile:
+        json.dump(data, outfile, indent=4)
+def main():
+    tracks = load_tracks_from_json("json/tracks.json")
+    token = retrieve_spotify_token(
+        config.username,
+        config.scope,
+        config.client_id,
+        config.client_secret,
+        config.redirect_uri
+    )
+    if token:
+        spotify_client = spotipy.Spotify(auth=token)
+        print("Starting retrieval of audio features...")
+        start_time = perf_counter()
+        track_ids = [track["id"] for track in tracks]
+        audio_features = retrieve_audio_features(spotify_client, track_ids)
+        elapsed_time = perf_counter() - start_time
+        print(f"Retrieved {len(audio_features)} audio features in {elapsed_time:.2f} seconds.")
+        save_to_json(audio_features, "json/audioFeatures.json")
+    else:
+        print("Failed to obtain Spotify token.")
+if __name__ == "__main__":
+    main()

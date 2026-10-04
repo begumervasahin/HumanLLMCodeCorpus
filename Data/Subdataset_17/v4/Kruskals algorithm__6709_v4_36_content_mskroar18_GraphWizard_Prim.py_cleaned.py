@@ -1,0 +1,28 @@
+class Graph:
+    def run_prim(self, edges, node_count):
+        edges.sort(key=lambda edge: edge.weight)
+        selected_edges = set()
+        edges[0].selected = True
+        selected_edges.add(edges[0])
+        edges[0].extra = 0
+        edges_to_add = node_count - 1
+        while edges_to_add > 0:
+            for edge in edges:
+                if edge.extra == 1:
+                    found_first = any(
+                        edge.Vertex1 in {e.Vertex1, e.Vertex2} for e in selected_edges
+                    )
+                    found_second = any(
+                        edge.Vertex2 in {e.Vertex1, e.Vertex2} for e in selected_edges
+                    )
+                    if found_first and found_second:
+                        edge.extra = 0
+                    elif found_first or found_second:
+                        selected_edges.add(edge)
+                        edge.selected = True
+                        edge.extra = 0
+                        edges_to_add -= 1
+                        break
+    @staticmethod
+    def return_weight(edge):
+        return edge.weight

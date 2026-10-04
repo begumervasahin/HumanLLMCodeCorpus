@@ -1,0 +1,74 @@
+import csv
+import random
+import math
+def divide(data):
+    label = {}
+    for element in data:
+        if element[-1] not in label:
+            label[element[-1]] = []
+        label[element[-1]].append(element)
+    return label
+def mean(numbers):
+    return sum(numbers) / float(len(numbers))
+def stdev(numbers):
+    avg = mean(numbers)
+    variance = sum([pow(x - avg, 2) for x in numbers]) / float(len(numbers) - 1)
+    return math.sqrt(variance)
+def calcparams(data):
+    params = [(mean(feature), stdev(feature)) for feature in zip(*data)]
+    del params[-1]
+    return params
+def divbylabel(data):
+    clss = divide(data)
+    params = {}
+    for clsslabel, instances in clss.items():
+        params[clsslabel] = calcparams(instances)
+    return params
+def calcProb(x, mean, stdev):
+    exponent = math.exp(-(math.pow(x - mean, 2) / (2 * math.pow(stdev, 2))))
+    return (1 / (math.sqrt(2 * math.pi) * stdev)) * exponent
+def calcClssProb(parameters, sample):
+    probs = {}
+    for clsslabel, params in parameters.items():
+        probs[clsslabel] = 1
+        for i in range(len(params)):
+            mean, stdev = params[i]
+            x = sample[i]
+            pd = calcProb(x, mean, stdev)
+            probs[clsslabel] *= pd
+    return probs
+def predict(parameters, sample):
+    probabilities = calcClssProb(parameters, sample)
+    bestLabel, bestProb = None, -1
+    for clsslabel, probability in probabilities.items():
+        if bestLabel is None or probability > bestProb:
+            bestProb = probability
+            bestLabel = clsslabel
+    return bestLabel
+def getPredictions(parameters, testSet):
+    result = predict(parameters, testSet)
+    return result
+def main():
+    givendata = []
+    with open('data.csv', 'r') as csvfile:
+        indata = csv.reader(csvfile)
+        trdata = list(indata)
+        for x in range(len(trdata)):
+            for y in range(4):
+                if y == 3:
+                    if trdata[x][y] == 'M':
+                        trdata[x][y] = 1
+                    else:
+                        trdata[x][y] = 2
+                trdata[x][y] = float(trdata[x][y])
+            givendata.append(trdata[x])
+    parameters = divbylabel(givendata)
+    print('Summary by class value: {}'.format(parameters))
+    testSet = [5.1, 3.5, 1.4, 0.2]
+    prediction = getPredictions(parameters, testSet)
+    if prediction == 1:
+        print('M')
+    else:
+        print('W')
+if __name__ == "__main__":
+    main()

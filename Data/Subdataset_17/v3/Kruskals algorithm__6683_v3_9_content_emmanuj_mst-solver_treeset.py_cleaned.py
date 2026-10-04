@@ -1,0 +1,46 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.parent = self
+        self.rank = 0
+class DisjointSet:
+    def __init__(self):
+        self.nodes = {}
+    def make_set(self, value):
+        self.nodes[value] = Node(value)
+    def find(self, value):
+        node = self.nodes[value]
+        if node.parent != node:
+            node.parent = self.nodes[self.find(node.parent.value)]
+        return node.parent.value
+    def union(self, value1, value2):
+        root1 = self.nodes[self.find(value1)]
+        root2 = self.nodes[self.find(value2)]
+        if root1.value != root2.value:
+            if root1.rank > root2.rank:
+                root2.parent = root1
+                return root1
+            elif root1.rank < root2.rank:
+                root1.parent = root2
+                return root2
+            else:
+                root2.parent = root1
+                root1.rank += 1
+                return root1
+    def print_structure(self):
+        print("Disjoint Set Structure:")
+        for value, node in self.nodes.items():
+            print(f"Node: {value}, Parent: {node.parent.value}, Rank: {node.rank}")
+if __name__ == "__main__":
+    ds = DisjointSet()
+    elements = [1, 2, 3, 4]
+    for element in elements:
+        ds.make_set(element)
+    print("Initial sets:")
+    ds.print_structure()
+    ds.union(1, 2)
+    ds.union(3, 4)
+    ds.union(2, 3)
+    print("\nAfter some unions:")
+    ds.print_structure()
+    print("\nFind representative of element 4:", ds.find(4))

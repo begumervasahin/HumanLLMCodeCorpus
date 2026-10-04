@@ -1,0 +1,55 @@
+import random
+import time
+def quick_sort_two_way(arr, start, end):
+    if start < end:
+        pivot_index = partition_two_way(arr, start, end)
+        quick_sort_two_way(arr, start, pivot_index)
+        quick_sort_two_way(arr, pivot_index + 1, end)
+def partition_two_way(arr, start, end):
+    pivot = arr[start]
+    i = start - 1
+    j = end + 1
+    while True:
+        i += 1
+        while arr[i] < pivot:
+            i += 1
+        j -= 1
+        while arr[j] > pivot:
+            j -= 1
+        if i >= j:
+            return j
+        arr[i], arr[j] = arr[j], arr[i]
+def quick_sort_three_way(arr, start, end):
+    if start < end:
+        pivot = arr[start]
+        low, mid, high = start, start, end
+        while mid <= high:
+            if arr[mid] < pivot:
+                arr[low], arr[mid] = arr[mid], arr[low]
+                low += 1
+                mid += 1
+            elif arr[mid] == pivot:
+                mid += 1
+            else:
+                arr[mid], arr[high] = arr[high], arr[mid]
+                high -= 1
+        quick_sort_three_way(arr, start, low - 1)
+        quick_sort_three_way(arr, high + 1, end)
+def main():
+    print()
+    n = int(input("Enter the list size: "))
+    x = int(input("Enter the maximum element number for the list (minimum is set to 1): \n"
+                  "(Hint: Lower numbers result in more duplicate elements for speed testing): "))
+    values_two_way = [random.randint(1, x) for _ in range(n)]
+    values_three_way = values_two_way[:]
+    start_time_two_way = time.time()
+    quick_sort_two_way(values_two_way, 0, n - 1)
+    end_time_two_way = time.time()
+    print("\nTime taken for 2-way sort: %.8f seconds" % (end_time_two_way - start_time_two_way))
+    start_time_three_way = time.time()
+    quick_sort_three_way(values_three_way, 0, n - 1)
+    end_time_three_way = time.time()
+    print("\nTime taken for 3-way sort: %.8f seconds" % (end_time_three_way - start_time_three_way))
+    print()
+if __name__ == "__main__":
+    main()

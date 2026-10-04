@@ -1,0 +1,59 @@
+import networkx as nx
+import community as community_louvain
+import matplotlib.pyplot as plt
+import sys
+import copy
+def remove_edges_with_highest_betweenness(G):
+    edges_to_remove = []
+    betweenness = nx.edge_betweenness_centrality(G)
+    max_betweenness = max(betweenness.values())
+    for edge, value in betweenness.items():
+        if value == max_betweenness:
+            edges_to_remove.append(edge)
+    G.remove_edges_from(edges_to_remove)
+    subgraphs = list(nx.connected_components(G))
+    partition = {node: idx for idx, component in enumerate(subgraphs) for node in component}
+    if G.number_of_edges() == 0:
+        return [list(nx.connected_components(G)), 0, G]
+    modularity = community_louvain.modularity(partition, G)
+    return [list(nx.connected_components(G)), modularity, G]
+def main(input_file, output_file):
+    G = nx.read_edgelist(input_file)
+    copy_graph = copy.deepcopy(G)
+    partition = {node: 0 for node in G}
+    initial_modularity = community_louvain.modularity(partition, G)
+    result_communities = [[partition, initial_modularity, G]]
+    while G.number_of_edges() > 0:
+        subgraphs_info = remove_edges_with_highest_betweenness(G)
+        result_communities.append(subgraphs_info)
+        G = subgraphs_info[-1]
+    best_partition = None
+    best_modularity = initial_modularity
+    for step in result_communities:
+        if step[1] > best_modularity:
+            best_partition = step[0]
+            best_modularity = step[1]
+    communities = []
+    for community in best_partition:
+        communities.append(sorted([int(node) for node in community]))
+    for community in communities:
+        print(community)
+    pos = nx.spring_layout(copy_graph)
+    colors = ["violet", "black", "orange", "cyan", "red", "blue", "green", "yellow", "indigo", "pink"]
+    for i, community in enumerate(best_partition):
+        nx.draw_networkx_nodes(
+            copy_graph, pos, nodelist=list(community),
+            node_color=colors[i % len(colors)], node_size=500, alpha=0.8
+        )
+    nx.draw_networkx_edges(copy_graph, pos)
+    nx.draw_networkx_labels(copy_graph, pos, font_size=10)
+    plt.axis('off')
+    plt.savefig(output_file)
+    plt.show()
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python detect_communities.py <inputfile> <outputfile>")
+        sys.exit(-1)
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    main(input_file, output_file)

@@ -1,0 +1,65 @@
+import requests
+API_URL = "https:
+s = requests.session()
+def random(num=1):
+    params = {
+        "format": "json",
+        "action": "query",
+        "generator": "random",
+        "grnnamespace": "0",
+        "grnlimit": num
+    }
+    r = s.get(API_URL, params=params)
+    response = r.json()
+    titles = [item["title"] for item in response["query"]["pages"].values()]
+    return titles
+def check(title):
+    params = {
+        "action": "query",
+        "titles": title,
+        "prop": "categories",
+        "clcategories": "Category:All disambiguation pages",
+        "format": "json",
+        "redirects": "true"
+    }
+    r = s.get(API_URL, params=params)
+    response = r.json()
+    pageid = list(response["query"]["pages"].keys())[0]
+    valid = False
+    if "redirects" in response["query"]:
+        valid = response["query"]["redirects"][0]["to"]
+    elif "categories" in response["query"]["pages"][pageid]:
+        print(f"'{title}' is a disambiguation page")
+    elif pageid == "-1":
+        print(f"'{title}' is not a valid article")
+    else:
+        valid = title
+    return valid
+def get_links(title):
+    params = {
+        "action": "query",
+        "titles": title,
+        "prop": "links",
+        "pllimit": "max",
+        "format": "json",
+        "plnamespace": 0
+    }
+    links = []
+    done = False
+    while not done:
+        try:
+            r = s.get(API_URL, params=params)
+            response = r.json()
+            pageid = list(response["query"]["pages"].keys())[0]
+            if "links" in response["query"]["pages"][pageid]:
+                links += [link["title"] for link in response["query"]["pages"][pageid]["links"]]
+                while "continue" in response:
+                    params["plcontinue"] = response["continue"]["plcontinue"]
+                    r = s.get(API_URL, params=params)
+                    response = r.json()
+                    pageid = list(response["query"]["pages"].keys())[0]
+                    links += [link["title"] for link in response["query"]["pages"][pageid]["links"]]
+            done = True
+        except requests.exceptions.ConnectionError:
+            input("Connection Error, press <Enter> to try again")
+    return links

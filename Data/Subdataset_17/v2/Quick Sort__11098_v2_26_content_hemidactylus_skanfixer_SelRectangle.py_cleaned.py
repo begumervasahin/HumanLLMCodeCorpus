@@ -1,0 +1,51 @@
+import tkinter as tk
+class SelectionRectangle:
+    def __init__(self, corner1, corner2):
+        self.xs = [corner1[0], corner2[0]]
+        self.ys = [corner1[1], corner2[1]]
+        self.rect_id = {}
+    def unshow(self, canvas):
+        print(f'Trying to unshow {canvas._name}', end=' ')
+        if canvas._name in self.rect_id:
+            print('OK')
+            canvas.delete(self.rect_id[canvas._name])
+            del self.rect_id[canvas._name]
+        else:
+            print('no')
+    def show(self, canvas, factor=1.0, width=4, color='red', offset=(0, 0)):
+        self.sort()
+        self.rect_id[canvas._name] = canvas.create_rectangle(
+            self.as_tuple(factor, offset), width=width, outline=color)
+    def as_tuple(self, counter_factor=1.0, offset=(0, 0)):
+        coordinates = (self.xs[0], self.ys[0], self.xs[1], self.ys[1])
+        return tuple(int((coord - off) * counter_factor) for coord, off in zip(coordinates, offset * 2))
+    def sort(self):
+        self.xs.sort()
+        self.ys.sort()
+    def __str__(self):
+        return f'! ({self.xs[0]},{self.ys[0]})-({self.xs[1]},{self.ys[1]}) !'
+    def has_on_edge(self, cx, cy, tol):
+        mxs = [min(self.xs), max(self.xs)]
+        mys = [min(self.ys), max(self.ys)]
+        if cx + tol >= mxs[0] and cx - tol <= mxs[1]:
+            if any(abs(cy - y) <= tol for y in mys):
+                return True
+        if cy + tol >= mys[0] and cy - tol <= mys[1]:
+            if any(abs(cx - x) <= tol for x in mxs):
+                return True
+        return False
+    def has_on_corner(self, cx, cy, tol):
+        for corner_x, corner_y in [(x, y) for x in [0, 1] for y in [0, 1]]:
+            if abs(cx - self.xs[corner_x]) <= tol and abs(cy - self.ys[corner_y]) <= tol:
+                return (corner_x, corner_y)
+        return None
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("Selection Rectangle Demo")
+    canvas = tk.Canvas(root, width=600, height=400)
+    canvas.pack()
+    canvas._name = 'main_canvas'
+    sel_rect = SelectionRectangle((50, 50), (200, 150))
+    sel_rect.show(canvas)
+    root.after(3000, lambda: sel_rect.unshow(canvas))
+    root.mainloop()

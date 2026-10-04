@@ -1,0 +1,28 @@
+import sys
+import numpy as np
+def LCS(A, B):
+    m, n = len(A), len(B)
+    arr = np.zeros((m+1, n+1), dtype=int)
+    for i in range(1, m+1):
+        for j in range(1, n+1):
+            if A[i-1] == B[j-1]:
+                arr[i][j] = arr[i-1][j-1] + 1
+            else:
+                arr[i][j] = max(arr[i-1][j], arr[i][j-1])
+    return arr[m][n]
+def CLCS(A, B):
+    longest = LCS(A, B)
+    for i in range(len(A)):
+        rotated = A[i:] + A[:i]
+        clcs = LCS(rotated, B)
+        if clcs > longest:
+            longest = clcs
+    return longest
+def main():
+    if len(sys.argv) != 1:
+        sys.exit('Usage: python LCS.py < input')
+    for line in sys.stdin:
+        A, B = line.split()
+        print(CLCS(A, B))
+if __name__ == '__main__':
+    main()

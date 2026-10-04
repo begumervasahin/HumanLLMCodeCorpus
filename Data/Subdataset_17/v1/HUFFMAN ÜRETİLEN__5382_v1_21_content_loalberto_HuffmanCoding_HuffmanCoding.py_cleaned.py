@@ -1,0 +1,91 @@
+import sys
+class Node:
+    def __init__(self, val, key=''):
+        self.key = key
+        self.val = val
+        self.code = None
+        self.left = None
+        self.right = None
+def fill_codes(node):
+    if node.left is None and node.right is None:
+        return
+    if node.left is not None:
+        node.left.code = '0'
+        fill_codes(node.left)
+    if node.right is not None:
+        node.right.code = '1'
+        fill_codes(node.right)
+def get_letter_codes(code_dict, node, val):
+    if node.left is None and node.right is None:
+        code_dict[node.key] = '{}'.format(node.code) + val
+        return
+    get_letter_codes(code_dict, node.left, val + node.left.code)
+    get_letter_codes(code_dict, node.right, val + node.right.code)
+def huffman_encoding(data):
+    if data is None or len(data) == 0:
+        return None, None
+    frequency = {}
+    for char in data:
+        if char not in frequency:
+            frequency[char] = 1
+        else:
+            frequency[char] += 1
+    if len(frequency) == 1:
+        first_node = Node(frequency[data[0]], data[0])
+        root = Node(first_node.val)
+        root.left = first_node
+        first_node.code = '0'
+        result = '0' * frequency[data[0]]
+        return result, root
+    sorted_values = sorted(frequency.items(), key=lambda x: x[1])
+    nodes = [Node(value[1], value[0]) for value in sorted_values]
+    while len(nodes) > 1:
+        left = nodes.pop(0)
+        right = nodes.pop(0)
+        internal_node = Node(left.val + right.val)
+        internal_node.left = left
+        internal_node.right = right
+        nodes.append(internal_node)
+        nodes = sorted(nodes, key=lambda x: x.val)
+    root = nodes[0]
+    fill_codes(root)
+    code_dict = {}
+    get_letter_codes(code_dict, root, '')
+    encoded_data = ''.join(code_dict[char] for char in data)
+    return encoded_data, root
+def huffman_decoding(data, tree):
+    if data is None or tree is None:
+        return None
+    decoded_data = ""
+    current_node = tree
+    for bit in data:
+        if bit == '0':
+            current_node = current_node.left
+        else:
+            current_node = current_node.right
+        if current_node.left is None and current_node.right is None:
+            decoded_data += current_node.key
+            current_node = tree
+    return decoded_data
+def test_huffman(data):
+    print("Original data size:", sys.getsizeof(data))
+    print("Original data:", data)
+    encoded_data, tree = huffman_encoding(data)
+    if encoded_data:
+        print("Encoded data size:", sys.getsizeof(int(encoded_data, base=2)))
+        print("Encoded data:", encoded_data)
+        decoded_data = huffman_decoding(encoded_data, tree)
+        print("Decoded data size:", sys.getsizeof(decoded_data))
+        print("Decoded data:", decoded_data)
+    else:
+        print("Encoding failed. Data is empty or None.")
+if __name__ == "__main__":
+    test_cases = [
+        "The bird is the word",
+        "The bird is the word23y rkuwejfkjgfkj vduhdqlihoi fhglkrhtieriyweo iwefhli whiflhevidfghierhg",
+        None,
+        "aaaaaaaa"
+    ]
+    for data in test_cases:
+        print("\n--- Test case ---")
+        test_huffman(data)

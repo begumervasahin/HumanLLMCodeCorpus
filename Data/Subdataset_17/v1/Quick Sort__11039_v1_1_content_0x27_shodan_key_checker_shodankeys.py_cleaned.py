@@ -1,0 +1,44 @@
+import shodan
+import sys
+def test_key(api_key):
+    api = shodan.Shodan(api_key)
+    print(f"{+} Testing Key: {api_key}")
+    try:
+        info = api.info()
+    except Exception:
+        print(f"{-} Key {api_key} is invalid!")
+        return False, False
+    if info['plan'] in ['dev', 'edu']:
+        print(f"{+} Key {api_key} appears to be valid, and bonus, paid!")
+        return True, True
+    elif info['plan'] == 'oss':
+        print(f"{*} Key {api_key} appears to be valid! Not paid for though!")
+        return True, False
+def main(args):
+    if len(args) != 2:
+        sys.exit(f"Shodan API Key List Checker (for testing githubbed keys)\nusage: {args[0]} keys-to-test.txt")
+    with open(args[1], "r") as file:
+        keys = file.readlines()
+    valid_keys = []
+    paid_keys = []
+    comm_keys = []
+    for key in keys:
+        key = key.strip()
+        is_valid, is_paid = test_key(api_key=key)
+        if is_valid:
+            valid_keys.append(key)
+            if is_paid:
+                paid_keys.append(key)
+            else:
+                comm_keys.append(key)
+    print(f"\n\n{+} Acquired {len(valid_keys)} valid keys")
+    print(f"{+} Acquired {len(paid_keys)} paid-keys")
+    print(f"{+} Acquired {len(comm_keys)} community-keys")
+    print("\n{+} Paid Keys...")
+    for key in paid_keys:
+        print(key)
+    print("\n{+} Community Keys...")
+    for key in comm_keys:
+        print(key)
+if __name__ == "__main__":
+    main(sys.argv)

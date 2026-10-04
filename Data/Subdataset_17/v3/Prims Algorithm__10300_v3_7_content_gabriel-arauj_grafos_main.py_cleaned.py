@@ -1,0 +1,75 @@
+import networkx as nx
+class KruskalAlgorithm:
+    def kruskal(self, graph):
+        mst = nx.Graph()
+        sorted_edges = sorted(graph.edges(data=True), key=lambda x: x[2]['weight'])
+        disjoint_set = DisjointSet()
+        for node in graph.nodes():
+            disjoint_set.make_set(node)
+        for edge in sorted_edges:
+            weight, u, v = edge[2]['weight'], edge[0], edge[1]
+            if disjoint_set.find(u) != disjoint_set.find(v):
+                disjoint_set.union(u, v)
+                mst.add_edge(u, v, weight=weight)
+        return mst
+    def calculate_weight(self, mst):
+        return sum(weight for _, _, weight in mst.edges.data('weight'))
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+        self.rank = {}
+    def make_set(self, x):
+        self.parent[x] = x
+        self.rank[x] = 0
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+    def union(self, x, y):
+        root_x = self.find(x)
+        root_y = self.find(y)
+        if root_x != root_y:
+            if self.rank[root_x] > self.rank[root_y]:
+                self.parent[root_y] = root_x
+            else:
+                self.parent[root_x] = root_y
+                if self.rank[root_x] == self.rank[root_y]:
+                    self.rank[root_y] += 1
+def create_graph(edges):
+    graph = nx.Graph()
+    for edge in edges:
+        graph.add_edge(edge[1], edge[2], weight=edge[0])
+    return graph
+def main():
+    edges = [
+        (1, 'A', 'B'),
+        (5, 'A', 'C'),
+        (3, 'A', 'D'),
+        (4, 'B', 'C'),
+        (2, 'B', 'D'),
+        (1, 'C', 'D'),
+    ]
+    graph = create_graph(edges)
+    edges2 = [
+        (4, 1, 2),
+        (8, 1, 3),
+        (11, 2, 3),
+        (8, 2, 4),
+        (7, 3, 6),
+        (1, 3, 7),
+        (2, 6, 4),
+        (20, 6, 7),
+        (2, 7, 8),
+        (4, 4, 8),
+        (14, 5, 8),
+        (9, 5, 9),
+        (10, 8, 9),
+        (7, 4, 5),
+    ]
+    graph2 = create_graph(edges2)
+    kruskal_algo = KruskalAlgorithm()
+    mst = kruskal_algo.kruskal(graph2)
+    print("Edges of the Minimum Spanning Tree (MST):", mst.edges(data=True))
+    print("Total weight of the MST:", kruskal_algo.calculate_weight(mst))
+if __name__ == "__main__":
+    main()

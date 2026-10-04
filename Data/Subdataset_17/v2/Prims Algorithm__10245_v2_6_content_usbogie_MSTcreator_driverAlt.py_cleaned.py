@@ -1,0 +1,57 @@
+import GenGraph
+import Sollins
+import Prims
+import Kruskals
+import time
+from Node import Node
+def get_user_input():
+    print("Which method of edge generation would you like to use?")
+    print("1: Weight based on actual distance between nodes")
+    print("2: Weight based on user-defined maximum edge weight")
+    edge_method = int(input('> '))
+    print("How many nodes are in the graph (any number greater than 0)?")
+    total_nodes = int(input('> '))
+    print("How big is the graph (any number greater than 0)?")
+    graph_size = int(input('> '))
+    print("What is the k-value that should be used (any number greater than 0)?")
+    k_value = int(input('> '))
+    max_weight = 1
+    if edge_method == 2:
+        print("What is the maximum weight of an edge (any number greater than 0)?")
+        max_weight = int(input('> '))
+    return edge_method, total_nodes, graph_size, k_value, max_weight
+def measure_algorithm_performance(trees, algorithm_func):
+    start_time = time.time()
+    algorithm_func(trees)
+    return time.time() - start_time
+def run_experiments(edge_method, total_nodes, graph_size, k_value, max_weight):
+    p_times, k_times, s_times = [], [], []
+    for i in range(1000):
+        print(f"Running iteration {i + 1}/1000")
+        trees = GenGraph.GenerateGraph(total_nodes, graph_size, max_weight, k_value, edge_method)
+        p_times.append(measure_algorithm_performance(trees, Prims.runPrims))
+        k_times.append(measure_algorithm_performance(trees, Kruskals.runKruskals))
+        s_times.append(measure_algorithm_performance(trees, Sollins.runSollins))
+    return p_times, k_times, s_times
+def print_average_run_times(p_times, k_times, s_times):
+    print(f"Prim's Algorithm Avg. Run Time = {sum(p_times) / len(p_times)}")
+    print(f"Kruskal's Algorithm Avg. Run Time = {sum(k_times) / len(k_times)}")
+    print(f"Sollin's Algorithm Avg. Run Time = {sum(s_times) / len(s_times)}")
+def print_trees(trees, term):
+    print(f"{term}s:")
+    for tree in trees:
+        print(f"{term}:{{")
+        for node in tree:
+            print(f"{print_node(node)}: {{", end="")
+            for adj_node in node.adjList:
+                print(f"({print_node(adj_node)}, {node.adjList[adj_node]})", end=" ")
+            print("}")
+        print("}")
+def print_node(node):
+    return f"({node.xloc},{node.yloc})"
+def driver():
+    edge_method, total_nodes, graph_size, k_value, max_weight = get_user_input()
+    p_times, k_times, s_times = run_experiments(edge_method, total_nodes, graph_size, k_value, max_weight)
+    print_average_run_times(p_times, k_times, s_times)
+if __name__ == "__main__":
+    driver()

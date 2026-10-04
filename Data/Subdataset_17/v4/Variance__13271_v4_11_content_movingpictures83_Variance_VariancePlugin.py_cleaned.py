@@ -1,0 +1,31 @@
+import numpy as np
+class VariancePlugin:
+    def __init__(self):
+        self.myfile = ""
+        self.bacteria = []
+        self.n = 0
+        self.ADJ = []
+    def input(self, filename):
+        self.myfile = filename
+    def run(self):
+        with open(self.myfile, 'r') as filestuff:
+            firstline = filestuff.readline().strip()
+            self.bacteria = [b for b in firstline.split(',') if b]
+            self.n = len(self.bacteria)
+            self.ADJ = [[] for _ in range(self.n)]
+            for line in filestuff:
+                contents = list(map(float, line.strip().split(',')[1:]))
+                for j, value in enumerate(contents):
+                    self.ADJ[j].append(value)
+    def output(self, filename):
+        with open(filename, 'w') as filestuff2:
+            filestuff2.write("Element\tVariance\n\n")
+            variances = []
+            for i in range(self.n):
+                if self.ADJ[i]:
+                    avg = np.mean(self.ADJ[i])
+                    variance = np.var(self.ADJ[i])
+                    variances.append((variance, self.bacteria[i]))
+            variances.sort(reverse=True)
+            for variance, bacterium in variances:
+                filestuff2.write(f"{bacterium}\t{variance}\n")

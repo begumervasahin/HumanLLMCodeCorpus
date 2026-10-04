@@ -1,0 +1,49 @@
+import requests
+import urllib.parse
+from wordcloud import WordCloud
+import jieba.analyse
+import matplotlib.pyplot as plt
+from util import request_util, AES_encrypt_util
+def get_comment(song_id, page):
+    encSecKey = (
+        "c81160c64a08feb6cfed91c1619d5bffd05dd278b685c94a748689edf035ee0436b66aa7019927ce0fedd26aee9a22cdc6743e58a120f9db0126ebb2e61dae3f7ee21088eb747f829bceed9a5bbb9ee7a2eecf1a358feac431acaab17c95b8491a6a955f7c17a02a3e7886390c2cb3b981f4ccbd5163a566d27ace95db073401"
+    )
+    aes_key_initial = '0CoJUm6Qyw8W8jud'
+    aes_key_final = '3Unu7SzdXGctW1vA'
+    source_en = (
+        f'{{"rid":"R_SO_4_{song_id}","offset":"{page * 20}","total":"false","limit":"20","csrf_token":""}}'
+    )
+    encrypted_request = AES_encrypt_util.encrypt(aes_key_initial, source_en)
+    print(f'Encrypted with initial key: {encrypted_request}')
+    encrypted_request = AES_encrypt_util.encrypt(aes_key_final, str(encrypted_request))
+    print(f'Encrypted with final key: {encrypted_request}')
+    return request_util.net_ease_request(song_id, encrypted_request, encSecKey)
+def generate_wordcloud(text, background_image_path, output_image_path):
+    keywords = jieba.analyse.extract_tags(text, topK=50)
+    keyword_text = " ".join(keywords)
+    background_image = plt.imread(background_image_path)
+    wordcloud = WordCloud(
+        background_color="white",
+        width=1200, height=900,
+        mask=background_image,
+        font_path="simhei.ttf",
+        max_font_size=200,
+        random_state=50
+    ).generate(keyword_text)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    plt.show()
+    wordcloud.to_file(output_image_path)
+def main():
+    song_id = '346576'
+    pages_to_fetch = 10
+    combined_text = ''
+    for page in range(pages_to_fetch):
+        comment_data = get_comment(song_id, page)
+        comments = comment_data.get('comments', [])
+        for comment in comments:
+            print(comment['content'])
+            combined_text += comment['content']
+    generate_wordcloud(combined_text, 'tt.jpg', 'image/aita.png')
+if __name__ == '__main__':
+    main()

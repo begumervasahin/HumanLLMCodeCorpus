@@ -1,0 +1,3 @@
+diff = ndiff('one\ntwo\nthree\n'.splitlines(keepends=True),
+                 'ore\ntree\nemu\n'.splitlines(keepends=True))
+print(''.join(diff), end="")

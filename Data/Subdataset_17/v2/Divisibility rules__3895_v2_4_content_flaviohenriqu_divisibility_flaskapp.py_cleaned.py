@@ -1,0 +1,51 @@
+from flask import Flask, render_template, flash, request
+from flask_bootstrap import Bootstrap
+from flask_wtf import FlaskForm
+from flask_wtf.file import FileField
+from wtforms import SubmitField, ValidationError
+from werkzeug.utils import secure_filename
+class SimpleForm(FlaskForm):
+    file = FileField('Input file')
+    submit_button = SubmitField('Run Code')
+    def validate_file(self, field):
+        if not field.data:
+            raise ValidationError('No file uploaded.')
+def solution(n, x, y):
+    result = []
+    for i in range(max(x, 1), n):
+        if i % x == 0 and i % y != 0:
+            result.append(i)
+    return result
+app = Flask(__name__)
+Bootstrap(app)
+app.config['SECRET_KEY'] = 'devkey'
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6Lfol9cSAAAAADAkodaYl9wvQCwBMr3qGR_PPHcw'
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    form = SimpleForm()
+    if form.validate_on_submit():
+        file = form.file.data
+        filename = secure_filename(file.filename)
+        file_lines = file.readlines()
+        try:
+            elems = int(file_lines[0].strip())
+        except ValueError:
+            flash("The first line of the file should be an integer.")
+            return render_template('index.html', form=form)
+        if elems < 100:
+            results = []
+            for line in file_lines[1:]:
+                try:
+                    n, x, y = map(int, line.strip().split())
+                    result = solution(n, x, y)
+                    results.append(' '.join(map(str, result)))
+                except ValueError:
+                    flash("Each line after the first should contain three integers.")
+                    return render_template('index.html', form=form)
+            if results:
+                flash('<br>'.join(results))
+        else:
+            flash("The number of elements exceeds the limit.")
+    return render_template('index.html', form=form)
+if __name__ == '__main__':
+    app.run(debug=True)

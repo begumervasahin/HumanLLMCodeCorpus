@@ -1,0 +1,81 @@
+import time
+def bubble_sort(lst):
+    for j in range(len(lst)-1, 0, -1):
+        for i in range(j):
+            if lst[i] > lst[i+1]:
+                lst[i], lst[i+1] = lst[i+1], lst[i]
+def insertion_sort(lst):
+    for i in range(1, len(lst)):
+        current_value = lst[i]
+        position = i
+        while position > 0 and lst[position-1] > current_value:
+            lst[position] = lst[position-1]
+            position -= 1
+        lst[position] = current_value
+def merge_sort(alist):
+    if len(alist) > 1:
+        mid = len(alist)
+        lefthalf = alist[:mid]
+        righthalf = alist[mid:]
+        merge_sort(lefthalf)
+        merge_sort(righthalf)
+        i = j = k = 0
+        while i < len(lefthalf) and j < len(righthalf):
+            if lefthalf[i] < righthalf[j]:
+                alist[k] = lefthalf[i]
+                i += 1
+            else:
+                alist[k] = righthalf[j]
+                j += 1
+            k += 1
+        while i < len(lefthalf):
+            alist[k] = lefthalf[i]
+            i += 1
+            k += 1
+        while j < len(righthalf):
+            alist[k] = righthalf[j]
+            j += 1
+            k += 1
+def selection_sort(lst):
+    for fillslot in range(len(lst)-1, 0, -1):
+        position_of_max = 0
+        for location in range(1, fillslot+1):
+            if lst[location] > lst[position_of_max]:
+                position_of_max = location
+        lst[fillslot], lst[position_of_max] = lst[position_of_max], lst[fillslot]
+def main():
+    separator = '_' * 80
+    print(f"{separator}\n")
+    print("Sort techniques on dataset".center(80))
+    print(f"\n{separator}\n\n")
+    while True:
+        print("Enter \n 1 for bubble sort \n 2 for insertion sort \n 3 for merge sort \n 4 for selection sort")
+        choice = int(input("\n Enter the choice: "))
+        if choice in {1, 2, 3, 4}:
+            lst = []
+            n = int(input("\n How many numbers do you want to enter: "))
+            for _ in range(n):
+                num = int(input(" Enter the number: "))
+                lst.append(num)
+            start = time.time()
+            if choice == 1:
+                bubble_sort(lst)
+                print("\n The list after bubble sorting is {}".format(lst))
+            elif choice == 2:
+                insertion_sort(lst)
+                print("\n The list after insertion sorting is {}".format(lst))
+            elif choice == 3:
+                merge_sort(lst)
+                print("\n The list after merge sorting is {}".format(lst))
+            elif choice == 4:
+                selection_sort(lst)
+                print("\n The list after selection sorting is {}".format(lst))
+            end = time.time()
+            print(" The time taken by sorting process: {:.5f} seconds".format(end - start))
+        else:
+            print("Invalid choice. Please try again.")
+        continue_choice = int(input(" Enter 1 to continue and 0 to exit: "))
+        if continue_choice == 0:
+            break
+if __name__ == "__main__":
+    main()

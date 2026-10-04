@@ -1,0 +1,80 @@
+import random
+def gcd(x, y):
+    if x < y:
+        x, y = y, x
+    while y > 0:
+        x, y = y, x % y
+    return x
+def extEuclid(x, y):
+    t, u = 1, 0
+    v, w = 0, 1
+    while y > 0:
+        q = x
+        t, u = u, t - q * u
+        v, w = w, v - q * w
+        x, y = y, x - q * y
+    return t, v, x
+def modInv(n, e):
+    return extEuclid(e, n)[0] % n
+def intSqrt(n):
+    if n == 0 or n == 1:
+        return n
+    u = n.bit_length()
+    v = n.bit_length() % 2
+    x = 2 ** (u + v)
+    while True:
+        y = (x + n
+        if y >= x:
+            break
+        else:
+            x = y
+    if x * x == n:
+        return x
+    return -1
+def MillerRabinOneTest(a, u, r, p):
+    ar = pow(a, r, p)
+    if ar == 1:
+        return True
+    for _ in range(u):
+        if ar == p - 1:
+            return True
+        ar = (ar * ar) % p
+    return ar == p - 1
+def MillerRabinTestComplete(p, num_tests=20):
+    r = p - 1
+    u = 0
+    while r % 2 == 0:
+        r
+        u += 1
+    for _ in range(num_tests):
+        a = random.randrange(2, p - 1)
+        if not MillerRabinOneTest(a, u, r, p):
+            return False
+    return True
+def getPrime(nbits):
+    while True:
+        p = random.getrandbits(nbits)
+        p |= (1 << (nbits - 1)) | 1
+        if MillerRabinTestComplete(p):
+            return p
+def getPrimeIn(start, stop):
+    while True:
+        q = random.randrange(start, stop)
+        q |= 1
+        if MillerRabinTestComplete(q):
+            return q
+def getPQ(nbits=512):
+    p = getPrime(nbits)
+    q = getPrimeIn(p + 1, 2 * p)
+    return p, q
+def getKeys(nbits=1024):
+    p, q = getPQ(nbits
+    N = p * q
+    totient = (p - 1) * (q - 1)
+    isGood_d = False
+    while not isGood_d:
+        d = random.getrandbits(nbits
+        if gcd(d, totient) == 1 and 36 * pow(d, 4) < N:
+            isGood_d = True
+    e = modInv(totient, d)
+    return N, e, d

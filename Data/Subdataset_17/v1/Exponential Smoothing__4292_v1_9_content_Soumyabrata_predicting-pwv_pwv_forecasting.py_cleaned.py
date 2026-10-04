@@ -1,0 +1,48 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.dates import DateFormatter
+from statsmodels.tsa.api import ExponentialSmoothing
+from read_matfile import read_matfile
+def import_data(matlab_file):
+    timestamp, pwv = read_matfile(matlab_file)
+    data = np.column_stack((timestamp, pwv))
+    return pd.DataFrame(data, columns=['timestamps', 'pwv']).set_index('timestamps')
+def train_model(train_data, seasonal_periods=288):
+    model = ExponentialSmoothing(
+        np.asarray(train_data),
+        seasonal_periods=seasonal_periods,
+        trend='add',
+        seasonal='add'
+    ).fit()
+    return model
+def plot_results(train, test, predictions, save_path):
+    fig = plt.figure(figsize=(10, 5))
+    plt.plot(train[-150:], 'b:', label='Train')
+    plt.plot(test, 'r--', label='Test')
+    plt.plot(predictions, 'k-', label='Predicted')
+    plt.legend(loc='best', fontsize=18)
+    fig.autofmt_xdate()
+    formatter = DateFormatter('%d-%m-%y %H:%M')
+    plt.gcf().axes[0].xaxis.set_major_formatter(formatter)
+    plt.grid(True)
+    plt.xlabel('Timestamps', fontsize=14)
+    plt.ylabel('Precipitable Water Vapor (in mm)', fontsize=14)
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.show()
+def main():
+    matlab_file = './data/PWV_2010from_WS_2_withGradient.mat'
+    df = import_data(matlab_file)
+    start_index = 73513
+    train = df[start_index:start_index + 10000]
+    test = df[start_index + 10000:start_index + 10000 + 50]
+    print('Computation started')
+    model = train_model(train['pwv'])
+    predictions = model.forecast(len(test))
+    print('Computation completed')
+    y_hat_avg = test.copy()
+    y_hat_avg['Holt_Winter'] = predictions
+    plot_results(train['pwv'], test['pwv'], y_hat_avg['Holt_Winter'], './results/73513-example.pdf')
+if __name__ == '__main__':
+    main()

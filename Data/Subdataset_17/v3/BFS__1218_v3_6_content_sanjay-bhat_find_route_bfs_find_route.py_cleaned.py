@@ -1,0 +1,64 @@
+import romania
+import sys
+class FindRoute:
+    def find_route(self):
+        file_input = sys.argv[1]
+        start_city = sys.argv[2]
+        end_city = sys.argv[3]
+        bi_dir_graph = romania.romania(0).getDataRomania(file_input)
+        graph = bi_dir_graph[0]
+        vertices = bi_dir_graph[1]
+        visited = [False] * vertices
+        stack = []
+        for i in range(vertices):
+            if not visited[i]:
+                self.topological_sort(graph, list(graph.keys())[i], visited, stack)
+        dist = [float("Inf")] * vertices
+        dist[list(graph.keys()).index(start_city)] = 0.0
+        from_city = [None] * vertices
+        to_city = [None] * vertices
+        to_fro_dist = [0] * vertices
+        while stack:
+            current = stack.pop()
+            current_index = list(graph.keys()).index(current)
+            if dist[current_index] != float("Inf"):
+                for neighbor, distance in graph[current]:
+                    neighbor_index = list(graph.keys()).index(neighbor)
+                    cumulative_distance = dist[current_index] + float(distance)
+                    if dist[neighbor_index] > cumulative_distance:
+                        dist[neighbor_index] = cumulative_distance
+                        from_city[neighbor_index] = current
+                        to_city[neighbor_index] = neighbor
+                        to_fro_dist[neighbor_index] = float(distance)
+        path = self.construct_path(from_city, to_city, to_fro_dist, dist, start_city, end_city)
+        print(self.format_path(path, dist[list(graph.keys()).index(end_city)]))
+    def topological_sort(self, graph, city, visited, stack):
+        city_index = list(graph.keys()).index(city)
+        visited[city_index] = True
+        for neighbor, _ in graph.get(city, []):
+            neighbor_index = list(graph.keys()).index(neighbor)
+            if not visited[neighbor_index]:
+                self.topological_sort(graph, neighbor, visited, stack)
+        stack.append(city)
+    def construct_path(self, from_city, to_city, to_fro_dist, dist, start_city, end_city):
+        path = []
+        current_city = end_city
+        while current_city != start_city:
+            current_index = list(to_city).index(current_city)
+            path.append((from_city[current_index], to_city[current_index], to_fro_dist[current_index]))
+            current_city = from_city[current_index]
+        path.reverse()
+        return path
+    def format_path(self, path, total_distance):
+        if total_distance == float("Inf"):
+            return "distance: infinity\nroute:\nnone\n"
+        else:
+            path_str = f"distance: {total_distance} km\nroute:\n"
+            for from_city, to_city, distance in path:
+                path_str += f"{from_city} to {to_city}, {distance} km\n"
+            return path_str
+def main():
+    obj = FindRoute()
+    obj.find_route()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,17 @@
+__author__ = "Mr Bancroft"
+from random import choice
+def find_primitive_roots(prime):
+    print("Calculating public key and base...")
+    primitive_roots = []
+    for candidate in range(1, prime):
+        residues = set()
+        for exponent in range(1, prime):
+            residue = pow(candidate, exponent, prime)
+            residues.add(residue)
+        if len(residues) == prime - 1:
+            primitive_roots.append(candidate)
+    return choice(primitive_roots) if primitive_roots else None
+if __name__ == "__main__":
+    prime_number = 23
+    primitive_root = find_primitive_roots(prime_number)
+    print(f"A primitive root of {prime_number} is: {primitive_root}")

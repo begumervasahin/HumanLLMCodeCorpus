@@ -1,0 +1,89 @@
+class Nodo:
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.enlaces = []
+    def ingresarEnlace(self, destino, peso):
+        self.enlaces.append(Arco(self.nombre, destino, peso))
+    def getNombre(self):
+        return self.nombre
+    def getEnlaces(self):
+        return self.enlaces
+    def existeEnlace(self, destino):
+        for enlace in self.enlaces:
+            if enlace.getDestino() == destino:
+                return enlace
+        return -1
+class Arco:
+    def __init__(self, inicial, terminal, peso):
+        self.inicial = inicial
+        self.terminal = terminal
+        self.peso = peso
+    def getInicial(self):
+        return self.inicial
+    def getTerminal(self):
+        return self.terminal
+    def getPeso(self):
+        return self.peso
+    def __lt__(self, other):
+        return self.peso < other.peso
+class Grafo:
+    def __init__(self):
+        self.nodos = {}
+        self.aristas = []
+    def ingresarNodo(self, nombre):
+        if nombre not in self.nodos:
+            self.nodos[nombre] = Nodo(nombre)
+    def adicionarEnlace(self, inicial, terminal, peso):
+        if inicial in self.nodos and terminal in self.nodos:
+            self.nodos[inicial].ingresarEnlace(terminal, peso)
+            self.nodos[terminal].ingresarEnlace(inicial, peso)
+            self.aristas.append(Arco(inicial, terminal, peso))
+    def getNombres(self):
+        return list(self.nodos.keys())
+    def getNodo(self, nombre):
+        return self.nodos[nombre]
+    def getAristas(self):
+        return sorted(self.aristas, key=lambda arco: arco.getPeso())
+class AlgoritmoKruskal:
+    def aplicarKruskal(self, grafo):
+        arbol = Grafo()
+        nodos = grafo.getNombres()
+        for n in nodos:
+            arbol.ingresarNodo(n)
+        aristas = grafo.getAristas()
+        while aristas:
+            arcoPro = aristas[0]
+            if not self.hayCiclo(arbol, arcoPro, arbol.getNodo(arcoPro.getTerminal()), arcoPro.getTerminal()):
+                arbol.adicionarEnlace(arcoPro.getInicial(), arcoPro.getTerminal(), arcoPro.getPeso())
+            del aristas[0]
+        return arbol
+    def hayCiclo(self, grafo, aVerificar, terminal, m):
+        enlaces = terminal.getEnlaces()
+        if not enlaces:
+            return False
+        if terminal.existeEnlace(aVerificar.getInicial()) != -1:
+            return True
+        for enlace in enlaces:
+            nodo = enlace
+            if nodo.getDestino() != m:
+                if self.hayCiclo(grafo, aVerificar, grafo.getNodo(nodo.getDestino()), terminal.getNombre()):
+                    return True
+        return False
+if __name__ == "__main__":
+    grafo = Grafo()
+    grafo.ingresarNodo("A")
+    grafo.ingresarNodo("B")
+    grafo.ingresarNodo("C")
+    grafo.ingresarNodo("D")
+    grafo.adicionarEnlace("A", "B", 1)
+    grafo.adicionarEnlace("A", "C", 3)
+    grafo.adicionarEnlace("B", "C", 1)
+    grafo.adicionarEnlace("B", "D", 4)
+    grafo.adicionarEnlace("C", "D", 2)
+    kruskal = AlgoritmoKruskal()
+    mst = kruskal.aplicarKruskal(grafo)
+    print("Minimum Spanning Tree:")
+    for nodo in mst.getNombres():
+        enlaces = mst.getNodo(nodo).getEnlaces()
+        for enlace in enlaces:
+            print(f"{enlace.getInicial()} -- {enlace.getTerminal()} == {enlace.getPeso()}")

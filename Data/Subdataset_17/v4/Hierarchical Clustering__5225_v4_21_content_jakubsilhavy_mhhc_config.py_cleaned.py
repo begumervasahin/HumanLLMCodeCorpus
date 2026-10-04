@@ -1,0 +1,111 @@
+import os
+workspace = os.path.join(r"c:\Users\jsilhavy\Documents\GitHub\MHHC\mhhc\sample")
+workspacePCI = "C:" + os.path.sep
+resultsDir = os.path.join(workspace, "Results")
+hasPCIdone = True
+onlyHierarchy = False
+hlWS = os.path.join(workspace, "HLs")
+combiWS = os.path.join(workspace, "process")
+runEAS = os.path.join(workspace, "runEAS")
+shpWS = os.path.join(workspace, "shp")
+shpLinesWS = os.path.join(workspace, "shpLines")
+negativeWS = os.path.join(workspace, "negative")
+positiveWS = os.path.join(workspace, "positive")
+unsureWS = os.path.join(workspace, "unsure")
+tempWS = os.path.join(workspace, "temp")
+flowWS = os.path.join(workspace, "flow")
+relevantWS = os.path.join(workspace, "relevant")
+outAllWS = os.path.join(workspace, "outAll")
+mergeWS = os.path.join(workspace, "merge")
+easiWS = os.path.join(workspace, "easi")
+scriptWS = os.path.join(workspace, "EAS")
+bundleWS = os.path.join(workspace, "bundle")
+streamWS = os.path.join(workspace, "stream")
+shpRotateWS = os.path.join(workspace, "shpRotate")
+clearWS = os.path.join(workspace, "clear")
+histWS = os.path.join(workspace, "hist")
+imageDataWS = os.path.join(workspace, "ImageData")
+DEMs = ["sa_sr_dem_30"]
+sourceDir = os.path.join(workspace, "DEM")
+isDEMNotRectangle = True
+clipDEMSize = 400
+azimuthStep = 15
+azimuthMax = 360
+azimuths = range(0, azimuthMax, azimuthStep)
+altitude = 30
+athr = 0
+dthr = 0
+fthr = 1
+radi = 10
+gthr = 10
+lthr = 10
+splitField = "split"
+relevantMergedName = "relevantMerged.shp"
+relevantMergedNameLite = "relevantMerged_lite.shp"
+parMeaNon = 2
+parMeaRel = 4
+parMedNon = 2
+parMedRel = 4
+relevantT = 3
+azimuthThreshold = 20
+clusterT = 4
+filterCount = 4
+memorySaving = True
+optimalStop = 2000
+averageMethod = "centroid"
+yMax = 4
+radMax = 5
+gisExePath = os.path.join("ProgramKIV", "GIS_linie_4", "gis.exe")
+xKIV = 150
+yKIV = 200
+clusterTKIV = 1
+filterCountKIV = 4
+bundleMergedName = "bundleMerged.shp"
+bufferSizeRidges = 30
+parMeaRidge = 10
+parMeaValley = 50
+parMedRidge = 2
+parMedValley = 15
+rotationStep = 9
+rotationMax = 45
+rotations = range(0, rotationMax, rotationStep)
+def get_cell_size(DEM):
+    codeSApos = DEM.rfind("_")
+    return int(DEM[codeSApos + 1:])
+def get_sample_area(DEM):
+    codeSApos = DEM.find("_")
+    codeSA = DEM[:codeSApos]
+    return "SampleArea" if codeSA == "sa" else codeSA
+def get_input_mxd_path(SA):
+    return os.path.join(imageDataWS, f"{SA}.mxd")
+def get_source_dem(DEM):
+    codeSApos = DEM.find("_")
+    codeSourceDEMpos = DEM[codeSApos + 1:].find("_") + codeSApos + 1
+    codeSourceDEM = DEM[codeSApos + 1:codeSourceDEMpos]
+    sourceDEM_map = {
+        "zm": "ZM50",
+        "lls": "LLS",
+        "d4": "DMR4G",
+        "d5": "DMR5G",
+        "d": "DMU25",
+        "as": "ASTER",
+        "sr": "SRTM"
+    }
+    return sourceDEM_map.get(codeSourceDEM, codeSourceDEM)
+def get_buffer_size_cluster():
+    return [100, 200]
+def get_rotation_angle(DEM):
+    codeRotation = DEM.find("_r")
+    codeSApos = DEM.rfind("_")
+    return int(DEM[codeRotation + 2:codeSApos])
+def get_hs_azimuth(shpName):
+    angleStart = shpName.find("_") + 1
+    angleEnd = shpName.find("_", angleStart)
+    return shpName[angleStart:angleEnd]
+for dem in DEMs:
+    print("Cell Size:", get_cell_size(dem))
+    print("Sample Area:", get_sample_area(dem))
+    print("Input MXD Path:", get_input_mxd_path(get_sample_area(dem)))
+    print("Source DEM:", get_source_dem(dem))
+    print("Rotation Angle:", get_rotation_angle(dem))
+    print("Buffer Sizes:", get_buffer_size_cluster())

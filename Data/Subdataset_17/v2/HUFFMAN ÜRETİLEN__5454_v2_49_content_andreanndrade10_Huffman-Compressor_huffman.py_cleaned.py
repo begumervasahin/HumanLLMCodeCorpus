@@ -1,0 +1,49 @@
+import os
+from buildTree import firstRound
+def main():
+    display_header()
+    input_data = prompt_input()
+    if is_compression_requested(input_data):
+        file_path = extract_file_path(input_data)
+        content = read_file_content(file_path)
+    else:
+        content = handle_unavailable_feature()
+    if content:
+        frequency_dict = calculate_frequency(content)
+        compute_and_print_proportions(frequency_dict, content)
+def display_header():
+    print("\n\nAndre Luiz Lourenço de Andrade - 14/0016295")
+    print("Teoria da Informação - Huffman Compressor\n")
+def prompt_input():
+    return input("Please enter a string or the file path to compress (e.g., '-c <file_path>') >>> ")
+def is_compression_requested(input_data):
+    return "-c" in input_data
+def extract_file_path(input_data):
+    return input_data.split()[1] if len(input_data.split()) > 1 else ""
+def read_file_content(file_path):
+    if not file_path:
+        print("Error: No file path provided.")
+        return None
+    try:
+        with open(file_path, "rb") as file:
+            return file.read()
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found.")
+        return None
+def handle_unavailable_feature():
+    print(f"\nThis function is not ready yet... Please choose a .txt file in your directory: {os.getcwd()}")
+    return None
+def calculate_frequency(content):
+    frequency_dict = {}
+    for byte in content:
+        frequency_dict[byte] = frequency_dict.get(byte, 0) + 1
+    return frequency_dict
+def compute_and_print_proportions(frequency_dict, content):
+    total_size = len(content)
+    for byte in frequency_dict:
+        frequency_dict[byte] /= total_size
+    sorted_proportions = sorted(frequency_dict.values(), reverse=True)
+    symbols = list(frequency_dict.keys())
+    firstRound(sorted_proportions, symbols)
+if __name__ == "__main__":
+    main()

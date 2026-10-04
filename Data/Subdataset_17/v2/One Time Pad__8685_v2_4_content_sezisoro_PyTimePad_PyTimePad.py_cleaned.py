@@ -1,0 +1,32 @@
+import sys
+import argparse
+import string
+def create_shift_function(decrypt):
+    def shift_char(char_shift_pair):
+        char, shift = char_shift_pair
+        shift = -int(shift) if decrypt else int(shift)
+        if char in string.ascii_letters:
+            base = ord('A') if char.isupper() else ord('a')
+            shifted_index = (ord(char) - base + shift) % 26
+            return chr(base + shifted_index)
+        elif char in string.digits:
+            base = ord('0')
+            shifted_index = (ord(char) - base + shift) % 10
+            return chr(base + shifted_index)
+        else:
+            return char
+    return shift_char
+def main():
+    parser = argparse.ArgumentParser(description="Shift Cipher Encryption/Decryption")
+    parser.add_argument("-d", "--decrypt", help="set the operation to decryption rather than encryption", action="store_true")
+    parser.add_argument("k", type=int, help="conversion key")
+    args = parser.parse_args()
+    msg = input("Enter the message: ")
+    key = str(args.k)
+    if len(msg) > len(key):
+        parser.error("Error: message length greater than key length.")
+    shift_function = create_shift_function(args.decrypt)
+    shifted_message = ''.join(map(shift_function, zip(msg, key)))
+    print(shifted_message)
+if __name__ == "__main__":
+    main()

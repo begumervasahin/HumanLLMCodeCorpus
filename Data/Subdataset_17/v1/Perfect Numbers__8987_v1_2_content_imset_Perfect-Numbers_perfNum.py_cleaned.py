@@ -1,0 +1,30 @@
+import sys
+def is_perfect_number(num):
+    divisors = [i for i in range(1, num) if num % i == 0]
+    return sum(divisors) == num
+def perf_check(mode, limit):
+    limit = int(limit)
+    if mode.lower() == 'check':
+        num_to_check = limit
+        if is_perfect_number(num_to_check):
+            print(f"{num_to_check} is perfect!")
+        else:
+            print(f"{num_to_check} is not perfect!")
+    elif mode.lower() == 'iterate':
+        num_to_check = 2
+        while num_to_check <= limit:
+            if is_perfect_number(num_to_check):
+                print(f"{num_to_check} is perfect!")
+            else:
+                print(f"{num_to_check} is not perfect!")
+            num_to_check += 1
+    else:
+        print(f"Argument {mode} is not valid.")
+        return
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <mode> <limit>")
+        print("mode: 'check' to check a single number, 'iterate' to check all numbers up to the limit")
+        print("limit: The number to check or the upper limit for iteration")
+    else:
+        perf_check(sys.argv[1], sys.argv[2])

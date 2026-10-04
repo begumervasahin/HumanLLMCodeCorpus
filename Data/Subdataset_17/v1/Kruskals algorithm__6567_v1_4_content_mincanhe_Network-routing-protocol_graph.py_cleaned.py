@@ -1,0 +1,38 @@
+import random
+class Vertex:
+    def __init__(self, v):
+        self.v = v
+        self.connections = []
+    def insert_connection(self, connection):
+        self.connections.append(connection)
+    def remove_connection(self, connection):
+        self.connections.remove(connection)
+    def exist_connection(self, t):
+        return any(c[0] == t for c in self.connections)
+def defined_degree_graph(n, degree):
+    vertices = [Vertex(i) for i in range(n)]
+    edges = []
+    vertex_indices = list(range(n))
+    random.shuffle(vertex_indices)
+    for i in range(n):
+        left = i
+        right = i
+        for _ in range(degree
+            left = (left + 1) % n
+            right = (right - 1) % n
+            if left > i:
+                weight = random.randint(0, 100)
+                vertices[vertex_indices[i]].insert_connection([vertex_indices[left], weight])
+                vertices[vertex_indices[left]].insert_connection([vertex_indices[i], weight])
+                edges.append(sorted([vertex_indices[i], vertex_indices[left]]) + [weight])
+            if right > i:
+                weight = random.randint(0, 100)
+                vertices[vertex_indices[i]].insert_connection([vertex_indices[right], weight])
+                vertices[vertex_indices[right]].insert_connection([vertex_indices[i], weight])
+                edges.append(sorted([vertex_indices[i], vertex_indices[right]]) + [weight])
+    with open('./edges.txt', 'a') as file:
+        for edge in edges:
+            file.write(f"{edge[0]} {edge[1]} {edge[2]}\n")
+    return vertices
+defined_degree_graph(5000, 6)
+defined_degree_graph(5000, 1000)

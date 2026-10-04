@@ -1,0 +1,25 @@
+import os
+from nltk.stem import PorterStemmer
+from UniqueWord import UniqueWord
+class Stemming:
+    def __init__(self, source_path="output/training/stopword/", out_path="output/training/stem/"):
+        self.source_path = source_path
+        self.out_path = out_path
+        if not os.listdir(self.source_path):
+            u = UniqueWord()
+            u.output()
+    def stem(self):
+        st = PorterStemmer()
+        for filename in os.listdir(self.source_path):
+            if not filename.endswith('.txt'):
+                continue
+            fullname = os.path.join(self.source_path, filename)
+            with open(fullname, 'r', encoding='utf-8') as file:
+                strings = file.readlines()
+            with open(os.path.join(self.out_path, filename), 'w', encoding='utf-8') as out:
+                for string in strings:
+                    stemmed = st.stem(string.strip()[:-5])
+                    out.write(f"{stemmed} - {string.strip()[-2]}\n")
+if __name__ == "__main__":
+    stem = Stemming()
+    stem.stem()

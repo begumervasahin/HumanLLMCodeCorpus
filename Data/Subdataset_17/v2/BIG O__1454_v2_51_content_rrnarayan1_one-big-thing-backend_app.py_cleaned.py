@@ -1,0 +1,77 @@
+import firebase_admin
+from firebase_admin import firestore
+from flask import Flask, request, jsonify, abort
+from flask_cors import CORS
+from Teams import get_team_by_id
+from Games import get_game, get_opp_game, get_games_stats, get_games_info_by_team_and_season
+from Score import _get_scores, _get_default_data
+app = Flask(__name__)
+CORS(app)
+firebase_admin.initialize_app()
+db = firestore.client()
+seasons = {
+    "22016": "16-17Reg",
+    "42016": "16-17Playoffs",
+    "22017": "17-18Reg",
+    "42017": "17-18Playoffs",
+    "22018": "18-19Reg"
+}
+stat_categories = [
+    'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA',
+    'FT_PCT', 'OREB', 'DREB', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PTS'
+]
+@app.route('/')
+def hello():
+    return "Hello World"
+@app.route('/game')
+def game():
+    season_id = request.args.get('seasonId')
+    team_id = request.args.get('teamId')
+    game_id = request.args.get('gameId')
+    if not season_id or not team_id or not game_id:
+        return abort(400, description="Missing required parameters.")
+    game_data = get_game(db, season_id, team_id, game_id)
+    if not game_data:
+        return abort(404, description="Game not found.")
+    return jsonify(game_data)
+@app.route('/score')
+def score():
+    season_id = request.args.get('seasonId')
+    team_id = request.args.get('teamId')
+    game_id = request.args.get('gameId')
+    data = request.args.get('data')
+    portion = request.args.get('portion')
+    if not season_id or not team_id or not game_id:
+        return abort(400, description="Missing required parameters.")
+    game_data = get_game(db, season_id, team_id, game_id)
+    opp_game_data = get_opp_game(db, season_id, team_id, game_id)
+    if not game_data or not opp_game_data:
+        return abort(404, description="Game data not found.")
+    team = get_team_by_id(db, game_data["TEAM_ID"])
+    opp_team = get_team_by_id(db, opp_game_data["TEAM_ID"])
+    if not team or not opp_team:
+        return abort(404, description="Team data not found.")
+    if not data:
+        data_season_id = int(game_data["SEASON_ID"])
+        data, portion = _get_default_data(data_season_id, game_data)
+    if portion == "before" and game_data["SEASON_ID"] != data:
+        return abort(422, description="Invalid data portion.")
+    list_data_games = get_games_stats(db, data, portion, team_id, game_data)
+    if not list_data_games:
+        return abort(404, description="Game stats not found.")
+    response = _get_scores(list_data_games, game_data)
+    response["team"] = team
+    response["opp_team"] = opp_team
+    return jsonify(response)
+@app.route('/games')
+def games():
+    season_id = request.args.get('seasonId')
+    team_id = request.args.get('teamId')
+    with_obt = request.args.get('withOBT')
+    with_summary = request.args.get('withSummary')
+    if not season_id or not team_id:
+        return abort(400, description="Missing required parameters.")
+    games_info = get_games_info_by_team_and_season(db, season_id, team_id, with_obt, with_summary)
+    return jsonify(games_info)
+if __name__ == "__main__":
+    app.run(debug=True)

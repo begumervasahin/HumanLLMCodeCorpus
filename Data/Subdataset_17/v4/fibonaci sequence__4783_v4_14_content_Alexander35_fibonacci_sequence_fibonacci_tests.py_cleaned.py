@@ -1,0 +1,27 @@
+import unittest
+import json
+from fibonacci import Fibonacci
+class TestFibonacci(unittest.TestCase):
+    def setUp(self):
+        with open('config.json') as file:
+            config = json.load(file)
+        self.fibonacci = Fibonacci(config['redis_host'], config['redis_db'])
+    def test_numbers_generate(self):
+        self.fibonacci.ensure_numbers(9, 13)
+        control_sequence = self.fibonacci.control(9, 13)
+        expected_sequence = [
+            "<div>[9] == b'34'</div>",
+            "<div>[10] == b'55'</div>",
+            "<div>[11] == b'89'</div>",
+            "<div>[12] == b'144'</div>"
+        ]
+        self.assertEqual(control_sequence, expected_sequence)
+    def test_starter_sequence(self):
+        control_sequence = self.fibonacci.control(1, 3)
+        expected_sequence = [
+            "<div>[1] == b'1'</div>",
+            "<div>[2] == b'1'</div>"
+        ]
+        self.assertEqual(control_sequence, expected_sequence)
+if __name__ == '__main__':
+    unittest.main()

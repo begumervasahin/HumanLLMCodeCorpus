@@ -1,0 +1,93 @@
+class Group:
+    def __init__(self, elements, similarity, index, node):
+        self.elements = elements
+        self.similarity = similarity
+        self.index = index
+        self.node = node
+    def __str__(self):
+        return f"{self.elements} => Similarity: {self.similarity}, Index: {self.index}"
+class Node:
+    def __init__(self, value=None, left=None, right=None):
+        self.value = value
+        self.left = left
+        self.right = right
+    def display(self):
+        result = []
+        current_level = [self]
+        while current_level:
+            next_level = []
+            level_str = " ".join(str(node.value) for node in current_level)
+            result.append(level_str)
+            for node in current_level:
+                if node.left:
+                    next_level.append(node.left)
+                if node.right:
+                    next_level.append(node.right)
+            current_level = next_level
+        return "\n".join(result)
+    def __bool__(self):
+        return self.value is not None
+    def __str__(self):
+        return self.display()
+def initialize_groups(similarity_matrix):
+    groups = []
+    for i, row in enumerate(similarity_matrix):
+        max_sim = max(row)
+        index = row.index(max_sim)
+        group = Group([i], max_sim, index, Node([i]))
+        groups.append(group)
+    return groups
+def merge_groups(groups, work_matrix):
+    while len(groups) > 1:
+        max_sim_group = max(groups, key=lambda g: g.similarity)
+        max_sim = max_sim_group.similarity
+        dest_group_idx = next(j for j, g in enumerate(groups) if g.similarity == max_sim)
+        dest_group = groups[dest_group_idx]
+        source_group_idx = next(
+            j for j, g in enumerate(groups) if max_sim_group.index in g.elements
+        )
+        source_group = groups[source_group_idx]
+        for element in source_group.elements:
+            for dest_element in dest_group.elements:
+                work_matrix[element][dest_element] = -1
+                work_matrix[dest_element][element] = -1
+        print(f"Merging groups: {dest_group.elements} with {source_group.elements}")
+        dest_group.elements.extend(source_group.elements)
+        dest_group.node = Node(dest_group.elements, dest_group.node, source_group.node)
+        groups.pop(source_group_idx)
+        max_sim = -1
+        max_idx = -1
+        for element in dest_group.elements:
+            for i, sim in enumerate(work_matrix[element]):
+                if sim > max_sim:
+                    max_sim, max_idx = sim, i
+        dest_group.index = max_idx
+        dest_group.similarity = max_sim
+    return groups[0]
+def display_matrix(matrix):
+    print("Matrix:")
+    for row in matrix:
+        print(row)
+    print()
+def remove_self_similarity(matrix):
+    for i in range(len(matrix)):
+        matrix[i][i] = -1
+if __name__ == "__main__":
+    similarity_matrix = [
+        [10, 6, 0, 0, 0, 0, 0, 0, 0],
+        [6, 10, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 10, 5, 3, 3, 1, 1, 0],
+        [0, 0, 5, 10, 1, 2, 1, 1, 0],
+        [0, 0, 3, 1, 10, 4, 1, 2, 0],
+        [0, 0, 3, 2, 4, 10, 1, 4, 0],
+        [0, 0, 1, 1, 1, 1, 10, 1, 0],
+        [0, 0, 1, 1, 2, 4, 1, 10, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 10],
+    ]
+    display_matrix(similarity_matrix)
+    work_matrix = [row[:] for row in similarity_matrix]
+    remove_self_similarity(work_matrix)
+    groups = initialize_groups(work_matrix)
+    final_group = merge_groups(groups, work_matrix)
+    print("\nFinal Hierarchical Grouping:")
+    print(final_group.node)

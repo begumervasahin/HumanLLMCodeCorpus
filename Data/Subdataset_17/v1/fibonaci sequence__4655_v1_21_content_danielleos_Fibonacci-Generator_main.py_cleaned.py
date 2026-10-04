@@ -1,0 +1,33 @@
+def generate_fibonacci_sequence(number):
+    fib_list = []
+    curr, prev1, prev2 = 0, 0, 0
+    for i in range(1, number + 1):
+        if i == 1:
+            fib_list.append(curr)
+            curr += 1
+            fib_list.append(curr)
+            prev2 = prev1
+            prev1 = curr
+        else:
+            curr = prev2 + prev1
+            fib_list.append(curr)
+            prev2 = prev1
+            prev1 = curr
+    return fib_list
+def main():
+    while True:
+        try:
+            number = int(input("How many Fibonacci numbers do you want to see? "))
+        except ValueError:
+            print("Sorry, I did not understand that input, please input a whole number.")
+            continue
+        if number <= 0:
+            print("Sorry, seems like that is not a positive integer, try again please.")
+            continue
+        else:
+            print(f"Producing {number} Fibonacci numbers...")
+            fib_sequence = generate_fibonacci_sequence(number)
+            print(fib_sequence)
+            break
+if __name__ == "__main__":
+    main()

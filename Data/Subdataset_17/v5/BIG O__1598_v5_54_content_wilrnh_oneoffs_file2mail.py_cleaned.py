@@ -1,0 +1,48 @@
+
+import argparse
+import socket
+import os
+import time
+import smtplib
+from email.mime.text import MIMEText
+def send_email(file_path, to_address, smtp_user, smtp_password, smtp_server):
+    try:
+        with open(file_path, 'r') as fp:
+            file_content = fp.read()
+        msg = MIMEText(file_content)
+        msg['Subject'] = f'{socket.gethostname()}: {os.path.basename(file_path)} at {time.asctime()}'
+        msg['From'] = smtp_user
+        msg['To'] = to_address
+        with smtplib.SMTP(smtp_server) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, [to_address], msg.as_string())
+        print(f"Email sent successfully to {to_address}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-f", "--file", required=True, help="File to read content from")
+    parser.add_argument("-t", "--to", required=True, help="Recipient email address")
+    parser.add_argument("-u", "--smtp-user", required=True, help="SMTP username and 'From' email address")
+    parser.add_argument(
+        "-p",
+        "--smtp-password",
+        default=os.environ.get('SMTP_PASSWORD'),
+        help="SMTP password (reads from SMTP_PASSWORD env var if not provided)"
+    )
+    parser.add_argument(
+        "-s",
+        "--smtp-server",
+        default='smtp.gmail.com:587',
+        help="SMTP server address (default: smtp.gmail.com:587)"
+    )
+    args = parser.parse_args()
+    if not args.smtp_password:
+        parser.print_usage()
+        sys.exit("SMTP password is required.")
+    send_email(args.file, args.to, args.smtp_user, args.smtp_password, args.smtp_server)
+if __name__ == "__main__":
+    main()

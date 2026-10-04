@@ -1,0 +1,55 @@
+import sys
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+def nfoldpolyfit(X, Y, maxK, n, verbose):
+    setsize = len(X)
+    polyfits = [[None for _ in range(maxK + 1)] for _ in range(n)]
+    mean_squared_errors = [[0.0 for _ in range(maxK + 1)] for _ in range(n)]
+    for nf in range(n):
+        Xtrain = np.concatenate((X[:nf * setsize], X[(nf + 1) * setsize:]))
+        Ytrain = np.concatenate((Y[:nf * setsize], Y[(nf + 1) * setsize:]))
+        Xtest = X[nf * setsize:(nf + 1) * setsize]
+        Ytest = Y[nf * setsize:(nf + 1) * setsize]
+        for deg in range(maxK + 1):
+            polyfit = np.polyfit(Xtrain, Ytrain, deg)
+            polyfits[nf][deg] = np.poly1d(polyfit)
+            square_error_sum = sum((polyfits[nf][deg](Xtest[i]) - Ytest[i]) ** 2 for i in range(setsize))
+            mean_squared_errors[nf][deg] = square_error_sum / float(setsize)
+    if verbose:
+        average_MSEs = np.mean(mean_squared_errors, axis=0)
+        plt.figure(figsize=(15, 5))
+        plt.subplot(121)
+        plt.plot(range(maxK + 1), average_MSEs, '.-')
+        plt.ylim(0, 0.5)
+        plt.xlabel('k')
+        plt.ylabel('Average MSE')
+        plt.title('Mean Squared Error vs. k')
+        bestfit_deg = np.argmin(average_MSEs)
+        bestfit_function = np.polyfit(X, Y, bestfit_deg)
+        p = np.poly1d(bestfit_function)
+        xp = np.linspace(min(X), max(X), 100)
+        plt.subplot(122)
+        plt.plot(X, Y, '.', xp, p(xp), '-')
+        plt.ylim(min(Y) - 1, max(Y) + 1)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title('Best-Fitting Polynomial Regression')
+        plt.show()
+        return bestfit_function
+def main():
+    if len(sys.argv) != 5:
+        print("Usage: script.py <csvfile> <maxK> <nFolds> <verbose>")
+        sys.exit(1)
+    rfile = sys.argv[1]
+    maxK = int(sys.argv[2])
+    nFolds = int(sys.argv[3])
+    verbose = sys.argv[4].lower() == 'true'
+    with open(rfile, 'r') as csvfile:
+        dat = csv.reader(csvfile)
+        X, Y = zip(*((float(row[0]), float(row[1])) for i, row in enumerate(dat) if i > 0))
+    X = np.array(X)
+    Y = np.array(Y)
+    nfoldpolyfit(X, Y, maxK, nFolds, verbose)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,55 @@
+import random
+import time
+from bubbleSort import bubbleSort
+from selectionSort import selectionSort
+from insertionSort import insertionSort
+from heapSort import heapSort
+from quickSort import quickSort
+def yes_no(question):
+    while True:
+        reply = input(question + " (y/n): ").strip().lower()
+        if reply in ['y', 'yes']:
+            return True
+        elif reply in ['n', 'no']:
+            return False
+        else:
+            print("Please enter 'y' or 'n'.")
+def get_array_size():
+    while True:
+        try:
+            n = int(input("How many numbers (between 2 and 50,000; could take a couple minutes) do you want in the array? "))
+            if 2 <= n <= 50000:
+                return n
+            else:
+                print("Invalid number, please try again.")
+        except ValueError:
+            print("Invalid input, please enter a number.")
+def print_and_time_sort(sort_func, array, sort_name):
+    start_time = time.time()
+    sorted_array = sort_func(array.copy())
+    elapsed_time = time.time() - start_time
+    print(f"{sort_name} Result:", sorted_array)
+    print(f"Time elapsed: {elapsed_time:.2f} seconds\n")
+def main():
+    print("\nPYTHON SORTING SCRIPTS")
+    print("----------------------\n")
+    while True:
+        array_size = get_array_size()
+        array = random.sample(range(1, array_size + 1), array_size)
+        if yes_no("Do you want to see the array?"):
+            print(array)
+        print_and_time_sort(bubbleSort, array, "Bubble Sort")
+        print_and_time_sort(selectionSort, array, "Selection Sort")
+        print_and_time_sort(insertionSort, array, "Insertion Sort")
+        print_and_time_sort(heapSort, array, "Heap Sort")
+        start_time = time.time()
+        quick_sorted_array = array.copy()
+        quickSort(quick_sorted_array)
+        elapsed_time = time.time() - start_time
+        print("Quick Sort Result:", quick_sorted_array)
+        print(f"Time elapsed: {elapsed_time:.2f} seconds\n")
+        if not yes_no("Try again with another array?"):
+            break
+    input("Press any key to quit...")
+if __name__ == '__main__':
+    main()

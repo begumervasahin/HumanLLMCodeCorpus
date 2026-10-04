@@ -1,0 +1,73 @@
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+from statsmodels.tsa.api import ExponentialSmoothing
+from read_matfile import read_matfile
+def import_data(matlab_file):
+    timestamp, pwv = read_matfile(matlab_file)
+    print('Imported the MATLAB file')
+    data = np.column_stack((timestamp, pwv))
+    return pd.DataFrame(data, columns=['timestamps', 'pwv']).set_index('timestamps')
+def calculate_rmse(y_true, y_pred):
+    return np.sqrt(np.mean((y_pred - y_true) ** 2))
+def perform_experiments(df, lead_time_array, previous_time_array, no_of_experiments):
+    end_index = len(df)
+    rmse_matrix = np.zeros((len(previous_time_array), len(lead_time_array)))
+    for i, lead_time in enumerate(lead_time_array):
+        for j, previous_time in enumerate(previous_time_array):
+            lead_observations = int(lead_time / 5)
+            previous_observations = int(previous_time / 5)
+            rmse_array = []
+            for _ in range(no_of_experiments):
+                last_possible_index = end_index - (previous_observations + lead_observations)
+                start_index = random.randint(0, last_possible_index)
+                print(f'From start index of {start_index}')
+                print(f'Computing for lead time = {lead_time} mins with history of {previous_time} mins')
+                train = df[start_index:start_index + previous_observations]
+                test = df[start_index + previous_observations:start_index + previous_observations + lead_observations]
+                y_hat_avg = test.copy()
+                print('Computation started')
+                fit = ExponentialSmoothing(
+                    np.asarray(train['pwv']),
+                    seasonal_periods=288,
+                    trend='add',
+                    seasonal='add'
+                ).fit()
+                y_hat_avg['Holt_Winter'] = fit.forecast(len(test))
+                print('Computation completed')
+                rmse_value = calculate_rmse(y_hat_avg['pwv'], y_hat_avg['Holt_Winter'])
+                rmse_array.append(rmse_value)
+            rmse_matrix[j, i] = np.mean(rmse_array)
+            print(rmse_matrix)
+    return rmse_matrix
+def save_results(rmse_matrix, filename='./results/rmse_matrix_for_grid.npy'):
+    np.save(filename, rmse_matrix)
+def plot_results(rmse_matrix, lead_time_array, previous_time_array):
+    no_of_y_components, no_of_x_components = rmse_matrix.shape
+    xlabels = lead_time_array
+    ylabels = previous_time_array
+    fig, ax = plt.subplots()
+    cax = ax.imshow(rmse_matrix, cmap=plt.cm.coolwarm)
+    ax.set_xticks(np.arange(no_of_x_components))
+    ax.set_xticklabels(xlabels)
+    ax.set_yticks(np.arange(no_of_y_components))
+    ax.set_yticklabels(ylabels)
+    plt.xlabel('Lead Times (in mins)', fontsize=12)
+    plt.ylabel('Historical Data (in mins)', fontsize=12)
+    cbar = fig.colorbar(cax, ticks=[rmse_matrix.min(), rmse_matrix.max()], orientation='vertical')
+    cbar.ax.set_yticklabels(['Low', 'High'])
+    fig.tight_layout()
+    fig.savefig('./results/rmse.pdf')
+    plt.show()
+def main():
+    matlab_file = './data/PWV_2010from_WS_2_withGradient.mat'
+    df = import_data(matlab_file)
+    lead_time_array = np.arange(5, 30, 5)
+    previous_time_array = np.arange(12000, 2000, -2000)
+    no_of_experiments = 10
+    rmse_matrix = perform_experiments(df, lead_time_array, previous_time_array, no_of_experiments)
+    save_results(rmse_matrix)
+    plot_results(rmse_matrix, lead_time_array, previous_time_array)
+if __name__ == '__main__':
+    main()

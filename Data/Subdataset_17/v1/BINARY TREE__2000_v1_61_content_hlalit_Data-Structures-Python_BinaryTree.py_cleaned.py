@@ -1,0 +1,73 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+class Tree:
+    def __init__(self):
+        self.head = None
+        self.list = []
+    def push(self, data):
+        self.list.append(data)
+    def insertTree(self, data, address, index):
+        if self.head is None:
+            temp = Node(data)
+            self.head = temp
+            current = temp
+        else:
+            current = address
+        lindex = 2 * index + 1
+        rindex = 2 * index + 2
+        if lindex < len(self.list):
+            lnode = Node(self.list[lindex])
+            current.left = lnode
+            self.insertTree(self.list[lindex], lnode, lindex)
+        if rindex < len(self.list):
+            rnode = Node(self.list[rindex])
+            current.right = rnode
+            self.insertTree(self.list[rindex], rnode, rindex)
+    def inorder(self, current):
+        if current is None:
+            return
+        self.inorder(current.left)
+        print(current.data, end=' ')
+        self.inorder(current.right)
+    def levelorder(self, current):
+        if current is None:
+            return
+        q = [current]
+        while q:
+            node = q.pop(0)
+            print(node.data, end=' ')
+            if node.left:
+                q.append(node.left)
+            if node.right:
+                q.append(node.right)
+    def height(self, current):
+        if current is None:
+            return -1
+        lheight = self.height(current.left)
+        rheight = self.height(current.right)
+        return max(lheight, rheight) + 1
+def main():
+    obj = Tree()
+    obj.push(2)
+    obj.push(3)
+    obj.push(5)
+    obj.push(7)
+    obj.push(1)
+    obj.push(10)
+    obj.push(9)
+    obj.push(8)
+    obj.insertTree(obj.list[0], obj.head, 0)
+    print("In-order traversal:")
+    obj.inorder(obj.head)
+    print()
+    print("Level-order traversal:")
+    obj.levelorder(obj.head)
+    print()
+    print("Height of the tree:")
+    print(obj.height(obj.head))
+    print()
+if __name__ == "__main__":
+    main()

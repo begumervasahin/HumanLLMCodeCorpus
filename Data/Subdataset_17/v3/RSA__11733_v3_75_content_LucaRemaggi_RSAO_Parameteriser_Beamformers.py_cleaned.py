@@ -1,0 +1,54 @@
+import numpy as np
+class Beamformers:
+    def __init__(self, signal, d=1, dimension='3D'):
+        self.signal = signal
+        self.d = d
+        self.dimension = dimension
+        self.az_rad_curr = None
+        self.el_rad_curr = None
+        self.hBeam = None
+    def steerBFormat(self):
+        self._validate_signal()
+        W, X, Y, Z = self.signal.T
+        azimuths = self._get_azimuths()
+        elevations = self._get_elevations()
+        steeredresp = self._calculate_steered_response(W, X, Y, Z, azimuths, elevations)
+        angular_response = np.squeeze(np.sum(steeredresp ** 2, axis=0))
+        self._find_max_response(angular_response, azimuths, elevations)
+        return self
+    def _validate_signal(self):
+        if self.signal.shape[1] != 4:
+            raise ValueError('To use this beamformer, the input must be B-format. The data shape should be Nx4, where N is the number of samples.')
+    def _get_azimuths(self):
+        if self.dimension in ['az', '3D']:
+            return np.linspace(0, 2 * np.pi - (np.pi / 180), 360)
+        return np.array([0, np.pi])
+    def _get_elevations(self):
+        if self.dimension in ['el', '3D']:
+            return np.linspace(-np.pi / 2, np.pi / 2, 181)
+        return np.array([0, np.pi / 2])
+    def _calculate_steered_response(self, W, X, Y, Z, azimuths, elevations):
+        steeredresp = np.zeros((len(W), len(azimuths), len(elevations)))
+        for iAz, az in enumerate(azimuths):
+            for iEl, el in enumerate(elevations):
+                r_x, r_y, r_z = self._calculate_rxyz(az, el)
+                steeredresp[:, iAz, iEl] = self._calculate_response(W, X, Y, Z, r_x, r_y, r_z)
+        return steeredresp
+    def _calculate_rxyz(self, az, el):
+        r_x = np.cos(el) * np.cos(az)
+        r_y = np.cos(el) * np.sin(az)
+        r_z = np.sin(el)
+        return r_x, r_y, r_z
+    def _calculate_response(self, W, X, Y, Z, r_x, r_y, r_z):
+        return 0.5 * ((2 - self.d) * W + self.d * (r_x * X + r_y * Y + r_z * Z))
+    def _find_max_response(self, angular_response, azimuths, elevations):
+        max_az_idx, max_el_idx = np.unravel_index(np.argmax(angular_response), angular_response.shape)
+        self.az_rad_curr = azimuths[max_az_idx]
+        self.el_rad_curr = elevations[max_el_idx]
+        self.hBeam = self.signal[:, max_az_idx, max_el_idx]
+signal = np.random.randn(1000, 4)
+beamformer = Beamformers(signal, d=1, dimension='3D')
+beamformer.steerBFormat()
+print(f"Azimuth: {beamformer.az_rad_curr}")
+print(f"Elevation: {beamformer.el_rad_curr}")
+print(f"HBeam: {beamformer.hBeam}")

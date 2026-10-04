@@ -1,0 +1,61 @@
+from __future__ import division
+import time
+import numpy as np
+import blspricer as bp
+import customML as cm
+import scipy.stats as scs
+from scipy.stats.distributions import norm
+from doe_lhs import lhs
+class EX10:
+    def __init__(self):
+        self.D = 10
+        self.S0 = 100.0
+        self.mu = 0.08
+        self.sigma = 0.3
+        self.rfr = 0.05
+        self.T = 0.1
+        self.tau = 0.04
+        self.K = 100.0
+        self.H = 95.0
+        self.c = 306.8763
+        self.perc = 0.99
+        self.I_pred = 2**15
+        self.dS = 1e-6
+        self.Value0 = 0.0
+        self.delta = np.zeros(self.D)
+        self.opt_val = self._option_value_function()
+        self._calculate_delta_and_value0()
+        print(self.delta)
+    def _option_value_function(self):
+        return lambda S: (5.0 * bp.blsprice(S, self.K, self.rfr, self.T, self.sigma, 'put') +
+                          10.0 * bp.rear_end_dnOutCall(S, self.K, self.rfr, self.T, self.sigma, self.H, self.tau, 0.0))
+    def _calculate_delta_and_value0(self):
+        for d in range(self.D):
+            delta_d = (self.opt_val(self.S0 + self.dS) - self.opt_val(self.S0 - self.dS)) / self.dS
+            self.delta[d] = delta_d
+            self.Value0 += -self.opt_val(self.S0) + self.S0 * delta_d
+    def analy(self, N_o):
+        opt_val_tau = self._option_value_function_tau()
+        S1 = self._generate_asset_paths(N_o)
+        ValueTau = self._calculate_value_tau(S1, N_o)
+        L_analy = np.sort(self.Value0 - ValueTau)
+        print(L_analy)
+        var = scs.scoreatpercentile(L_analy, self.perc * 100)
+        eel = np.mean(np.maximum(L_analy - var, 0))
+        return var, eel
+    def _option_value_function_tau(self):
+        return lambda S: (5.0 * bp.blsprice(S, self.K, self.rfr, self.T - self.tau, self.sigma, 'put') +
+                          10.0 * bp.dnOutCall(S, self.K, self.rfr, self.T - self.tau, self.sigma, self.H))
+    def _generate_asset_paths(self, N_o):
+        ran1 = norm(loc=0, scale=1).ppf(lhs(self.D, samples=N_o))
+        return self.S0 * np.exp((self.mu - 0.5 * self.sigma**2) * self.tau + self.sigma * np.sqrt(self.tau) * ran1)
+    def _calculate_value_tau(self, S1, N_o):
+        ValueTau = np.zeros(N_o)
+        for n in range(N_o):
+            ValueTau[n] = sum(-self._option_value_function_tau()(S1[n, d]) + S1[n, d] * self.delta[d] for d in range(self.D))
+        return ValueTau
+if __name__ == "__main__":
+    ex10 = EX10()
+    var, eel = ex10.analy(1000)
+    print(f"Value at Risk (VaR): {var}")
+    print(f"Expected Excess Loss (EEL): {eel}")

@@ -1,0 +1,72 @@
+
+from socket import AF_INET, socket, SOCK_STREAM
+from threading import Thread
+from Crypto.Cipher import AES
+import base64
+BUFSIZ = 1024
+HOST = ''
+PORT = 33000
+ADDR = (HOST, PORT)
+KEY = b'master key'
+BLOCK_SIZE = 16
+def pad(data):
+    padding_length = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
+    padding = chr(padding_length) * padding_length
+    return data + padding.encode()
+def unpad(data):
+    padding_length = ord(data[-1:])
+    return data[:-padding_length]
+def encrypt(key, data):
+    data = pad(data)
+    cipher = AES.new(key, AES.MODE_ECB)
+    encrypted_data = cipher.encrypt(data)
+    return base64.b64encode(encrypted_data)
+def decrypt(key, enc_data):
+    enc_data = base64.b64decode(enc_data)
+    cipher = AES.new(key, AES.MODE_ECB)
+    decrypted_data = cipher.decrypt(enc_data)
+    return unpad(decrypted_data)
+def accept_incoming_connections():
+    while True:
+        client, client_address = SERVER.accept()
+        print(f"{client_address} has connected.")
+        welcome_message = "Greetings from the cave! Now type your name and press enter!"
+        client.send(encrypt(KEY, welcome_message.encode('UTF-8')))
+        addresses[client] = client_address
+        Thread(target=handle_client, args=(client,)).start()
+def handle_client(client):
+    name = decrypt(KEY, client.recv(BUFSIZ)).decode("utf-8")
+    welcome_message = f'\nWelcome {name}! If you ever want to quit, type {{quit}} to exit.'
+    client.send(encrypt(KEY, welcome_message.encode('UTF-8')))
+    clients[client] = name
+    while True:
+        try:
+            message = decrypt(KEY, client.recv(BUFSIZ)).decode("utf-8")
+            if message != "{quit}":
+                broadcast(message, name + ": ")
+            else:
+                client.close()
+                del clients[client]
+                if not clients:
+                    SERVER.close()
+                break
+        except OSError:
+            break
+def broadcast(message, prefix=""):
+    full_message = prefix + message
+    encrypted_message = encrypt(KEY, full_message.encode('UTF-8'))
+    for sock in clients:
+        sock.send(encrypted_message)
+clients = {}
+addresses = {}
+SERVER = socket(AF_INET, SOCK_STREAM)
+SERVER.bind(ADDR)
+def main():
+    SERVER.listen(5)
+    print("Waiting for connection...")
+    ACCEPT_THREAD = Thread(target=accept_incoming_connections)
+    ACCEPT_THREAD.start()
+    ACCEPT_THREAD.join()
+    SERVER.close()
+if __name__ == "__main__":
+    main()

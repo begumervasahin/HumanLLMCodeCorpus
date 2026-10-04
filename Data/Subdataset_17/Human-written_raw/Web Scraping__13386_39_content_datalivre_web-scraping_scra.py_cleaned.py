@@ -1,0 +1,72 @@
+import string
+import sys
+from urllib.request import urlopen
+import nltk
+from bs4 import BeautifulSoup
+url = 'https:
+music = ' '
+def get_links(band):
+    '''
+    Captura todos os links de uma banda, grupo ou artista a partir
+    da pÃ¡gina https:
+    args
+    ----
+        * band: banda, grupo ou artista que terÃ¡ os links capturados.
+    '''
+    try:
+        print('Obtendo links/mÃºsicas')
+        ctrl_page = set()
+        html = urlopen(f"{url}/{band}")
+        bs = BeautifulSoup(html, 'html.parser')
+        for link in bs.find('ul', {'class': 'cnt-list'}).find_all('a'):
+            if 'href' in link.attrs:
+                if link.attrs['href'] not in ctrl_page:
+                    ctrl_page.add(f"{link.attrs['href']}")
+                    get_music(link.attrs['href'])
+    except Exception as e:
+        print(f'Ocorreu algum erro ao tentar acessar o site. {e}')
+def get_music(new_page):
+    '''
+    Captura todas as mÃºsicas de uma banda, grupo ou artista a partir
+    da pÃ¡gina www.letras.com.br/[banda/nome_da_mÃºsica].
+    args
+    ----
+        * new_page: recebe os links capturados pela funÃ§Ã£o get_links().
+    '''
+    global music
+    try:
+        html = urlopen(f"{url}/{new_page}")
+        bs = BeautifulSoup(html, 'html.parser')
+        for verse in bs.find('div', {'class': 'cnt-letra p402_premium'}).find_all('p'):
+            music += ' '.join(verse.stripped_strings)
+            music += ' '
+    except Exception as e:
+        print(f'Ocorreu algum erro ao tentar acessar o site. {e}')
+def clean_write(preview=100):
+    '''
+    Adiciona Ã  variÃ¡vel plain_text todas as palavras maiores que X letras
+    e que nÃ£o estÃ£o na lista stopwords. Em seguida, grava todo o resultado em um
+    arquivo de texto.
+    args
+    ----
+        * preview: total de caracteres que serÃ£o exibidos como "preview"
+        apÃ³s a limpeza e gravaÃ§Ã£o dos dados. Por padrÃ£o, 100 caracteres
+        sÃ£o exibidos.
+    '''
+    print('Finalizando...')
+    stopwords = nltk.corpus.stopwords.words('portuguese')
+    plain_text = ''
+    for m in music.split():
+        if len(m) >= 3:
+            m = ''.join(p for p in m if p not in string.punctuation)
+            if m.lower() not in stopwords:
+                plain_text += m.lower()+' '
+    try:
+        print(plain_text, file=open('filename.txt', 'w'))
+    except Exception as e:
+        print(f'Ocorreu algum erro ao tentar gravar o arquivo. {e}')
+    return plain_text[:preview]
+if __name__ == "__main__":
+    get_links(sys.argv[1])
+    print(clean_write(int(sys.argv[2]))) if len(
+        sys.argv) > 2 else print(clean_write())

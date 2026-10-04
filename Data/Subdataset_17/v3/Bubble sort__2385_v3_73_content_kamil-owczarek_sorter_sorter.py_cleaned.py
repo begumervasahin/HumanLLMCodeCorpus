@@ -1,0 +1,76 @@
+import datetime
+from configparser import ConfigParser
+def load_config(filename='config.ini'):
+    config = ConfigParser()
+    config.read(filename)
+    quick_sort_elements = int(config['quicksort']['elements'])
+    quick_sort_step = int(config['quicksort']['step'])
+    quick_sort_iteration = int(config['quicksort']['iter'])
+    bubble_sort_elements = int(config['bubblesort']['elements'])
+    bubble_sort_step = int(config['bubblesort']['step'])
+    bubble_sort_iteration = int(config['bubblesort']['iter'])
+    return (quick_sort_elements, quick_sort_step, quick_sort_iteration,
+            bubble_sort_elements, bubble_sort_step, bubble_sort_iteration)
+def open_input_file(input_file):
+    with open(input_file, "r") as f:
+        data = eval(f.readline())
+    return data
+def bubble_sort_algorithm(element_list):
+    n = len(element_list)
+    for i in range(n):
+        for j in range(n - i - 1):
+            if element_list[j] > element_list[j + 1]:
+                element_list[j], element_list[j + 1] = element_list[j + 1], element_list[j]
+def quick_sort_algorithm(element_list, l=0, r=None):
+    if r is None:
+        r = len(element_list) - 1
+    if l < r:
+        pivot_index = partition(element_list, l, r)
+        quick_sort_algorithm(element_list, l, pivot_index - 1)
+        quick_sort_algorithm(element_list, pivot_index + 1, r)
+def partition(arr, low, high):
+    pivot = arr[(low + high)
+    left = low
+    right = high
+    while left <= right:
+        while arr[left] < pivot:
+            left += 1
+        while arr[right] > pivot:
+            right -= 1
+        if left <= right:
+            arr[left], arr[right] = arr[right], arr[left]
+            left += 1
+            right -= 1
+    return left
+def main():
+    quick_sort_elements, quick_sort_step, quick_sort_iteration, \
+    bubble_sort_elements, bubble_sort_step, bubble_sort_iteration = load_config()
+    data = open_input_file("input.txt")
+    while True:
+        print()
+        choice = input("Enter your choice: ").strip()
+        if choice == "1":
+            print("Starting Bubble Sort...")
+            start_time = datetime.datetime.now()
+            for i in range(0, bubble_sort_elements + bubble_sort_step, bubble_sort_step):
+                for _ in range(bubble_sort_iteration):
+                    bubble_sort_algorithm(data[:i])
+            end_time = datetime.datetime.now() - start_time
+            print("Sorted Data:", data)
+            print(f"Bubble Sort completed in {end_time.seconds} seconds.")
+        elif choice == "2":
+            print("Starting Quick Sort...")
+            start_time = datetime.datetime.now()
+            for j in range(0, quick_sort_elements + quick_sort_step, quick_sort_step):
+                for _ in range(quick_sort_iteration):
+                    quick_sort_algorithm(data[:j])
+            end_time = datetime.datetime.now() - start_time
+            print("Sorted Data:", data)
+            print(f"Quick Sort completed in {end_time.seconds} seconds.")
+        elif choice == "w":
+            print("Exiting the program. Goodbye!")
+            break
+        else:
+            print("Unknown option. Please choose again.")
+if __name__ == '__main__':
+    main()

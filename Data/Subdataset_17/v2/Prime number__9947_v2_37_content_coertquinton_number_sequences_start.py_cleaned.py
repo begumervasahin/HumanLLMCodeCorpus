@@ -1,0 +1,77 @@
+
+from tasks.prime_numbers import PrimeNumbers
+from tasks.fibonacci_numbers import FibonacciNumbers
+from tasks.collatz_conjecture import CollatzConjecture
+from tasks.strong_prime_numbers import StrongPrimeNumbers
+from printer.output_printer import OutputPrinter
+class CommandLine:
+    def __init__(self):
+        self._printer = OutputPrinter().select_printer(OutputPrinter.SIMPLE_NUMBERS)
+        self._tasks = {
+            0: 'Change printer. Default is simple numbers.',
+            1: 'Exit',
+            2: 'Print prime numbers',
+            3: 'Print Fibonacci numbers',
+            4: 'Print Collatz Conjecture',
+            5: 'Print strong prime numbers',
+        }
+    def process_menu(self):
+        while True:
+            self.display_menu()
+            menu_item = input('Type menu item number to start math operation: ')
+            if not self.validate_menu_item(menu_item):
+                continue
+            menu_item = int(menu_item)
+            if menu_item == 0:
+                self.set_printer()
+            elif menu_item == 1:
+                break
+            else:
+                print(f'{menu_item} has been selected')
+                self.set_task(menu_item)
+                self.process_task()
+    def display_menu(self):
+        print('---------------------------------------------------')
+        print('Type the corresponding number to access a menu item:')
+        for key, value in self._tasks.items():
+            print(f'{key}: {value}')
+    def validate_menu_item(self, menu_item):
+        if not menu_item.isdigit():
+            print(f'Invalid input. Please enter an integer between 0 and {len(self._tasks) - 1}.')
+            return False
+        menu_item = int(menu_item)
+        if menu_item in self._tasks:
+            return True
+        print(f'Menu Item {menu_item} is not a valid choice.')
+        return False
+    def set_task(self, menu_item):
+        task_classes = {
+            2: PrimeNumbers,
+            3: FibonacciNumbers,
+            4: CollatzConjecture,
+            5: StrongPrimeNumbers,
+        }
+        self._task = task_classes.get(menu_item, None)()
+    def process_task(self):
+        if self._task.receive_input():
+            self._task.process()
+            result = self._task.return_result()
+            self._printer.print_output(result)
+    def set_printer(self):
+        output_printer = OutputPrinter()
+        output_printer.display_printer_options()
+        try:
+            printer_type = int(input("Type the number of the type of output you would like to see: "))
+            if output_printer.validate_printer(printer_type):
+                self._printer = output_printer.select_printer(printer_type)
+                print(f"Printer set to {output_printer._printer_types[printer_type]}")
+            else:
+                raise ValueError
+        except ValueError:
+            self._printer = output_printer.select_printer(OutputPrinter.SIMPLE_NUMBERS)
+            print("Incorrect printer selected. Printer set to Simple number printer.")
+if __name__ == '__main__':
+    print('Program start')
+    cmd = CommandLine()
+    cmd.process_menu()
+    print('Program terminated')

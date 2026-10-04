@@ -1,0 +1,26 @@
+import sys
+import csv
+import time
+KEYWORDS = [
+    'abuse', 'eatingdisorders', 'nostigma', 'presspause', 'addiction',
+    'endthestigma', 'nostigmas', 'mentalhealthmatters', 'alzheimers',
+    'IAmStigmaFree', '1SmallAct', 'ocd', 'anxiety', 'mentalhealth',
+    'psychology', 'suicideprevention', 'bipolar', 'pts', 'mhchat',
+    'therapy', 'bpd', 'anxiety', 'schizophrenia', 'trauma',
+    'Operationalstress', 'therapy', 'ptsd', 'mhsm', 'endthestigma',
+    'psychology', 'worldmentalhealthday', 'trauma', 'AA', 'schizophrenia',
+    'stress', 'spsm', 'mentalhealthmatters', 'stigma', 'wellbeing',
+    'alcoholism', 'mentalhealthawareness', 'stopsuicide', 'adhd',
+    'depressed', 'mentalillness', 'suicide', 'bpd', 'depression', 'MH',
+    'shellshock', 'bts'
+]
+def filter_tweets():
+    with open('filtered_tweets_per_abused_user.csv', 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        data = csv.reader(iter(sys.stdin.readline, ''))
+        for row in data:
+            tweet_id, tweet_text = row[0], row[1]
+            if any(word.lower() in KEYWORDS for word in tweet_text.split()):
+                csv_writer.writerow([tweet_id, tweet_text])
+if __name__ == "__main__":
+    filter_tweets()

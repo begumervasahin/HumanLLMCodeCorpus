@@ -1,0 +1,58 @@
+from random import randint
+from math import gcd
+class Key:
+    def __init__(self, bitSize):
+        self.__bitSize = bitSize
+    def __isPrime(self, n):
+        if n in (2, 3):
+            return True
+        if n % 2 == 0 or n < 2:
+            return False
+        for i in range(3, int(n**0.5) + 1, 2):
+            if n % i == 0:
+                return False
+        return True
+    def __randBitNumber(self):
+        return randint(2**(self.__bitSize - 1) + 1, 2**self.__bitSize)
+    def __getPrime(self):
+        num = self.__randBitNumber()
+        while not self.__isPrime(num):
+            num = self.__randBitNumber()
+        return num
+    def __isRelativePrime(self, a, b):
+        return gcd(a, b) == 1
+    def __getRelativePrime(self, a):
+        for i in range(3, a):
+            if self.__isRelativePrime(i, a):
+                return i
+        raise Exception("ÐÐµ ÑÐ´Ð°Ð»Ð¾ÑÑ Ð½Ð°Ð¹ÑÐ¸ Ð¾ÑÐ½Ð¾ÑÐ¸ÑÐµÐ»ÑÐ½Ð¾ Ð¿ÑÐ¾ÑÑÐ¾Ðµ ÑÐ¸ÑÐ»Ð¾.")
+    def getD(self, a, b):
+        if b == 0:
+            return a, 1, 0
+        else:
+            d, x1, y1 = self.getD(b, a % b)
+            x = y1
+            y = x1 - (a
+            return d, x, y
+    def __test(self, keys):
+        test = 2
+        encrypt = pow(test, keys[0][0], keys[0][1])
+        decrypt = pow(encrypt, keys[1][0], keys[1][1])
+        return test == decrypt
+    def getKeys(self):
+        testFlag = False
+        while not testFlag:
+            p = self.__getPrime()
+            q = self.__getPrime()
+            n = p * q
+            eler = (p - 1) * (q - 1)
+            e = self.__getRelativePrime(eler)
+            d = self.getD(e, eler)[1]
+            if d < 0:
+                d = d + eler
+            testFlag = self.__test([[e, n], [d, n]])
+        return [[e, n], [d, n]]
+key_generator = Key(16)
+public_key, private_key = key_generator.getKeys()
+print("Public Key:", public_key)
+print("Private Key:", private_key)

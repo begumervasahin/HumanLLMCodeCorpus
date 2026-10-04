@@ -1,0 +1,33 @@
+32. Repository: AdarshRavikumar/Apriori-Algorithm
+   File: AprStub.py
+   URL: https:
+   Code Content:
+from Apriori import Apriori
+min_support=int(input("Minimum support\n"))
+min_confidence=float(input("Minimum Confidence\n"))
+min_length=int(input("Minimum Length of rules \n"))
+alpha=[]
+for i in range(ord('a'),ord('z')+1):
+    alpha.append(chr(i))
+import re
+item=[]
+item1=[]
+file =open('datasetUCI.txt','r')
+for l in file:
+    l=l[:-1]
+    l=re.sub("[?\s]",'a',l)
+    li=l.split(',')
+    for j in li:
+        if(j in alpha):
+            item1.append(j)
+    item.append(item1)
+    item1=[]
+item=item
+y=Apriori(item,min_support,min_confidence,min_length)
+   README Content:
+The Apriori1.py contains the actual implementation of apriori algorithm..
+makepairs() - this is used to make pairs to generate rules
+ex [(a,b,c,d)]
+then (a->b,c,d),(b->a,c,d),(c->a,b,d),(d->a,b,c) ,((a,b)->(c,d)),,,(taken 2 at a time at LHS)...(a,b,c->d),(b,c,d->a),,,(taken 3 at a time
+it will run n-1 times
+i.e we have length 4 in our case , so lhs can max be 3 items and 1 items shd be in RHS to form rules

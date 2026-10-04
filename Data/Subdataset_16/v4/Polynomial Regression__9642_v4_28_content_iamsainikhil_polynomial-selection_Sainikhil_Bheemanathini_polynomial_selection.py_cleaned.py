@@ -1,0 +1,77 @@
+import time
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression, Lasso
+get_ipython().run_line_magic('matplotlib', 'inline')
+b1 = pd.read_csv("poly_data.csv")
+print(b1.head(6))
+sns.jointplot(b2 = b1['X1'], y=b1['y'])
+sns.jointplot(b2 = b1['X2'], y=b1['y'])
+sns.jointplot(b2 = b1['X1'], y=b1['X2'])
+a1 = 0.75
+b3 = int(b1.shape[0] * a1)
+b4 = b1[:b3]
+b5 = b1[b3:]
+print(b4.shape)
+print(b5.shape)
+b6 = PolynomialFeatures(degree=3)
+b7 = b6.fit_transform(b1[['X1', 'X2']])
+b8 = b7[:b3]
+b9 = b7[b3:]
+def fonk1(X, y, model):
+    return ((y - model.predict(X)) ** 2).sum() / y.shape[0]
+b10 = LinearRegression()
+b10.fit(b8, b4['y'])
+b11 = fonk1(b8, b4['y'], b10)
+b12 = fonk1(b9, b5['y'], b10)
+print("Training Data Set's MSE is: \t", b11)
+print("Testing Data Set's MSE is: \t", b12)
+b13 = Lasso(alpha=0.15, normalize=True, max_iter=1e5)
+b13.fit(b8, b4['y'])
+b11 = fonk1(b8, b4['y'], b13)
+b12 = fonk1(b9, b5['y'], b13)
+print("Training Data Set's MSE is: \t", b11)
+print("Testing Data Set's MSE is: \t", b12)
+b14 = np.logspace(2, -5, base=10, num=50)
+b15 = []
+b16 = []
+for alpha in b14:
+    b13 = Lasso(alpha=alpha, normalize=True, max_iter=1e5)
+    b13.fit(b8, b4['y'])
+    b11 = fonk1(b8, b4['y'], b13)
+    b12 = fonk1(b9, b5['y'], b13)
+    b15.append(b11)
+    b16.append(b12)
+plt.plot(np.log10(b14), b15, b17 = 'Train MSE')
+plt.plot(np.log10(b14), b16, b18 = 'r', b17='Test MSE')
+plt.legend()
+plt.show()
+b14 = np.linspace(1, 10, 1000)
+b15 = []
+b16 = []
+b19 = None
+b20 = None
+b21 = None
+for alpha in b14:
+    b13 = Lasso(alpha=alpha, normalize=True, max_iter=1e5)
+    b13.fit(b8, b4['y'])
+    b11 = fonk1(b8, b4['y'], b13)
+    b12 = fonk1(b9, b5['y'], b13)
+    b15.append(b11)
+    b16.append(b12)
+    if b19 is None or (b11 - b12 > 0):
+        b19 = alpha
+        b20 = b11
+        b21 = b12
+print("The optimal alpha is", b19)
+print("Train MSE is", b20)
+print("Test MSE is", b21)
+plt.plot(b14, b15, b17 = 'Train MSE')
+plt.plot(b14, b16, b18 = 'r', b17='Test MSE')
+plt.legend()
+plt.show()
+print("From the above diagram, I found that the optimized alpha value is 3.567. This means that, at this alpha value, we can prevent overfitting and underfitting. Lasso model with alpha value below 3.567 is underfitting and above 3.567 is overfitting the data. Instead of using linear model, I used Lasso linear model which is used to penalize number of features with low variance or correlation. These features can be found by looking at the coefficients of the Lasso linear model.\n")
+print("Overall, from the dataset, I found the polynomial that best fits the data. I checked my model by dividing the dataset into training data and testing data. I generated the model using the training data of 75% and then test the model using the testing data of 25%. To prevent overfitting and underfitting, I generated Lasso linear model with the optimized alpha value to penalize the features and retain only the required features. Thus, I reached the best alpha value by minimizing the mean square error between training data and testing data.")

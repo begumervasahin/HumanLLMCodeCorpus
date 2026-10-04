@@ -1,0 +1,34 @@
+from Util.Algorithms import Algorithm
+from Map.map import Map
+def print_solution(dfs_result, bfs_result):
+    print("Solution:")
+    print(f"  DFS: {dfs_result}")
+    print(f"  BFS: {bfs_result}")
+def main():
+    print("== Pacman Solver ==")
+    print("Select a map:")
+    print(" 1. Simple 3x4 Map")
+    print(" 2. Hard 6x6 Map")
+    choice = input("Enter your choice (1 or 2): ").strip()
+    if choice == '1':
+        print("== Simple 3x4 Map selected ==")
+        print(" - Start position: (1, 1)")
+        print(" - Dot objective: (2, 3)")
+        start = (1, 1)
+        goal = (2, 3)
+        graph = Map.graph1
+    elif choice == '2':
+        print("== Hard 6x6 Map selected ==")
+        print(" - Start position: (1, 1)")
+        print(" - Dot objective: (6, 6)")
+        start = (1, 1)
+        goal = (6, 6)
+        graph = Map.graph
+    else:
+        print("Invalid input. Please select either '1' or '2'.")
+        return
+    dfs_result = Algorithm.dfs(graph, start, goal)
+    bfs_result = Algorithm.bfs(graph, start, goal)
+    print_solution(dfs_result, bfs_result)
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,238 @@
+class LinkedList:
+    def __init__(self):
+        self.head = None
+    def addToStart(self, data):
+        tempNode = Node(data)
+        tempNode.setLink(self.head)
+        self.head = tempNode
+    def addToEnd(self, data):
+        if not self.head:
+            self.head = Node(data)
+            return
+        start = self.head
+        while start.getNextNode():
+            start = start.getNextNode()
+        start.setLink(Node(data))
+    def display(self):
+        start = self.head
+        if not start:
+            print("Empty List!!!")
+            return
+        while start:
+            print(start.getData(), end=" ")
+            start = start.getNextNode()
+            if start:
+                print("-->", end=" ")
+        print()
+    def length(self):
+        start = self.head
+        size = 0
+        while start:
+            size += 1
+            start = start.getNextNode()
+        return size
+    def index(self, data):
+        start = self.head
+        position = 0
+        while start:
+            if start.getData() == data:
+                return position
+            start = start.getNextNode()
+            position += 1
+        return -1
+    def remove(self, item):
+        start = self.head
+        previous = None
+        found = False
+        while start and not found:
+            if start.getData() == item:
+                found = True
+            else:
+                previous = start
+                start = start.getNextNode()
+        if found:
+            if previous is None:
+                self.head = start.getNextNode()
+            else:
+                previous.setLink(start.getNextNode())
+        return found
+    def Max(self):
+        if not self.head:
+            return None
+        start = self.head
+        largest = start.getData()
+        while start:
+            if start.getData() > largest:
+                largest = start.getData()
+            start = start.getNextNode()
+        return largest
+    def Min(self):
+        if not self.head:
+            return None
+        start = self.head
+        smallest = start.getData()
+        while start:
+            if start.getData() < smallest:
+                smallest = start.getData()
+            start = start.getNextNode()
+        return smallest
+    def push(self, data):
+        self.addToEnd(data)
+        return True
+    def pop(self):
+        if not self.head:
+            return None
+        start = self.head
+        previous = None
+        while start.getNextNode():
+            previous = start
+            start = start.getNextNode()
+        if previous:
+            previous.setLink(None)
+        else:
+            self.head = None
+        return start.getData()
+    def atIndex(self, position):
+        if position < 0 or not self.head:
+            return None
+        start = self.head
+        for _ in range(position):
+            if not start.getNextNode():
+                return None
+            start = start.getNextNode()
+        return start.getData()
+    def copy(self):
+        temp = LinkedList()
+        start = self.head
+        while start:
+            temp.addToEnd(start.getData())
+            start = start.getNextNode()
+        return temp
+    def clear(self):
+        self.head = None
+        return True
+    def removePosition(self, position):
+        data = self.atIndex(position)
+        if data is not None:
+            self.remove(data)
+        return data
+    def toString(self, separator=""):
+        start = self.head
+        finalString = ""
+        while start:
+            finalString += str(start.getData())
+            start = start.getNextNode()
+            if start:
+                finalString += separator
+        return finalString
+    def count(self, element):
+        start = self.head
+        count = 0
+        while start:
+            if start.getData() == element:
+                count += 1
+            start = start.getNextNode()
+        return count
+    def toList(self):
+        start = self.head
+        tempList = []
+        while start:
+            tempList.append(start.getData())
+            start = start.getNextNode()
+        return tempList
+    def toSet(self):
+        start = self.head
+        tempSet = set()
+        while start:
+            tempSet.add(start.getData())
+            start = start.getNextNode()
+        return tempSet
+    def reverse(self):
+        previous = None
+        current = self.head
+        while current:
+            nextNode = current.getNextNode()
+            current.setLink(previous)
+            previous = current
+            current = nextNode
+        self.head = previous
+    def sort(self):
+        if not self.head or not self.head.getNextNode():
+            return
+        sortedList = None
+        current = self.head
+        while current:
+            nextNode = current.getNextNode()
+            sortedList = self.sortedInsert(sortedList, current)
+            current = nextNode
+        self.head = sortedList
+    def sortedInsert(self, head, node):
+        if not head or head.getData() >= node.getData():
+            node.setLink(head)
+            return node
+        current = head
+        while current.getNextNode() and current.getNextNode().getData() < node.getData():
+            current = current.getNextNode()
+        node.setLink(current.getNextNode())
+        current.setLink(node)
+        return head
+    def sorted(self):
+        copiedList = self.copy()
+        copiedList.sort()
+        return copiedList
+class Node:
+    def __init__(self, data=None, link=None):
+        self.data = data
+        self.link = link
+    def updateData(self, data):
+        self.data = data
+    def setLink(self, node):
+        self.link = node
+    def getData(self):
+        return self.data
+    def getNextNode(self):
+        return self.link
+myList = LinkedList()
+myList.addToStart(5)
+myList.addToStart(4)
+myList.addToStart(3)
+myList.addToStart(2)
+myList.addToStart(1)
+myList.display()
+myList.addToEnd(12)
+myList.addToEnd(13)
+myList.addToEnd(3)
+myList.display()
+print("Length:", myList.length())
+print("Index of 3:", myList.index(3))
+print("Element at index 5:", myList.atIndex(5))
+print("Removing 12:", myList.remove(12))
+myList.removePosition(2)
+myList.display()
+print("Max:", myList.Max())
+print("Min:", myList.Min())
+print("Pushing 31:", myList.push(31))
+myList.display()
+print("Popping:", myList.pop())
+myList.display()
+myList2 = myList.copy()
+print("Copied list:")
+myList2.display()
+myList2.clear()
+print("Cleared copied list:")
+myList2.display()
+print("List to string:", myList.toString(", "))
+print("Count of 3:", myList.count(3))
+newList = myList.toList()
+print("List:", newList)
+newSet = myList.toSet()
+print("Set:", newSet)
+myList.reverse()
+print("Reversed list:")
+myList.display()
+myList3 = myList.sorted()
+print("Sorted copy of list:")
+myList3.display()
+myList.sort()
+print("Sorted list:")
+myList.display()

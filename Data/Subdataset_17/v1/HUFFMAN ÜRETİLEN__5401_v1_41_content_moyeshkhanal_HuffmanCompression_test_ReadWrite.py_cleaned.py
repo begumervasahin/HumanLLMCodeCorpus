@@ -1,0 +1,94 @@
+import sys
+import unittest
+import os
+class WriteBitFile:
+    def __init__(self, filename):
+        self.file = open(filename, 'wb')
+        self.current_byte = 0
+        self.bit_position = 0
+    def writeBit(self, bit):
+        if bit not in [0, 1]:
+            raise ValueError("Bit must be 0 or 1")
+        if self.bit_position == 8:
+            self.flush()
+        if bit == 1:
+            self.current_byte |= (1 << (7 - self.bit_position))
+        self.bit_position += 1
+    def writeUInt(self, value):
+        self.file.write(value.to_bytes(4, byteorder='big'))
+    def writeUShort(self, value):
+        self.file.write(value.to_bytes(2, byteorder='big'))
+    def writeUByte(self, value):
+        self.file.write(value.to_bytes(1, byteorder='big'))
+    def flush(self):
+        if self.bit_position > 0:
+            self.file.write(bytes([self.current_byte]))
+            self.current_byte = 0
+            self.bit_position = 0
+    def close(self):
+        self.flush()
+        self.file.close()
+class ReadBitFile:
+    def __init__(self, filename):
+        self.file = open(filename, 'rb')
+        self.current_byte = None
+        self.bit_position = 8
+    def readBit(self):
+        if self.bit_position == 8:
+            byte = self.file.read(1)
+            if len(byte) == 0:
+                raise EOFError("End of file reached")
+            self.current_byte = byte[0]
+            self.bit_position = 0
+        bit = (self.current_byte >> (7 - self.bit_position)) & 1
+        self.bit_position += 1
+        return bit
+    def readUInt(self):
+        return int.from_bytes(self.file.read(4), byteorder='big')
+    def readUShort(self):
+        return int.from_bytes(self.file.read(2), byteorder='big')
+    def readUByte(self):
+        return int.from_bytes(self.file.read(1), byteorder='big')
+    def close(self):
+        self.file.close()
+class ReadWriteTest(unittest.TestCase):
+    def testMixed(self):
+        w = WriteBitFile("data.bin")
+        w.writeBit(1)
+        w.writeBit(0)
+        w.writeBit(1)
+        w.writeBit(1)
+        w.writeUInt(10000042)
+        w.writeBit(1)
+        w.writeBit(0)
+        w.writeUShort(50000)
+        w.writeBit(1)
+        w.writeUByte(42)
+        w.close()
+        r = ReadBitFile("data.bin")
+        self.assertEqual(r.readBit(), 1)
+        self.assertEqual(r.readBit(), 0)
+        self.assertEqual(r.readBit(), 1)
+        self.assertEqual(r.readBit(), 1)
+        self.assertEqual(r.readUInt(), 10000042)
+        self.assertEqual(r.readBit(), 1)
+        self.assertEqual(r.readBit(), 0)
+        self.assertEqual(r.readUShort(), 50000)
+        self.assertEqual(r.readBit(), 1)
+        self.assertEqual(r.readUByte(), 42)
+        r.close()
+        os.remove("data.bin")
+    def testB(self):
+        w = WriteBitFile("data2.bin")
+        for _ in range(4):
+            w.writeBit(1)
+            w.writeBit(0)
+        w.close()
+def main(argv):
+    try:
+        unittest.main(argv=argv, exit=False)
+    except SystemExit as inst:
+        if inst.args[0] is True:
+            raise
+if __name__ == '__main__':
+    main(sys.argv)

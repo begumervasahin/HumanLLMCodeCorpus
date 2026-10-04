@@ -1,0 +1,69 @@
+def longestCommonSubsequence(s1, s2):
+    NUM_ROWS = len(s2) + 1
+    NUM_COLS = len(s1) + 1
+    costs = createTable(NUM_ROWS, NUM_COLS, 0)
+    directions = createTable(NUM_ROWS, NUM_COLS, "A")
+    for i in range(NUM_COLS):
+        costs[0][i] = 0
+        directions[0][i] = "F"
+    for j in range(1, NUM_ROWS):
+        costs[j][0] = 0
+        directions[j][0] = "F"
+    maxRow = 0
+    maxCol = 0
+    maxVal = 0
+    for y in range(1, NUM_ROWS):
+        for x in range(1, NUM_COLS):
+            valTop = costs[y - 1][x]
+            valLeft = costs[y][x - 1]
+            if s1[x - 1] == s2[y - 1]:
+                valDag = costs[y - 1][x - 1] + 1
+            else:
+                valDag = -1
+            val = max(valTop, valLeft, valDag)
+            costs[y][x] = val
+            if val > maxVal:
+                maxVal = val
+                maxRow = y
+                maxCol = x
+            if val == valLeft:
+                directions[y][x] = "L"
+            elif val == valDag:
+                directions[y][x] = "D"
+            else:
+                directions[y][x] = "T"
+    printTable(costs, "costs.txt")
+    printTable(directions, "directions.txt")
+    align(directions, s1, s2, maxRow, maxCol, "alignment.txt")
+    return costs[maxRow][maxCol]
+def createTable(numRows, numCols, value):
+    table = []
+    for row in range(numRows):
+        table.append([value] * numCols)
+    return table
+def printTable(table, filename):
+    with open(filename, 'w') as file:
+        for row in table:
+            file.write("\t".join(map(str, row)) + "\n")
+def align(directions, s1, s2, row, col, filename):
+    lcs = ""
+    x, y = col, row
+    while directions[y][x] != "F":
+        if directions[y][x] == "T":
+            y -= 1
+        elif directions[y][x] == "L":
+            x -= 1
+        elif directions[y][x] == "D":
+            lcs = s1[x - 1] + lcs
+            x -= 1
+            y -= 1
+    with open(filename, 'w') as file:
+        for i in range(0, len(lcs), 50):
+            file.write(lcs[i:i + 50] + "\n")
+if __name__ == "__main__":
+    s = "AGCGTCTA"
+    t = "TGCATCTCG"
+    optimalScore = longestCommonSubsequence(s, t)
+    print(s)
+    print(t)
+    print("LCS Score: " + str(optimalScore))

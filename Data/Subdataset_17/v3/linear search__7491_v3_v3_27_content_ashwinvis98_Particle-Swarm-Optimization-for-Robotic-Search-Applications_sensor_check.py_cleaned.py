@@ -1,0 +1,46 @@
+import cv2
+import cv2.aruco as aruco
+from nxt.motor import *
+from nxt.sensor import *
+import tty
+import sys
+import termios
+import nxt.locator
+def get_single_char():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        char = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return char
+def initialize_robot():
+    brick = nxt.locator.find_one_brick(host='00:16:53:0F:0F:D8')
+    left_motor = Motor(brick, PORT_C)
+    right_motor = Motor(brick, PORT_A)
+    light_sensor = Light(brick, PORT_1, False)
+    both_motors = SynchronizedMotors(left_motor, right_motor, 0)
+    right_turn_motors = SynchronizedMotors(left_motor, right_motor, 50)
+    left_turn_motors = SynchronizedMotors(right_motor, left_motor, 50)
+    print("Robot is ready to move.")
+    print("Connected to:", brick)
+    return brick, left_motor, right_motor, light_sensor, both_motors, right_turn_motors, left_turn_motors
+def control_robot():
+    brick, left_motor, right_motor, light_sensor, both_motors, right_turn_motors, left_turn_motors = initialize_robot()
+    user_input = ' '
+    while user_input != 'q':
+        user_input = get_single_char()
+        light_value = light_sensor.get_input_values().scaled_value
+        print("Light sensor value:", light_value)
+        if user_input == 'w':
+            both_motors.turn(75, 360, True)
+        elif user_input == 's':
+            both_motors.turn(-75, 90, True)
+        elif user_input == 'a':
+            left_turn_motors.turn(75, 90, True)
+        elif user_input == 'd':
+            right_turn_motors.turn(75, 90, True)
+    print("Movement aborted.")
+if __name__ == "__main__":
+    control_robot()

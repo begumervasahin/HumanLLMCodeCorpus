@@ -1,0 +1,21 @@
+def quicksort(arr):
+    pivoter = []
+    highVal = []
+    lowVal = []
+    if len(arr) <= 1:
+        return arr
+    else:
+        pivot = arr[0]
+        for i in arr:
+            if i < pivot:
+                lowVal.append(i)
+            elif i > pivot:
+                highVal.append(i)
+            else:
+                pivoter.append(i)
+        low = quicksort(lowVal)
+        high = quicksort(highVal)
+        quickSorter = low + pivoter + high
+    return quickSorter
+x = quicksort([1, 3, 5, 2])
+print(x)

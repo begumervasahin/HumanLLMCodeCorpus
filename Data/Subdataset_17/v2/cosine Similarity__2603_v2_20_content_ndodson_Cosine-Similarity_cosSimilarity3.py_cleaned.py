@@ -1,0 +1,41 @@
+import re
+import math
+from collections import Counter
+WORD = re.compile(r'\w+')
+def get_cosine_similarity(vec1, vec2):
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    numerator = sum(vec1[word] * vec2[word] for word in intersection)
+    sum1 = sum(value ** 2 for value in vec1.values())
+    sum2 = sum(value ** 2 for value in vec2.values())
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    if not denominator:
+        return 0.0
+    return float(numerator) / denominator
+def text_to_vector(text):
+    words = WORD.findall(text)
+    return Counter(words)
+def calculate_angle_in_degrees(cosine_similarity):
+    if cosine_similarity >= 1:
+        return 0.0
+    if cosine_similarity <= -1:
+        return 180.0
+    angle_in_radians = math.acos(cosine_similarity)
+    return math.degrees(angle_in_radians)
+def main():
+    text1 = 'This is a foo bar sentence.'
+    text2 = 'This sentence is similar to a foo bar sentence.'
+    text3 = 'A string that should not be close to the others!'
+    vector1 = text_to_vector(text1)
+    vector2 = text_to_vector(text2)
+    vector3 = text_to_vector(text3)
+    cosine1 = get_cosine_similarity(vector1, vector2)
+    cosine2 = get_cosine_similarity(vector1, vector3)
+    degrees1 = calculate_angle_in_degrees(cosine1)
+    degrees2 = calculate_angle_in_degrees(cosine2)
+    print(f"String 1: {text1}")
+    print(f"String 2: {text2}")
+    print(f"String 3: {text3}")
+    print(f"The cosine similarity angle between string 1 and 2 is {degrees1:.2f} degrees.")
+    print(f"The cosine similarity angle between string 1 and 3 is {degrees2:.2f} degrees.")
+if __name__ == "__main__":
+    main()

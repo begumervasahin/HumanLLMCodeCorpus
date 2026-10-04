@@ -1,0 +1,81 @@
+class Vertex:
+    def __init__(self, key):
+        self.id = key
+        self.connectedTo = {}
+    def add_neighbor(self, neighbor, weight=0):
+        self.connectedTo[neighbor] = weight
+    def __str__(self):
+        return f"{self.id} connected to: {[vertex.id for vertex in self.connectedTo]}"
+    def get_connections(self):
+        return self.connectedTo.keys()
+    def get_id(self):
+        return self.id
+    def get_weight(self, neighbor):
+        return self.connectedTo[neighbor]
+class Graph:
+    def __init__(self):
+        self.vertList = {}
+        self.numVertices = 0
+    def add_vertex(self, key):
+        self.numVertices += 1
+        new_vertex = Vertex(key)
+        self.vertList[key] = new_vertex
+        return new_vertex
+    def get_vertex(self, key):
+        return self.vertList.get(key)
+    def __contains__(self, key):
+        return key in self.vertList
+    def add_edge(self, from_key, to_key, cost=0):
+        if from_key not in self.vertList:
+            self.add_vertex(from_key)
+        if to_key not in self.vertList:
+            self.add_vertex(to_key)
+        self.vertList[from_key].add_neighbor(self.vertList[to_key], cost)
+    def get_vertices(self):
+        return self.vertList.keys()
+    def are_neighbors(self, from_key, to_key):
+        if from_key not in self.vertList or to_key not in self.vertList:
+            return False
+        for neighbor in self.vertList[from_key].connectedTo:
+            if neighbor.id == to_key:
+                if self.vertList[from_key].get_weight(neighbor) < 6:
+                    return True
+        return False
+    def __iter__(self):
+        return iter(self.vertList.values())
+    def are_connected(self, from_key, to_key):
+        if from_key not in self.vertList or to_key not in self.vertList:
+            return False
+        return any(neighbor.id == to_key for neighbor in self.vertList[from_key].connectedTo)
+    def min_edge_weight(self, key):
+        if key not in self.vertList:
+            return None
+        weights = [self.vertList[key].get_weight(neighbor) for neighbor in self.vertList[key].connectedTo]
+        return min(weights, default=None)
+    def min_weight_neighbor(self, key):
+        if key not in self.vertList:
+            return None
+        min_cost = float('inf')
+        min_id = None
+        for neighbor in self.vertList[key].connectedTo:
+            weight = self.vertList[key].get_weight(neighbor)
+            if weight < min_cost:
+                min_cost = weight
+                min_id = neighbor.id
+        return min_id
+    def get_weight(self, from_key, to_key):
+        if from_key not in self.vertList or to_key not in self.vertList:
+            return None
+        return self.vertList[from_key].get_weight(self.vertList[to_key])
+if __name__ == "__main__":
+    graph = Graph()
+    graph.add_vertex(1)
+    graph.add_vertex(2)
+    graph.add_vertex(3)
+    graph.add_edge(1, 2, 5)
+    graph.add_edge(1, 3, 3)
+    print(graph.min_edge_weight(1))
+    print(graph.min_weight_neighbor(1))
+    print(graph.get_weight(1, 3))
+    print(graph.are_connected(1, 3))
+    print(graph.are_neighbors(1, 2))

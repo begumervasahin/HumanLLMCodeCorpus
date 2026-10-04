@@ -1,0 +1,71 @@
+class Node:
+    def __init__(self, val=-1, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+class ReturnType:
+    def __init__(self, size, head, mins, maxs):
+        self.size = size
+        self.head = head
+        self.mins = mins
+        self.maxs = maxs
+def process(head):
+    if head is None:
+        return ReturnType(0, None, float('inf'), float('-inf'))
+    left_info = process(head.left)
+    right_info = process(head.right)
+    include_self = 0
+    if (left_info.head == head.left and
+        right_info.head == head.right and
+        head.val > left_info.maxs and
+        head.val < right_info.mins):
+        include_self = left_info.size + 1 + right_info.size
+    max_size = max(left_info.size, right_info.size, include_self)
+    if left_info.size > right_info.size:
+        max_head = left_info.head
+    else:
+        max_head = right_info.head
+    if max_size == include_self:
+        max_head = head
+    return ReturnType(
+        max_size,
+        max_head,
+        min(left_info.mins, right_info.mins, head.val),
+        max(left_info.maxs, right_info.maxs, head.val)
+    )
+def print_tree(root):
+    print("Binary Tree:")
+    print_in_order(root, 0, 'H', 17)
+def print_in_order(root, height, s, length):
+    if root is None:
+        return
+    print_in_order(root.right, height + 1, 'v', length)
+    val = f"{s}{root.val}{s}"
+    lenM = len(val)
+    lenL = (length - lenM)
+    lenR = length - lenM - lenL
+    val = get_space(lenL) + val + get_space(lenR)
+    print(get_space(height * length) + val)
+    print_in_order(root.left, height + 1, '^', length)
+def get_space(num):
+    return ' ' * num
+if __name__ == '__main__':
+    head = Node(6)
+    head.left = Node(1)
+    head.left.left = Node(0)
+    head.left.right = Node(3)
+    head.right = Node(12)
+    head.right.left = Node(10)
+    head.right.left.left = Node(4)
+    head.right.left.left.left = Node(2)
+    head.right.left.left.right = Node(5)
+    head.right.left.right = Node(14)
+    head.right.left.right.left = Node(11)
+    head.right.left.right.right = Node(15)
+    head.right.right = Node(13)
+    head.right.right.left = Node(20)
+    head.right.right.right = Node(16)
+    largest_bst_head = process(head).head
+    print(f"Largest BST head value: {largest_bst_head.val}")
+    print_tree(head)
+    print_tree(largest_bst_head)

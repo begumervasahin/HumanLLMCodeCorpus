@@ -1,0 +1,31 @@
+def play_fizzbuzz():
+    print("!!!Bienvenidos a FizzBuzz!!!")
+    fizzbuzz = True
+    while fizzbuzz:
+        try:
+            num = int(input("Introduzca un número del 1 al 100: "))
+            if 1 <= num <= 100:
+                for i in range(1, num + 1):
+                    if i % 3 == 0 and i % 5 == 0:
+                        print("FizzBuzz")
+                    elif i % 3 == 0:
+                        print("Fizz")
+                    elif i % 5 == 0:
+                        print("Buzz")
+                    else:
+                        print(i)
+            else:
+                print("Por favor, introduzca un número válido!")
+        except ValueError:
+            print("Por favor, introduzca solo números.")
+        while True:
+            pregunta = input("¿Desea jugar de nuevo? (S/N): ").strip().upper()
+            if pregunta == "S":
+                break
+            elif pregunta == "N":
+                fizzbuzz = False
+                break
+            else:
+                print("¡Opción incorrecta!")
+if __name__ == '__main__':
+    play_fizzbuzz()

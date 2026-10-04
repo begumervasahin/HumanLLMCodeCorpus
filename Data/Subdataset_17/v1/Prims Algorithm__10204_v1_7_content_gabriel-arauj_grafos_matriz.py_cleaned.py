@@ -1,0 +1,66 @@
+import networkx as nx
+from random import randint
+class InMat:
+    def __init__(self):
+        self.quant_vert = 0
+        self.matriz = []
+    def load_adjacency_matrix(self, matrix):
+        self.matriz = matrix
+        self.quant_vert = len(matrix)
+    def to_graph(self):
+        G = nx.Graph()
+        for z in range(self.quant_vert):
+            G.add_node(z)
+        for x in range(self.quant_vert):
+            for y in range(x, self.quant_vert):
+                if self.matriz[x][y] > 0:
+                    G.add_edge(x, y, weight=self.matriz[x][y])
+        return G
+    def random_g(self):
+        n = self.quant_vert
+        G = nx.connected_watts_strogatz_graph(n, randint(n
+        edges = G.edges()
+        self.matriz = [[0]*n for _ in range(n)]
+        for v1, v2 in edges:
+            weight = randint(1, 50)
+            self.matriz[v1][v2] = weight
+            self.matriz[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        self.quant_vert = G.number_of_nodes()
+        return G
+    def get_matriz_adj(self):
+        return self.matriz
+    def mat_clear(self):
+        self.quant_vert = 0
+        self.matriz = []
+    def graph_comp(self, vertices):
+        G = nx.complete_graph(vertices)
+        self.quant_vert = G.number_of_nodes()
+        self.matriz = [[0]*vertices for _ in range(vertices)]
+        for v1, v2 in G.edges():
+            weight = randint(1, 50)
+            self.matriz[v1][v2] = weight
+            self.matriz[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        return G
+if __name__ == "__main__":
+    graph_manager = InMat()
+    adjacency_matrix = [
+        [0, 1, 2],
+        [1, 0, 3],
+        [2, 3, 0]
+    ]
+    graph_manager.load_adjacency_matrix(adjacency_matrix)
+    graph = graph_manager.to_graph()
+    print("Graph from loaded adjacency matrix:")
+    print(graph.edges(data=True))
+    graph_manager.quant_vert = 5
+    random_graph = graph_manager.random_g()
+    print("Randomly generated graph:")
+    print(random_graph.edges(data=True))
+    graph_manager.mat_clear()
+    print("Adjacency matrix after clearing:")
+    print(graph_manager.get_matriz_adj())
+    complete_graph = graph_manager.graph_comp(4)
+    print("Complete graph:")
+    print(complete_graph.edges(data=True))

@@ -1,0 +1,121 @@
+import os
+from PIL import Image, ImageDraw
+class State:
+    def __init__(self, x, y, terrain):
+        self.x = x
+        self.y = y
+        self.terrain = terrain
+class SearchNode:
+    def __init__(self, status, cost):
+        self.status = status
+        self.cost = cost
+        self.g = None
+        self.h = None
+        self.f = None
+        self.parent = None
+        self.kids = []
+def read_board(filename):
+    with open(filename, 'r') as file:
+        lines = file.read().strip().split('\n')
+    board = []
+    for i, line in enumerate(lines):
+        row = []
+        for j, char in enumerate(line):
+            row.append(SearchNode(State(j, len(lines) - i - 1, char), cost(char)))
+            if char == 'A':
+                start = (j, len(lines) - i - 1)
+            elif char == 'B':
+                end = (j, len(lines) - i - 1)
+        board.append(row)
+    board.reverse()
+    return start, end, board
+def heuristic(s1, s2):
+    return abs(s2.x - s1.x) + abs(s2.y - s1.y)
+def solution(s1, sf):
+    return s1.x == sf.x and s1.y == sf.y
+def generate_all_successors(s, board):
+    successors = []
+    if s.x > 0:
+        successors.append(board[s.y][s.x - 1])
+    if s.x < len(board[s.y]) - 1:
+        successors.append(board[s.y][s.x + 1])
+    if s.y > 0:
+        successors.append(board[s.y - 1][s.x])
+    if s.y < len(board) - 1:
+        successors.append(board[s.y + 1][s.x])
+    return successors
+def attach_and_eval(child, parent, goal):
+    child.parent = parent
+    child.g = parent.g + child.cost
+    h = heuristic(child.status, goal)
+    child.h = h
+    child.f = h + child.g
+def propagate_path_improvement(parent):
+    for child in parent.kids:
+        if parent.g + child.cost < child.g:
+            child.parent = parent
+            child.g = parent.g + child.cost
+            child.f = child.g + child.h
+            propagate_path_improvement(child)
+def cost(terrain):
+    terrain_costs = {'w': 100, 'm': 50, 'f': 10, 'g': 5, 'r': 1, 'A': 1, 'B': 1}
+    return terrain_costs.get(terrain, 1)
+def color(node):
+    terrain_colors = {
+        'w': (73, 216, 245), 'm': (99, 99, 99), 'f': (3, 82, 0),
+        'g': (50, 200, 50), 'r': (114, 80, 41), 'A': (90, 180, 90), 'B': (255, 90, 90)
+    }
+    return terrain_colors.get(node.status.terrain, (255, 255, 255))
+def draw_image(board, path, filename):
+    img = Image.new('RGB', (len(board[0]) * 20, len(board) * 20), "white")
+    idraw = ImageDraw.Draw(img)
+    for y in range(len(board)):
+        for x in range(len(board[0])):
+            c = color(board[y][x])
+            idraw.rectangle([(x * 20, y * 20), (x * 20 + 20, y * 20 + 20)], fill=c, outline=(0, 0, 0))
+            if board[y][x] in path:
+                c = (107, 97, 255)
+                idraw.rectangle([(x * 20 + 6, y * 20 + 6), (x * 20 + 14, y * 20 + 14)], fill=c, outline=(0, 0, 0))
+    img.save(filename, "PNG")
+def visualize_path(start_node, end_node, board, filename):
+    path = []
+    current = end_node
+    while current != start_node:
+        path.append(current)
+        current = current.parent
+    path.append(start_node)
+    path.reverse()
+    draw_image(board, path, filename)
+def best_first_search(start, end, board, filename):
+    open_list = []
+    closed_list = []
+    start_node = board[start[1]][start[0]]
+    end_node = board[end[1]][end[0]]
+    start_node.g = 0
+    start_node.h = heuristic(start_node.status, end_node.status)
+    start_node.f = start_node.h
+    open_list.append(start_node)
+    while open_list:
+        open_list.sort(key=lambda node: node.f)
+        current_node = open_list.pop(0)
+        closed_list.append(current_node)
+        if solution(current_node.status, end_node.status):
+            visualize_path(start_node, end_node, board, filename)
+            return 'SUCCEED'
+        successors = generate_all_successors(current_node.status, board)
+        for successor in successors:
+            current_node.kids.append(successor)
+            if successor not in open_list and successor not in closed_list:
+                attach_and_eval(successor, current_node, end_node.status)
+                open_list.append(successor)
+            elif current_node.g + successor.cost < successor.g:
+                attach_and_eval(successor, current_node, end_node.status)
+                if successor in closed_list:
+                    propagate_path_improvement(successor)
+    return 'FAIL'
+if __name__ == "__main__":
+    os.makedirs("assignment3_images", exist_ok=True)
+    boards = ['board-2-1.txt', 'board-2-2.txt', 'board-2-3.txt', 'board-2-4.txt']
+    for board_file in boards:
+        start, end, board = read_board(f'boards/{board_file}')
+        best_first_search(start, end, board, f'assignment3_images/part2_{board_file}')

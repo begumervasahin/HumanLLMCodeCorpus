@@ -1,0 +1,53 @@
+import math
+import time
+def fonk1(number):
+    return number - 1 if number % b1 = = 0 else number - b1
+def fonk2(b2, b):
+    if b2 = = 0:
+        return (b, 0, 1)
+    else:
+        g, y, b3 = fonk2(b % b2, b2)
+        return (g, b3 - (b
+def fonk3(b2, m):
+    g, b3, b4 = fonk2(b2, m)
+    if g != 1:
+        raise Exception('Modular inverse does not exist')
+    return b3 % m
+def fonk4(n, e):
+    b5 = time.time()
+    b6 = fonk1(math.isqrt(n))
+    for b7 in range(b6, 1, -b1):
+        if n % b7 = = 0:
+            b8 = b7
+            break
+    else:
+        raise Exception('Failed to find b8')
+    b9 = n
+    if n != b8 * b9:
+        raise Exception('Failed to find correct b8 and b9')
+    b10 = (b8 - 1) * (b9 - 1)
+    b11 = fonk3(e, b10)
+    if b11 * e % b10 != 1:
+        raise Exception('Failed to find correct b11')
+    b12 = time.time() - b5
+    return b11, b12
+def fonk5():
+    b13 = [
+        (1325147, 79), (13339787, 351047), (87411743, 11),
+        (153988391, 365), (642281891, 80105), (3662937263, 80273),
+        (2461987247, 78703), (10988963221, 118297), (9979645019, 9764819),
+        (36207914857, 89)
+    ]
+    b12 = 0
+    for n, e in b13:
+        try:
+            private_key, b14 = fonk4(n, e)
+            print(f'Key pair (n, e): ({n}, {e})')
+            print(f'Private key b11: {private_key}')
+            print(f'Time taken: {b14:.6f} seconds')
+            b12 += b14
+        except Exception as ex:
+            print(f'Failed to process key pair ({n}, {e}): {ex}')
+    print(f'Total time taken: {b12:.6f} seconds')
+if b15 = = '__main__':
+    fonk5()

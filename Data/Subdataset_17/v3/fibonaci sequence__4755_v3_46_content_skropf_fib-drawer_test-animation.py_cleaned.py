@@ -1,0 +1,77 @@
+from PyQt6 import QtCore, QtWidgets
+import pyqtgraph as pg
+import numpy as np
+class TimeLine(QtCore.QObject):
+    frameChanged = QtCore.pyqtSignal(int)
+    def __init__(self, interval=60, loop_count=1, parent=None):
+        super().__init__(parent)
+        self._start_frame = 0
+        self._end_frame = 0
+        self._loop_count = loop_count
+        self._timer = QtCore.QTimer(self, timeout=self.on_timeout)
+        self._counter = 0
+        self._loop_counter = 0
+        self.set_interval(interval)
+    def on_timeout(self):
+        if self._start_frame <= self._counter < self._end_frame:
+            self.frameChanged.emit(self._counter)
+            self._counter += 1
+        else:
+            self._counter = 0
+            self._loop_counter += 1
+        if self._loop_count > 0 and self._loop_counter >= self._loop_count:
+            self._timer.stop()
+    def set_loop_count(self, loop_count):
+        self._loop_count = loop_count
+    def get_loop_count(self):
+        return self._loop_count
+    def set_interval(self, interval):
+        self._timer.setInterval(interval)
+    def get_interval(self):
+        return self._timer.interval()
+    interval = QtCore.pyqtProperty(int, fget=get_interval, fset=set_interval)
+    def set_frame_range(self, start_frame, end_frame):
+        self._start_frame = start_frame
+        self._end_frame = end_frame
+    @QtCore.pyqtSlot()
+    def start(self):
+        self._counter = 0
+        self._loop_counter = 0
+        self._timer.start()
+class Gui(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setup_ui()
+    def setup_ui(self):
+        pg.setConfigOption('background', 0.95)
+        pg.setConfigOptions(antialias=True)
+        self.plot = pg.PlotWidget()
+        self.plot.setAspectLocked(lock=True, ratio=0.01)
+        self.plot.setYRange(-3, 3)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.plot)
+        self._plots = [
+            self.plot.plot([], [], pen=pg.mkPen(color=color, width=2))
+            for color in ("g", "r", "y")
+        ]
+        self._timeline = TimeLine(loop_count=0, interval=10)
+        self._timeline.set_frame_range(0, 720)
+        self._timeline.frameChanged.connect(self.generate_data)
+        self._timeline.start()
+    def plot_data(self, data):
+        for plt, val in zip(self._plots, data):
+            plt.setData(range(len(val)), val)
+    @QtCore.pyqtSlot(int)
+    def generate_data(self, i):
+        ang = np.arange(i, i + 720)
+        cos_func = np.cos(np.radians(ang))
+        sin_func = np.sin(np.radians(ang))
+        tan_func = np.tan(np.radians(ang))
+        tan_func[(tan_func < -3) | (tan_func > 3)] = np.NaN
+        self.plot_data([sin_func, cos_func, tan_func])
+if __name__ == '__main__':
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    gui = Gui()
+    gui.show()
+    sys.exit(app.exec())

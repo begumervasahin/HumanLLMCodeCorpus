@@ -1,0 +1,33 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+import pandas as pd
+dataset = pd.read_csv("Churn_Modelling.csv")
+features = dataset.iloc[:, [8, 12]].values
+wcss = []
+for num_clusters in range(1, 16):
+    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=0)
+    kmeans.fit(features)
+    wcss.append(kmeans.inertia_)
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, 16), wcss, marker='o', linestyle='--', color='b')
+plt.title('Elbow Method to Determine Optimal Number of Clusters')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS (Within-Cluster Sum of Squares)')
+plt.grid(True)
+plt.show()
+optimal_num_clusters = 4
+kmeans = KMeans(n_clusters=optimal_num_clusters, init='k-means++', random_state=0)
+cluster_labels = kmeans.fit_predict(features)
+plt.figure(figsize=(10, 6))
+plt.scatter(features[cluster_labels == 0, 0], features[cluster_labels == 0, 1], s=50, c='red', label='Cluster 1')
+plt.scatter(features[cluster_labels == 1, 0], features[cluster_labels == 1, 1], s=50, c='blue', label='Cluster 2')
+plt.scatter(features[cluster_labels == 2, 0], features[cluster_labels == 2, 1], s=50, c='green', label='Cluster 3')
+plt.scatter(features[cluster_labels == 3, 0], features[cluster_labels == 3, 1], s=50, c='purple', label='Cluster 4')
+plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s=200, c='yellow', marker='X', label='Centroids')
+plt.title('K-Means Clustering of Customers')
+plt.xlabel('Balance ($)')
+plt.ylabel('Estimated Salary ($)')
+plt.legend()
+plt.grid(True)
+plt.show()

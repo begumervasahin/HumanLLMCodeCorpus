@@ -1,0 +1,48 @@
+def LCS(sequenceOne, sequenceTwo, array, i, j):
+    if i == 0 or j == 0:
+        return 0
+    elif array[i - 1][j - 1] is not None:
+        return array[i - 1][j - 1]
+    if sequenceOne[i - 1] == sequenceTwo[j - 1]:
+        if array[i - 1][j - 1] is not None:
+            return 1 + array[i - 1][j - 1]
+        else:
+            score = LCS(sequenceOne, sequenceTwo, array, i - 1, j - 1) + 1
+            array[i - 1][j - 1] = score
+            return score
+    else:
+        score = max(LCS(sequenceOne, sequenceTwo, array, i - 1, j),
+                    LCS(sequenceOne, sequenceTwo, array, i, j - 1))
+        array[i - 1][j - 1] = score
+        return score
+def problem2(sequenceOne, sequenceTwo, array, i, j):
+    if i == 0 or j == 0:
+        return ""
+    if sequenceOne[i - 1] == sequenceTwo[j - 1]:
+        return problem2(sequenceOne, sequenceTwo, array, i - 1, j - 1) + sequenceOne[i - 1]
+    else:
+        topScore = array[i - 2][j - 1] if i - 2 >= 0 else None
+        leftScore = array[i - 1][j - 2] if j - 2 >= 0 else None
+        if topScore is not None and leftScore is not None and topScore >= leftScore:
+            return problem2(sequenceOne, sequenceTwo, array, i - 1, j)
+        else:
+            return problem2(sequenceOne, sequenceTwo, array, i, j - 1)
+def problem1():
+    x = input("Enter the first sequence with no spaces between characters: ")
+    y = input("Enter the second sequence with no spaces between characters: ")
+    matrix = [[None] * len(y) for _ in range(len(x))]
+    score = LCS(x, y, matrix, len(x), len(y))
+    print("The length of a longest common sequence of ")
+    print(x)
+    print("and")
+    print(y)
+    print("is " + str(score))
+    print()
+    print("A longest common subsequence of X and Y is ")
+    sequence = problem2(x, y, matrix, len(x), len(y))
+    print(sequence)
+def printMatrix(array):
+    for row in array:
+        print(" ".join([str(elem) if elem is not None else '-' for elem in row]))
+    print()
+problem1()

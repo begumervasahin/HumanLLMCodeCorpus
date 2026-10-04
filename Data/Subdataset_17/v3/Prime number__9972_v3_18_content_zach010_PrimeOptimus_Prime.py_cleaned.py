@@ -1,0 +1,86 @@
+import sys
+import os
+import struct
+import time
+from mpmath import mp
+import multiprocessing
+def progress_bar(total, progress):
+    bar_length = 10
+    progress = float(progress) / float(total)
+    status = "\r\n" if progress >= 1. else ""
+    block = int(round(bar_length * progress))
+    text = "\rProgress: [{}] {:.0f}/10 {}".format(
+        chr(9632) * block + chr(9633) * (bar_length - block),
+        round(progress * 10, 0), status)
+    sys.stdout.write(text)
+    sys.stdout.flush()
+def prime_multiprocess(n_range, number, q):
+    start, end = n_range
+    for i in range(start, end):
+        if number % i == 0:
+            q.put(False)
+            return
+    q.put(True)
+def segregate(number, precision, processor_cnt):
+    mp.dps = precision
+    sqrt_number = int(mp.floor(mp.sqrt(number)) + 1)
+    cores = min(processor_cnt, sqrt_number - 1)
+    segment_size = sqrt_number
+    segments = [(i * segment_size + 1, (i + 1) * segment_size + 1) for i in range(cores)]
+    return segments, cores
+def initialize(segments, cores, number):
+    queues = [multiprocessing.Queue() for _ in range(cores)]
+    processes = [
+        multiprocessing.Process(target=prime_multiprocess, args=(segments[i], number, queues[i]))
+        for i in range(cores)
+    ]
+    for p in processes:
+        p.daemon = True
+        p.start()
+    print('\rCalculating...')
+    start_time = time.time()
+    results = [False] * cores
+    while any(p.is_alive() for p in processes):
+        for i in range(cores):
+            if not queues[i].empty():
+                results[i] = queues[i].get()
+                progress_bar(cores, sum(results))
+    end_time = time.time()
+    duration = end_time - start_time
+    is_prime = all(results)
+    time_str = format_time(duration)
+    result_str = "Prime: Yes" if is_prime else "Prime: No"
+    print(f"\rFinished processing in {time_str}.")
+    print(f"Number: {number}\n{result_str}\nLength: {len(str(number))}")
+    start_program()
+def format_time(seconds):
+    if seconds < 60:
+        return f"{seconds:.1f} seconds"
+    minutes, seconds = divmod(seconds, 60)
+    return f"{int(minutes)} minutes and {seconds:.1f} seconds"
+def start_program():
+    response = input('Do you want to calculate if another number is Prime? (y/n): ').strip().lower()
+    if response == 'y':
+        number = input('Enter number for Prime test: ').strip()
+        if number == '1':
+            print("The number 1 is not considered Prime because it is a square of which all are not Prime.")
+            return start_program()
+        try:
+            number = int(number)
+        except ValueError:
+            print("Invalid Input.")
+            return start_program()
+        precision = len(str(number)) + 4
+        segments, cores = segregate(number, precision, processor_cnt)
+        initialize(segments, cores, number)
+    elif response == 'n':
+        print("Program Exit.")
+        sys.exit()
+    else:
+        print("Invalid Input.")
+        return start_program()
+if __name__ == '__main__':
+    processor_cnt = multiprocessing.cpu_count()
+    print(f"Python version {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} ({8 * struct.calcsize('P')}-bit)")
+    print(f"\nThis computer-system has {processor_cnt} logical processors initialized for this Prime task.")
+    start_program()

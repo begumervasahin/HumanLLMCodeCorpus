@@ -1,0 +1,62 @@
+class Heap:
+    def __init__(self, heap_type='max'):
+        if heap_type not in {'max', 'min'}:
+            raise ValueError("Heap type must be 'max' or 'min'")
+        self.heap_type = heap_type
+        self.queue = []
+    def __len__(self):
+        return len(self.queue)
+    def insert(self, key):
+        self.queue.append(key)
+        self._perc_up(len(self.queue) - 1)
+    def pop(self):
+        if not self.queue:
+            raise IndexError("Pop from empty heap")
+        root = self.queue[0]
+        last_item = self.queue.pop()
+        if self.queue:
+            self.queue[0] = last_item
+            self._heapify(0)
+        return root
+    def build_heap(self, elements):
+        self.queue = elements[:]
+        for i in range((len(self.queue) - 2)
+            self._heapify(i)
+    def _perc_up(self, index):
+        parent = (index - 1)
+        while index > 0 and self._compare(self.queue[index], self.queue[parent]):
+            self.queue[index], self.queue[parent] = self.queue[parent], self.queue[index]
+            index = parent
+            parent = (index - 1)
+    def _heapify(self, index):
+        left = 2 * index + 1
+        right = 2 * index + 2
+        selected_child = index
+        if left < len(self.queue) and self._compare(self.queue[left], self.queue[selected_child]):
+            selected_child = left
+        if right < len(self.queue) and self._compare(self.queue[right], self.queue[selected_child]):
+            selected_child = right
+        if selected_child != index:
+            self.queue[index], self.queue[selected_child] = self.queue[selected_child], self.queue[index]
+            self._heapify(selected_child)
+    def _compare(self, child, parent):
+        if self.heap_type == 'max':
+            return child > parent
+        return child < parent
+if __name__ == "__main__":
+    max_heap = Heap('max')
+    max_heap.insert(10)
+    max_heap.insert(20)
+    max_heap.insert(5)
+    max_heap.insert(15)
+    print("Max Heap:", max_heap.queue)
+    print("Popped from Max Heap:", max_heap.pop())
+    print("Max Heap after pop:", max_heap.queue)
+    min_heap = Heap('min')
+    min_heap.insert(10)
+    min_heap.insert(20)
+    min_heap.insert(5)
+    min_heap.insert(15)
+    print("Min Heap:", min_heap.queue)
+    print("Popped from Min Heap:", min_heap.pop())
+    print("Min Heap after pop:", min_heap.queue)

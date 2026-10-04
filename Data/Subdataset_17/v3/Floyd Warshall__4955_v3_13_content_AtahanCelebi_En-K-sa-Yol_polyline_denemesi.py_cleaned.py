@@ -1,0 +1,135 @@
+import os
+import folium
+import pandas as pd
+from math import cos, asin, sqrt
+from geopy.geocoders import Nominatim
+from geopy.distance import great_circle
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import QFileDialog
+from folium import plugins
+from folium.plugins import MeasureControl
+geolocator = Nominatim(user_agent="Hacettepe_Geomatik")
+def distance(lat1, lon1, lat2, lon2):
+    p = 0.017453292519943295
+    a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2
+    return 12742 * asin(sqrt(a))
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(442, 314)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.gridLayout_2 = QtWidgets.QGridLayout(self.centralwidget)
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setText("Source:")
+        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
+        self.comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.gridLayout.addWidget(self.comboBox, 0, 1, 1, 1)
+        self.label_2 = QtWidgets.QLabel(self.centralwidget)
+        self.label_2.setText("Destination:")
+        self.gridLayout.addWidget(self.label_2, 1, 0, 1, 1)
+        self.comboBox_2 = QtWidgets.QComboBox(self.centralwidget)
+        self.gridLayout.addWidget(self.comboBox_2, 1, 1, 1, 1)
+        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton.setText("OK")
+        self.gridLayout.addWidget(self.pushButton, 2, 1, 1, 1)
+        self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
+        self.pushButton_2 = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_2.setText("Open TXT File")
+        self.gridLayout_2.addWidget(self.pushButton_2, 1, 0, 1, 1)
+        self.label_3 = QtWidgets.QLabel(self.centralwidget)
+        self.gridLayout.addWidget(self.label_3, 3, 0, 1, 1)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menuSettings = QtWidgets.QMenu(self.menubar)
+        self.menuSettings.setTitle("Help")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        MainWindow.setStatusBar(self.statusbar)
+        self.actionHelp = QtWidgets.QAction(MainWindow)
+        self.actionHelp.setText("Help")
+        self.menuSettings.addAction(self.actionHelp)
+        self.menubar.addAction(self.menuSettings.menuAction())
+        self.pushButton.clicked.connect(self.tamam)
+        self.pushButton_2.clicked.connect(self.txt_ac)
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+    def combo(self):
+        for name in self.airport_name:
+            self.comboBox.addItem(name)
+            self.comboBox_2.addItem(name)
+    def txt_ac(self):
+        self.fname = QFileDialog.getOpenFileName()[0]
+        with open(self.fname, "r") as f:
+            self.data = [line.strip().split(",") for line in f]
+        for i, entry in enumerate(self.data):
+            entry[0] = str(i + 1)
+        self.lati = [entry[6] for entry in self.data]
+        self.longi = [entry[7] for entry in self.data]
+        self.airport_name = [entry[1] for entry in self.data]
+        self.province = [entry[2] for entry in self.data]
+        self.country = [entry[3] for entry in self.data]
+        self.combo()
+    def create_map(self):
+        int_lat = [float(lat) for lat in self.lati]
+        int_long = [float(lon) for lon in self.longi]
+        data = pd.DataFrame({
+            'lat': int_long,
+            'lon': int_lat,
+            'name': self.airport_name,
+            'province': self.province,
+            'country': self.country
+        })
+        self.m = folium.Map(location=[38, 31], control_scale=True, zoom_start=6)
+        for i, row in data.iterrows():
+            html = f
+            folium.Marker(
+                location=[row['lat'], row['lon']],
+                popup=html,
+                icon=folium.Icon(color='red', icon='plane'),
+                tooltip="Click for more info"
+            ).add_to(self.m)
+    def tamam(self):
+        self.nereden = self.comboBox.currentText()
+        index1 = self.airport_name.index(self.nereden)
+        self.nereye = self.comboBox_2.currentText()
+        index2 = self.airport_name.index(self.nereye)
+        if self.nereden == self.nereye:
+            msg = QtWidgets.QMessageBox()
+            msg.setText("You cannot select the same airport for both source and destination.")
+            msg.setWindowTitle("Warning")
+            msg.setIcon(QtWidgets.QMessageBox.Information)
+            msg.exec_()
+            return
+        self.create_map()
+        start_coords = (float(self.lati[index1]), float(self.longi[index1]))
+        end_coords = (float(self.lati[index2]), float(self.longi[index2]))
+        self.path_distance = great_circle(start_coords, end_coords).km
+        self.coor = [start_coords, end_coords]
+        folium.PolyLine(self.coor, weight=1, color='black').add_to(self.m)
+        self.m.add_child(folium.LatLngPopup())
+        folium.LayerControl().add_to(self.m)
+        self.m.add_child(MeasureControl())
+        attr = {'font-weight': 'bold', 'font-size': '24'}
+        plugins.PolyLineTextPath(
+            folium.PolyLine(self.coor),
+            '\u2708     ',
+            repeat=True,
+            offset=8,
+            attributes=attr
+        ).add_to(self.m)
+        self.label_3.setText("Redirecting...")
+        self.m.save('shortest_route_map.html')
+        os.startfile('shortest_route_map.html')
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())

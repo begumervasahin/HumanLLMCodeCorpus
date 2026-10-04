@@ -1,0 +1,45 @@
+import numpy as np
+import cv2
+def dist(pos1, pos2):
+    x1, y1 = pos1
+    x2, y2 = pos2
+    return (x2 - x1) ** 2 + (y2 - y1) ** 2
+def next_pos(img, bot_pos, goal):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cv2.imshow('Gray Image', gray)
+    _, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY_INV)
+    ht, wd, _ = img.shape
+    cv2.imshow('Threshold Image', thresh)
+    cv2.waitKey(1)
+    botx, boty = bot_pos
+    goalx, goaly = goal
+    candidate_positions = [(botx + 20, boty), (botx - 20, boty), (botx, boty + 20), (botx, boty - 20)]
+    valid_positions = [
+        pos for pos in candidate_positions
+        if 0 <= pos[0] < ht and 0 <= pos[1] < wd and thresh[pos[1], pos[0]] == 255
+    ]
+    next_bot_pos = min(valid_positions, key=lambda pos: dist(pos, goal), default=bot_pos)
+    return next_bot_pos, next_bot_pos[0] - bot_pos[0], next_bot_pos[1] - bot_pos[1]
+def main():
+    img = cv2.imread('newa4.jpg')
+    dict_centres = {
+        'a': (125, 110), 'b': (140, 285), 'c': (246, 24), 'd': (247, 110),
+        'e': (247, 180), 'f': (247, 269), 'g': (293, 371), 'h': (394, 287), 'i': (402, 109)
+    }
+    bot_pos = dict_centres['a']
+    goal = dict_centres['e']
+    print("Goal:", goal)
+    cv2.imshow('Original Image', img)
+    cv2.waitKey(0)
+    pos_threshold = 30
+    while dist(bot_pos, goal) > pos_threshold:
+        bot_pos, dx, dy = next_pos(img, bot_pos, goal)
+        print(f"Bot Position: {bot_pos}")
+        cv2.circle(img, bot_pos, 5, (0, 0, 255), -1)
+        cv2.imshow('Path', img)
+        cv2.waitKey(100)
+    cv2.imshow('Final Path', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+if __name__ == '__main__':
+    main()

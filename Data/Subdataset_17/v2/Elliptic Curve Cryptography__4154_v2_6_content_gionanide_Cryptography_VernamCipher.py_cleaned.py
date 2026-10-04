@@ -1,0 +1,27 @@
+import binascii
+plain_text = 'informationsecurity'
+key1 = 'vlaksjdhfgqodzmxncb'
+print('The plain text is:', plain_text)
+print('The first key is:', key1, '\n')
+plain_text_bin = bin(int(binascii.hexlify(plain_text.encode()), 16))[2:].zfill(len(key1) * 8)
+key1_bin = bin(int(binascii.hexlify(key1.encode()), 16))[2:].zfill(len(key1) * 8)
+print('Plain text in bits:', plain_text_bin)
+print('Key in bits:', key1_bin, '\n')
+def xor(binary_message, binary_key):
+    return ''.join(str(int(m) ^ int(k)) for m, k in zip(binary_message, binary_key))
+xor_result = xor(plain_text_bin, key1_bin)
+encrypted_number = int(xor_result, 2)
+encrypted_text = binascii.unhexlify(f'{encrypted_number:x}').decode()
+print('XOR result for the encryption with the normal key:', xor_result)
+print('Encrypted text:', encrypted_text)
+decrypted_xor_result = xor(xor_result, key1_bin)
+decrypted_number = int(decrypted_xor_result, 2)
+decrypted_text = binascii.unhexlify(f'{decrypted_number:x}').decode()
+print('\nDecryption result:', decrypted_xor_result)
+print('Decrypted text with the normal key:', decrypted_text, '\n')
+alternative_key = bin(int(binascii.hexlify('tlftrffwmixor|{xbch'.encode()), 16))[2:].zfill(len(key1) * 8)
+print('Alternative key in bits:', alternative_key, '\n')
+alternative_decryption_result = xor(xor_result, alternative_key)
+alternative_decrypted_number = int(alternative_decryption_result, 2)
+alternative_decrypted_text = binascii.unhexlify(f'{alternative_decrypted_number:x}').decode()
+print('Decrypted text with the alternative key:', alternative_decrypted_text)

@@ -1,0 +1,39 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SQLContext, SparkSession
+from operator import add
+from cassandra.cluster import Cluster
+conf = SparkConf().setMaster("local").setAppName("Keyword Count Application")
+sc = SparkContext(conf=conf)
+sqlContext = SQLContext(sc)
+spark = SparkSession.builder.appName("PythonWordCount").getOrCreate()
+keyword_map = {
+    "java": 0, "c": 1, "c++": 2, "python": 3, "perl": 4,
+    "sql": 5, "jquery": 6, "javascript": 7, "html": 8,
+    "linux": 9, "algorithm": 10
+}
+def process_row(row):
+    count = [0] * len(keyword_map)
+    data = row[0].split(" ")
+    wordlist = data[1:]
+    date = data[0].split("T")[0].split(",")[1]
+    for word in wordlist:
+        word = str(word)
+        if word in keyword_map:
+            count[keyword_map[word]] = 1
+    return date, count
+def create_tuples(row):
+    date, counts = row
+    tuples = [(date, key, counts[value]) for key, value in keyword_map.items() if counts[value] != 0]
+    return tuples
+def sum_arrays(list1, list2):
+    return list(map(add, list1, list2))
+data = spark.read.text("AnsOutput.csv").cache()
+processed_data = data.rdd.map(process_row).reduceByKey(sum_arrays).flatMap(create_tuples).collect()
+cluster = Cluster(['172.31.87.203'])
+session = cluster.connect('stackoverflowdb')
+for entry in processed_data:
+    session.execute(
+        "INSERT INTO keywords_count (timestamp, keyword, count) VALUES (%s, %s, %s)",
+        entry
+    )
+sc.stop()

@@ -1,0 +1,53 @@
+from flask import Flask, render_template, request
+import socket
+import time
+app = Flask(__name__)
+app.secret_key = "Non-seen"
+@app.route('/', methods=['GET', 'POST'])
+def scan():
+    if request.method == 'GET':
+        return render_template("scaner.html")
+    area = request.form['area']
+    ip = request.form['url']
+    f_ports = [21, 22, 23, 25, 27, 50, 53, 69, 70, 80, 87, 88, 109, 110, 113, 143, 1080, 8080, 8088]
+    hosts = []
+    try:
+        if area.lower() == 'ip':
+            if ip[0].isdigit():
+                adr = socket.getfqdn(ip)
+            else:
+                adr = socket.gethostbyname(ip)
+            return render_template('scaner.html', addr=area, loc=ip, res=adr)
+        elif area.lower() == 'name':
+            adr = socket.getfqdn(ip)
+            return render_template('scaner.html', addr=area, loc=ip, res=adr)
+        elif area.lower() == 'ports':
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            for port in f_ports:
+                tes = s.connect_ex((ip, port))
+                if tes == 0:
+                    hosts.append(port)
+                time.sleep(0.001)
+            if len(hosts) <= 0:
+                hosts = [0]
+            return render_template('scaner.html', hosts=hosts)
+        elif area.lower() == 'services':
+            servs = {}
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            for port in f_ports:
+                tes = s.connect_ex((ip, port))
+                try:
+                    serv = socket.getservbyport(port)
+                except:
+                    serv = "unknown"
+                if tes == 0:
+                    servs[port] = [serv, "running"]
+                else:
+                    servs[port] = [serv, "not running"]
+            return render_template('scaner.html', services=servs)
+        else:
+            return render_template('scaner.html', error=True)
+    except Exception as e:
+        return f"An error occurred:<hr>{e}"
+if __name__ == '__main__':
+    app.run(debug=True)

@@ -1,0 +1,47 @@
+from prettytable import PrettyTable
+import requests
+import bs4 as bs
+import datetime
+import sys
+import Balloon_tip as Bt
+weather_details = {}
+countries = {1: 'India', 2: 'Japan', 3: 'USA', 4: 'UK', 5: 'Russia', 6: 'Japan', 7: 'France'}
+curr_date = datetime.datetime.now().strftime("%d-%b-%Y")
+date_1 = datetime.datetime.strptime(curr_date, "%d-%b-%Y")
+headers = {"User-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36"}
+for i in countries:
+    print('{}. {}'.format(i, countries[i]))
+while True:
+    nation = int(input('\nChoose any one of the above Countries: \n'))
+    if nation in countries.keys():
+        break
+    else:
+        print('\n**** PLEASE CHOOSE A VALID COUNTRY. ****')
+        for i in countries:
+            print('{}. {}'.format(i, countries[i]))
+nation = countries[nation]
+area = input('Enter a Location in {}: '.format(nation)).strip().lower()
+time_period = int(input('Enter the No. of Days [1-14]: '))
+time_period = 3 if time_period <= 0 or time_period > 14 else time_period
+url = 'https:
+response = requests.get(url, headers = headers)
+html = response.text
+soup = bs.BeautifulSoup(html, 'lxml')
+temp = soup.find('tbody')
+for i in range(time_period):
+    end_date = date_1 + datetime.timedelta(days=i)
+    try:
+        temperature = temp.select_one("tr:nth-of-type(" + str(i+1) + ")").select_one("td:nth-of-type(2)").text
+        weather_details[end_date.strftime("%d-%b-%Y")] = [temperature]
+        weather_details[end_date.strftime("%d-%b-%Y")].append(temp.select_one("tr:nth-of-type(" + str(i+1) + ")").select_one("td:nth-of-type(3)").text)
+        weather_details[end_date.strftime("%d-%b-%Y")].append(temp.select_one("tr:nth-of-type(" + str(i+1) + ")").select_one("td:nth-of-type(4)").text)
+    except AttributeError:
+        print('Weather Forecast NOT AVAILABLE for this Location. Please Enter a popular location.')
+        sys.exit(8)
+print('\n{}-Day Weather Forecast for {}, {}:'.format(time_period, area.title(), nation))
+table = PrettyTable(['Date', 'Max/Min Temp.', 'Weather Conditions', 'Feels Like'])
+for i in weather_details:
+    table.add_row([i, *weather_details[i]])
+print(table)
+Bt.balloon_tip('Today\'s Weather Update - ' + area.title() + ', ' + nation,'Min/Max Temp: {}\nWeather: {}\nFeels Like: {}'
+               .format(weather_details[curr_date][0], weather_details[curr_date][1],weather_details[curr_date][2]))

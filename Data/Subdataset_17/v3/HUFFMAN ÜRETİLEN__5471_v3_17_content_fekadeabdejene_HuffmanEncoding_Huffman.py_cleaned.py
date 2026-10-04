@@ -1,0 +1,88 @@
+import heapq
+from collections import Counter
+from functools import partial
+from io import StringIO
+class Huffman:
+    def __init__(self, data, width):
+        if not data:
+            raise ValueError("Invalid data.")
+        if width <= 0:
+            raise ValueError("Width must be greater than 0.")
+        self.original_data = data
+        self.width = width
+        self.data_segments = [segment for segment in iter(partial(StringIO(data).read, self.width), '')]
+        self.huffman_codes = {}
+    def encode(self):
+        frequency_map = self._create_frequency_map()
+        huffman_tree = self._build_huffman_tree(frequency_map)
+        self._generate_huffman_codes(huffman_tree)
+        return self._encode_data()
+    def decode(self, encoded_data):
+        if not encoded_data:
+            raise ValueError("Invalid encoded data.")
+        decoded_data = []
+        current_code = ''
+        reversed_codes = self._reversed_huffman_codes
+        for bit in encoded_data:
+            current_code += bit
+            if current_code in reversed_codes:
+                decoded_data.append(reversed_codes[current_code])
+                current_code = ''
+        return ''.join(decoded_data)
+    def get_compression_ratio(self, encoded_data):
+        if not encoded_data:
+            raise ValueError("Invalid encoded data.")
+        original_size_bits = len(self.original_data) * 8
+        encoded_size_bits = len(encoded_data)
+        return 1 - (encoded_size_bits / original_size_bits)
+    @property
+    def _reversed_huffman_codes(self):
+        return {code: char for char, code in self.huffman_codes.items()}
+    def _create_frequency_map(self):
+        return [(freq, char) for char, freq in Counter(self.data_segments).items()]
+    def _build_huffman_tree(self, frequency_map):
+        if not frequency_map:
+            raise ValueError("Invalid frequency map.")
+        heapq.heapify(frequency_map)
+        while len(frequency_map) > 1:
+            left = heapq.heappop(frequency_map)
+            right = heapq.heappop(frequency_map)
+            merged_node = (left[0] + right[0], left, right)
+            heapq.heappush(frequency_map, merged_node)
+        return frequency_map[0]
+    def _generate_huffman_codes(self, tree):
+        stack = [(tree, '')]
+        while stack:
+            node, code = stack.pop()
+            if len(node) == 2:
+                self.huffman_codes[node[1]] = code
+            else:
+                stack.append((node[1], code + '0'))
+                stack.append((node[2], code + '1'))
+    def _encode_data(self):
+        if not self.huffman_codes:
+            raise ValueError("Huffman codes have not been generated.")
+        return ''.join(self.huffman_codes[segment] for segment in self.data_segments)
+def test_huffman_encoding_decoding(data):
+    huffman = Huffman(data, 4)
+    encoded_data = huffman.encode()
+    decoded_data = huffman.decode(encoded_data)
+    print("************** Test Encoding **************")
+    print(f"Original data: {data}")
+    print(f"Encoded data: {encoded_data}")
+    print(f"Decoding successful: {decoded_data == data}")
+    print(f"Compression Ratio: {huffman.get_compression_ratio(encoded_data):.2%}")
+    print()
+    return decoded_data
+if __name__ == "__main__":
+    test_cases = [
+        "a",
+        "abcdefghijklmnopqrstuvwxyz",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "asdfjbdsjkbfdifbeibfosdibfjkeboiuwebfisdbifbiobwieufbew"
+    ]
+    for test_data in test_cases:
+        test_huffman_encoding_decoding(test_data)
+    with open("test_data.txt", "r") as file:
+        test_data_file = file.read()
+    test_huffman_encoding_decoding(test_data_file)

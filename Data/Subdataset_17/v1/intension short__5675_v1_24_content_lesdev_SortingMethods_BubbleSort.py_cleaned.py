@@ -1,0 +1,38 @@
+import tkinter as tk
+from tkinter import simpledialog
+def bubble():
+    try:
+        datos = int(entry_numeros.get())
+        vector = []
+        for i in range(datos):
+            dialog = simpledialog.askinteger("Input", f"Enter number {i+1}:")
+            if dialog is not None:
+                vector.append(dialog)
+            else:
+                break
+        aux_impresion1 = f"Unsorted: {vector}"
+        label_unsorted.config(text=aux_impresion1)
+        for i in range(len(vector)-1):
+            for j in range(0, len(vector)-i-1):
+                if vector[j] > vector[j+1]:
+                    vector[j], vector[j+1] = vector[j+1], vector[j]
+        aux_impresion2 = f"Sorted: {vector}"
+        label_sorted.config(text=aux_impresion2)
+    except ValueError:
+        label_unsorted.config(text="Invalid input. Please enter a valid number.")
+        label_sorted.config(text="")
+app = tk.Tk()
+app.title("Bubble Sort")
+app.geometry('300x200')
+app.configure(bg='SkyBlue2')
+label_prompt = tk.Label(app, text="How many numbers do you want to enter?", font="Helvetica 12", bg='SkyBlue2')
+label_prompt.pack(pady=(10, 5))
+entry_numeros = tk.Entry(app, width=8)
+entry_numeros.pack()
+button_ok = tk.Button(app, text="Ok!", command=bubble)
+button_ok.pack(pady=(10, 0))
+label_unsorted = tk.Label(app, text="", bg='SkyBlue2')
+label_unsorted.pack(pady=(10, 0))
+label_sorted = tk.Label(app, text="", bg='SkyBlue2')
+label_sorted.pack(pady=(10, 0))
+app.mainloop()

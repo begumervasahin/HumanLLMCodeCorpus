@@ -1,0 +1,64 @@
+import unittest
+from utils import dealArgs, cleanWord
+args = [
+    '--input=small_test.txt',
+    '--start=foo',
+    '--stop=bar',
+    '--finish=enough',
+    '--output=output',
+    '-s',
+    '-f',
+]
+class UtilsTest(unittest.TestCase):
+    def test_deal_args(self):
+        expected_result = {
+            'file': 'small_test.txt',
+            'start': 'foo',
+            'stop': 'bar',
+            'finish': 'enough',
+            'format': False,
+            'output': 'output.json',
+            'stats': True,
+            'csv': False,
+        }
+        options = dealArgs(args)
+        self.assertEqual(expected_result, options.to_object())
+    def test_change_format(self):
+        options = dealArgs(args)
+        options.format = True
+        self.assertEqual(True, options.format)
+    def test_change_format_override(self):
+        options = dealArgs(args)
+        options.format = 'foo'
+        self.assertEqual(False, options.format)
+    def test_change_file(self):
+        options = dealArgs(args)
+        options.file = 'foo.txt'
+        self.assertEqual('foo.txt', options.file)
+    def test_change_output_override(self):
+        options = dealArgs(args)
+        options.output = 'foo'
+        self.assertEqual('foo.json', options.output)
+    def test_change_csv_override(self):
+        options = dealArgs(args)
+        options.csv = True
+        self.assertEqual(True, options.csv)
+        self.assertEqual(False, options.format)
+    def test_change_stats(self):
+        options = dealArgs(args)
+        options.stats = True
+        self.assertEqual(True, options.stats)
+        self.assertEqual(False, options.format)
+    def test_change_stats_override(self):
+        options = dealArgs(args)
+        options.stats = 'foo'
+        self.assertEqual(False, options.stats)
+    def test_deal_no_args(self):
+        self.assertRaises(ValueError, dealArgs, [])
+    def test_clean_word(self):
+        words = ['it!', 'is', 't1me', 'for', 'a11', 'g00d', '4', 'all', 'men']
+        expected_cleaned_words = ['it', 'is', 't1me', 'for', 'a11', 'g00d', '4', 'all', 'men']
+        cleaned_words = [cleanWord(word) for word in words]
+        self.assertEqual(expected_cleaned_words, cleaned_words)
+if __name__ == '__main__':
+    unittest.main()

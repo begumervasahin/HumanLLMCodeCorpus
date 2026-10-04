@@ -1,0 +1,46 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+def process_emails(words_csv, emails_dir, output_csv):
+    start_time = time()
+    df = pd.read_csv(words_csv, header=0)
+    words = df['word']
+    words_set = set(words)
+    lmtzr = WordNetLemmatizer()
+    with open(output_csv, "w+") as f:
+        for word in words:
+            f.write(str(word) + ',')
+        f.write('output\n')
+    directory = os.fsencode(emails_dir)
+    k = 0
+    for file in os.listdir(directory):
+        file_name = os.path.join(emails_dir, file.decode("utf-8"))
+        k += 1
+        with open(file_name, "r", encoding='utf-8', errors='ignore') as file_reading:
+            words_list_array = np.zeros(len(words))
+            for word in file_reading.read().split():
+                word = lmtzr.lemmatize(word.lower())
+                if word in stopwords.words('english') or word in string.punctuation or len(word) <= 2 or word.isdigit():
+                    continue
+                if word in words_set:
+                    index = words.get_loc(word)
+                    words_list_array[index] += 1
+        with open(output_csv, "a") as f:
+            for count in words_list_array:
+                f.write(f"{int(count)},")
+            if len(file_name) == 68:
+                f.write("-1")
+            elif len(file_name) == 71:
+                f.write("1")
+            f.write('\n')
+        if k % 100 == 0:
+            print(f"Done {k}")
+    print(f"Time (in seconds) to segregate entire dataset to form input vector {round(time() - start_time, 2)}")
+words_csv = 'wordslist.csv'
+emails_dir = 'emails/'
+output_csv = 'frequency.csv'
+process_emails(words_csv, emails_dir, output_csv)

@@ -1,0 +1,62 @@
+import math
+from DataGenerator import Adjacency_List, Edge, DataGenerator
+class Node:
+    def __init__(self, vertex, parent=None):
+        self.vertex = vertex
+        self.parent = parent
+        self.rank = 1
+    def make_child_of(self, parent):
+        self.parent = parent
+    def get_root(self, path):
+        if self.parent is None:
+            return self
+        else:
+            path.append(self)
+            return self.parent.get_root(path)
+class UnionFind:
+    def __init__(self, num_vertices):
+        self.trees = [Node(i) for i in range(num_vertices)]
+    def find(self, i):
+        path = []
+        root = self.trees[i].get_root(path)
+        for node in path:
+            node.parent = root
+        return root
+    def union(self, root_x, root_y, edge, mst):
+        mst.addEdge(edge)
+        if root_x.rank <= root_y.rank:
+            root_y.make_child_of(root_x)
+            root_y.rank += 1
+        else:
+            root_x.make_child_of(root_y)
+            root_x.rank += 1
+def sollins(adj):
+    mst = Adjacency_List(adj.getVertices(), [])
+    uf = UnionFind(adj.getNumberOfVertices())
+    num_components = adj.getNumberOfVertices()
+    while num_components > 1:
+        cheap_edge = [Edge(-1, -1, math.inf) for _ in range(adj.getNumberOfVertices())]
+        for edge in adj.getEdges():
+            set_x = uf.find(edge.u)
+            set_y = uf.find(edge.v)
+            if set_x != set_y:
+                if cheap_edge[set_x.vertex].weight >= edge.weight:
+                    cheap_edge[set_x.vertex] = edge
+                if cheap_edge[set_y.vertex].weight >= edge.weight:
+                    cheap_edge[set_y.vertex] = edge
+        for edge in cheap_edge:
+            if edge.weight != math.inf:
+                set_x = uf.find(edge.u)
+                set_y = uf.find(edge.v)
+                if set_x != set_y:
+                    uf.union(set_x, set_y, edge, mst)
+                    num_components -= 1
+    return mst
+if __name__ == '__main__':
+    print("Original Adjacency list")
+    dg = DataGenerator(100, 0.1, method=2)
+    G = dg.generateData()
+    G.printMe()
+    print("\nMST: Sollin's Algorithm")
+    MST = sollins(G)
+    MST.printMe()

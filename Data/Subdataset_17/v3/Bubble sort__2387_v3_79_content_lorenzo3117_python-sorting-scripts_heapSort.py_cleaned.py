@@ -1,0 +1,39 @@
+
+swaps = 0
+def heapify(arr, n, i):
+    global swaps
+    comparisons = 0
+    largest = i
+    left = 2 * i + 1
+    right = 2 * i + 2
+    if left < n:
+        comparisons += 1
+        if arr[i] < arr[left]:
+            largest = left
+    if right < n:
+        comparisons += 1
+        if arr[largest] < arr[right]:
+            largest = right
+    if largest != i:
+        arr[i], arr[largest] = arr[largest], arr[i]
+        swaps += 1
+        comparisons += heapify(arr, n, largest)
+    return comparisons
+def heap_sort(arr):
+    global swaps
+    swaps = 0
+    n = len(arr)
+    total_comparisons = 0
+    for i in range(n
+        total_comparisons += heapify(arr, n, i)
+    for i in range(n - 1, 0, -1):
+        arr[i], arr[0] = arr[0], arr[i]
+        swaps += 1
+        total_comparisons += heapify(arr, i, 0)
+    return f"HEAP SORT:\nComparisons: {total_comparisons}\nSwaps: {swaps}"
+if __name__ == "__main__":
+    array = [12, 11, 13, 5, 6, 7]
+    print("Original array:", array)
+    result = heap_sort(array)
+    print(result)
+    print("Sorted array:", array)

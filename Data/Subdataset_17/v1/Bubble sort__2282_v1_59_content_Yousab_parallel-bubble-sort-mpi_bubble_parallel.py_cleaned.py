@@ -1,0 +1,44 @@
+from mpi4py import MPI
+import numpy as np
+import time
+from operator import itemgetter
+def bubble_sort(nums):
+    swapped = True
+    while swapped:
+        swapped = False
+        for i in range(len(nums) - 1):
+            if nums[i] > nums[i + 1]:
+                nums[i], nums[i + 1] = nums[i + 1], nums[i]
+                swapped = True
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+if rank == 0:
+    arraySize = int(input("Please enter array size: "))
+    numbers = np.arange(arraySize)
+    np.random.shuffle(numbers)
+    print("Generated list of size " + str(arraySize) + " is: " + str(numbers))
+    chunks = np.array_split(numbers, size)
+else:
+    chunks = None
+start_time = time.time()
+chunk = comm.scatter(chunks, root=0)
+print("Process " + str(rank) + " has this chunk of data: " + str(chunk))
+bubble_sort(chunk)
+sortedArrays = comm.gather(chunk, root=0)
+if rank == 0:
+    iteratorNumbers = np.zeros((len(sortedArrays),), dtype=int)
+    sortedArray = []
+    for my_index in range(arraySize):
+        iterator = [
+            (
+                i,
+                (99999999 if iteratorNumbers[i] >= len(sortedArrays[i]) else sortedArrays[i][iteratorNumbers[i]])
+            ) for i in range(len(sortedArrays))
+        ]
+        res = min(iterator, key=itemgetter(1))
+        iteratorNumbers[res[0]] += 1
+        sortedArray.append(res[1])
+        iterator = []
+    print("\n\nSorted Array: " + str(sortedArray))
+    print("\n\nExecution Time --- %s seconds ---" % (time.time() - start_time))

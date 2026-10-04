@@ -1,0 +1,18 @@
+def selection_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        min_index = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_index]:
+                min_index = j
+        if min_index != i:
+            arr[i], arr[min_index] = arr[min_index], arr[i]
+def main():
+    array = [12, 3, 43, 43, 9, 3, 2, 2, 43, 23, 53, 3, 3, 23, 23, 12, 53, 91, 1]
+    print("Array before sorting:")
+    print(array)
+    selection_sort(array)
+    print("Array after sorting:")
+    print(array)
+if __name__ == "__main__":
+    main()

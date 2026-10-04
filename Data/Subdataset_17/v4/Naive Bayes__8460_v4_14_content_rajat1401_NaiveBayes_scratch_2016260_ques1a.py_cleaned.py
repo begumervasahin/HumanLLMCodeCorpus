@@ -1,0 +1,62 @@
+import numpy as np
+import pandas as pd
+import math
+import matplotlib.pyplot as plt
+import pickle
+from mlxtend.data import loadlocal_mnist
+X_train, y_train = loadlocal_mnist(images_path='./train-images.idx3-ubyte', labels_path='./train-labels.idx1-ubyte')
+X_test, y_test = loadlocal_mnist(images_path='./t10k-images.idx3-ubyte', labels_path='./t10k-labels.idx1-ubyte')
+y_train_binary = [label - 1 for label in y_train if label in [1, 2]]
+y_test_binary = [label - 1 for label in y_test if label in [1, 2]]
+with open('./bintrain.pkl', 'rb') as f:
+    x_train = pickle.load(f)
+with open('./bintest.pkl', 'rb') as f:
+    x_test = pickle.load(f)
+counttrain0 = np.load('./counttrain0.mat')
+counttrain1 = np.load('./counttrain1.mat')
+a = y_train_binary.count(0)
+b = y_train_binary.count(1)
+prior_trouser = a / (a + b)
+prior_pullover = b / (a + b)
+for i in range(len(counttrain0)):
+    counttrain0[i] /= [a, b]
+    counttrain1[i] /= [a, b]
+print("The prior trouser is:", prior_trouser)
+print("The prior pullover is:", prior_pullover)
+thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
+y_pred = np.zeros((len(thresholds), len(x_test)))
+for k, threshold in enumerate(thresholds):
+    for i, x in enumerate(x_test):
+        pdt1 = sum(math.log(counttrain1[j][0 if x[j] == 1 else 1]) for j in range(len(x)))
+        pdt2 = sum(math.log(counttrain0[j][0 if x[j] == 1 else 1]) for j in range(len(x)))
+        prob0 = (pdt1 * prior_trouser) / (pdt1 * prior_trouser + pdt2 * prior_pullover)
+        y_pred[k][i] = 0 if prob0 <= threshold else 1
+print("Lengths:", len(y_pred), len(y_test_binary))
+print(y_pred[:, 0], y_pred[:, 1])
+tparray = []
+fparray = []
+for i in range(len(thresholds)):
+    tp = fp = fn = tn = 0
+    for j, y_true in enumerate(y_test_binary):
+        y_hat = y_pred[i][j]
+        if y_hat == 0 and y_true == 0:
+            tp += 1
+        elif y_hat == 1 and y_true == 1:
+            tn += 1
+        elif y_hat == 0 and y_true == 1:
+            fp += 1
+        elif y_hat == 1 and y_true == 0:
+            fn += 1
+    tpr = tp / (tp + fn)
+    fpr = fp / (fp + tn)
+    tparray.append(tpr)
+    fparray.append(fpr)
+    print(f"CASE {i+1} :-")
+    print(f"Confusion Matrix:\n[[{tp} {fp}]\n [{fn} {tn}]]")
+    print(f"The precision is: {tp / (tp + fp)}")
+    print(f"The recall is: {tpr}")
+plt.plot(fparray, tparray)
+plt.ylabel("True Positive Rate")
+plt.xlabel("False Positive Rate")
+plt.title("ROC Curve")
+plt.show()

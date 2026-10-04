@@ -1,0 +1,64 @@
+'''
+Generate rsa keypair
+TODO:
+Find solution to d
+'''
+import os
+import random
+from array import array
+from numpy import mod, gcd
+from library.Sieve_of_Eratosthenes import gen_primes
+prime_array = []
+prime_interval = int(input("Generate primes below: "))
+def prime_limit(interval):
+    for i in gen_primes():
+        if i < interval:
+            last_prime = i
+            prime_array.append(last_prime)
+        else:
+            break
+def prime_numbers():
+    while True:
+        p = random.choice(prime_array)
+        q = random.choice(prime_array)
+        print('Random prime_p below {} is: '.format(prime_interval) , p)
+        print('Random prime_q below {} is: '.format(prime_interval) , q)
+        if p != q:
+            print("Primes not equal: Pass")
+            return (p,q)
+        print("Primes must not be equal, generating new primes")
+def calculate_n(p, q):
+    n = p * q
+    print("n: ", n)
+    return n
+def phi(p, q):
+    phi_result = (p - 1) * (q - 1)
+    print("phi_n: ", phi_result)
+    return phi_result
+def number_e():
+    sysrandom_limit = 256
+    sysrandom = os.urandom(sysrandom_limit)
+    convert_to_hex = sysrandom.hex()
+    convert_to_int = int(convert_to_hex, 16)
+    divide = convert_to_int * phi_n
+    e = divide
+    print("e: ", e)
+    return e
+def gcd_calculation(phi,e):
+    gcd_calc = gcd(phi,e)
+    print("gcd_calc: ", gcd_calc)
+    while True:
+        if gcd_calc == 1:
+            print("gcd_calc: True")
+            return gcd_calc
+        else:
+            print("gcd_calc: False")
+            print("GCD must pass")
+            exit(1)
+def number_d(d):
+    return
+prime_limit(prime_interval)
+(prime_p,prime_q) = prime_numbers()
+number_n = calculate_n(prime_p, prime_q)
+phi_n = phi(prime_p, prime_q)
+gcd = gcd_calculation(phi_n,number_e())

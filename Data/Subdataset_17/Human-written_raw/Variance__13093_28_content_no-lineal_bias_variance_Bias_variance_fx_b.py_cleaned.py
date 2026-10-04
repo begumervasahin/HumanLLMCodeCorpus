@@ -1,0 +1,53 @@
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import figure
+from numpy import arange, pi, sin
+import numpy as np
+import random
+import math
+import os
+experiments = 200
+b_list = []
+for i in range(experiments):
+    x1 = random.uniform(0, 1.0)
+    x2 = random.uniform(0, 1.0)
+    y1 = sin(2*x1*pi)
+    y2 = sin(2*x2*pi)
+    dis = math.sqrt(math.pow((x2-x1), 2) + math.pow((y2-y1), 2))
+    b = max(y1, y2) - dis/2
+    b_list.append(b)
+t = arange(0, 1, 0.01)
+ft = sin(2*t*pi)
+aux = []
+reci = []
+for number in b_list:
+	reci.append(number)
+	aux.append(reci)
+	reci = []
+imprimir = []
+for element in aux:
+	imprimir.append(element*len(t))
+mean_b = sum(b_list)/len(b_list)
+g_bar = mean_b
+g_bar_imp = [g_bar]*len(t)
+lista_bias = []
+for element in t:
+	bias_x = math.pow(mean_b - sin(2*element*pi), 2)
+	lista_bias.append(bias_x)
+pro_bias = sum(lista_bias)/len(lista_bias)
+print('Bias = %f' % pro_bias)
+promedio_b = sum(b_list)/len(b_list)
+interior = [x-promedio_b for x in b_list]
+cuadrado = [math.pow(x, 2) for x in interior]
+suma = sum(cuadrado)
+variance = suma/(len(b_list)-1)
+print('Variance = %f' % variance)
+plt.plot(t, ft)
+plt.grid(True)
+plt.ylim(-2, 2)
+plt.xlim(0, 1)
+for element in imprimir:
+	plt.plot(t, element, alpha = 0.5, color = 'g')
+plt.plot(t, g_bar_imp, alpha = 0.5, color = 'r', linewidth = 2)
+plt.text(0.5, 1.75, 'Bias = '+str(pro_bias))
+plt.text(0.5, 1.64, 'Variance = '+str(variance))
+plt.show()

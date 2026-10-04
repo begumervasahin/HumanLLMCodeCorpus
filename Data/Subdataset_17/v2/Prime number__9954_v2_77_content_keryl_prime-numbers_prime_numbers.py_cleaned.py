@@ -1,0 +1,21 @@
+def is_prime_number(num):
+    if num < 2:
+        return False
+    for x in range(2, int(num ** 0.5) + 1):
+        if num % x == 0:
+            return False
+    return True
+def get_prime_numbers(n):
+    if n < 2:
+        return "Number should be greater than or equal to 2"
+    prime_numbers = []
+    for num in range(2, n + 1):
+        if is_prime_number(num):
+            prime_numbers.append(num)
+    return prime_numbers
+def main():
+    n = 10
+    primes = get_prime_numbers(n)
+    print(f"Prime numbers up to {n}: {primes}")
+if __name__ == "__main__":
+    main()

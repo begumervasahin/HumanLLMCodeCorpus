@@ -1,0 +1,179 @@
+import os
+import json
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import collections
+def combine_json(path, root_name, new_file_name):
+    files = os.listdir(path)
+    combined_data = {root_name: []}
+    for file in files:
+        with open(os.path.join(path, file)) as f:
+            json_content = json.load(f)
+            combined_data[root_name].append(json_content)
+    with open(new_file_name, 'w') as f:
+        json.dump(combined_data, f)
+def analyze_data(path1):
+    files = os.listdir(path1)
+    integer_count_list = []
+    real_count_list = []
+    datetime_count_list = []
+    text_count_list = []
+    total_type_list = []
+    for file in files:
+        with open(os.path.join(path1, file)) as f:
+            json_content = json.load(f)
+        integer_count = 0
+        real_count = 0
+        datetime_count = 0
+        text_count = 0
+        columns = json_content['columns']
+        for column in columns:
+            types = set()
+            data_types = column['data_types']
+            for data_type in data_types:
+                type_name = data_type['type']
+                types.add(type_name)
+                if type_name == 'INTEGER(LONG)':
+                    integer_count += 1
+                elif type_name == 'REAL':
+                    real_count += 1
+                elif type_name == 'DATE/TIME':
+                    datetime_count += 1
+                else:
+                    text_count += 1
+            total_type_list.append(types)
+        integer_count_list.append(integer_count)
+        real_count_list.append(real_count)
+        datetime_count_list.append(datetime_count)
+        text_count_list.append(text_count)
+    print('Number of columns containing INTEGER(LONG) type:', sum(integer_count_list))
+    print('Number of columns containing REAL type:', sum(real_count_list))
+    print('Number of columns containing DATE/TIME type:', sum(datetime_count_list))
+    print('Number of columns containing TEXT type:', sum(text_count_list))
+    return integer_count_list, real_count_list, datetime_count_list, text_count_list, total_type_list
+def plot_histogram(data, bins, title, xlabel, ylabel, file_name):
+    plt.clf()
+    plt.hist(data, bins=bins, color='blue', alpha=0.7)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(axis='y', alpha=0.75)
+    plt.savefig(file_name)
+def plot_bar_chart(data_dict, title, xlabel, ylabel, file_name):
+    plt.clf()
+    plt.bar(data_dict.keys(), data_dict.values(), color='blue', alpha=0.7)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(axis='y', alpha=0.75)
+    plt.savefig(file_name)
+def analyze_frequent_itemsets(total_type_list):
+    type_set = []
+    for types in total_type_list:
+        if types == {'INTEGER(LONG)'}:
+            type_set.append('I')
+        elif types == {'REAL'}:
+            type_set.append('R')
+        elif types == {'DATE/TIME'}:
+            type_set.append('D')
+        elif types == {'TEXT'}:
+            type_set.append('T')
+        elif types == {'INTEGER(LONG)', 'REAL'}:
+            type_set.append('IR')
+        elif types == {'INTEGER(LONG)', 'DATE/TIME'}:
+            type_set.append('ID')
+        elif types == {'INTEGER(LONG)', 'TEXT'}:
+            type_set.append('IT')
+        elif types == {'REAL', 'DATE/TIME'}:
+            type_set.append('RD')
+        elif types == {'REAL', 'TEXT'}:
+            type_set.append('RT')
+        elif types == {'DATE/TIME', 'TEXT'}:
+            type_set.append('DT')
+        elif types == {'INTEGER(LONG)', 'REAL', 'DATE/TIME'}:
+            type_set.append('IRD')
+        elif types == {'INTEGER(LONG)', 'REAL', 'TEXT'}:
+            type_set.append('IRT')
+        elif types == {'INTEGER(LONG)', 'DATE/TIME', 'TEXT'}:
+            type_set.append('IDT')
+        elif types == {'REAL', 'DATE/TIME', 'TEXT'}:
+            type_set.append('RDT')
+        elif types == {'INTEGER(LONG)', 'REAL', 'DATE/TIME', 'TEXT'}:
+            type_set.append('IRDT')
+        else:
+            type_set.append('Empty')
+    type_dict = dict((x, type_set.count(x)) for x in set(type_set))
+    sorted_type_dict = dict(sorted(type_dict.items(), key=lambda item: len(item[0])))
+    return sorted_type_dict
+def main():
+    path1 = 'Result-Task1'
+    root_name1 = 'datasets'
+    new_file_name1 = 'task1.json'
+    combine_json(path1, root_name1, new_file_name1)
+    path2 = 'Result-Task2'
+    root_name2 = 'predicted_types'
+    new_file_name2 = 'task2.json'
+    combine_json(path2, root_name2, new_file_name2)
+    integer_count_list, real_count_list, datetime_count_list, text_count_list, total_type_list = analyze_data(path1)
+    plot_histogram(integer_count_list, bins=50, title='Histogram for INTEGER/LONG type',
+                   xlabel='Number of columns with INTEGER(LONG) type', ylabel='Count of datasets', file_name='integer.png')
+    plot_histogram(integer_count_list, bins=list(range(0, 105, 5)), title='Histogram for INTEGER/LONG type (under 100)',
+                   xlabel='Number of columns with INTEGER(LONG) type (under 100)', ylabel='Count of datasets', file_name='integer_under100.png')
+    plot_histogram(real_count_list, bins=50, title='Histogram for REAL type',
+                   xlabel='Number of columns with REAL type', ylabel='Count of datasets', file_name='real.png')
+    plot_histogram(datetime_count_list, bins=50, title='Histogram for DATE/TIME type',
+                   xlabel='Number of columns with DATE/TIME type', ylabel='Count of datasets', file_name='datetime.png')
+    plot_histogram(text_count_list, bins=50, title='Histogram for TEXT type',
+                   xlabel='Number of columns with TEXT type', ylabel='Count of datasets', file_name='text.png')
+    plot_histogram(text_count_list, bins=list(range(0, 105, 5)), title='Histogram for TEXT type (under 100)',
+                   xlabel='Number of columns with TEXT type (under 100)', ylabel='Count of datasets', file_name='text_under100.png')
+    sorted_type_dict = analyze_frequent_itemsets(total_type_list)
+    plot_bar_chart(sorted_type_dict, title='Frequent Itemsets', xlabel='Frequent Itemsets', ylabel='Count', file_name='frequent.png')
+    semantic_type = ['Person_name', 'Business_name', 'City_agency', 'Neighborhood', 'Building_Classification', 'Areas_of_study',
+                     'School_Levels', 'Borough', 'Subjects_in_school', 'Parks_Playgrounds', 'Zip_code', 'Address', 'Street_name',
+                     'Phone_Number', 'City', 'LAT_LON_coordinates', 'School_name', 'Car_make', 'Vehicle_Type', 'Type_of_location',
+                     'Websites', 'Color', 'College_University_names', 'Other']
+    optimized_precision = [1.0, 1.0, 0.9166666666666666, 0.75, 1.0, 0.8846153846153846, 0.6363636363636364, 0.6666666666666666,
+                           0.6666666666666666, 0.3333333333333333, 1.0, 0.5714285714285714, 0.6551724137931034, 0.9090909090909091,
+                           0.5294117647058824, 1.0, 0.8, 0.7, 0.5, 1.0, 1.0, 1.0, 0.0, 0.4858490566037736]
+    optimized_recall = [0.8387096774193549, 0.8888888888888888, 1.0, 1.0, 1.0, 1.0, 0.9333333333333333, 1.0, 1.0, 0.5, 0.7857142857142857,
+                        0.7619047619047619, 0.9047619047619048, 0.8333333333333334, 1.0, 0.9, 0.8421052631578947, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
+                        0.9363636363636364]
+    original_precision = [1.0, 1.0, 0.9166666666666666, 1.0, 1.0, 1.0, 1.0, 1.0, 0.125, 0.7142857142857143, 1.0, 1.0, 0.8095238095238095,
+                           0.9090909090909091, 0.0, 1.0, 0.8461538461538461, 0.7, 0.0, 1.0, 1.0, 1.0, 0.0, 0.584]
+    original_recall = [0.8387096774193549, 0.8888888888888888, 1.0, 0.7142857142857143, 1.0, 0.43478260869565216, 0.8666666666666667,
+                        0.5909090909090909, 1.0, 0.5, 0.7857142857142857, 0.38095238095238093, 0.8095238095238095, 0.8333333333333334, 0.0,
+                        0.9, 0.5789473684210527, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.6636363636363637]
+    plt.clf()
+    plt.figure(figsize=(10, 8))
+    plt.plot(semantic_type, original_precision, color='b', label='Original')
+    plt.plot(semantic_type, optimized_precision, color='r', label='Optimized')
+    plt.title('Original precision vs. Optimized precision')
+    plt.xlabel('Semantic Type')
+    plt.ylabel('Precision')
+    plt.xticks(rotation=-90, fontsize=5)
+    plt.legend()
+    plt.savefig('precision.png')
+    plt.clf()
+    plt.figure(figsize=(10, 8))
+    plt.plot(semantic_type, original_recall, color='b', label='Original')
+    plt.plot(semantic_type, optimized_recall, color='r', label='Optimized')
+    plt.title('Original recall vs. Optimized recall')
+    plt.xlabel('Semantic Type')
+    plt.ylabel('Recall')
+    plt.xticks(rotation=-90, fontsize=5)
+    plt.legend()
+    plt.savefig('recall.png')
+    files = os.listdir(path2)
+    semantic_type_count_list = []
+    for file in files:
+        with open(os.path.join(path2, file)) as f:
+            json_content = json.load(f)
+        semantic_type_list = json_content['semantic_types']
+        semantic_type_count_list.append(len(semantic_type_list))
+    semantic_dict = collections.OrderedDict(sorted(dict((x, semantic_type_count_list.count(x)) for x in set(semantic_type_count_list)).items()))
+    plot_bar_chart(semantic_dict, title='Prevalence of heterogeneous columns', xlabel='Number of semantic types in the column',
+                   ylabel='Count of columns', file_name='heterogeneous.png')
+if __name__ == "__main__":
+    main()

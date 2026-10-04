@@ -1,0 +1,54 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import HiveContext, SQLContext
+from pyspark.sql.functions import unix_timestamp
+from subprocess import call
+def main():
+    conf = SparkConf().setAppName("Q2")
+    sc = SparkContext(conf=conf)
+    sqlContext = HiveContext(sc)
+    df = load_data(sqlContext, 'pxb161930/Police_Incidents.csv')
+    drop_columns = [
+        'Incident Number w/ Year', 'Watch', 'Call (911) Problem', 'Type of Incident', 'Penalty Class',
+        'Type of Location', 'Type of Property', 'Street Block', 'Street Direction', 'Street Name',
+        'Incident Address', 'City', 'X Coordinate', 'Y Coordinate', 'Reporting Area', 'Beat', 'Division',
+        'Sector', 'Council District', 'Target Area Action Grids', 'Community', 'Ending Date/Time',
+        'Map Date', 'Date of Report', 'Date incident created', 'Offense Entered Time', 'Offense Entered  Date/Time',
+        'Call Date Time', 'Call Dispatch Date Time', 'Complainant Age', 'Complainant Age at Offense',
+        'Complainant Home Address', 'Complainant Zip Code', 'Complainant City', 'Complainant Business Name',
+        'Complainant Business Address', 'Investigating Unit 1', 'Investigating Unit 2', 'Offense Status',
+        'Victim Injury Description', 'Victim Condition', 'RMS Code', 'Offense Code CC', 'CJIS Code',
+        'Penal Code', 'UCR Offense Name', 'Modus Operandi (MO)', 'Hate Crime', 'Gang Related Offense',
+        'Drug Related Incident'
+    ]
+    df_final = process_dataframe(df, drop_columns)
+    create_hive_table(sqlContext, df_final, "default.q5table")
+    export_data_to_local()
+    sc.stop()
+def load_data(sqlContext, file_path):
+    return sqlContext.read.load(
+        file_path,
+        format='com.databricks.spark.csv',
+        header='true',
+        inferSchema='true',
+        parserLib='univocity'
+    )
+def process_dataframe(df, drop_columns):
+    df_filtered = df.select([column for column in df.columns if column not in drop_columns])
+    df_renamed = df_filtered.toDF(*(sanitize_column_name(c) for c in df_filtered.columns))
+    df_final = df_renamed.toDF(*(c.replace('__', '_') for c in df_renamed.columns))
+    return df_final
+def sanitize_column_name(column_name):
+    return column_name.replace(' ', '_').replace('/', '').replace('(', '').replace(')', '')
+def create_hive_table(sqlContext, df, table_name):
+    sqlContext.sql(f"DROP TABLE IF EXISTS {table_name}")
+    df.registerTempTable("temp_table")
+    sqlContext.sql(f"CREATE TABLE {table_name} AS SELECT * FROM temp_table")
+def export_data_to_local():
+    hive_export_command = [
+        "hive",
+        "-e",
+        "INSERT OVERWRITE LOCAL DIRECTORY '/root/q5data' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM default.q5table"
+    ]
+    call(hive_export_command)
+if __name__ == '__main__':
+    main()

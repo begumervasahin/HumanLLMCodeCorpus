@@ -1,0 +1,35 @@
+import time
+import logging
+from nltk.corpus import stopwords
+from iterators.sqlite_iterator import SQLiteDataIterator
+from tokenizers.ru_tokenizer import RussianTokenizer
+from vectorizer import HashingTfIdfVectorizer
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+DATA_PATH = '/media/olga/Data/projects/DeepPavlov/download/odqa/enwiki_test.db'
+SAVE_PATH = '/media/olga/Data/projects/DeepPavlov/download/odqa/enwiki_test_1.npz'
+BATCH_SIZE = 1000
+def load_stopwords(language='russian'):
+    return stopwords.words(language)
+def create_data_iterator(data_path, batch_size):
+    return SQLiteDataIterator(data_path, batch_size=batch_size)
+def create_tokenizer(ngram_range, lemmas, stopwords):
+    return RussianTokenizer(ngram_range=ngram_range, lemmas=lemmas, stopwords=stopwords)
+def create_vectorizer(iterator, tokenizer):
+    return HashingTfIdfVectorizer(iterator, tokenizer=tokenizer)
+def main():
+    russian_stopwords = load_stopwords()
+    data_iterator = create_data_iterator(DATA_PATH, BATCH_SIZE)
+    tokenizer = create_tokenizer(ngram_range=[1, 2], lemmas=True, stopwords=russian_stopwords)
+    vectorizer = create_vectorizer(data_iterator, tokenizer)
+    start_time = time.time()
+    try:
+        vectorizer.fit()
+        vectorizer.save(SAVE_PATH)
+        elapsed_time = time.time() - start_time
+        logger.info(f"Vectorizer fitted and saved successfully. Time taken: {elapsed_time:.2f} seconds")
+    except Exception as e:
+        logger.exception("An error occurred during vectorization")
+        raise
+if __name__ == "__main__":
+    main()

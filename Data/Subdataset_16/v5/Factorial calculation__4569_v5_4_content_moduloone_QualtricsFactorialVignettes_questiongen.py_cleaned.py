@@ -1,0 +1,49 @@
+b1 = [
+    "factor list 1 item 1",
+    "factor list 1 item 2",
+    "factor list 1 item 3"
+]
+b2 = [
+    "factor list 2 item 1",
+    "factor list 2 item 2",
+    "factor list 2 item 3",
+    "factor list 2 item 4"
+]
+b3 = [
+    "factor list 3 item 1",
+    "factor list 3 item 2"
+]
+b4 = [
+    "factor list 4 item 1",
+    "factor list 4 item 2",
+    "factor list 4 item 3",
+    "factor list 4 item 4",
+    "factor list 4 item 5"
+]
+b5 = [
+    "factor list 5 item 1",
+    "factor list 5 item 2",
+    "factor list 5 item 3"
+]
+a1 = 1
+b6 = [
+    (i, j, k, l, m)
+    for i in b1
+    for j in b2
+    for k in b3
+    for l in b4
+    for m in b5
+]
+for item1, item2, item3, item4, item5 in b6:
+    print("[[Block]]")
+    print(f"{a1}. You are {item1}. You see {item2}. When you, {item3}, react {item4} in order to {item5}.")
+    print()
+    print("This situation is acceptable to me:")
+    print()
+    print("Strongly Agree.")
+    print("Agree.")
+    print("Neither Agree nor Disagree.")
+    print("Disagree.")
+    print("Strongly Disagree.")
+    a1 += 1
+    print()

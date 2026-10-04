@@ -1,0 +1,196 @@
+import time
+import json
+import os
+import random
+import networkx as nx
+import matplotlib.pyplot as plt
+from statistics import mean
+from datetime import datetime
+def to_seconds(timestamp):
+    formatted_time = f"{timestamp[:4]}-{timestamp[4:6]}-{timestamp[6:8]} {timestamp[8:10]}:{timestamp[10:12]}:{timestamp[12:]}"
+    time_obj = datetime.strptime(formatted_time, "%Y-%m-%d %H:%M:%S")
+    return time.mktime(time_obj.timetuple())
+def calculate_mean_delta(all_timestamps):
+    deltas = [abs(to_seconds(all_timestamps[i + 1]) - to_seconds(all_timestamps[i])) for i in range(len(all_timestamps) - 1)]
+    non_zero_deltas = [delta for delta in deltas if delta != 0]
+    return mean(non_zero_deltas) if non_zero_deltas else 0
+def group_timestamps(all_timestamps, delta_t):
+    interval_dict = {}
+    group = set()
+    interval_count = 1
+    i = 0
+    while i < len(all_timestamps):
+        group.add(all_timestamps[i])
+        j = i + 1
+        while j < len(all_timestamps) and abs(to_seconds(all_timestamps[j]) - to_seconds(all_timestamps[i])) <= delta_t:
+            group.add(all_timestamps[j])
+            i += 1
+            j += 1
+        interval_dict[interval_count] = list(group)
+        group = set()
+        interval_count += 1
+        i += 1
+    if i < len(all_timestamps):
+        interval_dict[interval_count] = [all_timestamps[-1]]
+    return interval_dict
+def extract_user_times(filenames):
+    all_user_ids = set()
+    all_user_times = {}
+    for filename in filenames:
+        print(f'Processing file: {filename}')
+        with open(filename, 'r') as file:
+            for count, line in enumerate(file):
+                if count == 0:
+                    continue
+                row = line.strip().split(',')
+                user = row[0]
+                if 'device' in filename:
+                    all_user_ids.add(user)
+                    if user not in all_user_times:
+                        all_user_times[user] = {'Reach_Time': []}
+                    try:
+                        all_user_times[user]['Reach_Time'].append(row[-2])
+                    except Exception as e:
+                        print(f"Error processing reach time: {e}")
+                elif 'cookie' in filename and user in all_user_ids:
+                    if 'Data_Time' not in all_user_times[user]:
+                        all_user_times[user]['Data_Time'] = []
+                    try:
+                        all_user_times[user]['Data_Time'].append(row[1])
+                    except Exception as e:
+                        print(f"Error processing data time: {e}")
+    with open('all_user_id.txt', 'w') as file:
+        file.writelines([f"{user_id}\n" for user_id in all_user_ids])
+    with open('user_time_info.json', 'w') as file:
+        json.dump(all_user_times, file)
+    sampled_user_ids = random.sample(list(all_user_ids), 10)
+    with open('10_all_user_id.txt', 'w') as file:
+        file.writelines([f"{user_id}\n" for user_id in sampled_user_ids])
+    sampled_user_times = {user: all_user_times[user] for user in sampled_user_ids}
+    with open('10_user_time_info.json', 'w') as file:
+        json.dump(sampled_user_times, file)
+    return all_user_ids, all_user_times
+def extract_user_devices(all_user_ids, filenames):
+    all_user_info = {}
+    for filename in filenames:
+        print(f'Processing file: {filename}')
+        with open(filename, 'r') as file:
+            for count, line in enumerate(file):
+                if count == 0:
+                    continue
+                row = line.strip().split(',')
+                user = row[0]
+                if user not in all_user_info:
+                    all_user_info[user] = {'Reach_Time': {}, 'Data_Time': {}}
+                if 'device' in filename:
+                    try:
+                        reach_time = row[-2]
+                        device_ip = row[-9]
+                        keyword = row[-8]
+                        devices = row[1:4]
+                        if reach_time not in all_user_info[user]['Reach_Time']:
+                            all_user_info[user]['Reach_Time'][reach_time] = {}
+                        for device in devices:
+                            if device:
+                                if device not in all_user_info[user]['Reach_Time'][reach_time]:
+                                    all_user_info[user]['Reach_Time'][reach_time][device] = {'Device_IP': [], 'Keyword': []}
+                                all_user_info[user]['Reach_Time'][reach_time][device]['Device_IP'].append(device_ip)
+                                all_user_info[user]['Reach_Time'][reach_time][device]['Keyword'].append(keyword)
+                    except Exception as e:
+                        print(f"Error processing device info: {e}")
+                elif 'cookie' in filename:
+                    try:
+                        data_time = row[1]
+                        cookie = row[2]
+                        cookie_ip = row[-2]
+                        title = row[-1]
+                        if data_time not in all_user_info[user]['Data_Time']:
+                            all_user_info[user]['Data_Time'][data_time] = {'Cookie': [], 'Cookie_IP': [], 'title': []}
+                        all_user_info[user]['Data_Time'][data_time]['Cookie'].append(cookie)
+                        all_user_info[user]['Data_Time'][data_time]['Cookie_IP'].append(cookie_ip)
+                        all_user_info[user]['Data_Time'][data_time]['title'].append(title)
+                    except Exception as e:
+                        print(f"Error processing cookie info: {e}")
+    with open('all_user_info.json', 'w') as file:
+        json.dump(all_user_info, file)
+    with open('10_all_user_id.txt', 'r') as file:
+        sampled_user_ids = [line.strip() for line in file]
+    sampled_user_info = {user: all_user_info[user] for user in sampled_user_ids}
+    with open('10_all_user_info.json', 'w') as file:
+        json.dump(sampled_user_info, file)
+    return all_user_info
+def get_device_behavior(time_group, user_info):
+    grouped_devices = {}
+    for data_time in user_info['Data_Time']:
+        if data_time in time_group:
+            continue
+    for reach_time in user_info['Reach_Time']:
+        if reach_time in time_group:
+            devices = user_info['Reach_Time'][reach_time]
+            for device, info in devices.items():
+                if device not in grouped_devices:
+                    grouped_devices[device] = {'Keyword': [], 'Device_IP': []}
+                grouped_devices[device]['Keyword'].extend(info['Keyword'])
+                grouped_devices[device]['Device_IP'].extend(info['Device_IP'])
+    return grouped_devices
+def calculate_device_similarity(device1, device2, device_info):
+    def jaccard_similarity(list1, list2):
+        flat_list1 = [item for sublist in list1 for item in sublist]
+        flat_list2 = [item for sublist in list2 for item in sublist]
+        common_items = set(flat_list1) & set(flat_list2)
+        all_items = set(flat_list1) | set(flat_list2)
+        return len(common_items) / len(all_items) if all_items else 0.0
+    keyword_similarity = jaccard_similarity(device_info[device1]['Keyword'], device_info[device2]['Keyword'])
+    ip_similarity = jaccard_similarity(device_info[device1]['Device_IP'], device_info[device2]['Device_IP'])
+    return 0.5 * keyword_similarity + 0.5 * ip_similarity
+def merge_graphs(name, graph_list):
+    merged_graph = nx.Graph(name=f'merged_{name}')
+    for idx, graph in enumerate(graph_list):
+        nodes = [f"{node}_{idx}" for node in graph.nodes()]
+        merged_graph.add_nodes_from(nodes)
+        for u, v, w in graph.edges(data=True):
+            merged_graph.add_edge(f"{u}_{idx}", f"{v}_{idx}", weight=w['weight'])
+        if idx > 0:
+            for node in merged_graph.nodes():
+                if f"_{idx}" in node:
+                    base_node = node.split('_')[0]
+                    prev_node = f"{base_node}_{idx - 1}"
+                    if prev_node in merged_graph.nodes() and node != prev_node:
+                        merged_graph.add_edge(node, prev_node, weight=0)
+    return merged_graph
+def draw_graph(median_t, current_time, user_idx, user, graph, custom_positions=True, save_to_disk=True):
+    cleaned_graph = nx.Graph(name=graph.name)
+    node_map = {node.split('_')[0]: f'd{idx}' for idx, node in enumerate(graph.nodes())}
+    for node in graph.nodes():
+        base_node, idx = node.split('_')
+        cleaned_node = f"{node_map[base_node]}_{idx}"
+        cleaned_graph.add_node(cleaned_node)
+    for u, v, w in graph.edges(data=True):
+        if u != v:
+            cleaned_graph.add_edge(
+                f"{node_map[u.split('_')[0]]}_{u.split('_')[1]}",
+                f"{node_map[v.split('_')[0]]}_{v.split('_')[1]}",
+                weight=w['weight']
+            )
+    if custom_positions:
+        pos = {f"{node_map[node.split('_')[0]]}_{node.split('_')[1]}": (0.2 * i, j)
+               for j, layer in enumerate(sorted(set(node.split('_')[1] for node in cleaned_graph.nodes())))
+               for i, node in enumerate(sorted(node for node in cleaned_graph.nodes() if layer == node.split('_')[1]))}
+    else:
+        pos = nx.spring_layout(cleaned_graph)
+    nx.draw_networkx_nodes(cleaned_graph, pos, node_color='w', node_size=100)
+    for u, v, w in cleaned_graph.edges(data=True):
+        nx.draw_networkx_edges(
+            cleaned_graph, pos, edgelist=[(u, v)], edge_color='r' if w['weight'] == 0 else 'k' if w['weight'] == 1 else 'b',
+            style='dashed' if w['weight'] == 0 else 'solid', width=0.5 if w['weight'] == 0 else 1.0
+        )
+    nx.draw_networkx_labels(cleaned_graph, pos, font_size=3)
+    if save_to_disk:
+        nx.draw_networkx_edge_labels(cleaned_graph, pos, label_pos=0.5, font_size=1)
+        output_dir = f"{current_time}---sampled_results"
+        os.makedirs(output_dir, exist_ok=True)
+        nx.write_gml(graph, f"{output_dir}/{user_idx}--{median_t}.gml")
+        plt.savefig(f"{output_dir}/{user_idx}--{median_t}.pdf")
+        with open(f"{output_dir}/abnormal_user.txt", 'a') as file:
+            file.write(f"{user}\n")
+    plt.clf()

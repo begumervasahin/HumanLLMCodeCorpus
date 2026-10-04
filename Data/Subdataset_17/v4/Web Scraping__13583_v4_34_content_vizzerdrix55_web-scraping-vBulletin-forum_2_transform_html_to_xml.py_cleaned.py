@@ -1,0 +1,64 @@
+import os
+import codecs
+import logging
+from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
+logging.basicConfig(
+    filename='xml-transformation.log',
+    filemode='w',
+    format='%(asctime)s %(message)s',
+    level=logging.WARNING
+)
+logging.critical('Start of processing')
+directory_path = ''
+directory = os.fsencode(directory_path)
+filepaths = []
+for file in os.listdir(directory):
+    filename = os.fsdecode(file)
+    if filename.endswith(".html"):
+        filepaths.append(os.path.join(directory_path, filename))
+    else:
+        logging.error(f'Skipped non-HTML file: {filename}')
+for file in filepaths:
+    try:
+        with codecs.open(file, 'r', 'utf-8') as f:
+            page = f.read()
+    except UnicodeDecodeError:
+        logging.error(f'Skipped {file} due to UnicodeDecodeError')
+        continue
+    soup = BeautifulSoup(page, 'lxml')
+    postlist = soup.find_all('li', class_='postbit')
+    if not postlist:
+        logging.error(f'Unexpected HTML structure for postlist in {file}')
+        continue
+    root = ET.Element('root')
+    for post in postlist:
+        post_node = ET.SubElement(root, 'post')
+        date = post.find('div', class_='datetime')
+        if date:
+            ET.SubElement(post_node, 'date').text = date.get_text()
+        else:
+            logging.error('No HTML structure found for date')
+        title = post.find('div', class_='title')
+        if title:
+            ET.SubElement(post_node, 'title').text = title.get_text()
+        else:
+            logging.error('No HTML structure found for title')
+        username = post.find('span', class_='username')
+        if username:
+            ET.SubElement(post_node, 'username').text = username.get_text()
+        else:
+            logging.error('No HTML structure found for username')
+        content = post.find('blockquote', class_='restore')
+        if content:
+            bbcodes = content.find_all('div', class_='bbcode_quote')
+            for bbcode in bbcodes:
+                bbcode.decompose()
+            ET.SubElement(post_node, 'content').text = content.get_text()
+        else:
+            logging.error('No HTML structure found for content')
+    tree = ET.ElementTree(root)
+    xml_filename = f'{os.path.splitext(file)[0]}.xml'
+    tree.write(xml_filename)
+    logging.critical(f'Saved file {xml_filename}')
+logging.critical('End of processing')

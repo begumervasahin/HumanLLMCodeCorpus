@@ -1,0 +1,52 @@
+import sys
+import urllib.request
+import pandas as pd
+import numpy as np
+import pyqtgraph as pg
+from pyqtgraph import QtCore, QtGui
+class CandlestickItem(pg.GraphicsObject):
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+        self.generate_picture()
+    def generate_picture(self):
+        self.picture = QtGui.QPicture()
+        painter = QtGui.QPainter(self.picture)
+        painter.setPen(pg.mkPen('w'))
+        bar_width = (self.data[1][0] - self.data[0][0]) / 3.
+        for (timestamp, open_price, close_price, low, high) in self.data:
+            painter.drawLine(QtCore.QPointF(timestamp, low), QtCore.QPointF(timestamp, high))
+            if open_price > close_price:
+                painter.setBrush(pg.mkBrush('r'))
+            else:
+                painter.setBrush(pg.mkBrush('g'))
+            painter.drawRect(QtCore.QRectF(timestamp - bar_width, open_price, bar_width * 2, close_price - open_price))
+        painter.end()
+    def paint(self, painter, *args):
+        painter.drawPicture(0, 0, self.picture)
+    def boundingRect(self):
+        return QtCore.QRectF(self.picture.boundingRect())
+def fetch_stock_data(ticker):
+    url = f"https:
+    stock_file = f"{ticker}.csv"
+    urllib.request.urlretrieve(url, stock_file)
+    return pd.read_csv(stock_file)
+def process_stock_data(df):
+    df = df[::-1].reset_index(drop=True)
+    df = df[['Open', 'Close', 'Low', 'High']]
+    timestamps = np.arange(1, len(df) + 1, 1.0)
+    data = [(timestamps[i], row['Open'], row['Close'], row['Low'], row['High']) for i, row in df.iterrows()]
+    return data
+def main():
+    ticker = 'aapl'
+    df = fetch_stock_data(ticker)
+    data = process_stock_data(df)
+    app = QtGui.QApplication(sys.argv)
+    candlestick_item = CandlestickItem(data)
+    plot_widget = pg.plot()
+    plot_widget.addItem(candlestick_item)
+    plot_widget.setWindowTitle('Candlestick Chart Example')
+    if not (sys.flags.interactive != 1 or hasattr(QtCore, 'PYQT_VERSION')):
+        QtGui.QApplication.instance().exec_()
+if __name__ == '__main__':
+    main()

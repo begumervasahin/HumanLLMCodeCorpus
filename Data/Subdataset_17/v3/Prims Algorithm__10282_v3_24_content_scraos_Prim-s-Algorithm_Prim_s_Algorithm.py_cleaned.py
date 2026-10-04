@@ -1,0 +1,64 @@
+from WGraphClass import Dgraph
+from tkinter import *
+class GraphApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Graph Creator with Prim's Algorithm")
+        self.canvas = Canvas(root, width=600, height=400)
+        self.canvas.pack()
+        self.widgetlist = []
+        self.graph = Dgraph()
+        self.coords = []
+        self.vertices_save = {}
+        self.alphab = [chr(i) for i in range(65, 115)]
+        self.connecter = []
+        self.distsT = {}
+        self.linescolor = {}
+        self.entry3 = Entry(root)
+        self.entry3.pack(side=RIGHT)
+        self.label3 = Label(root, text='Distance entry')
+        self.label3.pack(side=RIGHT)
+        self.prims_btn = Button(root, text='Execute Prim\'s Algorithm', command=self.exec_prims)
+        self.prims_btn.pack(side=LEFT)
+        self.canvas.bind("<Button-1>", self.create_vertex)
+    def create_vertex(self, event):
+        self.coords.append((event.x, event.y))
+        if len(self.coords) == 1:
+            vertex_label = self.alphab.pop(0)
+            btn = Button(self.root, text=vertex_label, bg='white', command=lambda v=vertex_label: self.click_vertex(v))
+            btn.place(x=self.coords[0][0], y=self.coords[0][1])
+            self.widgetlist.append(btn)
+            self.vertices_save[vertex_label] = (self.coords[0][0], self.coords[0][1])
+            self.graph.addnode(vertex_label)
+            self.coords.clear()
+    def click_vertex(self, vertex):
+        self.connecter.append(vertex)
+        if len(self.connecter) == 2:
+            self.graph.addarrow((self.connecter[0], self.connecter[1]), int(self.entry3.get()))
+            x1, y1 = self.vertices_save[self.connecter[0]]
+            x2, y2 = self.vertices_save[self.connecter[1]]
+            self.linescolor[(self.connecter[0], self.connecter[1])] = (x1, y1, x2, y2)
+            self.canvas.create_line(x1, y1, x2, y2)
+            self.distsT[(self.connecter[0], self.connecter[1])] = Label(self.root, text=str(self.graph.dists[(self.connecter[0], self.connecter[1])]))
+            self.distsT[(self.connecter[0], self.connecter[1])].place(x=(x1 + x2) / 2, y=(y1 + y2) / 2 + 10)
+            self.connecter.clear()
+    def exec_prims(self):
+        self.prims(self.graph)
+    def prims(self, graph):
+        start_vertex = graph.closest_neighb(graph.nodes[0])[0]
+        tree = [(start_vertex, graph.nodes[0])] if (start_vertex, graph.nodes[0]) in graph.arrows else [(graph.nodes[0], start_vertex)]
+        while len(tree) < len(graph.nodes) - 1:
+            least = float('inf')
+            new_edge = None
+            for edge in graph.get_edges(tree):
+                if graph.dists[edge] < least:
+                    least = graph.dists[edge]
+                    new_edge = edge if edge in graph.arrows else (edge[1], edge[0])
+            tree.append(new_edge)
+        for edge in tree:
+            x1, y1, x2, y2 = self.linescolor[edge]
+            self.canvas.create_line(x1, y1, x2, y2, fill='green')
+if __name__ == "__main__":
+    root = Tk()
+    app = GraphApp(root)
+    root.mainloop()

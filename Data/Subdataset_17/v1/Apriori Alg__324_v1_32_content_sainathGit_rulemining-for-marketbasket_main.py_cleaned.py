@@ -1,0 +1,87 @@
+import sys
+min_support = float(sys.argv[1])
+min_confidence = float(sys.argv[2])
+input_file = sys.argv[3]
+db = []
+with open(input_file, "r") as tf:
+    for line in tf:
+        db.append([int(x) for x in line.split()])
+min_support = min_support * len(db)
+def clear(table):
+    ktd = [k for k in table.keys() if table[k] < min_support]
+    for i in ktd:
+        del table[i]
+def get_key(l1, l2):
+    key = []
+    last = len(l1) - 1
+    key.extend(l1[:last])
+    key.append(l1[last])
+    key.append(l2[last])
+    return tuple(key)
+def can_mix(l1, l2):
+    last = len(l1) - 1
+    for i in range(last):
+        if l1[i] != l2[i]:
+            return False
+    if l1[last] >= l2[last]:
+        return False
+    return True
+def apriori_gen(table):
+    new_table = {}
+    for l1 in table.keys():
+        for l2 in table.keys():
+            if can_mix(l1, l2):
+                new_table[get_key(l1, l2)] = 0
+    return new_table
+def count_values(table):
+    for k in table.keys():
+        for t in db:
+            if set(k).issubset(set(t)):
+                table[k] += 1
+def powerset(seq):
+    if len(seq) <= 1:
+        yield seq
+        yield []
+    else:
+        for item in powerset(seq[1:]):
+            yield [seq[0]] + item
+            yield item
+def print_rule(s, l_s, conf):
+    print(f"{s} ==> {l_s}              {conf}")
+def print_confs(item, L):
+    global count
+    for s in powerset(list(item)):
+        if s == [] or s == list(item):
+            continue
+        l_s = [x for x in item if x not in s]
+        conf = L[item] / L[tuple(s)]
+        if conf > min_confidence:
+            print_rule(s, l_s, conf)
+            count += 1
+l = []
+table = {}
+for t in db:
+    for x in t:
+        if (x,) not in table.keys():
+            table[(x,)] = 1
+        else:
+            table[(x,)] += 1
+clear(table)
+l.append(table)
+k = 1
+while len(l[k-1]) != 0:
+    table = apriori_gen(l[k-1])
+    count_values(table)
+    clear(table)
+    l.append(table)
+    k += 1
+l.pop()
+L = {}
+for k in range(len(l)):
+    L.update(l[k])
+count = 0
+for item in L.keys():
+    if len(item) > 1:
+        print_confs(item, L)
+print(f"mined file {input_file}")
+print(f"and found a total of {count} association rules")

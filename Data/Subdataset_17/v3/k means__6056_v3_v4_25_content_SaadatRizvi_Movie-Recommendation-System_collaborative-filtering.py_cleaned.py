@@ -1,0 +1,42 @@
+import pandas as pd
+def load_ratings_data(file_path):
+    columns = ['user_id', 'movie_id', 'rating']
+    return pd.read_csv(file_path, sep='\t', names=columns, usecols=range(3))
+def load_movies_data(file_path):
+    columns = ['movie_id', 'title']
+    return pd.read_csv(file_path, sep='|', names=columns, usecols=range(2))
+def merge_data(movies, ratings):
+    return pd.merge(movies, ratings)
+def create_user_ratings_pivot(merged_data):
+    return merged_data.pivot_table(index='user_id', columns='title', values='rating')
+def calculate_corr_matrix(user_ratings_pivot, min_periods=100):
+    return user_ratings_pivot.corr(method='pearson', min_periods=min_periods)
+def get_user_ratings(user_ratings_pivot, user_id):
+    return user_ratings_pivot.loc[user_id].dropna()
+def find_similar_movies(user_ratings, corr_matrix):
+    similar_candidates = pd.Series(dtype=float)
+    for movie in user_ratings.index:
+        movie_similarities = corr_matrix[movie].dropna()
+        movie_similarities = movie_similarities.map(lambda x: x * user_ratings[movie])
+        similar_candidates = similar_candidates.append(movie_similarities)
+    return similar_candidates
+def aggregate_and_sort_candidates(similar_candidates):
+    similar_candidates = similar_candidates.groupby(similar_candidates.index).sum()
+    similar_candidates.sort_values(inplace=True, ascending=False)
+    return similar_candidates
+def filter_already_rated(similar_candidates, user_ratings):
+    return similar_candidates.drop(user_ratings.index, errors='ignore')
+def generate_recommendations(ratings_file, movies_file, user_id, output_file):
+    ratings = load_ratings_data(ratings_file)
+    movies = load_movies_data(movies_file)
+    merged_data = merge_data(movies, ratings)
+    user_ratings_pivot = create_user_ratings_pivot(merged_data)
+    corr_matrix = calculate_corr_matrix(user_ratings_pivot)
+    user_ratings = get_user_ratings(user_ratings_pivot, user_id)
+    similar_candidates = find_similar_movies(user_ratings, corr_matrix)
+    sorted_candidates = aggregate_and_sort_candidates(similar_candidates)
+    recommendations = filter_already_rated(sorted_candidates, user_ratings)
+    print(recommendations.head())
+    recommendations.to_csv(output_file)
+if __name__ == "__main__":
+    generate_recommendations('u.data', 'u.item', user_id=2, output_file='filteredSims.csv')

@@ -1,0 +1,13 @@
+def fibonacci(n):
+    memo = {0: 0, 1: 1}
+    def fib_memo(n):
+        if n not in memo:
+            memo[n] = fib_memo(n - 1) + fib_memo(n - 2)
+        return memo[n]
+    return fib_memo(n)
+def fibonacci_main():
+    for n in range(1, 47):
+        result = fibonacci(n)
+        print(f"{n}\t{result}")
+if __name__ == "__main__":
+    fibonacci_main()

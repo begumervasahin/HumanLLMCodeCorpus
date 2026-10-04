@@ -1,0 +1,73 @@
+'''
+Function used to accept input from user
+'''
+def getPrime():
+    aNumber = input("Please enter a number: ")
+    loopLogic = True
+    while loopLogic == True:
+        try:
+            properNumber = int(aNumber)
+            loopLogic = False
+        except ValueError:
+            print(f"The value entered is not an integer")
+            aNumber = input("Please enter a new value: ")
+    return properNumber
+'''
+Function used to check if number is a prime
+'''
+def isPrime(number):
+    isPrime = False
+    if number == 1:
+        isPrime = False
+    elif number == 2:
+        isPrime = True
+    else:
+        for element in range(2, number
+            if number % element == 0:
+                isPrime = False
+                break
+            else:
+                isPrime = True
+    return isPrime
+def getRange():
+    print("Give me a range of numbers and find out which numbers in the")
+    print("range are prime numbers?")
+    firstNumber = getPrime()
+    secondNumber = getPrime()
+    primeList = []
+    if firstNumber < secondNumber:
+        primeList = rangeOfPrime(firstNumber, secondNumber)
+    else:
+        primeList = rangeOfPrime(secondNumber, firstNumber)
+    return primeList
+def rangeOfPrime(num1, num2):
+    listOfPrimes = []
+    for element in range(num1, num2+1):
+        if isPrime(element):
+            listOfPrimes.append(element)
+    return listOfPrimes
+def nextHundredPrimes(number):
+    userNumber = number
+    listOfPrimes = []
+    primeStart = userNumber
+    while (len(listOfPrimes) < 100):
+        primeStart += 1
+        if isPrime(primeStart):
+            listOfPrimes.append(primeStart)
+    return listOfPrimes
+'''
+userNumber = getPrime()
+print(userNumber)
+if isPrime(userNumber):
+    print(f"{userNumber} is a Prime")
+else:
+    print(f"{userNumber} is not a Prime")
+print()
+print()
+primeRange = getRange()
+print(f"The list of primes are {primeRange}")
+print()
+print()
+oneHundredPrimes = nextHundredPrimes()
+print(f"The list of next 100 primes are {oneHundredPrimes}")
+'''

@@ -1,0 +1,42 @@
+from array import array
+from zlib import crc32
+import multiprocessing as mp
+PARALLEL = 4
+def hash_function(word, base):
+    return crc32(word.encode(), base)
+def found_common(set_a, set_b, a, b, m):
+    set_a_dict = {x: i for i, x in enumerate(set_a)}
+    return any(x in set_a_dict and a[set_a_dict[x]:set_a_dict[x]+m] == b[i:i+m] for i, x in enumerate(set_b))
+def compute_hashes(pool, s, length, prev_hashes):
+    return array('L', pool.starmap(hash_function, zip((s[i:i+length] for i in range(length, len(s))), prev_hashes[:-length])))
+def lcs(a, b):
+    pool = mp.Pool(PARALLEL)
+    if len(a) > len(b):
+        a, b = b, a
+    len_a, len_b = len(a) + 1, len(b) + 1
+    L_a = array('L', [0] * len_a)
+    R_a = compute_hashes(pool, a, 1, L_a[1:])
+    L_b = array('L', [0] * len_b)
+    R_b = compute_hashes(pool, b, 1, L_b[1:])
+    l, r = 0, 1
+    while r < len_a and found_common(R_a, R_b, a, b, r):
+        L_a, R_a = R_a, compute_hashes(pool, a, r, R_a)
+        L_b, R_b = R_b, compute_hashes(pool, b, r, R_b)
+        l, r = r, r * 2
+    r = min(r, len(a))
+    while l < r:
+        m = (l + r)
+        R_a = compute_hashes(pool, a, m - l, L_a)
+        R_b = compute_hashes(pool, b, m - l, L_b)
+        if found_common(R_a, R_b, a, b, m):
+            l = m
+            L_a, L_b = R_a, R_b
+        else:
+            r = m
+    set_a = {x: i for i, x in enumerate(L_a)}
+    unique_lcs = []
+    for i, x in enumerate(L_b):
+        loc = set_a.get(x)
+        if loc is not None and a[loc:loc+l] == b[i:i+l]:
+            unique_lcs.append(a[loc:loc+l])
+    return l, unique_lcs

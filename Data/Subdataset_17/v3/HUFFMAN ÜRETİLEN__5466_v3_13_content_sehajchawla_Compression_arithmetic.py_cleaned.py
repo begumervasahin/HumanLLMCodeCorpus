@@ -1,0 +1,110 @@
+from math import floor, ceil
+from sys import stdout as so
+from bisect import bisect
+def encode(sequence, probabilities):
+    precision = 32
+    max_value = (1 << precision) - 1
+    quarter = ceil(max_value / 4)
+    half = 2 * quarter
+    three_quarters = 3 * quarter
+    probabilities = {symbol: prob for symbol, prob in probabilities.items() if prob > 0}
+    cumulative_freq = [0]
+    for symbol in probabilities:
+        cumulative_freq.append(cumulative_freq[-1] + probabilities[symbol])
+    cumulative_freq.pop()
+    cumulative_freq = {symbol: freq for symbol, freq in zip(probabilities, cumulative_freq)}
+    encoded_sequence = []
+    lo, hi = 0, max_value
+    straddle = 0
+    for index, symbol in enumerate(sequence):
+        if index % 100 == 0:
+            so.write(f'Arithmetic encoded {floor(index / len(sequence) * 100)}%    \r')
+            so.flush()
+        range_size = (hi - lo) + 1
+        lo = ceil(lo + cumulative_freq[symbol] * range_size)
+        hi = floor(lo + probabilities[symbol] * range_size)
+        if lo == hi:
+            raise ValueError('Zero interval encountered!')
+        while True:
+            if hi < half:
+                encoded_sequence.append(0)
+                encoded_sequence.extend([1] * straddle)
+                straddle = 0
+            elif lo >= half:
+                encoded_sequence.append(1)
+                encoded_sequence.extend([0] * straddle)
+                straddle = 0
+                lo -= half
+                hi -= half
+            elif lo >= quarter and hi < three_quarters:
+                straddle += 1
+                lo -= quarter
+                hi -= quarter
+            else:
+                break
+            lo *= 2
+            hi = (2 * hi) + 1
+    straddle += 1
+    if lo < quarter:
+        encoded_sequence.append(0)
+        encoded_sequence.extend([1] * straddle)
+    else:
+        encoded_sequence.append(1)
+        encoded_sequence.extend([0] * straddle)
+    return encoded_sequence
+def decode(encoded_sequence, probabilities, sequence_length):
+    precision = 32
+    max_value = (1 << precision) - 1
+    quarter = ceil(max_value / 4)
+    half = 2 * quarter
+    three_quarters = 3 * quarter
+    probabilities = {symbol: prob for symbol, prob in probabilities.items() if prob > 0}
+    alphabet = list(probabilities)
+    cumulative_freq = [0]
+    for prob in probabilities.values():
+        cumulative_freq.append(cumulative_freq[-1] + prob)
+    cumulative_freq.pop()
+    probabilities = list(probabilities.values())
+    encoded_sequence.extend([0] * precision)
+    decoded_sequence = []
+    value = int(''.join(map(str, encoded_sequence[:precision])), 2)
+    encoded_position = precision
+    lo, hi = 0, max_value
+    while len(decoded_sequence) < sequence_length:
+        if len(decoded_sequence) % 100 == 0:
+            so.write(f'Arithmetic decoded {floor(len(decoded_sequence) / sequence_length * 100)}%    \r')
+            so.flush()
+        range_size = hi - lo + 1
+        symbol_index = bisect(cumulative_freq, (value - lo) / range_size) - 1
+        decoded_sequence.append(alphabet[symbol_index])
+        lo = lo + ceil(cumulative_freq[symbol_index] * range_size)
+        hi = lo + floor(probabilities[symbol_index] * range_size)
+        if lo == hi:
+            raise ValueError('Zero interval encountered!')
+        while True:
+            if hi < half:
+                pass
+            elif lo >= half:
+                lo -= half
+                hi -= half
+                value -= half
+            elif lo >= quarter and hi < three_quarters:
+                lo -= quarter
+                hi -= quarter
+                value -= quarter
+            else:
+                break
+            lo *= 2
+            hi = (2 * hi) + 1
+            value = (2 * value) + encoded_sequence[encoded_position]
+            encoded_position += 1
+            if encoded_position == len(encoded_sequence):
+                break
+    return decoded_sequence
+if __name__ == "__main__":
+    probabilities = {'a': 0.1, 'b': 0.2, 'c': 0.3, 'd': 0.4}
+    sequence = ['a', 'b', 'c', 'd', 'a', 'c', 'b', 'd']
+    encoded_sequence = encode(sequence, probabilities)
+    print("\nEncoded sequence:", encoded_sequence)
+    decoded_sequence = decode(encoded_sequence, probabilities, len(sequence))
+    print("Decoded sequence:", decoded_sequence)

@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.stats import norm
+import math
+def naive_bayes(train_size_class0, train_size_class1):
+    mean_class0 = [1, 0]
+    mean_class1 = [0, 1]
+    covariance_matrix = [[1, 0.75], [0.75, 1]]
+    x_train_class0, y_train_class0 = np.random.multivariate_normal(mean_class0, covariance_matrix, train_size_class0).T
+    x_train_class1, y_train_class1 = np.random.multivariate_normal(mean_class1, covariance_matrix, train_size_class1).T
+    x_test_class0, y_test_class0 = np.random.multivariate_normal(mean_class0, covariance_matrix, 100).T
+    x_test_class1, y_test_class1 = np.random.multivariate_normal(mean_class1, covariance_matrix, 100).T
+    mean_x_class0, mean_y_class0 = np.mean(x_train_class0), np.mean(y_train_class0)
+    std_x_class0, std_y_class0 = np.std(x_train_class0), np.std(y_train_class0)
+    mean_x_class1, mean_y_class1 = np.mean(x_train_class1), np.mean(y_train_class1)
+    std_x_class1, std_y_class1 = np.std(x_train_class1), np.std(y_train_class1)
+    training_data = pd.DataFrame({
+        'x': np.concatenate((x_train_class0, x_train_class1)),
+        'y': np.concatenate((y_train_class0, y_train_class1)),
+        'label': np.concatenate((np.zeros(len(x_train_class0)), np.ones(len(x_train_class1))))
+    })
+    test_data = pd.DataFrame({
+        'x': np.concatenate((x_test_class0, x_test_class1)),
+        'y': np.concatenate((y_test_class0, y_test_class1)),
+        'actual': np.concatenate((np.zeros(len(x_test_class0)), np.ones(len(x_test_class1))))
+    })
+    prior_class0 = train_size_class0 / (train_size_class0 + train_size_class1)
+    prior_class1 = train_size_class1 / (train_size_class0 + train_size_class1)
+    likelihood_class0 = norm.pdf(test_data['x'], loc=mean_x_class0, scale=std_x_class0) * norm.pdf(test_data['y'], loc=mean_y_class0, scale=std_y_class0)
+    likelihood_class1 = norm.pdf(test_data['x'], loc=mean_x_class1, scale=std_x_class1) * norm.pdf(test_data['y'], loc=mean_y_class1, scale=std_y_class1)
+    posterior_class0 = likelihood_class0 * prior_class0
+    posterior_class1 = likelihood_class1 * prior_class1
+    test_data['post_class0'] = posterior_class0
+    test_data['post_class1'] = posterior_class1
+    test_data['predicted'] = np.where(posterior_class0 > posterior_class1, 0, 1)
+    test_data['color'] = np.where(posterior_class0 > posterior_class1, 'r', 'b')
+    true_negatives = np.sum((test_data['predicted'] == 0) & (test_data['actual'] == 0))
+    true_positives = np.sum((test_data['predicted'] == 1) & (test_data['actual'] == 1))
+    false_positives = np.sum((test_data['predicted'] == 0) & (test_data['actual'] == 1))
+    false_negatives = np.sum((test_data['predicted'] == 1) & (test_data['actual'] == 0))
+    accuracy = (true_positives + true_negatives) / (true_positives + false_positives + false_negatives + true_negatives)
+    error_rate = 1 - accuracy
+    recall = true_positives / (true_positives + false_negatives)
+    precision = true_positives / (true_positives + false_positives)
+    print(f"Accuracy: {accuracy}")
+    print(f"Error Rate: {error_rate}")
+    print(f"Recall: {recall}")
+    print(f"Precision: {precision}")
+    print(f"True Positives: {true_positives}, True Negatives: {true_negatives}")
+    print(f"False Positives: {false_positives}, False Negatives: {false_negatives}")
+    plt.figure(figsize=(10, 10))
+    plt.scatter(test_data['x'], test_data['y'], color=test_data['color'], alpha=0.5, edgecolor='k', marker="x")
+    plt.show()
+    return accuracy
+def plot_roc_curve(fpr, tpr):
+    fpr = np.append(fpr, 1)
+    tpr = np.append(tpr, 1)
+    plt.plot(fpr, tpr, color='blue')
+    plt.xlabel('False Positive Rate (FPR)', fontsize=16)
+    plt.ylabel('True Positive Rate (TPR)', fontsize=16)
+    plt.title('ROC Curve')
+    auc = np.trapz(tpr, fpr)
+    print(f"Area Under the Curve (AUC): {auc}")
+    plt.show()
+def main():
+    accuracy = naive_bayes(500, 500)
+    print("Accuracy of the model:", accuracy)
+if __name__ == "__main__":
+    main()

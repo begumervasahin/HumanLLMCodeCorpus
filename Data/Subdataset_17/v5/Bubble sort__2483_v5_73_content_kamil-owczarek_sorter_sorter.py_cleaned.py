@@ -1,0 +1,75 @@
+import datetime
+from configparser import ConfigParser
+def load_config(config_file='config.ini'):
+    config = ConfigParser()
+    config.read(config_file)
+    return {
+        'quick_sort': {
+            'elements': int(config['quicksort']['elements']),
+            'step': int(config['quicksort']['step']),
+            'iterations': int(config['quicksort']['iter'])
+        },
+        'bubble_sort': {
+            'elements': int(config['bubblesort']['elements']),
+            'step': int(config['bubblesort']['step']),
+            'iterations': int(config['bubblesort']['iter'])
+        }
+    }
+def open_input_file(input_file):
+    with open(input_file, "r") as f:
+        data = eval(f.readline())
+    return data
+def bubble_sort_algorithm(element_list, n):
+    for i in range(n):
+        for j in range(n - i - 1):
+            if element_list[j] > element_list[j + 1]:
+                element_list[j], element_list[j + 1] = element_list[j + 1], element_list[j]
+def quick_sort_algorithm(element_list, l=0, r=None):
+    if r is None:
+        r = len(element_list) - 1
+    i, j = l, r
+    mid = (l + r)
+    pivot = element_list[mid]
+    while i <= j:
+        while element_list[i] < pivot:
+            i += 1
+        while element_list[j] > pivot:
+            j -= 1
+        if i <= j:
+            element_list[i], element_list[j] = element_list[j], element_list[i]
+            i += 1
+            j -= 1
+    if l < j:
+        quick_sort_algorithm(element_list, l, j)
+    if i < r:
+        quick_sort_algorithm(element_list, i, r)
+def main():
+    config = load_config()
+    data = open_input_file("input.txt")
+    while True:
+        print()
+        choice = input("Enter your choice: ").strip()
+        if choice == "1":
+            print("Sorting with Bubble Sort")
+            start_time = datetime.datetime.now()
+            for i in range(0, config['bubble_sort']['elements'] + config['bubble_sort']['step'], config['bubble_sort']['step']):
+                bubble_sort_algorithm(data, i)
+            elapsed_time = datetime.datetime.now() - start_time
+            print(data)
+            print(f"Sorted in {elapsed_time.total_seconds()} seconds.")
+        elif choice == "2":
+            print("Sorting with Quick Sort")
+            start_time = datetime.datetime.now()
+            for j in range(0, config['quick_sort']['elements'] + config['quick_sort']['step'], config['quick_sort']['step']):
+                for _ in range(config['quick_sort']['iterations']):
+                    quick_sort_algorithm(data, 0, j - 1)
+            elapsed_time = datetime.datetime.now() - start_time
+            print(data)
+            print(f"Sorted in {elapsed_time.total_seconds()} seconds.")
+        elif choice == "w":
+            print("Bye Bye")
+            break
+        else:
+            print("Unknown option, please try again.")
+if __name__ == '__main__':
+    main()

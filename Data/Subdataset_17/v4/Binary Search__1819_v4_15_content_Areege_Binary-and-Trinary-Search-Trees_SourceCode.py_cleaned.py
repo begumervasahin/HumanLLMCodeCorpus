@@ -1,0 +1,67 @@
+import random
+import time
+def binary_search(collection, target):
+    low, high = 0, len(collection) - 1
+    while low <= high:
+        mid = (low + high)
+        if collection[mid] == target:
+            return mid
+        elif collection[mid] > target:
+            high = mid - 1
+        else:
+            low = mid + 1
+    return -1
+def trinary_search(collection, target):
+    low, high = 0, len(collection) - 1
+    while low <= high:
+        one_third = low + (high - low)
+        two_thirds = low + 2 * (high - low)
+        if collection[one_third] == target:
+            return one_third
+        elif collection[two_thirds] == target:
+            return two_thirds
+        elif target < collection[one_third]:
+            high = one_third - 1
+        elif target < collection[two_thirds]:
+            low, high = one_third + 1, two_thirds - 1
+        else:
+            low = two_thirds + 1
+    return -1
+def selection_sort(a_list):
+    for fill in range(len(a_list) - 1, 0, -1):
+        max_position = 0
+        for index in range(1, fill + 1):
+            if a_list[index] > a_list[max_position]:
+                max_position = index
+        a_list[fill], a_list[max_position] = a_list[max_position], a_list[fill]
+def create_even_list(n):
+    return [x if x % 2 == 0 else x + 1 for x in random.sample(range(1, 16001), n)]
+def create_odd_list(n):
+    return [x if x % 2 != 0 else x + 1 for x in random.sample(range(1, 1000000), 10 * n)]
+def create_duplicate_list(list1):
+    return [item for item in list1 for _ in range(10)]
+def check_time(list1, list2):
+    start_time = time.process_time()
+    for item in list2:
+        binary_search(list1, item)
+    print(f"Binary Search time: {time.process_time() - start_time}")
+    start_time = time.process_time()
+    for item in list2:
+        trinary_search(list1, item)
+    print(f"Trinary Search time: {time.process_time() - start_time}\n")
+def testing(n):
+    print(f"Experiment with n = {n}\n")
+    list1 = create_even_list(n)
+    selection_sort(list1)
+    list2 = create_duplicate_list(list1)
+    check_time(list1, list2)
+    print(f"Experiment with odd list of size {10 * n}\n")
+    list2 = create_odd_list(n)
+    check_time(list1, list2)
+def main():
+    n_values = [1000, 2000, 4000, 8000, 16000]
+    for n in n_values:
+        print(f"For n = {n}\n")
+        testing(n)
+if __name__ == "__main__":
+    main()

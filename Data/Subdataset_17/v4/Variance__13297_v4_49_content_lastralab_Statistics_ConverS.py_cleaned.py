@@ -1,0 +1,52 @@
+import numpy as np
+import pandas as pd
+import re
+def main():
+    print('\n' * 3)
+    print('          Welcome to ConverS.py')
+    print('           --by Niam Moltta--')
+    print('                ~~/\
+    print('\n' * 3)
+    print('Application: STRINGS TO NUMBERS TRANSFORMATION.\n\nINSTRUCTIONS:\n\n-You need to modify the code itself in order to convert your own data.\n\n')
+    filecsv = input('File name: ')
+    if not filecsv:
+        print('\nArrivederci!\n')
+        exit()
+    data = pd.read_csv(filecsv)
+    frame = pd.DataFrame(data)
+    columns = frame.columns.values
+    print('\nColumns in', re.findall('(.+?).csv', filecsv), 'are:\n')
+    print(columns)
+    print(' ')
+    column = input('Enter column header:\n\n')
+    if column.lower() in ['ya', '']:
+        print('\nHasta la vista, human.\n\n')
+        exit()
+    data[column].fillna(0, inplace=True)
+    numbers = data[column]
+    keeps, replaces, total = 0, 0, 0
+    numeros = []
+    for line in numbers:
+        line = str(line)
+        if len(line) <= 3:
+            valor = line
+            keeps += 1
+            print('Keeping value')
+        else:
+            valor = '0'
+            replaces += 1
+            print('Replacing value')
+        numeros.append(valor)
+        total += 1
+    print('\nNew list created\n')
+    print('Number of replaced values =', replaces)
+    print('Number of kept values =', keeps)
+    print('Total =', total)
+    print(' ')
+    with open('ChangedValues.txt', 'w') as nfile:
+        for numero in numeros:
+            nfile.write(str(numero) + '\n')
+    print('File created as "ChangedValues.txt"')
+    print(' ')
+if __name__ == "__main__":
+    main()

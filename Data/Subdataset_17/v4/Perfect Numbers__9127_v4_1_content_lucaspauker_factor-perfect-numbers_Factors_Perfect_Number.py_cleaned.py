@@ -1,0 +1,30 @@
+def classify_number(n):
+    num_sum = 0
+    factors = []
+    x = 1
+    while x <= (n + 1)
+        if n % x == 0:
+            num_sum += x
+            factors.append(x)
+        x += 1
+    print('Factors:', factors)
+    print('Sum of factors:', num_sum)
+    print('Number of factors:', len(factors))
+    if num_sum == n:
+        return 'Perfect'
+    elif num_sum < n:
+        return 'Deficient'
+    else:
+        return 'Abundant'
+def perfect_square_factors(n):
+    factors = []
+    x = 1
+    while x <= (n + 1)
+        y = x ** 2
+        if n % y == 0:
+            factors.append(x)
+        x += 1
+    print('Perfect square factors:', factors)
+    print('Number of perfect square factors:', len(factors))
+print(classify_number(28))
+perfect_square_factors(28)

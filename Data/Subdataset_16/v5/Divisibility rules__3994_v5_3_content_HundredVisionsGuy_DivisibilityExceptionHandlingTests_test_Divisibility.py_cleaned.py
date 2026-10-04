@@ -1,0 +1,33 @@
+import unittest
+import re
+import Divisibility
+class class1(unittest.TestCase):
+    def fonk1(self):
+        with open('Divisibility.py', 'r') as file:
+            self.b1 = file.read()
+    def fonk2(self):
+        self.assertEqual('error', Divisibility.divisibility(10, 0))
+    def fonk3(self):
+        self.assertEqual('error', Divisibility.divisibility(10, 'five'))
+    def fonk4(self):
+        b2 = Divisibility.divisibility(21, 3)
+        self.assertEqual('divides evenly', b2)
+    def fonk5(self):
+        b2 = Divisibility.divisibility(10, 2)
+        self.assertEqual('divides evenly', b2)
+    def fonk6(self):
+        b2 = Divisibility.divisibility(5, 2)
+        self.assertEqual("doesn't divide evenly", b2)
+    def fonk7(self):
+        b2 = Divisibility.divisibility(7, 2)
+        self.assertEqual("doesn't divide evenly", b2)
+    def fonk8(self):
+        b3 = re.findall(r"try:", self.b1)
+        self.assertTrue(b3)
+    def fonk9(self):
+        b3 = re.findall(r"except ValueError:", self.b1)
+        b3 += re.findall(r"except:", self.b1)
+        b3 += re.findall(r"except ZeroDivisionError:", self.b1)
+        self.assertTrue(b3)
+if b4 = = '__main__':
+    unittest.main()

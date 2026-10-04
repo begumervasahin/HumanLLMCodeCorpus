@@ -1,0 +1,25 @@
+shared_base = 47
+shared_prime = 199
+print(f"g is equal to {shared_base} & p is equal to {shared_prime}")
+print("--------------------------")
+alice_secret = 6
+bob_secret = 2
+print("--------------------------")
+print("Alice performs the following operation: g^a mod p and sends result (A) to Bob")
+A = pow(shared_base, alice_secret, shared_prime)
+print(f"Alice's result (A): {A}")
+print("--------------------------")
+print("Bob performs the same operation and sends result (B) to Alice")
+B = pow(shared_base, bob_secret, shared_prime)
+print(f"Bob's result (B): {B}")
+print("--------------------------")
+print("Alice now performs the same operation using calculated result (B) from Bob")
+alice_modulo = pow(B, alice_secret, shared_prime)
+print(f"Alice's shared key: {alice_modulo}")
+print("--------------------------")
+print("Bob now performs the same operation using calculated result (A) from Alice")
+bob_modulo = pow(A, bob_secret, shared_prime)
+print(f"Bob's shared key: {bob_modulo}")
+print("--------------------------")
+print(f"Shared Key is equal to {bob_modulo}.")
+print("Now try this with large prime numbers!")

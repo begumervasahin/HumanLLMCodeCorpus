@@ -1,0 +1,57 @@
+import math
+import random
+import sys
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+def is_prime(n):
+    if n > 1:
+        for i in range(2, int(math.sqrt(n)) + 1):
+            if n % i == 0:
+                return False
+        return True
+    return False
+def get_primes(limit=50):
+    primes = []
+    for i in range(2, limit):
+        if is_prime(i):
+            primes.append(i)
+    return primes
+def get_random_prime(primes):
+    return random.choice(primes)
+def get_phy_n(primes):
+    p = get_random_prime(primes)
+    q = get_random_prime(primes)
+    while p == q:
+        q = get_random_prime(primes)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    return phi, n
+def get_d(e, phi):
+    e = e % phi
+    for d in range(1, phi):
+        if (e * d) % phi == 1:
+            return d
+def get_e(phi):
+    if phi > 2:
+        e = random.randint(1, phi)
+        while gcd(phi, e) != 1:
+            e = random.randint(1, phi)
+        return e
+def get_ascii(message):
+    return [ord(char) for char in message]
+def encrypt(ascii_codes, n, e):
+    return [(code ** e) % n for code in ascii_codes]
+if __name__ == "__main__":
+    msg = str(sys.argv[1])
+    primes = get_primes()
+    phi, n = get_phy_n(primes)
+    e = get_e(phi)
+    d = get_d(e, phi)
+    print(f"Public key: ({n}, {e})")
+    print(f"Private key: ({n}, {d})")
+    ascii_codes = get_ascii(msg)
+    encrypted_message = encrypt(ascii_codes, n, e)
+    print("Encrypted message:", encrypted_message)
+    sys.stdout.flush()

@@ -1,0 +1,99 @@
+import logging
+import os
+import sys
+class Tree:
+    def __init__(self, data):
+        self.left = None
+        self.right = None
+        self.data = data
+def setup_logger(name, log_level):
+    logger = logging.getLogger(name)
+    log_handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_handler.setFormatter(formatter)
+    logger.addHandler(log_handler)
+    logger.setLevel(log_level)
+    return logger
+log_level = os.environ.get('GIO_LOG_LEVEL', 'INFO').upper()
+log = setup_logger(__file__, log_level)
+def make_tree1():
+    tree = Tree(2)
+    log.debug(f'Creating root: {tree.data}')
+    tree.left = Tree(8)
+    log.debug(f'Creating left child of root: {tree.left.data}')
+    tree.left.left = Tree(1)
+    log.debug(f'Creating left child of left child: {tree.left.left.data}')
+    tree.left.right = Tree(3)
+    log.debug(f'Creating right child of left child: {tree.left.right.data}')
+    tree.right = Tree(9)
+    log.debug(f'Creating right child of root: {tree.right.data}')
+    tree.right.left = Tree(4)
+    log.debug(f'Creating left child of right child: {tree.right.left.data}')
+    tree.right.right = Tree(5)
+    log.debug(f'Creating right child of right child: {tree.right.right.data}')
+    return tree
+def make_tree2():
+    tree = Tree(1)
+    log.debug(f'Creating root: {tree.data}')
+    tree.left = Tree(8)
+    log.debug(f'Creating left child of root: {tree.left.data}')
+    tree.left.right = Tree(3)
+    log.debug(f'Creating right child of left child: {tree.left.right.data}')
+    tree.right = Tree(4)
+    log.debug(f'Creating right child of root: {tree.right.data}')
+    tree.right.right = Tree(5)
+    log.debug(f'Creating right child of right child: {tree.right.right.data}')
+    tree.right.right.right = Tree(7)
+    log.debug(f'Creating right child of right child of right child: {tree.right.right.right.data}')
+    return tree
+def get_depth(tree):
+    if tree is None:
+        return 0
+    left_depth = get_depth(tree.left)
+    log.debug(f'get_depth - left depth: {left_depth}')
+    right_depth = get_depth(tree.right)
+    log.debug(f'get_depth - right depth: {right_depth}')
+    depth = max(left_depth, right_depth) + 1
+    log.debug(f'get_depth - current depth: {depth}')
+    return depth
+def return_tuple_value_level(tree, level=0, result=None):
+    if result is None:
+        result = []
+    if tree is None:
+        return result
+    log.debug(f"return_tuple_value_level - tree.data: {tree.data}, level: {level}")
+    result.append((level, tree.data))
+    return_tuple_value_level(tree.left, level + 1, result)
+    return_tuple_value_level(tree.right, level + 1, result)
+    log.debug(f"return_tuple_value_level - result: {result}")
+    return result
+def sort_by_level(tree):
+    result = []
+    depth = get_depth(tree)
+    tuples = return_tuple_value_level(tree)
+    log.debug("sort_by_level - entering nested loops")
+    for d in range(depth):
+        for level, value in tuples:
+            if level == d:
+                result.append(value)
+                log.debug(f"sort_by_level - append value: {value}")
+    return result
+def main():
+    if os.environ.get('GIO_LOG_LEVEL') is None:
+        log.warning("Set OS Variable GIO_LOG_LEVEL to 'DEBUG' for more information.")
+    log.debug("Creating Tree 1")
+    tree1 = make_tree1()
+    log.debug("Creating Tree 2")
+    tree2 = make_tree2()
+    log.info(f"Max depth of Tree 1: {get_depth(tree1)}")
+    log.info(f"Max depth of Tree 2: {get_depth(tree2)}")
+    log.info(f"List of tuples (value, level) for Tree 1: {return_tuple_value_level(tree1)}")
+    log.info(f"List of tuples (value, level) for Tree 2: {return_tuple_value_level(tree2)}")
+    log.info(f"List of Tree 1 elements sorted by level: {sort_by_level(tree1)}")
+    log.info(f"List of Tree 2 elements sorted by level: {sort_by_level(tree2)}")
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        log.exception(f"{__file__} failed to finish executing successfully.")
+        sys.exit(1)

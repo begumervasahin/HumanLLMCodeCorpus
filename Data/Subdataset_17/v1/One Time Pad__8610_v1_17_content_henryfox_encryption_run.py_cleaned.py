@@ -1,0 +1,15 @@
+import sys
+import encrypt
+def main():
+    if len(sys.argv) != 6:
+        print("Usage: python script.py <encrypt/decrypt> <passphrase> <path> <outputType> <saveLocation>")
+        return
+    decryptOrEncrypt = sys.argv[1]
+    passphrase = sys.argv[2][1:]
+    path = sys.argv[3][1:]
+    outputType = sys.argv[4]
+    saveLocation = sys.argv[5][1:]
+    result = encrypt.enc(decryptOrEncrypt, passphrase, path, outputType, saveLocation)
+    print(result)
+if __name__ == "__main__":
+    main()

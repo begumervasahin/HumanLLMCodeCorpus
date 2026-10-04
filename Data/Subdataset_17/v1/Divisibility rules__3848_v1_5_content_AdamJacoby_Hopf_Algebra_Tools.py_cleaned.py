@@ -1,0 +1,113 @@
+import numpy as np
+import scipy.sparse as sps
+import sympy as sp
+from sympy import Matrix
+from scipy.sparse import csr_matrix, kron, identity
+class Algebra:
+    def __init__(self, name, element_names, mult):
+        self.name = name
+        self.element_names = element_names
+        self.mult = mult
+        self._type = 'Algebra'
+        self.casimir_flag = 'no'
+        self.ring = None
+class CoAlgebra:
+    def __init__(self, name, element_names, comult, counit):
+        self.name = name
+        self.element_names = element_names
+        self.comult = comult
+        self.counit = counit
+        self._type = 'CoAlgebra'
+class BiAlgebra:
+    def __init__(self, name, element_names, mult, comult, counit):
+        self.name = name
+        self.element_names = element_names
+        self.mult = mult
+        self.comult = comult
+        self.counit = counit
+        self._type = 'BiAlgebra'
+class HopfAlgebra(BiAlgebra):
+    def __init__(self, name, element_names, mult, comult, counit, antipode):
+        super().__init__(name, element_names, mult, comult, counit)
+        self.antipode = antipode
+        self._type = 'HopfAlgebra'
+class Module:
+    def __init__(self, name, element_names, ring, action):
+        self.name = name
+        self.element_names = element_names
+        self.ring = ring
+        self.action = action
+        self._type = 'Module'
+class ModuleAlgebra(Module, Algebra):
+    def __init__(self, name, element_names, ring, action, mult):
+        Module.__init__(self, name, element_names, ring, action)
+        Algebra.__init__(self, name, element_names, mult)
+        self._type = 'ModuleAlgebra'
+def CreateBasisVectors(dim):
+    return [np.eye(dim, dtype=complex)[:, i] for i in range(dim)]
+def HigmanTrace(A):
+    return csr_matrix(np.random.rand(A.mult.shape[0], A.mult.shape[1]))
+def ChangeBasis(A, U, UI):
+    U = csr_matrix(U.tolist())
+    UI = csr_matrix(UI.tolist())
+    if 'Algebra' in A._type:
+        mult = U.dot(A.mult.dot(kron(UI, UI)))
+    if 'Module' in A._type:
+        ring_dim = A.ring.dim
+        action = U.dot(A.action)
+        ring_id = identity(ring_dim, format='csr')
+        action = U.dot(action.dot(kron(ring_id, UI)))
+    if A._type in ['HopfAlgebra', 'BiAlgebra', 'CoAlgebra']:
+        comult = kron(U, U).dot(A.comult.dot(UI))
+        counit = A.counit.dot(UI)
+    if A._type == 'Algebra':
+        out = Algebra(A.name, A.element_names, mult)
+    if A._type == 'CoAlgebra':
+        out = CoAlgebra(A.name, A.element_names, comult, counit)
+    if A._type == 'BiAlgebra':
+        out = BiAlgebra(A.name, A.element_names, mult, comult, counit)
+    if A._type == 'HopfAlgebra':
+        antipode = U.dot(A.antipode.dot(UI))
+        out = HopfAlgebra(A.name, A.element_names, mult, comult, counit, antipode)
+        if A.int_flag != 'no':
+            A.Input_Integral(U.dot(A.Integral))
+    if A._type == 'Module':
+        out = Module(A.name, A.element_names, A.ring, action)
+        if A._type == 'ModuleAlgebra':
+            out = ModuleAlgebra(A.name, A.element_names, A.ring, action, mult)
+    if 'Algebra' in A._type and A.casimir_flag != 'no':
+        out.Input_Casimir(kron(U, U).dot(A.casimir))
+    return out
+def Center(A):
+    dim = A.dim
+    V_temp = CreateBasisVectors(dim)
+    V = [vector.tolist() for vector in V_temp]
+    higman_trace = HigmanTrace(A)
+    higman_trace = Matrix(higman_trace.toarray())
+    rref_matrix, _ = higman_trace.transpose().rref()
+    rref_matrix = rref_matrix.tolist()
+    rref_matrix = [row for row in rref_matrix if row != [0] * dim]
+    center_dim = len(rref_matrix)
+    change_of_basis = []
+    past_index = 0
+    complement = []
+    for vector in rref_matrix:
+        current_index = vector.index(1)
+        for i in range(past_index + 1, current_index):
+            complement.append(i)
+        change_of_basis.append(vector)
+        past_index = current_index
+    for i in range(current_index + 1, dim):
+        complement.append(i)
+    for index in complement:
+        change_of_basis.append(V[index])
+    U = np.transpose(np.array(change_of_basis, dtype=complex))
+    UI = np.linalg.inv(U)
+    return [U, UI, center_dim]
+A = Algebra(name="ExampleAlgebra", element_names=["e1", "e2"], mult=np.array([[1, 0], [0, 1]]))
+U = np.random.rand(2, 2)
+UI = np.linalg.inv(U)
+changed_basis = ChangeBasis(A, U, UI)
+center_result = Center(A)
+print("Changed Basis:", changed_basis)
+print("Center Result:", center_result)

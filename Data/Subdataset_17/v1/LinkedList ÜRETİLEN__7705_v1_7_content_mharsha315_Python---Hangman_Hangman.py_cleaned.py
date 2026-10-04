@@ -1,0 +1,79 @@
+import random
+import time
+class Node:
+    def __init__(self, data="-", datacheck="-"):
+        self.data = data
+        self.datacheck = datacheck
+        self.next = None
+class Game:
+    def __init__(self):
+        self.head = Node()
+    def insert(self, word):
+        pos = self.head
+        for char in word:
+            new_node = Node(char)
+            pos.next = new_node
+            pos = pos.next
+    def display(self):
+        pos = self.head.next
+        print("\nCurrent state of the word:")
+        while pos:
+            print(pos.datacheck, end=" ")
+            pos = pos.next
+        print()
+    def play(self, guess, hangman):
+        flag = 0
+        pos = self.head.next
+        while pos:
+            if pos.data == guess:
+                pos.datacheck = guess
+                flag = 1
+            pos = pos.next
+        if not flag:
+            hangman.pop(0)
+        self.display()
+        print("Remaining chances: ", ''.join(hangman))
+    def view_answer(self):
+        pos = self.head.next
+        print("ANSWER IS...")
+        time.sleep(2.0)
+        while pos:
+            print(pos.data, end=" ")
+            pos = pos.next
+        print()
+def option():
+    game = Game()
+    print("Type 'view' to view answer")
+    print("Type 'exit' to EXIT")
+    words = ["python", "jumble", "easy", "difficult", "computer", "hangman", "failure", "brilliant", "worthy",
+             "xylophone", "awkward", "gypsy", "jinx", "burglar", "bankrupt", "crisis", "hyphen", "memento", "mystery",
+             "pajama", "pixel", "rogue", "rhythmic", "twelfth", "jealous", "zombie", "yacht", "yak", "zippy", "unknown",
+             "battleground", "player", "psycho", "beast", "buzzard", "boycott", "coffin", "witchcraft", "rickshaw",
+             "mnemonic", "pneumonia", "peekaboo", "diarrhea", "jaundice", "gossip", "despacito"]
+    selected_word = random.choice(words)
+    game.insert(selected_word)
+    game.display()
+    hangman = ["H", "A", "N", "G", "M", "A", "N"]
+    while True:
+        user_input = input("Enter your guess or command: ").strip().lower()
+        if user_input == "exit":
+            print("Exiting...")
+            break
+        elif user_input == "view":
+            game.view_answer()
+            break
+        elif len(hangman) == 0:
+            print("You've run out of chances!")
+            game.view_answer()
+            break
+        else:
+            game.play(user_input, hangman)
+if __name__ == "__main__":
+    option()
+    while True:
+        play_again = input("Do you want to play again? (yes/no): ").strip().lower()
+        if play_again == "yes":
+            option()
+        else:
+            print("Thank you for playing!")
+            break

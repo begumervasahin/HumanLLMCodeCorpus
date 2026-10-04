@@ -1,0 +1,49 @@
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+import os
+import logging
+import subprocess
+import sys
+def get_venv_path():
+    if len(sys.argv) == 1:
+        venv_path = ".env"
+        logging.info(f"No virtual environment path specified, defaulting to {venv_path}.")
+    elif len(sys.argv) == 2:
+        venv_path = sys.argv[1]
+        logging.info(f"Using virtual environment {venv_path}.")
+    else:
+        sys.exit("Wrong number of arguments")
+    return venv_path
+def run_experiment(experiment, model_name, dataset_name, venv_path):
+    python_command = f"{experiment}.py {model_name} {dataset_name}"
+    python_executable = "python3"
+    venv_activate_path = os.path.join(venv_path, "bin", "activate")
+    command = f"source {venv_activate_path} && {python_executable} {python_command}"
+    logging.info(f"Running {command}")
+    print(f"Running {command}")
+    subprocess.call(f'/bin/bash -c "{command}"', shell=True)
+def main():
+    venv_path = get_venv_path()
+    import datasets
+    from pytorch.experiment import model_loading
+    model_names = ["AllConvolutional", "SimpleConv", "ResNet", "VGGLike"]
+    dataset_names = ["mnist", "cifar10"]
+    train = False
+    experiments = ["experiment_variance"]
+    message = (
+        f"Running experiments, train={train}\n"
+        f"Experiments: {', '.join(experiments)}\n"
+        f"Models: {', '.join(model_names)}\n"
+        f"Datasets: {', '.join(dataset_names)}\n"
+    )
+    logging.info(message)
+    for model_name in model_names:
+        for dataset_name in dataset_names:
+            if train:
+                run_experiment("experiment_rotation", model_name, dataset_name, venv_path)
+            for experiment in experiments:
+                run_experiment(experiment, model_name, dataset_name, venv_path)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    main()

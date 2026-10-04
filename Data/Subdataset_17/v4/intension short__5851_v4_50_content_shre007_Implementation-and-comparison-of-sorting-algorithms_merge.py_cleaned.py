@@ -1,0 +1,25 @@
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr)
+    left_half = merge_sort(arr[:mid])
+    right_half = merge_sort(arr[mid:])
+    return merge(left_half, right_half)
+def merge(left, right):
+    sorted_list = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] < right[j]:
+            sorted_list.append(left[i])
+            i += 1
+        else:
+            sorted_list.append(right[j])
+            j += 1
+    sorted_list.extend(left[i:])
+    sorted_list.extend(right[j:])
+    return sorted_list
+if __name__ == "__main__":
+    number_of_elements = int(input("Enter the number of elements: "))
+    input_list = [int(input(f"Element {i+1}: ")) for i in range(number_of_elements)]
+    sorted_list = merge_sort(input_list)
+    print("Sorted list:", sorted_list)

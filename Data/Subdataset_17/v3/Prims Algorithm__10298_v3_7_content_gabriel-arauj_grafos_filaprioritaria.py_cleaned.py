@@ -1,0 +1,59 @@
+class PriorityQueue:
+    def __init__(self):
+        self.queue = [(0, 0)]
+        self.size = 0
+    def get_size(self):
+        return self.size
+    def find_min(self):
+        if self.size > 0:
+            return self.queue[1]
+        return None
+    def remove_min(self):
+        minimum = self.find_min()
+        if minimum:
+            self.queue[1] = self.queue[self.size]
+            self.size -= 1
+            self.queue.pop()
+            self._fix_down(1)
+        return minimum
+    def insert(self, element):
+        self.queue.append(element)
+        self.size += 1
+        self._fix_up(self.size)
+    def increase_key(self, node, new_value):
+        for i in range(1, self.size + 1):
+            if self.queue[i][1] == node:
+                self.queue[i] = (new_value, node)
+                self._fix_up(i)
+                break
+    def __contains__(self, element):
+        return element in self.queue
+    def _fix_down(self, index):
+        while 2 * index <= self.size:
+            child = 2 * index
+            if child < self.size and self.queue[child][0] > self.queue[child + 1][0]:
+                child += 1
+            if self.queue[index][0] <= self.queue[child][0]:
+                break
+            self.queue[index], self.queue[child] = self.queue[child], self.queue[index]
+            index = child
+    def build_min_heap(self, elements):
+        self.queue = [(0, 0)]
+        self.size = len(elements)
+        self.queue.extend(elements)
+        for i in range(len(elements)
+            self._fix_down(i)
+    def _fix_up(self, index):
+        while index > 1 and self.queue[index
+            self.queue[index
+            index
+pq = PriorityQueue()
+pq.insert((5, 'A'))
+pq.insert((3, 'B'))
+pq.insert((6, 'C'))
+pq.insert((2, 'D'))
+print("Minimum element:", pq.find_min())
+print("Removed minimum element:", pq.remove_min())
+print("Minimum element after removal:", pq.find_min())
+pq.increase_key('C', 1)
+print("Minimum element after increase_key:", pq.find_min())

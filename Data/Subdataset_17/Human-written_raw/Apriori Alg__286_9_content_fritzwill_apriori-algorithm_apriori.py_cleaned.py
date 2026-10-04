@@ -1,0 +1,102 @@
+9. Repository: fritzwill/apriori-algorithm
+   File: apriori.py
+   URL: https:
+   Code Content:
+def createCandidateSet(data):
+	cand = []
+	for row in data:
+		for itm in row:
+			if [itm] not in cand:
+				cand.append([itm])
+	cand.sort()
+	return list(map(frozenset,cand))
+def scanData(data, candidateSet, minSupport):
+	subsetCount = {}
+	for curSet in data:
+		for cand in candidateSet:
+			if cand.issubset(curSet):
+				if not cand in subsetCount:
+					subsetCount[cand] = 1
+				else:
+					subsetCount[cand] += 1
+	n = float(len(data))
+	valid = []
+	for key in subsetCount:
+		sup = subsetCount[key]
+		if sup >= minSupport:
+			valid.insert(0,key)
+	return valid, subsetCount
+def genApriori(freqSets, k):
+	valid = []
+	nFreqSets = len(freqSets)
+	for i in range(nFreqSets):
+		for j in range(i+1, nFreqSets):
+			lstCands1 = list(freqSets[i])[:k-2]
+			lstCands2 = list(freqSets[j])[:k-2]
+			lstCands1.sort()
+			lstCands2.sort()
+			if lstCands1 == lstCands2:
+				valid.append(freqSets[i]|freqSets[j])
+	return valid
+def apriori(data, minSupport):
+	candSet = createCandidateSet(data)
+	setData = list(map(set,data))
+	lstCands, subsetCounts = scanData(setData,candSet,minSupport)
+	lstCands = [lstCands]
+	k = 2
+	while(len(lstCands[k-2]) > 0):
+		candSetX = genApriori(lstCands[k-2],k)
+		lstCandsX, subsetCountsX = scanData(setData,candSetX, minSupport)
+		subsetCounts.update(subsetCountsX)
+		lstCands.append(candSetX)
+		k += 1
+	return lstCands, subsetCounts
+data = []
+dataSetFilename = 'Dataset-apriori.txt'
+with open(dataSetFilename,'r') as file:
+	for line in file:
+		data.append(line.strip().split(','))
+print("What min. support do you want to use? ")
+minSupp = raw_input()
+minSupp = int(minSupp)
+print("\n**** Apriori with minSupport = {} ****".format(minSupp))
+sets, counts = apriori(data,minSupp)
+print("\nSets:\n")
+for x in sets:
+	for y in x:
+		print(y)
+print("\nCounts:\n")
+for k,v in counts.items():
+	print(k, v)
+   README Content:
+The Apriori algorithm detects frequent subsets given a dataset of association rules.
+This Python 3 implementation first prompts the user for the minimum support threshold to be used in the Apriori algorithm. For example, if the minimum support was 3, then on subsets with a support of 3 or higher are included.
+Here is an example using the provided dataset and a minimum support of 6:
+```
+$ python apriori.py
+What min. support do you want to use?
+6
+**** Apriori with minSupport = 6 ****
+Sets:
+frozenset(['a'])
+frozenset(['b'])
+frozenset(['c'])
+frozenset(['a', 'b'])
+frozenset(['a', 'c'])
+frozenset(['c', 'b'])
+frozenset(['a', 'c', 'b'])
+Counts:
+(frozenset(['a', 'c', 'b']), 3)
+(frozenset(['d']), 5)
+(frozenset(['b']), 7)
+(frozenset(['a']), 8)
+(frozenset(['e']), 3)
+(frozenset(['c', 'b']), 5)
+(frozenset(['a', 'c']), 4)
+(frozenset(['c']), 6)
+(frozenset(['a', 'b']), 5)
+```
+The given data set is named 'Dataset-apriori.txt'. To use your own data you should use a csv format, then you just have to change line 58 in 'apriori.py' to reflect your own file name:
+```python
+dataSetFilename = 'Dataset-apriori.txt'
+```

@@ -1,0 +1,8 @@
+
+__author__ = 'joswin'
+DATABASE_CONFIG = {
+    'database': 'builtwith_data',
+    'user': 'postgres',
+    'password': 'postgres',
+    'host': 'localhost'
+}

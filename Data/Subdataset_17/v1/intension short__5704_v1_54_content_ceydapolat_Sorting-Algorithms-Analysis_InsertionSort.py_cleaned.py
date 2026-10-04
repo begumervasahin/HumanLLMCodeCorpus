@@ -1,0 +1,58 @@
+import createDataSets as cds
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+times = []
+counts = []
+timesAve = np.zeros(5)
+def insertion_sort(alist):
+    count = 1
+    for index in range(1, len(alist)):
+        current_value = alist[index]
+        position = index
+        x = 0
+        while position > 0 and alist[position - 1] > current_value:
+            alist[position] = alist[position - 1]
+            position -= 1
+            count += 1
+            x = 1
+        if x == 0:
+            count += 1
+        alist[position] = current_value
+    counts.append(count)
+def measure_sorting_times():
+    global times
+    times.clear()
+    for f in cds.fileNames:
+        values = []
+        start = time.time()
+        with open(f, "r") as reader:
+            for value in reader.readlines():
+                values.append(int(value))
+        insertion_sort(values)
+        end = time.time()
+        times.append(end - start)
+    cds.generateAverageValues(times, timesAve)
+def generate_cases():
+    global counts
+    arr_best, arr_worst, arr_ave = [], [], []
+    for i in range(len(counts)):
+        if i % 9 == 0:
+            arr_best.append(counts[i])
+        elif i % 9 == 4:
+            arr_worst.append(counts[i])
+        elif i % 9 in [1, 2, 3]:
+            arr_ave.append(counts[i])
+    arr_ave2 = [(arr_ave[i] + arr_ave[i+1] + arr_ave[i+2]) / 3 for i in range(0, len(arr_ave), 3)]
+    sizes = [200, 400, 600, 800, 1000]
+    plt.plot(sizes, arr_best, '-ro')
+    plt.plot(sizes, arr_ave2, '-bo')
+    plt.plot(sizes, arr_worst, '-go')
+    plt.legend(["Best Case", "Average Case", "Worst Case"])
+    plt.grid()
+    plt.xlabel("Sizes")
+    plt.ylabel("Counts")
+    plt.show()
+if __name__ == "__main__":
+    measure_sorting_times()
+    generate_cases()

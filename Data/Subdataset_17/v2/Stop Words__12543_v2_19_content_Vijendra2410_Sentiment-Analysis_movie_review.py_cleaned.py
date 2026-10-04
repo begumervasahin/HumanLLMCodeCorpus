@@ -1,0 +1,57 @@
+import nltk
+import random
+from nltk.corpus import movie_reviews
+from nltk.classify.scikitlearn import SklearnClassifier
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.linear_model import LogisticRegression
+from nltk.classify import ClassifierI
+from statistics import mode
+class VoteClassifier(ClassifierI):
+    def __init__(self, *classifiers):
+        self._classifiers = classifiers
+    def classify(self, features):
+        votes = [c.classify(features) for c in self._classifiers]
+        return mode(votes)
+    def confidence(self, features):
+        votes = [c.classify(features) for c in self._classifiers]
+        choice_votes = votes.count(mode(votes))
+        return choice_votes / len(votes)
+def load_movie_reviews():
+    documents = [(list(movie_reviews.words(fileid)), category)
+                 for category in movie_reviews.categories()
+                 for fileid in movie_reviews.fileids(category)]
+    random.shuffle(documents)
+    return documents
+def get_word_features():
+    all_words = nltk.FreqDist(w.lower() for w in movie_reviews.words())
+    return list(all_words.keys())[:3500]
+def find_features(document, word_features):
+    words = set(document)
+    features = {w: (w in words) for w in word_features}
+    return features
+def create_feature_sets(documents, word_features):
+    return [(find_features(rev, word_features), category) for (rev, category) in documents]
+def train_classifiers(training_set):
+    nb_classifier = nltk.NaiveBayesClassifier.train(training_set)
+    mnb_classifier = SklearnClassifier(MultinomialNB()).train(training_set)
+    bernoulli_classifier = SklearnClassifier(BernoulliNB()).train(training_set)
+    logistic_classifier = SklearnClassifier(LogisticRegression(max_iter=10000)).train(training_set)
+    return nb_classifier, mnb_classifier, bernoulli_classifier, logistic_classifier
+def print_accuracies(testing_set, *classifiers):
+    for classifier in classifiers:
+        print(f"{classifier.__class__.__name__} accuracy:", nltk.classify.accuracy(classifier, testing_set))
+def main():
+    documents = load_movie_reviews()
+    word_features = get_word_features()
+    feature_sets = create_feature_sets(documents, word_features)
+    training_set, testing_set = feature_sets[:1900], feature_sets[1900:]
+    nb_classifier, mnb_classifier, bernoulli_classifier, logistic_classifier = train_classifiers(training_set)
+    print_accuracies(testing_set, nb_classifier, mnb_classifier, bernoulli_classifier, logistic_classifier)
+    voted_classifier = VoteClassifier(nb_classifier, mnb_classifier, bernoulli_classifier)
+    print("Voted classifier accuracy:", nltk.classify.accuracy(voted_classifier, testing_set))
+    for i in range(5):
+        print(f"Classification: {voted_classifier.classify(testing_set[i][0])}, "
+              f"Confidence: {voted_classifier.confidence(testing_set[i][0])}")
+    nb_classifier.show_most_informative_features(15)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,32 @@
+from vartree import binarySearchTree
+from peekable import Peekable, peek
+from newsplit import new_split_iter
+from infixtotree import to_expr_tree, define_func
+class ExpressionEvaluator:
+    def __init__(self):
+        self.functions = binarySearchTree()
+        self.variables = binarySearchTree()
+    def evaluate(self, expr):
+        """
+        Define a new function or evaluate an expression.
+        If the first word in the line is "deffn", it should appear as:
+            deffn <function name> ( <parameters> ) = <function body>
+        A VarTree will associate the function name with:
+            a list of parameters (at least one, maybe more)
+            and a tree representing the function body.
+        Otherwise, the input line is evaluated in an expression tree.
+        :param expr: Expression to evaluate or define as a function
+        """
+        iterator = Peekable(new_split_iter(expr))
+        if peek(iterator) == "deffn":
+            name, params, body = define_func(iterator)
+            self.functions.assign(name, (params, body))
+        else:
+            result = to_expr_tree(expr).evaluate(self.variables, self.functions)
+            print(f"{expr} : {result}")
+def main():
+    evaluator = ExpressionEvaluator()
+    evaluator.evaluate("deffn add (x, y) = x + y")
+    evaluator.evaluate("add(3, 4)")
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,41 @@
+import networkx as nx
+from math import ceil
+import random
+import numpy as np
+def solve(client):
+    results_matrix = []
+    for _ in range(90):
+        client.start()
+        graph = client.G
+        locations = list(graph.nodes())
+        num_locations = len(locations)
+        print(f"Number of locations: {num_locations}")
+        all_students = list(range(1, client.students + 1))
+        num_students = client.students
+        print(f"Number of students: {num_students}")
+        min_num_truth = ceil(num_locations / 2)
+        num_truth = [0] * num_students
+        num_lies = [0] * num_students
+        shuffled_locations = list(range(num_locations))
+        random.shuffle(shuffled_locations)
+        for loc_index in shuffled_locations:
+            scout_results = client.scout(locations[loc_index], all_students)
+            if scout_results is None:
+                continue
+            student_reports = list(scout_results.values())
+            target_location = locations[loc_index]
+            next_edges = list(graph.edges(target_location, data='weight', default=0))
+            min_edge_index = min(range(len(next_edges)), key=lambda i: next_edges[i][2])
+            min_edge_value = next_edges[min_edge_index][2]
+            actual_value = int(client.remote(target_location, next_edges[min_edge_index][1]))
+            for student_index in range(num_students):
+                student_report = int(student_reports[student_index])
+                if student_report == actual_value:
+                    num_truth[student_index] += 1
+                else:
+                    num_lies[student_index] -= 1
+                worst_case_prob = (min_num_truth - num_truth[student_index]) / (num_locations - num_truth[student_index] - num_lies[student_index])
+                results_matrix.append([worst_case_prob, student_report, actual_value])
+        client.end()
+    np.savetxt("results.txt", np.array(results_matrix, dtype=np.float64))
+    client.end()

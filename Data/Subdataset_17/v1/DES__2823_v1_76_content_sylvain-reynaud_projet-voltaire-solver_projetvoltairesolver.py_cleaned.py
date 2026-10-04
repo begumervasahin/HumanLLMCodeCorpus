@@ -1,0 +1,31 @@
+import json
+import difflib
+import re
+from urllib.parse import unquote
+from termcolor import colored
+import os
+DATA_FILENAME = "data.txt"
+DIRECTORY = "."
+responses = []
+for filename in os.listdir(DIRECTORY):
+    if filename.endswith(DATA_FILENAME):
+        with open(os.path.join(DIRECTORY, filename), 'r', encoding="utf-8") as f:
+            data = f.read()
+            try:
+                start_index = data.index("[\"java.util.ArrayList")
+                end_index = data.index("]") + 1
+                data = data[start_index:end_index]
+                data = data.replace("\\", "\\\\")
+                responses += json.loads(data)
+            except (ValueError, json.JSONDecodeError):
+                pass
+responses = [x for x in responses if "\\x3C" in x]
+while True:
+    phrase = input("Entrer la phrase donnee : ")
+    possibilities = difflib.get_close_matches(phrase, responses)
+    if possibilities:
+        first_match = unquote(possibilities[0].replace("\\x", "%"))
+        highlighted = re.sub(r"<B>(.*?)<\/B>", lambda match: colored(match.group(1), "green"), first_match)
+        print(highlighted, '\n')
+    else:
+        print(colored("Il n'y a pas de faute", "green"), '\n')

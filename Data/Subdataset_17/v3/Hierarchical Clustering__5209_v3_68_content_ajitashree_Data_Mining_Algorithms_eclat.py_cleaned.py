@@ -1,0 +1,85 @@
+import sys
+import pandas as pd
+def intersect(list1, list2):
+    return list(set(list1) & set(list2))
+def issubset(subset, superset):
+    return all(item in superset for item in subset)
+def difference(list1, list2):
+    return list(set(list1) - set(list2))
+def eclat(candidate_sets, minsupport, all_frequent_sets, frequent_itemsets):
+    if len(candidate_sets) == 1:
+        frequent_itemsets.append(candidate_sets[0])
+    for i in range(len(candidate_sets)):
+        all_frequent_sets.append(candidate_sets[i])
+        new_candidates = []
+        for j in range(i + 1, len(candidate_sets)):
+            combined_itemset = list(set(candidate_sets[i][0] + candidate_sets[j][0]))
+            combined_transactions = intersect(candidate_sets[i][1], candidate_sets[j][1])
+            if len(combined_transactions) >= minsupport:
+                new_candidates.append((combined_itemset, combined_transactions, len(combined_itemset)))
+        if new_candidates:
+            eclat(new_candidates, minsupport, all_frequent_sets, frequent_itemsets)
+        else:
+            if len(candidate_sets) != 1:
+                frequent_itemsets.append(candidate_sets[i])
+def declat(candidate_sets, minsupport, all_infrequent_sets, infrequent_itemsets):
+    if len(candidate_sets) == 1:
+        infrequent_itemsets.append(candidate_sets[0])
+    for i in range(len(candidate_sets)):
+        all_infrequent_sets.append(candidate_sets[i])
+        new_candidates = []
+        for j in range(i + 1, len(candidate_sets)):
+            combined_itemset = list(set(candidate_sets[i][0] + candidate_sets[j][0]))
+            diff_transactions = difference(candidate_sets[j][2], candidate_sets[i][2])
+            support = candidate_sets[i][1] - len(diff_transactions)
+            if support >= minsupport:
+                new_candidates.append((combined_itemset, support, diff_transactions, len(combined_itemset)))
+        if new_candidates:
+            declat(new_candidates, minsupport, all_infrequent_sets, infrequent_itemsets)
+        else:
+            if len(candidate_sets) != 1:
+                infrequent_itemsets.append(candidate_sets[i])
+def load_database(file_path):
+    database = pd.read_csv(file_path, header=None)
+    columns = ["TID"] + [f"i{col}" for col in range(1, len(database.columns))]
+    database.columns = columns
+    return database, columns
+def generate_initial_sets(database, columns, minsupport):
+    frequent_candidates, infrequent_candidates = [], []
+    row_count = database["TID"].count()
+    transaction_ids = list(range(1, row_count + 1))
+    database.drop(columns=["TID"], inplace=True)
+    columns.remove("TID")
+    for column in columns:
+        transactions = [index + 1 for index in range(row_count) if database[column][index] == 1]
+        diff_transactions = difference(transaction_ids, transactions)
+        if len(transactions) >= minsupport:
+            frequent_candidates.append((column, transactions, 1))
+            infrequent_candidates.append((column, len(transactions), diff_transactions, 1))
+    return frequent_candidates, infrequent_candidates
+def display_results(title, itemsets, key_function, is_frequent=True):
+    sorted_itemsets = sorted(itemsets, key=key_function, reverse=True)
+    print(f"\n{title}")
+    for itemset in sorted_itemsets:
+        if is_frequent:
+            print(''.join(itemset[0]), "=>", itemset[1])
+        else:
+            print(''.join(itemset[0]), "=>", itemset[1])
+def main():
+    minsupport = int(input('Enter minimum support: '))
+    database, columns = load_database('./db.csv')
+    frequent_candidates, infrequent_candidates = generate_initial_sets(database, columns, minsupport)
+    print("\nECLAT Algorithm")
+    all_frequent_sets, frequent_itemsets = [], []
+    eclat(frequent_candidates, minsupport, all_frequent_sets, frequent_itemsets)
+    display_results("Frequent Itemsets || Transaction IDs where present", frequent_itemsets, lambda x: x[2])
+    maximal_frequent_sets = [f for f in frequent_itemsets if all(not issubset(f[0], m[0]) for m in frequent_itemsets if m != f)]
+    display_results("Maximal Frequent Sets || Transaction IDs where present", maximal_frequent_sets, lambda x: x[2])
+    print("\nDECLAT Algorithm")
+    all_infrequent_sets, infrequent_itemsets = [], []
+    declat(infrequent_candidates, minsupport, all_infrequent_sets, infrequent_itemsets)
+    display_results("Infrequent Itemsets || Support of Itemsets", infrequent_itemsets, lambda x: x[3], is_frequent=False)
+    maximal_infrequent_sets = [f for f in infrequent_itemsets if all(not issubset(f[0], m[0]) for m in infrequent_itemsets if m != f)]
+    display_results("Maximal Infrequent Sets || Transaction IDs where present", maximal_infrequent_sets, lambda x: x[3], is_frequent=False)
+if __name__ == '__main__':
+    main()

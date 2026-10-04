@@ -1,0 +1,33 @@
+import random
+import math
+def generate_keys(p, q):
+    n = p * q
+    phi_n = (p - 1) * (q - 1)
+    e = choose_e(phi_n, n)
+    d = find_d(e, phi_n)
+    return n, e, d
+def choose_e(phi_n, n):
+    relative_primes = [e for e in range(2, phi_n) if math.gcd(e, phi_n) == 1 and math.gcd(e, n) == 1]
+    return random.choice(relative_primes)
+def find_d(e, phi_n):
+    for d in range(1, phi_n):
+        if (d * e) % phi_n == 1:
+            return d
+    return None
+def encrypt(e, n, plaintext):
+    return pow(plaintext, e, n)
+def decrypt(d, n, ciphertext):
+    return pow(ciphertext, d, n)
+def main():
+    p, q = 1733, 1301
+    n, e, d = generate_keys(p, q)
+    print(f"Public key (e, n): ({e}, {n})")
+    print(f"Private key (d, n): ({d}, {n})")
+    plaintext = 2999
+    print(f"Original message: {plaintext}")
+    ciphertext = encrypt(e, n, plaintext)
+    print(f"Encrypted message: {ciphertext}")
+    decrypted_message = decrypt(d, n, ciphertext)
+    print(f"Decrypted message: {decrypted_message}")
+if __name__ == "__main__":
+    main()

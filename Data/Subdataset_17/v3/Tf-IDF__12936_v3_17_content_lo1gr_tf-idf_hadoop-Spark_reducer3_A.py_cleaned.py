@@ -1,0 +1,42 @@
+import sys
+from math import log10
+def process_input():
+    prev_word = None
+    word_count = 1
+    word_dict = {}
+    word_info_list = []
+    total_documents = 10.0
+    for line in sys.stdin:
+        line = line.strip()
+        word, details = line.split('\t', 1)
+        filename, term_frequency, doc_length, count = details.split(' ', 3)
+        term_frequency = float(term_frequency)
+        doc_length = float(doc_length)
+        count = int(count)
+        if prev_word == word:
+            word_count += count
+        else:
+            if prev_word is not None:
+                word_dict[prev_word] = f'{term_frequency} {doc_length} {word_count}'
+                word_info_list.append(f'{prev_word} {filename}')
+            word_count = count
+            prev_word = word
+    if prev_word is not None:
+        word_dict[prev_word] = f'{term_frequency} {doc_length} {word_count}'
+        word_info_list.append(f'{prev_word} {filename}')
+    return word_info_list, word_dict, total_documents
+def calculate_tfidf(word_info_list, word_dict, total_documents):
+    for item in word_info_list:
+        word, filename = item.split(' ', 1)
+        if word in word_dict:
+            term_frequency, doc_length, doc_count = word_dict[word].split(' ', 2)
+            term_frequency = float(term_frequency)
+            doc_length = float(doc_length)
+            doc_count = float(doc_count)
+            tfidf = (term_frequency / doc_length) * log10(total_documents / doc_count)
+            print(f'{item}\t{tfidf}')
+def main():
+    word_info_list, word_dict, total_documents = process_input()
+    calculate_tfidf(word_info_list, word_dict, total_documents)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,65 @@
+class Node:
+    def __init__(self,word):
+        self.word = word
+        self.right = None
+        self.left = None
+        self.count = 1
+class BSTree:
+    def __init__(self, root=None):
+        self.root = root
+    def find(self, word):
+        return _find(self.root, word)
+    def add(self, word):
+        if not self.root:
+            self.root = Node(word)
+            return
+        _add(self.root, word)
+    def in_order_print(self):
+        _in_order_print(self.root)
+    def size(self):
+        return _size(self.root)
+    def height(self):
+        return _height(self.root)
+def _add(root, word):
+    if root.word == word:
+        root.count +=1
+        return
+    if root.word > word:
+        if root.left == None:
+            root.left = Node(word)
+        else:
+            _add(root.left, word)
+    else:
+        if root.right == None:
+            root.right = Node(word)
+        else:
+            _add(root.right, word)
+def _find(root, word):
+    if root.word == word:
+        return root.count
+    if root.word > word:
+        return _find(root.left, word)
+    if root.word < word:
+        return _find(root.right, word)
+def _size(root):
+    if root is None:
+        return 0
+    if root is not None:
+        return 1 + _size(root.left) + _size(root.right)
+def _height(root):
+    if root is None:
+        return 0 ;
+    else:
+        left_height = _height(root.left)
+        right_height = _height(root.right)
+        if left_height > right_height:
+            return left_height + 1
+        else:
+            return right_height + 1
+def _in_order_print(root):
+    if not root:
+        return
+    _in_order_print(root.left)
+    print(root.word)
+    print(root.count)
+    _in_order_print(root.right)

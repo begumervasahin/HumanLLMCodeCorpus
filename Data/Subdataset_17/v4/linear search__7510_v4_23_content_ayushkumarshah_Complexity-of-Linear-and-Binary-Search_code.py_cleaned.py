@@ -1,0 +1,65 @@
+import random
+from time import time
+myrandomnumber = random.sample(range(1000000), 100000)
+mysortedrandomnumber = sorted(myrandomnumber)
+randomnumberfromthelist = random.choice(mysortedrandomnumber)
+elapsed_unsorted = []
+elapsed_sorted = []
+elapsed_smallest = []
+elapsed_binary = []
+def linear_search(values, target):
+    for value in values:
+        if value == target:
+            return True
+    return False
+def sorted_linear_search(values, target):
+    for value in values:
+        if value == target:
+            return True
+        elif value > target:
+            return False
+    return False
+def find_smallest(values):
+    smallest = values[0]
+    for value in values[1:]:
+        if value < smallest:
+            smallest = value
+    return smallest
+def binary_search(values, target):
+    low, high = 0, len(values) - 1
+    while low <= high:
+        mid = (high + low)
+        if values[mid] == target:
+            return True
+        elif target < values[mid]:
+            high = mid - 1
+        else:
+            low = mid + 1
+    return False
+def measure_times():
+    for i in range(10000, 100001, 10000):
+        start_time = time()
+        linear_search(myrandomnumber[:i], randomnumberfromthelist)
+        end_time = time()
+        elapsed_unsorted.append(end_time - start_time)
+        start_time = time()
+        sorted_linear_search(mysortedrandomnumber[:i], randomnumberfromthelist)
+        end_time = time()
+        elapsed_sorted.append(end_time - start_time)
+        start_time = time()
+        find_smallest(myrandomnumber[:i])
+        end_time = time()
+        elapsed_smallest.append(end_time - start_time)
+        start_time = time()
+        binary_search(mysortedrandomnumber[:i], randomnumberfromthelist)
+        end_time = time()
+        elapsed_binary.append(end_time - start_time)
+measure_times()
+def print_results(times, description):
+    print(f"\n{description} times")
+    for time in times:
+        print(time)
+print_results(elapsed_unsorted, "Unsorted Linear Search")
+print_results(elapsed_sorted, "Sorted Linear Search")
+print_results(elapsed_smallest, "Finding Smallest Element")
+print_results(elapsed_binary, "Binary Search")

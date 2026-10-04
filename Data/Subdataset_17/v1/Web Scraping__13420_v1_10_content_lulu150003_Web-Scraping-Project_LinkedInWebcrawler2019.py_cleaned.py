@@ -1,0 +1,60 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+COMPANY = input("Enter Company ID: ")
+USERNAME = input("Enter username: ")
+PASSWORD = input("Enter password: ")
+EMPLOYEE = 1000
+linkedin = 'https:
+options = Options()
+options.headless = False
+service = Service('/path/to/geckodriver')
+browser = webdriver.Firefox(service=service, options=options)
+browser.get(linkedin)
+time.sleep(3)
+email = browser.find_element(By.NAME, 'session_key')
+password = browser.find_element(By.NAME, 'session_password')
+email.send_keys(USERNAME)
+password.send_keys(PASSWORD + Keys.RETURN)
+time.sleep(3)
+search = f"https:
+browser.get(search)
+time.sleep(3)
+browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+df = pd.DataFrame(columns=['name', 'title', 'location', 'profile'])
+current_url = browser.current_url
+while True:
+    if 'page=100' in current_url:
+        break
+    previous_url = current_url
+    current_url = browser.current_url
+    if current_url == previous_url:
+        break
+    page = BeautifulSoup(browser.page_source, 'lxml')
+    page_names = page.find_all('span', class_='actor-name')
+    page_titles = page.find_all('span', class_='subline-level-1')
+    page_locations = page.find_all('span', class_='subline-level-2')
+    page_profiles = page.find_all('a', class_='search-result__result-link')
+    names = [name.text for name in page_names]
+    titles = [title.text.strip() for title in page_titles]
+    locations = [location.text.strip() for location in page_locations]
+    profiles = [linkedin + profile['href'] for profile in page_profiles][::2]
+    temp_df = pd.DataFrame({'name': names, 'title': titles, 'location': locations, 'profile': profiles})
+    temp_df = temp_df[temp_df['name'] != 'LinkedIn Member']
+    df = df.append(temp_df, ignore_index=True)
+    if df.shape[0] >= EMPLOYEE:
+        break
+    try:
+        next_button = browser.find_element(By.CLASS_NAME, 'artdeco-pagination__button--next')
+        next_button.click()
+        time.sleep(5)
+    except:
+        break
+df.reset_index(drop=True, inplace=True)
+df.to_csv("output_search.csv", index=False)
+browser.quit()

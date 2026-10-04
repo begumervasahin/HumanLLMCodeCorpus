@@ -1,0 +1,39 @@
+import numpy as np
+import distance
+import time
+def calculate_distance_matrix(sequences):
+    num_sequences = len(sequences)
+    dist_matrix = np.zeros((num_sequences, num_sequences))
+    for i in range(num_sequences):
+        for j in range(i):
+            if i != j:
+                dist = distance.levenshtein(sequences[i], sequences[j])
+                dist_matrix[i][j] = dist_matrix[j][i] = dist
+                print(f"Calculating distance for pair ({i}, {j})")
+    return dist_matrix
+def preprocess_sequences(lines):
+    sequences = []
+    sequence = ""
+    for line in lines:
+        if line.startswith('>'):
+            if sequence:
+                sequences.append(sequence)
+                sequence = ""
+        else:
+            sequence += line.strip()
+    if sequence:
+        sequences.append(sequence)
+    return sequences
+def main():
+    with open("data_amino2.txt", "r") as file:
+        lines = file.read().splitlines()
+    start_time = time.time()
+    sequences = preprocess_sequences(lines)
+    print(f"Preprocessing done in {time.time() - start_time:.2f} seconds")
+    start_time = time.time()
+    dist_matrix = calculate_distance_matrix(sequences)
+    print(f"Distance Matrix Calculation done in {time.time() - start_time:.2f} seconds")
+    np.save('distance_matrix.npy', dist_matrix)
+    print("Distance matrix saved to 'distance_matrix.npy'")
+if __name__ == "__main__":
+    main()

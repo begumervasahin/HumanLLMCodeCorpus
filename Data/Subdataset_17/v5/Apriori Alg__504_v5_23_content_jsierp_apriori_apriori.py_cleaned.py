@@ -1,0 +1,82 @@
+import csv
+class Rule:
+    def __init__(self, antecedent, consequent, support, confidence, lift, leverage):
+        self.antecedent = antecedent
+        self.consequent = consequent
+        self.support = support
+        self.confidence = confidence
+        self.lift = lift
+        self.leverage = leverage
+    def __str__(self):
+        return f"{list(self.antecedent)} -> {list(self.consequent)} - support: {self.support:.6f}, confidence: {self.confidence:.6f}, lift: {self.lift:.6f}, leverage: {self.leverage:.6f}"
+def apriori(transactions, min_support=0.01, min_confidence=0.1):
+    num_transactions = len(transactions)
+    support_count_threshold = min_support * num_transactions
+    max_item = max(item for transaction in transactions for item in transaction)
+    frequent_itemsets = {frozenset(): 1}
+    def calculate_support(itemset):
+        return frequent_itemsets[itemset]
+    def calculate_confidence(antecedent, consequent):
+        return calculate_support(antecedent | consequent) / calculate_support(antecedent)
+    def calculate_lift(antecedent, consequent):
+        return calculate_confidence(antecedent, consequent) / calculate_support(consequent)
+    def calculate_leverage(antecedent, consequent):
+        return calculate_support(antecedent | consequent) - calculate_support(antecedent) * calculate_support(consequent)
+    item_counts = [0] * max_item
+    for transaction in transactions:
+        for item in transaction:
+            item_counts[item - 1] += 1
+    frequent_single_items = {
+        frozenset({item}): count / num_transactions
+        for item, count in zip(range(1, max_item + 1), item_counts)
+        if count >= support_count_threshold
+    }
+    while frequent_single_items:
+        frequent_itemsets.update(frequent_single_items)
+        candidate_itemsets = {
+            x1 | x2: 0
+            for x1 in frequent_single_items
+            for x2 in frequent_single_items
+            if len(x1 - x2) == len(x2 - x1) == 1
+        }
+        for transaction in transactions:
+            for candidate in candidate_itemsets:
+                if candidate <= transaction:
+                    candidate_itemsets[candidate] += 1
+        frequent_single_items = {
+            candidate: count / num_transactions
+            for candidate, count in candidate_itemsets.items()
+            if count >= support_count_threshold
+        }
+    initial_rules = [
+        Rule(itemset, frozenset(), calculate_support(itemset), 1.0, 1.0, 0.0)
+        for itemset in frequent_itemsets
+    ]
+    final_rules = []
+    while initial_rules:
+        final_rules.extend(initial_rules)
+        next_rules = []
+        for rule in initial_rules:
+            for item in rule.antecedent:
+                new_antecedent = rule.antecedent - {item}
+                new_consequent = rule.consequent | {item}
+                if calculate_confidence(new_antecedent, new_consequent) >= min_confidence:
+                    next_rules.append(
+                        Rule(
+                            new_antecedent,
+                            new_consequent,
+                            calculate_support(new_antecedent | new_consequent),
+                            calculate_confidence(new_antecedent, new_consequent),
+                            calculate_lift(new_antecedent, new_consequent),
+                            calculate_leverage(new_antecedent, new_consequent),
+                        )
+                    )
+        initial_rules = next_rules
+    return final_rules
+def load_data(path='retail.dat'):
+    transactions = []
+    with open(path, 'r') as file:
+        reader = csv.reader(file, delimiter=' ')
+        for row in reader:
+            transactions.append({int(item) for item in row if item})
+    return transactions

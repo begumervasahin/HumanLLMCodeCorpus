@@ -1,0 +1,35 @@
+
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+import pickle
+def fetch_training_data():
+    return fetch_20newsgroups(subset='train', shuffle=True)
+def create_vectorizer():
+    return TfidfVectorizer(
+        stop_words='english',
+        sublinear_tf=True,
+        strip_accents='unicode',
+        analyzer='word',
+        token_pattern=r'\w{2,}',
+        ngram_range=(1, 1),
+        max_features=30000
+    )
+def train_model(X_train, y_train):
+    clf = MultinomialNB()
+    clf.fit(X_train, y_train)
+    return clf
+def save_to_disk(obj, filename):
+    with open(filename, 'wb') as file:
+        pickle.dump(obj, file)
+def main():
+    twenty_train = fetch_training_data()
+    word_vectorizer = create_vectorizer()
+    word_vectorizer.fit(twenty_train.data)
+    X_train_word_features = word_vectorizer.transform(twenty_train.data)
+    text_clf = train_model(X_train_word_features, twenty_train.target)
+    save_to_disk(text_clf, 'text_clf.pkl')
+    save_to_disk(word_vectorizer, 'vectorizer.pkl')
+    print("Model and vectorizer have been saved to disk.")
+if __name__ == "__main__":
+    main()

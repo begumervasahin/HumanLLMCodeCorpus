@@ -1,0 +1,39 @@
+from digitfactorialchain.digitfactorialchain import DigitFactorialChain
+def test_1_basic():
+    DigitFactorialChain.init_shared_area()
+    dfc = DigitFactorialChain(169)
+    expected = 3
+    result = dfc.fact_sum_chain_len()
+    assert result == expected, f"Expected {expected}, got {result}"
+def test_2_basic():
+    DigitFactorialChain.init_shared_area()
+    dfc = DigitFactorialChain(69)
+    expected = 5
+    result = dfc.fact_sum_chain_len()
+    assert result == expected, f"Expected {expected}, got {result}"
+    assert True
+def test_3_basic():
+    DigitFactorialChain.init_shared_area()
+    dfc = DigitFactorialChain(871)
+    expected = 2
+    result = dfc.fact_sum_chain_len()
+    assert result == expected, f"Expected {expected}, got {result}"
+def test_4_basic():
+    DigitFactorialChain.init_shared_area()
+    dfc = DigitFactorialChain(872)
+    expected = 2
+    result = dfc.fact_sum_chain_len()
+    assert result == expected, f"Expected {expected}, got {result}"
+def test_5_basic():
+    max_num = 1000000
+    result = DigitFactorialChain.use_worker_threads(max_num)
+    expected = 402
+    print(f"(max_num, result) = ({max_num}, {result})")
+    assert result == expected, f"Expected {expected}, got {result}"
+if __name__ == "__main__":
+    test_1_basic()
+    test_2_basic()
+    test_3_basic()
+    test_4_basic()
+    test_5_basic()
+    print("All tests passed.")

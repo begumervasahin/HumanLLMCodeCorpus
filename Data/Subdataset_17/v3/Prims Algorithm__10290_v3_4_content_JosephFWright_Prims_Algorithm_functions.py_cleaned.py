@@ -1,0 +1,60 @@
+
+class Weighted_Graph:
+    def __init__(self, filename):
+        self.vertices = set()
+        self.edges = {}
+        self._load_graph(filename)
+    def _load_graph(self, filename):
+        with open(filename, 'r') as file:
+            for line in file:
+                v1, v2, weight = line.split()
+                weight = int(weight)
+                self.vertices.update([v1, v2])
+                self.edges[(v1, v2)] = weight
+                self.edges[(v2, v1)] = weight
+    def edge_dict(self):
+        return self.edges
+    def edge_set(self):
+        return set(self.edges.keys())
+    def vertex_set(self):
+        return self.vertices
+from Weighted_Graph import Weighted_Graph
+def get_edge_cost(edge, graph):
+    return graph.edge_dict()[edge]
+def get_incident_edges(T, graph):
+    incident = set()
+    tree_vertices, tree_edges = T
+    for vertex in tree_vertices:
+        for edge in graph.edge_set():
+            if vertex in edge:
+                incident.add(edge)
+    return incident - set(tree_edges)
+def get_valid_edges(T, graph):
+    valid = get_incident_edges(T, graph)
+    tree_vertices, _ = T
+    for edge in valid.copy():
+        if edge[0] in tree_vertices and edge[1] in tree_vertices:
+            valid.remove(edge)
+    return valid
+def get_minimum_valid_edge(T, graph):
+    valid_edges = get_valid_edges(T, graph)
+    return min(valid_edges, key=lambda edge: get_edge_cost(edge, graph))
+def update_tree(T, graph):
+    tree_vertices, tree_edges = T
+    min_edge = get_minimum_valid_edge(T, graph)
+    updated_edges = tree_edges + [min_edge]
+    updated_vertices = tree_vertices.union(min_edge)
+    return updated_vertices, updated_edges
+def calculate_total_cost(T, graph):
+    return sum(get_edge_cost(edge, graph) for edge in T[1])
+def build_mst(graph, start_vertex):
+    T = (set([start_vertex]), [])
+    while len(T[0]) < len(graph.vertex_set()):
+        T = update_tree(T, graph)
+    return T
+if __name__ == "__main__":
+    graph = Weighted_Graph('test_graph.txt')
+    start_vertex = 'A'
+    mst = build_mst(graph, start_vertex)
+    print("Total cost of MST:", calculate_total_cost(mst, graph))
+    print("Edges in MST:", mst[1])

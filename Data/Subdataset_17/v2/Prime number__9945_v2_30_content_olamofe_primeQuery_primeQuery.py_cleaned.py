@@ -1,0 +1,57 @@
+def primeQuery(n, first, second, values, queries):
+    if n != len(values):
+        raise ValueError("Number of nodes and values do not match")
+    pairs = list(zip(first, second))
+    adjacency_list = {i: [] for i in range(1, n + 1)}
+    root = 1
+    children_of_root = []
+    for x, y in pairs:
+        if x == root or y == root:
+            child = y if x == root else x
+            children_of_root.append(child)
+    pairs = [pair for pair in pairs if root not in pair]
+    adjacency_list[root] = children_of_root
+    def build_tree(index, adjacency_list, pairs):
+        current_nodes = adjacency_list.get(index, [])
+        for node in current_nodes:
+            children = [y if x == node else x for x, y in pairs if node in (x, y)]
+            pairs = [pair for pair in pairs if node not in pair]
+            adjacency_list[node] = children
+            build_tree(node, adjacency_list, pairs)
+        return adjacency_list
+    adjacency_list = build_tree(root, adjacency_list, pairs.copy())
+    def is_prime(num):
+        if num <= 1:
+            return False
+        if num <= 3:
+            return True
+        if num % 2 == 0 or num % 3 == 0:
+            return False
+        i = 5
+        while i * i <= num:
+            if num % i == 0 or num % (i + 2) == 0:
+                return False
+            i += 6
+        return True
+    def count_primes(node, adjacency_list, values):
+        prime_count = 0
+        stack = [node]
+        while stack:
+            current_node = stack.pop()
+            if is_prime(values[current_node - 1]):
+                prime_count += 1
+            stack.extend(adjacency_list.get(current_node, []))
+        return prime_count
+    results = []
+    for query in queries:
+        if query in adjacency_list:
+            prime_count = count_primes(query, adjacency_list, values)
+            results.append(prime_count)
+    return '\n'.join(map(str, results))
+if __name__ == "__main__":
+    n = 5
+    first = [1, 1, 2, 3]
+    second = [2, 3, 4, 5]
+    values = [2, 3, 5, 7, 11]
+    queries = [1, 2, 3]
+    print(primeQuery(n, first, second, values, queries))

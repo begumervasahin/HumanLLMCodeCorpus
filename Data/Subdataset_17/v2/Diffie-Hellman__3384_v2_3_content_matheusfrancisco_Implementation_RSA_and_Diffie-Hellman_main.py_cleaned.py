@@ -1,0 +1,31 @@
+
+from rsa import RSA
+from convertN2T import str2num, num2block, block2num, num2str
+def main():
+    print('================== - Criptografia RSA - ======================')
+    block_size = 15
+    rsa = RSA()
+    try:
+        with open("original_msg", "r") as msg_file:
+            original_message = msg_file.read()
+    except FileNotFoundError:
+        print("Error: 'original_msg' file not found.")
+        return
+    print('================== Original Message ======================')
+    print(original_message)
+    num_list = str2num(original_message)
+    print('\n================== Number Representation ======================')
+    print(num_list)
+    blocks = num2block(num_list, block_size)
+    encrypted_blocks = rsa.encryption(blocks)
+    print("\n================== Encrypted Blocks ======================")
+    print(encrypted_blocks)
+    decrypted_blocks = rsa.decryption(encrypted_blocks)
+    num_list = block2num(decrypted_blocks, block_size)
+    print('\n================== Decrypted Number Representation ======================')
+    print(num_list)
+    message = num2str(num_list)
+    print('\n================== Decrypted Message ======================')
+    print(message)
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,59 @@
+import os
+import sys
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+def generate_key():
+    key = os.urandom(32)
+    with open('AESkey.key', 'wb') as key_file:
+        key_file.write(key)
+    print("Key generated")
+def encrypt_file(msg_filename):
+    with open(msg_filename, 'rb') as msg_file:
+        plaintext = msg_file.read()
+    with open('AESkey.key', 'rb') as key_file:
+        key = key_file.read()
+    iv = os.urandom(16)
+    with open(msg_filename + '.enc.iv', 'wb') as iv_file:
+        iv_file.write(iv)
+    padder = padding.PKCS7(256).padder()
+    padded_plaintext = padder.update(plaintext) + padder.finalize()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_plaintext) + encryptor.finalize()
+    with open(msg_filename + '.enc', 'wb') as encrypted_file:
+        encrypted_file.write(ciphertext)
+    print("File Encrypted")
+def decrypt_file(msg_filename):
+    with open(msg_filename, 'rb') as encrypted_file:
+        padded_ciphertext = encrypted_file.read()
+    with open('AESkey.key', 'rb') as key_file:
+        key = key_file.read()
+    with open(msg_filename + '.iv', 'rb') as iv_file:
+        iv = iv_file.read()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    decrypted_padded_msg = decryptor.update(padded_ciphertext) + decryptor.finalize()
+    unpadder = padding.PKCS7(256).unpadder()
+    plaintext = unpadder.update(decrypted_padded_msg) + unpadder.finalize()
+    decrypted_msg_filename = msg_filename.replace('.enc', '.decrypted')
+    with open(decrypted_msg_filename, 'wb') as decrypted_file:
+        decrypted_file.write(plaintext)
+    print(f"Your decrypted message is saved in: {decrypted_msg_filename}")
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print('Usage: python script.py [generate|encrypt|decrypt] [FILENAME]')
+        sys.exit(1)
+    command = sys.argv[1].lower()
+    if command == 'generate':
+        generate_key()
+    elif command == 'encrypt':
+        if len(sys.argv) != 3:
+            raise Exception('Usage: python script.py encrypt FILENAME.EXTENSION')
+        encrypt_file(sys.argv[2])
+    elif command == 'decrypt':
+        if len(sys.argv) != 3:
+            raise Exception('Usage: python script.py decrypt FILENAME.EXTENSION')
+        decrypt_file(sys.argv[2])
+    else:
+        print('Invalid command. Use "generate", "encrypt", or "decrypt".')

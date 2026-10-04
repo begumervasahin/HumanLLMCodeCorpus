@@ -1,0 +1,34 @@
+class Graph(object):
+    def __init__(self, V = [], E = [], directed = False):
+        self.V = V
+        self.E = E
+        self.directed = directed
+        self.adj = {}
+    def getAdj(self, v):
+        return self.adj[v.value]
+    def addVertex(self,value):
+        u = Vertex(value=value)
+        self.V.append(u)
+        self.adj[u.value] = []
+    def addEdge(self,u,v,weight):
+        e = Edge(u,v,weight)
+        self.adj[u.value].append(e)
+        self.E.append(e)
+        if not self.directed:
+            f = Edge(v, u, weight)
+            if v not in self.adj:
+                self.adj[v.value].append(f)
+class Vertex(object):
+    def __init__(self, value = None, d = None, pre = None):
+        self.value = value
+        self.d = d
+        self.pre = pre
+class Edge(object):
+    def __init__(self, u = None, v = None, weight = None):
+        self.u = u
+        self.v = v
+        self.weight = weight
+    def equals(self,other):
+        if self.u == other.u and self.v == other.v:
+            return True
+        return False

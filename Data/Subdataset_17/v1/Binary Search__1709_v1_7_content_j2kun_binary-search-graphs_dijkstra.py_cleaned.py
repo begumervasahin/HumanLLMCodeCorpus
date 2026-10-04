@@ -1,0 +1,66 @@
+import math
+import heapq
+from collections import defaultdict
+class Edge:
+    def __init__(self, source, target, weight):
+        self.source = source
+        self.target = target
+        self.weight = weight
+class Graph:
+    def __init__(self):
+        self.vertices = set()
+        self.incident_edges = defaultdict(list)
+    def add_edge(self, source, target, weight):
+        edge = Edge(source, target, weight)
+        self.vertices.add(source)
+        self.vertices.add(target)
+        self.incident_edges[source].append(edge)
+class DijkstraOutput:
+    def __init__(self, graph, start):
+        self.start = start
+        self.graph = graph
+        self.distance_from_start = {v: math.inf for v in graph.vertices}
+        self.distance_from_start[start] = 0
+        self.predecessor_edges = {v: [] for v in graph.vertices}
+    def found_shorter_path(self, vertex, edge, new_distance):
+        if new_distance < self.distance_from_start[vertex]:
+            self.distance_from_start[vertex] = new_distance
+            self.predecessor_edges[vertex] = [edge]
+        elif new_distance == self.distance_from_start[vertex]:
+            self.predecessor_edges[vertex].append(edge)
+    def path_to_destination_contains_edge(self, destination, edge):
+        predecessors = self.predecessor_edges[destination]
+        if edge in predecessors:
+            return True
+        return any(self.path_to_destination_contains_edge(e.source, edge)
+                   for e in predecessors)
+    def sum_of_distances(self, subset=None):
+        subset = subset or self.graph.vertices
+        return sum(self.distance_from_start[v] for v in subset)
+def single_source_shortest_paths(graph, start):
+    output = DijkstraOutput(graph, start)
+    visit_queue = [(0, start)]
+    while visit_queue:
+        current_distance, current_vertex = heapq.heappop(visit_queue)
+        if current_distance > output.distance_from_start[current_vertex]:
+            continue
+        for edge in graph.incident_edges[current_vertex]:
+            target = edge.target
+            distance = current_distance + edge.weight
+            if distance < output.distance_from_start[target]:
+                output.found_shorter_path(target, edge, distance)
+                heapq.heappush(visit_queue, (distance, target))
+            elif distance == output.distance_from_start[target]:
+                output.found_shorter_path(target, edge, distance)
+    return output
+graph = Graph()
+graph.add_edge('A', 'B', 1)
+graph.add_edge('A', 'C', 4)
+graph.add_edge('B', 'C', 2)
+graph.add_edge('B', 'D', 5)
+graph.add_edge('C', 'D', 1)
+start_vertex = 'A'
+dijkstra_output = single_source_shortest_paths(graph, start_vertex)
+for vertex in graph.vertices:
+    print(f"Distance from {start_vertex} to {vertex}: {dijkstra_output.distance_from_start[vertex]}")
+print("Sum of distances:", dijkstra_output.sum_of_distances())

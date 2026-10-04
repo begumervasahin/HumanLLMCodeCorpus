@@ -1,0 +1,59 @@
+from PersistentBST import PBST
+def main():
+    print("\n\tARCHEIO")
+    tree = PBST()
+    current_branch = "master"
+    prev_branch = None
+    branches = ["master"]
+    while True:
+        print("\nCurrent Branch:", current_branch)
+        print("\n1. List Files\n2. View File\n3. New File\n4. Delete File\n5. Edit File\n6. List Branches\n7. New "
+              "Branch\n8. Switch Branch\n9. Exit\n")
+        choice = input("$ ").strip()
+        print()
+        if choice == "1":
+            print("Files:")
+            tree.inFix(current_branch)
+        elif choice == "2":
+            name = input("Enter name of file to be opened: ").strip()
+            file = tree.search(name, current_branch)
+            if file is None:
+                print("File does not exist!")
+            else:
+                print(file.getData())
+        elif choice == "3":
+            name = input("Enter name of new file: ").strip()
+            tree.insert(name, current_branch)
+        elif choice == "4":
+            name = input("Enter name of file to be deleted: ").strip()
+            tree.delete(name, current_branch)
+        elif choice == "5":
+            name = input("Enter name of file to be edited: ").strip()
+            tree.edit(name, current_branch)
+        elif choice == "6":
+            print("Branches:")
+            for branch in branches:
+                print(branch)
+        elif choice == "7":
+            branch_name = input("Enter name of new branch: ").strip()
+            if branch_name in branches:
+                print("Branch already exists")
+            else:
+                branches.append(branch_name)
+                prev_branch, current_branch = current_branch, branch_name
+                tree.newBranch(current_branch, prev_branch)
+        elif choice == "8":
+            branch_name = input("Enter name of branch to switch to: ").strip()
+            if branch_name not in branches:
+                print("Branch doesn't exist")
+            else:
+                prev_branch, current_branch = current_branch, branch_name
+        elif choice in ["9", "exit"]:
+            print("Exiting...")
+            break
+        elif choice == "debug":
+            print()
+        else:
+            print("Invalid Input")
+if __name__ == "__main__":
+    main()

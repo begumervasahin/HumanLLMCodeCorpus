@@ -1,0 +1,33 @@
+import cv2
+from Heap import Heap
+from Huffman import Huffman
+from Node import Node
+import zipfile
+if __name__ == '__main__':
+    image = cv2.imread("img1.tif")
+    scale = 60
+    width = int(image.shape[1] * scale / 100)
+    height = int(image.shape[0] * scale / 100)
+    dimensions = (width, height)
+    resized_image = cv2.resize(image, dimensions, interpolation=cv2.INTER_AREA)
+    h_resized, w_resized, _ = resized_image.shape
+    image_copy = cv2.cvtColor(resized_image.copy(), cv2.COLOR_RGB2GRAY)
+    node = Node()
+    node.setFrequencePixels(image_copy, h_resized, w_resized)
+    node_array = node.returnArrayNode()
+    heap = Heap(node_array)
+    smallest_node = heap.returnHeapMinimum()
+    huffman = Huffman(smallest_node)
+    huffman_tree_root = huffman.returnHuff()
+    huffman_dict = huffman.goThroughTree(huffman_tree_root)
+    compressed_data, index = huffman.compressOp(image_copy, w_resized, h_resized, huffman_dict)
+    with open('compressed_image.txt', 'w') as file:
+        for i in range(index):
+            file.write(str(compressed_data[i]) + ' ')
+    with open('compressed_image.txt', 'r') as file1:
+        decompressed_data = huffman.decompressOp(file1, huffman_tree_root)
+    print(decompressed_data)
+    cv2.imshow("Original Image", image)
+    cv2.imshow("Resized Grayscale Image", image_copy)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()

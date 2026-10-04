@@ -1,0 +1,76 @@
+
+import sys
+import time
+import json
+import argparse
+def init_archive(archive_file_path):
+    with open(archive_file_path, 'w') as archive_file:
+        pass
+def load_archive(archive_file_path):
+    try:
+        with open(archive_file_path, 'r') as archive_file:
+            archive_dict = json.load(archive_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        print('Error: archive JSON cannot be decoded or file not found')
+        sys.exit(1)
+    return archive_dict
+def validate_number(number):
+    try:
+        number = int(number)
+    except ValueError:
+        raise ValueError('Error: not a valid integer')
+    if number < 0:
+        raise ValueError('Error: not a natural number')
+    return number
+def get_prime_factors(number):
+    start_time = time.time()
+    i = 2
+    factors = []
+    while i * i <= number:
+        if number % i:
+            i += 1
+        else:
+            number
+            factors.append(i)
+    if number > 1:
+        factors.append(number)
+    return number, factors, time.time() - start_time
+def record_result(number, factors, record_dict, archive_file_path):
+    record_dict[number] = factors
+    with open(archive_file_path, 'w') as archive_file:
+        json.dump(record_dict, archive_file)
+def main():
+    parser = argparse.ArgumentParser(
+        description='Find prime factors of an integer and store results in an archive JSON file.'
+    )
+    parser.add_argument('-n', type=str, required=True, dest='number',
+                        help='integer number to find prime factors for')
+    parser.add_argument('-a', type=str, default='archive.json', dest='archive_file',
+                        help='path to the archive JSON file')
+    parser.add_argument('-t', action='store_true', dest='testing', default=False,
+                        help='flag for testing output format')
+    args = parser.parse_args()
+    number = validate_number(args.number)
+    archive_file = args.archive_file
+    testing = args.testing
+    try:
+        record_dict = load_archive(archive_file)
+    except FileNotFoundError:
+        init_archive(archive_file)
+        record_dict = {}
+    if str(number) in record_dict:
+        prime_factors = record_dict[str(number)]
+        compute_time = 0
+    else:
+        _, prime_factors, compute_time = get_prime_factors(number)
+        record_result(number, prime_factors, record_dict, archive_file)
+    if testing:
+        output = {
+            str(number): prime_factors,
+            "compute_time": compute_time
+        }
+        print(json.dumps(output))
+    else:
+        print(f'Prime factors of {number} are {", ".join(map(str, prime_factors))} - found in {compute_time:.6f} sec')
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,51 @@
+
+import collections
+def read_file(file_name):
+    adj_list = {}
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        num_wrestlers = int(lines[0])
+        num_rivalries = int(lines[num_wrestlers + 1])
+        for i in range(num_wrestlers + 2, num_wrestlers + 2 + num_rivalries):
+            wrestler1, wrestler2 = lines[i].strip().split(" ")
+            adj_list.setdefault(wrestler1, []).append(wrestler2)
+            adj_list.setdefault(wrestler2, []).append(wrestler1)
+    return adj_list
+def bfs(graph, start):
+    queue = collections.deque([start])
+    depth = {start: 0}
+    visited = set([start])
+    baby_faces = []
+    heels = []
+    while queue:
+        current = queue.popleft()
+        if depth[current] % 2 == 0:
+            baby_faces.append(current)
+        else:
+            heels.append(current)
+        for neighbor in graph[current]:
+            if neighbor not in visited:
+                queue.append(neighbor)
+                visited.add(neighbor)
+                depth[neighbor] = depth[current] + 1
+    return baby_faces, heels, visited
+def main():
+    file_name = "wrestler2.txt"
+    adj_list = read_file(file_name)
+    all_baby_faces = []
+    all_heels = []
+    total_visited = set()
+    for wrestler in adj_list.keys():
+        if wrestler not in total_visited:
+            baby_faces, heels, visited = bfs(adj_list, wrestler)
+            all_baby_faces.extend(baby_faces)
+            all_heels.extend(heels)
+            total_visited.update(visited)
+    if len(all_baby_faces) + len(all_heels) == len(adj_list):
+        print("Yes, possible")
+        print("Baby Faces:", all_baby_faces)
+        print("Heels:", all_heels)
+    else:
+        print("Not possible")
+if __name__ == "__main__":
+    main()

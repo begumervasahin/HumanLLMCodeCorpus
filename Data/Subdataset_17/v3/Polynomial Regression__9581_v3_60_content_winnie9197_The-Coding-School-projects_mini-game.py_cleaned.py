@@ -1,0 +1,68 @@
+import random
+import signal
+import sys
+import tty
+import termios
+class StepsMiniGame:
+    def __init__(self):
+        self.pebble = "pebble"
+        self.rock = "rock"
+        self.customize_obstacles()
+        self.path = self.generate_path()
+        self.start_game()
+    def customize_obstacles(self):
+        print("Would you like to customize the obstacles? [Enter Y/N]")
+        customize = self.getch()
+        if customize.lower() == 'y':
+            self.pebble = input("What would you like 'o' to represent? ") or self.pebble
+            self.rock = input("What would you like 'O' to represent? ") or self.rock
+    def generate_path(self):
+        path_length = 50
+        one_sd = 68
+        two_sd = 95
+        return ''.join(
+            'X' if (step := random.randint(0, 100)) <= one_sd else 'o' if step <= two_sd else 'O'
+            for _ in range(path_length)
+        )
+    def start_game(self):
+        print("The game starts now. Quick, press 'd' to advance or 'a' to dodge.")
+        for next_step in self.path:
+            print(next_step)
+            signal.signal(signal.SIGALRM, self._handle_timeout)
+            signal.alarm(2)
+            try:
+                user_input = self.getch()
+                if not self.process_input(user_input, next_step):
+                    break
+            except Exception:
+                print("You're too slow! You lost!")
+                break
+            finally:
+                signal.alarm(0)
+    def process_input(self, user_input, next_step):
+        try:
+            if user_input == 'a':
+                if next_step not in ('o', 'O'):
+                    raise ValueError("You've diverted from the right track! You lost!")
+            elif user_input == 'd':
+                if next_step != 'X':
+                    raise ValueError(f"You hit a {self.pebble if next_step == 'o' else self.rock}! You lost!")
+            else:
+                raise ValueError("Please enter a valid command!")
+            return True
+        except ValueError as e:
+            print(e)
+            return False
+    def _handle_timeout(self, signum, frame):
+        raise Exception()
+    def getch(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+if __name__ == "__main__":
+    StepsMiniGame()

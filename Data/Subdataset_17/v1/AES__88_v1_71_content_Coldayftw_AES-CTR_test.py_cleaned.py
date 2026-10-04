@@ -1,0 +1,58 @@
+import string
+import unittest
+from aes import AES
+def padhexa(s, i):
+    return s[2:].zfill(i)
+def output_space(s):
+    output = ''
+    for i in range(len(s) + 1):
+        if i % 2 == 0:
+            if i > 2:
+                output += ' '
+            output += s[i - 2:i]
+    return output
+def openfile(filename):
+    with open(filename, 'r') as fp:
+        lines = fp.readlines()
+    return lines
+def hexline(lines):
+    s = ''
+    for line in lines:
+        for word in line.split():
+            s += word.strip(string.whitespace)
+    s = '0x' + s
+    return int(s, 16)
+class AES_TEST(unittest.TestCase):
+    def setUp(self):
+        lines = openfile('key.txt')
+        self.AES = AES(hexline(lines))
+    def test_encryption(self):
+        print("(for encryption)")
+        lines = openfile('en_input.txt')
+        lines2 = openfile('ctr.txt')
+        ctr_value = int(padhexa(hex(hexline(lines2)), 64)[:32], 16)
+        plaintext = int(padhexa(hex(hexline(lines)), 64)[:32], 16)
+        encrypted = self.AES.encrypt(ctr_value)
+        ciphertext = encrypted ^ plaintext
+        print(output_space(padhexa(hex(ciphertext), 32)).upper())
+        ctr_value = int(padhexa(hex(hexline(lines2)), 64)[32:], 16)
+        plaintext = int(padhexa(hex(hexline(lines)), 64)[32:], 16)
+        encrypted = self.AES.encrypt(ctr_value)
+        ciphertext2 = encrypted ^ plaintext
+        print(output_space(padhexa(hex(ciphertext2), 32)).upper())
+    def test_decryption(self):
+        print("(for decryption)")
+        lines = openfile('de_input.txt')
+        lines2 = openfile('ctr.txt')
+        ctr_value = int(padhexa(hex(hexline(lines2)), 64)[:32], 16)
+        ciphertext = int(padhexa(hex(hexline(lines)), 64)[:32], 16)
+        decrypted = self.AES.encrypt(ctr_value)
+        plaintext = decrypted ^ ciphertext
+        print(output_space(padhexa(hex(plaintext), 32)).upper())
+        ctr_value = int(padhexa(hex(hexline(lines2)), 64)[32:], 16)
+        ciphertext = int(padhexa(hex(hexline(lines)), 64)[32:], 16)
+        decrypted = self.AES.encrypt(ctr_value)
+        plaintext2 = decrypted ^ ciphertext
+        print(output_space(padhexa(hex(plaintext2), 32)).upper())
+if __name__ == '__main__':
+    unittest.main()

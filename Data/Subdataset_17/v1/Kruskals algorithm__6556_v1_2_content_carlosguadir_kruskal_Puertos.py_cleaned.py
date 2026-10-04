@@ -1,0 +1,45 @@
+
+countries_and_ports = {
+    'EEUU': ['Miami', 'Los Angeles', 'New Orleans', 'San Diego'],
+    'Canada': ['Halifax', 'Montreal', 'Toronto', 'Vancouver'],
+    'Mexico': ['Altamira', 'Veracruz', 'Tampico', 'Acapulco'],
+    'Argentina': ['Bahia', 'Delta Dock', 'Ushuaia'],
+    'Brazil': ['Rio Cubatao', 'Rio Grande', 'Rio de Janeiro'],
+    'Chile': ['San Antonio', 'Valparaiso'],
+    'Colombia': ['Cartagena', 'Santa Marta'],
+    'Ecuador': ['Guayaquil'],
+    'Peru': ['Callao', 'Hilo'],
+    'Costa Rica': ['P. Limon'],
+    'Panama': ['Cristobal', 'Canal De Panama'],
+    'Alemania': ['Dortmund', 'Hamburg'],
+    'Espana': ['Barcelona', 'Bilbao', 'La Coruna', 'Las Palmas', 'Sevilla'],
+    'Francia': ['Brest'],
+    'Gran Bretana': ['Liverpool', 'Londres'],
+    'Holanda': ['Amsterdam', 'Rotterdam'],
+    'Italia': ['Salerno', 'Venecia'],
+    'Grecia': ['Limassol', 'Larnaca'],
+    'Rusia': ['San Petesburgo'],
+    'China': ['Shanghai', 'Xiamen International'],
+    'India': ['Cochin', 'Mumbai'],
+    'Japon': ['Kobe', 'Osaka', 'Yokohama'],
+    'Tailandia': ['Bangkok'],
+    'Emiratos Arabes Unidos': ['Dubai'],
+    'Egipto': ['Alexandria'],
+    'Marruecos': ['Tanger'],
+    'Sudafrica': ['Ciudad del Cabo'],
+    'Australia': ['Newcastle', 'Sydney']
+}
+def get_all_ports():
+    ports = ['-Vacio-']
+    for port_list in countries_and_ports.values():
+        ports.extend(port_list)
+    return ports
+def get_country_by_port(port):
+    for country, ports in countries_and_ports.items():
+        if port in ports:
+            return country
+    return None
+all_ports = get_all_ports()
+print(all_ports)
+country = get_country_by_port('Miami')
+print(f'Miami is in {country}')

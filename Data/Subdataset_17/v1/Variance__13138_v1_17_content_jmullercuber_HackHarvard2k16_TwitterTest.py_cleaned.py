@@ -1,0 +1,53 @@
+import requests
+import base64
+import json
+KEY = 'kFxjNI3AlMiWGCVVIdg2mwLVf'
+SECRET = 'VbvyqLW2B0LB3BNCVZfJaSD7djvAbYuQgBvWnoz7oycoINqKoF'
+WOEID = 23424977
+def get_bearer_token(key, secret):
+    credentials = base64.b64encode(f'{key}:{secret}'.encode()).decode()
+    headers = {
+        'Authorization': f'Basic {credentials}',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    }
+    response = requests.post(
+        'https:
+        headers=headers,
+        data={'grant_type': 'client_credentials'}
+    )
+    response.raise_for_status()
+    return response.json()['access_token']
+def get_results(bearer, hashtag):
+    url = f'https:
+    headers = {'Authorization': f'Bearer {bearer}'}
+    response = requests.get(url, headers=headers)
+    try:
+        return response.json()
+    except json.JSONDecodeError:
+        return {}
+def get_trending(bearer, woeid):
+    url = f'https:
+    headers = {'Authorization': f'Bearer {bearer}'}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    tweet_data = response.json()
+    trends = [
+        (tag['name'], tag['query'], tag.get('tweet_volume'))
+        for tag in tweet_data[0]['trends']
+    ]
+    return trends
+if __name__ == "__main__":
+    bearer_token = get_bearer_token(KEY, SECRET)
+    trending_topics = get_trending(bearer_token, WOEID)
+    print(trending_topics)
+    failed_queries = []
+    for topic in trending_topics:
+        print(topic)
+        print('\n' * 2)
+        results = get_results(bearer_token, topic[0])
+        print(results)
+        try:
+            json.dumps(results)
+        except json.JSONDecodeError:
+            failed_queries.append(topic)
+    print(failed_queries)

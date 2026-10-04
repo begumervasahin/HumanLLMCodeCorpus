@@ -1,0 +1,56 @@
+import unittest
+def remove_spaces(s):
+    if s is None or s == "":
+        return s
+    if s[0] != " ":
+        return s[0] + remove_spaces(s[1:])
+    else:
+        return remove_spaces(s[1:])
+def is_palindrome(s):
+    if s is None:
+        return False
+    s = remove_spaces(s).lower()
+    if len(s) <= 1:
+        return True
+    if s[0] == s[-1]:
+        return is_palindrome(s[1:-1])
+    else:
+        return False
+class TestRemoveSpaces(unittest.TestCase):
+    def test_remove_space_none(self):
+        self.assertEqual(remove_spaces(None), None)
+    def test_remove_space_empty(self):
+        self.assertEqual(remove_spaces(""), "")
+    def test_remove_space_one(self):
+        self.assertEqual(remove_spaces(" "), "")
+    def test_remove_space_two(self):
+        self.assertEqual(remove_spaces("  "), "")
+    def test_remove_space_inside(self):
+        self.assertEqual(remove_spaces("a b c"), "abc")
+    def test_remove_space_before(self):
+        self.assertEqual(remove_spaces(" a b c"), "abc")
+    def test_remove_space_after(self):
+        self.assertEqual(remove_spaces("a b c "), "abc")
+    def test_remove_space_before_and_after(self):
+        self.assertEqual(remove_spaces(" a b c "), "abc")
+class TestPalindrome(unittest.TestCase):
+    def test_none(self):
+        self.assertFalse(is_palindrome(None))
+    def test_empty(self):
+        self.assertTrue(is_palindrome(""))
+    def test_one_letter(self):
+        self.assertTrue(is_palindrome("v"))
+    def test_two_letters(self):
+        self.assertTrue(is_palindrome("vv"))
+    def test_toyota(self):
+        self.assertTrue(is_palindrome("atoyota"))
+    def test_toyota_with_spaces(self):
+        self.assertTrue(is_palindrome("a toyota"))
+    def test_odd_even(self):
+        self.assertTrue(is_palindrome("never odd or even"))
+    def test_rat(self):
+        self.assertTrue(is_palindrome("Was It a Rat I saW"))
+    def test_not(self):
+        self.assertFalse(is_palindrome("i'm not a palindrome"))
+if __name__ == '__main__':
+    unittest.main()

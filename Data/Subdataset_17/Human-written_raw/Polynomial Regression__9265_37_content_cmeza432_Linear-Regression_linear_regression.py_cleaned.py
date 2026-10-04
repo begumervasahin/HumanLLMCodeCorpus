@@ -1,0 +1,74 @@
+
+import numpy as np
+import sys
+def get_bigphi(training_file, rows, cols, degree):
+    result = []
+    t_values = []
+    for i in range(rows):
+        result.append(1)
+        for k in range(cols):
+            if(k == (cols - 1)):
+                t_values.append(training_file[i][k])
+            else:
+                for deg in range(degree):
+                    if(deg == 0):
+                        result.append(training_file[i][k])
+                    else:
+                        result.append(np.power(training_file[i][k], deg + 1))
+    return result, t_values
+def get_weights(big_phi, t_values, lamb):
+    phi_t = np.transpose(big_phi)
+    identity_value = len(phi_t)
+    identity = np.identity(identity_value)
+    lamb_m = np.multiply(identity, lamb)
+    temp = np.matmul(phi_t, big_phi)
+    first = np.add(lamb_m, temp)
+    inverse = np.linalg.pinv(first)
+    second = np.matmul(inverse, phi_t)
+    weights = np.matmul(second, t_values)
+    return weights
+def get_prediction(test_phi, weights):
+    test_result = np.dot(np.transpose(weights), test_phi)
+    return test_result
+def print_weights(weights):
+    length = len(weights)
+    for x in range(length):
+        print("w%d=%.4f" % (x, weights[x]))
+def print_test(prediction, target_value):
+    length = len(prediction)
+    for x in range(length):
+        error = prediction[x] - target_value[x]
+        error = error ** 2
+        print("ID=%5d, output=%5.4f, target value = %5.4f, squared error = %.4f" % (x+1, prediction[x], target_value[x], error))
+def linear_regression(training, degree, lamb, test):
+    training_rows = len(training)
+    training_cols = len(training[0])
+    test_rows = len(test)
+    test_cols = len(test[0])
+    big_phi, t_values = get_bigphi(training, training_rows, training_cols, degree)
+    big_phi = np.asarray(big_phi)
+    big_phi = np.reshape(big_phi, (training_rows, (degree * (training_cols - 1) + 1)))
+    t_values = np.asarray(t_values)
+    weights = get_weights(big_phi, t_values, lamb)
+    print_weights(weights)
+    test_phi, target_value = get_bigphi(test, test_rows, test_cols, degree)
+    test_phi = np.asarray(test_phi)
+    test_phi = np.reshape(test_phi, (test_rows, (degree * (test_cols - 1) + 1)))
+    test_phi = np.transpose(test_phi)
+    target_value = np.asarray(target_value)
+    prediction = get_prediction(test_phi, weights)
+    print_test(prediction, target_value)
+if(len(sys.argv) != 5):
+    print("Error, not enough arguments given!")
+else:
+    training_file = sys.argv[1]
+    degree = int(sys.argv[2])
+    lamb = int(sys.argv[3])
+    test_file = sys.argv[4]
+    with open(training_file) as textFile:
+        training_temp = [line.split() for line in textFile]
+    with open(test_file) as textFile:
+        test_temp = [line.split() for line in textFile]
+    training = np.array(training_temp, float)
+    test = np.array(test_temp, float)
+    linear_regression(training, degree, lamb, test)

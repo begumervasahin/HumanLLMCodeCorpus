@@ -1,0 +1,29 @@
+import numpy as np
+import matplotlib.pyplot as plt
+aveCAVMPMeans = [0.946601801623, 0.947113559077, 0.948454096069]
+lowCAVMPMeans = [0.810084820106, 0.767802605805, 0.76494951005]
+highCAVMPMeans = [1.0, 1.0, 1.0]
+stdCAVMP = [(ave - low, high - ave) for ave, low, high in zip(aveCAVMPMeans, lowCAVMPMeans, highCAVMPMeans)]
+aveCAstaticMeans = [0.955477854026, 0.953211106968, 0.953266175663]
+lowCAstaticMeans = [0.616405792127, 0.515454403091, 0.435178540951]
+highCAstaticMeans = [1.0, 1.0, 1.0]
+stdCAstatic = [(ave - low, high - ave) for ave, low, high in zip(aveCAstaticMeans, lowCAstaticMeans, highCAstaticMeans)]
+avestaticMeans = [0.953938547729, 0.952260320505, 0.95265016232]
+lowstaticMeans = [0.615834126982, 0.515247980872, 0.436673392773]
+highstaticMeans = [1.0, 1.0, 1.0]
+stdStatic = [(ave - low, high - ave) for ave, low, high in zip(avestaticMeans, lowstaticMeans, highstaticMeans)]
+N = 3
+ind = np.arange(N)
+width = 0.2
+fig, ax = plt.subplots()
+bars1 = ax.bar(ind + 0.2, aveCAVMPMeans, width, color='r', yerr=np.transpose(stdCAVMP), capsize=5, label='CAVMP')
+bars2 = ax.bar(ind + 0.4, aveCAstaticMeans, width, color='b', yerr=np.transpose(stdCAstatic), capsize=5, label='CAstatic')
+bars3 = ax.bar(ind + 0.6, avestaticMeans, width, color='g', yerr=np.transpose(stdStatic), capsize=5, label='Static')
+ax.set_ylabel('Utilization')
+ax.set_xlabel('Scale of Cloud / Racks')
+ax.set_title('Load Balance')
+ax.set_xticks(ind + width / 2 + 0.4)
+ax.set_xticklabels(('2x2', '4x4', '8x8'))
+ax.set_yticks(np.arange(0, 1.5, 0.2))
+ax.legend()
+plt.show()

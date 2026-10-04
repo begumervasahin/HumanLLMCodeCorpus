@@ -1,0 +1,53 @@
+import nltk
+import random
+from bs4 import BeautifulSoup
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+def parse_reviews(file_path):
+    with open(file_path, 'r') as file:
+        soup = BeautifulSoup(file.read(), 'html.parser')
+    return [review.text.lower() for review in soup.findAll("review_text")]
+def create_trigrams(reviews):
+    trigrams = {}
+    for review in reviews:
+        tokens = nltk.word_tokenize(review)
+        for i in range(len(tokens) - 3):
+            k = (tokens[i], tokens[i + 2])
+            if k not in trigrams:
+                trigrams[k] = []
+            trigrams[k].append(tokens[i + 1])
+    return trigrams
+def calculate_probabilities(trigrams):
+    probabilities = {}
+    for k, words in trigrams.items():
+        if len(set(words)) > 1:
+            word_count = len(words)
+            word_freq = {w: words.count(w) / word_count for w in set(words)}
+            probabilities[k] = word_freq
+    return probabilities
+def random_sample(d):
+    r = random.random()
+    cumulative = 0
+    for w, p in d.items():
+        cumulative += p
+        if r < cumulative:
+            return w
+def spin_review(review, probabilities):
+    tokens = nltk.word_tokenize(review)
+    for i in range(len(tokens) - 3):
+        if random.random() < 0.85:
+            k = (tokens[i], tokens[i + 2])
+            if k in probabilities:
+                w = random_sample(probabilities[k])
+                if nltk.pos_tag([w])[0][1] == nltk.pos_tag([tokens[i + 1]])[0][1]:
+                    tokens[i + 1] = w
+    return ' '.join(tokens).replace(" :", ":").replace(" .", ".").replace(" ,", ",").replace(" !", "!").replace(" ?", "?").replace("  ' ", "'")
+def test_spinner(file_path):
+    positive_reviews = parse_reviews(file_path)
+    trigrams = create_trigrams(positive_reviews)
+    probabilities = calculate_probabilities(trigrams)
+    original_review = random.choice(positive_reviews)
+    print('Original text:\n', original_review)
+    spun_review = spin_review(original_review, probabilities)
+    print("\nSpun text:\n", spun_review)
+test_spinner('electronics/positive.review')

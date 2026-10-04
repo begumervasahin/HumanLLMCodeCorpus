@@ -1,0 +1,47 @@
+import sys
+num_recursive_calls = 0
+def recursive_lcs(x, y, reconstruct=False):
+    global num_recursive_calls
+    num_recursive_calls += 1
+    if len(x) == 0 or len(y) == 0:
+        return "" if reconstruct else 0
+    if x[-1] == y[-1]:
+        if reconstruct:
+            return recursive_lcs(x[:-1], y[:-1], reconstruct) + x[-1]
+        else:
+            return 1 + recursive_lcs(x[:-1], y[:-1], reconstruct)
+    else:
+        if reconstruct:
+            return max(recursive_lcs(x, y[:-1], reconstruct),
+                       recursive_lcs(x[:-1], y, reconstruct), key=len)
+        else:
+            return max(recursive_lcs(x, y[:-1], reconstruct),
+                       recursive_lcs(x[:-1], y, reconstruct))
+def test_lcs(x, y, reconstruct):
+    return recursive_lcs(x, y, reconstruct)
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 " + __file__ + " <file> [0|1]")
+        print("<file> - The file containing two sequences")
+        print("0 - without reconstruction, 1 - with reconstruction")
+        return
+    file_path = sys.argv[1]
+    reconstruct = False
+    if len(sys.argv) == 3:
+        reconstruct = int(sys.argv[2]) == 1
+    try:
+        with open(file_path, 'r') as file:
+            x = file.readline().strip()
+            y = file.readline().strip()
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+        return
+    if reconstruct:
+        lcs = test_lcs(x, y, reconstruct)
+        print(f"LCS: {lcs}")
+        print(f"LCS length: {len(lcs)}")
+    else:
+        print(f"LCS length: {test_lcs(x, y, reconstruct)}")
+    print(f"Number of recursive calls: {num_recursive_calls}")
+if __name__ == "__main__":
+    main()

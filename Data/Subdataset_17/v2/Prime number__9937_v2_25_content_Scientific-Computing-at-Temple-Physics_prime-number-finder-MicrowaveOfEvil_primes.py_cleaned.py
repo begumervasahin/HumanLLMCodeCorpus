@@ -1,0 +1,35 @@
+import math
+def is_prime(n):
+    if n <= 1:
+        return False
+    for i in range(2, int(math.sqrt(n)) + 1):
+        if n % i == 0:
+            return False
+    return True
+def find_primes_between(x1, x2):
+    if x1 > x2:
+        x1, x2 = x2, x1
+        print("Your first number was higher than the second. I reversed those for you.")
+    if x1 < 0 or x2 < 0:
+        print("Please input positive integers.")
+        return []
+    primes_list = [num for num in range(x1, x2 + 1) if is_prime(num)]
+    print(f"Attempting to find primes between {x1} and {x2}...")
+    for prime in primes_list:
+        print(prime)
+    if not primes_list:
+        print("No primes found.")
+    if x1 == x2:
+        print("You put in the same number twice. There are zero primes between that number and itself.")
+        if is_prime(x1):
+            print("However, that number is itself a prime.")
+    else:
+        print(f"There are {len(primes_list)} primes between {x1} and {x2}.")
+if __name__ == "__main__":
+    print("This program will find prime numbers. Choose two positive integers to find primes between:")
+    try:
+        x1 = int(input('Smallest number to check: '))
+        x2 = int(input('Largest number to check: '))
+        find_primes_between(x1, x2)
+    except ValueError:
+        print("Please input valid integers.")

@@ -1,0 +1,57 @@
+__author__ = 's'
+import mysql.connector
+import numpy as np
+cnx = mysql.connector.connect(
+    user='root', password='', host='127.0.0.1', database='thesis'
+)
+c = cnx.cursor(buffered=True)
+def similarity_lcss(traj1, traj2):
+    score = 0
+    traj1_days = {'Fri': [], 'Sat': [], 'Sun': [], 'Mon': [], 'Tue': [], 'Wed': [], 'Thu': []}
+    traj2_days = {'Fri': [], 'Sat': [], 'Sun': [], 'Mon': [], 'Tue': [], 'Wed': [], 'Thu': []}
+    for row in traj1:
+        traj1_days[row[1]].append(row)
+    for row in traj2:
+        traj2_days[row[1]].append(row)
+    for day in traj1_days:
+        if len(traj1_days[day]) < len(traj2_days[day]):
+            score += cal_sim(traj1_days[day], traj2_days[day])
+        else:
+            score += cal_sim(traj2_days[day], traj1_days[day])
+    print("The score is", score)
+def cal_sim(traj1, traj2):
+    score = 0
+    while traj1 and traj2:
+        if traj1[-1][2] == traj2[-1][2] and traj1[-1][0] == traj2[-1][0]:
+            score += 1
+            traj1.pop()
+            traj2.pop()
+        elif traj1[-1][2] > traj2[-1][2]:
+            traj1.pop()
+        elif traj1[-1][2] < traj2[-1][2]:
+            traj2.pop()
+        else:
+            if len(traj1) > 1 and traj1[-2][2] == traj2[-1][2]:
+                traj1.pop()
+            elif len(traj2) > 1 and traj1[-1][2] == traj2[-2][2]:
+                traj2.pop()
+            else:
+                traj1.pop()
+                traj2.pop()
+    return score
+similarity = np.ones((8357, 8357))
+c.execute("SELECT DISTINCT userid FROM fulldata")
+user_ids = [user_id[0] for user_id in c.fetchall()]
+for user_num, user_id in enumerate(user_ids):
+    traj1 = []
+    c.execute(f"SELECT siteid, weekday, timing FROM fulldata WHERE userid = {user_id}")
+    for siteid, weekday, timing in c:
+        traj1.append((siteid, weekday, timing))
+    for next_user_num, next_user_id in enumerate(user_ids[user_num + 1:], start=user_num + 1):
+        traj2 = []
+        c.execute(f"SELECT siteid, weekday, timing FROM fulldata WHERE userid = {next_user_id}")
+        for siteid, weekday, timing in c:
+            traj2.append((siteid, weekday, timing))
+        print(next_user_num)
+        similarity_lcss(traj1, traj2)
+cnx.close()

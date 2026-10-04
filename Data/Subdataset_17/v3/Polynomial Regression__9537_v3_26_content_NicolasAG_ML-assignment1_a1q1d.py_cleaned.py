@@ -1,0 +1,82 @@
+import numpy as np
+from sklearn.linear_model import SGDClassifier, LogisticRegression
+from sklearn.metrics import log_loss
+import matplotlib.pyplot as plt
+def log_reg(x_train, y_train, x_test, y_test, n_iter=10000, use_sgd=True):
+    results = {
+        'lambda': [0, 0.1, 1.0, 10.0, 100.0, 1000.0],
+        'train_avg_ce': [],
+        'test_avg_ce': [],
+        'l2_norm': [],
+        'weights': [],
+        'train_accuracy': [],
+        'test_accuracy': []
+    }
+    print("\nLogistic Regression on data with L2 regularization...")
+    for l in results['lambda']:
+        if l == 0:
+            if use_sgd:
+                model = SGDClassifier(loss='log', penalty='none', max_iter=n_iter, shuffle=False)
+            else:
+                model = LogisticRegression(penalty='l2', C=1e12, max_iter=n_iter)
+        else:
+            if use_sgd:
+                model = SGDClassifier(loss='log', penalty='l2', alpha=l, max_iter=n_iter, shuffle=False)
+            else:
+                model = LogisticRegression(penalty='l2', C=1.0/l, max_iter=n_iter)
+        model.fit(x_train, y_train.flatten())
+        results['weights'].append(model.coef_[0])
+        results['l2_norm'].append(np.sum(model.coef_[0] ** 2))
+        train_score = model.score(x_train, y_train.flatten())
+        results['train_accuracy'].append(train_score)
+        train_pred_proba = model.predict_proba(x_train)
+        train_avg_ce = log_loss(y_train.flatten(), train_pred_proba)
+        results['train_avg_ce'].append(train_avg_ce)
+        test_score = model.score(x_test, y_test.flatten())
+        results['test_accuracy'].append(test_score)
+        test_pred_proba = model.predict_proba(x_test)
+        test_avg_ce = log_loss(y_test.flatten(), test_pred_proba)
+        results['test_avg_ce'].append(test_avg_ce)
+    return results
+def plot(results):
+    lambdas = results['lambda']
+    plt.figure()
+    plt.title('Train & Test Average Cross Entropy')
+    plt.plot(lambdas, results['train_avg_ce'], 'bo-', label='Train')
+    plt.plot(lambdas, results['test_avg_ce'], 'ro-', label='Test')
+    plt.xscale('log')
+    plt.xlabel('Lambda')
+    plt.ylabel('Average Cross Entropy')
+    plt.legend()
+    plt.show()
+    plt.figure()
+    plt.title('L2 norm of Weight Vector')
+    plt.plot(lambdas, results['l2_norm'], 'bo-')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('Lambda')
+    plt.ylabel('L2 norm of W')
+    plt.ylim(-0.1, max(results['l2_norm']) + 1)
+    plt.show()
+    plt.figure()
+    plt.title('Weight Values')
+    for j in range(len(results['weights'][0])):
+        plt.plot(
+            lambdas,
+            [results['weights'][i][j] for i in range(len(results['lambda']))],
+            'bo-'
+        )
+    plt.xscale('log')
+    plt.xlabel('Lambda')
+    plt.ylabel('Weight Values')
+    plt.show()
+    plt.figure()
+    plt.title('Train & Test Accuracies')
+    plt.plot(lambdas, results['train_accuracy'], 'bo-', label='Train')
+    plt.plot(lambdas, results['test_accuracy'], 'ro-', label='Test')
+    plt.xscale('log')
+    plt.xlabel('Lambda')
+    plt.ylim(0, 1)
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.show()

@@ -1,0 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
+data = np.loadtxt("crash.txt")
+training = data[1::2]
+test = data[0:-1:2]
+training_x = training[:, 0].reshape(-1, 1)
+training_t = training[:, 1].reshape(-1, 1)
+test_x = test[:, 0].reshape(-1, 1)
+test_t = test[:, 1].reshape(-1, 1)
+num_degrees = 20
+Erms_training = np.zeros(num_degrees)
+Erms_test = np.zeros(num_degrees)
+best_training_error = float('inf')
+best_test_error = float('inf')
+best_w_training = None
+best_L_training = 0
+best_w_test = None
+best_L_test = 0
+def design_matrix(x, L):
+    return np.hstack([x**i for i in range(L)])
+for L in range(1, num_degrees + 1):
+    phi_train = design_matrix(training_x, L)
+    w = np.linalg.solve(phi_train.T.dot(phi_train), phi_train.T.dot(training_t))
+    E_training = 0.5 * np.square(np.linalg.norm(training_t - phi_train.dot(w)))
+    Erms_training[L-1] = np.sqrt(2. * E_training / len(training))
+    if Erms_training[L-1] < best_training_error:
+        best_training_error = Erms_training[L-1]
+        best_L_training = L
+        best_w_training = w
+    phi_test = design_matrix(test_x, L)
+    E_test = 0.5 * np.square(np.linalg.norm(test_t - phi_test.dot(w)))
+    Erms_test[L-1] = np.sqrt(2. * E_test / len(test))
+    if Erms_test[L-1] < best_test_error:
+        best_test_error = Erms_test[L-1]
+        best_L_test = L
+        best_w_test = w
+print('Maximum likelihood RMS error between the actual data and the models prediction (for Training sets): \n', Erms_training)
+print('Maximum likelihood RMS error between the actual data and the models prediction (for Test sets): \n', Erms_test)
+plt.figure(figsize=(16, 12))
+plt.plot(Erms_training, '-o', markerfacecolor='none', color='b', label='Training')
+plt.plot(Erms_test, '-o', markerfacecolor='none', color='r', label='Test')
+plt.suptitle('Maximum likelihood RMS error between the actual data and the models prediction', fontsize=24)
+plt.legend(fontsize=22)
+plt.xlabel("M", fontsize=22)
+plt.ylabel("Erms", fontsize=22)
+plt.show()
+def plot_best_fit(x, y, title, xlabel, ylabel, data_label, model_label, L, w):
+    phi = design_matrix(x, L)
+    y_pred = phi.dot(w)
+    plt.figure(figsize=(16, 12))
+    plt.plot(x, y, 'o', color='b', label=data_label)
+    plt.plot(x, y_pred, color='r', label=model_label)
+    plt.suptitle(title, fontsize=24)
+    plt.legend(fontsize=22)
+    plt.xlabel(xlabel, fontsize=22)
+    plt.ylabel(ylabel, fontsize=22)
+    plt.show()
+x_fit_train = np.linspace(np.min(training_x), np.max(training_x), 100).reshape(-1, 1)
+print('Lowest RMS L for training data:', best_L_training)
+plot_best_fit(training_x, training_t, 'Best fit on the training set', 'time', 'acceleration', 'Training data', 'Lowest RMS model output', best_L_training, best_w_training)
+x_fit_test = np.linspace(np.min(test_x), np.max(test_x), 100).reshape(-1, 1)
+print('Lowest RMS L for test data:', best_L_test)
+plot_best_fit(test_x, test_t, 'Best fit on the test set', 'time', 'acceleration', 'Test data', 'Lowest RMS model output', best_L_test, best_w_test)

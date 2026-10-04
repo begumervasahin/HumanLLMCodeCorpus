@@ -1,0 +1,58 @@
+
+from Queue import Queue
+from copy import deepcopy
+class Node:
+    def __init__(self, puzzle, parent=None, move=""):
+        self.state = puzzle
+        self.parent = parent
+        self.move = move
+        self.depth = 0 if parent is None else parent.depth + 1
+        self.moves = move if parent is None else parent.moves + move
+    def goal_state(self):
+        return self.state.check_puzzle()
+    def succ(self):
+        successors = Queue()
+        for move in self.state.moves:
+            new_puzzle = deepcopy(self.state)
+            new_puzzle.do_move(move)
+            if new_puzzle.zero != self.state.zero:
+                successors.put(Node(new_puzzle, self, move))
+        return successors
+    def cost_heuristic(self, heuristic):
+        return self.n_wrong_tiles() if heuristic == 0 else self.manhattan_distance()
+    def n_wrong_tiles(self):
+        result = 0
+        count = 1
+        for i in range(self.state.size):
+            for j in range(self.state.size):
+                if self.state.puzzle[i][j] != (count % (self.state.size * self.state.size)):
+                    result += 1
+                count += 1
+        return result
+    def manhattan_distance(self):
+        result = 0
+        for i in range(self.state.size):
+            for j in range(self.state.size):
+                index = self.state.puzzle[i][j] - 1
+                if index == -1:
+                    distance = (2 - i) + (2 - j)
+                else:
+                    distance = abs(i - (index
+                result += distance
+        return result
+    def __str__(self):
+        return str(self.moves)
+if __name__ == "__main__":
+    from puzzle import Puzzle
+    initial_state = Puzzle([[1, 2, 3], [4, 5, 6], [0, 7, 8]])
+    root_node = Node(initial_state)
+    print("Initial State:")
+    print(root_node.state)
+    print("Is goal state?", root_node.goal_state())
+    print("Possible moves from initial state:")
+    successors = root_node.succ()
+    while not successors.empty():
+        node = successors.get()
+        print(node.state, "Move:", node.moves)
+    print("Heuristic (Number of wrong tiles):", root_node.n_wrong_tiles())
+    print("Heuristic (Manhattan distance):", root_node.manhattan_distance())

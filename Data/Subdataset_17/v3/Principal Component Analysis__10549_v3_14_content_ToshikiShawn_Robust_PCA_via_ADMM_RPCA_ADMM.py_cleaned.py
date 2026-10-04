@@ -1,0 +1,61 @@
+import numpy as np
+from numpy.linalg import svd
+from PIL import Image
+import matplotlib.pyplot as plt
+class TRPCA:
+    def __init__(self, rho=1.5, mu_init=1e-3, mu_max=1e10, max_iters=1000, tol=1e-8):
+        self.rho = rho
+        self.mu_init = mu_init
+        self.mu_max = mu_max
+        self.max_iters = max_iters
+        self.tol = tol
+    def converged(self, L, E, X, L_new, E_new):
+        max_change_L = np.max(np.abs(L_new - L))
+        max_change_E = np.max(np.abs(E_new - E))
+        max_residual = np.max(np.abs(L_new + E_new - X))
+        return (max_change_L < self.tol) and (max_change_E < self.tol) and (max_residual < self.tol)
+    def soft_shrink(self, X, tau):
+        return np.sign(X) * np.maximum(np.abs(X) - tau, 0)
+    def svd_shrink(self, X, tau):
+        U, S, Vt = svd(X, full_matrices=False)
+        S_shrink = self.soft_shrink(S, tau)
+        return U @ np.diag(S_shrink) @ Vt
+    def admm(self, X):
+        m, n = X.shape
+        lamb = 1 / np.sqrt(max(m, n))
+        L = np.zeros((m, n), dtype=float)
+        E = np.zeros((m, n), dtype=float)
+        Y = np.zeros((m, n), dtype=float)
+        mu = self.mu_init
+        iters = 0
+        while iters < self.max_iters:
+            iters += 1
+            L_new = self.svd_shrink(X - E - Y / mu, 1 / mu)
+            E_new = self.soft_shrink(X - L_new - Y / mu, lamb / mu)
+            Y += mu * (L_new + E_new - X)
+            mu = min(self.rho * mu, self.mu_max)
+            if self.converged(L, E, X, L_new, E_new):
+                break
+            L, E = L_new, E_new
+            print(f"Iteration {iters}, max residual: {np.max(np.abs(X - L - E))}")
+        return L_new, E_new
+def load_image(image_path):
+    return np.array(Image.open(image_path).convert('L'))
+def plot_results(X, L, S):
+    plt.figure(figsize=(15, 5))
+    plt.subplot(131)
+    plt.imshow(L, cmap='gray')
+    plt.title('Low-rank Matrix L')
+    plt.subplot(132)
+    plt.imshow(S, cmap='gray')
+    plt.title('Sparse Matrix S')
+    plt.subplot(133)
+    plt.imshow(X, cmap='gray')
+    plt.title('Original Image X')
+    plt.show()
+if __name__ == "__main__":
+    image_path = 'set_your_path_here'
+    X = load_image(image_path)
+    trpca = TRPCA()
+    L, S = trpca.admm(X)
+    plot_results(X, L, S)

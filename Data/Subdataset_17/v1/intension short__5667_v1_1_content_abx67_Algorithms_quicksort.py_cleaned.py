@@ -1,0 +1,26 @@
+def partition(A, left, right):
+    if left >= right:
+        return right
+    else:
+        split = left
+        pivot = A[right]
+        print("pivot:", pivot)
+        for i in range(left, right + 1):
+            print("i:", i)
+            if A[i] <= pivot:
+                if i != split:
+                    A[i], A[split] = A[split], A[i]
+                split += 1
+        return split - 1
+def quicksort(A, left, right):
+    if left < right:
+        split = partition(A, left, right)
+        print("split:", split, "left:", left, "right:", right)
+        print("A:", A)
+        if split >= left + 1:
+            quicksort(A, left, split - 1)
+        if split <= right - 1:
+            quicksort(A, split + 1, right)
+A = [3, 6, 8, 10, 1, 2, 1]
+quicksort(A, 0, len(A) - 1)
+print("Sorted array:", A)

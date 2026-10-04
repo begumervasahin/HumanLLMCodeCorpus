@@ -1,0 +1,70 @@
+import queue
+import threading
+class Link:
+    def __init__(self, node_1, node_1_intf, node_2, node_2_intf):
+        self.node_1 = node_1
+        self.node_1_intf = node_1_intf
+        self.node_2 = node_2
+        self.node_2_intf = node_2_intf
+        print(f'Created link {self}')
+    def __str__(self):
+        return f'Link {self.node_1}-{self.node_1_intf} - {self.node_2}-{self.node_2_intf}'
+    def tx_pkt(self):
+        for (node_a, node_a_intf, node_b, node_b_intf) in [
+            (self.node_1, self.node_1_intf, self.node_2, self.node_2_intf),
+            (self.node_2, self.node_2_intf, self.node_1, self.node_1_intf)]:
+            intf_a = node_a.intf_L[node_a_intf]
+            intf_b = node_b.intf_L[node_b_intf]
+            pkt_S = intf_a.get('out')
+            if pkt_S is None:
+                continue
+            try:
+                intf_b.put(pkt_S, 'in')
+                print(f'{self}: transmitting packet "{pkt_S}" on {node_a} {node_a_intf} -> {node_b} {node_b_intf}')
+            except queue.Full:
+                print(f'{self}: packet lost')
+                pass
+class LinkLayer:
+    def __init__(self):
+        self.link_L = []
+        self.stop = False
+    def __str__(self):
+        return 'Network'
+    def add_link(self, link):
+        self.link_L.append(link)
+    def transfer(self):
+        for link in self.link_L:
+            link.tx_pkt()
+    def run(self):
+        print(f'{threading.currentThread().getName()}: Starting')
+        while not self.stop:
+            self.transfer()
+        print(f'{threading.currentThread().getName()}: Ending')
+def main():
+    class NodeInterface:
+        def __init__(self):
+            self.queue = queue.Queue()
+        def get(self, direction):
+            if direction == 'out':
+                return self.queue.get() if not self.queue.empty() else None
+        def put(self, pkt, direction):
+            if direction == 'in':
+                self.queue.put(pkt)
+    class Node:
+        def __init__(self, name):
+            self.name = name
+            self.intf_L = [NodeInterface() for _ in range(2)]
+        def __str__(self):
+            return self.name
+    node_A = Node('A')
+    node_B = Node('B')
+    link = Link(node_A, 0, node_B, 0)
+    link_layer = LinkLayer()
+    link_layer.add_link(link)
+    link_layer_thread = threading.Thread(target=link_layer.run)
+    link_layer_thread.start()
+    node_A.intf_L[0].put('packet_A_to_B', 'out')
+    threading.Timer(1.0, setattr, [link_layer, 'stop', True]).start()
+    link_layer_thread.join()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,50 @@
+class Graph:
+    def __init__(self, vertices=None, edges=None, directed=False):
+        self.vertices = vertices if vertices is not None else []
+        self.edges = edges if edges is not None else []
+        self.directed = directed
+        self.adjacency_list = {vertex.value: [] for vertex in self.vertices}
+    def get_adjacent(self, vertex):
+        return self.adjacency_list[vertex.value]
+    def add_vertex(self, value):
+        vertex = Vertex(value=value)
+        self.vertices.append(vertex)
+        self.adjacency_list[vertex.value] = []
+    def add_edge(self, vertex_u, vertex_v, weight):
+        edge = Edge(vertex_u, vertex_v, weight)
+        self.adjacency_list[vertex_u.value].append(edge)
+        self.edges.append(edge)
+        if not self.directed:
+            reverse_edge = Edge(vertex_v, vertex_u, weight)
+            self.adjacency_list[vertex_v.value].append(reverse_edge)
+class Vertex:
+    def __init__(self, value=None, distance=None, predecessor=None):
+        self.value = value
+        self.distance = distance
+        self.predecessor = predecessor
+class Edge:
+    def __init__(self, vertex_u=None, vertex_v=None, weight=None):
+        self.vertex_u = vertex_u
+        self.vertex_v = vertex_v
+        self.weight = weight
+    def equals(self, other):
+        return self.vertex_u == other.vertex_u and self.vertex_v == other.vertex_v
+def main():
+    graph = Graph(directed=False)
+    graph.add_vertex(1)
+    graph.add_vertex(2)
+    graph.add_vertex(3)
+    vertex_1 = graph.vertices[0]
+    vertex_2 = graph.vertices[1]
+    vertex_3 = graph.vertices[2]
+    graph.add_edge(vertex_1, vertex_2, 10)
+    graph.add_edge(vertex_2, vertex_3, 20)
+    graph.add_edge(vertex_3, vertex_1, 30)
+    print("Vertices in the graph:")
+    for vertex in graph.vertices:
+        print(f"Vertex {vertex.value}")
+    print("\nEdges in the graph:")
+    for edge in graph.edges:
+        print(f"Edge from {edge.vertex_u.value} to {edge.vertex_v.value} with weight {edge.weight}")
+if __name__ == "__main__":
+    main()

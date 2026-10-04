@@ -1,0 +1,79 @@
+from binary_mult import *
+from keygen_extras import *
+import random
+def hcfnaive(a, b):
+    return a if b == 0 else hcfnaive(b, a % b)
+def egcd(a, b):
+    if a == 0:
+        return b, 0, 1
+    else:
+        g, x, y = egcd(b % a, a)
+        return g, y - (b
+def is_prime(n, k=1):
+    if n == 2:
+        return True
+    if n % 2 == 0 or n < 2:
+        return False
+    r, s = 0, n - 1
+    while s % 2 == 0:
+        r += 1
+        s
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = pow(a, s, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+def multiplicative_inverse(e, phi):
+    g, x, y = egcd(e, phi)
+    if g != 1:
+        raise Exception('Multiplicative inverse does not exist')
+    else:
+        return x % phi
+def main():
+    mlen = 512
+    rlen = 512
+    leng = 512
+    eleng = 1024
+    m = rand_bin(leng)
+    m = two_com(m, mlen)
+    while not is_prime(binary2dec(m)):
+        m = rand_bin(leng)
+        m = two_com(m, leng)
+    r = rand_bin(leng)
+    r = two_com(r, leng)
+    while not is_prime(binary2dec(r)):
+        r = rand_bin(leng)
+        r = two_com(r, eleng)
+    e = rand_bin(eleng)
+    e = two_com(e, eleng)
+    m_dec = binary2dec(m)
+    r_dec = binary2dec(r)
+    phi = (m_dec - 1) * (r_dec - 1)
+    g = 5
+    e_dec = binary2dec(e)
+    while g != 1:
+        while not is_prime(e_dec):
+            e = rand_bin(eleng)
+            e = two_com(e, eleng)
+            e_dec = binary2dec(e)
+        g = gcd(e_dec, phi)
+    print('n is = ' + str(phi))
+    print('')
+    print('Public Key is = ' + str(e_dec))
+    print('')
+    d = multiplicative_inverse(e_dec, phi)
+    print('Private Key is = ' + str(d))
+    print('')
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,110 @@
+from no import No
+class Arvore:
+    def __init__(self):
+        self.raiz = None
+        self.tamanho = 0
+    def __setitem__(self, chave, valor):
+        self.inserir(chave, valor)
+    def __delitem__(self, chave):
+        self.deletar(chave)
+    def __len__(self):
+        return self.tamanho
+    def __getitem__(self, chave):
+        return self.get(chave)
+    def __contains__(self, chave):
+        return self._get(chave, self.raiz) is not None
+    def quantidade(self):
+        return self.tamanho
+    def inserir(self, chave, valor):
+        if self.raiz:
+            self._inserir(chave, valor, self.raiz)
+        else:
+            self.raiz = No(chave, valor)
+        self.tamanho += 1
+    def _inserir(self, chave, valor, no_corrente):
+        if chave < no_corrente.chave:
+            if no_corrente.tem_filho_esquerda():
+                self._inserir(chave, valor, no_corrente.esquerda)
+            else:
+                no_corrente.esquerda = No(chave, valor, pai=no_corrente)
+        else:
+            if no_corrente.tem_filho_direita():
+                self._inserir(chave, valor, no_corrente.direita)
+            else:
+                no_corrente.direita = No(chave, valor, pai=no_corrente)
+    def get(self, chave):
+        if self.raiz:
+            res = self._get(chave, self.raiz)
+            return res.carga if res else None
+        return None
+    def _get(self, chave, no_corrente):
+        if no_corrente is None:
+            return None
+        if no_corrente.chave == chave:
+            return no_corrente
+        if chave < no_corrente.chave:
+            return self._get(chave, no_corrente.esquerda)
+        return self._get(chave, no_corrente.direita)
+    def deletar(self, chave):
+        if self.tamanho > 1:
+            no_para_deletar = self._get(chave, self.raiz)
+            if no_para_deletar:
+                self._remover(no_para_deletar)
+                self.tamanho -= 1
+            else:
+                raise KeyError('Chave não encontrada na árvore atual')
+        elif self.tamanho == 1 and self.raiz.chave == chave:
+            self.raiz = None
+            self.tamanho -= 1
+        else:
+            raise KeyError('Chave não encontrada na árvore atual')
+    def esvaziar(self):
+        self.raiz = None
+        self.tamanho = 0
+        print("Sua árvore está vazia!")
+    def _buscar_sucessor(self, no):
+        if no.tem_filho_direita():
+            return self._chave_minima(no.direita)
+        while no.pai and no.eh_filho_direita():
+            no = no.pai
+        return no.pai
+    def _chave_minima(self, no):
+        while no.tem_filho_esquerda():
+            no = no.esquerda
+        return no
+    def _remover_sucessor(self, no):
+        if no.eh_folha():
+            if no.eh_filho_esquerda():
+                no.pai.esquerda = None
+            else:
+                no.pai.direita = None
+        elif no.tem_filho_esquerda():
+            if no.eh_filho_esquerda():
+                no.pai.esquerda = no.esquerda
+            else:
+                no.pai.direita = no.esquerda
+            no.esquerda.pai = no.pai
+        else:
+            if no.eh_filho_esquerda():
+                no.pai.esquerda = no.direita
+            else:
+                no.pai.direita = no.direita
+            no.direita.pai = no.pai
+    def _remover(self, no_corrente):
+        if no_corrente.eh_folha():
+            if no_corrente.eh_filho_esquerda():
+                no_corrente.pai.esquerda = None
+            else:
+                no_corrente.pai.direita = None
+        elif no_corrente.tem_todos_filhos():
+            sucessor = self._buscar_sucessor(no_corrente)
+            self._remover_sucessor(sucessor)
+            no_corrente.chave = sucessor.chave
+            no_corrente.carga = sucessor.carga
+        else:
+            filho = no_corrente.esquerda if no_corrente.tem_filho_esquerda() else no_corrente.direita
+            if no_corrente.eh_filho_esquerda():
+                no_corrente.pai.esquerda = filho
+            else:
+                no_corrente.pai.direita = filho
+            filho.pai = no_corrente.pai

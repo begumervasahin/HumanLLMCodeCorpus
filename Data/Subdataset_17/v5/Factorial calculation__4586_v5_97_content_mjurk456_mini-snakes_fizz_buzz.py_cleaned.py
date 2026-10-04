@@ -1,0 +1,32 @@
+def fizz_buzz_counter():
+    fizzes = 0
+    buzzes = 0
+    fizzbuzzes = 0
+    normal = 0
+    while True:
+        try:
+            user_input = input("Enter start and stop values (separated by a space): ").strip()
+            min_limit, max_limit = map(int, user_input.split())
+            break
+        except ValueError:
+            print("Invalid input. Please enter two integers separated by a space.")
+    step = 1 if min_limit <= max_limit else -1
+    for number in range(min_limit, max_limit + step, step):
+        if number % 15 == 0:
+            print("fizzbuzz", end=" ")
+            fizzbuzzes += 1
+        elif number % 3 == 0:
+            print("fizz", end=" ")
+            fizzes += 1
+        elif number % 5 == 0:
+            print("buzz", end=" ")
+            buzzes += 1
+        else:
+            print(number, end=" ")
+            normal += 1
+    print("\nFizzes in range:", fizzes)
+    print("Buzzes in range:", buzzes)
+    print("Fizzbuzzes in range:", fizzbuzzes)
+    print("Normal numbers in range:", normal)
+if __name__ == "__main__":
+    fizz_buzz_counter()

@@ -1,0 +1,70 @@
+from flask import Flask, render_template, request
+import socket
+import time
+app = Flask(__name__)
+app.secret_key = "Non-seen"
+@app.route('/scan', methods=['GET', 'POST'])
+def scan():
+    if request.method == 'GET':
+        try:
+            return render_template("scanner.html")
+        except Exception as e:
+            return f"Error <hr>{e}"
+    area = request.form['area']
+    ip = request.form['url']
+    ports = []
+    common_ports = [21, 22, 23, 25, 27, 50, 53, 69, 70, 80, 87, 88, 109, 110, 113, 143, 1080, 8080, 8088]
+    hosts = []
+    if ip[0].isdigit():
+        addr_type = 'ip'
+    else:
+        addr_type = 'url'
+    if area.lower() == 'ip':
+        if addr_type == 'url':
+            try:
+                resolved_ip = socket.gethostbyname(ip)
+            except Exception as e:
+                return render_template('scanner.html', error=True)
+            return render_template('scanner.html', addr=addr_type, loc=ip, res=resolved_ip)
+        else:
+            try:
+                resolved_name = socket.getfqdn(ip)
+            except Exception as e:
+                return render_template('scanner.html', error=True)
+            return render_template('scanner.html', addr=addr_type, loc=ip, res=resolved_name)
+    elif area.lower() == 'name':
+        try:
+            resolved_name = socket.getfqdn(ip)
+        except Exception as e:
+            return render_template('scanner.html', error=True)
+        return render_template('scanner.html', addr=addr_type, loc=ip, res=resolved_name)
+    elif area.lower() == 'ports':
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        for port in common_ports:
+            result = sock.connect_ex((ip, port))
+            if result == 0:
+                hosts.append(port)
+            time.sleep(0.001)
+        if not hosts:
+            hosts = [0]
+        return render_template('scanner.html', hosts=hosts)
+    elif area.lower() == 'services':
+        services = {}
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        for port in common_ports:
+            try:
+                result = sock.connect_ex((ip, port))
+            except Exception as e:
+                return f"An error Occurred:<hr>{e}"
+            try:
+                service_name = socket.getservbyport(port)
+            except:
+                service_name = None
+            if result == 0:
+                services[port] = [service_name, "running"]
+            else:
+                services[port] = [service_name, "not running"]
+        return render_template('scanner.html', services=services)
+    return render_template('scanner.html', error=True)
+if __name__ == "__main__":
+    app.run(debug=True)

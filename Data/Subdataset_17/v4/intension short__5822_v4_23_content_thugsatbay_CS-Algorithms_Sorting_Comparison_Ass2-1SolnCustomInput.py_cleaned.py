@@ -1,0 +1,88 @@
+import random
+import time
+import sys
+def insertion_sort(arr):
+    for i in range(len(arr)):
+        current_value = arr[i]
+        position = i
+        while position > 0 and arr[position - 1] > current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+        arr[position] = current_value
+    return arr
+def insertion_sort_reverse(arr):
+    for i in range(len(arr)):
+        current_value = arr[i]
+        position = i
+        while position > 0 and arr[position - 1] < current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+        arr[position] = current_value
+    return arr
+def quicksort_standard_pivot(arr, low, high):
+    if low < high:
+        pi = partition(arr, low, high)
+        quicksort_standard_pivot(arr, low, pi - 1)
+        quicksort_standard_pivot(arr, pi + 1, high)
+def quicksort_random_pivot(arr, low, high):
+    if low < high:
+        pi = random_partition(arr, low, high)
+        quicksort_random_pivot(arr, low, pi - 1)
+        quicksort_random_pivot(arr, pi + 1, high)
+def partition(arr, low, high):
+    pivot = arr[high]
+    i = low - 1
+    for j in range(low, high):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+def random_partition(arr, low, high):
+    random_index = random.randint(low, high)
+    arr[random_index], arr[high] = arr[high], arr[random_index]
+    return partition(arr, low, high)
+def run_algorithm_comparison():
+    print("Hi, Question 1 - Assignment 2 Algorithm has started.")
+    print("Plotting of graph to compare sorting algorithms will be done.")
+    while True:
+        print("There are 4 modules listed as [A, B, C, D] for Question 1.")
+        print("Only one module can be run at a time. Press 'E' to exit.")
+        if sys.version_info[0] < 3:
+            response = raw_input("Please enter which part of Question 1 you want to run (Example: A): ").lower().strip()
+            value = int(raw_input("Enter size of array N: ").strip())
+        else:
+            response = input("Please enter which part of Question 1 you want to run (Example: A): ").lower().strip()
+            value = int(input("Enter size of array N: ").strip())
+        if response == 'e':
+            break
+        test_sample = random.sample(range(value), value)
+        if response == 'a':
+            print_algorithm_results(value, test_sample, insertion_sort, quicksort_standard_pivot)
+        elif response == 'b':
+            print_algorithm_results(value, test_sample, quicksort_standard_pivot, quicksort_random_pivot)
+        elif response == 'c':
+            test_sample = list(range(value))
+            print_algorithm_results(value, test_sample, insertion_sort, quicksort_standard_pivot)
+        elif response == 'd':
+            test_sample = list(range(value))
+            test_sample = insertion_sort_reverse(test_sample)
+            print_algorithm_results(value, test_sample, insertion_sort, quicksort_standard_pivot)
+        else:
+            print("Wrong Input. Please try again or press 'E' to exit.")
+        print("\n" * 3)
+def print_algorithm_results(value, test_sample, algo1, algo2):
+    algo1_time, algo2_time = [], []
+    for _ in [value]:
+        sample1, sample2 = test_sample[:], test_sample[:]
+        start_time = time.time()
+        algo1(sample1)
+        algo1_time.append(abs(time.time() - start_time))
+        start_time = time.time()
+        algo2(sample2, 0, len(sample2) - 1)
+        algo2_time.append(abs(time.time() - start_time))
+    print("\nTest Sample Size:", [value])
+    print(f"{algo1.__name__.replace('_', ' ').title()}: {algo1_time}")
+    print(f"{algo2.__name__.replace('_', ' ').title()}: {algo2_time}")
+if __name__ == "__main__":
+    run_algorithm_comparison()

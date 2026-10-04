@@ -1,0 +1,89 @@
+import sys
+import heapq
+from DisjointSet import DisjointSet
+def prims(input_file):
+    with open(input_file) as graph:
+        adjacency = {}
+        unvisited_set = set()
+        nodes = []
+        for line in graph:
+            vertex1, vertex2, weight = line.split()
+            weight = int(weight)
+            if vertex1 not in adjacency:
+                adjacency[vertex1] = []
+                unvisited_set.add(vertex1)
+            if vertex2 not in adjacency:
+                adjacency[vertex2] = []
+                unvisited_set.add(vertex2)
+            adjacency[vertex1].append((vertex2, weight))
+            adjacency[vertex2].append((vertex1, weight))
+            nodes.extend([vertex1, vertex2])
+        for vertex in adjacency:
+            print(f"{vertex}: {adjacency[vertex]}")
+        current_vertex = (0, nodes[0])
+        distance = {nodes[0]: 0}
+        previous = {nodes[0]: '-'}
+        solutions = {v: (0, '-') for v in unvisited_set}
+        queue = []
+        heapq.heappush(queue, current_vertex)
+        unvisited = list(unvisited_set)
+        unvisited.remove(nodes[0])
+        cost = 0
+        while queue:
+            current_vertex = heapq.heappop(queue)
+            current_distance, current_node = current_vertex
+            if current_node in unvisited:
+                unvisited.remove(current_node)
+                cost += current_distance
+                for neighbor, weight in adjacency.get(current_node, []):
+                    if neighbor in unvisited:
+                        heapq.heappush(queue, (weight, neighbor))
+                        if distance.get(neighbor, sys.maxsize) > weight:
+                            distance[neighbor] = weight
+                            previous[neighbor] = current_node
+                            solutions[neighbor] = (weight, neighbor, current_node)
+        print(f"Prim's total cost: {cost} with edges:")
+        return solutions
+def kruskals(input_file):
+    with open(input_file) as graph:
+        edges = []
+        nodes = {}
+        count = 0
+        for line in graph:
+            vertex1, vertex2, weight = line.split()
+            weight = int(weight)
+            edges.append((weight, vertex1, vertex2))
+            if vertex1 not in nodes:
+                nodes[vertex1] = count
+                count += 1
+            if vertex2 not in nodes:
+                nodes[vertex2] = count
+                count += 1
+        disjoint_set = DisjointSet(len(nodes))
+        edges.sort()
+        total_cost = 0
+        solutions = []
+        for weight, vertex1, vertex2 in edges:
+            if disjoint_set.find(nodes[vertex1]) != disjoint_set.find(nodes[vertex2]):
+                disjoint_set.union(nodes[vertex1], nodes[vertex2])
+                solutions.append((weight, vertex1, vertex2))
+                total_cost += weight
+        return total_cost, solutions
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Usage: python mst.py [input file] [prims | kruskals]")
+        sys.exit(1)
+    input_file = sys.argv[1]
+    algorithm = sys.argv[2]
+    if algorithm == 'prims':
+        result = prims(input_file)
+        for key, value in result.items():
+            print(f"Edge from {value[2]} to {value[1]} with weight {value[0]}")
+    elif algorithm == 'kruskals':
+        total, result = kruskals(input_file)
+        print(f"Kruskal's total cost: {total} with edges:")
+        for edge in result:
+            print(f"Edge from {edge[1]} to {edge[2]} with weight {edge[0]}")
+    else:
+        print("Illegal algorithm. Must be either 'prims' or 'kruskals'.")
+        sys.exit(1)

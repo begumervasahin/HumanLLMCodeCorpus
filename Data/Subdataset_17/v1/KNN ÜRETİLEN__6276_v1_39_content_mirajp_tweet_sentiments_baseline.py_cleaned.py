@@ -1,0 +1,45 @@
+import sys
+import re
+import nltk
+from nltk.corpus import opinion_lexicon
+def load_sentiment_words():
+    sentiment_words = {}
+    flag = 0
+    for w in opinion_lexicon.words():
+        if flag == 0:
+            sentiment_words[w] = flag
+            if re.search("zombie", w):
+                flag = 1
+        else:
+            sentiment_words[w] = flag
+    return sentiment_words
+def analyze_sentiment(tweet, sentiment_words):
+    words = tweet.split(" ")
+    neg = 0
+    pos = 0
+    for word in words:
+        try:
+            if sentiment_words[word.lower()] == 1:
+                pos += 1
+            elif sentiment_words[word.lower()] == 0:
+                neg += 1
+        except KeyError:
+            pass
+    return pos, neg
+def main():
+    nltk.download('opinion_lexicon')
+    sentiment_words = load_sentiment_words()
+    with open("test.list", 'rb') as test_file, open("baseline_out.txt", 'w') as out_file:
+        line_cnt = 1
+        for tweet in test_file:
+            tweet = tweet.decode('ISO-8859-1')
+            pos, neg = analyze_sentiment(tweet, sentiment_words)
+            if pos > neg:
+                out_file.write(f"{line_cnt} positive\n")
+            elif pos < neg:
+                out_file.write(f"{line_cnt} negative\n")
+            else:
+                out_file.write(f"{line_cnt} neutral\n")
+            line_cnt += 1
+if __name__ == "__main__":
+    main()

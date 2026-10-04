@@ -1,0 +1,14 @@
+def insertion_sort(array):
+    for i in range(1, len(array)):
+        value = array[i]
+        hole = i
+        while hole > 0 and array[hole - 1] > value:
+            array[hole] = array[hole - 1]
+            hole -= 1
+        array[hole] = value
+def main():
+    arr = [12, 11, 4, 3, 1, 1, 6, 7]
+    insertion_sort(arr)
+    print(arr)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,33 @@
+import sys
+def merge(a, b):
+    c = []
+    while a and b:
+        if a[0] > b[0]:
+            c.append(b.pop(0))
+        else:
+            c.append(a.pop(0))
+    while a:
+        c.append(a.pop(0))
+    while b:
+        c.append(b.pop(0))
+    return c
+def merge_sort(lst):
+    if len(lst) == 1:
+        return lst
+    mid = len(lst)
+    a = lst[:mid]
+    b = lst[mid:]
+    a = merge_sort(a)
+    b = merge_sort(b)
+    return merge(a, b)
+def main():
+    if len(sys.argv) > 1:
+        lst = sys.argv[1:]
+        lst = [int(x) for x in lst]
+        print("Original list:", lst)
+        sorted_lst = merge_sort(lst)
+        print("Sorted list:", sorted_lst)
+    else:
+        print("Please provide a list of numbers as command-line arguments.")
+if __name__ == "__main__":
+    main()

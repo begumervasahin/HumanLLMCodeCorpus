@@ -1,0 +1,80 @@
+import numpy as np
+from csv import reader
+from random import randint
+from copy import deepcopy
+from sys import argv
+def main():
+    if len(argv) != 4:
+        print("Usage: python script.py <input_file> <k> <output_file>")
+        return
+    input_file = argv[1]
+    k = int(argv[2])
+    output_file = argv[3]
+    data = load_csv(input_file)
+    X = preprocess_data(data)
+    clusters, centroids = k_means(X, k)
+    sse = calculate_sse(X, clusters, centroids)
+    print(f"SSE is {sse:.2f}")
+    save_results(output_file, clusters, sse)
+def load_csv(file_path):
+    with open(file_path, 'r') as file:
+        r = reader(file)
+        return np.array([row for row in r if row])
+def preprocess_data(data):
+    X, _ = data[:, :-1], data[:, -1]
+    X = X.astype(np.float64)
+    return min_max_normalize(X)
+def min_max_normalize(X):
+    normalized_X = []
+    for col in X.T:
+        col_min = col.min()
+        col_max = col.max()
+        col_normalized = (col - col_min) / (col_max - col_min)
+        normalized_X.append(col_normalized)
+    return np.array(normalized_X).T
+def k_means(X, k):
+    centroids = initialize_centroids(X, k)
+    old_centroids = np.zeros(centroids.shape)
+    clusters = np.zeros(len(X))
+    while not has_converged(centroids, old_centroids):
+        clusters = assign_clusters(X, centroids)
+        old_centroids = deepcopy(centroids)
+        centroids = update_centroids(X, clusters, k)
+    return clusters, centroids
+def initialize_centroids(X, k):
+    centroids = []
+    indices = set()
+    while len(indices) < k:
+        index = randint(0, len(X) - 1)
+        if index not in indices:
+            centroids.append(X[index])
+            indices.add(index)
+    return np.array(centroids)
+def has_converged(centroids, old_centroids):
+    return np.allclose(centroids, old_centroids)
+def assign_clusters(X, centroids):
+    clusters = np.zeros(len(X))
+    for i, x in enumerate(X):
+        distances = np.linalg.norm(x - centroids, axis=1)
+        clusters[i] = np.argmin(distances)
+    return clusters
+def update_centroids(X, clusters, k):
+    new_centroids = np.zeros((k, X.shape[1]))
+    for i in range(k):
+        cluster_points = X[clusters == i]
+        if len(cluster_points) > 0:
+            new_centroids[i] = cluster_points.mean(axis=0)
+    return new_centroids
+def calculate_sse(X, clusters, centroids):
+    sse = 0
+    for i, centroid in enumerate(centroids):
+        cluster_points = X[clusters == i]
+        sse += np.sum(np.linalg.norm(cluster_points - centroid, axis=1) ** 2)
+    return sse
+def save_results(output_file, clusters, sse):
+    with open(output_file, 'w') as f:
+        for cluster in clusters:
+            f.write(f"{int(cluster)}\n")
+        f.write(f"SSE is {sse:.2f}")
+if __name__ == '__main__':
+    main()

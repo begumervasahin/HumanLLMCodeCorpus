@@ -1,0 +1,58 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+def main():
+    df = pd.read_csv("kc_house_data.csv")
+    data_x = df["sqft_living"]
+    data_y = df["price"]
+    train_x, test_x, train_y, test_y = train_test_split(data_x, data_y, test_size=0.3, random_state=42)
+    train_x = normalize(train_x)
+    test_x = normalize(test_x)
+    train_y = normalize(train_y)
+    test_y = normalize(test_y)
+    return train_x, test_x, train_y, test_y
+def normalize(series):
+    return (series - series.min()) / (series.max() - series.min())
+def sort_inputs(x, y):
+    x = np.array(x)
+    y = np.array(y)
+    sorted_pairs = sorted(zip(x, y))
+    x, y = zip(*sorted_pairs)
+    return np.array(x), np.array(y)
+def compute_weights(x_matrix, identity_matrix, ridge_factor, y):
+    x_transpose_x = np.linalg.inv(np.dot(x_matrix.T, x_matrix) + ridge_factor * identity_matrix)
+    x_transpose_y = np.dot(x_matrix.T, y)
+    return np.dot(x_transpose_x, x_transpose_y)
+def prepare_matrices(x, degree):
+    identity_matrix = np.identity(degree + 1)
+    x_matrix = np.column_stack([x**i for i in range(degree + 1)])
+    return x_matrix, identity_matrix
+def polynomial_regression(train_x, train_y):
+    max_complexity = 6
+    prediction_list = []
+    error_list = []
+    for complexity in range(1, max_complexity + 1):
+        x_matrix, identity_matrix = prepare_matrices(train_x, complexity)
+        weights = compute_weights(x_matrix, identity_matrix, ridge_factor=0.00001, y=train_y)
+        y_pred = sum(weights[i] * train_x**i for i in range(len(weights)))
+        plt.scatter(train_x, train_y)
+        plt.plot(train_x, y_pred)
+        plt.show()
+        error_list.append(mean_squared_error(train_y, y_pred))
+        prediction_list.append(y_pred)
+    return error_list
+def mean_squared_error(y_true, y_pred):
+    return np.sqrt(np.mean((y_true - y_pred)**2))
+def plot_rmse(error_list, color):
+    plt.title("Root Mean Square Error of Train and Test Data")
+    plt.xlabel("Complexity")
+    plt.ylabel("RMSE Score")
+    plt.ylim([0, 1])
+    plt.plot(range(1, len(error_list) + 1), error_list, color=color)
+    plt.show()
+if __name__ == "__main__":
+    train_x, test_x, train_y, test_y = main()
+    train_x, train_y = sort_inputs(train_x, train_y)
+    error_list = polynomial_regression(train_x, train_y)
+    print(error_list)

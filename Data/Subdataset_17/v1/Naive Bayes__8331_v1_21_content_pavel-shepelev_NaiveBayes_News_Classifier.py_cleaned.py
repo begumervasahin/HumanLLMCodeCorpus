@@ -1,0 +1,63 @@
+from collections import Counter
+trainsize = 6000
+testsize = 15000
+train_file = "news_train.txt"
+test_file = "news_test.txt"
+output_file = "answer.txt"
+category = []
+content = []
+with open(train_file, encoding='utf-8') as f:
+    articles = f.readlines()
+    for article in articles:
+        category.append(article.split("\t", 1)[0])
+        content.append(article.split("\t", 1)[1].strip())
+names = list(set(category))
+def IndexSelect(name):
+    return [i for i in range(trainsize) if category[i] == name]
+def CommonWords(categ, testdic):
+    testcounts = dict.fromkeys(testdic, 0)
+    for i in IndexSelect(categ):
+        traindic = dict(Counter(content[i].split()))
+        for key in traindic:
+            if key in testdic:
+                testcounts[key] += traindic[key]
+    return testcounts
+def Prior(categ):
+    return len(IndexSelect(categ)) / len(category)
+def WordsnVoc(categ):
+    totalwords = 0
+    voc = set()
+    for i in IndexSelect(categ):
+        traindic = dict(Counter(content[i].split()))
+        totalwords += len(traindic.keys())
+        voc.update(traindic.keys())
+    return totalwords, voc
+voc = set()
+values = []
+for categ in names:
+    totalwords, category_voc = WordsnVoc(categ)
+    voc.update(category_voc)
+    values.append(totalwords)
+totalwords = dict(zip(names, values))
+voclength = len(voc)
+def Main(testdic):
+    probs = []
+    for categ in names:
+        testcounts = CommonWords(categ, testdic)
+        condprob = dict.fromkeys(testcounts, 0)
+        p = 1
+        for word in testcounts:
+            condprob[word] = 10000 * (testcounts[word] + 1) / (totalwords[categ] + voclength)
+            p *= condprob[word]
+        p *= Prior(categ)
+        probs.append(p)
+    return names[probs.index(max(probs))]
+tcontent = []
+with open(test_file, encoding='utf-8') as f:
+    tarticles = f.readlines()
+with open(output_file, 'w', encoding="utf-8") as answerfile:
+    for i in range(testsize):
+        testdict = dict(Counter(tarticles[i].split()))
+        answer = Main(testdict)
+        answerfile.write(answer + '\n')
+print("Classification completed. Results written to", output_file)

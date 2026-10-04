@@ -1,0 +1,71 @@
+import json
+import sys
+from Process_TianChi_Main import analysis_Time
+from utils import *
+def load_users(filename):
+    with open(filename, 'r') as f:
+        return [line.strip() for line in f.readlines()]
+def process_devices(all_user_info):
+    devices = set()
+    total_users = len(all_user_info)
+    for count, user in enumerate(all_user_info.keys(), start=1):
+        percentage = 100 * count / total_users
+        sys.stdout.write(f'\r>> Processing Users............ {percentage:.2f} %')
+        sys.stdout.flush()
+        info = all_user_info[user]["Reach_Time"]
+        for time in info.keys():
+            devices.update(info[time].keys())
+    return len(devices)
+def process_timegroup(user_time):
+    all_time = 0
+    total_users = len(user_time)
+    for count, user in enumerate(user_time.keys(), start=1):
+        percentage = 100 * count / total_users
+        sys.stdout.write(f'\r>> Processing Users............ {percentage:.2f} %')
+        sys.stdout.flush()
+        per_user_info = user_time[user]
+        _, Dates_Interval_Dict = analysis_Time(user, per_user_info)
+        all_time += len(Dates_Interval_Dict.keys())
+    return all_time
+def process_features(all_user_info):
+    all_keyword = 0
+    all_IP = 0
+    total_users = len(all_user_info)
+    for count, user in enumerate(all_user_info.keys(), start=1):
+        percentage = 100 * count / total_users
+        sys.stdout.write(f'\r>> Processing Users............ {percentage:.2f} %')
+        sys.stdout.flush()
+        info = all_user_info[user]["Reach_Time"]
+        for time in info.keys():
+            for user_info in info[time].values():
+                all_keyword += len(user_info["Keyword"])
+                all_IP += len(user_info["Device_IP"])
+    avg_keyword = all_keyword / total_users
+    avg_IP = all_IP / total_users
+    return all_keyword, avg_keyword, all_IP, avg_IP
+def main():
+    users = load_users('all_user_id.txt')
+    choose = sys.argv[1]
+    if choose == '0':
+        print('devices group...')
+        with open('all_user_info.json') as f:
+            all_user_info = json.load(f)
+        num_devices = process_devices(all_user_info)
+        print(f'\nNumber of unique devices: {num_devices}')
+    elif choose == '1':
+        print('time group...')
+        with open('user_time_info.json') as f:
+            user_time = json.load(f)
+        all_time = process_timegroup(user_time)
+        print(f'\nTotal time intervals: {all_time}')
+    elif choose == '2':
+        print('features...')
+        with open('all_user_info.json') as f:
+            all_user_info = json.load(f)
+        all_keyword, avg_keyword, all_IP, avg_IP = process_features(all_user_info)
+        print(f'\nTotal keywords: {all_keyword}')
+        print(f'Average keywords per user: {avg_keyword}')
+        print(f'Total IPs: {all_IP}')
+        print(f'Average IPs per user: {avg_IP}')
+if __name__ == "__main__":
+    main()

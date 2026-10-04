@@ -1,0 +1,345 @@
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output, State
+import plotly.graph_objs as go
+import pandas as pd
+import mysql.connector
+from goose3 import Goose
+import csv
+cnx = mysql.connector.connect(
+    user='student',
+    password='cs336student',
+    host='cs336.ckksjtjg2jto.us-east-2.rds.amazonaws.com',
+    database='CryptoNews'
+)
+g = Goose()
+def str_rep(s):
+    f = False
+    s1 = ""
+    for i in s:
+        if i == '[':
+            f = True
+            continue
+        if i == ']':
+            f = False
+            continue
+        if f:
+            continue
+        s1 += i
+    return s1
+outlier_df1 = pd.read_csv("outlier.csv")
+outlier_df1.sort_values(by=['Outlier Score'])
+outlier_df = outlier_df1.iloc[61:161, :]
+app = dash.Dash(__name__)
+server = app.server
+app.config['suppress_callback_exceptions'] = True
+app.layout = html.Div(
+    style={
+        'backgroundImage': 'url("http:
+        'width': '96%',
+        'margin': '0% 0% 0% 2%',
+        'borderRadius': '10px'
+    },
+    children=[
+        html.H1(
+            style={
+                'textAlign': 'center',
+                'font': 'bold 35px Castellar, serif',
+                'padding': '20px 0px 0px 0px'
+            },
+            children='Crypto Analysis'
+        ),
+        html.Label(
+            style={'margin': '0% 0% 0% 1%', 'font': '20px Britannic, serif'},
+            children='Select a currency:'
+        ),
+        html.Br(),
+        html.Div(
+            style={'width': '20%', 'font-size': '20px', 'margin': '0% 0% 0% 1%'},
+            children=dcc.Dropdown(
+                id='cryptos',
+                options=[
+                    {'label': 'Bitcoin', 'value': 'Bitcoin'},
+                    {'label': 'Ethereum', 'value': 'Ethereum'},
+                    {'label': 'Ripple', 'value': 'Ripple'},
+                    {'label': 'Litecoin', 'value': 'Litecoin'},
+                    {'label': 'Monero', 'value': 'Monero'}
+                ],
+                value='Bitcoin'
+            )
+        ),
+        html.Hr(),
+        html.Div(
+            style={'margin': '0% 0% 0% 1%'},
+            children=[
+                html.Div(
+                    [
+                        html.H4(
+                            style={'font-weight': 'bold', 'border': '2px solid black'},
+                            children='Price Chart'
+                        ),
+                        html.Div(id='price', children=[])
+                    ],
+                    className="six columns"
+                ),
+                html.Div(
+                    [
+                        html.Div(
+                            style={'width': '20%', 'margin': '0% 0% 0% 2%'},
+                            children=[
+                                html.H4(
+                                    style={'font-weight': 'bold', 'border': '2px solid black'},
+                                    children='Facts'
+                                ),
+                                html.Div(
+                                    style={'font-size': '15px', 'text-align': 'justify'},
+                                    id='price_facts'
+                                )
+                            ],
+                            className="six columns"
+                        ),
+                        html.Div(
+                            style={'width': '26%', 'margin': '0% 0% 0% 2%'},
+                            children=[
+                                html.H4(
+                                    style={'font-weight': 'bold', 'border': '2px solid black'},
+                                    children='About'
+                                ),
+                                html.Div(
+                                    style={'font-size': '15px', 'text-align': 'justify', 'height': '400px', 'overflow': 'scroll'},
+                                    id='about'
+                                )
+                            ],
+                            className="six columns"
+                        ),
+                    ],
+                    className="row"
+                ),
+            ],
+            className="row"
+        ),
+        html.Hr(),
+        html.Div(
+            [
+                html.Div(
+                    style={'width': '47%', 'margin': '0% 0% 0% 2%'},
+                    children=[
+                        html.H4(
+                            style={'font-weight': 'bold', 'border': '2px solid black'},
+                            children='Relevant Domains'
+                        ),
+                        html.Div(
+                            style={'font-size': '15px'},
+                            id='rel_domains'
+                        )
+                    ],
+                    className="six columns"
+                ),
+                html.Div(
+                    style={'width': '47%', 'margin': '0% 0% 0% 2%'},
+                    children=[
+                        html.H4(
+                            style={'font-weight': 'bold', 'border': '2px solid black'},
+                            children='Market Cap Distribution'
+                        ),
+                        dcc.Graph(
+                            id='pi',
+                            figure={
+                                'data': [
+                                    {'values': [0], 'labels': [''], 'type': 'pie'},
+                                ],
+                                'layout': {
+                                    'title': "Market Cap Distribution",
+                                }
+                            }
+                        )
+                    ],
+                    className="six columns"
+                ),
+            ],
+            className="row"
+        ),
+        html.Hr(),
+        html.H1(
+            style={'textAlign': 'center', 'font': 'bold 35px Castellar, serif', 'padding': '20px 0px 0px 0px'},
+            children='Outlier Analysis'
+        ),
+        html.Div(
+            [
+                html.Div(
+                    style={'margin': '0% 0% 0% 1%', 'width': '45%'},
+                    children=[
+                        html.H4(
+                            style={'font-weight': 'bold', 'border': '2px solid black'},
+                            children='Outlier Feature Calculation'
+                        ),
+                        dcc.DataTable(
+                            data=outlier_df.to_dict('records'),
+                            columns=[{"name": i, "id": i} for i in outlier_df.columns],
+                            row_selectable='multi',
+                            id='outlier'
+                        ),
+                        html.Div(
+                            children=['*All calculations are with respect to Bitcoin.']
+                        ),
+                        html.Div(
+                            style={'font-size': '15px'},
+                            children=[
+                                'This is an interactive table. You can sort, search and filter using any column in the table. The adjacent graphs will update accordingly.'
+                            ]
+                        ),
+                    ],
+                    className="six columns"
+                ),
+                html.Div(
+                    [
+                        html.Div(id='selected-indexes'),
+                        dcc.Graph(id='graph-outlier')
+                    ],
+                    className="six columns"
+                ),
+            ],
+            className="row"
+        ),
+        html.Hr(),
+        html.H1(
+            style={'textAlign': 'center', 'font': 'bold 35px Castellar, serif', 'padding': '20px 0px 0px 0px'},
+            children='Pump and Dump Analysis'
+        ),
+        html.Div(
+            style={'font-size': '15px'},
+            children=[
+                'Click on the below link to go to the pump and dump webpage'
+            ]
+        ),
+        html.Div(
+            style={'font-size': '20px'},
+            children=html.A(
+                href="https:
+                target="_blank",
+                children="Click here"
+            )
+        ),
+        html.Div(
+            style={'width': '95%', 'margin': '1% 2.5% 1% 2.5%', 'borderRadius': '10px', 'opacity': '1'},
+            children=html.Div(id='output')
+        ),
+    ]
+)
+@app.callback(
+    Output('about', 'children'),
+    [Input('cryptos', 'value')]
+)
+def update_about(value):
+    BASE_URL = 'https:
+    BACK_URL = value
+    if BACK_URL == "Ripple":
+        BACK_URL = "Ripple_(payment_protocol)"
+    elif BACK_URL == "EOS":
+        BACK_URL = "EOS.IO"
+    elif BACK_URL == "Monero":
+        BACK_URL = "Monero_(cryptocurrency)"
+    LANDING_PAGE = BASE_URL + BACK_URL
+    f = g.extract(url=LANDING_PAGE)
+    c = f.cleaned_text.split("\n")
+    s = str_rep(c[0] + c[2])
+    return s
+@app.callback(
+    Output('price', 'children'),
+    [Input('cryptos', 'value')]
+)
+def update_price(value):
+    crypto = value
+    query = f"SELECT quote, time FROM CryptoNews.Value WHERE currency_name LIKE '{crypto}'"
+    hist = pd.read_sql(query, cnx)
+    p = hist['time'].tolist()
+    y = hist['quote'].tolist()
+    q = [sum(y[i:i + 7]) / 7 for i in range(len(y) - 7)]
+    ye = [p[i + 7] for i in range(len(y) - 7)]
+    q2 = [sum(y[i:i + 30]) / 30 for i in range(len(y) - 30)]
+    ye2 = [p[i + 30] for i in range(len(y) - 30)]
+    change_7 = ((y[-1] - y[-8]) / y[-8]) * 100
+    change_30 = ((y[-1] - y[-31]) / y[-31]) * 100
+    curr_price = y[-1]
+    curr_7_avg = q[-1]
+    curr_30_avg = q2[-1]
+    x = html.Div(
+        children=[
+            dcc.Graph(
+                id='price_chart',
+                figure={
+                    'data': [
+                        {'x': p, 'y': y, 'type': 'line', 'name': 'Price', 'mode': 'lines+markers'},
+                        {'x': ye, 'y': q, 'type': 'line', 'name': '7 Day Moving Average', 'mode': 'lines'},
+                        {'x': ye2, 'y': q2, 'type': 'line', 'name': '30 Day Moving Average', 'mode': 'lines'}
+                    ],
+                    'layout': {
+                        'title': f'{crypto} price',
+                    }
+                }
+            )
+        ]
+    )
+    return x
+@app.callback(
+    Output('price_facts', 'children'),
+    [Input('price', 'children')]
+)
+def update_price_facts(value):
+    facts_table = html.Table([
+        html.Tr([html.Td("Current Price"), html.Td(round(curr_price, 2))]),
+        html.Tr([html.Td("Past 7 days Average"), html.Td(round(curr_7_avg, 2))]),
+        html.Tr([html.Td("Past 30 days Average"), html.Td(round(curr_30_avg, 2))]),
+        html.Tr([html.Td("Past 7 days % Change"), html.Td(round(change_7, 2))]),
+        html.Tr([html.Td("Past 30 days % Change"), html.Td(round(change_30, 2))])
+    ])
+    return facts_table
+@app.callback(
+    Output('rel_domains', 'children'),
+    [Input('cryptos', 'value')]
+)
+def update_rel_domains(value):
+    c = value
+    f = f"dom_{c}.csv"
+    with open(f) as file:
+        reader2 = csv.reader(file, delimiter=',')
+        doms = sorted(reader2, key=lambda x: int(x[1]), reverse=True)
+        dom = list(doms)
+        links = [f"http:
+        domains_table = html.Table([
+            html.Tr([html.Td(html.A(href=links[0], target="_blank", children=dom[0][0]))]),
+            html.Tr([html.Td(html.A(href=links[1], target="_blank", children=dom[1][0]))]),
+            html.Tr([html.Td(html.A(href=links[2], target="_blank", children=dom[2][0]))]),
+            html.Tr([html.Td(html.A(href=links[3], target="_blank", children=dom[3][0]))]),
+            html.Tr([html.Td(html.A(href=links[4], target="_blank", children=dom[4][0]))]),
+        ])
+    return domains_table
+@app.callback(
+    Output('graph-outlier', 'figure'),
+    [Input('outlier', 'data'), Input('outlier', 'selected_rows')]
+)
+def update_outlier_figure(rows, selected_rows):
+    dff = pd.DataFrame(rows)
+    marker = {'color': ['
+    for i in (selected_rows or []):
+        marker['color'][i] = '
+    fig = go.Figure(
+        data=[
+            go.Bar(x=dff['Crypto Currency'], y=dff['Opposite Trend %'], marker=marker, name='Opposite Trends'),
+            go.Bar(x=dff['Crypto Currency'], y=dff['Mean Square Error'], marker=marker, name='Mean Square Error', yaxis='y2'),
+            go.Bar(x=dff['Crypto Currency'], y=dff['Volatility'], marker=marker, name='Volatility', yaxis='y3')
+        ],
+        layout=go.Layout(
+            title='Outlier Analysis',
+            showlegend=False,
+            height=800,
+            margin={'l': 40, 'r': 10, 't': 60, 'b': 200},
+            yaxis={'title': 'Opposite Trend %'},
+            yaxis2={'title': 'Mean Square Error', 'overlaying': 'y', 'side': 'right', 'type': 'log'},
+            yaxis3={'title': 'Volatility', 'overlaying': 'y', 'side': 'right', 'type': 'log'}
+        )
+    )
+    return fig
+if __name__ == '__main__':
+    app.run_server(debug=True)

@@ -1,0 +1,59 @@
+import base64
+import os
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.fernet import Fernet
+def derive_key(password: str, salt: bytes = b'ghostpy') -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+def encrypt_file(file_path: str, key: bytes):
+    with open(file_path, 'rb') as file:
+        data = file.read()
+    fernet = Fernet(key)
+    encrypted_data = fernet.encrypt(data)
+    with open(file_path, 'wb') as file:
+        file.write(encrypted_data)
+    print(f"File '{file_path}' has been encrypted.")
+def encrypt_folder(folder_path: str, key: bytes):
+    for root, _, files in os.walk(folder_path):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            encrypt_file(file_path, key)
+def take_password() -> str:
+    while True:
+        password_provided = input("Choose a password: ").strip()
+        if not password_provided:
+            print("Please provide a password.")
+            continue
+        reconfirm_password = input("Confirm password: ").strip()
+        if not reconfirm_password:
+            print("Please confirm your password.")
+            continue
+        if password_provided != reconfirm_password:
+            print("Passwords do not match. Please try again.")
+            continue
+        return password_provided
+def main():
+    print("\nWelcome to gostpy Encryption Tool...!!\n")
+    password = take_password()
+    key = derive_key(password)
+    files_path = input("Drag and drop your file or folder here: ").strip()
+    if not files_path:
+        print("Please provide a valid file or folder path.")
+        return
+    print("Files are encrypting...")
+    if os.path.isfile(files_path):
+        encrypt_file(files_path, key)
+    elif os.path.isdir(files_path):
+        encrypt_folder(files_path, key)
+    else:
+        print("The provided path is neither a file nor a folder.")
+if __name__ == "__main__":
+    main()

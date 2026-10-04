@@ -1,0 +1,32 @@
+from linkedLists import class1, class2
+from linkedListsTests import TestLinkedList
+from testLogger import TestLogger
+def fonk1():
+    a1 = 0
+    b1 = TestLogger("SingleLinkedListTest.txt")
+    b1.log_to_both("Testing class class1", b1.test_log_level_always)
+    b2 = TestLinkedList(class1, b1.test_log)
+    a1 += b2.test_all()
+    b3 = (f"class1 TEST PASSED with {a1} errors"
+                       if a1 = = 0 else
+                       f"class1 TEST FAILED with {a1} errors")
+    b1.log_to_both(b3, b1.test_log_level_error)
+    b1.close_test_log()
+    del b2
+    a1 = 0
+    b1.open_test_log("DoubleLinkedListTest.txt")
+    b1.log_to_both("Testing class class2", b1.test_log_level_always)
+    b2 = TestLinkedList(class2, b1.test_log)
+    a1 += b2.test_push()
+    a1 += b2.test_pop()
+    a1 += b2.test_shift()
+    a1 += b2.test_unshift()
+    a1 += b2.test_contains()
+    a1 += b2.test_remove()
+    b3 = (f"class2 TEST PASSED with {a1} errors"
+                       if a1 = = 0 else
+                       f"class2 TEST FAILED with {a1} errors")
+    b1.log_to_both(b3, b1.test_log_level_error)
+    b1.close_test_log()
+if b4 = = "__main__":
+    fonk1()

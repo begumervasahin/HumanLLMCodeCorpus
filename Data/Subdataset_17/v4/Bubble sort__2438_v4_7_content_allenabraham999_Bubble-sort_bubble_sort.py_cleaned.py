@@ -1,0 +1,27 @@
+import random
+def bubble_sort(arr):
+    length = len(arr)
+    for j in range(length):
+        for i in range(1, length):
+            if arr[i - 1] > arr[i]:
+                arr[i - 1], arr[i] = arr[i], arr[i - 1]
+        print(f"Array after {j+1} pass:")
+        print_array(arr)
+def print_array(arr):
+    for elem in arr:
+        print(elem, end=" ")
+    print()
+def fill_array(arr, size=8, lower_bound=1, upper_bound=9):
+    for _ in range(size):
+        arr.append(random.randint(lower_bound, upper_bound))
+    print("The initial array is:")
+    print_array(arr)
+def main():
+    array = []
+    fill_array(array)
+    bubble_sort(array)
+    print(" ")
+    print("The final sorted array is:")
+    print_array(array)
+if __name__ == "__main__":
+    main()

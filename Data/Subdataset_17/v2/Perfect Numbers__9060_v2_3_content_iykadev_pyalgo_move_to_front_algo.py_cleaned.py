@@ -1,0 +1,24 @@
+from string import ascii_lowercase
+SYMBOL_TABLE = list(ascii_lowercase)
+def move_to_front_encode(input_string, symbol_table):
+    sequence = []
+    pad = symbol_table[:]
+    for char in input_string:
+        index = pad.index(char)
+        sequence.append(index)
+        pad = [pad.pop(index)] + pad
+    return sequence
+def move_to_front_decode(sequence, symbol_table):
+    characters = []
+    pad = symbol_table[:]
+    for index in sequence:
+        char = pad[index]
+        characters.append(char)
+        pad = [pad.pop(index)] + pad
+    return ''.join(characters)
+if __name__ == '__main__':
+    test_strings = ['broood', 'bananaaa', 'hiphophiphop']
+    for s in test_strings:
+        encoded = move_to_front_encode(s, SYMBOL_TABLE)
+        decoded = move_to_front_decode(encoded, SYMBOL_TABLE)
+        print(f'{s:14} encodes to {encoded}, which decodes back to {decoded}')

@@ -1,0 +1,103 @@
+import os
+import time
+class HashTable:
+    def __init__(self, size, collision_method, hash_method):
+        self.size = size
+        self.collision_method = collision_method
+        self.hash_method = hash_method
+        self.table = [[] for _ in range(size)]
+    def _hash_multiplication(self, key):
+        A = 0.6180339887
+        return int(self.size * ((hash(key) * A) % 1))
+    def _hash_division(self, key):
+        return hash(key) % self.size
+    def _resolve_collision_linear(self, index, i):
+        return (index + i) % self.size
+    def _resolve_collision_quadratic(self, index, i):
+        return (index + i**2) % self.size
+    def _get_hash_index(self, key):
+        if self.hash_method == 'multiplication':
+            return self._hash_multiplication(key)
+        else:
+            return self._hash_division(key)
+    def _resolve_collision(self, index, i):
+        if self.collision_method == 'linear':
+            return self._resolve_collision_linear(index, i)
+        else:
+            return self._resolve_collision_quadratic(index, i)
+    def insert_value(self, key, value):
+        index = self._get_hash_index(key)
+        i = 0
+        new_index = index
+        while self.table[new_index]:
+            if self.table[new_index][0] == key:
+                self.table[new_index].append(value)
+                return
+            i += 1
+            new_index = self._resolve_collision(index, i)
+        self.table[new_index] = [key, value]
+    def get_value(self, key):
+        index = self._get_hash_index(key)
+        i = 0
+        new_index = index
+        while self.table[new_index]:
+            if self.table[new_index][0] == key:
+                return self.table[new_index][1:]
+            i += 1
+            new_index = self._resolve_collision(index, i)
+        return None
+    def get_keys(self):
+        keys = []
+        for entry in self.table:
+            if entry:
+                keys.append(entry[0])
+        return keys
+def ler_pasta(pasta):
+    caminhos = [os.path.join(pasta, nome) for nome in os.listdir(pasta)]
+    arquivos = [arq for arq in caminhos if os.path.isfile(arq)]
+    return arquivos
+def gerar_indice(arquivo, num, hashing):
+    with open(arquivo, 'r') as arq:
+        palavras = arq.read().lower()
+    palavras = palavras.replace(",", "").replace(".", "").replace("!", "").replace("?", "")
+    palavras = palavras.replace("\r", "").replace("\t", "").replace("\n", "")
+    palavras = palavras.split(" ")
+    for palavra in palavras:
+        count = palavras.count(palavra)
+        flag = True
+        existing_values = hashing.get_value(palavra)
+        if existing_values:
+            for value in existing_values:
+                if value[0] == count and value[1] == num + 1:
+                    flag = False
+            if flag:
+                hashing.insert_value(palavra, [count, num + 1])
+        else:
+            hashing.insert_value(palavra, [count, num + 1])
+hashing_methods = {
+    'ML': HashTable(1000000, 'linear', 'multiplication'),
+    'MQ': HashTable(1000000, 'quadratic', 'multiplication'),
+    'DL': HashTable(1000000, 'linear', 'division'),
+    'DQ': HashTable(1000000, 'quadratic', 'division'),
+}
+def process_hashing(method_key, method_desc):
+    start_time = time.time()
+    arquivos = ler_pasta('base')
+    for i in range(len(arquivos)):
+        gerar_indice(arquivos[i], i, hashing_methods[method_key])
+    for key in sorted(hashing_methods[method_key].get_keys()):
+        values = hashing_methods[method_key].get_value(key)
+        print(key, values[0][0], arquivos[(values[0][1])-1])
+    end_time = time.time()
+    print(f'tempo para Hashing utilizando {method_desc}:', end_time - start_time)
+if __name__ == "__main__":
+    process_hashing('ML', 'metodo da multiplicacao e colizao linear')
+    process_hashing('MQ', 'metodo da multiplicacao e colizao Quadratica')
+    process_hashing('DL', 'metodo da Divisao e colizao linear')
+    process_hashing('DQ', 'metodo da Divisao e colizao Quadratica')
+    while True:
+        palavra = input("Digite uma palavra:\n")
+        if palavra in hashing_methods['ML'].get_keys():
+            print(hashing_methods['ML'].get_value(palavra))
+        else:
+            print("Palavra nÃ£o encontrada.")

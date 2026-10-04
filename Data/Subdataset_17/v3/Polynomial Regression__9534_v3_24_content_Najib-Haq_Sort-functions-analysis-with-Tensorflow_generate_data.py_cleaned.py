@@ -1,0 +1,127 @@
+import random
+import time
+import csv
+import sys
+INT_MAX = 10000000
+MAX_ITERATION = 100000
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        for j in range(0, n - i - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+def selection_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        min_idx = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and key < arr[j]:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+def merge_sort(arr):
+    if len(arr) > 1:
+        mid = len(arr)
+        L = arr[:mid]
+        R = arr[mid:]
+        merge_sort(L)
+        merge_sort(R)
+        i = j = k = 0
+        while i < len(L) and j < len(R):
+            if L[i] < R[j]:
+                arr[k] = L[i]
+                i += 1
+            else:
+                arr[k] = R[j]
+                j += 1
+            k += 1
+        while i < len(L):
+            arr[k] = L[i]
+            i += 1
+            k += 1
+        while j < len(R):
+            arr[k] = R[j]
+            j += 1
+            k += 1
+def quick_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[len(arr)
+    left = [x for x in arr if x < pivot]
+    middle = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+    return quick_sort(left) + middle + quick_sort(right)
+def heap_sort(arr):
+    def heapify(arr, n, i):
+        largest = i
+        l = 2 * i + 1
+        r = 2 * i + 2
+        if l < n and arr[i] < arr[l]:
+            largest = l
+        if r < n and arr[largest] < arr[r]:
+            largest = r
+        if largest != i:
+            arr[i], arr[largest] = arr[largest], arr[i]
+            heapify(arr, n, largest)
+    n = len(arr)
+    for i in range(n
+        heapify(arr, n, i)
+    for i in range(n - 1, 0, -1):
+        arr[i], arr[0] = arr[0], arr[i]
+        heapify(arr, i, 0)
+sort_functions = [bubble_sort, selection_sort, insertion_sort, merge_sort, quick_sort, heap_sort]
+def gen_array(size):
+    return [random.randrange(0, INT_MAX) for _ in range(size)]
+def get_time(arr, sorted_flag, func_list=sort_functions):
+    ans_list = []
+    for func in func_list:
+        time_taken = 0
+        for _ in range(MAX_ITERATION
+            copy_arr = arr.copy() if not sorted_flag else arr
+            start_time = time.time()
+            func(copy_arr)
+            time_taken += (time.time() - start_time)
+        ans_list.append(time_taken / (MAX_ITERATION
+    ans_list.append(ans_list.index(min(ans_list)))
+    return ans_list
+def get_data(start_size, end_size):
+    total_data = []
+    for size in range(start_size, end_size + 1, 100):
+        print(f"Generating data for array size {size}")
+        for case in range(3):
+            arr = gen_array(size)
+            data = [size]
+            if case == 0:
+                sorted_flag = True
+                data += [1, 0, 0]
+                arr.sort()
+            elif case == 1:
+                sorted_flag = False
+                data += [0, 1, 0]
+            else:
+                sorted_flag = False
+                data += [0, 0, 1]
+                arr.sort(reverse=True)
+            data += get_time(arr, sorted_flag)
+            total_data.append(data)
+    return total_data
+def write_to_csv(filename, data):
+    with open(filename, "a", newline='') as file:
+        writer = csv.writer(file, dialect=csv.excel)
+        writer.writerows(data)
+if __name__ == "__main__":
+    random.seed(time.time())
+    sys.setrecursionlimit(1000000)
+    start_size = 1300
+    end_size = 4000
+    output_filename = "data.csv"
+    total_data = get_data(start_size, end_size)
+    write_to_csv(output_filename, total_data)
+    sys.setrecursionlimit(1000)

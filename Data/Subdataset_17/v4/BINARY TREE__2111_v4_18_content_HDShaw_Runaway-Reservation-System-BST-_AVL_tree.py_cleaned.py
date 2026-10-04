@@ -1,0 +1,105 @@
+import binary_search_tree as BST
+class AVLTreeNode(BST.tree_node):
+    def __init__(self, key=None, left=None, right=None, height=0):
+        super().__init__(key, left, right)
+        self.height = height
+class AVLTree(BST.binary_search_tree):
+    def left_rotate(self, root):
+        new_root = root.right
+        root.right = new_root.left
+        new_root.left = root
+        return new_root
+    def right_rotate(self, root):
+        new_root = root.left
+        root.left = new_root.right
+        new_root.right = root
+        return new_root
+    def left_to_right_rotate(self, root):
+        root.left = self.left_rotate(root.left)
+        return self.right_rotate(root)
+    def right_to_left_rotate(self, root):
+        root.right = self.right_rotate(root.right)
+        return self.left_rotate(root)
+    def find_heavy_root(self, root):
+        if not root:
+            return None
+        left_height = self._height(root.left)
+        right_height = self._height(root.right)
+        if abs(left_height - right_height) > 1:
+            return root
+        if left_height > right_height:
+            return self.find_heavy_root(root.left)
+        else:
+            return self.find_heavy_root(root.right)
+    def avl_insert(self, key):
+        self.root = self._avl_insert(self.root, key)
+    def _avl_insert(self, root, key):
+        root = self._insert(root, key)
+        root = self._balance(root)
+        return root
+    def avl_delete(self, key):
+        self.root = self._delete(self.root, key)
+        if self.root:
+            self.root = self._balance(self.root)
+    def _balance(self, root):
+        if not root:
+            return root
+        left_height = self._height(root.left)
+        right_height = self._height(root.right)
+        if left_height - right_height > 1:
+            if self._height(root.left.left) >= self._height(root.left.right):
+                root = self.right_rotate(root)
+            else:
+                root = self.left_to_right_rotate(root)
+        elif right_height - left_height > 1:
+            if self._height(root.right.right) >= self._height(root.right.left):
+                root = self.left_rotate(root)
+            else:
+                root = self.right_to_left_rotate(root)
+        root.height = max(self._height(root.left), self._height(root.right)) + 1
+        return root
+    def avl_inorder(self):
+        return self.inorder()
+    def avl_preorder(self):
+        return self.preorder()
+    def avl_postorder(self):
+        return self.postorder()
+def main():
+    import random
+    test = AVLTree()
+    print("Tree Type:", type(test))
+    for i in random.sample(range(1, 100), 5):
+        test.avl_insert(i)
+    print("Insertion:")
+    test.avl_insert(78)
+    test.avl_insert(101)
+    test.avl_insert(14)
+    print("Preorder Traversal:")
+    print(test.avl_preorder())
+    print("Inorder Traversal:")
+    print(test.avl_inorder())
+    print("Postorder Traversal:")
+    print(test.avl_postorder())
+    print("Tree Height:", test.height())
+    print("Node Count:", test.subtree())
+    print("Minimum Key:", test.find_min().key)
+    print("Maximum Key:", test.find_max().key)
+    print("Deletion:")
+    test.avl_delete(101)
+    test.avl_delete(12)
+    print("Preorder Traversal after Deletion:")
+    print(test.avl_preorder())
+    print("Inorder Traversal after Deletion:")
+    print(test.avl_inorder())
+    print("Postorder Traversal after Deletion:")
+    print(test.avl_postorder())
+    print("Find Nodes:")
+    print(test.find(71))
+    print(test.find(92))
+    print(test.find(78))
+    print("Tree Height after Deletion:", test.height())
+    print("Node Count after Deletion:", test.subtree())
+    print("Minimum Key after Deletion:", test.find_min().key)
+    print("Maximum Key after Deletion:", test.find_max().key)
+if __name__ == '__main__':
+    main()

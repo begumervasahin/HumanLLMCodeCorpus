@@ -1,0 +1,99 @@
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import statsmodels.api as sm
+def inter_correlation_clusters(data, cutoff=0.7):
+    correlations = data.corr()
+    graph = {i: [] for i in range(len(data.columns))}
+    for i in range(len(data.columns)):
+        for j in range(len(data.columns)):
+            if i != j and np.abs(correlations.iloc[i, j]) > cutoff:
+                graph[i].append(j)
+    def dfs(i, component):
+        visited[i] = True
+        tree_set[component].append(i)
+        for j in graph[i]:
+            if not visited[j]:
+                dfs(j, component)
+    tree_set = {}
+    component = 0
+    visited = [False] * len(data.columns)
+    for i in range(len(data.columns)):
+        if not visited[i]:
+            tree_set[component] = []
+            dfs(i, component)
+            component += 1
+    tree_cluster = {key: [data.columns[i] for i in indices] for key, indices in tree_set.items()}
+    return tree_cluster
+def varclus(data, cutoff=0.7, maxkeep=1, maxdrop=None):
+    clusters = inter_correlation_clusters(data, cutoff=cutoff)
+    columns = []
+    def distance(c1, c2):
+        return np.max([[np.abs(correlations.loc[i, j]) for i in clusters[c1]] for j in clusters[c2]])
+    def next_closest(c):
+        minima = 0
+        point = c
+        for c1 in [i for i in clusters.keys() if i != c]:
+            dist = distance(c, c1)
+            if dist > minima:
+                minima = dist
+                point = c1
+        return point
+    def get_squared_ratio(col, own_cluster, next_cluster):
+        y = np.array(data[col])
+        x_own = np.array(data[own_cluster].drop(columns=[col]))
+        x_next = np.array(data[next_cluster])
+        model_own = LinearRegression().fit(x_own, y)
+        r2_own = r2_score(y, model_own.predict(x_own))
+        model_next = LinearRegression().fit(x_next, y)
+        r2_next = r2_score(y, model_next.predict(x_next))
+        return (1 - r2_own) / (1 - r2_next)
+    correlations = data.corr()
+    for c1 in clusters.keys():
+        clus_len = len(clusters[c1])
+        if clus_len > 1:
+            own_cluster = clusters[c1]
+            next_cluster = clusters[next_closest(c1)]
+            ratio_list = [(col, get_squared_ratio(col, own_cluster, next_cluster)) for col in clusters[c1]]
+            ratio_list.sort(key=lambda x: x[1])
+            if maxdrop is not None:
+                columns += [col[0] for col in ratio_list[:-min(maxdrop, clus_len)]]
+            else:
+                columns += [col[0] for col in ratio_list[:min(maxkeep, clus_len)]]
+        else:
+            columns.append(clusters[c1][0])
+    return columns
+def vif_reduction(data, limit=2.5):
+    vif_drop_cols = []
+    def calculate_vif(df):
+        vif_data = pd.DataFrame()
+        vif_data['feature'] = df.columns
+        vif_data['VIF'] = [variance_inflation_factor(df.values, i) for i in range(df.shape[1])]
+        return vif_data
+    def reduce_vif(df, cutoff=limit):
+        vif_data = calculate_vif(df)
+        while vif_data['VIF'].max() > cutoff:
+            max_vif_feature = vif_data.loc[vif_data['VIF'].idxmax(), 'feature']
+            df.drop(columns=[max_vif_feature], inplace=True)
+            vif_drop_cols.append(max_vif_feature)
+            vif_data = calculate_vif(df)
+    reduce_vif(data)
+    return vif_drop_cols
+def backward_selection(df, dependent_var, regression=True, alpha=0.05):
+    cols_dropped = [dependent_var]
+    while True:
+        if regression:
+            model = sm.OLS(df[dependent_var], df.drop(columns=cols_dropped)).fit()
+        else:
+            model = sm.Logit(df[dependent_var], df.drop(columns=cols_dropped)).fit()
+        pvalues = model.pvalues
+        max_pvalue = pvalues.max()
+        if max_pvalue > alpha:
+            drop_column = pvalues.idxmax()
+            cols_dropped.append(drop_column)
+        else:
+            break
+    cols_dropped.remove(dependent_var)
+    return cols_dropped

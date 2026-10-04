@@ -1,0 +1,12 @@
+def encrypt(plain_text, shift):
+    encrypted_text = ""
+    for char in plain_text:
+        if char.isupper():
+            encrypted_text += chr((ord(char) + shift - 65) % 26 + 65)
+        else:
+            encrypted_text += chr((ord(char) + shift - 97) % 26 + 97)
+    return encrypted_text
+plain_text = "Vineet"
+shift = 4
+encrypted_text = encrypt(plain_text, shift)
+print("ENCRYPTED TEXT: " + encrypted_text)

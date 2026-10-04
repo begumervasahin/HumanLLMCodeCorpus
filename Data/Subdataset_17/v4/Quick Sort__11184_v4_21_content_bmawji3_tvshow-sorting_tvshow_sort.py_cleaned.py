@@ -1,0 +1,10 @@
+
+tv_list = []
+with open("tvshow_list_unsorted.txt", "r") as myfile:
+    for line in myfile:
+        temp_split = line.split('_')
+        tv_list.append((temp_split[0], temp_split[1].strip('\n')))
+tv_list.sort(key=lambda x: (x[1], x[0]))
+with open('tvshow_list_sorted.txt', 'w') as sorted_file:
+    for item in tv_list:
+        sorted_file.write(f"{item[0]}_{item[1]}\n")

@@ -1,0 +1,76 @@
+class HTable:
+    def __init__(self, size):
+        self.size = size
+        self.buckets = [[] for _ in range(size)]
+    def hash(self, key):
+        return hash(key) % self.size
+    def put(self, key, value):
+        index = self.hash(key)
+        for i, (k, v) in enumerate(self.buckets[index]):
+            if k == key:
+                self.buckets[index][i] = (key, value)
+                return
+        self.buckets[index].append((key, value))
+    def __str__(self):
+        items = [f"{k}:{v}" for bucket in self.buckets for k, v in bucket]
+        return "{" + ", ".join(items) + "}"
+    def buckets_str(self):
+        result = []
+        for i, bucket in enumerate(self.buckets):
+            bucket_items = ", ".join(f"{k}:{v}" for k, v in bucket)
+            result.append(f"{i:04}->" + bucket_items)
+        return "\n".join(result)
+def htable_put(table, key, value):
+    table.put(key, value)
+def htable_str(table):
+    return str(table)
+def htable_buckets_str(table):
+    return table.buckets_str()
+def test_empty():
+    table = HTable(5)
+    assert htable_str(table) == "{}"
+    assert htable_buckets_str(table) ==
+def test_single():
+    table = HTable(5)
+    htable_put(table, "parrt", 99)
+    assert htable_str(table) == "{parrt:99}"
+    assert htable_buckets_str(table) ==
+def test_singleon():
+    table = HTable(5)
+    htable_put(table, "parrt", {99})
+    assert htable_str(table) == "{parrt:{99}}"
+    assert htable_buckets_str(table) ==
+def test_int_to_int():
+    table = HTable(5)
+    for i in range(1, 11):
+        htable_put(table, i, i)
+    s = htable_str(table)
+    assert s == "{5:5, 10:10, 1:1, 6:6, 2:2, 7:7, 3:3, 8:8, 4:4, 9:9}"
+    s = htable_buckets_str(table)
+    assert s ==
+def test_str_to_str():
+    table = HTable(5)
+    htable_put(table, "a", "x")
+    htable_put(table, "b", "y")
+    htable_put(table, "c", "z")
+    htable_put(table, "f", "i")
+    htable_put(table, "g", "j")
+    htable_put(table, "k", "k")
+    s = htable_str(table)
+    assert s == "{a:x, f:i, k:k, b:y, g:j, c:z}", "found " + s
+    s = htable_buckets_str(table)
+    assert s ==
+def test_str_to_set():
+    table = HTable(5)
+    htable_put(table, "parrt", [2, 99, 3942])
+    htable_put(table, "tombu", [6, 3, 1024, 99, 102342])
+    assert htable_str(table) == "{tombu:[6, 3, 1024, 99, 102342], parrt:[2, 99, 3942]}"
+    assert htable_buckets_str(table) ==
+if __name__ == "__main__":
+    test_empty()
+    test_single()
+    test_singleon()
+    test_int_to_int()
+    test_str_to_str()
+    test_str_to_set()
+    print("All tests passed.")

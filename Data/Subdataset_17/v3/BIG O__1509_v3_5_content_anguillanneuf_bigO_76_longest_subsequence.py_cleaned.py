@@ -1,0 +1,50 @@
+def longest_subsequence_Onlogn(arr):
+    if len(arr) < 2:
+        return arr
+    M = [None] * len(arr)
+    P = [None] * len(arr)
+    L = 1
+    M[0] = 0
+    for i in range(1, len(arr)):
+        if arr[i] > arr[M[L-1]]:
+            j = L
+        else:
+            lo, hi = 0, L - 1
+            while lo < hi:
+                mid = (lo + hi)
+                if arr[i] > arr[M[mid]]:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            j = lo
+        P[i] = M[j-1] if j > 0 else None
+        M[j] = i
+        if j + 1 > L:
+            L = j + 1
+    k = M[L-1]
+    results = []
+    for _ in range(L):
+        results.append(arr[k])
+        k = P[k]
+    return results[::-1]
+def longest_subsequence_On2(arr):
+    if not arr:
+        return []
+    mem = [[] for _ in range(len(arr))]
+    best = []
+    for i in range(len(arr)):
+        for j in range(i):
+            if arr[i] > arr[j] and len(mem[j]) + 1 > len(mem[i]):
+                mem[i] = mem[j] + [arr[i]]
+        if not mem[i]:
+            mem[i].append(arr[i])
+        if len(mem[i]) > len(best):
+            best = mem[i]
+    return best
+if __name__ == "__main__":
+    arr1 = [30, 10, 20, 50, 40, 60]
+    print("Longest increasing subsequence using O(n log n) approach:")
+    print(longest_subsequence_Onlogn(arr1))
+    arr2 = [80, 90, 91, 81, 82, 83, 74, 85]
+    print("\nLongest increasing subsequence using O(n^2) approach:")
+    print(longest_subsequence_On2(arr2))

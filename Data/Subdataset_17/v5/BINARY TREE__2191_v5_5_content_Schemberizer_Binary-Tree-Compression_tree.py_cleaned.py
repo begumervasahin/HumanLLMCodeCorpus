@@ -1,0 +1,80 @@
+from Node import Node
+class Huffman:
+    def __init__(self):
+        self.root = None
+        self.log = []
+    def is_empty(self):
+        return self.root is None
+    def size(self):
+        return self._size(self.root)
+    def _size(self, node):
+        if not node:
+            return 0
+        return 1 + self._size(node.get_left()) + self._size(node.get_right())
+    def height(self):
+        return self._height(self.root)
+    def _height(self, node):
+        if not node:
+            return 0
+        return 1 + max(self._height(node.get_left()), self._height(node.get_right()))
+    def find_char(self, query):
+        if not self.log:
+            self._init_log(self.root, "")
+            self.log.sort(key=lambda x: x.get_datum()[1], reverse=True)
+        for node in self.log:
+            if node.get_datum()[0] == query:
+                return node.get_datum()[2]
+        return "error"
+    def _init_log(self, node, path):
+        if node.get_datum()[0] == '':
+            if node.get_left():
+                self._init_log(node.get_left(), path + "0")
+            if node.get_right():
+                self._init_log(node.get_right(), path + "1")
+        elif not node.get_left() and not node.get_right():
+            node.get_datum().append(path)
+            self.log.append(node)
+    def translate(self, bit):
+        return self._translate(self.root, bit)
+    def _translate(self, node, bit):
+        if bit:
+            if bit[0] == "0":
+                if node.get_left():
+                    return self._translate(node.get_left(), bit[1:])
+                else:
+                    return node.get_datum()[0], bit
+            elif bit[0] == "1":
+                if node.get_right():
+                    return self._translate(node.get_right(), bit[1:])
+                else:
+                    return node.get_datum()[0], bit
+        return node.get_datum()[0], bit
+    def insert(self, lst):
+        nodes = [Node(item) for item in lst] if isinstance(lst[0], list) else lst
+        while len(nodes) > 1:
+            nodes.sort(key=lambda x: x.get_datum()[1])
+            left, right = nodes.pop(0), nodes.pop(0)
+            parent = Node(['', left.get_datum()[1] + right.get_datum()[1]])
+            parent.insert_left(left)
+            parent.insert_right(right)
+            nodes.append(parent)
+        self.root = nodes[0]
+    def lcr_print(self):
+        self._lcr_print(self.root)
+        print()
+    def _lcr_print(self, node):
+        if node.get_left():
+            self._lcr_print(node.get_left())
+        print(node.get_datum(), end=" ")
+        if node.get_right():
+            self._lcr_print(node.get_right())
+if __name__ == "__main__":
+    h = Huffman()
+    h.insert([['a', 1], ['b', 1], ['c', 1], ['d', 2], ['e', 6], ['f', 10], ['g', 15]])
+    c_code = h.find_char('c')
+    a_code = h.find_char('a')
+    encoded_string = c_code + a_code
+    print(encoded_string)
+    while encoded_string:
+        char, encoded_string = h.translate(encoded_string)
+        print(char, end="")

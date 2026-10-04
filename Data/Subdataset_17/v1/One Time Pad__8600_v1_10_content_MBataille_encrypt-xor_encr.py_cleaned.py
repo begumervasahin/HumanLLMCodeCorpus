@@ -1,0 +1,32 @@
+import os
+import argparse
+def gen(n):
+    key = ""
+    for _ in range(n):
+        key += chr(65 + ord(os.urandom(1)) % 26)
+    return key
+def str_xor(a, b):
+    result = ""
+    for i in range(len(a)):
+        result += chr(64 + (ord(a[i]) ^ ord(b[i])))
+    return result
+def clean(a):
+    return a.upper().replace(" ", "a").replace(".", "b").replace(",", "c").replace("'", "d")
+def unclean(a):
+    return a.replace("a", " ").replace("b", ".").replace("c", ",").replace("d", "'")
+def main():
+    parser = argparse.ArgumentParser(description='Encrypt or Decrypt data using One-Time Pad')
+    parser.add_argument('-d', '--decrypt', action='store_true', help='Decrypt data (default is to encrypt)')
+    args = parser.parse_args()
+    if args.decrypt:
+        key = input("Key: ")
+        coded = input("Coded message: ")
+        print(unclean(str_xor(key, coded)))
+    else:
+        message = input("Message: ")
+        decoded = clean(message)
+        key = gen(len(decoded))
+        print("Key:", key)
+        print("Encrypted message:", str_xor(decoded, key))
+if __name__ == '__main__':
+    main()

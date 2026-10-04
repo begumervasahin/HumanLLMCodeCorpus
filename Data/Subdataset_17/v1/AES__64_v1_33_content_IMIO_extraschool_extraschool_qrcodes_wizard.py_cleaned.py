@@ -1,0 +1,44 @@
+from odoo import models, api, fields
+class ExtraschoolQRCodesWizard(models.TransientModel):
+    _name = 'extraschool.qrcodes_wizard'
+    _description = 'QR Codes Wizard'
+    quantity = fields.Integer('Quantity to print')
+    print_type = fields.Selection([
+        ('qrcode', 'Qr Code'),
+        ('logo', 'Logo')
+    ], 'Print Type', required=True)
+    last_id = fields.Integer('Last ID')
+    name = fields.Char('File Name', size=16, readonly=True)
+    print_value = fields.Boolean('Print QrCode value')
+    logo = fields.Binary('Logo')
+    format = fields.Selection([
+        ('extraschool.tpl_qrcodes_wizard_report', 'Standard'),
+        ('extraschool.tpl_qrcodes_precut_wizard_report', 'Precut')
+    ], 'Format', required=True, default='extraschool.tpl_qrcodes_wizard_report')
+    state = fields.Selection([
+        ('init', 'Init'),
+        ('print_qrcodes', 'Print QRCodes')
+    ], 'State', required=True, default='init')
+    qr_config = fields.Many2one('extraschool.qrconfig', string='QR Config')
+    @api.multi
+    def action_print_qrcodes(self):
+        report = self.env['ir.actions.report']._get_report_from_name('extraschool.tpl_qrcodes_wizard_report')
+        config = self.env['extraschool.mainsettings'].browse([1])
+        self.last_id = config.lastqrcodenbr + 1
+        config.lastqrcodenbr += self.quantity
+        datas = {
+            'ids': self.ids,
+            'model': report.model,
+        }
+        return {
+            'type': 'ir.actions.report',
+            'report_name': self.format,
+            'datas': datas,
+            'report_type': 'qweb-pdf',
+        }
+class ExtraschoolQRConfig(models.TransientModel):
+    _name = 'extraschool.qrconfig'
+    _description = 'QR Config'
+    name = fields.Char('Name')
+    qr_logo_size = fields.Char('Size of QR code logo', default='qrcode_img')
+    qr_name_size = fields.Char('Size of QR code name', default='qr_child_name')

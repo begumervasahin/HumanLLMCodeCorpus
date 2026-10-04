@@ -1,0 +1,55 @@
+import crypto.hashing as hashing
+import crypto.keys as keys
+import users.user as user
+import crypto.signature as signature
+import crypto.encrypt as encrypt
+import database.db as db
+import azure.cosmos.documents as documents
+import azure.cosmos.cosmos_client as cosmos_client
+import azure.cosmos.errors as errors
+def initialize_crypto_modules():
+    hasher = hashing.Hash()
+    key_generator = keys.Key()
+    signer = signature.Signature()
+    encryptor = encrypt.Encrypt()
+    return hasher, key_generator, signer, encryptor
+def generate_user_keys(key_generator):
+    return key_generator.generate_keys()
+def create_user_instance(public_key, private_key):
+    return user.User(public_key, private_key)
+def create_cosmos_client():
+    return cosmos_client.CosmosClient(db.HOST, {'masterKey': db.MASTER_KEY})
+def create_database(client):
+    try:
+        client.CreateDatabase({"id": db.DATABASE_ID})
+        print(f"Database with id '{db.DATABASE_ID}' created")
+    except errors.HTTPFailure as e:
+        if e.status_code == 409:
+            print(f"Database with id '{db.DATABASE_ID}' already exists")
+        else:
+            raise
+def create_container(client):
+    try:
+        client.CreateContainer(db.database_link, {"id": db.COLLECTION_ID})
+        print(f"Collection with id '{db.COLLECTION_ID}' created")
+    except errors.HTTPFailure as e:
+        if e.status_code == 409:
+            print(f"Collection with id '{db.COLLECTION_ID}' already exists")
+        else:
+            raise
+def main():
+    hasher, key_generator, signer, encryptor = initialize_crypto_modules()
+    alice_keys = generate_user_keys(key_generator)
+    bob_keys = generate_user_keys(key_generator)
+    alice = create_user_instance(alice_keys['publicKey'], alice_keys['privateKey'])
+    bob = create_user_instance(bob_keys['publicKey'], bob_keys['privateKey'])
+    with db.IDisposable(create_cosmos_client()) as client:
+        try:
+            create_database(client)
+            create_container(client)
+        except errors.HTTPFailure as e:
+            print(f"An error occurred: {e._http_error_message}")
+        finally:
+            print("Process completed")
+if __name__ == '__main__':
+    main()

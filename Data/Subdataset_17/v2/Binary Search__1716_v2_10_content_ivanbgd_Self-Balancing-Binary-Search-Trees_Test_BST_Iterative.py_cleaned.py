@@ -1,0 +1,197 @@
+class Node:
+    def __init__(self, key):
+        self.key = key
+        self.left = None
+        self.right = None
+        self.parent = None
+    def set_parent(self, parent):
+        self.parent = parent
+    def set_left_child(self, child):
+        self.left = child
+        if child:
+            child.set_parent(self)
+    def set_right_child(self, child):
+        self.right = child
+        if child:
+            child.set_parent(self)
+    def print_node(self):
+        parent_key = self.parent.key if self.parent else None
+        left_key = self.left.key if self.left else None
+        right_key = self.right.key if self.right else None
+        print(f"Node {self.key}: Parent {parent_key}, Left Child {left_key}, Right Child {right_key}")
+class BinarySearchTree:
+    def __init__(self, root):
+        self.root = root
+    def insert(self, key):
+        new_node = Node(key)
+        current = self.root
+        while True:
+            if key < current.key:
+                if current.left is None:
+                    current.set_left_child(new_node)
+                    break
+                current = current.left
+            else:
+                if current.right is None:
+                    current.set_right_child(new_node)
+                    break
+                current = current.right
+    def find(self, key):
+        current = self.root
+        while current and current.key != key:
+            if key < current.key:
+                current = current.left
+            else:
+                current = current.right
+        return current
+    def delete(self, node):
+        def transplant(node_to_replace, new_node):
+            if node_to_replace.parent is None:
+                self.root = new_node
+            elif node_to_replace == node_to_replace.parent.left:
+                node_to_replace.parent.left = new_node
+            else:
+                node_to_replace.parent.right = new_node
+            if new_node:
+                new_node.set_parent(node_to_replace.parent)
+        if node.left is None:
+            transplant(node, node.right)
+        elif node.right is None:
+            transplant(node, node.left)
+        else:
+            successor = self.min_value_node(node.right)
+            if successor.parent != node:
+                transplant(successor, successor.right)
+                successor.set_right_child(node.right)
+            transplant(node, successor)
+            successor.set_left_child(node.left)
+    def min_value_node(self, node):
+        current = node
+        while current.left is not None:
+            current = current.left
+        return current
+    def in_order(self):
+        def _in_order(node):
+            return _in_order(node.left) + [node.key] + _in_order(node.right) if node else []
+        return _in_order(self.root)
+    def pre_order(self):
+        def _pre_order(node):
+            return [node.key] + _pre_order(node.left) + _pre_order(node.right) if node else []
+        return _pre_order(self.root)
+    def post_order(self):
+        def _post_order(node):
+            return _post_order(node.left) + _post_order(node.right) + [node.key] if node else []
+        return _post_order(self.root)
+    def bfs(self):
+        queue = [self.root]
+        result = []
+        while queue:
+            node = queue.pop(0)
+            result.append(node.key)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        return result
+    def rotate_left(self, node):
+        y = node.right
+        if y:
+            node.set_right_child(y.left)
+            if node.parent is None:
+                self.root = y
+            elif node == node.parent.left:
+                node.parent.set_left_child(y)
+            else:
+                node.parent.set_right_child(y)
+            y.set_left_child(node)
+    def rotate_right(self, node):
+        y = node.left
+        if y:
+            node.set_left_child(y.right)
+            if node.parent is None:
+                self.root = y
+            elif node == node.parent.right:
+                node.parent.set_right_child(y)
+            else:
+                node.parent.set_left_child(y)
+            y.set_right_child(node)
+    def get_root(self):
+        return self.root
+    def range_search(self, low, high):
+        def _range_search(node, low, high):
+            if not node:
+                return []
+            result = []
+            if low <= node.key <= high:
+                result.append(node.key)
+            if low < node.key:
+                result += _range_search(node.left, low, high)
+            if node.key < high:
+                result += _range_search(node.right, low, high)
+            return result
+        return _range_search(self.root, low, high)
+def print_tree(bst, verbose=False):
+    print("\nIn order:  ", bst.in_order())
+    print("Pre order: ", bst.pre_order())
+    print("BFS:       ", bst.bfs())
+    if verbose:
+        print("Nodes (in BFS order):")
+        for node_key in bst.bfs():
+            bst.find(node_key).print_node()
+    print()
+def create_tree():
+    bst = BinarySearchTree(Node(7))
+    bst.insert(4)
+    bst.insert(1)
+    bst.insert(6)
+    bst.insert(13)
+    bst.insert(15)
+    bst.insert(10)
+    return bst, bst.get_root()
+def test_tree():
+    bst, root = create_tree()
+    print("\nTraversal Orders:")
+    print("In order:  ", bst.in_order())
+    print("Pre order: ", bst.pre_order())
+    print("Post order:", bst.post_order())
+    print("BFS:       ", bst.bfs())
+    print("Root node:", end=' ')
+    root.print_node()
+    print("\nFind nodes:")
+    for i in [0, 1, 2, 5, 6, 7, 8, 12, 13, 14, 15, 20]:
+        found = bst.find(i)
+        print(f"Node {i}: {'Found' if found else 'Not found'} (Key: {found.key if found else 'N/A'})")
+    print("\nNext nodes:")
+    for i in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        next_node = bst.find(i + 1)
+        print(f"Node {i} -> Next Node: {next_node.key if next_node else 'None'}")
+    print("\nPrevious nodes:")
+    for i in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        prev_node = bst.find(i - 1)
+        print(f"Node {i} -> Previous Node: {prev_node.key if prev_node else 'None'}")
+    print("\nRange search results (5 to 12):")
+    print("Nodes in range:", bst.range_search(5, 12))
+    print("\nRotations:")
+    print("Initial tree:")
+    print_tree(bst, True)
+    print("Rotating right around node 7:")
+    bst.rotate_right(bst.find(7))
+    print_tree(bst, True)
+    print("Rotating left around node 1:")
+    bst.rotate_left(bst.find(1))
+    print_tree(bst, True)
+def test_rotation_and_deletion():
+    bst = BinarySearchTree(Node(3))
+    bst.insert(1)
+    bst.insert(4)
+    bst.insert(5)
+    print_tree(bst, True)
+    bst.delete(bst.find(3))
+    print_tree(bst, True)
+def test_tree_with_deletion():
+    bst, _ = create_tree()
+    print_tree(bst, True)
+    bst.delete(bst.find(7))
+    print_tree(bst, True)
+if __name__ == '__main__':
+    test_tree()

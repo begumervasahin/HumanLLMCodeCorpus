@@ -1,0 +1,72 @@
+import re
+from datetime import date
+def subtoken_instance_generator(token_instance_generator):
+    for token_instance in token_instance_generator:
+        subtokens = []
+        for token in token_instance:
+            if re.search('[a-zA-Z]', token) is None:
+                subtokens.append(token)
+            else:
+                stokens = split_to_subtokens(token)
+                subtokens.extend(stokens)
+        yield subtokens
+def instance_generator(data_file):
+    with open(data_file, 'rb') as instances:
+        for instance in instances:
+            tokens = []
+            for wh_token in instance.split():
+                if wh_token == b'.':
+                    tokens.append(wh_token)
+                else:
+                    for token in re.split(b'(\.)', wh_token):
+                        tokens.append(token)
+            yield tokens
+def split_to_subtokens(identifier):
+    subtokens = []
+    matches = re.finditer(
+        r'.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier.decode('utf-8')
+    )
+    camel_subtokens = [m.group(0) for m in matches]
+    for camel_subtoken in camel_subtokens:
+        for subtoken in re.split(r'(_)', camel_subtoken):
+            subtokens.append(subtoken + '@@')
+    if subtokens:
+        subtokens[-1] = subtokens[-1][:-2]
+    else:
+        print('error:', identifier)
+    return subtokens
+def export_to_file(subtoken_gen, export_file):
+    with open(export_file, 'w') as f:
+        for subtoken_instance in subtoken_gen:
+            f.write(' '.join(subtoken_instance))
+            f.write('\n')
+def process_files(datapath, filenames):
+    for tokens_file, export_file in filenames.items():
+        token_gen = instance_generator(f"{datapath}{tokens_file}")
+        subtoken_gen = subtoken_instance_generator(token_gen)
+        export_to_file(subtoken_gen, f"{datapath}{export_file}")
+if __name__ == "__main__":
+    java_filenames = {
+        'validation/java_validation_slp_pre': 'validation/java_validation_slp_pre_sub',
+        'test/java_test_slp_pre': 'test/java_test_slp_pre_sub',
+        'training/java_training_slp_pre': 'training/java_training_slp_pre_sub',
+        'training/java_training_slp_huge_pre': 'training/java_training_slp_huge_pre_sub'
+    }
+    python_filenames = {
+        'validation_set_pre': 'validation_set_pre_sub',
+        'test_set_pre': 'test_set_pre_sub',
+        'small_training_set_pre': 'small_training_set_pre_sub',
+        'full_training_set_pre': 'full_training_set_pre_sub'
+    }
+    c_filenames = {
+        'validation_set_pre': 'validation_set_pre_sub',
+        'test_set_pre': 'test_set_pre_sub',
+        'small_training_set_pre': 'small_training_set_pre_sub',
+        'full_training_set_pre': 'full_training_set_pre_sub'
+    }
+    java_path = '/mnt/datastore/inf/groups/cdt_ds/mpatsis/PhD/rafaelository/data/Miltos/tokenized/'
+    python_path = '/mnt/datastore/inf/groups/cdt_ds/mpatsis/PhD/rafaelository/data/codeCorpora/python/tokenized/'
+    c_path = '/mnt/datastore/inf/groups/cdt_ds/mpatsis/PhD/rafaelository/data/codeCorpora/c/tokenized/'
+    process_files(java_path, java_filenames)
+    process_files(python_path, python_filenames)
+    process_files(c_path, c_filenames)

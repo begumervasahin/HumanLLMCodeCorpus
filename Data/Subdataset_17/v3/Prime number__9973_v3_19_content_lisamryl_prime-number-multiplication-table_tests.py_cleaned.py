@@ -1,0 +1,85 @@
+import math
+import unittest
+def is_prime(n):
+    if not isinstance(n, int) or n <= 0:
+        raise ValueError('Invalid number, must be a positive integer.')
+    if n == 1:
+        return False
+    if n == 2:
+        return True
+    for i in range(2, int(math.sqrt(n)) + 1):
+        if n % i == 0:
+            return False
+    return True
+def generate_primes(count):
+    if not isinstance(count, int) or count <= 0:
+        raise ValueError('Invalid number, must be a positive integer.')
+    primes = []
+    candidate = 2
+    while len(primes) < count:
+        if is_prime(candidate):
+            primes.append(candidate)
+        candidate += 1
+    return primes
+def generate_multiplication_table(primes):
+    if not all(isinstance(p, int) for p in primes):
+        raise ValueError('Invalid list, should only contain integers.')
+    return [[primes[i] * primes[j] for j in range(len(primes))] for i in range(len(primes))]
+def format_table(table):
+    return "\n".join(" | ".join(f"{item:4}" for item in row) for row in table)
+class PrimeNumberUnitTests(unittest.TestCase):
+    def test_is_prime(self):
+        self.assertFalse(is_prime(1))
+        self.assertTrue(is_prime(2))
+        self.assertFalse(is_prime(4))
+        self.assertTrue(is_prime(5))
+        self.assertTrue(is_prime(104729))
+        self.assertFalse(is_prime(104728))
+    def test_is_prime_exception_handling(self):
+        with self.assertRaises(ValueError) as cm:
+            is_prime(0)
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+        with self.assertRaises(ValueError) as cm:
+            is_prime(-1)
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+        with self.assertRaises(ValueError) as cm:
+            is_prime(2.3)
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+    def test_generate_primes(self):
+        self.assertEqual(generate_primes(10), [2, 3, 5, 7, 11, 13, 17, 19, 23, 29])
+        with self.assertRaises(ValueError) as cm:
+            generate_primes(-1)
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+        with self.assertRaises(ValueError) as cm:
+            generate_primes('ten')
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+        with self.assertRaises(ValueError) as cm:
+            generate_primes(0)
+        self.assertEqual(str(cm.exception), 'Invalid number, must be a positive integer.')
+    def test_generate_10000_primes(self):
+        large_prime_list = generate_primes(10000)
+        self.assertEqual(large_prime_list[999], 7919)
+        self.assertEqual(large_prime_list[9999], 104729)
+    def test_generate_multiplication_table(self):
+        prime_example = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+        prime_table = generate_multiplication_table(prime_example)
+        prime_results = format_table(prime_table)
+        result_contains_1 = '   6 |    9 |   15 |   21 |   33 |   39 |   51 |   57'
+        result_contains_2 = '  58 |   87 |  145 |  203 |  319 |  377 |  493 |  551'
+        self.assertIn(result_contains_1, prime_results)
+        self.assertIn(result_contains_2, prime_results)
+    def test_generate_multiplication_table_exception(self):
+        prime_example = ['2', 3, 5, 'bad data', 11.0, 13, 17, 19, 23, 29]
+        with self.assertRaises(ValueError) as cm:
+            generate_multiplication_table(prime_example)
+        self.assertEqual(str(cm.exception), 'Invalid list, should only contain integers.')
+    def test_generate_multiplication_table_negatives(self):
+        prime_example = [2, -3, 5, 7, 11, -13, 17, 19, 23, 29]
+        prime_table = generate_multiplication_table(prime_example)
+        prime_results = format_table(prime_table)
+        result_contains_1 = '-6  |  9  | -15 | -21 | -33 |  39 | -51'
+        result_contains_2 = '  58 | -87 |  145 |  203 |  319 | -377 |  493'
+        self.assertIn(result_contains_1, prime_results)
+        self.assertIn(result_contains_2, prime_results)
+if __name__ == "__main__":
+    unittest.main()

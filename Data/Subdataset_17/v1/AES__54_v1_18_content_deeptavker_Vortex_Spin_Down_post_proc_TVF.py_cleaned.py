@@ -1,0 +1,47 @@
+import matplotlib.pyplot as plt
+from pysph.solver.utils import get_files, load
+import numpy as np
+vmax_a, KE_a, time_a = [], [], []
+vmax_b, KE_b, time_b = [], [], []
+vmax_c, KE_c, time_c = [], [], []
+def load_initial_data(path):
+    data = load(path)['arrays']['fluid']
+    u, v = data.u, data.v
+    norm = np.max((u**2 + v**2)**0.5)
+    vmag = (v**2 + u**2)**0.5
+    KEnorm = np.average(data.m * 0.5 * vmag * vmag)
+    return norm, KEnorm
+norm_a, KEnorm = load_initial_data('TVFoutput/a/vortex_spin_down_output/vortex_spin_down_0.hdf5')
+norm_b, _ = load_initial_data('TVFoutput/b/vortex_spin_down_output/vortex_spin_down_0.hdf5')
+norm_c, _ = load_initial_data('TVFoutput/c/vortex_spin_down_output/vortex_spin_down_0.hdf5')
+def process_files(path, norm, KE_list, vmax_list, time_list):
+    for fname in get_files(path):
+        pa = load(fname)
+        u = pa['arrays']['fluid'].u
+        v = pa['arrays']['fluid'].v
+        vmag = (u**2 + v**2)**0.5
+        m = pa['arrays']['fluid'].m
+        KE_list.append(np.average(0.5 * m * vmag * vmag) / KEnorm)
+        vmax = np.max((u**2 + v**2)**0.5)
+        vmax_list.append(vmax / norm)
+        time_list.append(pa['solver_data']['t'])
+process_files('TVFoutput/a/vortex_spin_down_output/', norm_a, KE_a, vmax_a, time_a)
+process_files('TVFoutput/b/vortex_spin_down_output/', norm_b, KE_b, vmax_b, time_b)
+process_files('TVFoutput/c/vortex_spin_down_output/', norm_c, KE_c, vmax_c, time_c)
+plt.plot(time_a, vmax_a, label='C = 1.25 (TVF)')
+plt.plot(time_b, vmax_b, label='C = 2.5 (TVF)')
+plt.plot(time_c, vmax_c, label='C = 5 (TVF)')
+plt.title('(TVF) Variation of normalized velocity with time')
+plt.xlabel('Time(s)')
+plt.ylabel('Normalized Velocity')
+plt.legend()
+plt.savefig('results_TVF_VMAX.png')
+plt.clf()
+plt.plot(time_a, KE_a, label='C = 1.25 (TVF)')
+plt.plot(time_b, KE_b, label='C = 2.5 (TVF)')
+plt.plot(time_c, KE_c, label='C = 5 (TVF)')
+plt.title('(TVF) Variation of Average Kinetic Energy with time')
+plt.xlabel('Time(s)')
+plt.ylabel('Normalized Average Kinetic Energy')
+plt.legend()
+plt.savefig('results_TVF_KE.png')

@@ -1,0 +1,67 @@
+import numpy as np
+class class1:
+    def fonk1(self, b15, data):
+        if len(b15) == 0:
+            self.b1 = None
+            self.b2 = None
+            self.b3 = None
+            self.b4 = None
+            return
+        self.b1 = b15[0]
+        b5 = b15[1:]
+        if len(b5) > 0:
+            b6 = self.fonk2(data[b5], data[self.b1])
+            self.b2 = np.median(b6)
+            b7 = b6 < self.b2
+            b8 = ~b7
+            self.b3 = class1(b5[b7], data[b7])
+            self.b4 = class1(b5[b8], data[b8])
+        else:
+            self.b2 = None
+            self.b3 = None
+            self.b4 = None
+    def fonk2(self, points, center_point):
+        return np.sum((points - center_point) ** 2, b9 = 1)
+    def fonk3(self, b10 = 0):
+        if self.b1 is None:
+            return
+        print(" " * (b10 * 4) + f"* (Node {self.b1})")
+        if self.b3 and self.b3.b1 is not None:
+            print(" " * (b10 * 4) + f"  - Inside {self.b1}:")
+            self.b3.fonk3(b10 + 1)
+        if self.b4 and self.b4.b1 is not None:
+            print(" " * (b10 * 4) + f"  - Outside {self.b1}:")
+            self.b4.fonk3(b10 + 1)
+    def fonk4(self, target_index, b17, b6, data):
+        if self.b1 is None:
+            return
+        b11 = np.sum((data[self.b1] - data[target_index]) ** 2)
+        b12 = b6[-1]
+        if target_index != self.b1 and b11 < b12:
+            b6[-1] = b11
+            b17[-1] = self.b1
+            b13 = np.argsort(b6)
+            b6[:] = b6[b13]
+            b17[:] = b17[b13]
+        if self.b2 is None:
+            return
+        if b11 >= b12 + self.b2:
+            self.b4.fonk4(target_index, b17, b6, data)
+        elif self.b2 > b12 + b11:
+            self.b3.fonk4(target_index, b17, b6, data)
+        else:
+            self.b3.fonk4(target_index, b17, b6, data)
+            self.b4.fonk4(target_index, b17, b6, data)
+        return b17
+np.random.seed(42)
+b14 = np.random.rand(10, 2)
+b15 = np.arange(len(b14))
+b16 = class1(b15, b14)
+b16.fonk3()
+a1 = 3
+b17 = np.full(a1, -1)
+b6 = np.full(a1, np.inf)
+b16.fonk4(0, b17, b6, b14)
+print("\n3 Nearest Neighbors of the first point:")
+print("Indices:", b17)
+print("Distances:", b6)

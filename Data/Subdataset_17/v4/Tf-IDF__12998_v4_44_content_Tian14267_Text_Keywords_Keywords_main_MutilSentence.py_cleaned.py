@@ -1,0 +1,30 @@
+import numpy as np
+import time
+import Keywords_Algorithm as KA
+import keywords_tools as KT
+def initialize_models():
+    tools = KT.Tools()
+    tf_idf = KA.TFIDF(tools)
+    text_rank = KA.TextRank(3, 0.85, 700, tools)
+    return tf_idf, text_rank, tools
+def mix_keywords(tf_idf, text_rank, tools, text):
+    tf_idf_result, tf_idf_sorted = tf_idf.Do_keywords(text)
+    text_rank_result, text_rank_sorted = text_rank.calculate_textrank(text)
+    method_num = "Weight_Cross"
+    mixed_result = tools.Mix_algorithm(method_num, tf_idf_result, text_rank_result)
+    return mixed_result
+if __name__ == '__main__':
+    file_path = "./data/cnews.test.txt"
+    start_time = time.time()
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+        cleaned_lines = [line.strip().replace('\n', '') for line in lines]
+    total_characters = 0
+    tf_idf, text_rank, tools = initialize_models()
+    for index, line in enumerate(cleaned_lines):
+        total_characters += len(line)
+        mix_keywords(tf_idf, text_rank, tools, line)
+        print("Progress:", index)
+    end_time = time.time()
+    print("Total Characters:", total_characters)
+    print("Total Time Elapsed:", end_time - start_time)

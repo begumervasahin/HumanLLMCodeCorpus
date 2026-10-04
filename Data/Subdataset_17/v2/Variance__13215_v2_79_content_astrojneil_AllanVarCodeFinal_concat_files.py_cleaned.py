@@ -1,0 +1,28 @@
+import numpy as np
+multifile_name = 'savefiles/640test_'
+filenumbers = list(range(1, 60))
+output_filename = '640_final.dat'
+def process_files(multifile_name, filenumbers, output_filename):
+    prev_time = 0.0
+    prev_step = 0
+    with open(output_filename, 'w') as mainfile:
+        for f in filenumbers:
+            with open(f"{multifile_name}{f}.dat", 'r') as singlefile:
+                savetime = 0.0
+                for i, line in enumerate(singlefile):
+                    split_line = line.split('[')
+                    temp = split_line[0]
+                    time, step = map(float, temp.split()[:2])
+                    step = int(step)
+                    if f == 1 or i > 0:
+                        if i == 0 and f != 1:
+                            savetime = time
+                        newtime = prev_time + (time - savetime) if f != 1 else prev_time + time
+                        newstep = prev_step + step
+                        newline = f"{newtime} {newstep} [{split_line[1]}"
+                        mainfile.write(newline)
+            print(f"Finished processing file {f}")
+            prev_time = newtime
+            prev_step = newstep
+if __name__ == "__main__":
+    process_files(multifile_name, filenumbers, output_filename)

@@ -1,0 +1,51 @@
+import pandas as pd
+import numpy as np
+import requests
+from bs4 import BeautifulSoup
+from random import sample
+import re
+df2 = pd.read_csv('S8nested6feb.csv')
+df1 = pd.read_csv('sk_S116feb19.csv')
+s8random = sample(list(df2.nct_id.values), 211)
+s11random = sample(list(df1.nct_id.values), 422)
+total8 = pd.DataFrame(s8random, columns=['nct_id'])
+total11 = pd.DataFrame(s11random, columns=['nct_id'])
+total8['urllist'] = total8['nct_id'].apply(lambda x: f"https:
+total11['urllist'] = total11['nct_id'].apply(lambda x: f"https:
+def get_number(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    nl = soup.find_all(href=re.compile(r"\?V\_"))
+    return len(nl)
+total8['number'] = total8['urllist'].map(get_number)
+total8['num6'] = total8['number'].map(lambda x: list(range(1, x+1)))
+nw = list(total8.nct_id * total8.number)
+gg = pd.DataFrame(nw, total8.num6).reset_index()
+gg.columns = ['first', 'second']
+gg['second'] = gg['second'].map(lambda x: ",".join([x[i:i+11] for i in range(0, len(x), 11)]))
+gg['second'] = gg['second'].str.split(',')
+newgg = gg.stack().apply(pd.Series).stack().unstack(1)
+newgg['ff'] = list(zip(newgg['first'].astype(str), newgg['second'].astype(str)))
+newgg['nurl'] = newgg['ff'].apply(lambda x: f"https:
+def scrape_PI(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+    h1 = soup.findAll('div', attrs={"id":"ContactsLocationsBody"})
+    if h1:
+        result = [ele.text.strip() for th in h1 for ele in th.find_all('td')]
+        return result[1] if result else None
+    return None
+newgg['History_Contacts'] = newgg['nurl'].map(scrape_PI)
+newgg.to_csv('S8_07.csv', index=False)
+total11['number'] = total11['urllist'].map(get_number)
+total11['num6'] = total11['number'].map(lambda x: list(range(1, x+1)))
+n11 = list(total11.nct_id * total11.number)
+g11 = pd.DataFrame(n11, total11.num6).reset_index()
+g11.columns = ['first', 'second']
+g11['second'] = g11['second'].map(lambda x: ",".join([x[i:i+11] for i in range(0, len(x), 11)]))
+g11['second'] = g11['second'].str.split(',')
+newg11 = g11.stack().apply(pd.Series).stack().unstack(1)
+newg11['ff'] = list(zip(newg11['first'].astype(str), newg11['second'].astype(str)))
+newg11['nurl'] = newg11['ff'].apply(lambda x: f"https:
+newg11['History_Contacts'] = newg11['nurl'].map(scrape_PI)
+newg11.to_csv('S11_07.csv', index=False)

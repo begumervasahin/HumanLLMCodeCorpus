@@ -1,0 +1,50 @@
+import numpy as np
+def load_mobility_data(filepath):
+    with open(filepath, 'r') as f:
+        traj1 = []
+        traj2 = []
+        userid = None
+        lst_users = []
+        for k, line in enumerate(f):
+            if k == 0:
+                continue
+            m = line.strip().split(",")
+            current_userid = int(m[0])
+            if userid == current_userid:
+                traj2.append([m[1], m[2], m[3]])
+            else:
+                if traj2:
+                    traj1.append(traj2)
+                traj2 = [[m[1], m[2], m[3]]]
+                lst_users.append(m[0])
+                userid = current_userid
+        traj1.append(traj2)
+    print("Loading done")
+    return traj1, lst_users
+def load_distance_matrix(filepath, lst_users):
+    with open(filepath, 'r') as f:
+        num_users = len(lst_users)
+        distance = np.zeros((num_users, num_users))
+        for i, line in enumerate(f):
+            a = line.strip().split(",")
+            if lst_users[i] != a[0]:
+                print('Error: Mismatch in user IDs at index', i)
+            for j, val in enumerate(a[1:], start=0):
+                distance[i][j] = float(val)
+                if float(val) == 0.0 and i != j:
+                    print("Error at", i, j)
+    return distance
+def check_distance_matrix_symmetry(distance):
+    num_users = distance.shape[0]
+    for i in range(num_users):
+        for j in range(num_users):
+            if distance[i][j] != distance[j][i]:
+                print("Error at", i, j)
+def main():
+    mobility_filepath = '/home/s/Dropbox/Thesis/Telenor/fwdtelenordata/v01_anonymized_mobility.csv'
+    distance_matrix_filepath = 'distance_matrix_final.csv'
+    traj1, lst_users = load_mobility_data(mobility_filepath)
+    distance = load_distance_matrix(distance_matrix_filepath, lst_users)
+    check_distance_matrix_symmetry(distance)
+if __name__ == "__main__":
+    main()

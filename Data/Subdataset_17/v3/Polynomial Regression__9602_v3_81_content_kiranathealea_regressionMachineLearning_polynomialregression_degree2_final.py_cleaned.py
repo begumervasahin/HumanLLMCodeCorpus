@@ -1,0 +1,57 @@
+import numpy as np
+import pandas as pd
+import os
+import glob
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import PolynomialFeatures
+from pandas import DataFrame
+cities = [
+    'Bandung', 'Bantul', 'Bekasi', 'Bogor', 'Ciamis', 'Cianjur',
+    'Cirebon', 'DIY', 'Garut', 'Gunung Kidul', 'Indramayu',
+    'Karawang', 'Kulon Progo', 'Kuningan', 'Majalengka',
+    'Purwakarta', 'Sleman', 'Subang', 'Sukabumi', 'Sumedang',
+    'Tasikmalaya'
+]
+input_folder = '/home/leathea/Downloads/Machine-Learning/PolynomialRegression/tomato_csv_perdaerah/'
+output_folder = '/home/leathea/Downloads/Machine-Learning/PolynomialRegression/hasiltomato/poly/'
+combined_csv_path = '/home/leathea/Downloads/Machine-Learning/PolynomialRegression/predicted_poly_tomato.csv'
+def process_city_data(city):
+    file_path = os.path.join(input_folder, city + ".csv")
+    years_data = pd.read_csv(file_path, usecols=['Year'])
+    crop_data = pd.read_csv(file_path, usecols=['Crop'])
+    years = years_data['Year'].values
+    crops = crop_data['Crop'].values
+    polynomial_features = PolynomialFeatures(degree=2)
+    years_poly = polynomial_features.fit_transform(years.reshape(-1, 1))
+    model = LinearRegression()
+    model.fit(years_poly, crops)
+    predicted_crops = model.predict(years_poly)
+    rmse = mean_squared_error(crops, predicted_crops)
+    r2 = r2_score(crops, predicted_crops)
+    print(f'The RMSE of the polynomial regression model for {city} is {rmse}')
+    print(f'The R2 score of the polynomial regression model for {city} is {r2}')
+    future_years = np.array([2015, 2016, 2017, 2018, 2019, 2020])
+    future_years_poly = polynomial_features.fit_transform(future_years.reshape(-1, 1))
+    future_crops = model.predict(future_years_poly)
+    combined_years = np.concatenate((years, future_years))
+    combined_crops = np.concatenate((predicted_crops, future_crops))
+    combined_crops_actual = np.concatenate((crops, future_crops))
+    entity_data = pd.read_csv(file_path, usecols=['Entity']).values.ravel()
+    code_data = pd.read_csv(file_path, usecols=['Code']).values.ravel()
+    entity_extended = np.concatenate((entity_data, entity_data[:6]))
+    code_extended = np.concatenate((code_data, code_data[:6]))
+    result_df = DataFrame({
+        'Entity': entity_extended,
+        'Code': code_extended,
+        'Year': combined_years,
+        'crop(tonnes per hectare)': combined_crops_actual
+    })
+    output_file_path = os.path.join(output_folder, city + '_tomato.csv')
+    result_df.to_csv(output_file_path, index=False)
+for city in cities:
+    process_city_data(city)
+all_filenames = glob.glob(os.path.join(output_folder, '*.csv'))
+combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+combined_csv.to_csv(combined_csv_path, index=False, encoding='utf-8-sig')
+print('All done')

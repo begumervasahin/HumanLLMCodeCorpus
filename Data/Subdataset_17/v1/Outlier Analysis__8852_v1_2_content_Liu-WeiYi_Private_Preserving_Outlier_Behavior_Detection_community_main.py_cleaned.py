@@ -1,0 +1,28 @@
+import glob
+import time
+import networkx as nx
+from statistics import mean
+import Abnormal_Scenario_Generation as ASG
+def analyze_network_files(normal_path, abnormal_path):
+    normal_files = glob.glob(normal_path + '/*.gml')
+    analysis_time = []
+    for file in normal_files:
+        start_time = time.time()
+        print('Current file:', file)
+        network = nx.read_gml(file)
+        score_set, score_com = ASG.Detection_Outliers(network)
+        time_interval = time.time() - start_time
+        analysis_time.append(time_interval)
+    min_time = min(analysis_time)
+    max_time = max(analysis_time)
+    avg_time = mean(analysis_time)
+    sum_time = sum(analysis_time)
+    print('min_time:', min_time)
+    print('avg_time:', avg_time)
+    print('max_time:', max_time)
+    print('sum_time:', sum_time)
+if __name__ == "__main__":
+    normal_path = 'Normal_Example'
+    abnormal_path = 'Abnormal_Example'
+    synthetic_type = "Nodes"
+    analyze_network_files(normal_path, abnormal_path)

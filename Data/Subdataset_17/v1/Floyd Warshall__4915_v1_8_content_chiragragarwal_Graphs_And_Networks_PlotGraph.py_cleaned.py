@@ -1,0 +1,72 @@
+import math
+import string
+import matplotlib.pyplot as plt
+from pathlib import Path
+class PlotGraph:
+    def __init__(self, graphMat):
+        self.graphMat = graphMat
+        if self.graphMat.shape[0] != self.graphMat.shape[1]:
+            raise ValueError("The adjacency matrix must be square.")
+        self.numVertices = self.graphMat.shape[0]
+        self.radius = 1
+    def get_vertex_coordinates(self):
+        vertex_coords = []
+        theta = math.pi
+        interval = 2 * math.pi / self.numVertices
+        for _ in range(self.numVertices):
+            x_coord = round(self.radius * math.cos(theta), 2)
+            y_coord = round(self.radius * math.sin(theta), 2)
+            vertex_coords.append((x_coord, y_coord))
+            theta += interval
+        return vertex_coords
+    def get_edges(self):
+        edge_list = []
+        for i in range(self.numVertices):
+            for j in range(self.numVertices):
+                if self.graphMat[i, j]:
+                    edge_list.append((i, j))
+        return edge_list
+    def get_offsetted_values(self, x_pos, y_pos, offset):
+        if y_pos > 0:
+            y_pos += offset
+            x_pos += offset if x_pos > 0 else x_pos - offset
+        elif y_pos < 0:
+            y_pos -= offset
+            x_pos += offset if x_pos > 0 else x_pos - offset
+        else:
+            x_pos += offset if x_pos > 0 else x_pos - offset
+        if x_pos == 0:
+            y_pos += offset if y_pos > 0 else y_pos - offset
+        return x_pos, y_pos
+    def plot(self):
+        vertex_coords = self.get_vertex_coordinates()
+        edge_list = self.get_edges()
+        print("Vertex coordinates:", vertex_coords)
+        print(f"Found {len(edge_list)} edges in the graph.")
+        for edge in edge_list:
+            x_pos_start, y_pos_start = vertex_coords[edge[0]]
+            x_pos_end, y_pos_end = vertex_coords[edge[1]]
+            plt.arrow(
+                x_pos_start, y_pos_start,
+                x_pos_end - x_pos_start, y_pos_end - y_pos_start,
+                head_length=0.2, head_width=0.1, fc='k', ec='k',
+                length_includes_head=True, overhang=0.2
+            )
+        alphabet = string.ascii_uppercase
+        for v in range(self.numVertices):
+            x_pos, y_pos = vertex_coords[v]
+            x_pos_label, y_pos_label = self.get_offsetted_values(x_pos, y_pos, 0.3)
+            plt.text(x_pos_label, y_pos_label, alphabet[v], fontsize=20)
+            x_pos_vertex, y_pos_vertex = self.get_offsetted_values(x_pos, y_pos, 0.07)
+            plt.plot(x_pos_vertex, y_pos_vertex, 'wo', mew=2, ms=20)
+        plt.axis([-2 * self.radius, 2 * self.radius, -2 * self.radius, 2 * self.radius])
+        plt.title(f"Graph with {self.numVertices} vertices and {len(edge_list)} edges", loc='center')
+        plt.show()
+if __name__ == '__main__':
+    example_matrix = np.matrix([
+        [0, 1, 0],
+        [1, 0, 1],
+        [0, 1, 0]
+    ])
+    graph_plotter = PlotGraph(example_matrix)
+    graph_plotter.plot()

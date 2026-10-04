@@ -1,0 +1,41 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import math
+import os
+experiments = 200
+t = np.arange(-1, 1.01, 0.01)
+ft = np.sin(t * np.pi)
+pendiente = []
+interseccion = []
+for i in range(experiments):
+    x1 = random.uniform(-1, 1)
+    x2 = random.uniform(-1, 1)
+    y1 = np.sin(x1 * np.pi)
+    y2 = np.sin(x2 * np.pi)
+    m = (y2 - y1) / (x2 - x1)
+    b = y1 - (m * x1)
+    pendiente.append(m)
+    interseccion.append(b)
+prom_pendiente = sum(pendiente) / len(pendiente)
+prom_interseccion = sum(interseccion) / len(interseccion)
+lista_bias = [(prom_pendiente * elemento + prom_interseccion - np.sin(elemento * np.pi)) ** 2 for elemento in t]
+pro_bias = sum(lista_bias) / len(lista_bias)
+print('Bias = %f' % pro_bias)
+recol_x = [[((pendiente[j] - prom_pendiente) * t[i]) + (interseccion[j] - prom_interseccion) for j in range(experiments)] for i in range(len(t))]
+cuadrado = [[math.pow(recta, 2) for recta in punto] for punto in recol_x]
+sum_cuadrado = [sum(punto) / (len(punto) - 1) for punto in cuadrado]
+varian_med = sum(sum_cuadrado) / len(sum_cuadrado)
+print('Variance: %f' % varian_med)
+plt.plot(t, ft, label='sin(t*pi)')
+plt.grid(True)
+plt.ylim(-2, 2)
+plt.xlim(-1, 1)
+for i in range(experiments):
+    plt.plot(t, (pendiente[i] * t) + interseccion[i], alpha=0.5, color='g')
+plt.plot(t, (prom_pendiente * t) + prom_interseccion, alpha=0.5, color='r', linewidth=2, label='Average Line')
+plt.text(-0.9, 1.75, 'Bias: ' + str(pro_bias))
+plt.text(-0.9, 1.64, 'Variance: ' + str(varian_med))
+plt.legend()
+plt.savefig(os.path.join('Sinusoidal_dos.png'), dpi=300, format='png', bbox_inches='tight')
+plt.show()

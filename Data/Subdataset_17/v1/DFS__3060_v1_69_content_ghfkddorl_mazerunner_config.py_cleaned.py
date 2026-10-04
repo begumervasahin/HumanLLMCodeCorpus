@@ -1,0 +1,16 @@
+
+DEBUGMODE = False
+COLOR_BLOCK = 'gray'
+COLOR_BLOCK_OUTLINE = 'black'
+COLOR_EMPTY = 'white'
+COLOR_GRAPH = 'green'
+COLOR_PATH = 'orange'
+def main():
+    print("Debug Mode:", DEBUGMODE)
+    print("Color Block:", COLOR_BLOCK)
+    print("Color Block Outline:", COLOR_BLOCK_OUTLINE)
+    print("Color Empty:", COLOR_EMPTY)
+    print("Color Graph:", COLOR_GRAPH)
+    print("Color Path:", COLOR_PATH)
+if __name__ == "__main__":
+    main()

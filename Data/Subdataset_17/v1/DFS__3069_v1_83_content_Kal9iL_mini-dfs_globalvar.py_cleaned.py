@@ -1,0 +1,59 @@
+from threading import Event
+from globalconsts import NUM_OF_DATASERVERS
+OPERATION = None
+main2name_event = Event()
+name2main_event = Event()
+name2data_events = [Event() for _ in range(NUM_OF_DATASERVERS)]
+data2name_events = [Event() for _ in range(NUM_OF_DATASERVERS)]
+global_flag = False
+upload_file = None
+fetch_file_id = None
+fetch_save_file = None
+read_file_id = None
+read_offset = None
+read_count = None
+upload_server_block_map = None
+fetch_server_block_map = {}
+fetch_id_block_map = {}
+NameNode_Flag = None
+NameNode_error_messages = None
+read_server_block_map = {}
+read_block_config = {}
+ls_results = []
+read_results = {}
+fetch_results = {}
+DataNode_Flag = None
+DataNode_error_messages = None
+def initialize_globals():
+    global OPERATION, global_flag, upload_file, fetch_file_id, fetch_save_file
+    global read_file_id, read_offset, read_count, upload_server_block_map
+    global fetch_server_block_map, fetch_id_block_map, NameNode_Flag
+    global NameNode_error_messages, read_server_block_map, read_block_config
+    global ls_results, read_results, fetch_results, DataNode_Flag
+    global DataNode_error_messages
+    OPERATION = None
+    global_flag = False
+    upload_file = None
+    fetch_file_id = None
+    fetch_save_file = None
+    read_file_id = None
+    read_offset = None
+    read_count = None
+    upload_server_block_map = None
+    fetch_server_block_map = {}
+    fetch_id_block_map = {}
+    NameNode_Flag = None
+    NameNode_error_messages = None
+    read_server_block_map = {}
+    read_block_config = {}
+    ls_results = []
+    read_results = {}
+    fetch_results = {}
+    DataNode_Flag = None
+    DataNode_error_messages = None
+def main():
+    print("Initializing global variables and events...")
+    initialize_globals()
+    print("Initialization complete.")
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,91 @@
+
+import BST_Iter as BST
+def printTree(bst, verbose=False):
+    print("\nTree Structure:")
+    print("In order:  ", bst.inOrder())
+    print("Pre order: ", bst.preOrder())
+    print("BFS:       ", bst.BFS())
+    if verbose:
+        print("Nodes (in BFS order):")
+        for node in bst.BFS():
+            bst.find(node).printNode()
+    print()
+def createTree():
+    bst = BST.BinarySearchTree(BST.Node(7))
+    bst.insert(4)
+    bst.insert(1)
+    bst.insert(6)
+    bst.insert(13)
+    bst.insert(15)
+    bst.insert(10)
+    return bst, bst.getRoot()
+def testTree():
+    bst, root = createTree()
+    print("\nTree Traversals:")
+    print("In order:  ", bst.inOrder())
+    print("Pre order: ", bst.preOrder())
+    print("Post order:", bst.postOrder())
+    print("BFS:       ", bst.BFS())
+    print("Root Node:", end=' ')
+    root.printNode()
+    print("\nSearch Results:")
+    for key in [0, 1, 2, 5, 6, 7, 8, 12, 13, 14, 15, 20]:
+        print(f"Search for {key}: {bst.find(key)}")
+    print("\nNext Node Results:")
+    for key in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        next_node = bst.next(bst.find(key))
+        print(f"Next node after {key}: {next_node}")
+    print("\nPrevious Node Results:")
+    for key in [0, 1, 2, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16]:
+        prev_node = bst.previous(bst.find(key))
+        print(f"Previous node before {key}: {prev_node}")
+    print("\nRange Search Results (5 to 12):")
+    for node in bst.rangeSearch(5, 12):
+        print(node, end=' ')
+    print()
+    if False:
+        print("\nInsert Test:")
+        print("Before Insertion:")
+        printTree(bst)
+        bst.insert(3)
+        print(f"After inserting 3:")
+        printTree(bst)
+        bst.insert(5)
+        print(f"After inserting 5:")
+        printTree(bst)
+    if False:
+        print("\nDelete Test:")
+        print("Before Deletion:")
+        printTree(bst)
+        bst.delete(bst.find(7))
+        print(f"After deleting 7:")
+        printTree(bst)
+        try:
+            print(f"This is the node under which the deleted node, 7, would come: {bst.find(7)}.")
+            bst.find(7).printNode()
+        except AttributeError:
+            print("New root:", end=' ')
+            bst.getRoot().printNode()
+    print("\nRotation Tests:")
+    print("Initial Tree:")
+    printTree(bst, verbose=True)
+    print("\nRotating Right at Node 7:")
+    bst.rotateRight(bst.find(7))
+    printTree(bst, verbose=True)
+    print("\nRotating Left at Node 1:")
+    bst.rotateLeft(bst.find(1))
+    printTree(bst, verbose=True)
+def test1():
+    bst = BST.BinarySearchTree(BST.Node(3))
+    bst.insert(1)
+    bst.insert(4)
+    bst.insert(5)
+    printTree(bst, True)
+    bst.delete(bst.find(3))
+    printTree(bst, True)
+def test2():
+    bst, root = createTree()
+    printTree(bst, True)
+    bst.delete(bst.find(7))
+    printTree(bst, True)
+testTree()

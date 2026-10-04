@@ -1,0 +1,66 @@
+class HashTable:
+    def __init__(self, size=31):
+        self.nbuckets = size
+        self.the_table = [[] for _ in range(self.nbuckets)]
+    def hashcode(self, key):
+        if isinstance(key, int):
+            return key
+        elif isinstance(key, str):
+            h = 0
+            for char in key:
+                h = h * 31 + ord(char)
+            return h
+        else:
+            raise TypeError("Unsupported key type")
+    def buckets_str(self):
+        output = ""
+        for i, bucket in enumerate(self.the_table):
+            output += f"{str(i).zfill(4)}->"
+            output += ', '.join([f"{node[0]}:{node[1]}" for node in bucket])
+            output += '\n'
+        return output
+    def __str__(self):
+        output = '{'
+        for bucket in self.the_table:
+            for key, value in bucket:
+                output += f"{key}:{value}, "
+        output = output.rstrip(', ')
+        output += '}'
+        return output
+    def put(self, key, value):
+        bucket_index = self.hashcode(key) % self.nbuckets
+        bucket = self.the_table[bucket_index]
+        for i, (k, v) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, v | value)
+                break
+        else:
+            bucket.append((key, value))
+    def get(self, key):
+        bucket_index = self.hashcode(key) % self.nbuckets
+        bucket = self.the_table[bucket_index]
+        for k, v in bucket:
+            if k == key:
+                return v
+        return None
+    def bucket_indexof(self, index):
+        if index < 0 or index >= self.nbuckets:
+            raise IndexError("Bucket index out of range")
+        output = '{'
+        for k, v in self.the_table[index]:
+            output += f"{k}:{v}, "
+        output = output.rstrip(', ')
+        output += '}'
+        return output
+    def __getitem__(self, key):
+        return self.get(key)
+    def __setitem__(self, key, value):
+        self.put(key, value)
+if __name__ == '__main__':
+    h = HashTable()
+    h['a'] = 34
+    print(h['a'])
+    table = HashTable(5)
+    for i in range(1, 11):
+        table.put(i, i)
+    print(table.bucket_indexof(0))

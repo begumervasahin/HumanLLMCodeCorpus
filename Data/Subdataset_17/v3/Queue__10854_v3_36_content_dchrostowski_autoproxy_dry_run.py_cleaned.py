@@ -1,0 +1,84 @@
+import random
+import time
+import threading
+from scrapy_autoproxy.config import configuration
+from scrapy_autoproxy.storage_manager import StorageManager, Redis
+from scrapy_autoproxy.proxy_manager import ProxyManager
+class ProxyCrawlSimulator:
+    def __init__(self, test_sites, crawl_statuses, num_workers=5):
+        self.redis = Redis(**configuration.redis_config)
+        self.redis.flushall()
+        self.test_sites = test_sites
+        self.crawl_statuses = crawl_statuses
+        self.num_workers = num_workers
+        self.successful = {site: 0 for site in self.test_sites}
+        self.failures = {site: 0 for site in self.test_sites}
+        self.workers = self._create_workers()
+    def _print_scoreboard(self):
+        print("--------------------------------------")
+        print("Successes:")
+        for site, count in self.successful.items():
+            print(f"{site}: {count}")
+        print("--------------------------------------")
+        print("Failures:")
+        for site, count in self.failures.items():
+            print(f"{site}: {count}")
+        print("--------------------------------------")
+    def _count_running_threads(self):
+        return sum(1 for t in threading.enumerate() if t.is_alive())
+    def _worker(self):
+        thread_name = threading.current_thread().getName()
+        print(f"{thread_name} starting")
+        time.sleep(random.randint(1, 10))
+        pm = ProxyManager()
+        for _ in range(5):
+            url = random.choice(self.test_sites)
+            print(f"{thread_name} crawling {url}")
+            proxy = pm.get_proxy(url)
+            time.sleep(random.randint(1, 12))
+            success = random.choice(self.crawl_statuses)
+            print(f"{thread_name} crawl success={success}")
+            if success:
+                self.successful[url] += 1
+            else:
+                self.failures[url] += 1
+            proxy.callback(success=success)
+            time.sleep(random.randint(1, 6))
+        print(f"{thread_name} stopping")
+    def _create_workers(self):
+        workers = []
+        for i in range(self.num_workers):
+            worker_name = f"worker_{i}"
+            worker_thread = threading.Thread(name=worker_name, target=self._worker)
+            workers.append(worker_thread)
+        return workers
+    def _daemon(self):
+        print(threading.current_thread().getName(), 'Starting daemon.')
+        for worker_thread in self.workers:
+            worker_thread.start()
+        time.sleep(15)
+        while True:
+            self._print_scoreboard()
+            if self._count_running_threads() == 1:
+                break
+            time.sleep(5)
+        sm = StorageManager()
+        sm.sync_to_db()
+        self._print_scoreboard()
+    def start(self):
+        daemon_thread = threading.Thread(name='daemon', target=self._daemon)
+        daemon_thread.setDaemon(True)
+        daemon_thread.start()
+if __name__ == "__main__":
+    test_sites = [
+        'https:
+        'http:
+        'http:
+        'http:
+        'http:
+        'http:
+        'http:
+    ]
+    crawl_statuses = [True, False]
+    simulator = ProxyCrawlSimulator(test_sites, crawl_statuses, num_workers=5)
+    simulator.start()

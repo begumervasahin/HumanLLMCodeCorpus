@@ -1,0 +1,67 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import scale
+from scipy.stats import skew
+import numpy as np
+import re
+def main():
+    print_welcome_message()
+    csv_file = get_csv_file()
+    if not csv_file:
+        print('\nArrivederci!\n')
+        return
+    data = load_data(csv_file)
+    columns = data.columns.to_numpy()
+    while True:
+        print_columns(csv_file, columns)
+        column = get_column_input()
+        if not column or column.lower() == 'ya':
+            break
+        if column in columns:
+            process_column(data, column)
+        else:
+            print('Invalid column name. Please try again.')
+    print('\nHasta la vista, human.\n')
+def print_welcome_message():
+    print('\n\n                 Welcome to SkewU.py')
+    print('                 --by Niam Moltta--')
+    print('                      ~~/\\
+    print('\n\n\n')
+    print('Application: SKEWNESS CALCULATION.\n')
+    print('INSTRUCTIONS:\n')
+    print('- Select file, select column.')
+    print('- Returns skewness value.')
+    print('- Returns skewness representation graph.\n')
+def get_csv_file():
+    return input('Enter .csv file name: ')
+def load_data(csv_file):
+    return pd.read_csv(csv_file)
+def print_columns(file_name, columns):
+    file_base_name = re.findall(r'(.+?).csv', file_name)[0]
+    print(f'\nColumns in {file_base_name} are:\n')
+    print(columns)
+    print(' ')
+def get_column_input():
+    return input('Enter column header: ')
+def process_column(data, column):
+    data[column].fillna(0, inplace=True)
+    print('Missing values replaced with zeros.\n')
+    col_scaled = scale(data[column])
+    skness = skew(col_scaled)
+    print(f'Skewness = {skness}')
+    plot_skewness(col_scaled, column, skness)
+def plot_skewness(data, column, skness):
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.hist(data, facecolor='lightblue', alpha=0.75)
+    plt.xlabel("Skewness greater than zero shows large skewed distribution -->")
+    plt.title(column)
+    plt.text(2, 100000, f"Skewness: {skness:.2f}")
+    plt.subplot(1, 2, 2)
+    plt.boxplot(data)
+    plt.title("Skewed Distribution")
+    plt.xlabel(f"{skness:.2f}")
+    plt.tight_layout()
+    plt.show()
+if __name__ == "__main__":
+    main()

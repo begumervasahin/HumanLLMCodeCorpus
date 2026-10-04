@@ -1,0 +1,66 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+def knn_classifier(unlabeled, dataset, labels, k):
+    num_samples = dataset.shape[0]
+    diff = np.tile(unlabeled, (num_samples, 1)) - dataset
+    sq_diff = diff ** 2
+    sq_dist = np.sum(sq_diff, axis=1)
+    distances = np.sqrt(sq_dist)
+    sorted_dist_indices = np.argsort(distances)
+    class_count = {}
+    for i in range(k):
+        vote_label = labels[sorted_dist_indices[i]]
+        class_count[vote_label] = class_count.get(vote_label, 0) + 1
+    return max(class_count.items(), key=lambda item: item[1])[0]
+def file_to_matrix(filename, num_features):
+    with open(filename) as fr:
+        lines = fr.readlines()
+    num_lines = len(lines)
+    data_matrix = np.zeros((num_lines, num_features))
+    label_vector = []
+    for index, line in enumerate(lines):
+        line = line.strip()
+        list_from_line = line.split('\t')
+        data_matrix[index, :] = list_from_line[:num_features]
+        label_vector.append(int(list_from_line[-1]))
+    return data_matrix, label_vector
+def draw_scatter(data_matrix, labels):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    scatter = ax.scatter(data_matrix[:, 0], data_matrix[:, 1], c=labels, cmap=plt.cm.rainbow)
+    legend = ax.legend(*scatter.legend_elements(), title="Classes")
+    ax.add_artist(legend)
+    plt.show()
+def auto_normalize(dataset):
+    min_values = dataset.min(0)
+    max_values = dataset.max(0)
+    ranges = max_values - min_values
+    normalized_dataset = (dataset - min_values) / ranges
+    return normalized_dataset, ranges, min_values
+def dating_class_test():
+    rate = 0.1
+    data_matrix, labels = file_to_matrix('/Users/ceciliaLee/Desktop/datingTestSet2.txt', 3)
+    norm_matrix, ranges, min_values = auto_normalize(data_matrix)
+    num_test_vectors = int(norm_matrix.shape[0] * rate)
+    error_count = 0.0
+    for i in range(num_test_vectors):
+        result = knn_classifier(norm_matrix[i, :], norm_matrix[num_test_vectors:], labels[num_test_vectors:], 3)
+        print(f'Result from KNN Classifier: {result}, Actual class: {labels[i]}')
+        if result != labels[i]:
+            error_count += 1
+    print(f'Total error rate: {error_count / num_test_vectors:.2%}')
+def classify_person():
+    results = ['not at all', 'in small doses', 'in large doses']
+    percent_time_game = float(input('Percentage of time spent playing video games? '))
+    frequent_flyer_miles = float(input('Frequent flier miles earned per year? '))
+    ice_cream_consumed = float(input('Liters of ice cream consumed per year? '))
+    data_matrix, labels = file_to_matrix('/Users/ceciliaLee/Desktop/datingTestSet2.txt', 3)
+    norm_matrix, ranges, min_values = auto_normalize(data_matrix)
+    input_array = np.array([percent_time_game, frequent_flyer_miles, ice_cream_consumed])
+    norm_input_array = (input_array - min_values) / ranges
+    result = knn_classifier(norm_input_array, norm_matrix, labels, 3)
+    print(f'You will probably like this person: {results[result - 1]}')
+if __name__ == "__main__":
+    dating_class_test()
+    classify_person()

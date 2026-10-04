@@ -1,0 +1,33 @@
+import timeit
+import random
+def array_copy(src, src_pos, dest, dest_pos, length):
+    for i in range(length):
+        dest[i + dest_pos] = src[i + src_pos]
+def split_sort(array):
+    if len(array) <= 1:
+        return array
+    mid = len(array)
+    left = split_sort(array[:mid])
+    right = split_sort(array[mid:])
+    return merge_sort(left, right)
+def merge_sort(left, right):
+    sorted_array = []
+    l_index, r_index = 0, 0
+    while l_index < len(left) and r_index < len(right):
+        if left[l_index] <= right[r_index]:
+            sorted_array.append(left[l_index])
+            l_index += 1
+        else:
+            sorted_array.append(right[r_index])
+            r_index += 1
+    sorted_array.extend(left[l_index:])
+    sorted_array.extend(right[r_index:])
+    return sorted_array
+numbers = [7, 4, 3, 8, 1, 12, 9, 14]
+for _ in range(5000):
+    numbers.append(random.randint(1, 99999))
+start_time = timeit.default_timer()
+sorted_numbers = split_sort(numbers)
+elapsed_time = timeit.default_timer() - start_time
+print("Merge Sort: " + str(elapsed_time))
+print(sorted_numbers)

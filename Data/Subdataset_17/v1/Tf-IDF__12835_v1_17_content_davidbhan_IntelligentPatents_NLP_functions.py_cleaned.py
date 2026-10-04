@@ -1,0 +1,23 @@
+import nltk
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+def simplify_text(text):
+    text = text.translate(str.maketrans('', '', string.punctuation)).lower()
+    word_list = word_tokenize(text)
+    filtered_text = [word for word in word_list if word not in stopwords.words('english')]
+    lemma = WordNetLemmatizer()
+    result = ' '.join([lemma.lemmatize(word) for word in filtered_text])
+    return result
+def similarity(text1, text2):
+    vect = TfidfVectorizer(min_df=1)
+    tfidf = vect.fit_transform([text1, text2])
+    return (tfidf * tfidf.T).A[0, 1]
+print(similarity("hello I'm David, and I love my little bunny \n asdf this code", "hello I'm Juwon, and I love my big bear"))
+print(similarity(simplify_text("hello I'm David, and I love my little bunny"), simplify_text("hello I'm Juwon, and I love my big bear")))
+print(simplify_text("hello I'm David, I was born on the best day of the best month because I'm the best of them all!"))

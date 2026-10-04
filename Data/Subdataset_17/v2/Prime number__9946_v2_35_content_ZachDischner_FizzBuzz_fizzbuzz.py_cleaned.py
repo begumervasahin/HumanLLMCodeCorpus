@@ -1,0 +1,78 @@
+
+from __future__ import print_function
+import sys
+import argparse
+def is_prime(x):
+    assert isinstance(x, int), "is_prime requires integer type, provided {}".format(type(x))
+    if x < 2:
+        return False
+    if x == 2:
+        return True
+    if x % 2 == 0:
+        return False
+    for possibility in range(3, int(x ** 0.5) + 1, 2):
+        if x % possibility == 0:
+            return False
+    return True
+def fib():
+    """
+    Memory efficient Fibonacci sequence generator.
+    Returns:
+        generator: Fibonacci number generator.
+    Examples:
+        for ix, fn in enumerate(fizzbuzz.fib()):
+            print("Fib sequence number F({}) ==> {}".format(ix, fn))
+            if ix > 10:
+                break
+    Determine the modified fizz-buzz representation of a number `x`.
+    Args:
+        x (int): Number to fizz-buzzify.
+    Returns:
+        str or int: The fizz-buzzified representation or the number itself.
+    Examples:
+        >>> fizz_buzzify(0)
+        'FizzBuzz'
+        >>> fizz_buzzify(10)
+        'Buzz'
+        >>> fizz_buzzify(11)
+        'BuzzFizz'
+        >>> fizz_buzzify(12)
+        'Fizz'
+        >>> fizz_buzzify(15)
+        'FizzBuzz'
+        >>> fizz_buzzify(16)
+        16
+    """
+    if is_prime(x):
+        return "BuzzFizz"
+    result = ""
+    if x % 3 == 0:
+        result += "Fizz"
+    if x % 5 == 0:
+        result += "Buzz"
+    return result or x
+def generate_fizz_buzz(N, debug=False):
+    for index, fib_number in enumerate(fib()):
+        if index > N:
+            break
+        fizzbuzzed = fizz_buzzify(fib_number)
+        if debug:
+            print("F[{}] ==> {} ==> {}".format(index, fib_number, fizzbuzzed))
+        else:
+            print(fizzbuzzed)
+def test_fib():
+    fibgen = fib()
+    fib5 = [next(fibgen) for _ in range(5)]
+    truth = [0, 1, 1, 2, 3]
+    assert fib5 == truth, "Fibonacci sequence generator failed, {} should == {}".format(fib5, truth)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Fizz-Buzzify a Fibonacci sequence',
+                                     epilog='Example of use: python fizzbuzz.py 5')
+    parser.add_argument('N', type=int, help="Length of Fibonacci Sequence to produce")
+    parser.add_argument('--debug', action='store_true', help="Print out extra info illustrating the fizzbuzzification")
+    args = parser.parse_args()
+    N = args.N
+    debug = args.debug
+    print(f"Generating a Fibonacci sequence of length {N} for fizz-buzzifying")
+    generate_fizz_buzz(N, debug=debug)
+    sys.exit(0)

@@ -1,0 +1,30 @@
+import numpy as np
+multifile_name = 'savefiles/640test_'
+filenumbers = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23,
+    24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+    44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59
+]
+with open('640_final.dat', 'w') as mainfile:
+    prev_time = 0.0
+    prev_step = 0
+    for f in filenumbers:
+        with open(f'{multifile_name}{f}.dat', 'r') as singlefile:
+            i = 0
+            savetime = 0.0
+            for line in singlefile:
+                splitLine1 = line.split('[')
+                temp = splitLine1[0]
+                time = float(temp.split()[0])
+                step = int(temp.split()[1])
+                if f == 1 or i >= 1:
+                    if i == 0 and f != 1:
+                        savetime = time
+                    newtime = prev_time + (time - savetime if f != 1 else time)
+                    newstep = prev_step + step
+                    newline = f'{newtime} {newstep} [{splitLine1[1]}'
+                    mainfile.write(newline)
+                i += 1
+        print(f"Finished with file {f}")
+        prev_time = newtime
+        prev_step = newstep

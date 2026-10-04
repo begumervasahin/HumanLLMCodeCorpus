@@ -1,0 +1,67 @@
+import numpy as np
+import lmfit as lm
+import itertools
+class MACoeffEstimator:
+    def __init__(self, y, acf, q, index):
+        self.y = y
+        self.acf = acf
+        self.q = q
+        self.index = index
+    def fitter_fn(self, params, x1, x2, x3, data):
+        a = params['a']
+        b = params['b']
+        k = params['k']
+        model = [k ** 2 for _ in x1] + [a * val for val in x2] + [b * val for val in x3]
+        return [m - d for m, d in zip(model, data)]
+    def get_thetas(self, y, et):
+        params = lm.Parameters()
+        params.add('a', value=0, min=-1, max=1)
+        params.add('b', value=0, min=-1, max=1)
+        params.add('k', value=0, min=-1, max=1)
+        x1, x2, x3 = et, et[1:], et[2:]
+        result = lm.minimize(self.fitter_fn, params, args=(x1, x2, x3, y))
+        return [result.params['a'].value, result.params['b'].value, result.params['k'].value]
+    def prelim_thetas(self, acf, q):
+        prelim_theta = []
+        p = [1 - acf[1], 1, -acf[1]]
+        roots = np.roots(p).tolist()
+        valid_roots = [r for r in roots if not isinstance(r, complex) and -1 <= r <= 1]
+        if q == 2:
+            secondary_roots = []
+            for k in valid_roots:
+                p = [acf[1] + acf[2], 1 - 2 * k, acf[1] + acf[2] + (acf[1] + acf[2]) * k ** 2 + k]
+                roots = np.roots(p).tolist()
+                valid_secondary_roots = [r for r in roots if not isinstance(r, complex) and -1 <= r <= 1]
+                secondary_roots.extend(valid_secondary_roots)
+            prelim_theta = list(itertools.product(valid_roots, secondary_roots))
+        elif q == 1:
+            prelim_theta = valid_roots
+        else:
+            print("q>2 not supported")
+        return prelim_theta
+    def get_ma_coeff(self):
+        prelim_theta = self.prelim_thetas(self.acf, self.q)
+        if len(self.y) < 10:
+            print("Input time series not suitable for forecasting")
+            return []
+        et = []
+        for theta in prelim_theta:
+            if isinstance(theta, float):
+                et.append([0, self.y[0], self.y[1] + theta * self.y[0]])
+            else:
+                et.append([
+                    0, self.y[0],
+                    self.y[1] + theta[0] * self.y[0],
+                    self.y[2] + theta[1] * self.y[1] + theta[1] * theta[0] * self.y[0]
+                ])
+        final_thetas = [self.get_thetas(self.y, e) for e in et]
+        if self.index >= len(final_thetas):
+            self.index = 0
+        return final_thetas[self.index][:self.q]
+y = [1, 2, 3, 4, 5]
+acf = [1, 0.5, 0.2]
+q = 2
+index = 0
+estimator = MACoeffEstimator(y, acf, q, index)
+ma_coeffs = estimator.get_ma_coeff()
+print(ma_coeffs)

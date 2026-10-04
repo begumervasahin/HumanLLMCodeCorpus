@@ -1,0 +1,42 @@
+import json
+import discord
+from discord.ext import commands
+import glob
+import os
+def load_config(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
+def initialize_bot(config):
+    bot = commands.AutoShardedBot(command_prefix=commands.when_mentioned_or(config.get("prefix", ".")))
+    bot.remove_command("help")
+    bot.config = config
+    return bot
+def discover_modules(path_pattern):
+    return [file.replace(os.path.sep, '.').replace('.py', '') for file in glob.glob(path_pattern)]
+def load_extensions(bot, modules):
+    for extension in modules:
+        try:
+            bot.load_extension(extension)
+            print(f"Successfully loaded extension {extension}")
+        except Exception as e:
+            print(f"Failed to load extension {extension} : {e}")
+async def on_ready():
+    await bot.change_presence(
+        activity=discord.Activity(
+            status=discord.Status.idle,
+            name=bot.config["activity"],
+            type=discord.ActivityType.watching
+        )
+    )
+    print(f"Connected as {bot.user}")
+    print("Ready!")
+def main():
+    config = load_config('config.json')
+    global bot
+    bot = initialize_bot(config)
+    bot.event(on_ready)
+    modules = discover_modules("cogs/*.py")
+    load_extensions(bot, modules)
+    bot.run(config.get("token"))
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,55 @@
+import os
+import json
+import operator
+def list_files(dir):
+    r = []
+    subdirs = [x[0] for x in os.walk(dir)]
+    for subdir in subdirs:
+        for _, _, files in os.walk(subdir):
+            if files:
+                for file in files:
+                    r.append(os.path.join(subdir, file))
+    return r
+mn = list_files('extracted')
+counter = {}
+number = 0
+check_word = {}
+check_doc = {}
+for file in mn:
+    with open(file, 'r', encoding='utf-8') as f:
+        for line in f:
+            check_word = {}
+            jfile = json.loads(line)
+            text = jfile.get('text')
+            number += 1
+            if text:
+                for word in text.split():
+                    if word in counter:
+                        counter[word] += 1
+                    else:
+                        counter[word] = 1
+                    if word in check_word:
+                        check_word[word] += 1
+                    else:
+                        check_word[word] = 1
+        for word in check_word:
+            if word in check_doc:
+                check_doc[word] += 1
+            else:
+                check_doc[word] = 1
+result = {}
+for word in check_doc:
+    result[word] = counter[word] * check_doc[word] * check_doc[word]
+sorted_c = sorted(result.items(), key=operator.itemgetter(1), reverse=True)
+number = 50
+for word, value in sorted_c:
+    if number <= 0:
+        break
+    print(f"{word} : {value}")
+    number -= 1
+number = 50
+for word, _ in sorted_c:
+    if number <= 0:
+        break
+    print(word)
+    number -= 1

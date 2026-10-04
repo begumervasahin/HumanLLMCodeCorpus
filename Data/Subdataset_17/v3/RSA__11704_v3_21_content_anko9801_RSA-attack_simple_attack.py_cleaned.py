@@ -1,0 +1,86 @@
+import random
+def modular_exp(base, exponent, modulus):
+    result = 1
+    while exponent > 0:
+        if exponent & 1:
+            result = (result * base) % modulus
+        base = (base * base) % modulus
+        exponent >>= 1
+    return result
+def generate_random_number(bit_length):
+    random_number = 1
+    for _ in range(bit_length - 2):
+        random_number = random_number * 2 + random.randint(0, 1)
+    return random_number * 2 + 1
+def miller_rabin_primality_test(n, k=100):
+    if n == 2:
+        return True
+    if n == 1 or n % 2 == 0:
+        return False
+    d, s = n - 1, 0
+    while d % 2 == 0:
+        d
+        s += 1
+    for _ in range(k):
+        a = random.randint(2, n - 2)
+        x = modular_exp(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(s - 1):
+            x = modular_exp(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+def generate_prime(bit_length):
+    while True:
+        candidate = generate_random_number(bit_length)
+        if miller_rabin_primality_test(candidate):
+            return candidate
+def gcd(x, y):
+    while y:
+        x, y = y, x % y
+    return x
+def extended_gcd(x, y):
+    old_r, r = x, y
+    old_s, s = 1, 0
+    old_t, t = 0, 1
+    while r != 0:
+        quotient = old_r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    return old_r, old_s, old_t
+def generate_private_key(e, phi):
+    gcd, x, _ = extended_gcd(e, phi)
+    return x % phi
+def pollard_rho_algorithm(n, x_start=2, y_start=2):
+    x, y, d = x_start, y_start, 1
+    while d == 1:
+        x = (x * x + 1) % n
+        y = (y * y + 1) % n
+        y = (y * y + 1) % n
+        d = gcd(abs(x - y), n)
+    return d
+def simple_rsa_attack(n, e, c):
+    p = pollard_rho_algorithm(n)
+    q = n
+    phi = (p - 1) * (q - 1)
+    d = generate_private_key(e, phi)
+    return p, q, d
+if __name__ == '__main__':
+    e = 65537
+    m = 123456789
+    p = generate_prime(10)
+    q = generate_prime(10)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    d = generate_private_key(e, phi)
+    c = modular_exp(m, e, n)
+    print("Simple attack")
+    print("Public key (e, n):", e, n)
+    p, q, d = simple_rsa_attack(n, e, c)
+    print("Attack complete!")
+    print("Primes (p, q):", p, q)
+    print("Private key (d):", d)

@@ -1,0 +1,24 @@
+import json
+import jieba.posseg as pseg
+from pyspark import SparkContext
+def fonk1(text):
+    b1 = list(pseg.fonk1(text))
+    b2 = {"n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng", "s", "f", "v", "vd", "vn",
+                   "vf", "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"}
+    b3 = filter(lambda x: x.flag in b2, b1)
+    b4 = map(lambda x: x.word.encode("utf-8"), b3)
+    return list(b4)
+def fonk2(items):
+    b5 = "/vagrant/vocabulary/nominal.txt"
+    with open(b5, "a+", b6 = 'utf-8') as fo:
+        fo.write(" ".join(items))
+        fo.write("\n")
+def fonk3(words, b11):
+    return [word for word in words if word not in b11]
+if b7 = = "__main__":
+    b8 = SparkContext(appName='CutDocument')
+    b9 = '/vagrant/data/data.txt'
+    b10 = b8.textFile(b9).map(lambda x: json.loads(x)['content'])
+    b11 = set(b8.textFile("stop_words.txt").map(lambda x: x.encode("utf-8")).collect())
+    b12 = b10.map(cut).map(lambda x: fonk3(x, b11)).foreach(output)
+    b8.stop()

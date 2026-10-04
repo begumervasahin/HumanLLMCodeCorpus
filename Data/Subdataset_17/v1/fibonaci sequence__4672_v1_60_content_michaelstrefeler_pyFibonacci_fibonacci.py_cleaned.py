@@ -1,0 +1,109 @@
+from turtle import *
+def get_fibonacci_sequence(n):
+    sequence = [0, 1]
+    while len(sequence) < n:
+        sequence.append(sequence[-1] + sequence[-2])
+    return sequence
+def draw_fibonacci_spiral(sequence):
+    penup()
+    goto(135, -20)
+    pendown()
+    first_one = True
+    for fib in sequence:
+        if fib == 0:
+            continue
+        if fib == 1:
+            if first_one:
+                draw_square(fib)
+                first_one = False
+            else:
+                draw_square(fib)
+        elif fib == 21:
+            draw_final_square(fib)
+            break
+        else:
+            draw_special_squares(fib)
+    draw_spiral(sequence)
+    done()
+def draw_square(fib):
+    forward(25 * fib / 2)
+    write(fib)
+    forward(25 * fib / 2)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+def draw_final_square(fib):
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib / 2)
+    write(fib)
+    forward(25 * fib / 2)
+    left(90)
+def draw_special_squares(fib):
+    if fib in [2, 13]:
+        draw_special_pattern(fib, "left")
+    elif fib == 3:
+        draw_special_pattern(fib, "bottom")
+    elif fib == 5:
+        draw_special_pattern(fib, "top")
+    else:
+        draw_standard_square(fib)
+def draw_special_pattern(fib, direction):
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    if direction == "left":
+        forward(25 * fib)
+        left(90)
+        forward(25 * fib / 2)
+    elif direction == "bottom":
+        forward(25 * fib / 2)
+        left(90)
+        forward(25 * fib)
+    elif direction == "top":
+        forward(25 * fib / 2)
+    write(fib)
+    forward(25 * fib / 2)
+    left(90)
+def draw_standard_square(fib):
+    forward(25 * fib / 2)
+    write(fib)
+    forward(25 * fib / 2)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+    forward(25 * fib)
+    left(90)
+def draw_spiral(sequence):
+    penup()
+    goto(135, 5)
+    pendown()
+    color('red')
+    shape('turtle')
+    pensize(2)
+    setheading(180)
+    for i in range(len(sequence)):
+        if i < 9:
+            circle(25 * sequence[i], 90)
+        else:
+            break
+def main():
+    amount = input('Choose up to which number of the Fibonacci sequence you want to go up to: ')
+    while not amount.isdecimal() or int(amount) < 5:
+        amount = input('Please write a number bigger than 4: ')
+    amount = int(amount)
+    fibonacci_sequence = get_fibonacci_sequence(amount)
+    for index, number in enumerate(fibonacci_sequence):
+        print(f'F°{index}: {number}')
+    draw_fibonacci_spiral(fibonacci_sequence)
+if __name__ == "__main__":
+    main()

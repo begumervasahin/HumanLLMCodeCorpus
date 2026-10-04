@@ -1,0 +1,45 @@
+import numpy as np
+import matplotlib.pyplot as plt
+def read_idx(filename, offset):
+    with open(filename, 'rb') as file:
+        data = file.read()
+    data = bytearray(data)
+    data = data[offset:]
+    return np.array(data, dtype="float64")
+training_images = read_idx('train-images.idx3-ubyte', 16) > 100.0
+d = 28 * 28
+n = training_images.shape[0]
+fig = plt.figure()
+for k in range(20 * 20):
+    a = fig.add_subplot(20, 20, k + 1)
+    plt.imshow(training_images[k * d: (k + 1) * d].reshape(28, 28), cmap=plt.cm.bone)
+    a.set_axis_off()
+plt.show()
+training_images = training_images.reshape(int(n), d)
+training_labels = read_idx('train-labels.idx1-ubyte', 8)
+training_labels_1 = training_labels.reshape(training_labels.shape[0], 1)
+k = 10
+counts = np.bincount(training_labels)
+prior = counts / n
+log_prior = np.log10(prior)
+theta = np.zeros((k, d), dtype="float64")
+for i in range(k):
+    mask = (training_labels == i)
+    theta[i] = (np.sum(training_images[mask], axis=0, dtype="float64") + 1.0) / (counts[i] + k)
+log_theta = np.log10(theta)
+log_complement = np.log10(1.0 - theta)
+test_images = read_idx('t10k-images.idx3-ubyte', 16) > 100.0
+n_test = test_images.shape[0]
+test_images = test_images.reshape(int(n_test), d)
+test_labels = read_idx('t10k-labels.idx1-ubyte', 8)
+test_labels_1 = test_labels.reshape(test_labels.shape[0], 1)
+test_labels_hat = np.zeros(test_labels_1.shape)
+for i in range(test_images.shape[0]):
+    log_likelihood = (
+        np.sum(log_theta[:, test_images[i].astype(bool)], axis=1) +
+        np.sum(log_complement[:, np.logical_not(test_images[i].astype(bool))], axis=1)
+    )
+    log_posterior = log_prior + log_likelihood
+    test_labels_hat[i] = np.argmax(log_posterior)
+accuracy = np.sum(test_labels_1 == test_labels_hat) / len(test_labels_1) * 100
+print("Naive Bayes classifier classification accuracy: {:.2f}%".format(accuracy))

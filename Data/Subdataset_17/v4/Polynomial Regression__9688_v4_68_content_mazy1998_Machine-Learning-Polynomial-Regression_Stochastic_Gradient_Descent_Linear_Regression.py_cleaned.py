@@ -1,0 +1,41 @@
+import random
+from tkinter import *
+import time
+class MyFrame(Frame):
+    def __init__(self):
+        Frame.__init__(self)
+        self.numPoints = 600
+        self.initUI()
+        self.generateData()
+        self.trainModel()
+    def initUI(self):
+        self.myCanvas = Canvas(width=self.numPoints, height=self.numPoints, bg="black")
+        self.myCanvas.grid()
+    def generateData(self):
+        def function(x):
+            return 0.5 * x + 250
+        self.data = [(i, function(i) + random.randint(-10, 10)) for i in range(self.numPoints)]
+        for point in self.data:
+            self.myCanvas.create_line(point[0], self.numPoints - point[1], point[0] + 1, self.numPoints - point[1] + 1, fill="green")
+    def updateCanvas(self, m, b):
+        canvas_id = self.myCanvas.create_line(0, self.numPoints - b, self.numPoints, self.numPoints - (m * self.numPoints + b), fill="red")
+        self.myCanvas.update()
+        time.sleep(0.1)
+        self.myCanvas.after(10, self.myCanvas.delete, canvas_id)
+    def trainModel(self):
+        deltaM = random.uniform(-1, 1)
+        deltaB = random.uniform(-1, 1)
+        size = len(self.data)
+        for _ in range(120):
+            deltaB += (self.data[0][1] - deltaB) * 0.05
+            for x, y in self.data:
+                guess = deltaM * x + deltaB
+                error = y - guess
+                deltaM += (1 / size) * x * error * 0.001
+            m, b = deltaM, deltaB
+            self.updateCanvas(m, b)
+        self.myCanvas.create_line(0, self.numPoints - b, self.numPoints, self.numPoints - (m * self.numPoints + b), fill="red")
+        print(m, b)
+if __name__ == "__main__":
+    frame = MyFrame()
+    frame.mainloop()

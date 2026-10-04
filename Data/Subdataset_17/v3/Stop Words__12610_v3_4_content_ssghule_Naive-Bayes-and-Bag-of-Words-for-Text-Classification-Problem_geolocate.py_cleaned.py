@@ -1,0 +1,91 @@
+import pandas as pd
+import sys
+import string
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem.snowball import SnowballStemmer
+from nltk.corpus import stopwords
+import numpy as np
+nltk.download('stopwords')
+nltk.download('punkt')
+PUNCTUATION_STOPWORDS = list(string.punctuation) + [
+    'i', '\x89', '_CA', '_TX', '_IL', '_NY', '_PA', '_GA', '_Ontario', '_MA', '_FL', '_DC', '__', '___']
+CITY_NAMES = [
+    "los_angel", "san_francisco", "san_diego", "houston", "chicago", "philadelphia", "toronto",
+    "atlanta", "boston", "orlando", "washington", "manhattan"]
+OLD_CITY_NAMES = [
+    'Los_Angeles,_CA', 'San_Francisco,_CA', 'San_Diego,_CA', 'Houston,_TX', 'Chicago,_IL',
+    'Philadelphia,_PA', 'Toronto,_Ontario', 'Atlanta,_GA', 'Boston,_MA', 'Orlando,_FL',
+    'Washington,_DC', 'Manhattan,_NY']
+def parse_file(file_path):
+    with open(file_path, 'r') as datafile:
+        content = datafile.readlines()
+    stop_words = stopwords.words('english')
+    punct_stopwords = PUNCTUATION_STOPWORDS + stop_words
+    stemmer = SnowballStemmer("english")
+    words = [word_tokenize(line) for line in content]
+    stemmed_words = [
+        [stemmer.stem(w) for w in item if w not in punct_stopwords]
+        for item in words if len(item) > 1
+    ]
+    return [word for word in stemmed_words if len(word) > 1 and word[0] in CITY_NAMES]
+def train_df(parsed_data):
+    word_list = set(w for word in parsed_data for w in word)
+    data = pd.DataFrame(0, index=word_list, columns=CITY_NAMES)
+    for word in parsed_data:
+        current_city = word[0]
+        for w in word[1:]:
+            data.at[w, current_city] += 1
+    return data
+def test_dict(file_path):
+    with open(file_path, 'r') as datafile:
+        content = datafile.readlines()
+    test_data = {}
+    stop_words = stopwords.words('english')
+    punct_stopwords = PUNCTUATION_STOPWORDS + stop_words
+    stemmer = SnowballStemmer("english")
+    for line in content:
+        words = word_tokenize(line)
+        stemmed_words = [stemmer.stem(w) for w in words if w not in punct_stopwords]
+        if stemmed_words:
+            stemmed_words.pop(0)
+        test_data[line] = stemmed_words
+    return test_data
+def get_city_prob(words):
+    city_prob = dict.fromkeys(CITY_NAMES, 0)
+    for word in words:
+        city_prob[word[0]] += 1
+    total = sum(city_prob.values())
+    for city in city_prob:
+        city_prob[city] = float(city_prob[city] / total)
+    return city_prob
+def bayes(tdf, test_data, output_file, city_prob):
+    with open(output_file, 'w') as f:
+        for tweet, words in test_data.items():
+            if not words:
+                continue
+            wpost = [
+                [
+                    (tdf.at[w, city] / sum(tdf[city]) * city_prob[city]) if w in tdf.index
+                    else 0.00001 * city_prob[city] for city in CITY_NAMES
+                ]
+                for w in words
+            ]
+            p = np.prod(wpost, axis=0)
+            label = OLD_CITY_NAMES[np.argmax(p)]
+            f.write(f"{label} {tweet}\n")
+    print(f"Output written to {output_file}")
+def main():
+    f1, f2, f3 = sys.argv[1], sys.argv[2], sys.argv[3]
+    train_data = parse_file(f1)
+    tdf = train_df(train_data)
+    test_data = test_dict(f2)
+    city_prob = get_city_prob(train_data)
+    tdf += 0.00001
+    bayes(tdf, test_data, f3, city_prob)
+    print('Top five words for each city:')
+    for city in CITY_NAMES:
+        top_words = tdf.nlargest(5, city).index.tolist()
+        print(f"{OLD_CITY_NAMES[CITY_NAMES.index(city)]}: {top_words}")
+if __name__ == "__main__":
+    main()

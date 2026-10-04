@@ -1,0 +1,18 @@
+def main():
+    shared_prime = int(input('Enter the value of p: '))
+    shared_base = int(input('Enter the value of q: '))
+    alice_secret = int(input('Enter Alice\'s secret key value (a): '))
+    bob_secret = int(input('Enter Bob\'s secret key value (b): '))
+    print('Shared Variables:')
+    print(f'Shared Prime number: {shared_prime}')
+    print(f'Shared Base number: {shared_base}')
+    alice_value = pow(shared_base, alice_secret, shared_prime)
+    print(f'Alice sends value over insecure channel: {alice_value}')
+    bob_value = pow(shared_base, bob_secret, shared_prime)
+    print(f'Bob sends value over insecure channel: {bob_value}')
+    shared_secret_alice = pow(bob_value, alice_secret, shared_prime)
+    print(f'Value got by Alice: {shared_secret_alice}')
+    shared_secret_bob = pow(alice_value, bob_secret, shared_prime)
+    print(f'Value got by Bob: {shared_secret_bob}')
+if __name__ == '__main__':
+    main()

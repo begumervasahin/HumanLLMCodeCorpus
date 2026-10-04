@@ -1,0 +1,64 @@
+import time
+from collections import defaultdict, Counter
+import itertools
+def preprocess_data(filename, min_sup):
+    items = defaultdict(set)
+    itemset = set()
+    frequent_items = set()
+    total_items = []
+    num_baskets = 0
+    with open(filename, "r") as file:
+        for line in file:
+            num_baskets += 1
+            basket = set(line.split())
+            total_items.extend(basket)
+            items[num_baskets] = basket
+            itemset = itemset.union(basket)
+    total = Counter(total_items)
+    for item in itemset:
+        count = total[item]
+        if count / num_baskets > min_sup:
+            frequent_items.add(item)
+    return items, frequent_items
+def generate_candidates(frequent_items, k):
+    candidates = set()
+    if k == 2:
+        for x in frequent_items:
+            for y in frequent_items:
+                if x != y:
+                    candidates.add((x, y))
+    else:
+        for x in frequent_items:
+            for y in frequent_items:
+                if len(set(x).union(y)) == k:
+                    candidates.add(tuple(set(x).union(y)))
+        candidates = list(candidates)
+        for candidate in candidates:
+            subsets = get_subsets(candidate)
+            if any(subset not in frequent_items for subset in subsets):
+                candidates.remove(candidate)
+    return set(candidates)
+def get_subsets(candidate):
+    return list(itertools.combinations(candidate, len(candidate) - 1))
+def generate_frequent_items(candidates, items, min_sup):
+    frequent_items = set()
+    with open('pres.txt', 'a') as pref:
+        for candidate in candidates:
+            count = sum(1 for basket in items.values() if set(candidate).issubset(basket))
+            support = count / len(items)
+            if support > min_sup:
+                frequent_items.add(candidate)
+                print(candidate)
+                pref.write(str(candidate) + '\n')
+    return frequent_items
+def main():
+    k = 4
+    min_sup = 0.08
+    input_file = "browsing.txt"
+    items, frequent_items = preprocess_data(input_file, min_sup)
+    for i in range(2, k + 1):
+        candidates = generate_candidates(frequent_items, i)
+        frequent_items = generate_frequent_items(candidates, items, min_sup)
+    return frequent_items
+if __name__ == '__main__':
+    main()

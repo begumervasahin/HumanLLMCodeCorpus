@@ -1,0 +1,38 @@
+from sklearn.metrics import confusion_matrix, accuracy_score, average_precision_score, roc_auc_score
+from sklearn import naive_bayes
+def MultinomialNBAlgo(x_train_vft, y_train, x_test_vft, y_test, vec):
+    """
+    This function trains and evaluates a Multinomial Naive Bayes model.
+    It prints the confusion matrix, accuracy score, ROC AUC score, and average precision score.
+    It also predicts the class of a given input vector.
+    Parameters:
+    x_train_vft: Training features
+    y_train: Training labels
+    x_test_vft: Testing features
+    y_test: Testing labels
+    vec: Vector to predict class for
+    Returns:
+    "Positive" if the prediction for vec is 1, otherwise "Negative"
+    """
+    print("Multinomial Naive Bayes")
+    mnb = naive_bayes.MultinomialNB()
+    mnb.fit(x_train_vft, y_train)
+    y_predict_class = mnb.predict(x_test_vft)
+    print("Confusion Matrix")
+    print(confusion_matrix(y_test, y_predict_class))
+    print('Accuracy Score:', accuracy_score(y_test, y_predict_class))
+    print('ROC (Receiver Operating Characteristic) and AUC (Area Under Curve):', roc_auc_score(y_test, y_predict_class))
+    print('Average Precision Score:', average_precision_score(y_test, y_predict_class))
+    prediction = mnb.predict(vec)
+    if prediction == [1]:
+        return "Positive"
+    else:
+        return "Negative"
+if __name__ == "__main__":
+    x_train_vft = [[0, 1, 2], [1, 0, 3], [2, 1, 0]]
+    y_train = [0, 1, 0]
+    x_test_vft = [[0, 1, 2], [2, 0, 1]]
+    y_test = [0, 1]
+    vec = [[1, 0, 2]]
+    result = MultinomialNBAlgo(x_train_vft, y_train, x_test_vft, y_test, vec)
+    print("Prediction for input vector:", result)

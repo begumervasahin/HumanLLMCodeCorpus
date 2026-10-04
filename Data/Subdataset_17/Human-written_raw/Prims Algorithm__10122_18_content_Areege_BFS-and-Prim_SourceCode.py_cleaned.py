@@ -1,0 +1,88 @@
+import random
+def constructRandomGraph(n):
+        vSet = []
+        for i in range(n):
+                vSet.append([])
+        for i in range(2, n):
+                x = random.randint(1, i-1)
+                for j in range(x):
+                    nodeConnect = random.randint(0, n-1)
+                    weight = random.randint(10, 100)
+                    vSet[i].append((nodeConnect, weight))
+                    vSet[nodeConnect].append((i, weight))
+        matrix = []
+        for i in range(n):
+                tempMatrix = []
+                for j in range(n):
+                        tempMatrix.append(0)
+                matrix.append(tempMatrix)
+        for i in range(n):
+                for j in range(len(vSet[i])):
+                        matrixConnect = vSet[i][j][0]
+                        matrixWeight = vSet[i][j][1]
+                        matrix[i][matrixConnect] = matrixWeight
+        return(matrix)
+def BFS(G):
+        v = random.randint(0,len(G)-1)
+        total = 0
+        Q = []
+        visited = []
+        for i in range(0,len(G)):
+                visited.append(0)
+        visited[v] = 1
+        Q.append(v)
+        while (len(Q) != 0):
+                x = Q.pop(0)
+                for y in range(0, len(visited)):
+                        if ((G[x][y] > 0) and (visited[y] == 0)):
+                                visited[y] = 1
+                                Q.append(y)
+                                total += G[x][y]
+        return(total)
+def Prim(G):
+        total = 0
+        startVertex = random.randint(0,len(G)-1)
+        A = [[],[],[]]
+        for x in range(0,3):
+                for y in range(0,len(G)):
+                        A[x].append("empty")
+        A[0][startVertex] = "N"
+        for i in range(1,len(G)):
+                A[0][i] = "Y"
+                A[2][i] = 1000
+        for i in range(0,len(G)):
+                if (G[0][i] > 0):
+                        A[1][i] = startVertex
+                        A[2][i] = G[startVertex][i]
+        T = [0]
+        chosen_edges = []
+        while (len(T) < len(G)):
+                min = 1000
+                for i in range(0,len(G)):
+                        if ((A[0][i] == "Y") and (A[2][i] < min)):
+                                min = A[2][i]
+                                x = i
+                T.append(x)
+                chosen_edges.append((x,A[1][x]))
+                total += A[2][x]
+                A[0][x] = "N"
+                for y in range(0,len(G)):
+                        if (G[x][y] > 0):
+                                if ((A[0][y] == "Y") and (G[x][y] < A[2][y])):
+                                        A[1][y] =  x
+                                        A[2][y] = G[x][y]
+        return(total)
+def experiment():
+        n = [20, 30, 40, 50, 60]
+        k = 1000
+        for x in range(len(n)):
+                sum = 0
+                for y in range(0,k):
+                        graph = constructRandomGraph(n[x])
+                        B = BFS(graph)
+                        P = Prim(graph)
+                        Diff = ((B/P) - 1) * 100
+                        sum += Diff
+                avg = sum/k
+                print("Average of Diff for n = " + str(n[x]) + ": " + str(avg))
+experiment()

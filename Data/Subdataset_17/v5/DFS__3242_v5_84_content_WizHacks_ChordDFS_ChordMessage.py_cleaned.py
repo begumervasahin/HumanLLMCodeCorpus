@@ -1,0 +1,49 @@
+class ChordMessage:
+    FIND_SUCCESSOR = "FIND_SUCCESSOR"
+    RETURN_SUCCESSOR = "RETURN_SUCCESSOR"
+    GET_PREDECESSOR = "GET_PREDECESSOR"
+    RETURN_PREDECESSOR = "RETURN_PREDECESSOR"
+    NOTIFY_PREDECESSOR = "NOTIFY_PREDECESSOR"
+    CHECK_ALIVE = "CHECK_ALIVE"
+    AM_ALIVE = "AM_ALIVE"
+    SEND_FILE = "SEND_FILE"
+    REQUEST_FILE = "REQUEST_FILE"
+    SOMEONE_DIED = "SOMEONE_DIED"
+    LEAVING = "LEAVING"
+    INSERT_FILE = "INSERT_FILE"
+    GET_FILE = "GET_FILE"
+    GET_FILE_LIST = "GET_FILE_LIST"
+    ERROR = "ERROR"
+    SUCCESS = "SUCCESS"
+    ENTRIES = "ENTRIES"
+    OP_SEND_FILE = "SEND"
+    OP_REQUEST_FILE = "REQUEST"
+    OP_INSERT_FILE = "INSERT"
+    EXIT = "EXIT"
+    HELP = "HELP"
+def create_message_dict():
+    return {
+        'msg_type': None,
+        'filename': None,
+        'finger': None,
+        'client_ip': None,
+        'successor_ip': None,
+        'key': None,
+        'target': None,
+        'predecessor_ip': None,
+        'content': None,
+        'hash': None,
+        'dead_node': None,
+        'file_list': None,
+        'hops': 0
+    }
+def print_message_dict(message):
+    print("Message Dictionary:")
+    for key, value in message.items():
+        print(f"{key}: {value}")
+if __name__ == "__main__":
+    message = create_message_dict()
+    message['msg_type'] = ChordMessage.SEND_FILE
+    message['filename'] = 'example.txt'
+    message['client_ip'] = '192.168.1.1'
+    print_message_dict(message)

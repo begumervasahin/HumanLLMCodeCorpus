@@ -1,0 +1,78 @@
+import random
+def gcd(x, y):
+    while y:
+        x, y = y, x % y
+    return x
+def extEuclid(a, b):
+    x, last_x = 0, 1
+    y, last_y = 1, 0
+    while b:
+        q = a
+        a, b = b, a % b
+        x, last_x = last_x - q * x, x
+        y, last_y = last_y - q * y, y
+    return last_x, last_y, a
+def modInv(n, e):
+    inv, _, _ = extEuclid(e, n)
+    return inv % n
+def intSqrt(n):
+    x = n
+    y = (x + 1)
+    while y < x:
+        x = y
+        y = (x + n
+    return x if x * x == n else -1
+def MillerRabinOneTest(a, s, d, n):
+    x = pow(a, d, n)
+    if x == 1 or x == n - 1:
+        return True
+    for _ in range(s - 1):
+        x = pow(x, 2, n)
+        if x == n - 1:
+            return True
+    return False
+def MillerRabinTestComplete(n, k=20):
+    if n == 2 or n == 3:
+        return True
+    if n % 2 == 0:
+        return False
+    s, d = 0, n - 1
+    while d % 2 == 0:
+        d
+        s += 1
+    for _ in range(k):
+        a = random.randint(2, n - 2)
+        if not MillerRabinOneTest(a, s, d, n):
+            return False
+    return True
+def getPrime(nbits):
+    while True:
+        p = random.getrandbits(nbits)
+        p |= (1 << nbits - 1) | 1
+        if MillerRabinTestComplete(p):
+            return p
+def getPrimeIn(start, stop):
+    while True:
+        p = random.randint(start, stop)
+        p |= 1
+        if MillerRabinTestComplete(p):
+            return p
+def getPQ(nbits=512):
+    p = getPrime(nbits)
+    q = getPrimeIn(p + 1, 2 * p)
+    return p, q
+def getKeys(nbits=1024):
+    p, q = getPQ(nbits
+    N = p * q
+    totient = (p - 1) * (q - 1)
+    while True:
+        d = random.getrandbits(nbits
+        if gcd(d, totient) == 1 and 36 * pow(d, 4) < N:
+            break
+    e = modInv(totient, d)
+    return N, e, d
+if __name__ == "__main__":
+    nbits = 1024
+    N, e, d = getKeys(nbits)
+    print(f"Public key (N, e): ({N}, {e})")
+    print(f"Private key (N, d): ({N}, {d})")

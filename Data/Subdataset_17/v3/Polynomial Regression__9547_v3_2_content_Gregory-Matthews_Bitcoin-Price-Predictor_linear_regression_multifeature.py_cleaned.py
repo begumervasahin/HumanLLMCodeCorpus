@@ -1,0 +1,39 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.optimizers import SGD
+def get_data(feature, days):
+    np.random.seed(0)
+    data = np.random.rand(days) * 1000
+    return None, data
+LEARNING_RATE = 0.3
+TRAINING_EPOCHS = 10000
+DISPLAY_STEP = 500
+FEATURES = ["BCHAIN/MWNUS", "BCHAIN/BLCHS"]
+_, train_Y = get_data("BCHAIN/MKPRU", 365)
+num_samples = train_Y.shape[0]
+num_features = len(FEATURES)
+X_data = np.zeros([num_features, num_samples])
+train_X = np.zeros([num_features, num_samples])
+for i, feature in enumerate(FEATURES):
+    _, feature_data = get_data(feature, 365)
+    train_X[i, :] = (feature_data - np.mean(feature_data)) / np.std(feature_data)
+    X_data[i, :] = feature_data
+theta = tf.Variable(tf.random.uniform([1, num_features], -1.0, 1.0, dtype=tf.float64), name="theta")
+bias = tf.Variable(tf.random.uniform([1], -1.0, 1.0, dtype=tf.float64), name="bias")
+def hypothesis(X):
+    return tf.matmul(theta, X) + bias
+def cost_fn():
+    return tf.reduce_mean(tf.square(hypothesis(train_X) - train_Y)) / (2 * num_samples)
+optimizer = SGD(learning_rate=LEARNING_RATE)
+for epoch in range(TRAINING_EPOCHS):
+    optimizer.minimize(cost_fn, var_list=[theta, bias])
+    if (epoch + 1) % DISPLAY_STEP == 0:
+        current_cost = cost_fn().numpy()
+        print(f"Epoch: {epoch + 1:04d} cost={current_cost:.9f} theta={theta.numpy()} bias={bias.numpy()}")
+final_training_cost = cost_fn().numpy()
+print(f"Training cost={final_training_cost} theta={theta.numpy()} bias={bias.numpy()}\n")
+test_X = np.array([12000000.0, 100000.0]).reshape(2, 1)
+test_X[0] = (test_X[0] - np.mean(X_data[0])) / np.max(X_data[0], axis=0)
+test_X[1] = (test_X[1] - np.mean(X_data[1])) / np.max(X_data[1], axis=0)
+predicted_value = hypothesis(test_X).numpy()
+print(predicted_value)

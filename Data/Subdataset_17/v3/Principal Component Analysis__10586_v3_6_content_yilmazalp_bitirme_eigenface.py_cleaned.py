@@ -1,0 +1,49 @@
+import numpy as np
+def asRowMatrix(X):
+    if not X:
+        return np.array([])
+    return np.vstack([np.asarray(row).reshape(1, -1) for row in X])
+def asColumnMatrix(X):
+    if not X:
+        return np.array([])
+    return np.hstack([np.asarray(col).reshape(-1, 1) for col in X])
+def pca(W, num_components=0):
+    n, d = W.shape
+    if num_components <= 0 or num_components > n:
+        num_components = n
+    mu = W.mean(axis=0)
+    W = W - mu
+    if n > d:
+        C = np.dot(W.T, W)
+        eigenvalues, eigenvectors = np.linalg.eigh(C)
+    else:
+        C = np.dot(W, W.T)
+        eigenvalues, eigenvectors = np.linalg.eigh(C)
+        eigenvectors = np.dot(W.T, eigenvectors)
+    eigenvectors = np.array([vec / np.linalg.norm(vec) for vec in eigenvectors.T]).T
+    idx = np.argsort(-eigenvalues)
+    eigenvalues = eigenvalues[idx][:num_components]
+    eigenvectors = eigenvectors[:, idx][:, :num_components]
+    return eigenvalues, eigenvectors, mu
+def project(W, X, mu=None):
+    if mu is None:
+        return np.dot(X, W)
+    return np.dot(X - mu, W)
+def reconstruct(W, Y, mu=None):
+    if mu is None:
+        return np.dot(Y, W.T)
+    return np.dot(Y, W.T) + mu
+if __name__ == "__main__":
+    X = [np.array([1, 2, 3]), np.array([4, 5, 6]), np.array([7, 8, 9])]
+    row_matrix = asRowMatrix(X)
+    print("Row Matrix:\n", row_matrix)
+    column_matrix = asColumnMatrix(X)
+    print("Column Matrix:\n", column_matrix)
+    eigenvalues, eigenvectors, mu = pca(row_matrix, num_components=2)
+    print("Eigenvalues:\n", eigenvalues)
+    print("Eigenvectors:\n", eigenvectors)
+    print("Mean:\n", mu)
+    projected_data = project(eigenvectors, row_matrix, mu)
+    print("Projected Data:\n", projected_data)
+    reconstructed_data = reconstruct(eigenvectors, projected_data, mu)
+    print("Reconstructed Data:\n", reconstructed_data)

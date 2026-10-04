@@ -1,0 +1,50 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+def ksumPaths(root, k):
+    stack = []
+    pathStack = []
+    temp = root
+    while True:
+        while temp:
+            stack.append(temp)
+            if not pathStack:
+                pathStack.append(temp)
+                topSum = 0
+            else:
+                topSum = pathStack.pop()
+                pathStack.append(temp)
+            pathStack.append(temp.data + topSum)
+            temp = temp.left
+        while temp is None and stack:
+            temp = stack.pop()
+            topSum = pathStack.pop()
+            while pathStack and pathStack[-1] != temp:
+                topSum -= pathStack.pop().data
+            tempSum = topSum
+            i = 0
+            while i < len(pathStack):
+                if tempSum == k:
+                    for j in range(i, len(pathStack)):
+                        print(pathStack[j].data, end=" ")
+                    print()
+                tempSum -= pathStack[i].data
+                i += 1
+            pathStack.append(topSum)
+            temp = temp.right
+        if temp is None and not stack:
+            break
+root = Node(1)
+root.left = Node(3)
+root.left.left = Node(2)
+root.left.right = Node(1)
+root.left.right.left = Node(1)
+root.right = Node(-1)
+root.right.left = Node(4)
+root.right.left.left = Node(1)
+root.right.left.right = Node(2)
+root.right.right = Node(5)
+root.right.right.right = Node(6)
+ksumPaths(root, 5)

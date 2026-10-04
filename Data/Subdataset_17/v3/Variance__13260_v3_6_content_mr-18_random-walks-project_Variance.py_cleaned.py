@@ -1,0 +1,30 @@
+import matplotlib.pyplot as plt
+from Stats import Stats
+def plot_variance(steps, dims):
+    fig = plt.figure(figsize=(10, 10))
+    data = Stats(steps, dims)
+    plot_title = ''
+    variance_data = []
+    if dims == 1:
+        _, _, _, _, variances, _, _, step_size = data
+        plot_title = 'Variance against step-size for a 1-dimensional walk'
+        variance_data = variances[0]
+    elif dims == 2:
+        _, _, _, _, _, _, _, _, _, _, variances, _, _, _, _, _, _, step_size = data
+        plot_title = 'Variance against step-size for a 2-dimensional walk'
+        variance_data = variances[2]
+    elif dims == 3:
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, step_size = data
+        plot_title = 'Variance against step-size for a 3-dimensional walk'
+        variance_data = variances[3]
+    else:
+        raise ValueError(f"Unsupported dimension: {dims}. Please use dims=1, 2, or 3.")
+    plt.title(plot_title)
+    plt.scatter(step_size, variance_data)
+    plt.xlabel('Step-size')
+    plt.ylabel('Variances')
+    plt.show()
+if __name__ == '__main__':
+    steps = 1000
+    dims = 1
+    plot_variance(steps, dims)

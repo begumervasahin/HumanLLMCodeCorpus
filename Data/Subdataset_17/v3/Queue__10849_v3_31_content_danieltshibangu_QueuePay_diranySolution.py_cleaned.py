@@ -1,0 +1,70 @@
+class Queue:
+    def __init__(self):
+        self.items = []
+    def is_empty(self):
+        return not self.items
+    def enqueue(self, item):
+        self.items.insert(0, item)
+    def dequeue(self):
+        return self.items.pop() if not self.is_empty() else None
+    def size(self):
+        return len(self.items)
+class Employee:
+    def __init__(self, first, last, pay):
+        self.first = first
+        self.last = last
+        self.pay = float(pay)
+        self.email = f"{first}.{last}@company.com"
+        self.bonus = 0.0
+    def get_pay(self):
+        return self.pay
+    def set_pay(self, pay):
+        self.pay = float(pay)
+    def set_bonus(self, amount):
+        self.bonus = amount
+    def get_bonus(self):
+        return self.bonus
+    def full_name(self):
+        return f"{self.first} {self.last}"
+    def __str__(self):
+        return (f"\nEmployee name: {self.full_name()}"
+                f"\nEmployee pay: {self.pay:.2f}"
+                f"\nEmployee bonus: {self.bonus:.2f}")
+def process_employees(file_path, pay_rate=0.2):
+    total_bonus = 0.0
+    employee_queue = Queue()
+    try:
+        with open(file_path, 'r') as file:
+            for line in file:
+                data = line.split()
+                if len(data) < 3:
+                    continue
+                first_name, last_name, pay = data
+                employee = Employee(first_name, last_name, pay)
+                bonus = employee.get_pay() * pay_rate
+                employee.set_bonus(bonus)
+                total_bonus += employee.get_bonus()
+                employee_queue.enqueue(employee)
+                pay_rate -= 0.01
+    except FileNotFoundError:
+        print(f"Error: The file {file_path} was not found.")
+        return None, None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, None
+    return employee_queue, total_bonus
+def display_employees(employee_queue, total_bonus):
+    if employee_queue is None:
+        return
+    print(f"The total number of employees: {employee_queue.size()}")
+    print(f"The total bonus amount: {total_bonus:.2f}")
+    print("\nDisplays all the objects in the queue:")
+    while not employee_queue.is_empty():
+        print(employee_queue.dequeue())
+def main():
+    file_path = '/Users/danieltshibangu/Desktop/dirany.txt'
+    employee_queue, total_bonus = process_employees(file_path)
+    if employee_queue is not None:
+        display_employees(employee_queue, total_bonus)
+if __name__ == "__main__":
+    main()

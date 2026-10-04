@@ -1,0 +1,58 @@
+import math
+def get_numbers():
+    while True:
+        phrase = input("Enter a list of numbers (or type 'Terminate' to end): ")
+        temp_list = phrase.split(",")
+        if "Terminate" in temp_list:
+            temp_list.remove("Terminate")
+            return temp_list, True
+        return temp_list, False
+def filter_numbers(number_list):
+    filtered_list = []
+    error_list = []
+    for item in number_list:
+        if item.isdigit():
+            filtered_list.append(int(item))
+        else:
+            error_list.append(item)
+    return filtered_list, error_list
+def sort_numbers(number_list):
+    return sorted(number_list)
+def calculate_statistics(sorted_list):
+    total_count = len(sorted_list)
+    sum_values = sum(sorted_list)
+    mean = sum_values / total_count
+    maximum = sorted_list[-1]
+    minimum = sorted_list[0]
+    range_value = maximum - minimum
+    variance = sum((x - mean) ** 2 for x in sorted_list) / total_count
+    std_dev = math.sqrt(variance)
+    print("2) The Maximum value is:", maximum)
+    print("3) The Minimum value is:", minimum)
+    print("4) The Range of the numbers is:", range_value)
+    print("5) Arithmetic Mean of the numbers is:", mean)
+    print("6) Variance of the numbers is:", variance)
+    print("7) The Standard Deviation of the numbers is:", std_dev)
+    return mean
+def count_individual_numbers(sorted_list):
+    print("1) The number of each individual number:")
+    counts = {}
+    for number in sorted_list:
+        counts[number] = counts.get(number, 0) + 1
+    for number, count in counts.items():
+        print(f"{number}: {count}")
+def main():
+    stat = []
+    error_list = []
+    terminated = False
+    while not terminated:
+        temp_list, terminated = get_numbers()
+        numbers, errors = filter_numbers(temp_list)
+        stat.extend(numbers)
+        error_list.extend(errors)
+    sorted_list = sort_numbers(stat)
+    count_individual_numbers(sorted_list)
+    calculate_statistics(sorted_list)
+    print("8) Errors:", error_list)
+if __name__ == "__main__":
+    main()

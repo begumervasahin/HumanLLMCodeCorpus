@@ -1,0 +1,56 @@
+import sys
+def generate_code_dictionary(file_name: str) -> dict:
+    code_dictionary = {}
+    special_characters = {'\\n': '\n', '\\t': '\t', '\\r': '\r'}
+    try:
+        with open(file_name, 'r') as file:
+            for line in file:
+                char, _, code = line.strip().split('\t')
+                char = special_characters.get(char, char)
+                code_dictionary[code] = char
+    except FileNotFoundError:
+        print(f"Error: File not found - {file_name}")
+    except IsADirectoryError:
+        print(f"Error: Expected file but found directory - {file_name}")
+    return code_dictionary
+def decode_binary_text(binary_text: str, code_dictionary: dict) -> str:
+    decoded_text = []
+    current_code = ''
+    for bit in binary_text:
+        current_code += bit
+        if current_code in code_dictionary:
+            char = code_dictionary[current_code]
+            if char == '\0':
+                break
+            decoded_text.append(char)
+            current_code = ''
+    return ''.join(decoded_text)
+def convert_text_to_binary(text: str) -> str:
+    return ''.join(f'{ord(char):08b}' for char in text)
+def decode_file(zip_address: str, huffman_address: str) -> None:
+    try:
+        with open(zip_address, 'r') as file:
+            binary_text = file.read()
+    except FileNotFoundError:
+        print(f"Error: File not found - {zip_address}")
+        return
+    except IsADirectoryError:
+        print(f"Error: Expected file but found directory - {zip_address}")
+        return
+    code_dictionary = generate_code_dictionary(huffman_address)
+    if not code_dictionary:
+        return
+    binary_text = convert_text_to_binary(binary_text)
+    decoded_text = decode_binary_text(binary_text, code_dictionary)
+    output_file_name = 'Output.txt'
+    with open(output_file_name, 'w') as output_file:
+        output_file.write(decoded_text)
+    print(f"Decoding complete. Output saved to '{output_file_name}'.")
+if __name__ == '__main__':
+    if len(sys.argv) >= 3:
+        zip_file_address = sys.argv[1]
+        huffman_file_address = sys.argv[2]
+    else:
+        zip_file_address = 'Zip.txt'
+        huffman_file_address = 'Huffman.txt'
+    decode_file(zip_file_address, huffman_file_address)

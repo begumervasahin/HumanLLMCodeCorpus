@@ -1,0 +1,55 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+def read_data(file_path):
+    x_data, y_data = [], []
+    with open(file_path, 'r') as f:
+        for line in f:
+            x, y = map(float, line.split())
+            x_data.append(x)
+            y_data.append(y)
+    return np.array(x_data), np.array(y_data)
+def plot_data(x, y):
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    plt.ion()
+    fig.show()
+    plt.draw()
+    return fig, ax
+class PolynomialModel(tf.Module):
+    def __init__(self, degree=3):
+        self.W = [tf.Variable(tf.random.normal([1]), name=f'weight_{i}') for i in range(degree + 1)]
+        self.b = tf.Variable(tf.random.normal([1]), name='bias')
+    def __call__(self, x):
+        y_pred = self.b
+        for i, W in enumerate(self.W):
+            y_pred += W * tf.pow(x, i)
+        return y_pred
+def loss(y_true, y_pred):
+    return tf.reduce_mean(tf.square(y_true - y_pred))
+def main(file_path, learning_rate=0.01, n_epochs=2000, plot_interval=100):
+    xs, ys = read_data(file_path)
+    n_observations = len(xs)
+    fig, ax = plot_data(xs, ys)
+    model = PolynomialModel(degree=3)
+    optimizer = tf.optimizers.SGD(learning_rate)
+    prev_training_cost = 0.0
+    for epoch_i in range(n_epochs):
+        with tf.GradientTape() as tape:
+            y_pred = model(xs)
+            current_loss = loss(ys, y_pred)
+        grads = tape.gradient(current_loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        print(f'Epoch {epoch_i}: {current_loss.numpy()}')
+        if epoch_i % plot_interval == 0:
+            ax.plot(xs, y_pred.numpy(), 'k', alpha=epoch_i / n_epochs)
+            fig.show()
+            plt.draw()
+        if np.abs(prev_training_cost - current_loss.numpy()) < 0.0000001:
+            break
+        prev_training_cost = current_loss.numpy()
+    ax.set_ylim([-5, 5])
+    fig.show()
+    plt.waitforbuttonpress()
+if __name__ == "__main__":
+    main('dane13.txt')

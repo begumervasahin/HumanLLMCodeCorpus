@@ -1,0 +1,15 @@
+def writeFile(fileName, data):
+    file = open(fileName, 'wb')
+    for ch in data:
+        file.write((ord(ch)).to_bytes(1, byteorder='little'))
+    file.close()
+def readFile(fileName):
+    with open(fileName, 'rb') as file:
+        c = file.read(1)
+        while c:
+            c = file.read(1)
+if __name__ == '__main__':
+    fileName = 'test.txt'
+    data =  '''ä¸­æ'''
+    writeFile(fileName, data)
+    readFile(fileName)

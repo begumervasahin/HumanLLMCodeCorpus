@@ -1,0 +1,55 @@
+from operator import itemgetter
+import sys
+def process_input(input_lines):
+    current_word = None
+    current_count = 0
+    file_count = {}
+    parsed_lines = []
+    for line in input_lines:
+        line = line.strip()
+        parsed_lines.append(line)
+        var2, var1 = line.split(',')
+        var3, word = var2.split('=')
+        word = word.strip()
+        var4 = var1.split("&")
+        count = var4[3].strip()
+        try:
+            count = int(count)
+        except ValueError:
+            continue
+        if current_word == word:
+            current_count += count
+        else:
+            if current_word:
+                file_count[current_word] = current_count
+            current_count = count
+            current_word = word
+    if current_word == word:
+        file_count[current_word] = current_count
+    return file_count, parsed_lines
+def generate_output(file_count, parsed_lines):
+    output_lines = []
+    for line in parsed_lines:
+        line = line.strip()
+        var2, var1 = line.split(',')
+        var3, word = var2.split('=')
+        word = word.strip()
+        var4, var5 = var1.split("=")
+        value = var5.split("&")
+        file_name = value[0]
+        n = value[1]
+        total = value[2]
+        total_file_count = str(file_count[word])
+        output_line = f"key={word}&{file_name}, value={n}&{total}&{total_file_count}"
+        output_lines.append(output_line)
+    return output_lines
+if __name__ == "__main__":
+    input_lines = [
+        "key1=value1, value2&value3&value4&5",
+        "key2=value2, value5&value6&value7&10",
+        "key1=value1, value2&value3&value4&15"
+    ]
+    file_count, parsed_lines = process_input(input_lines)
+    output_lines = generate_output(file_count, parsed_lines)
+    for line in output_lines:
+        print(line)

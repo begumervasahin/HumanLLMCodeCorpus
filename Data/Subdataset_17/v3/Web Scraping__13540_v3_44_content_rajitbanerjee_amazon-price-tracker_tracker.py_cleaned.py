@@ -1,0 +1,78 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+def fetch_page_content(url, user_agent):
+    headers = {"User-Agent": user_agent}
+    response = requests.get(url, headers=headers)
+    return response.content
+def parse_product_details(page_content, json_data):
+    soup = BeautifulSoup(page_content, "html.parser")
+    title = soup.find(id="productTitle").get_text().strip()
+    price = None
+    for id in json_data["price_id"]:
+        try:
+            price = float(soup.find(id=id).get_text().strip()[1:])
+            break
+        except (AttributeError, ValueError):
+            continue
+    savings = None
+    for id in json_data["savings_id"]:
+        try:
+            savings_text = soup.find(id=id).get_text().strip()
+            savings = savings_text.replace("£", "GBP ")
+            start = savings.index("(")
+            stop = savings.index("%")
+            per_savings = float(savings[start + 1: stop])
+            break
+        except (AttributeError, ValueError):
+            continue
+    return title, price, savings, per_savings if savings else 0
+def send_email(data_dict):
+    server = login_to_email(data_dict["username"], data_dict["password"])
+    subject = f'PRICE DROP: "{data_dict["title"][:30]}..." available now for GBP {data_dict["price"]}'
+    body = (f'The following product that you were interested in is now available at a discount!\n\n'
+            f'Name: {data_dict["title"]}\n'
+            f'Current price: GBP {data_dict["price"]}\n'
+            f'{data_dict["savings"]}\n'
+            f'Check out this link: {data_dict["URL"]}')
+    msg = MIMEMultipart()
+    msg['From'] = data_dict["username"]
+    msg['To'] = data_dict["username"]
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+    server.sendmail(data_dict["username"], data_dict["username"], msg.as_string())
+    print("...Email sent successfully!")
+    server.quit()
+def login_to_email(username, password):
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(username, password)
+    return server
+def check_price(data_dict):
+    page_content = fetch_page_content(data_dict["URL"], data_dict["user_agent"])
+    with open("details.json", "r") as json_file:
+        json_data = json.load(json_file)
+    title, price, savings, per_savings = parse_product_details(page_content, json_data)
+    data_dict.update({
+        "title": title,
+        "price": price,
+        "savings": savings if savings else "\nNo savings at the moment.",
+        "per_savings": per_savings
+    })
+    if per_savings >= data_dict["discount"]:
+        send_email(data_dict)
+    else:
+        print("\nSorry, the product is currently not available at the desired price!")
+        print(f"NAME: {data_dict['title']}")
+        print(f"CURRENT PRICE: GBP {data_dict['price']}\n")
+data = {
+    "user_agent": "Your User-Agent",
+    "URL": "https:
+    "username": "your-email@gmail.com",
+    "password": "your-email-password",
+    "discount": 20.0
+}
+check_price(data)

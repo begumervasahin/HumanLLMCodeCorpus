@@ -1,0 +1,74 @@
+tab = [[0, 0, 0, 0, 0],
+       [0, 0, 1, 0, 0],
+       [0, 1, -1, 0, 0],
+       [1, -1, 1, -1, 0]]
+max_depth = 15
+max_log = 0
+n = 0
+player = -1
+def game_state(tab, cellx, celly):
+    player = tab[cellx][celly]
+    if player == 0:
+        return -2
+    def check_direction(dx, dy):
+        x, y = cellx, celly
+        count = 0
+        while 0 <= x < len(tab) and 0 <= y < len(tab[0]) and tab[x][y] == player:
+            count += 1
+            x += dx
+            y += dy
+        return count
+    if check_direction(1, 0) + check_direction(-1, 0) - 1 >= 4:
+        return player
+    if check_direction(0, 1) + check_direction(0, -1) - 1 >= 4:
+        return player
+    if check_direction(1, -1) + check_direction(-1, 1) - 1 >= 4:
+        return player
+    if check_direction(1, 1) + check_direction(-1, -1) - 1 >= 4:
+        return player
+    if all(cell != 0 for row in tab for cell in row):
+        return 0
+    return -2
+def search(tab, player, cellx, celly, t):
+    state = game_state(tab, cellx, celly)
+    if state != -2:
+        if t < max_log:
+            print("\t" * t + "endState: " + str(state))
+        return state * player, -1, -1
+    if t > max_depth - 1:
+        return 0, -1, -1
+    best_list = [-2]
+    for celly in range(len(tab[0])):
+        if tab[0][celly] != 0:
+            continue
+        cellx = len(tab) - 1
+        while tab[cellx][celly] != 0:
+            cellx -= 1
+        tab[cellx][celly] = player
+        global n
+        n += 1
+        val = -search(tab, -player, cellx, celly, t + 1)[0]
+        if val > best_list[0]:
+            best_list = [val, celly]
+        elif val == best_list[0]:
+            best_list.append(celly)
+        tab[cellx][celly] = 0
+    return best_list
+def main():
+    res = search(tab, player, 0, 0, 0)
+    winner = res[0] * player
+    print("Number of branches explored: " + str(n))
+    if player == 1:
+        print("Player 1 starts.")
+    elif player == -1:
+        print("Player 2 starts.")
+    if winner == 0:
+        print("It's a draw!")
+    else:
+        winner_number = int(winner * -0.5 + 1.5)
+        print(f"Player {winner_number} wins!")
+    possible_moves = ", ".join(str(c + 1) for c in res[1:])
+    if winner != -player:
+        print(f"You can play {possible_moves}")
+if __name__ == "__main__":
+    main()

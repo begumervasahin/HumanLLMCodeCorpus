@@ -1,0 +1,75 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+trial_name = 'p6_reg0'
+degree = 6
+beta = 1
+alpha = 0.01
+n_epoch = 10000
+eps = 0.0
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+def predict(X, theta):
+    predictions = sigmoid(theta[0] + np.dot(X, theta[1].T))
+    return (predictions > 0.5).astype(int)
+def regress(X, theta):
+    return sigmoid(theta[0] + np.dot(X, theta[1].T))
+def bernoulli_log_likelihood(p, y):
+    log_1 = np.log(p)
+    log_2 = np.log(1 - p)
+    G1 = -y * log_1
+    G2 = -(1 - y) * log_2
+    return G1 + G2
+def compute_cost(X, y, theta, beta):
+    f = regress(X, theta)
+    G = bernoulli_log_likelihood(f, y)
+    cost = np.sum(G)
+    theta_squares = np.sum(np.square(theta[1]))
+    return (0.5 / len(X)) * (cost + beta * theta_squares)
+def compute_grad(X, y, theta, beta):
+    regress_y = regress(X, theta) - y
+    dL_dw = np.sum(regress_y * X, axis=0)
+    dL_db = np.sum(regress_y)
+    nabla = (dL_db / len(X), (dL_dw + beta * theta[1]) / len(X))
+    return nabla
+path = os.path.join(os.getcwd(), 'data/DecisionBoundaryData.dat')
+data = pd.read_csv(path, header=None, names=['Test 1', 'Test 2', 'Accepted'])
+x1 = data['Test 1']
+x2 = data['Test 2']
+for i in range(1, degree + 1):
+    for j in range(i + 1):
+        data[f'F{i}{j}'] = np.power(x1, i - j) * np.power(x2, j)
+data.drop(['Test 1', 'Test 2'], axis=1, inplace=True)
+X = data.iloc[:, 1:].values
+y = data.iloc[:, 0].values.reshape(-1, 1)
+w = np.zeros((1, X.shape[1]))
+b = np.array([0])
+theta = (b, w)
+L = compute_cost(X, y, theta, beta)
+print(f"Initial cost: {L}")
+for i in range(n_epoch):
+    dL_db, dL_dw = compute_grad(X, y, theta, beta)
+    b -= alpha * dL_db
+    w -= alpha * dL_dw
+    theta = (b, w)
+    L = compute_cost(X, y, theta, beta)
+    print(f"Epoch {i}: Cost = {L}")
+print(f"Final weights: {w}")
+print(f"Final bias: {b}")
+predictions = predict(X, theta)
+accuracy = np.mean(predictions == y) * 100
+error = 100 - accuracy
+print(f'Error = {error}%')
+xx, yy = np.mgrid[-1.2:1.2:.01, -1.2:1.2:.01]
+grid = np.c_[xx.ravel(), yy.ravel()]
+grid_nl = np.empty((grid.shape[0], 0))
+for i in range(1, degree + 1):
+    for j in range(i + 1):
+        grid_nl = np.c_[grid_nl, np.power(grid[:, 0], i - j) * np.power(grid[:, 1], j)]
+probs = regress(grid_nl, theta).reshape(xx.shape)
+f, ax = plt.subplots(figsize=(8, 6))
+ax.contour(xx, yy, probs, levels=[.5], cmap="Greys", vmin=0, vmax=.6)
+ax.scatter(x1, x2, c=y, s=50, cmap="RdBu", vmin=-.2, vmax=1.2, edgecolor="white", linewidth=1)
+ax.set(aspect="equal", xlim=(-1.5, 1.5), ylim=(-1.5, 1.5), xlabel="$X_1$", ylabel="$X_2$")
+plt.show()

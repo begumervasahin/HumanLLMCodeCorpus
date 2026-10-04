@@ -1,0 +1,43 @@
+import crypto.hashing as hashing
+import crypto.keys as keys
+import users.user as user
+import crypto.signature as signature
+import crypto.encrypt as encrypt
+import database.db as d
+import json
+import azure.cosmos.documents as documents
+import azure.cosmos.cosmos_client as cosmos_client
+import azure.cosmos.errors as errors
+def main():
+    h = hashing.Hash()
+    k = keys.Key()
+    s = signature.Signature()
+    e = encrypt.Encrypt()
+    alice_keys = k.generate_keys()
+    bob_keys = k.generate_keys()
+    alice = user.User(alice_keys['publicKey'], alice_keys['privateKey'])
+    bob = user.User(bob_keys['publicKey'], bob_keys['privateKey'])
+    with d.IDisposable(cosmos_client.CosmosClient(d.HOST, {'masterKey': d.MASTER_KEY})) as client:
+        try:
+            try:
+                client.CreateDatabase({"id": d.DATABASE_ID})
+                print(f"Database with id '{d.DATABASE_ID}' created")
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    print(f"Database with id '{d.DATABASE_ID}' already exists")
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+            try:
+                client.CreateContainer(d.database_link, {"id": d.COLLECTION_ID})
+                print(f"Collection with id '{d.COLLECTION_ID}' created")
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    print(f"Collection with id '{d.COLLECTION_ID}' already exists")
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+        except errors.HTTPFailure as e:
+            print(f"run_sample has caught an error: {e._http_error_message}")
+        finally:
+            print("run_sample done")
+if __name__ == '__main__':
+    main()

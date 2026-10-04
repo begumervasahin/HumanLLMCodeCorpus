@@ -1,0 +1,31 @@
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+def fibonacci(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+@app.route('/fibonacci', methods=['GET'])
+def fibonacci_route():
+    try:
+        start = int(request.args.get('from'))
+        end = int(request.args.get('to'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid query parameters"}), 400
+    if start < 0 or end < 0 or start > end:
+        return jsonify({"error": "Invalid range parameters"}), 400
+    result = {i: fibonacci(i) for i in range(start, end)}
+    return jsonify(result)
+@app.route('/get-sequence', methods=['GET'])
+def get_sequence_route():
+    try:
+        start = int(request.args.get('from'))
+        end = int(request.args.get('to'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid query parameters"}), 400
+    if start < 0 or end < 0 or start > end:
+        return jsonify({"error": "Invalid range parameters"}), 400
+    result = {i: fibonacci(i) for i in range(start, end)}
+    return jsonify(result)
+if __name__ == '__main__':
+    app.run(port=5000)

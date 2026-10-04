@@ -1,0 +1,43 @@
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+from polynomial_regression import PolynomialRegression
+import assignment_dataset as Dataset
+def getPredictions(coefficients, independent):
+    predictionList = []
+    for sampleIndex in range(len(independent)):
+        prediction = 0
+        for index in range(len(coefficients)):
+            prediction += coefficients[index] * pow(independent[sampleIndex], index)
+        predictionList.append(prediction)
+    return predictionList
+def generateDataSet(coefficient=[], addError=False):
+    independentList = np.arange(0, 50, 1.5)
+    dependentList = []
+    for value in independentList:
+        dependent = 0
+        for index in range(len(coefficient)):
+            dependent += coefficient[index] * pow(value, index)
+        if addError:
+            dependent += random.randint(-100, 100)
+        dependentList.append(dependent)
+    return independentList, dependentList
+def fitLineAndPlot(independentList, dependentList, plt, order=1):
+    regression = PolynomialRegression(order)
+    coefficients = regression.fit(independentList, dependentList)
+    print('Coefficients for order %d' % order, coefficients)
+    predictionList = getPredictions(coefficients, independentList)
+    plt.plot(independentList, predictionList, label='Order-%d' % order, linewidth=3)
+    plt.legend()
+def drawScatterPlot(independentList, dependentList, plt):
+    plt.scatter(independentList, dependentList, s=100)
+def getAssignmentDataset():
+    return Dataset.assignmentIndependentList, Dataset.assignmentDependentList
+if __name__ == "__main__":
+    independentList, dependentList = generateDataSet([2, 3, 4], addError=True)
+    drawScatterPlot(independentList, dependentList, plt)
+    fitLineAndPlot(independentList, dependentList, plt, order=2)
+    assignmentIndependentList, assignmentDependentList = getAssignmentDataset()
+    drawScatterPlot(assignmentIndependentList, assignmentDependentList, plt)
+    fitLineAndPlot(assignmentIndependentList, assignmentDependentList, plt, order=3)
+    plt.show()

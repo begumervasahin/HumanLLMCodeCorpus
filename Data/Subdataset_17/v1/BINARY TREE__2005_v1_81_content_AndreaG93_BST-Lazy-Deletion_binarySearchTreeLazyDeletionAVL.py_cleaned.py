@@ -1,0 +1,121 @@
+'''
+Created on Nov 29, 2017
+@version: 1.0
+'''
+class binarySearchTreeNodeAVLwithLazyDeletion:
+    def __init__(self, key, value, parent=None):
+        self._key = key
+        self._value = value
+        self._leftSon = None
+        self._rightSon = None
+        self._parent = parent
+        self._isValid = True
+        self._height = 0
+        self._isLeftSon = None
+    def hasRightSon(self):
+        return self._rightSon is not None
+    def hasLeftSon(self):
+        return self._leftSon is not None
+    def hasOnlyOneSon(self):
+        return (self._leftSon is None) != (self._rightSon is None)
+class binarySearchTreeAVL:
+    def __init__(self, rootNode=None):
+        self._rootNode = rootNode
+    def _updateNodeSubtreesHeightAlongTree(self, node):
+        while node:
+            leftHeight = node._leftSon._height if node._leftSon else -1
+            rightHeight = node._rightSon._height if node._rightSon else -1
+            node._height = max(leftHeight, rightHeight) + 1
+            node = node._parent
+    def deleteNode(self, node):
+        if node._isLeftSon:
+            node._parent._leftSon = None
+        else:
+            node._parent._rightSon = None
+        self._updateNodeSubtreesHeightAlongTree(node._parent)
+class binarySearchTreeLazyDeletionAVL(binarySearchTreeAVL):
+    def __init__(self, rootNode=None):
+        '''
+        Constructs a newly allocated 'binarySearchTreeLazyDelectionAVL' object.
+        @param rootNode: It represents a 'binarySearchTreeNodeAVLwithLazyDeletion' object.
+        '''
+        super().__init__(rootNode)
+    def insert(self, key, value):
+        if not self._rootNode:
+            self._rootNode = binarySearchTreeNodeAVLwithLazyDeletion(key, value)
+            return
+        else:
+            currentNode = self._rootNode
+            parentNode = None
+            insertToLeft = True
+            while currentNode is not None:
+                parentNode = currentNode
+                if currentNode._isValid:
+                    if key <= currentNode._key:
+                        currentNode = currentNode._leftSon
+                        insertToLeft = True
+                    else:
+                        currentNode = currentNode._rightSon
+                        insertToLeft = False
+                else:
+                    if currentNode.hasRightSon() and key > currentNode._rightSon._key:
+                        currentNode = currentNode._rightSon
+                        insertToLeft = False
+                    elif currentNode.hasLeftSon() and key < currentNode._leftSon._key:
+                        currentNode = currentNode._leftSon
+                        insertToLeft = True
+                    else:
+                        currentNode._isValid = True
+                        currentNode._key = key
+                        currentNode._value = value
+                        return
+            newNode = binarySearchTreeNodeAVLwithLazyDeletion(key, value)
+            newNode._parent = parentNode
+            if insertToLeft:
+                parentNode._leftSon = newNode
+                newNode._isLeftSon = True
+            else:
+                parentNode._rightSon = newNode
+                newNode._isLeftSon = False
+            if parentNode.hasOnlyOneSon():
+                self._updateNodeSubtreesHeightAlongTree(newNode)
+    def delete(self, key):
+        currentNode = self._rootNode
+        while currentNode:
+            if key < currentNode._key:
+                currentNode = currentNode._leftSon
+            elif key > currentNode._key:
+                currentNode = currentNode._rightSon
+            else:
+                if currentNode._isValid:
+                    currentNode._isValid = False
+                    return True
+                else:
+                    currentNode = currentNode._leftSon
+        return False
+    def search(self, key, allowRestructuring):
+        invalidNodeList = []
+        currentNode = self._rootNode
+        while currentNode:
+            if allowRestructuring and not currentNode._isValid:
+                invalidNodeList.append(currentNode)
+            if key < currentNode._key:
+                currentNode = currentNode._leftSon
+            elif key > currentNode._key:
+                currentNode = currentNode._rightSon
+            else:
+                if currentNode._isValid:
+                    break
+                else:
+                    currentNode = currentNode._leftSon
+        for item in invalidNodeList:
+            self.deleteNode(item)
+        return currentNode
+if __name__ == "__main__":
+    bst = binarySearchTreeLazyDeletionAVL()
+    bst.insert(10, "Value for 10")
+    bst.insert(20, "Value for 20")
+    bst.insert(5, "Value for 5")
+    bst.delete(10)
+    node = bst.search(10, allowRestructuring=True)
+    print("Search result:", node._value if node and node._isValid else "Not found")

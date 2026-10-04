@@ -1,0 +1,30 @@
+import sys
+import random
+import argparse
+def main(argv):
+    content = ""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', action="store", dest="filename", help="Input file containing the message")
+    parser.add_argument('-m', action="store", dest="message", help="Message to be encrypted")
+    parser.add_argument('-o', action="store", dest="output", required=True, help="Output file for the encrypted message")
+    args = parser.parse_args()
+    if args.filename:
+        with open(args.filename, 'r') as file:
+            content = file.read()
+    elif args.message:
+        content = args.message
+    if not content:
+        print("No content to encrypt")
+        return
+    xormessage(content, args.output)
+def generaterandom():
+    return int(random.random() * 255.0)
+def xormessage(content, outfile):
+    key = generaterandom()
+    with open(outfile, 'w', encoding='utf-8') as fileout:
+        for char in content:
+            encrypted_char = ord(char) ^ key
+            fileout.write(chr(encrypted_char))
+        fileout.write(f"\nKEY={key}")
+if __name__ == "__main__":
+    main(sys.argv[1:])

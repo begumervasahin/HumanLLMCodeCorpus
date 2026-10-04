@@ -1,0 +1,93 @@
+class Node:
+    def __init__(self, name):
+        self.name = name
+        self.children = []
+    def add_child(self, child_node):
+        self.children.append(child_node)
+    def get_children(self):
+        return self.children
+class UninformedSearchAlgorithm:
+    def __init__(self, nodes, target):
+        self.nodes = nodes
+        self.target = target
+        self.create_queue()
+    def create_queue(self):
+        self.queue = []
+        self.queue.append(self.nodes[0])
+    def add_to_queue(self, node):
+        self.queue.append(node)
+    def pop_from_queue(self):
+        return self.queue.pop(0)
+    def get_queue_length(self):
+        return len(self.queue)
+    def get_node_by_name(self, name):
+        for node in self.nodes:
+            if node.name == name:
+                return node
+    def validate_queue_length(self):
+        if self.get_queue_length() == 0:
+            raise Exception("The queue is empty")
+    def match_target(self, node_name):
+        if node_name == self.target:
+            raise Exception(f"City found: {node_name}")
+    def search(self):
+        pass
+    def insert_children_to_queue(self, node):
+        for child in node.get_children():
+            child_node = self.get_node_by_name(child.name)
+            if isinstance(child_node, Node):
+                self.add_to_queue(child_node)
+class BreadthFirstSearch(UninformedSearchAlgorithm):
+    def search(self):
+        while True:
+            self.validate_queue_length()
+            node = self.pop_from_queue()
+            self.match_target(node.name)
+            self.insert_children_to_queue(node)
+class DepthFirstSearch(UninformedSearchAlgorithm):
+    def add_to_queue(self, node):
+        self.queue.insert(0, node)
+    def search(self):
+        while True:
+            self.validate_queue_length()
+            node = self.pop_from_queue()
+            self.match_target(node.name)
+            self.insert_children_to_queue(node)
+def create_graph(routes):
+    nodes = {}
+    for city, connections in routes.items():
+        if city not in nodes:
+            nodes[city] = Node(city)
+        for connection in connections:
+            if connection not in nodes:
+                nodes[connection] = Node(connection)
+            nodes[city].add_child(nodes[connection])
+    return list(nodes.values())
+def main():
+    routes = {
+        "Tumbes": {"Trujillo": None, "Moyobamba": None, "Iquitos": None},
+        "Trujillo": {"Lima": None, "Huancayo": None},
+        "Moyobamba": {"Huancayo": None},
+        "Iquitos": {"Huancayo": None, "Cusco": None},
+        "Lima": {"Nazca": None},
+        "Huancayo": {"Arequipa": None, "Puno": None},
+        "Nazca": {"Arequipa": None},
+        "Puno": {"Arequipa": None},
+        "Cusco": {"Arequipa": None},
+        "Arequipa": {"Arequipa": None}
+    }
+    nodes = create_graph(routes)
+    print("Breadth-First Search")
+    bfs = BreadthFirstSearch(nodes, "Arequipa")
+    try:
+        bfs.search()
+    except Exception as e:
+        print(e)
+    print("\nDepth-First Search")
+    dfs = DepthFirstSearch(nodes, "Arequipa")
+    try:
+        dfs.search()
+    except Exception as e:
+        print(e)
+if __name__ == "__main__":
+    main()

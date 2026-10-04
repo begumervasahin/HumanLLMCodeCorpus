@@ -1,0 +1,55 @@
+import scipy.io as sio
+import numpy as np
+import heapq
+def euclidean_dist(x, y):
+    return np.linalg.norm(x - y)
+def get_user_inputs():
+    k = int(input("Please type a k for how many nearest neighbors you want to compute: "))
+    num_training_pts = int(input("There are 10,000 pictures of numbers.\nHow many would you like to use as training data? "))
+    return k, num_training_pts
+def load_data(num_training_pts):
+    data = sio.loadmat('ML_hw1data.mat')
+    training_pixels = data['X'][:num_training_pts]
+    training_labels = data['Y'][:num_training_pts]
+    test_pixels = data['X'][num_training_pts:]
+    test_labels = data['Y'][num_training_pts:]
+    return training_pixels, training_labels, test_pixels, test_labels
+def find_k_nearest_neighbors(test_pixel, training_pixels, k):
+    knn = []
+    for i, img in enumerate(training_pixels):
+        curr_dist = euclidean_dist(img, test_pixel)
+        if len(knn) < k:
+            heapq.heappush(knn, (curr_dist, i))
+        elif curr_dist < knn[0][0]:
+            heapq.heappop(knn)
+            heapq.heappush(knn, (curr_dist, i))
+    return knn
+def predict_label(knn, training_labels):
+    counts = np.zeros(10, dtype=int)
+    for _, idx in knn:
+        label = training_labels[idx][0]
+        counts[label] += 1
+    return np.argmax(counts)
+def main():
+    k, num_training_pts = get_user_inputs()
+    training_pixels, training_labels, test_pixels, test_labels = load_data(num_training_pts)
+    correct_wrong_list = [0, 0]
+    RIGHT, WRONG = 0, 1
+    for test_idx, test_pixel in enumerate(test_pixels):
+        knn = find_k_nearest_neighbors(test_pixel, training_pixels, k)
+        label_guess = predict_label(knn, training_labels)
+        actual_label = test_labels[test_idx][0]
+        if actual_label == label_guess:
+            correct_wrong_list[RIGHT] += 1
+        else:
+            correct_wrong_list[WRONG] += 1
+        print(f"Test image {num_training_pts + test_idx} was identified as {label_guess}. Actual label was {actual_label}.")
+    accuracy = correct_wrong_list[RIGHT] / (correct_wrong_list[RIGHT] + correct_wrong_list[WRONG]) * 100
+    print(f"\nk: {k}")
+    print(f"Number of training data points: {num_training_pts}")
+    print("\nCorrect vs. wrong answers:")
+    print(correct_wrong_list)
+    print("\nPercentage correct:")
+    print(f"{accuracy:.2f}%")
+if __name__ == '__main__':
+    main()

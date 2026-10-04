@@ -1,0 +1,33 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+dataset = pd.read_csv('Ass1.csv')
+X = dataset.iloc[:, 1:2].values
+y = dataset.iloc[:, 3].values
+linear_regressor = LinearRegression()
+linear_regressor.fit(X, y)
+poly_features = PolynomialFeatures(degree=4)
+X_poly = poly_features.fit_transform(X)
+poly_regressor = LinearRegression()
+poly_regressor.fit(X_poly, y)
+def visualize_results(model, X, y, title, xlabel, ylabel, X_transform=None, smoother=False):
+    plt.scatter(X, y, color='red')
+    if smoother:
+        X_grid = np.arange(min(X), max(X), 0.1).reshape(-1, 1)
+        plt.plot(X_grid, model.predict(X_transform(X_grid)), color='blue')
+    else:
+        plt.plot(X, model.predict(X_transform(X)), color='blue')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+visualize_results(linear_regressor, X, y, 'Truth or Bluff (Linear Regression)', 'Position Level', 'Salary', X_transform=lambda x: x)
+visualize_results(poly_regressor, X, y, 'Truth or Bluff (Polynomial Regression)', 'Position Level', 'Salary', X_transform=poly_features.fit_transform)
+visualize_results(poly_regressor, X, y, 'Truth or Bluff (Polynomial Regression - Smooth Curve)', 'Position Level', 'Salary', X_transform=poly_features.fit_transform, smoother=True)
+position_level = 6.5
+linear_prediction = linear_regressor.predict(np.array([[position_level]]))[0]
+poly_prediction = poly_regressor.predict(poly_features.fit_transform(np.array([[position_level]])))[0]
+print(f"Linear Regression Prediction for {position_level}: {linear_prediction}")
+print(f"Polynomial Regression Prediction for {position_level}: {poly_prediction}")

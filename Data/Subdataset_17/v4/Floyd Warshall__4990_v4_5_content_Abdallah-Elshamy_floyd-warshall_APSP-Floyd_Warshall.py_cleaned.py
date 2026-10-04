@@ -1,0 +1,38 @@
+import math
+def floyd_warshall(graph, num_vertices):
+    distance = [[[0, 0] for _ in range(num_vertices + 1)] for _ in range(num_vertices + 1)]
+    for i in range(1, num_vertices + 1):
+        for j in range(1, num_vertices + 1):
+            if i == j:
+                distance[i][j][0] = 0
+            elif (i, j) in graph:
+                distance[i][j][0] = graph[(i, j)]
+            else:
+                distance[i][j][0] = math.inf
+    for k in range(1, num_vertices + 1):
+        for i in range(1, num_vertices + 1):
+            for j in range(1, num_vertices + 1):
+                distance[i][j][1] = min(distance[i][j][0], distance[i][k][0] + distance[k][j][0])
+                if k == num_vertices and distance[i][j][1] < distance[i][j][0]:
+                    distance[i][j][0] = distance[i][j][1]
+                if i == j and distance[i][j][1] < 0:
+                    return 'NULL'
+                distance[i][j][0] = distance[i][j][1]
+    shortest_path = min(min(row[1:]) for row in distance[1:])
+    return shortest_path
+def read_graph_from_file(file_path):
+    graph = {}
+    with open(file_path) as file:
+        num_vertices, _ = map(int, file.readline().split())
+        for line in file:
+            u, v, w = map(int, line.split())
+            if (u, v) not in graph or graph[(u, v)] > w:
+                graph[(u, v)] = w
+    return graph, num_vertices
+def main():
+    file_path = 'g3.txt'
+    graph, num_vertices = read_graph_from_file(file_path)
+    result = floyd_warshall(graph, num_vertices)
+    print(result)
+if __name__ == '__main__':
+    main()

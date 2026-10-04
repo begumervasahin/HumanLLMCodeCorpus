@@ -1,0 +1,43 @@
+class Node:
+    def __init__(self, key):
+        self.key = key
+        self.left = None
+        self.right = None
+def build_tree_from_matrix(T, root_key):
+    root = Node(root_key)
+    nodes = {root_key: root}
+    for i, row in enumerate(T):
+        for j, val in enumerate(row):
+            if val == 1:
+                if j not in nodes:
+                    nodes[j] = Node(j)
+                if j < i:
+                    nodes[i].left = nodes[j]
+                else:
+                    nodes[i].right = nodes[j]
+    return root
+def find_lca(root, n1, n2):
+    if root is None:
+        return None
+    if root.key == n1 or root.key == n2:
+        return root
+    left_lca = find_lca(root.left, n1, n2)
+    right_lca = find_lca(root.right, n1, n2)
+    if left_lca and right_lca:
+        return root
+    return left_lca if left_lca is not None else right_lca
+def question4(T, r, n1, n2):
+    root = build_tree_from_matrix(T, r)
+    lca_node = find_lca(root, n1, n2)
+    return lca_node.key if lca_node else None
+T = [
+    [0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0]
+]
+r = 3
+n1 = 1
+n2 = 4
+print("LCA({}, {}) = {}".format(n1, n2, question4(T, r, n1, n2)))

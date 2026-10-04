@@ -1,0 +1,54 @@
+import csv
+import glob
+import sys
+import mincemeat
+import os
+path = '/home/leandro/Documents/puc/06-solutions/activities/map-reduce-words-higher-occurrence/'
+text_files = glob.glob(os.path.join(path, 'data/*'))
+def file_contents(file_name):
+    with open(file_name, 'r') as f:
+        return f.read()
+def mapfn(k, v):
+    from stopwords import allStopWords
+    for line in v.splitlines():
+        fields = line.split(':::')
+        authors = fields[1]
+        title = fields[2]
+        validBook = ''
+        for word in title.split():
+            word = word.replace('.', '').replace(',', '').replace(':', '').replace('?', '').replace('(', '').replace(')', '').replace('"', '').replace("''", '')
+            if word not in allStopWords:
+                for author in authors.split('::'):
+                    if author == 'Grzegorz Rozenberg' or author == 'Philip S. Yu':
+                        validBook = 'author: ' + author + '; title: ' + title
+                        yield word, author
+        if validBook:
+            print(validBook)
+def reducefn(k, v):
+    authors = ''
+    totalPhilip = totalRozenberg = 0
+    hasPhilip = hasRozenberg = False
+    for item in v:
+        if item == 'Grzegorz Rozenberg':
+            hasRozenberg = True
+            totalRozenberg += 1
+        if item == 'Philip S. Yu':
+            hasPhilip = True
+            totalPhilip += 1
+    if totalPhilip > 5 or totalRozenberg > 5:
+        authors = 'Grzegorz Rozenberg: ' + str(totalRozenberg) + '; ' if hasRozenberg else ''
+        authors += 'Philip S. Yu: ' + str(totalPhilip) if hasPhilip else ''
+        return [authors]
+    else:
+        return None
+source = {file_name: file_contents(file_name) for file_name in text_files}
+s = mincemeat.Server()
+s.datasource = source
+s.mapfn = mapfn
+s.reducefn = reducefn
+results = s.run_server(password="mapreduce")
+with open(os.path.join(path, 'result.csv'), 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    for k, v in results.items():
+        if v:
+            writer.writerow([k, v])

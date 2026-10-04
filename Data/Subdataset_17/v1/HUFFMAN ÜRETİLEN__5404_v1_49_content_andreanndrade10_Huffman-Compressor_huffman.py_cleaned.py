@@ -1,0 +1,46 @@
+import os
+from buildTree import firstRound
+def main():
+    print("\n\nAndre Luiz Lourenço de Andrade - 14/0016295")
+    print("Teoria da Informação - Huffman Compressor\n")
+    input_data = prompt_input()
+    if is_compression_requested(input_data):
+        file_path = extract_file_path(input_data)
+        print(f"You chose {file_path} as the file to be compressed...")
+        content = read_file(file_path)
+    else:
+        content = handle_unready_feature()
+    if content:
+        content_dict = build_frequency_dictionary(content)
+        compute_proportions(content_dict, content)
+def prompt_input():
+    return input("Please enter a string or file to compress >>> ")
+def is_compression_requested(input_data):
+    return "-c" in input_data
+def extract_file_path(input_data):
+    return input_data.split()[1]
+def read_file(file_path):
+    try:
+        with open(file_path, "rb") as file:
+            content = file.read()
+            return content
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found.")
+        return None
+def handle_unready_feature():
+    print("\nThis function is not ready yet... Please choose a .txt file in your directory: " + os.getcwd())
+    return prompt_input()
+def build_frequency_dictionary(content):
+    frequency_dict = {}
+    for byte in content:
+        frequency_dict[byte] = frequency_dict.get(byte, 0) + 1
+    return frequency_dict
+def compute_proportions(frequency_dict, content):
+    total_size = len(content)
+    for key in frequency_dict:
+        frequency_dict[key] /= total_size
+    proportions = sorted(frequency_dict.values(), reverse=True)
+    symbols = list(frequency_dict.keys())
+    firstRound(proportions, symbols)
+if __name__ == "__main__":
+    main()

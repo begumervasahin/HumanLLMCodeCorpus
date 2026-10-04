@@ -1,0 +1,61 @@
+import os
+import pickle
+import argparse
+import time
+class Node:
+    def __init__(self, char=None):
+        self.char = char
+        self.left = None
+        self.right = None
+class HuffmanDecoder:
+    def __init__(self, input_file):
+        self.file_prefix = os.path.splitext(input_file)[0]
+        self.text_code, self.compressed_data = self._read_files()
+        self.root = self._rebuild_tree()
+        self.decompressed_text = self._decompress()
+        print(f'Decompression complete: {len(self.decompressed_text)} characters')
+    def _read_files(self):
+        with open(f'{self.file_prefix}-symbol-model.pkl', 'rb') as pkl_file:
+            huffman_codes = pickle.load(pkl_file)
+        padding_length = huffman_codes.pop('padding_length')
+        with open(f'{self.file_prefix}.bin', 'rb') as bin_file:
+            binary_data = bin_file.read()
+        binary_string = ''.join(f'{byte:08b}' for byte in binary_data)[:-padding_length]
+        return huffman_codes, binary_string
+    def _rebuild_tree(self):
+        root = Node()
+        for char, code in self.text_code.items():
+            current_node = root
+            for bit in code:
+                if bit == '0':
+                    if not current_node.left:
+                        current_node.left = Node()
+                    current_node = current_node.left
+                else:
+                    if not current_node.right:
+                        current_node.right = Node()
+                    current_node = current_node.right
+            current_node.char = char
+        return root
+    def _decompress(self):
+        decompressed_text = []
+        current_node = self.root
+        for bit in self.compressed_data:
+            current_node = current_node.left if bit == '0' else current_node.right
+            if current_node.char:
+                decompressed_text.append(current_node.char)
+                current_node = self.root
+        decompressed_text_str = ''.join(decompressed_text)
+        with open(f'{self.file_prefix}-decompressed.txt', 'w', encoding='utf-8') as output_file:
+            output_file.write(decompressed_text_str)
+        return decompressed_text_str
+def main():
+    parser = argparse.ArgumentParser(description="Huffman Decompression Utility")
+    parser.add_argument('infile', type=str, help="Input file for decompression")
+    args = parser.parse_args()
+    start_time = time.time()
+    HuffmanDecoder(args.infile)
+    end_time = time.time()
+    print(f"Time taken to decode the compressed file: {end_time - start_time:.2f} seconds")
+if __name__ == '__main__':
+    main()

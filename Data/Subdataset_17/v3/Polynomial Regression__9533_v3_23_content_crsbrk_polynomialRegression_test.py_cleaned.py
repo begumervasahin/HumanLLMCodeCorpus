@@ -1,0 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sqlalchemy import create_engine
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+import time
+import datetime
+def create_database_connection():
+    return create_engine('mysql+pymysql:
+def fetch_data(engine):
+    sql_query = '''
+    SELECT pool_id, datatimestr, SUM(sgwusers) AS sgwusers, SUM(pgwusers) AS pgwusers
+    FROM `saegw_users`, `saegw_name`
+    WHERE DATEDIFF(datatimestr, NOW()) <= 0 AND DATEDIFF(datatimestr, NOW()) > -6
+      AND ggsnname = database_name
+      AND pool_id IN (1, 2, 3, 4)
+    GROUP BY pool_id, datatimestr
+    ORDER BY datatimestr
+    '''
+    return pd.read_sql_query(sql_query, engine)
+def filter_data_by_pool(data):
+    return {pool_id: data[data.pool_id == pool_id] for pool_id in range(1, 5)}
+def prepare_polynomial_regression_data(pool_data, pool_id=1):
+    pool = pool_data[pool_id]
+    X = pool.iloc[:, 1:2].values.astype(np.int64) / 10**9
+    y = pool.iloc[:, 2].values
+    return X, y
+def perform_polynomial_regression(X, y, degree=6):
+    poly_features = PolynomialFeatures(degree=degree)
+    X_poly = poly_features.fit_transform(X)
+    linear_regressor = LinearRegression()
+    linear_regressor.fit(X_poly, y)
+    return linear_regressor, poly_features, X_poly
+def generate_future_timestamps():
+    today = datetime.date.today()
+    yesterday_end_time = int(time.mktime(time.strptime(str(today), '%Y-%m-%d'))) - 1
+    today_start_time = yesterday_end_time + 1
+    future_timestamps = [today_start_time + i * 300 for i in range(864)]
+    return pd.DataFrame({'future_timestamps': future_timestamps})
+def predict_future_values(model, poly_features, future_df):
+    future_X = future_df.values
+    return model.predict(poly_features.fit_transform(future_X))
+def plot_results(X, y, X_poly, future_X, predicted_values):
+    plt.scatter(X, y, color='green', label='Actual Data')
+    plt.plot(X, linear_regressor.predict(X_poly), color='blue', label='Polynomial Fit')
+    plt.plot(future_X, predicted_values, color='red', label='Predicted Values')
+    plt.title('SGW Users Shenzhen Pool (Polynomial Regression)')
+    plt.xlabel('Timestamp')
+    plt.ylabel('SGW Users')
+    plt.legend()
+    plt.show()
+if __name__ == "__main__":
+    engine = create_database_connection()
+    data = fetch_data(engine)
+    pool_data = filter_data_by_pool(data)
+    print(pool_data[1])
+    X, y = prepare_polynomial_regression_data(pool_data)
+    linear_regressor, poly_features, X_poly = perform_polynomial_regression(X, y)
+    future_df = generate_future_timestamps()
+    predicted_values = predict_future_values(linear_regressor, poly_features, future_df)
+    print(predicted_values.tolist())
+    plot_results(X, y, X_poly, future_df.values, predicted_values)

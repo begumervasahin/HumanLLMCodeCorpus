@@ -1,0 +1,93 @@
+import random
+import sys
+def sum_of_numbers(num):
+    if num != 0:
+        return num + sum_of_numbers(num - 1)
+    return num
+def is_member(array, value, size):
+    if size != 0:
+        if value == array[size - 1]:
+            return True
+        else:
+            return is_member(array, value, size - 1)
+    return False
+def string_reverser(temp_string, size):
+    if size != -1:
+        print(temp_string[size], end="")
+        string_reverser(temp_string, size - 1)
+def is_palindrome(test_str):
+    if len(test_str) <= 1:
+        return True
+    if test_str[0] == test_str[-1]:
+        return is_palindrome(test_str[1:-1])
+    return False
+def multiply(x, y):
+    if x != 1:
+        return y + multiply(x - 1, y)
+    return y
+def display_menu():
+    print("\n\nWhat do you want to do?\n")
+    print("\t1. Sum of Numbers")
+    print("\t2. IsMember Array Function")
+    print("\t3. String Reverser")
+    print("\t4. Palindrome Detector")
+    print("\t5. Recursive Multiplication")
+    print("\t6. End the Program")
+    print("CHOOSE 1-6:  ")
+def handle_sum_of_numbers():
+    print('Please enter a number:')
+    num = int(input())
+    print("Sum of Numbers:", sum_of_numbers(num))
+def handle_is_member():
+    array = [random.randint(1, 100) for _ in range(9)]
+    print('IsMember Array Function')
+    print('Please enter an integer:')
+    num = int(input())
+    print('Here are the array values:')
+    print(array)
+    if is_member(array, num, len(array)):
+        print('The element was found in the array')
+    else:
+        print('The element was not found in the array')
+def handle_string_reverser():
+    print('String Reverser')
+    print('Enter a string and I will reverse it:')
+    user_string = input()
+    string_reverser(user_string, len(user_string) - 1)
+    print()
+def handle_palindrome_detector():
+    print("\n\nPalindrome Detector\n")
+    print("Enter a string and I will tell you if it is a palindrome:")
+    user_string = input().upper().replace(" ", "")
+    if is_palindrome(user_string):
+        print('You have entered a palindrome')
+    else:
+        print('The string you entered is not a palindrome')
+def handle_recursive_multiplication():
+    print('Recursive Multiplication')
+    print('Enter the first integer:')
+    num1 = int(input())
+    print('Enter the second integer:')
+    num2 = int(input())
+    print('The product of the two numbers is:', multiply(num1, num2))
+def main():
+    while True:
+        display_menu()
+        choice = int(input())
+        while choice < 1 or choice > 6:
+            print('Input valid choice 1-6:')
+            choice = int(input())
+        if choice == 6:
+            sys.exit()
+        if choice == 1:
+            handle_sum_of_numbers()
+        elif choice == 2:
+            handle_is_member()
+        elif choice == 3:
+            handle_string_reverser()
+        elif choice == 4:
+            handle_palindrome_detector()
+        elif choice == 5:
+            handle_recursive_multiplication()
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,71 @@
+import os
+import numpy as np
+import binascii
+from Crypto.Cipher import AES
+def pad(text):
+    while len(text) % 16 != 0:
+        text += '\0'
+    return text
+def encrp(key, fi):
+    aes = AES.new(key, AES.MODE_ECB)
+    with open(fi, 'rb') as fr:
+        with open(fi + '.en', 'wb') as fw:
+            block_sz = 512
+            while True:
+                buffer = fr.read(block_sz)
+                if not buffer:
+                    break
+                buffer = buffer.hex()
+                buffer = pad(buffer)
+                encrypted_buffer = aes.encrypt(buffer.encode('utf-8'))
+                fw.write(encrypted_buffer)
+def decrp(key, fi):
+    aes = AES.new(key, AES.MODE_ECB)
+    with open(fi, 'rb') as fr:
+        fn = fi.split(".en")[0] + '.de'
+        with open(fn, 'wb') as fw:
+            block_sz = 512
+            while True:
+                buffer = fr.read(block_sz)
+                if not buffer:
+                    break
+                decrypted_buffer = aes.decrypt(buffer).decode('utf-8').rstrip('\0')
+                decrypted_buffer = binascii.a2b_hex(decrypted_buffer)
+                fw.write(decrypted_buffer)
+def keybox(key, fi):
+    key_hex = key.hex()
+    with open('keybox.' + fi + '.key', 'w') as f:
+        f.write(key_hex)
+def main():
+    mode = input('encrypt or decrypt? (enter "e" or "d") \n')
+    if mode == 'e':
+        fi = input('enter the file name:\n')
+        key = np.random.bytes(16)
+        try:
+            encrp(key, fi)
+            keybox(key, fi)
+            print('Successfully encrypted!')
+        except Exception as e:
+            print(f'An error has occurred: {e}')
+    elif mode == 'd':
+        fi = input('enter the file name:\n')
+        key_files = [entry.name for entry in os.scandir(os.getcwd()) if entry.name.endswith('.key')]
+        if not key_files:
+            print('No key files found!')
+            return
+        print(key_files[0])
+        with open(key_files[0], 'r') as f:
+            key_hex = f.read()
+        if len(key_hex) == 32:
+            key = binascii.a2b_hex(key_hex)
+            try:
+                decrp(key, fi)
+                print('Successfully decrypted!')
+            except Exception as e:
+                print(f'An error has occurred: {e}')
+        else:
+            print('A 16 bytes key is necessary!')
+    else:
+        print('Incorrect input!')
+if __name__ == '__main__':
+    main()

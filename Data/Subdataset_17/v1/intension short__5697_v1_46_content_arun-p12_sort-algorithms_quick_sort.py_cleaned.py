@@ -1,0 +1,33 @@
+def quick_sort(A, verbose=0, desc=False):
+    def partition(low, high):
+        pivot = A[low]
+        start = low + 1
+        end = high
+        while True:
+            while start <= end and A[start] <= pivot:
+                start += 1
+            while start <= end and A[end] > pivot:
+                end -= 1
+            if start <= end:
+                A[start], A[end] = A[end], A[start]
+                if verbose == 2:
+                    print(f"  sub: pivot={pivot}, start={start}, end={end} :: {A}")
+            else:
+                break
+        A[low], A[end] = A[end], A[low]
+        return end
+    def quicksort_recursive(low, high):
+        if low < high:
+            partition_index = partition(low, high)
+            if verbose:
+                print(f"iter: partition_index={partition_index}, low={low}, high={high} :: {A}")
+            quicksort_recursive(low, partition_index - 1)
+            quicksort_recursive(partition_index + 1, high)
+    quicksort_recursive(0, len(A) - 1)
+    if desc:
+        A.reverse()
+    return A
+if __name__ == "__main__":
+    A = [24, 3, 45, 12, 56, 18, 39, 17, 8]
+    sorted_A = quick_sort(A, verbose=1, desc=False)
+    print("Sorted array:", sorted_A)

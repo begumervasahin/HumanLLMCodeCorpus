@@ -1,0 +1,45 @@
+import cv2
+import os
+BASE_PATH = "C:\\melfaiz\\eigenfaces\\faces"
+def create_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+def capture_faces(name, save_path):
+    create_directory(save_path)
+    cam = cv2.VideoCapture(0)
+    img_counter = 0
+    images = []
+    img_shape = (100, 100)
+    face_cascade = cv2.CascadeClassifier("C:\\melfaiz\\eigenfaces\\haarcascade_frontalface_alt.xml")
+    while True:
+        ret, frame = cam.read()
+        if not ret:
+            break
+        frame = cv2.flip(frame, 1)
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(frame, f"Capture {img_counter}", (240, 50), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
+        face_detections = face_cascade.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5)
+        for (x, y, w, h) in face_detections:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cropped_img = frame[y+2:y+h-2, x+2:x+w-2]
+            resized_img = cv2.resize(cropped_img, img_shape)
+        cv2.imshow("Face Capture", frame)
+        key = cv2.waitKey(1)
+        if key % 256 == 27 or cv2.getWindowProperty('Face Capture', 0) < 0:
+            print("Escape hit, closing...")
+            break
+        elif key % 256 == 32:
+            img_name = f"{name}_{img_counter}.png"
+            images.append(resized_img)
+            cv2.imwrite(img_name, resized_img)
+            img_counter += 1
+    cam.release()
+    cv2.destroyAllWindows()
+def main():
+    name = input("Enter the name for the new face: ")
+    folder_name = input("Enter the folder name to save images: ")
+    save_path = os.path.join(BASE_PATH, folder_name)
+    capture_faces(name, save_path)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,81 @@
+import os
+import gzip
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+sns.set_style('darkgrid')
+sns.set_palette('muted')
+sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5})
+RANDOM_SEED = 123
+def load_mnist(data_dir, dataset='train'):
+    labels_path = os.path.join(data_dir, f'{dataset}-labels-idx1-ubyte.gz')
+    images_path = os.path.join(data_dir, f'{dataset}-images-idx3-ubyte.gz')
+    with gzip.open(labels_path, 'rb') as lb_path:
+        labels = np.frombuffer(lb_path.read(), dtype=np.uint8, offset=8)
+    with gzip.open(images_path, 'rb') as img_path:
+        images = np.frombuffer(img_path.read(), dtype=np.uint8, offset=16).reshape(-1, 784)
+    return images, labels
+def create_scatter_plot(data, labels):
+    num_classes = len(np.unique(labels))
+    palette = np.array(sns.color_palette("hls", num_classes))
+    plt.figure(figsize=(8, 8))
+    ax = plt.subplot(aspect='equal')
+    scatter_plot = ax.scatter(data[:, 0], data[:, 1], lw=0, s=40, c=palette[labels.astype(int)])
+    plt.xlim(-25, 25)
+    plt.ylim(-25, 25)
+    ax.axis('off')
+    ax.axis('tight')
+    annotations = []
+    for i in range(num_classes):
+        x_text, y_text = np.median(data[labels == i, :], axis=0)
+        text = ax.text(x_text, y_text, str(i), fontsize=24)
+        text.set_path_effects([PathEffects.Stroke(linewidth=5, foreground="w"), PathEffects.Normal()])
+        annotations.append(text)
+    return plt.gcf(), ax, scatter_plot, annotations
+def perform_pca(data, n_components=2):
+    pca = PCA(n_components=n_components)
+    transformed_data = pca.fit_transform(data)
+    explained_variance = pca.explained_variance_ratio_
+    print(f'Variance explained by each principal component: {explained_variance}')
+    return transformed_data, explained_variance
+def perform_tsne(data, random_state=RANDOM_SEED):
+    tsne = TSNE(random_state=random_state)
+    return tsne.fit_transform(data)
+def visualize_data(data, labels, method_name):
+    print(f"Visualizing {method_name} results...")
+    create_scatter_plot(data, labels)
+    plt.title(f"{method_name} Visualization")
+    plt.show()
+def main():
+    data_dir = os.getcwd()
+    images, labels = load_mnist(data_dir, dataset='train')
+    subset_size = 20000
+    images_subset = images[:subset_size]
+    labels_subset = labels[:subset_size]
+    print("Unique labels in the subset:", np.unique(labels_subset))
+    print("Performing PCA...")
+    start_time = time.time()
+    pca_results, _ = perform_pca(images_subset, n_components=2)
+    print(f"PCA completed in {time.time() - start_time:.2f} seconds")
+    visualize_data(pca_results, labels_subset, "PCA")
+    print("Performing t-SNE...")
+    start_time = time.time()
+    tsne_results = perform_tsne(images_subset)
+    print(f"t-SNE completed in {time.time() - start_time:.2f} seconds")
+    visualize_data(tsne_results, labels_subset, "t-SNE")
+    print("Performing PCA with 50 components...")
+    start_time = time.time()
+    pca_50_results, _ = perform_pca(images_subset, n_components=50)
+    print(f"PCA with 50 components completed in {time.time() - start_time:.2f} seconds")
+    print("Performing t-SNE on PCA-reduced data...")
+    start_time = time.time()
+    tsne_pca_results = perform_tsne(pca_50_results)
+    print(f"t-SNE on PCA-reduced data completed in {time.time() - start_time:.2f} seconds")
+    visualize_data(tsne_pca_results, labels_subset, "t-SNE on PCA-reduced data")
+if __name__ == "__main__":
+    main()

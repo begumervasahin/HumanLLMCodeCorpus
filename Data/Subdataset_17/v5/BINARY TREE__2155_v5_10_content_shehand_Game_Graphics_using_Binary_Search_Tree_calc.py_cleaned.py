@@ -1,0 +1,50 @@
+class Calculations:
+    def __init__(self, index: int):
+        self.index = index
+        self.slope_intercept = []
+    def find_slope_and_intercept(self, x1: float, y1: float, x2: float, y2: float):
+        if (x1 - x2) != 0:
+            slope = (y1 - y2) / (x1 - x2)
+            intercept = y1 - (slope * x1)
+            self.slope_intercept = [slope, intercept]
+        else:
+            self.slope_intercept = [None, 0, x1]
+    def get_index(self) -> int:
+        return self.index
+class Positions:
+    def __init__(self, default_slope: float, default_intercept: float):
+        self.position = None
+        self.default_slope = default_slope
+        self.default_intercept = default_intercept
+    def is_slope_equal(self, slope: float) -> bool:
+        return self.default_slope == slope
+    def is_intercept_equal(self, intercept: float) -> bool:
+        return self.default_intercept == intercept
+    def left_or_right(self, tmp_intercept: float) -> int:
+        if self.default_slope > 0:
+            return 1 if self.default_intercept > tmp_intercept else 0
+        elif self.default_slope < 0:
+            return 0 if self.default_intercept > tmp_intercept else 1
+        return -1
+    def is_intersecting(self, slope: float, intercept: float, d_array: list, t_array: list) -> bool:
+        t_min, t_max = min(float(t_array[1]), float(t_array[3])), max(float(t_array[1]), float(t_array[3]))
+        if self.default_slope is not None and slope is not None:
+            if self.default_slope * slope < 0:
+                d_extreme = max(float(d_array[1]), float(d_array[3])) if self.default_intercept < intercept else min(float(d_array[1]), float(d_array[3]))
+                return t_min < d_extreme < t_max
+            elif self.default_slope != slope and self.default_slope * slope > 0:
+                x = (intercept - self.default_intercept) / (self.default_slope - slope)
+                y = slope * x + intercept
+                return t_min < y < t_max
+            else:
+                return False
+        elif self.default_slope is None:
+            x = float(d_array[0])
+            t_min_x, t_max_x = min(float(t_array[0]), float(t_array[2])), max(float(t_array[0]), float(t_array[2]))
+            return t_min_x < x < t_max_x
+        elif slope is None:
+            x = float(t_array[0])
+            d_min_x, d_max_x = min(float(d_array[0]), float(d_array[2])), max(float(d_array[0]), float(d_array[2]))
+            return d_min_x < x < d_max_x
+        else:
+            return False

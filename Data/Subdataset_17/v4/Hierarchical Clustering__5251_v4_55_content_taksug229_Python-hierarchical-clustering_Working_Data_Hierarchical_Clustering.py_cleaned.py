@@ -1,0 +1,25 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import scipy.cluster.hierarchy as sch
+from sklearn.cluster import AgglomerativeClustering
+dataset = pd.read_csv('Mall_Customers.csv')
+X = dataset.iloc[:, [3, 4]].values
+plt.figure(figsize=(10, 7))
+dendrogram = sch.dendrogram(sch.linkage(X, method='ward'))
+plt.title('Dendrogram')
+plt.xlabel('Customers')
+plt.ylabel('Euclidean distances')
+plt.show()
+hc = AgglomerativeClustering(n_clusters=5, affinity='euclidean', linkage='ward')
+y_hc = hc.fit_predict(X)
+cluster_labels = ['Careful', 'Standard', 'Target', 'Careless', 'Sensible']
+colors = ['red', 'blue', 'green', 'cyan', 'magenta']
+plt.figure(figsize=(10, 7))
+for i, color in enumerate(colors):
+    plt.scatter(X[y_hc == i, 0], X[y_hc == i, 1], s=100, c=color, label=cluster_labels[i])
+plt.title('Clusters of Customers')
+plt.xlabel('Annual Income (k$)')
+plt.ylabel('Spending Score (1-100)')
+plt.legend()
+plt.show()

@@ -1,0 +1,213 @@
+class AVLTreeNode:
+    def __init__(self, key_data):
+        self.key_data = key_data
+        self.count = 1
+        self.depth = 0
+        self.height = 0
+        self.order = -1
+        self.parent = None
+        self.left = None
+        self.right = None
+    def is_left_child(self):
+        return self.parent is not None and self.parent.left == self
+    def is_right_child(self):
+        return self.parent is not None and self.parent.right == self
+    def is_leaf(self):
+        return self.left is None and self.right is None
+    def is_root(self):
+        return self.parent is None
+    def has_grandparent(self):
+        return self.parent is not None and self.parent.parent is not None
+    def left_subtree_height(self):
+        return self.left.height if self.left else -1
+    def right_subtree_height(self):
+        return self.right.height if self.right else -1
+    def max_subtree_height(self):
+        return max(self.left_subtree_height(), self.right_subtree_height())
+    def is_balanced(self):
+        return abs(self.left_subtree_height() - self.right_subtree_height()) <= 1
+    def right_most_node_in_left_subtree(self):
+        current = self.left
+        while current and current.right:
+            current = current.right
+        return current
+    def left_most_node_in_right_subtree(self):
+        current = self.right
+        while current and current.left:
+            current = current.left
+        return current
+    def parent_of_nearest_ancestor_that_is_left_child(self):
+        current = self
+        while current.is_right_child():
+            current = current.parent
+        return current.parent if current.is_left_child() else None
+    def parent_of_nearest_ancestor_that_is_right_child(self):
+        current = self
+        while current.is_left_child():
+            current = current.parent
+        return current.parent if current.is_right_child() else None
+    def next(self):
+        if self.right:
+            return self.left_most_node_in_right_subtree()
+        elif self.is_left_child():
+            return self.parent
+        else:
+            return self.parent_of_nearest_ancestor_that_is_left_child()
+    def prev(self):
+        if self.left:
+            return self.right_most_node_in_left_subtree()
+        elif self.is_right_child():
+            return self.parent
+        else:
+            return self.parent_of_nearest_ancestor_that_is_right_child()
+    def insert(self, delegate_tree, key_data):
+        if self.key_data == key_data:
+            self.count += 1
+            return None
+        elif self.key_data > key_data:
+            if self.left:
+                return self.left.insert(delegate_tree, key_data)
+            else:
+                self.left = AVLTreeNode(key_data)
+                self.left.parent = self
+                self.left.depth = self.depth + 1
+                delegate_tree.num_nodes += 1
+                return self.left
+        else:
+            if self.right:
+                return self.right.insert(delegate_tree, key_data)
+            else:
+                self.right = AVLTreeNode(key_data)
+                self.right.parent = self
+                self.right.depth = self.depth + 1
+                delegate_tree.num_nodes += 1
+                return self.right
+    def remove(self, delegate_tree):
+        if self.is_leaf():
+            if self.is_left_child():
+                self.parent.left = None
+            elif self.is_right_child():
+                self.parent.right = None
+            else:
+                delegate_tree.root_node = None
+            self.parent.bubble_up(delegate_tree)
+        else:
+            if self.left and self.right:
+                if self.prev().is_leaf():
+                    self.swap_in(delegate_tree, self.prev().remove(delegate_tree))
+                else:
+                    self.swap_in(delegate_tree, self.next().remove(delegate_tree))
+            else:
+                self.swap_in(delegate_tree, self.next().remove(delegate_tree) if self.right else self.prev().remove(delegate_tree))
+        return self
+    def swap_in(self, delegate_tree, new_node):
+        new_node.parent = self.parent
+        new_node.left = self.left
+        new_node.right = self.right
+        new_node.height = self.height
+        new_node.depth = self.depth
+        if self.left:
+            self.left.parent = new_node
+        if self.right:
+            self.right.parent = new_node
+        if self.is_left_child():
+            self.parent.left = new_node
+        elif self.is_right_child():
+            self.parent.right = new_node
+        if self.is_root():
+            delegate_tree.root_node = new_node
+    def bubble_up(self, delegate_tree):
+        self.height = self.max_subtree_height() + 1
+        if not self.is_balanced():
+            self.rotate(delegate_tree)
+        if self.parent:
+            self.parent.bubble_up(delegate_tree)
+    def rotate(self, delegate_tree):
+        p = self.parent
+        if self.left_subtree_height() > self.right_subtree_height():
+            if self.left.left_subtree_height() > self.left.right_subtree_height():
+                z, y, x = self, self.left, self.left.left
+                T_0, T_1, T_2, T_3 = x.left, x.right, y.right, z.right
+            else:
+                z, y, x = self, self.left.right, self.left
+                T_0, T_1, T_2, T_3 = x.left, y.left, y.right, z.right
+        else:
+            if self.right.right_subtree_height() > self.right.left_subtree_height():
+                z, y, x = self.right.right, self.right, self
+                T_0, T_1, T_2, T_3 = x.left, y.left, z.left, z.right
+            else:
+                z, y, x = self.right, self.right.left, self
+                T_0, T_1, T_2, T_3 = x.left, y.left, y.right, z.right
+        if x.is_left_child():
+            p.left = y
+        elif x.is_right_child():
+            p.right = y
+        else:
+            delegate_tree.root_node = y
+        y.parent = p
+        y.left, y.right = x, z
+        x.parent, z.parent = y, y
+        if T_0: T_0.parent = x
+        if T_1: T_1.parent = x
+        if T_2: T_2.parent = z
+        if T_3: T_3.parent = z
+        x.left, x.right = T_0, T_1
+        z.left, z.right = T_2, T_3
+        x.height = x.max_subtree_height() + 1
+        z.height = z.max_subtree_height() + 1
+        y.height = y.max_subtree_height() + 1
+        if p:
+            y.set_depth(p.depth + 1)
+        else:
+            y.set_depth(0)
+    def set_depth(self, depth):
+        self.depth = depth
+        if self.left:
+            self.left.set_depth(depth + 1)
+        if self.right:
+            self.right.set_depth(depth + 1)
+class AVLTree:
+    def __init__(self):
+        self.root_node = None
+        self.num_nodes = 0
+    def find(self, key_data):
+        current = self.root_node
+        while current:
+            if current.key_data == key_data:
+                return current
+            elif current.key_data > key_data:
+                current = current.left
+            else:
+                current = current.right
+        return None
+    def insert(self, key_data):
+        if not self.root_node:
+            self.root_node = AVLTreeNode(key_data)
+            self.num_nodes = 1
+        else:
+            new_node = self.root_node.insert(self, key_data)
+            if new_node:
+                new_node.bubble_up(self)
+    def remove(self, key_data):
+        node_to_remove = self.find(key_data)
+        if node_to_remove:
+            node_to_remove.remove(self)
+            self.num_nodes -= 1
+        return node_to_remove
+    def print_tree(self):
+        current = self.get_first()
+        while current:
+            print(current.key_data)
+            current = current.next()
+    def get_first(self):
+        current = self.root_node
+        while current and current.left:
+            current = current.left
+        return current
+    def mark_order(self):
+        current = self.get_first()
+        order = 0
+        while current:
+            current.order = order
+            order += 1
+            current = current.next()

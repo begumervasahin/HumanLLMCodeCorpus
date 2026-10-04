@@ -1,0 +1,46 @@
+import os
+import base64
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+def clear_screen():
+    os.system("clear")
+def print_banner():
+    banner =
+    print(banner)
+def derive_key(company_key, salt='Pots de sel et de poivre'):
+    return PBKDF2(company_key, salt, dkLen=32, count=1000)
+def pad(data, block_size=32):
+    padding_length = block_size - len(data) % block_size
+    padding = chr(padding_length) * padding_length
+    return data + padding.encode()
+def unpad(data):
+    padding_length = data[-1]
+    return data[:-padding_length]
+def encrypt(plain_text, company_key):
+    private_key = derive_key(company_key)
+    padded_text = pad(plain_text.encode())
+    cipher = AES.new(private_key, AES.MODE_ECB)
+    encrypted_data = cipher.encrypt(padded_text)
+    return base64.b64encode(encrypted_data).decode()
+def decrypt(encrypted_text, company_key):
+    private_key = derive_key(company_key)
+    encrypted_data = base64.b64decode(encrypted_text)
+    cipher = AES.new(private_key, AES.MODE_ECB)
+    decrypted_data = unpad(cipher.decrypt(encrypted_data))
+    return decrypted_data.decode()
+def main():
+    clear_screen()
+    print_banner()
+    plain_text = "Blessent mon coeur d'une langueur monotone"
+    company_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX'
+    print(f"Plain Text  : {plain_text}")
+    print(f"Company Key : {company_key}")
+    print("Unique Salt : Pots de sel et de poivre")
+    print(f"Private Key : {base64.b64encode(derive_key(company_key)).decode()}")
+    print("Cipher Mode : ECB\n")
+    encrypted_text = encrypt(plain_text, company_key)
+    decrypted_text = decrypt(encrypted_text, company_key)
+    print(f"Encrypted   : {encrypted_text}")
+    print(f"Decrypted   : {decrypted_text}\n")
+if __name__ == "__main__":
+    main()

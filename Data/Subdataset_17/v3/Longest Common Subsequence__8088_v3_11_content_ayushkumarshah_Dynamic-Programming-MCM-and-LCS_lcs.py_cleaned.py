@@ -1,0 +1,44 @@
+from time import time
+def compute_lcs(X, Y):
+    m, n = len(X), len(Y)
+    L = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if X[i - 1] == Y[j - 1]:
+                L[i][j] = L[i - 1][j - 1] + 1
+            else:
+                L[i][j] = max(L[i - 1][j], L[i][j - 1])
+    print("\nLCS table")
+    for row in L:
+        print("\t".join(map(str, row)))
+    index = L[m][n]
+    lcs_result = [""] * (index + 1)
+    lcs_result[index] = ""
+    i, j = m, n
+    while i > 0 and j > 0:
+        if X[i - 1] == Y[j - 1]:
+            lcs_result[index - 1] = X[i - 1]
+            i -= 1
+            j -= 1
+            index -= 1
+        elif L[i - 1][j] >= L[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    lcs_str = "".join(lcs_result)
+    print(f"\nLength of LCS: {len(lcs_str)}")
+    print(f"LCS of {X} and {Y}: {lcs_str}")
+X = ["AGGTAB", "ABRAC", "BACDB", "AYUSH", "KAMLESH", "SUNIL", "BIBASH", "ARAJU", "MANASI", "DEEPESH"]
+Y = ["GXTXAYB", "YABBAD", "BDCB", "SHAHA", "MAHES", "UNATTI", "SHOWIN", "ARUNADHA", "ANSI", "DISH"]
+elapsed_times = []
+complexities = []
+for x_str, y_str in zip(X, Y):
+    m, n = len(x_str), len(y_str)
+    start_time = time()
+    compute_lcs(x_str, y_str)
+    end_time = time()
+    complexities.append(m * n)
+    elapsed_times.append(end_time - start_time)
+print("\nComplexity\tTime")
+for complexity, elapsed in zip(complexities, elapsed_times):
+    print(f"{complexity}\t{elapsed:.6f}")

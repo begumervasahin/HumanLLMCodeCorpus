@@ -1,0 +1,52 @@
+import psycopg2
+import pandas as pd
+import datetime
+def get_security_df(conn):
+    query = 'SELECT * FROM domain_security'
+    df = pd.read_sql_query(query, conn)
+    return df
+def fetch_anomalies(cur, from_id, to_id):
+    query = f
+    cur.execute(query)
+    return cur.fetchall()
+def fetch_tick_data(conn, security, anomaly_date):
+    query = f
+    return pd.read_sql_query(query, conn)
+def determine_label(price_df, fidx):
+    return +1 if price_df['value'].iloc[fidx + 1] > price_df['value'].iloc[fidx] else -1
+def insert_training_data(curw, row, price_df, vol_df, fidx, vidx, security_id):
+    anomaly_id, anomaly_date, anomaly_score, security = row
+    label = determine_label(price_df, fidx)
+    price_values = ', '.join(map(str, price_df['value'].iloc[fidx-9:fidx].tolist()))
+    volume_values = ', '.join(map(str, vol_df['value'].iloc[vidx-9:vidx].tolist()))
+    query = f
+    curw.execute(query)
+def process_anomalies(from_id, to_id):
+    conn = psycopg2.connect(database="postgres", user="postgres", password="swapnil", host="35.190.146.57", port="5432")
+    connw = psycopg2.connect(database="postgres", user="postgres", password="swapnil", host="35.190.146.57", port="5432")
+    cur = conn.cursor()
+    curw = connw.cursor()
+    security_df = get_security_df(conn)
+    anomalies = fetch_anomalies(cur, from_id, to_id)
+    count = 0
+    for row in anomalies:
+        anomaly_date, security, anomaly_id, anomaly_score = row
+        security_id = int(security_df[security_df['security'] == security]['security_id'].values[0])
+        tick_data = fetch_tick_data(conn, security, anomaly_date.date())
+        price_df = tick_data[tick_data['field'] == 'PX_LAST']
+        vol_df = tick_data[tick_data['field'] == 'VOLUME']
+        fidx = price_df.index[price_df['tickdate'] == anomaly_date].tolist()[0] if not price_df.index[price_df['tickdate'] == anomaly_date].empty else 0
+        vidx = vol_df.index[vol_df['tickdate'] == anomaly_date].tolist()[0] if not vol_df.index[vol_df['tickdate'] == anomaly_date].empty else 0
+        if fidx > 10 and fidx < len(price_df) - 2 and vidx > 10:
+            insert_training_data(curw, row, price_df, vol_df, fidx, vidx, security_id)
+        count += 1
+        if count % 1000 == 0:
+            connw.commit()
+            print(f"{datetime.datetime.now().time()} Count: {count}")
+    conn.commit()
+    conn.close()
+    connw.commit()
+    connw.close()
+    print("DONE..........")
+if __name__ == "__main__":
+    process_anomalies(400001, 450000)

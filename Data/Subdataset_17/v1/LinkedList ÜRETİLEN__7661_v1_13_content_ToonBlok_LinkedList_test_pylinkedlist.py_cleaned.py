@@ -1,0 +1,124 @@
+import pylinkedlist
+import pytest
+class TestLinkedList:
+    linkedList = None
+    @classmethod
+    def setup_class(cls):
+        cls.linkedList = pylinkedlist.LinkedList()
+    def setup_method(self):
+        TestLinkedList.linkedList.clear()
+    def test_append(self):
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.append(node=pylinkedlist.Node(31))
+        self.linkedList.append(node=pylinkedlist.Node(11))
+        expectedOrder = [21, 31, 11, 91]
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        actualOrder = [
+            self.linkedList.getValueAt(0),
+            self.linkedList.getValueAt(1),
+            self.linkedList.getValueAt(2),
+            self.linkedList.getValueAt(3),
+        ]
+        assert expectedOrder == actualOrder
+    def test_prepend(self):
+        self.linkedList.prepend(node=pylinkedlist.Node(10))
+        self.linkedList.prepend(node=pylinkedlist.Node(20))
+        self.linkedList.prepend(node=pylinkedlist.Node(30))
+        expectedOrder = [40, 30, 20, 10]
+        self.linkedList.prepend(node=pylinkedlist.Node(40))
+        actualOrder = [
+            self.linkedList.getValueAt(0),
+            self.linkedList.getValueAt(1),
+            self.linkedList.getValueAt(2),
+            self.linkedList.getValueAt(3),
+        ]
+        assert expectedOrder == actualOrder
+    def test_last(self):
+        self.linkedList.append(node=pylinkedlist.Node(10))
+        self.linkedList.append(node=pylinkedlist.Node(20))
+        self.linkedList.append(node=pylinkedlist.Node(30))
+        lastNode = self.linkedList.last()
+        assert lastNode.data == 30
+    def test_getValueAt(self):
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        self.linkedList.append(node=pylinkedlist.Node(51))
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.append(node=pylinkedlist.Node(11))
+        self.linkedList.append(node=pylinkedlist.Node(81))
+        valOne = self.linkedList.getValueAt(0)
+        valTwo = self.linkedList.getValueAt(2)
+        valThree = self.linkedList.getValueAt(4)
+        with pytest.raises(IndexError) as excinfoOne:
+            self.linkedList.getValueAt(-99)
+        with pytest.raises(IndexError) as excinfoTwo:
+            self.linkedList.getValueAt(99)
+        assert valOne == 91
+        assert valTwo == 21
+        assert valThree == 81
+        assert str(excinfoOne.value) == "Value given out of range"
+        assert str(excinfoTwo.value) == "Value given out of range"
+    def test_count(self):
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        self.linkedList.append(node=pylinkedlist.Node(51))
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.append(node=pylinkedlist.Node(11))
+        self.linkedList.append(node=pylinkedlist.Node(81))
+        assert self.linkedList.count() == 5
+    def test_clear(self):
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        self.linkedList.append(node=pylinkedlist.Node(51))
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.clear()
+        assert self.linkedList.count() == 0
+    def test_removeAt(self):
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        self.linkedList.append(node=pylinkedlist.Node(51))
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.append(node=pylinkedlist.Node(11))
+        self.linkedList.append(node=pylinkedlist.Node(81))
+        self.linkedList.removeAt(1)
+        valOne = self.linkedList.getValueAt(0)
+        valTwo = self.linkedList.getValueAt(1)
+        with pytest.raises(IndexError) as excinfoOne:
+            self.linkedList.removeAt(-99)
+        with pytest.raises(IndexError) as excinfoTwo:
+            self.linkedList.removeAt(99)
+        assert valOne == 91
+        assert valTwo == 21
+        assert self.linkedList.count() == 4
+        assert str(excinfoOne.value) == "Value given out of range"
+        assert str(excinfoTwo.value) == "Value given out of range"
+    def test_removeAtWhenEmpty(self):
+        with pytest.raises(IndexError) as excinfoOne:
+            self.linkedList.removeAt(5)
+        assert str(excinfoOne.value) == "Value given out of range"
+    def test_insertAt(self):
+        self.linkedList.append(node=pylinkedlist.Node(91))
+        self.linkedList.append(node=pylinkedlist.Node(51))
+        self.linkedList.append(node=pylinkedlist.Node(21))
+        self.linkedList.append(node=pylinkedlist.Node(11))
+        self.linkedList.append(node=pylinkedlist.Node(81))
+        expectedOrder = [91, 51, 21, 66, 11, 81]
+        self.linkedList.insertAt(3, node=pylinkedlist.Node(66))
+        actualOrder = [
+            self.linkedList.getValueAt(0),
+            self.linkedList.getValueAt(1),
+            self.linkedList.getValueAt(2),
+            self.linkedList.getValueAt(3),
+            self.linkedList.getValueAt(4),
+            self.linkedList.getValueAt(5)
+        ]
+        assert expectedOrder == actualOrder
+    def test_insertAt0WhenEmpty(self):
+        self.linkedList.insertAt(0, node=pylinkedlist.Node(81))
+        valOne = self.linkedList.getValueAt(0)
+        assert self.linkedList.count() == 1
+        assert valOne == 81
+    def test_insertAt5WhenEmpty(self):
+        with pytest.raises(IndexError) as excinfoOne:
+            self.linkedList.insertAt(5, node=pylinkedlist.Node(81))
+        assert str(excinfoOne.value) == "Value given out of range"
+    def test_insertAtOutOfIndex(self):
+        with pytest.raises(IndexError) as excinfoOne:
+            self.linkedList.insertAt(5, node=pylinkedlist.Node(81))
+        assert str(excinfoOne.value) == "Value given out of range"

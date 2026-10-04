@@ -1,0 +1,99 @@
+import pygame
+import random
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+DISTANCE = 20
+BAR_WIDTH = 15
+Y_POS = SCREEN_HEIGHT
+TEXT_SIZE = 24
+MENU_TEXT_SIZE = 36
+FPS = 30
+NUM_BARS = 30
+def bubble_sort(arr, j, delay):
+    flag = False
+    for i in range(len(arr) - j):
+        if arr[i] > arr[i + 1]:
+            arr[i], arr[i + 1] = arr[i + 1], arr[i]
+            flag = True
+    pygame.time.wait(delay)
+    return arr, flag
+def render_text(screen, font, size, x, y, message, color):
+    font = pygame.font.SysFont(font, size)
+    text_surface = font.render(message, True, color)
+    text_rect = text_surface.get_rect(center=(x, y))
+    screen.blit(text_surface, text_rect)
+pygame.init()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Bubble Sort Visualization")
+clock = pygame.time.Clock()
+mainloop = True
+first_start = True
+done = False
+sort = False
+delay = 50
+name = "Your Name"
+while mainloop:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            mainloop = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE or event.unicode == 'q':
+                mainloop = False
+    pressed = pygame.key.get_pressed()
+    if pressed[pygame.K_r]:
+        if first_start:
+            first_start = False
+        done = False
+        j = 1
+        k = 0
+        comparisons = 0
+        swaps = 0
+        arr = [random.randint(1, SCREEN_HEIGHT) for _ in range(NUM_BARS)]
+    if pressed[pygame.K_w]:
+        delay += 1
+    if pressed[pygame.K_s] and delay > 0:
+        delay -= 1
+    if not done:
+        screen.fill(BLACK)
+        for i in range(len(arr)):
+            color = WHITE
+            if i == j - 1:
+                color = RED
+            elif j - k - 2 < i < j - 1:
+                color = GREEN
+            pygame.draw.rect(screen, color, pygame.Rect(i * DISTANCE, Y_POS, BAR_WIDTH, -arr[i]))
+        if j == len(arr):
+            j = 1
+            k = 0
+        arr, flag = bubble_sort(arr, j, delay)
+        j += 1
+        comparisons += 1
+        if not flag:
+            sort = False
+            swaps += 1
+            k = 0
+        else:
+            k += 1
+        if k == len(arr) - 1:
+            sort = True
+            done = True
+        render_text(screen, None, TEXT_SIZE, SCREEN_WIDTH * 0.3, 0.5 * TEXT_SIZE,
+                    f'Bubble sort - {NUM_BARS} length, {delay} ms delay, {comparisons} comparisons, {swaps} swaps', WHITE)
+    if sort and done and not first_start:
+        for i in range(len(arr)):
+            pygame.draw.rect(screen, GREEN, pygame.Rect(i * DISTANCE, Y_POS, BAR_WIDTH, -arr[i]))
+    if first_start:
+        render_text(screen, None, MENU_TEXT_SIZE, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 'Press R to start', WHITE)
+        render_text(screen, None, MENU_TEXT_SIZE, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 2 / 9 * SCREEN_HEIGHT + MENU_TEXT_SIZE,
+                    'Bubble Sort Visualization', WHITE)
+        render_text(screen, None, MENU_TEXT_SIZE, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 2 / 9 * SCREEN_HEIGHT + 2 * MENU_TEXT_SIZE,
+                    'by', WHITE)
+        render_text(screen, None, MENU_TEXT_SIZE, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 2 / 9 * SCREEN_HEIGHT + 3 * MENU_TEXT_SIZE,
+                    name, WHITE)
+    pygame.display.flip()
+    clock.tick(FPS)
+pygame.quit()

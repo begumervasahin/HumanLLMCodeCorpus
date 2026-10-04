@@ -1,0 +1,34 @@
+from prf import *
+b1 = Proj(1, 0)
+b2 = C(S, zero)
+def fonk1(x, y):
+    return x + y
+b3 = C(S, Proj(3, 0))
+b4 = PR(b1, b3)
+b4 = accel(b4, addition, 2)
+def fonk2(x):
+    return x - 1 if x > 0 else 0
+b5 = C(PR(b1, Proj(3, 1)), Proj(1, 0), Proj(1, 0))
+b5 = accel(b5, predecessor, 1)
+b6 = C(b5, Proj(3, 0))
+def fonk3(x, y):
+    return x - y if x >= y else 0
+b7 = PR(b1, b6)
+b8 = C(b7, Proj(2, 1), Proj(2, 0))
+b8 = accel(b8, subtraction, 2)
+def fonk4(x, y):
+    return x * y
+b9 = C(b4, Proj(3, 0), Proj(3, 2))
+b10 = PR(zero, b9)
+b10 = accel(b10, multiplication, 2)
+def fonk5(x, y):
+    return x ** y
+b11 = C(b10, Proj(3, 0), Proj(3, 2))
+b12 = PR(b2, b11)
+b13 = C(b12, Proj(2, 1), Proj(2, 0))
+b13 = accel(b13, exponentiation, 2)
+if b14 = = "__main__":
+    print("Addition of 3 and 5:", b4(3, 5))
+    print("Subtraction of 7 and 2:", b8(7, 2))
+    print("Multiplication of 4 and 6:", b10(4, 6))
+    print("Exponentiation of 2 to the power 3:", b13(2, 3))

@@ -1,0 +1,25 @@
+def is_prime(n):
+    if n <= 1:
+        return False
+    if n == 2:
+        return True
+    for i in range(2, int(n ** 0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+def main():
+    print("Enter a number to check if it's prime or 'q' to quit.")
+    while True:
+        user_input = input('> ').strip()
+        if user_input.lower() == 'q':
+            break
+        try:
+            n = int(user_input)
+            if is_prime(n):
+                print(f'{n} is a prime number.')
+            else:
+                print(f'{n} is not a prime number.')
+        except ValueError:
+            print("Invalid input. Please enter a valid integer or 'q' to quit.")
+if __name__ == "__main__":
+    main()

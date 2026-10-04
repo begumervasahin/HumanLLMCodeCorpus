@@ -1,0 +1,44 @@
+import os
+import re
+import numpy as np
+from random import random
+from operator import add
+from sklearn.feature_extraction.text import TfidfVectorizer
+from pymongo import MongoClient
+client = MongoClient()
+db = client.bookdb
+posts = db.posts
+docs_dir = "/Users/jamesledoux/Documents/Drew2"
+documents = []
+for book in os.listdir(docs_dir):
+    if not book.startswith('.'):
+        with open(os.path.join(docs_dir, book), 'rb') as f:
+            content = f.read()
+            content = content.decode('utf-8', errors='replace')
+            documents.append(content)
+tfidf = TfidfVectorizer(max_df=0.9, ngram_range=(1, 1), stop_words='english', strip_accents='unicode', analyzer='word')
+tfidf_matrix = tfidf.fit_transform(documents)
+feature_names = tfidf.get_feature_names_out()
+title_author_store = []
+for book in os.listdir(docs_dir):
+    if not book.startswith('.'):
+        with open(os.path.join(docs_dir, book), 'rb') as f:
+            content = f.read().decode('utf-8', errors='replace').splitlines()
+        title = next((line[7:] for line in content[:80] if line.startswith("Title: ")), None)
+        author = next((line[8:] for line in content[:80] if line.startswith("Author: ")), None)
+        title_author_store.append((title, author))
+database = {}
+for i in range(tfidf_matrix.shape[0]):
+    doc = tfidf_matrix[i].toarray()[0]
+    phrase_scores = [(index, score) for index, score in enumerate(doc) if score > 0]
+    sorted_phrase_scores = sorted(phrase_scores, key=lambda t: t[1], reverse=True)
+    local_word_dict = {feature_names[pair[0]]: pair[1] for pair in sorted_phrase_scores}
+    database[title_author_store[i]] = local_word_dict
+for title, author in database.keys():
+    try:
+        post = {"title_id_0011": title, "author_id_0011": author}
+        post.update(database[(title, author)])
+        post_id = posts.insert_one(post).inserted_id
+    except Exception as e:
+        print(f"{title}, {author} failed: {e}")
+print("Data insertion complete.")

@@ -1,0 +1,29 @@
+import numpy as np
+import matplotlib.pyplot as plt
+def calculate_std(means, lows, highs):
+    return [(means[i] - lows[i], highs[i] - means[i]) for i in range(len(means))]
+ave_CAVMP_means = [0.946601801623, 0.947113559077, 0.948454096069]
+low_CAVMP_means = [0.810084820106, 0.767802605805, 0.76494951005]
+high_CAVMP_means = [1.0, 1.0, 1.0]
+std_CAVMP = calculate_std(ave_CAVMP_means, low_CAVMP_means, high_CAVMP_means)
+ave_CAstatic_means = [0.955477854026, 0.953211106968, 0.953266175663]
+low_CAstatic_means = [0.616405792127, 0.515454403091, 0.435178540951]
+high_CAstatic_means = [1.0, 1.0, 1.0]
+std_CAstatic = calculate_std(ave_CAstatic_means, low_CAstatic_means, high_CAstatic_means)
+ave_static_means = [0.953938547729, 0.952260320505, 0.95265016232]
+low_static_means = [0.615834126982, 0.515247980872, 0.436673392773]
+high_static_means = [1.0, 1.0, 1.0]
+std_static = calculate_std(ave_static_means, low_static_means, high_static_means)
+N = 3
+indices = np.arange(N)
+width = 0.2
+plt.bar(indices + 0.2, ave_CAVMP_means, width, color='r', yerr=np.transpose(std_CAVMP), capsize=5, label='CAVMP')
+plt.bar(indices + 0.4, ave_CAstatic_means, width, color='b', yerr=np.transpose(std_CAstatic), capsize=5, label='CAstatic')
+plt.bar(indices + 0.6, ave_static_means, width, color='g', yerr=np.transpose(std_static), capsize=5, label='static')
+plt.ylabel('Utilization')
+plt.xlabel('Scale of Cloud / Racks')
+plt.title('Load Balance')
+plt.xticks(indices + width / 2 + 0.4, ['2x2', '4x4', '8x8'])
+plt.yticks(np.arange(0, 1.5, 0.2))
+plt.legend()
+plt.show()

@@ -1,0 +1,43 @@
+import sys
+import csv
+import ID3
+import Accuracy
+def parse_csv(filename):
+    data = []
+    attribute_names = []
+    with open(filename, 'r') as csvfile:
+        csvreader = csv.reader(csvfile, delimiter=',')
+        for count, row in enumerate(csvreader):
+            if count == 0:
+                attribute_names = row[:-1]
+            else:
+                data.append([int(i) for i in row])
+    attributes = list(range(len(attribute_names)))
+    training_values = list(range(len(data)))
+    class_values = [row[-1] for row in data]
+    return data, attributes, training_values, class_values, attribute_names
+def evaluate_decision_tree(decision_tree, test_file, description):
+    accuracy = Accuracy.Accuracy(test_file)
+    accuracy.calculateAccuracy(decision_tree.root)
+    print(f"Accuracy {description}:")
+    accuracy.displayAccuracy()
+def main():
+    directory = "data_sets1/"
+    L = int(sys.argv[1])
+    K = int(sys.argv[2])
+    train_file = directory + sys.argv[3]
+    validation_file = directory + sys.argv[4]
+    test_file = directory + sys.argv[5]
+    yesno = str(sys.argv[6]).lower()
+    decision_tree = ID3.DTree(train_file)
+    if yesno == "yes":
+        print("Decision Tree before Pruning:")
+        print(decision_tree)
+    evaluate_decision_tree(decision_tree, test_file, "before Pruning")
+    decision_tree.pruneTree(L, K, validation_file)
+    if yesno == "yes":
+        print("Decision Tree after Pruning:")
+        print(decision_tree)
+    evaluate_decision_tree(decision_tree, test_file, "after Pruning")
+if __name__ == '__main__':
+    main()

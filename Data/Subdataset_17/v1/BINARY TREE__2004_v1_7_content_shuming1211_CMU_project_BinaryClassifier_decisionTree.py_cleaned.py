@@ -1,0 +1,128 @@
+import sys
+import csv
+import math
+train_input = sys.argv[1]
+test_input = sys.argv[2]
+depth = int(sys.argv[3])
+train_out = sys.argv[4]
+test_out = sys.argv[5]
+metrics = sys.argv[6]
+def importData(file_path):
+    features = {}
+    labelList = []
+    feat = []
+    with open(file_path, 'r') as allData:
+        reader = csv.reader(allData)
+        for row in reader:
+            if not feat:
+                for index in range(len(row) - 1):
+                    feat.append([row[index]])
+            else:
+                for index in range(len(row) - 1):
+                    feat[index].append(row[index])
+                labelList.append(row[-1])
+    for j in range(len(row) - 1):
+        temp = feat[j].pop(0)
+        features[temp] = feat[j]
+    tags = list(set(labelList))
+    return [labelList, features, tags]
+def countNumber(labelList, tags):
+    label0 = labelList.count(tags[0])
+    label1 = labelList.count(tags[1])
+    return label0, label1
+def calEntropy(labelList, tags):
+    label0, label1 = countNumber(labelList, tags)
+    if label0 == 0 or label1 == 0:
+        return 0
+    prob0 = 1.0 * label0 / len(labelList)
+    prob1 = 1.0 * label1 / len(labelList)
+    return -prob0 * math.log(prob0, 2) - prob1 * math.log(prob1, 2)
+def calMutualInformation(feature, labelList):
+    nLabels = []
+    yLabels = []
+    tags = list(set(labelList))
+    for index in range(len(feature)):
+        if feature[index] in ('n', 'notA', 'no'):
+            nLabels.append(labelList[index])
+        else:
+            yLabels.append(labelList[index])
+    prob1 = 1.0 * len(nLabels) / len(labelList)
+    prob2 = 1.0 * len(yLabels) / len(labelList)
+    return (calEntropy(labelList, tags) -
+            (prob1 * calEntropy(nLabels, tags)) -
+            (prob2 * calEntropy(yLabels, tags)),
+            nLabels, yLabels)
+def splitFeatures(feature, features):
+    nFeatures = {}
+    yFeatures = {}
+    len_list = len(features[feature])
+    for index in features:
+        if index == feature:
+            continue
+        nFeatures[index] = []
+        yFeatures[index] = []
+        for j in range(len_list):
+            if features[feature][j] in ('n', 'notA', 'no'):
+                nFeatures[index].append(features[index][j])
+            else:
+                yFeatures[index].append(features[index][j])
+    return nFeatures, yFeatures
+class Node:
+    def __init__(self, tag, left=None, right=None, feature=None):
+        self.tag = tag
+        self.left = left
+        self.right = right
+        self.feature = feature
+    def isLeaf(self):
+        return self.left is None and self.right is None
+def DTtrain(labelList, features, tags, curdepth, maxdepth):
+    label0num, label1num = countNumber(labelList, tags)
+    predict = tags[0] if label0num > label1num else tags[1]
+    predictnum = max(label0num, label1num)
+    if predictnum == len(labelList) or not features or curdepth > maxdepth:
+        return Node(predict)
+    nlabels, ylabels, score, feature = [], [], -1, None
+    for i in features:
+        currentscore, currentnlabels, currentylabels = calMutualInformation(features[i], labelList)
+        if currentscore >= score:
+            score, nlabels, ylabels, feature = currentscore, currentnlabels, currentylabels, i
+    curdepth += 1
+    nfeatures, yfeatures = splitFeatures(feature, features)
+    left = DTtrain(nlabels, nfeatures, tags, curdepth, maxdepth)
+    right = DTtrain(ylabels, yfeatures, tags, curdepth, maxdepth)
+    return Node(tags[0], left, right, feature)
+def DTtest(node, file_path, output):
+    data, feat, count, total = [], [], 0, 0
+    with open(file_path, 'r') as allData:
+        reader = csv.reader(allData)
+        for row in reader:
+            if total == 0:
+                for index in range(len(row) - 1):
+                    feat.append(row[index])
+            else:
+                row_dict = {feat[index]: row[index] for index in range(len(row) - 1)}
+                label = test(node, row_dict)
+                data.append(label + '\n')
+                if label != row[-1]:
+                    count += 1
+            total += 1
+    with open(output, 'w') as f:
+        f.writelines(data)
+    return 1.0 * count / (total - 1)
+def test(node, row_dict):
+    if node.isLeaf():
+        return node.tag
+    if row_dict[node.feature] in ('n', 'notA', 'no'):
+        return test(node.left, row_dict)
+    return test(node.right, row_dict)
+def trainandtest(train_input, test_input, depth, train_out, test_out, metrics):
+    train_data = importData(train_input)
+    train_labelList, train_features, train_tags = train_data
+    tree = DTtrain(train_labelList, train_features, train_tags, 0, depth)
+    train_error = DTtest(tree, train_input, train_out)
+    test_error = DTtest(tree, test_input, test_out)
+    with open(metrics, 'w') as f:
+        f.write(f'error(train): {train_error}\n')
+        f.write(f'error(test): {test_error}\n')
+if __name__ == '__main__':
+    trainandtest(train_input, test_input, depth, train_out, test_out, metrics)

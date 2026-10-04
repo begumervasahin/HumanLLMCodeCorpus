@@ -1,0 +1,48 @@
+import sys
+import LRwithStopWords
+import LRwithoutStopWords
+import NBwithStopWords
+import NBwithoutStopWords
+def print_usage_instructions():
+    print("Please input command line arguments:")
+    print("[training ham path] [training spam path] [test ham path] [test spam path] [stopwords]\n")
+def get_paths_and_stopwords():
+    training_ham_path = sys.argv[1]
+    training_spam_path = sys.argv[2]
+    test_ham_path = sys.argv[3]
+    test_spam_path = sys.argv[4]
+    use_stopwords = sys.argv[5].lower() in ("y", "yes")
+    return training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords
+def run_logistic_regression(training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords):
+    if use_stopwords:
+        print("------------------------------------------------")
+        print("Logistic regression with stop words")
+        lr = LRwithStopWords.LogisticRegression(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    else:
+        print("------------------------------------------------")
+        print("Logistic regression without stop words")
+        lr = LRwithoutStopWords.LogisticRegression(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    lr.run()
+    lr.train()
+    lr.test()
+def run_naive_bayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords):
+    if use_stopwords:
+        print("------------------------------------------------")
+        print("Naive Bayes with stop words")
+        nb = NBwithStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    else:
+        print("------------------------------------------------")
+        print("Naive Bayes without stop words")
+        nb = NBwithoutStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    nb.run()
+    nb.train()
+    nb.test()
+def main():
+    if len(sys.argv) < 6:
+        print_usage_instructions()
+        return
+    training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords = get_paths_and_stopwords()
+    run_logistic_regression(training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords)
+    run_naive_bayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path, use_stopwords)
+if __name__ == "__main__":
+    main()

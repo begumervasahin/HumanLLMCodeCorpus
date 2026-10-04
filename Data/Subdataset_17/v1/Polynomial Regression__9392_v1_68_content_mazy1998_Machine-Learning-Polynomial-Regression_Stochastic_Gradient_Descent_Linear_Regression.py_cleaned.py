@@ -1,0 +1,38 @@
+import random
+from tkinter import *
+import time
+class MyFrame(Frame):
+    def __init__(self):
+        Frame.__init__(self)
+        self.pack()
+        numPoints = 600
+        self.myCanvas = Canvas(self, width=numPoints, height=numPoints, bg="black")
+        self.myCanvas.grid()
+        deltaB = random.randint(-100, 100) / 100
+        deltaM = random.randint(-100, 100) / 100
+        def function(x):
+            return 0.5 * x + 250
+        data = [(i, function(i) + random.randint(-10, 10)) for i in range(0, numPoints)]
+        for i in data:
+            self.myCanvas.create_line(i[0], numPoints - i[1], i[0] + 1, numPoints - i[1] + 1, fill="green")
+        size = len(data)
+        def update():
+            canvas_id = self.myCanvas.create_line(0, numPoints - b, numPoints, numPoints - (m * numPoints + b), fill="red")
+            self.myCanvas.update()
+            time.sleep(0.1)
+            self.myCanvas.after(10, self.myCanvas.delete, canvas_id)
+        for z in range(120):
+            deltaB += (data[0][1] - deltaB) * 0.05
+            for i in range(len(data)):
+                x = data[i][0]
+                y = data[i][1]
+                guess = deltaM * x + deltaB
+                error = y - guess
+                deltaM += (1 / size) * x * error * 0.001
+            m = deltaM
+            b = deltaB
+            update()
+        self.myCanvas.create_line(0, numPoints - b, numPoints, numPoints - (m * numPoints + b), fill="red")
+        print(m, b)
+frame02 = MyFrame()
+frame02.mainloop()

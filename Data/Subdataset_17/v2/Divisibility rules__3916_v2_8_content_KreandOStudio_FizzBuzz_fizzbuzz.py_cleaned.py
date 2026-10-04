@@ -1,0 +1,38 @@
+def play_fizzbuzz():
+    print("!!!Bienvenidos a FizzBuzz!!!")
+    fizzbuzz = True
+    while fizzbuzz:
+        num = get_valid_number()
+        play_round(num)
+        fizzbuzz = ask_to_play_again()
+def get_valid_number():
+    while True:
+        try:
+            num = int(input("Introduzca un número del 1 al 100: "))
+            if 1 <= num <= 100:
+                return num
+            else:
+                print("Por favor, introduzca un número válido!")
+        except ValueError:
+            print("Por favor, introduzca solo números.")
+def play_round(num):
+    for i in range(1, num + 1):
+        if i % 3 == 0 and i % 5 == 0:
+            print("FizzBuzz")
+        elif i % 3 == 0:
+            print("Fizz")
+        elif i % 5 == 0:
+            print("Buzz")
+        else:
+            print(i)
+def ask_to_play_again():
+    while True:
+        respuesta = input("¿Desea jugar de nuevo? (S/N): ").strip().upper()
+        if respuesta == "S":
+            return True
+        elif respuesta == "N":
+            return False
+        else:
+            print("¡Opción incorrecta!")
+if __name__ == '__main__':
+    play_fizzbuzz()

@@ -1,0 +1,51 @@
+import numpy as np
+class MatrixOperations:
+    @staticmethod
+    def getMatrixInverse(matrix, tol=1e-9):
+        return np.linalg.inv(matrix)
+    @staticmethod
+    def multiply(matrix1, matrix2):
+        return np.dot(matrix1, matrix2)
+    @staticmethod
+    def transposeMatrix(matrix):
+        return np.transpose(matrix)
+class PolynomialRegression:
+    def __init__(self, order):
+        self.order = order
+    def fit(self, independent, dependent):
+        if len(independent) != len(dependent):
+            raise ValueError('Number of samples of dependent and independent variables must be same')
+        data = np.column_stack((independent, dependent))
+        return self._fit(data)
+    def _fit(self, data):
+        A = self._getCoefficientMatrix(data)
+        b = self._getResultVector(data)
+        A_Inverse = MatrixOperations.getMatrixInverse(A, tol=1e-9)
+        X = MatrixOperations.multiply(A_Inverse, b)
+        return MatrixOperations.transposeMatrix(X)[0]
+    def _getCoefficientMatrix(self, data):
+        dependentVariableSum = {}
+        power = 0
+        while power <= self.order * 2:
+            sum = np.sum(np.power(data[:, 0], power))
+            dependentVariableSum[power] = sum
+            power += 1
+        dim = self.order + 1
+        coefficientMatrix = np.zeros((dim, dim))
+        for i in range(dim):
+            for j in range(dim):
+                coefficientMatrix[i][j] = dependentVariableSum[i + j]
+        return coefficientMatrix
+    def _getResultVector(self, data):
+        dim = self.order + 1
+        resultVector = np.zeros((dim, 1))
+        for j in range(dim):
+            resultVector[j] = np.sum(np.power(data[:, 0], j) * data[:, 1])
+        return resultVector
+if __name__ == "__main__":
+    independent = [1, 2, 3, 4, 5]
+    dependent = [1, 4, 9, 16, 25]
+    order = 2
+    model = PolynomialRegression(order)
+    coefficients = model.fit(independent, dependent)
+    print("Coefficients:", coefficients)

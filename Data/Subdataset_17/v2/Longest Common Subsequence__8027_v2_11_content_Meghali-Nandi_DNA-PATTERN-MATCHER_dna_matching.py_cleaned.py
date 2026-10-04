@@ -1,0 +1,43 @@
+import random
+def generate_random_dna(length):
+    letters = ["a", "c", "t", "g"]
+    sequence1 = ''.join(random.choice(letters) for _ in range(length))
+    sequence2 = ''.join(random.choice(letters) for _ in range(length))
+    with open("dna-sequence.txt", "w") as file1:
+        file1.write(sequence1)
+    with open("dna-sequence2.txt", "w") as file2:
+        file2.write(sequence2)
+def find_lcs(X, Y):
+    m, n = len(X), len(Y)
+    L = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        for j in range(n + 1):
+            if i == 0 or j == 0:
+                L[i][j] = 0
+            elif X[i - 1] == Y[j - 1]:
+                L[i][j] = L[i - 1][j - 1] + 1
+            else:
+                L[i][j] = max(L[i - 1][j], L[i][j - 1])
+    index = L[m][n]
+    lcs_sequence = [""] * (index + 1)
+    lcs_sequence[index] = ""
+    i, j = m, n
+    while i > 0 and j > 0:
+        if X[i - 1] == Y[j - 1]:
+            lcs_sequence[index - 1] = X[i - 1]
+            i -= 1
+            j -= 1
+            index -= 1
+        elif L[i - 1][j] > L[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    lcs_str = "".join(lcs_sequence)
+    print(f"LCS of the sequences is: {lcs_str}")
+    print("Matching" if len(lcs_str) > 500 else "Not matching")
+generate_random_dna(1000)
+with open("dna-sequence.txt", "r") as file1:
+    X = file1.read()
+with open("dna-sequence2.txt", "r") as file2:
+    Y = file2.read()
+find_lcs(X, Y)

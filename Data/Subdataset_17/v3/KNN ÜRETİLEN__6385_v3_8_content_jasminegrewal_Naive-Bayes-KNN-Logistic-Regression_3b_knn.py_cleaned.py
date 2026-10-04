@@ -1,0 +1,39 @@
+import csv
+import math
+from operator import itemgetter
+def calculate_distance(set1, set2):
+    return math.sqrt(sum((set1[i] - set2[i]) ** 2 for i in range(len(set1))))
+def find_neighbors(training_data, test_sample, k):
+    distances = [(data, calculate_distance(test_sample, data)) for data in training_data]
+    distances.sort(key=itemgetter(1))
+    return [distances[i][0] for i in range(k)]
+def make_prediction(neighbors):
+    label_count = {}
+    for neighbor in neighbors:
+        label = neighbor[-1]
+        label_count[label] = label_count.get(label, 0) + 1
+    return max(label_count.items(), key=itemgetter(1))[0]
+def load_data(filename):
+    dataset = []
+    with open(filename, 'r') as csvfile:
+        data_reader = csv.reader(csvfile)
+        for row in data_reader:
+            for i in range(len(row) - 1):
+                row[i] = float(row[i])
+            row[-1] = 1 if row[-1] == 'M' else 2
+            dataset.append(row)
+    return dataset
+def main():
+    dataset = load_data('data.csv')
+    k = int(input('Enter number of neighbors to use: '))
+    test_input = input('Enter data to be predicted (comma-separated): ')
+    test_sample = list(map(float, test_input.split(',')))
+    nearest_neighbors = find_neighbors(dataset, test_sample, k)
+    prediction = make_prediction(nearest_neighbors)
+    print('Nearest neighbors are:')
+    for neighbor in nearest_neighbors:
+        print(neighbor)
+    gender = 'M' if prediction == 1 else 'W'
+    print(f'Prediction for gender with given data is: {gender}')
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,53 @@
+import numpy as np
+import pandas as pd
+import os
+import glob
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import PolynomialFeatures
+daftar_kota = [
+    'Bandung', 'Bantul', 'Bekasi', 'Bogor', 'Ciamis', 'Cianjur', 'Cirebon',
+    'DIY', 'Garut', 'Gunung Kidul', 'Indramayu', 'Karawang', 'Kulon Progo',
+    'Kuningan', 'Majalengka', 'Purwakarta', 'Sleman', 'Subang', 'Sukabumi',
+    'Sumedang', 'Tasikmalaya'
+]
+for kota in daftar_kota[:-2]:
+    folder = f'/home/leathea/Downloads/Machine-Learning/PolynomialRegression/tomato_csv_perdaerah/{kota}.csv'
+    data_year_x = pd.read_csv(folder, usecols=['Year'])
+    data_crop_y = pd.read_csv(folder, usecols=['Crop'])
+    x = np.array(data_year_x).ravel()
+    y = np.array(data_crop_y).ravel()
+    polynomial_features = PolynomialFeatures(degree=2)
+    x_poly = polynomial_features.fit_transform(x[:, np.newaxis])
+    model = LinearRegression()
+    model.fit(x_poly, y)
+    y_poly_pred = model.predict(x_poly)
+    rmse = mean_squared_error(y, y_poly_pred)
+    r2 = r2_score(y, y_poly_pred)
+    print(f'The RMSE of the linear regression model for {kota} is {rmse}')
+    print(f'The R2 score of the linear regression model for {kota} is {r2}')
+    future_years = np.array([2015, 2016, 2017, 2018, 2019, 2020])
+    future_years_poly = polynomial_features.transform(future_years[:, np.newaxis])
+    future_predictions = model.predict(future_years_poly)
+    x_combined = np.concatenate((x, future_years))
+    y_combined = np.concatenate((y_poly_pred, future_predictions))
+    y_combined_actual = np.concatenate((y, future_predictions))
+    wilayah = pd.read_csv(folder, usecols=['Entity']).values.ravel()
+    kode = pd.read_csv(folder, usecols=['Code']).values.ravel()
+    wilayah_extended = np.concatenate((wilayah, wilayah[:6]))
+    kode_extended = np.concatenate((kode, kode[:6]))
+    recsv = {
+        'Entity': wilayah_extended,
+        'Code': kode_extended,
+        'Year': x_combined,
+        'crop(tonnes per hectare)': y_combined_actual
+    }
+    df = pd.DataFrame(recsv)
+    export_path = f'/home/leathea/Downloads/Machine-Learning/PolynomialRegression/hasiltomato/poly/{kota}_tomato.csv'
+    df.to_csv(export_path, index=False)
+os.chdir("/home/leathea/Downloads/Machine-Learning/PolynomialRegression/hasiltomato/poly")
+extension = 'csv'
+all_filenames = glob.glob(f'*.{extension}')
+combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+combined_csv.to_csv("/home/leathea/Downloads/Machine-Learning/PolynomialRegression/predicted_poly_tomato.csv", index=False, encoding='utf-8-sig')
+print('All done')

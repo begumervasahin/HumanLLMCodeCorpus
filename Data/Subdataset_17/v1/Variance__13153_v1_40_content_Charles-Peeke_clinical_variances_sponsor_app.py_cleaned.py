@@ -1,0 +1,49 @@
+import os
+import psycopg2
+import pandas as pd
+import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+load_dotenv()
+hostname = os.getenv('hostname')
+port = os.getenv('port')
+database = os.getenv('database')
+username = os.getenv('username')
+password = os.getenv('password')
+def compute_results():
+    print('Computing results...')
+    conn = psycopg2.connect(
+        host=hostname,
+        database=database,
+        user=username,
+        password=password
+    )
+    df = pd.read_sql(
+        'SELECT name FROM studies RIGHT JOIN sponsors ON studies.nct_id = sponsors.nct_id',
+        con=conn
+    )
+    conn.close()
+    print('Done')
+    return df
+def get_unique_sponsor_names(df):
+    return list(df['name'].unique())
+def write_list_to_file(lst, filename='unique_sponsor_names.txt'):
+    with open(filename, 'w') as f:
+        for item in lst:
+            f.write(f"{item}\n")
+    print("New list created")
+def plot_merck_names(df):
+    merck_names = {}
+    for name in df['name']:
+        if "Merck" in name or "MSD" in name:
+            if name not in merck_names:
+                merck_names[name] = 1
+            else:
+                merck_names[name] += 1
+    plt.pie(merck_names.values(), labels=merck_names.keys(), autopct='%1.1f%%')
+    plt.title('Distribution of Merck and MSD Sponsor Names')
+    plt.show()
+if __name__ == '__main__':
+    df = compute_results()
+    unique_names = get_unique_sponsor_names(df)
+    write_list_to_file(unique_names)
+    plot_merck_names(df)

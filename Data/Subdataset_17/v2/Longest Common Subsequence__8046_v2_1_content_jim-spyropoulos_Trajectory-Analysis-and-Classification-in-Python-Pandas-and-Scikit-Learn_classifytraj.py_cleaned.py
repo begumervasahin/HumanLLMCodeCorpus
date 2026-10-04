@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.preprocessing import LabelEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
+import csv
+def compute_and_print(pipeline, X_train, Y_train):
+    stats = []
+    kf = KFold(n_splits=10)
+    for train_index, test_index in kf.split(X_train):
+        X_train1, X_test = X_train[train_index], X_train[test_index]
+        Y_train1, Y_test = Y_train[train_index], Y_train[test_index]
+        probas_ = pipeline.fit(X_train1, Y_train1).predict(X_test)
+        stats.append(accuracy_score(Y_test, probas_))
+    return stats
+df = pd.read_csv("grids.csv")
+le = LabelEncoder()
+le.fit(df["TripId"])
+Y_train = le.transform(df["TripId"])
+X_train1 = df['Grids']
+X_train = np.array(X_train1)
+vectorizer = CountVectorizer()
+transformer = TfidfTransformer()
+svd = TruncatedSVD(n_components=300, random_state=42)
+clf_knn = KNeighborsClassifier(n_neighbors=7, n_jobs=-1)
+pipeline_knn = Pipeline([
+    ('vect', vectorizer),
+    ('tfidf', transformer),
+    ('svd', svd),
+    ('clf', clf_knn)
+])
+stats_knn = compute_and_print(pipeline_knn, X_train, Y_train)
+clf_rf = RandomForestClassifier(n_estimators=50, n_jobs=-1)
+pipeline_rf = Pipeline([
+    ('vect', vectorizer),
+    ('tfidf', transformer),
+    ('svd', svd),
+    ('clf', clf_rf)
+])
+stats_rf = compute_and_print(pipeline_rf, X_train, Y_train)
+clf_lr = LogisticRegression()
+pipeline_lr = Pipeline([
+    ('vect', vectorizer),
+    ('tfidf', transformer),
+    ('svd', svd),
+    ('clf', clf_lr)
+])
+stats_lr = compute_and_print(pipeline_lr, X_train, Y_train)
+with open('EvaluationsMetricAccuracy.csv', 'w', newline='') as csv_out:
+    clwriter = csv.writer(csv_out)
+    fieldnames = ['Fold', 'KNN', 'RandomForests', 'LogisticRegression']
+    clwriter.writerow(fieldnames)
+    for i in range(10):
+        clwriter.writerow([f'Fold{i+1}', stats_knn[i], stats_rf[i], stats_lr[i]])

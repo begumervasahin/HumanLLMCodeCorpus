@@ -1,0 +1,53 @@
+import GenGraph
+import Sollins
+import Prims
+import Kruskals
+import time
+from Node import Node
+def get_user_input(prompt, type_func=int):
+    while True:
+        try:
+            return type_func(input(prompt))
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+def main():
+    print("Which method of edge generation would you like to use?")
+    print("1: Weight based on actual distance between nodes")
+    print("2: Weight based on user-defined maximum edge weight")
+    edge_method = get_user_input('> ')
+    total_nodes = get_user_input("How many nodes are in the graph (any number greater than 0)? ")
+    graph_size = get_user_input("How big is the graph (any number greater than 0)? ")
+    k_value = get_user_input("What is the k-value that should be used (any number greater than 0)? ")
+    max_weight = 1
+    if edge_method == 2:
+        max_weight = get_user_input("What is the maximum weight of an edge (any number greater than 0)? ")
+    p_tot, k_tot, s_tot = [], [], []
+    for i in range(1000):
+        print(i)
+        trees = GenGraph.GenerateGraph(total_nodes, graph_size, max_weight, k_value, edge_method)
+        start = time.time()
+        Prims.runPrims(trees)
+        p_tot.append(time.time() - start)
+        start = time.time()
+        Kruskals.runKruskals(trees)
+        k_tot.append(time.time() - start)
+        start = time.time()
+        Sollins.runSollins(trees)
+        s_tot.append(time.time() - start)
+    print(f"Prim's Algorithm Avg. Run Time = {sum(p_tot) / len(p_tot):.6f}")
+    print(f"Kruskal's Algorithm Avg. Run Time = {sum(k_tot) / len(k_tot):.6f}")
+    print(f"Sollin's Algorithm Avg. Run Time = {sum(s_tot) / len(s_tot):.6f}")
+def print_trees(trees, term):
+    print(f"{term}s:")
+    for t in trees:
+        print(f"{term}:{{")
+        for x in t:
+            print(f"{print_node(x)}: {{", end="")
+            for y in x.adjList:
+                print(f"({print_node(y)}, {x.adjList[y]})", end=" ")
+            print("}")
+        print("}")
+def print_node(node):
+    return f"({node.xloc},{node.yloc})"
+if __name__ == "__main__":
+    main()

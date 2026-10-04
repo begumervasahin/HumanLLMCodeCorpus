@@ -1,0 +1,55 @@
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer
+import lda
+def main():
+    corpus = []
+    with open('/vagrant/data/160928/6335045150218551554', 'r') as file:
+        for line in file:
+            content_ = json.loads(line)['content']
+            corpus.append(content_.strip())
+    vectorizer = CountVectorizer()
+    X = vectorizer.fit_transform(corpus)
+    weight = X.toarray()
+    print(f"Weight matrix shape: {weight.shape}")
+    print("First 5 rows and columns of the weight matrix:")
+    print(weight[:5, :5])
+    print('LDA:')
+    model = lda.LDA(n_topics=2, n_iter=500, random_state=1)
+    model.fit(weight)
+    topic_word = model.topic_word_
+    doc_topic = model.doc_topic_
+    print(f"type(doc_topic): {type(doc_topic)}")
+    print(f"shape: {doc_topic.shape}")
+    label = []
+    for n in range(10):
+        topic_most_pr = doc_topic[n].argmax()
+        label.append(topic_most_pr)
+        print(f"doc: {n} topic: {topic_most_pr}")
+    plot_doc_topics(doc_topic)
+    plot_topic_words(topic_word)
+def plot_doc_topics(doc_topic):
+    f, ax = plt.subplots(6, 1, figsize=(8, 8), sharex=True)
+    for i, k in enumerate([0, 1, 2, 3, 8, 9]):
+        ax[i].stem(doc_topic[k, :], linefmt='r-', markerfmt='ro', basefmt='w-')
+        ax[i].set_xlim(-1, 2)
+        ax[i].set_ylim(0, 1.2)
+        ax[i].set_ylabel("Prob")
+        ax[i].set_title(f"Document {k}")
+    ax[5].set_xlabel("Topic")
+    plt.tight_layout()
+    plt.show()
+def plot_topic_words(topic_word):
+    f, ax = plt.subplots(2, 1, figsize=(6, 6), sharex=True)
+    for i, k in enumerate([0, 1]):
+        ax[i].stem(topic_word[k, :], linefmt='b-', markerfmt='bo', basefmt='w-')
+        ax[i].set_xlim(-2, 20)
+        ax[i].set_ylim(0, 1)
+        ax[i].set_ylabel("Prob")
+        ax[i].set_title(f"Topic {k}")
+    ax[1].set_xlabel("Word")
+    plt.tight_layout()
+    plt.show()
+if __name__ == "__main__":
+    main()

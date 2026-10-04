@@ -1,0 +1,28 @@
+print()
+print("---------------------------------------------------------------")
+print("    Cryptanalysis of the Diffie-Hellman public key protocol    ")
+print("---------------------------------------------------------------")
+print()
+p = input("Confirm the prime: ")
+p = int(p)
+g = input("Confirm the generator: ")
+g = int(g)
+print()
+A = input("A sent: ")
+A = int(A)
+B = input("B sent: ")
+B = int(B)
+print()
+for x in range(1,p) :
+    if (g**x)%p == A :
+        a = x
+    if (g**x)%p == B :
+        b = x
+print("Password for A:",a)
+print("Password for B:",b)
+print()
+k_a = (B**a)%p
+k_b = (A**b)%p
+k = k_a
+print("Their secret common key:",k)
+print()

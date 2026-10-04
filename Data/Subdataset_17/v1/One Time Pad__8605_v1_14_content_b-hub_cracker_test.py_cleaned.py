@@ -1,0 +1,25 @@
+import sys
+def convert_to_column_id(n):
+    colID = ""
+    while n > 0:
+        n -= 1
+        colID = chr(ord('A') + n % 26) + colID
+        n
+    return colID
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <input_file>")
+        return
+    input_file = sys.argv[1]
+    try:
+        with open(input_file, 'r') as test_cases:
+            for line in test_cases:
+                n = int(line.strip())
+                colID = convert_to_column_id(n)
+                print(f"{n}: {colID}")
+    except FileNotFoundError:
+        print(f"Error: File '{input_file}' not found.")
+    except ValueError:
+        print("Error: Invalid input. Ensure the input file contains integers only.")
+if __name__ == "__main__":
+    main()

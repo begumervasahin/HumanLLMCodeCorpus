@@ -1,0 +1,32 @@
+import random
+f_name, word_count, i, cols, s = ["encryption-cypher.txt", 2048, 0, 6, ""]
+nrs = random.sample(range(0, word_count), word_count)
+words = []
+nr_words = {}
+f = open(f_name, 'w')
+print "Generating %s ..." % f_name
+print >> f, "==== Encryption sheet to make component 1 of 2 (DESTROY after use) ===="
+with open ("english.txt", "r") as myfile:
+	for line in myfile:
+		words.append(line.strip())
+for word in words:
+	s = "%s %-9s=%-05d" % (s, word, nrs[i])
+	nr_words[nrs[i]] = word
+	i = i + 1
+	if(i%cols==0):
+		print  >> f, s
+		s = ""
+print >> f, "==== END OF %d CODES ==== " % i
+f.close()
+f_name, i, cols, s = ["component-II-decrypt.txt", 0, 6, ""]
+f = open(f_name, 'w')
+print "Generating %s ..." % f_name
+print >> f, "==== DO NOT DISCARD - STORE SAFELY - component 2 of 2 (decryption cypher) ===="
+for nr, word in nr_words.items():
+	s = "%s %-04d=%-9s" % (s, nr, word)
+	i = i + 1
+	if(i%cols==0):
+		print  >> f, s
+		s = ""
+print >> f, "==== END OF %d CODES ==== " % i
+print "Done."

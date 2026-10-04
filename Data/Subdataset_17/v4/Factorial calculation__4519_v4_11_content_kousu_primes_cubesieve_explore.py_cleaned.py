@@ -1,0 +1,50 @@
+import zns
+from db import primes as RealPrimes
+def sieve(N):
+    primes = [2]
+    state = [-1] * 2 + [0] * N
+    prime_index = 0
+    current_prime = 2
+    upto = 2
+    while current_prime**2 < N:
+        print(f" -- {current_prime} -- ")
+        start_range = primes[prime_index - 1]**2 if prime_index else current_prime + 1
+        for i in range(start_range, current_prime**2):
+            if state[i] == 0:
+                print(f"new ^2 prime: {i}")
+                primes.append(i)
+        print(f" -- {current_prime}**2 -- ")
+        for e, q in enumerate(primes[:prime_index]):
+            l = zns.lcm(e)
+            for i in range(upto + (q - (upto % q)), min(current_prime**3, N + 1), q):
+                if state[i] == 0:
+                    if q > 3:
+                        note = (i
+                        print(f"  {q}] new: {i} = {q}*({l}[{(i
+                    state[i] = q
+            if q > 3:
+                print()
+            else:
+                print(f"  {q}] ...\n")
+        for q in primes[prime_index:]:
+            l = q * current_prime
+            if q > current_prime**2:
+                print(f"uh oh, breaking because while marking cubethm composites got a {q} > {current_prime**2}")
+                break
+            if l > N:
+                continue
+            assert l < current_prime**3
+            if state[l] == 0:
+                print(f"  [{current_prime}*{q} = {l}]")
+            state[l] = current_prime
+        if current_prime**3 < N:
+            print(f"  [{current_prime}**3 = {current_prime**3}]")
+            state[current_prime**3] = current_prime
+        upto = current_prime**3
+        print(f" -- {current_prime}**3 -- ")
+        prime_index += 1
+        current_prime = primes[prime_index]
+        print("-" * 22)
+        assert RealPrimes[:len(primes)] == primes or len(primes) > len(RealPrimes)
+if __name__ == "__main__":
+    sieve(15000)

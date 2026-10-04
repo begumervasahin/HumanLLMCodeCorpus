@@ -1,0 +1,111 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+    def get_value(self):
+        return self.value
+    def get_next(self):
+        return self.next
+    def set_value(self, new_value):
+        self.value = new_value
+    def set_next(self, new_next):
+        self.next = new_next
+    def __str__(self):
+        return f"{self.value}"
+    __repr__ = __str__
+class OrderedLinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+    def add(self, value):
+        new_node = Node(value)
+        if self.head is None:
+            self.head = new_node
+            self.tail = new_node
+        elif self.head.value > new_node.value:
+            new_node.next = self.head
+            self.head = new_node
+        elif self.tail.value < new_node.value:
+            self.tail.next = new_node
+            self.tail = new_node
+        else:
+            temp = self.head
+            while temp.value < new_node.value:
+                prev = temp
+                temp = temp.next
+            prev.next = new_node
+            new_node.next = temp
+    def delete(self, value):
+        if self.head and self.head.value == value:
+            self.head = self.head.next
+            if self.head is None:
+                self.tail = None
+        elif self.tail and self.tail.value == value:
+            temp = self.head
+            while temp.next != self.tail:
+                temp = temp.next
+            self.tail = temp
+            self.tail.next = None
+        else:
+            temp = self.head
+            while temp and temp.value != value:
+                prev = temp
+                temp = temp.next
+            if temp:
+                prev.next = temp.next
+                if temp == self.tail:
+                    self.tail = prev
+    def search(self, value):
+        temp = self.head
+        while temp:
+            if temp.value == value:
+                return True
+            temp = temp.next
+        return False
+    def pop(self):
+        if self.tail:
+            value = self.tail.value
+            temp = self.head
+            if self.head == self.tail:
+                self.head = None
+                self.tail = None
+            else:
+                while temp.next != self.tail:
+                    temp = temp.next
+                self.tail = temp
+                self.tail.next = None
+            return value
+        raise IndexError("pop from empty list")
+    def is_empty(self):
+        return self.head is None
+    def size(self):
+        count = 0
+        temp = self.head
+        while temp:
+            count += 1
+            temp = temp.next
+        return count
+    def print_list(self):
+        temp = self.head
+        while temp:
+            print(temp.get_value(), end=' ')
+            temp = temp.get_next()
+        print()
+if __name__ == "__main__":
+    ordered_list = OrderedLinkedList()
+    ordered_list.add(3)
+    ordered_list.add(1)
+    ordered_list.add(2)
+    ordered_list.add(5)
+    ordered_list.add(4)
+    print("Ordered List:")
+    ordered_list.print_list()
+    print("\nAfter deleting 3:")
+    ordered_list.delete(3)
+    ordered_list.print_list()
+    print("\nSearch for 4:", ordered_list.search(4))
+    print("Search for 3:", ordered_list.search(3))
+    print("\nPop last element:", ordered_list.pop())
+    ordered_list.print_list()
+    print("\nIs empty:", ordered_list.is_empty())
+    print("Size of list:", ordered_list.size())

@@ -1,0 +1,96 @@
+from sys import argv
+from os.path import isfile
+LENGTH = 0
+NAME = 0
+SEQUENCE = 1
+def die(die_string=None, code=1):
+    if die_string:
+        print(f"Error: {die_string}")
+    else:
+        print("Error: An Undefined Error Occurred!")
+    exit(code)
+def get_sequences_from_file(filename):
+    try:
+        with open(filename, "r") as f:
+            file_content = f.read()
+    except IOError:
+        die(f"Error! Could not open {filename}")
+    sequences = file_content.strip().split("\n\n")
+    if not sequences:
+        die("Could not find any sequences!")
+    if sequences[0][0] != '>':
+        sequences = sequences[1:]
+    return [parse_sequence(seq) for seq in sequences if seq]
+def parse_sequence(sequence):
+    first_newline_index = sequence.find('\n')
+    name = sequence[1:first_newline_index]
+    sequence_data = sequence[first_newline_index + 1:].replace("\n", "")
+    return name, sequence_data
+def lcs(sequence_1, sequence_2):
+    len_1, len_2 = len(sequence_1), len(sequence_2)
+    lcs_matrix = [[""] * (len_2 + 1) for _ in range(len_1 + 1)]
+    for i in range(1, len_1 + 1):
+        for j in range(1, len_2 + 1):
+            if sequence_1[i - 1] == sequence_2[j - 1]:
+                lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + sequence_1[i - 1]
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1], key=len)
+    lcs_string = lcs_matrix[len_1][len_2]
+    return len(lcs_string), lcs_string
+def get_max_lcs(sequence_dict):
+    max_lcs_length = 0
+    max_lcs_object = None
+    for key, seq_object in sequence_dict.items():
+        lcs_length = seq_object[LENGTH]
+        if lcs_length > max_lcs_length:
+            max_lcs_object = (key, seq_object)
+            max_lcs_length = lcs_length
+    return max_lcs_object
+def add_to_group(name, item, groups):
+    if name not in groups:
+        groups[name] = []
+    groups[name].append(item)
+def group_sequences(sequences):
+    groups = {}
+    for seq in sequences:
+        max_seq_name, max_seq_object = get_max_lcs(sequences[seq])
+        to_add = (seq, max_seq_object[LENGTH], max_seq_object[SEQUENCE])
+        add_to_group(max_seq_name, to_add, groups)
+    return groups
+def get_filename(args):
+    if len(args) < 2:
+        filename = input("Please enter the filename containing protein sequences: ")
+    else:
+        filename = args[1]
+    if not isfile(filename):
+        die(f"Could not find file '{filename}'")
+    return filename
+def compute_lcs_for_all_sequences(sequences):
+    lcs_dict = {name: {} for name, _ in sequences}
+    num_sequences = len(sequences)
+    for idx, (first_name, first_seq) in enumerate(sequences):
+        print(f"[{idx + 1}/{num_sequences}] {first_name}...")
+        for second_name, second_seq in sequences[idx:]:
+            if first_name != second_name:
+                lcs_length, lcs_seq = lcs(first_seq, second_seq)
+                lcs_dict[first_name][second_name] = (lcs_length, lcs_seq)
+                lcs_dict[second_name][first_name] = (lcs_length, lcs_seq)
+                print(f"   {second_name}... LCS Length: {lcs_length}")
+        print()
+    return lcs_dict
+def print_grouped_sequence(grouped_item, padding=2, offset=20):
+    padded_space = " " * padding
+    name_str = f"Name: {grouped_item[NAME]}"
+    offset_space = " " * max(offset - len(name_str), 0)
+    print(f"{padded_space} {name_str}{offset_space} Length of LCS: {grouped_item[1]}")
+def main(args):
+    filename = get_filename(args)
+    sequences = get_sequences_from_file(filename)
+    lcs_dict = compute_lcs_for_all_sequences(sequences)
+    grouped_sequences = group_sequences(lcs_dict)
+    for group, items in grouped_sequences.items():
+        print(f"Group {group}:")
+        for item in items:
+            print_grouped_sequence(item)
+if __name__ == "__main__":
+    main(argv)

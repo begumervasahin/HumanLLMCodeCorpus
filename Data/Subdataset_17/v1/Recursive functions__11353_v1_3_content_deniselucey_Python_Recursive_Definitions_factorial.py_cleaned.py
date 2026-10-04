@@ -1,0 +1,8 @@
+def factorial(n):
+    if n < 1:
+        return 1
+    else:
+        return_number = n * factorial(n - 1)
+        print(f'{n}! = {return_number}')
+        return return_number
+factorial(4)

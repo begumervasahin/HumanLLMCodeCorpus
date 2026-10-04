@@ -1,0 +1,53 @@
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import base64
+class AESCipher:
+    def __init__(self, password, message):
+        self.password = password
+        self.message = message
+        self.salt = os.urandom(16)
+        self.iv = os.urandom(16)
+        self.key = self._generate_key(password, self.salt)
+    def _generate_key(self, password, salt):
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+            backend=default_backend()
+        )
+        return kdf.derive(password.encode())
+    def encrypt(self):
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        padding_length = 16 - len(self.message) % 16
+        padded_message = self.message + chr(padding_length) * padding_length
+        ct = encryptor.update(padded_message.encode('utf-8')) + encryptor.finalize()
+        self.message = base64.b64encode(ct).decode('utf-8')
+        self.iv = base64.b64encode(self.iv).decode('utf-8')
+        self.salt = base64.b64encode(self.salt).decode('utf-8')
+    def decrypt(self, encrypted_message):
+        iv = base64.b64decode(self.iv)
+        salt = base64.b64decode(self.salt)
+        key = self._generate_key(self.password, salt)
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        ct = base64.b64decode(encrypted_message)
+        padded_message = decryptor.update(ct) + decryptor.finalize()
+        padding_length = padded_message[-1]
+        self.message = padded_message[:-padding_length].decode('utf-8')
+if __name__ == "__main__":
+    password = "12345678"
+    message = "Aqui temos uma palavras com um num de caracteres multiplos de 16, para funcionar o algoritmo AES"
+    aes_cipher = AESCipher(password, message)
+    print("Original message:", aes_cipher.message)
+    aes_cipher.encrypt()
+    print("Encrypted message:", aes_cipher.message)
+    print("IV:", aes_cipher.iv)
+    print("Salt:", aes_cipher.salt)
+    encrypted_message = aes_cipher.message
+    aes_cipher.decrypt(encrypted_message)
+    print("Decrypted message:", aes_cipher.message)

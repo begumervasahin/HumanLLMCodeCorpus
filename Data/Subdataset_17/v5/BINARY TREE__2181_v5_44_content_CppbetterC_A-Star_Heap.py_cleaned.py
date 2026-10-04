@@ -1,0 +1,56 @@
+from Edges import Edges
+class Heap:
+    def __init__(self, dimension_type):
+        self.heap_tree = {}
+        self.dimension_type = dimension_type
+    def insert(self, data):
+        index = self.tree_size + 1
+        new_node = Edges(data.id, data.distance, data.time, index)
+        if index > 1:
+            parent_index = index
+            self.heap_tree[index] = new_node
+            if new_node.index == 2 * self.heap_tree[parent_index].index:
+                self.heap_tree[parent_index].left = new_node
+            else:
+                self.heap_tree[parent_index].right = new_node
+            new_node.parent = self.heap_tree[parent_index]
+            while index > 1 and self.calculate_weight(self.heap_tree[index]) < self.calculate_weight(self.heap_tree[parent_index]):
+                self._swap(self.heap_tree, index, parent_index)
+                index = parent_index
+                parent_index = index
+        else:
+            self.heap_tree[index] = data
+    def extract_max(self):
+        index = self.tree_size
+        if index <= 0:
+            return None
+        self._swap(self.heap_tree, 1, index)
+        edge = self.heap_tree.pop(index)
+        self._heapify(self.heap_tree, 1, len(self.heap_tree))
+        return edge
+    def calculate_weight(self, data):
+        if 'distance' in self.dimension_type and 'time' in self.dimension_type:
+            return data.distance + data.time
+        if 'distance' in self.dimension_type:
+            return data.distance
+        if 'time' in self.dimension_type:
+            return data.time
+        raise ValueError("Invalid dimension type")
+    def _heapify(self, data, root, length):
+        left_child = 2 * root
+        right_child = 2 * root + 1
+        smallest = root
+        if left_child <= length and self.calculate_weight(data[left_child]) < self.calculate_weight(data[root]):
+            smallest = left_child
+        if right_child <= length and self.calculate_weight(data[right_child]) < self.calculate_weight(data[smallest]):
+            smallest = right_child
+        if smallest != root:
+            self._swap(data, root, smallest)
+            self._heapify(data, smallest, length)
+    @staticmethod
+    def _swap(data, x, y):
+        if x != y:
+            data[x], data[y] = data[y], data[x]
+    @property
+    def tree_size(self):
+        return len(self.heap_tree)

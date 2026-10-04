@@ -1,0 +1,126 @@
+import heapq
+import itertools
+class WorldState:
+    def __init__(self, state, operator, parent, depth, f_value):
+        self.state = state
+        self.operator = operator
+        self.parent = parent
+        self.depth = depth
+        self.f_value = f_value
+    def __eq__(self, other):
+        return self.state == other.state
+    def __lt__(self, other):
+        return self.f_value < other.f_value
+def read_input(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    algorithm = int(lines[0].strip())
+    size = int(lines[1].strip())
+    initial_state = list(map(int, lines[2].strip().split(',')))
+    return algorithm, size, initial_state
+def goal_state(size):
+    return list(range(1, size * size)) + [0]
+def manhattan_distance(state, size):
+    distance = 0
+    for idx, value in enumerate(state):
+        if value == 0:
+            continue
+        target_row, target_col = divmod(value - 1, size)
+        current_row, current_col = divmod(idx, size)
+        distance += abs(target_row - current_row) + abs(target_col - current_col)
+    return distance
+def get_neighbors(state, size):
+    zero_index = state.index(0)
+    row, col = divmod(zero_index, size)
+    neighbors = []
+    if row > 0:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index - size] = new_state[zero_index - size], new_state[zero_index]
+        neighbors.append(('Up', new_state))
+    if row < size - 1:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index + size] = new_state[zero_index + size], new_state[zero_index]
+        neighbors.append(('Down', new_state))
+    if col > 0:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index - 1] = new_state[zero_index - 1], new_state[zero_index]
+        neighbors.append(('Left', new_state))
+    if col < size - 1:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index + 1] = new_state[zero_index + 1], new_state[zero_index]
+        neighbors.append(('Right', new_state))
+    return neighbors
+def bfs(initial_state, size):
+    root = WorldState(initial_state, None, None, 0, 0)
+    if root.state == goal_state(size):
+        return root
+    frontier = [root]
+    explored = set()
+    while frontier:
+        state = frontier.pop(0)
+        explored.add(tuple(state.state))
+        for operator, neighbor in get_neighbors(state.state, size):
+            child = WorldState(neighbor, operator, state, state.depth + 1, 0)
+            if tuple(child.state) not in explored and child not in frontier:
+                if child.state == goal_state(size):
+                    return child
+                frontier.append(child)
+    return None
+def astar(initial_state, size):
+    root = WorldState(initial_state, None, None, 0, manhattan_distance(initial_state, size))
+    frontier = []
+    heapq.heappush(frontier, root)
+    explored = set()
+    while frontier:
+        state = heapq.heappop(frontier)
+        if state.state == goal_state(size):
+            return state
+        explored.add(tuple(state.state))
+        for operator, neighbor in get_neighbors(state.state, size):
+            g = state.depth + 1
+            h = manhattan_distance(neighbor, size)
+            child = WorldState(neighbor, operator, state, g, g + h)
+            if tuple(child.state) not in explored:
+                heapq.heappush(frontier, child)
+    return None
+def ids(initial_state, size):
+    def dls(state, limit):
+        if state.state == goal_state(size):
+            return state
+        elif limit == 0:
+            return None
+        else:
+            for operator, neighbor in get_neighbors(state.state, size):
+                child = WorldState(neighbor, operator, state, state.depth + 1, 0)
+                result = dls(child, limit - 1)
+                if result is not None:
+                    return result
+            return None
+    depth = 0
+    root = WorldState(initial_state, None, None, 0, 0)
+    while True:
+        result = dls(root, depth)
+        if result is not None:
+            return result
+        depth += 1
+def print_solution(solution):
+    moves = []
+    while solution.parent is not None:
+        moves.append(solution.operator)
+        solution = solution.parent
+    moves.reverse()
+    print("Solution:", moves)
+    print("Number of moves:", len(moves))
+if __name__ == "__main__":
+    algorithm, size, initial_state = read_input("input.txt")
+    solution = None
+    if algorithm == 1:
+        solution = ids(initial_state, size)
+    elif algorithm == 2:
+        solution = bfs(initial_state, size)
+    elif algorithm == 3:
+        solution = astar(initial_state, size)
+    if solution is not None:
+        print_solution(solution)
+    else:
+        print("No solution found.")

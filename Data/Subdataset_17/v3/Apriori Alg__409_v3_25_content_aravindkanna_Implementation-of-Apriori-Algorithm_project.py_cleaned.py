@@ -1,0 +1,88 @@
+import sys
+import itertools
+import fileinput
+import time
+from math import ceil
+from Trie import trieNode
+from otherMethods import generate, prune, itemSetsCount, printAssociateRules
+def load_config(config_file):
+    params = {}
+    with open(config_file) as conf:
+        for line in conf:
+            key, value = line.strip().split(",")
+            params[key] = value
+    return params
+def count_singletons(input_file):
+    singletons = {}
+    transaction_count = 0
+    with open(input_file) as file:
+        for line in file:
+            items = line.strip().split(",")
+            for item in items:
+                singletons[item] = singletons.get(item, 0) + 1
+            transaction_count += 1
+    return singletons, transaction_count
+def filter_frequent_singletons(singletons, min_support, transaction_count):
+    min_transactions = ceil(transaction_count * min_support)
+    freq_singletons = [[item] for item, count in singletons.items() if count >= min_transactions]
+    freq_counts = [count for item, count in singletons.items() if count >= min_transactions]
+    return freq_singletons, freq_counts
+def print_frequent_singletons(freq_singletons):
+    print("FreqCount")
+    for itemset in freq_singletons:
+        print(itemset[0])
+def process_itemsets(input_file, freq_singletons, freq_counts, min_support, transaction_count, freqs_trie):
+    current_size_list = freq_singletons
+    total_freqs = len(current_size_list)
+    while True:
+        next_size_list = generate(current_size_list)
+        pruned_list = prune(freqs_trie, next_size_list)
+        if not pruned_list:
+            break
+        counts = itemSetsCount(input_file, pruned_list)
+        frequent_items = []
+        frequent_counts = []
+        for i, count in enumerate(counts):
+            if count >= ceil(transaction_count * min_support):
+                print(",".join(pruned_list[i]))
+                frequent_items.append(pruned_list[i])
+                frequent_counts.append(count)
+        if not frequent_counts:
+            break
+        freqs_trie.insertAll(frequent_items, frequent_counts)
+        current_size_list = frequent_items
+        total_freqs += len(current_size_list)
+    return total_freqs
+def update_output_file(output_file, total_freqs, rule_count, flag):
+    with fileinput.input(output_file, inplace=True) as file:
+        for line in file:
+            if "RulesCount" in line and flag == 1:
+                line = line.replace(line, f"{rule_count}\n")
+            elif "FreqCount" in line:
+                line = line.replace(line, f"{total_freqs}\n")
+            print(line, end='')
+def main():
+    start_time = time.time()
+    config_file = 'config.csv'
+    params = load_config(config_file)
+    input_file = params["input"]
+    output_file = params["output"]
+    flag = int(params["flag"])
+    min_support = float(params["support"])
+    min_confidence = float(params["confidence"])
+    sys.stdout = open(output_file, 'w')
+    singletons, transaction_count = count_singletons(input_file)
+    freq_singletons, freq_counts = filter_frequent_singletons(singletons, min_support, transaction_count)
+    freq_singletons.sort()
+    print_frequent_singletons(freq_singletons)
+    freqs_trie = trieNode()
+    freqs_trie.insertAll(freq_singletons, freq_counts)
+    total_freqs = process_itemsets(input_file, freq_singletons, freq_counts, min_support, transaction_count, freqs_trie)
+    rule_count = 0
+    if flag == 1:
+        print("RulesCount")
+        rule_count = printAssociateRules(freqs_trie, min_confidence)
+    sys.stdout.close()
+    update_output_file(output_file, total_freqs, rule_count, flag)
+if __name__ == "__main__":
+    main()

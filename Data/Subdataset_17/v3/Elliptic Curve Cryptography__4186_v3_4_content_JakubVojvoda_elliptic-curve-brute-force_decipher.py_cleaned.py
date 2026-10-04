@@ -1,0 +1,92 @@
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def equals(self, other):
+        return self.x == other.x and self.y == other.y
+    def __str__(self):
+        return f"Point(x={self.x}, y={self.y})"
+class ECurve:
+    def __init__(self, a, b, p):
+        self.a = a
+        self.b = b
+        self.p = p
+    def check(self, point):
+        left_side = self.mod(point.y * point.y)
+        right_side = self.mod(point.x**3 + self.a * point.x + self.b)
+        discriminant = 4 * self.a**3 + 27 * self.b**2
+        return left_side == right_side and discriminant != 0
+    def mod(self, x):
+        return x % self.p
+    def invmod(self, x):
+        s0, s1 = 0, 1
+        r0, r1 = self.p, x
+        while r0 != 0:
+            q = r1
+            r1, r0 = r0, r1 - q * r0
+            s1, s0 = s0, s1 - q * s0
+        return s1 % self.p
+    def add(self, p, q):
+        if p.equals(Point(0, 0)):
+            return q
+        if q.equals(Point(0, 0)):
+            return p
+        if p.equals(q):
+            if p.y == 0:
+                return Point(0, 0)
+            l = self.mod(3 * p.x**2 + self.a) * self.invmod(2 * p.y)
+        else:
+            if p.x == q.x:
+                return Point(0, 0)
+            l = self.mod(q.y - p.y) * self.invmod(q.x - p.x)
+        r_x = self.mod(l * l - p.x - q.x)
+        r_y = self.mod(l * (p.x - r_x) - p.y)
+        return Point(r_x, r_y)
+    def double(self, p):
+        return self.add(p, p)
+    def multiply(self, p, n):
+        result = Point(0, 0)
+        current = p
+        while n > 0:
+            if n % 2 == 1:
+                result = self.add(result, current)
+            current = self.double(current)
+            n
+        return result
+class Decipher:
+    def __init__(self, curve, p, q, n):
+        self.curve = curve
+        self.p = p
+        self.q = q
+        self.n = n
+    def run(self):
+        current_point = Point(0, 0)
+        for d in range(1, self.n):
+            current_point = self.curve.add(self.p, current_point)
+            if not self.curve.check(current_point):
+                return 0
+            if current_point.equals(self.q):
+                return d
+        return 0
+def main():
+    a = -0x3
+    b = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b
+    p = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+    P = Point(
+        0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296,
+        0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
+    )
+    Q = Point(
+        0x52910a011565810be90d03a299cb55851bab33236b7459b21db82b9f5c1874fe,
+        0xe3d03339f660528d511c2b1865bcdfd105490ffc4c597233dd2b2504ca42a562
+    )
+    curve = ECurve(a, b, p)
+    if not curve.check(P) or not curve.check(Q):
+        print("One of the points is not on the curve.")
+        return 0
+    decipher = Decipher(curve, P, Q, p)
+    result = decipher.run()
+    print(result)
+    return result
+if __name__ == "__main__":
+    main()

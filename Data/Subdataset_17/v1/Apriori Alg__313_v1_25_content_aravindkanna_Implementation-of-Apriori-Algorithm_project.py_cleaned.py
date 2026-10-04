@@ -1,0 +1,75 @@
+import sys
+import itertools
+import fileinput
+import time
+from math import ceil
+from Trie import trieNode
+from otherMethods import generate, prune, itemSetsCount, printAssociateRules
+def main():
+    start = time.time()
+    params = {}
+    with open('config.csv') as conf:
+        for line in conf:
+            a = line.strip().split(",")
+            params[a[0]] = a[1]
+    inFile = params["input"]
+    outFile = params["output"]
+    flag = int(params["flag"])
+    minsup = float(params["support"])
+    mincon = float(params["confidence"])
+    sys.stdout = open(outFile, 'w')
+    singletons = {}
+    noOfTransactions = 0
+    with open(inFile) as infp:
+        for line in infp:
+            items = line.strip().split(",")
+            for item in items:
+                if item in singletons:
+                    singletons[item] += 1
+                else:
+                    singletons[item] = 1
+            noOfTransactions += 1
+    freqSingles = []
+    freqSinglesCount = []
+    print("FreqCount")
+    minTransactions = ceil(noOfTransactions * minsup)
+    for item, count in singletons.items():
+        if count >= minTransactions:
+            print(item)
+            freqSingles.append([item])
+            freqSinglesCount.append(count)
+    freqSingles.sort()
+    FreqsTrie = trieNode()
+    FreqsTrie.insertAll(freqSingles, freqSinglesCount)
+    currSizeList = freqSingles
+    allfreqs = len(currSizeList)
+    while True:
+        nextSizeList = generate(currSizeList)
+        prunedList = prune(FreqsTrie, nextSizeList)
+        if not prunedList:
+            break
+        counts = itemSetsCount(inFile, prunedList)
+        FreqItems = []
+        FreqCounts = []
+        for i, count in enumerate(counts):
+            if count >= minTransactions:
+                print(",".join(prunedList[i]))
+                FreqItems.append(prunedList[i])
+                FreqCounts.append(count)
+        if not FreqCounts:
+            break
+        FreqsTrie.insertAll(FreqItems, FreqCounts)
+        currSizeList = FreqItems
+        allfreqs += len(currSizeList)
+    if flag == 1:
+        print("RulesCount")
+        noOfRules = printAssociateRules(FreqsTrie, mincon)
+    sys.stdout.close()
+    for line in fileinput.input(outFile, inplace=True):
+        if "RulesCount" in line and flag == 1:
+            line = line.replace(line, str(noOfRules) + "\n")
+        elif "FreqCount" in line:
+            line = line.replace(line, str(allfreqs) + "\n")
+        print(line, end='')
+if __name__ == "__main__":
+    main()

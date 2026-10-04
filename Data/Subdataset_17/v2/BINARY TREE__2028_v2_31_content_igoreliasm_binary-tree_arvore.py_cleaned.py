@@ -1,0 +1,184 @@
+class No:
+    def __init__(self, chave, carga, esquerda=None, direita=None, pai=None):
+        self.chave = chave
+        self.carga = carga
+        self.esquerda = esquerda
+        self.direita = direita
+        self.pai = pai
+    def tem_filho_esquerda(self):
+        return self.esquerda is not None
+    def tem_filho_direita(self):
+        return self.direita is not None
+    def eh_folha(self):
+        return not (self.esquerda or self.direita)
+    def tem_algum_filho(self):
+        return self.esquerda or self.direita
+    def tem_todos_filhos(self):
+        return self.esquerda and self.direita
+    def eh_filho_esquerda(self):
+        return self.pai and self.pai.esquerda == self
+    def eh_filho_direita(self):
+        return self.pai and self.pai.direita == self
+    def alterar_dados_no(self, chave, carga, esquerda, direita):
+        self.chave = chave
+        self.carga = carga
+        self.esquerda = esquerda
+        self.direita = direita
+        if self.tem_filho_esquerda():
+            self.esquerda.pai = self
+        if self.tem_filho_direita():
+            self.direita.pai = self
+class Arvore:
+    def __init__(self):
+        self.raiz = None
+        self.tamanho = 0
+    def __setitem__(self, chave, valor):
+        self.inserir(chave, valor)
+    def __delitem__(self, chave):
+        self.deletar(chave)
+    def __len__(self):
+        return self.tamanho
+    def __getitem__(self, chave):
+        return self.get(chave)
+    def __contains__(self, chave):
+        return self._get(chave, self.raiz) is not None
+    def quantidade(self):
+        return self.tamanho
+    def inserir(self, chave, valor):
+        if self.raiz:
+            self._inserir(chave, valor, self.raiz)
+        else:
+            self.raiz = No(chave, valor)
+        self.tamanho += 1
+    def _inserir(self, chave, valor, no_corrente):
+        if chave < no_corrente.chave:
+            if no_corrente.tem_filho_esquerda():
+                self._inserir(chave, valor, no_corrente.esquerda)
+            else:
+                no_corrente.esquerda = No(chave, valor, pai=no_corrente)
+        else:
+            if no_corrente.tem_filho_direita():
+                self._inserir(chave, valor, no_corrente.direita)
+            else:
+                no_corrente.direita = No(chave, valor, pai=no_corrente)
+    def get(self, chave):
+        if self.raiz:
+            res = self._get(chave, self.raiz)
+            return res.carga if res else None
+        return None
+    def _get(self, chave, no_corrente):
+        if not no_corrente:
+            return None
+        elif no_corrente.chave == chave:
+            return no_corrente
+        elif chave < no_corrente.chave:
+            return self._get(chave, no_corrente.esquerda)
+        else:
+            return self._get(chave, no_corrente.direita)
+    def deletar(self, chave):
+        if self.tamanho > 1:
+            no_para_deletar = self._get(chave, self.raiz)
+            if no_para_deletar:
+                self.remover(no_para_deletar)
+                self.tamanho -= 1
+            else:
+                raise KeyError('Chave não encontrada na árvore atual')
+        elif self.tamanho == 1 and self.raiz.chave == chave:
+            self.raiz = None
+            self.tamanho -= 1
+        else:
+            raise KeyError('Chave não encontrada na árvore atual')
+    def esvaziar(self):
+        self.raiz = None
+        self.tamanho = 0
+        print("Sua Árvore está vazia!")
+    def buscar_sucessor(self):
+        sucessor = None
+        if self.raiz.tem_filho_direita():
+            sucessor = self.raiz.direita.chave_minima()
+        else:
+            if self.raiz.pai:
+                if self.raiz.eh_filho_esquerda():
+                    sucessor = self.raiz.pai
+                else:
+                    self.raiz.pai.direita = None
+                    sucessor = self.raiz.pai.buscar_sucessor()
+                    self.raiz.pai.direita = self.raiz
+        return sucessor
+    def chave_minima(self):
+        corrente = self.raiz
+        while corrente.tem_filho_esquerda():
+            corrente = corrente.esquerda
+        return corrente
+    def remover_sucessor(self, no_corrente):
+        if no_corrente.eh_folha():
+            if no_corrente.eh_filho_esquerda():
+                no_corrente.pai.esquerda = None
+            else:
+                no_corrente.pai.direita = None
+        elif no_corrente.tem_algum_filho():
+            if no_corrente.tem_filho_esquerda():
+                if no_corrente.eh_filho_esquerda():
+                    no_corrente.pai.esquerda = no_corrente.esquerda
+                else:
+                    no_corrente.pai.direita = no_corrente.esquerda
+                no_corrente.esquerda.pai = no_corrente.pai
+            else:
+                if no_corrente.eh_filho_esquerda():
+                    no_corrente.pai.esquerda = no_corrente.direita
+                else:
+                    no_corrente.pai.direita = no_corrente.direita
+                no_corrente.direita.pai = no_corrente.pai
+    def remover(self, no_corrente):
+        if no_corrente.eh_folha():
+            if no_corrente == no_corrente.pai.esquerda:
+                no_corrente.pai.esquerda = None
+            else:
+                no_corrente.pai.direita = None
+        elif no_corrente.tem_todos_filhos():
+            sucessor = no_corrente.buscar_sucessor()
+            sucessor.remover_sucessor()
+            no_corrente.chave = sucessor.chave
+            no_corrente.carga = sucessor.carga
+        else:
+            if no_corrente.tem_filho_esquerda():
+                if no_corrente.eh_filho_esquerda():
+                    no_corrente.esquerda.pai = no_corrente.pai
+                    no_corrente.pai.esquerda = no_corrente.esquerda
+                elif no_corrente.eh_filho_direita():
+                    no_corrente.esquerda.pai = no_corrente.pai
+                    no_corrente.pai.direita = no_corrente.esquerda
+                else:
+                    no_corrente.alterar_dados_no(
+                        no_corrente.esquerda.chave,
+                        no_corrente.esquerda.carga,
+                        no_corrente.esquerda.esquerda,
+                        no_corrente.esquerda.direita
+                    )
+            else:
+                if no_corrente.eh_filho_esquerda():
+                    no_corrente.direita.pai = no_corrente.pai
+                    no_corrente.pai.esquerda = no_corrente.direita
+                elif no_corrente.eh_filho_direita():
+                    no_corrente.direita.pai = no_corrente.pai
+                    no_corrente.pai.direita = no_corrente.direita
+                else:
+                    no_corrente.alterar_dados_no(
+                        no_corrente.direita.chave,
+                        no_corrente.direita.carga,
+                        no_corrente.direita.esquerda,
+                        no_corrente.direita.direita
+                    )
+if __name__ == '__main__':
+    arvore = Arvore()
+    arvore.inserir(10, 'Valor 10')
+    arvore.inserir(5, 'Valor 5')
+    arvore.inserir(15, 'Valor 15')
+    print("Árvore contém chave 10:", 10 in arvore)
+    print("Valor associado à chave 10:", arvore[10])
+    arvore.deletar(10)
+    print("Árvore após deletar chave 10:")
+    print("Árvore contém chave 10:", 10 in arvore)
+    arvore.esvaziar()
+    print("Árvore após esvaziar:")
+    print("Árvore contém chave 5:", 5 in arvore)

@@ -1,0 +1,62 @@
+import pymysql
+import re
+from wordfreqcount import get_words
+def connect_to_db():
+    return pymysql.connect(
+        host='localhost',
+        user='I339493',
+        password='test123',
+        db='ml_features_en'
+    )
+def word_freq(sents_list):
+    word_freq = {}
+    processed_words = set()
+    for sentence in sents_list:
+        sentence = str(sentence)
+        sentence = sentence.replace("(Read more about how we rate cars.)", "")
+        sentence = sentence.lower()
+        punctuation = '[,ï¼ã.!?:"@]'
+        sentence = re.sub(punctuation, '', sentence)
+        for word in sentence.split():
+            if word in processed_words:
+                word_freq[word] += 1
+            else:
+                word_freq[word] = 1
+                processed_words.add(word)
+    return word_freq
+def fetch_data(sql_query):
+    conn = connect_to_db()
+    cursor = conn.cursor()
+    cursor.execute(sql_query)
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return result
+def save_word_frequencies(word_freq_dict, file_path):
+    sorted_word_freq = sorted(word_freq_dict.items(), key=lambda x: x[1], reverse=True)
+    with open(file_path, 'w') as f:
+        for index, (word, freq) in enumerate(sorted_word_freq, start=1):
+            f.write(f"{index} : {word} : {freq}\n")
+def en_freq():
+    sql_query = "SELECT data FROM RAW_DATA"
+    result = [row[0] for row in fetch_data(sql_query)]
+    word_freq_dict = word_freq(result)
+    save_word_frequencies(word_freq_dict, './word_freq_en_v2.txt')
+def cn_freq():
+    sql_query = "SELECT translate FROM RAW_DATA"
+    result = fetch_data(sql_query)
+    with open('./cn_translations.txt', 'w') as f:
+        for index, (line,) in enumerate(result, start=1):
+            if index % 10000 == 0:
+                print(index)
+            f.write(line + '\n')
+def process_cn_translations():
+    with open('./cn_translations.txt', 'r', encoding='utf8') as f:
+        k_list = get_words(f.read())
+    with open('./word_freq_cn_v1.txt', 'w') as f:
+        for word in k_list:
+            f.write(word + '\n')
+if __name__ == '__main__':
+    en_freq()
+    cn_freq()
+    process_cn_translations()

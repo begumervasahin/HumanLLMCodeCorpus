@@ -1,0 +1,61 @@
+import yaml
+import subprocess
+import json
+import logging
+from datetime import datetime
+from time import sleep
+import os
+import sys
+libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+if os.path.exists(libdir):
+    sys.path.append(libdir)
+from PUStatusReporter import reporter
+config_file_path = 'config.yml'
+with open(config_file_path, 'r') as config_file:
+    config = yaml.safe_load(config_file)
+logging.basicConfig(level=logging.INFO)
+def read_temperature():
+    command = ['./simple-temp-readout', '/dev/hidraw1', '0x01', '0x80', '0x33', '0x01', '0x00', '0x00', '0x00', '0x00']
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = proc.communicate()
+    return output, err
+def report_error(err, date_string):
+    err_string = err.decode('ascii').strip() + f' {date_string}'
+    if err_string:
+        logging.warning(f'Completed with stderr: {err_string}')
+        try:
+            if not reporter.get_context('cupboard_temperature_fail', config['status_reporter_key']):
+                reporter.create_context('cupboard_temperature_fail', config['status_reporter_key'])
+            reporter.set_status('cupboard_temperature_fail', err_string, config['status_reporter_key'])
+        except IOError as e:
+            logging.error(f'Failed to communicate with StatusReporter: {e}')
+def report_temperature(actual_temp, date_string):
+    logging.info(f"Temperature: {actual_temp}. Panic threshold: {config['panic_temperature']}")
+    try:
+        if not reporter.get_context('cupboard_temperature', config['status_reporter_key']):
+            reporter.create_context('cupboard_temperature', config['status_reporter_key'])
+        actual_temp_with_date = f'{actual_temp} {date_string}'
+        reporter.set_status('cupboard_temperature', actual_temp_with_date, config['status_reporter_key'])
+    except IOError as e:
+        logging.error(f'Failed to communicate with StatusReporter: {e}')
+def handle_panic(actual_temp):
+    logging.error(f'Panic at {actual_temp}')
+    actions = subprocess.Popen(['./temp-panic-actions'])
+    actions_out, actions_err = actions.communicate()
+while True:
+    try:
+        logging.debug('Spawning simple-temp-readout')
+        output, err = read_temperature()
+        date_string = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if err:
+            report_error(err, date_string)
+        try:
+            actual_temp = float(output.decode('ascii').strip())
+            report_temperature(actual_temp, date_string)
+            if actual_temp > config['panic_temperature']:
+                handle_panic(actual_temp)
+        except ValueError as e:
+            logging.error(f'Failed to parse temperature: {e}')
+    except Exception as outer_e:
+        logging.error(f'Outer loop failed: {outer_e}')
+    sleep(60)

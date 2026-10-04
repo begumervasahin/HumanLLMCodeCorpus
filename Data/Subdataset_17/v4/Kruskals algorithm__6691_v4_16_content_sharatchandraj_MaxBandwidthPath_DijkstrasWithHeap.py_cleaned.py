@@ -1,0 +1,46 @@
+from collections import namedtuple
+import MaxHeap
+NumberOfVertices = 5000
+Edge = namedtuple('Edge', ['vertex', 'weight'])
+def initialize_status_and_weights():
+    status = ['unseen'] * NumberOfVertices
+    wt = [float('-inf')] * NumberOfVertices
+    return status, wt
+def update_fringe_nodes(source, graph, status, wt, dad):
+    for edge in graph.get_edge(source):
+        status[edge.vertex] = 'fringe'
+        wt[edge.vertex] = edge.weight
+        MaxHeap.Insert(edge.vertex, edge.weight)
+        dad[edge.vertex] = source
+def dijkstra_with_heap(graph, source, destination):
+    MaxHeap.initialize()
+    dad = [None] * NumberOfVertices
+    status, wt = initialize_status_and_weights()
+    status[source] = 'intree'
+    update_fringe_nodes(source, graph, status, wt, dad)
+    while 'fringe' in status:
+        max_vertex = MaxHeap.Max()
+        if max_vertex == destination:
+            break
+        status[max_vertex] = 'intree'
+        MaxHeap.Delete(max_vertex)
+        for edge in graph.get_edge(max_vertex):
+            if status[edge.vertex] == 'unseen':
+                status[edge.vertex] = 'fringe'
+                dad[edge.vertex] = max_vertex
+                wt[edge.vertex] = min(wt[max_vertex], edge.weight)
+                MaxHeap.Insert(edge.vertex, wt[edge.vertex])
+            elif status[edge.vertex] == 'fringe' and wt[edge.vertex] < min(wt[max_vertex], edge.weight):
+                dad[edge.vertex] = max_vertex
+                MaxHeap.Delete(edge.vertex)
+                wt[edge.vertex] = min(wt[max_vertex], edge.weight)
+                MaxHeap.Insert(edge.vertex, wt[edge.vertex])
+    return reconstruct_path(dad, destination), wt[destination]
+def reconstruct_path(dad, destination):
+    path = []
+    current_vertex = destination
+    while current_vertex is not None:
+        path.append(current_vertex)
+        current_vertex = dad[current_vertex]
+    path.reverse()
+    return path

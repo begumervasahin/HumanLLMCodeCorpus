@@ -1,0 +1,47 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+b1 = pd.read_csv('Position_Salaries.csv')
+b2 = b1.iloc[:, 1:2].values
+b3 = b1.iloc[:, 2].values
+b4 = LinearRegression()
+b4.fit(b2, b3)
+b5 = PolynomialFeatures(degree=4)
+b6 = b5.fit_transform(b2)
+b7 = LinearRegression()
+b7.fit(b6, b3)
+plt.figure(b8 = (10, 6))
+plt.scatter(b2, b3, b9 = 'red', label='Actual Salary')
+plt.plot(b2, b4.predict(b2), b9 = 'blue', label='Linear Regression')
+plt.title('Linear Regression: Position vs Salary')
+plt.xlabel('Position Level')
+plt.ylabel('Salary')
+plt.legend()
+plt.grid(True)
+plt.show()
+plt.figure(b8 = (10, 6))
+plt.scatter(b2, b3, b9 = 'red', label='Actual Salary')
+plt.plot(b2, b7.predict(b5.fit_transform(b2)), b9 = 'blue', label='Polynomial Regression')
+plt.title('Polynomial Regression: Position vs Salary')
+plt.xlabel('Position Level')
+plt.ylabel('Salary')
+plt.legend()
+plt.grid(True)
+plt.show()
+b10 = np.arange(min(b2), max(b2), 0.1).reshape(-1, 1)
+plt.figure(b8 = (10, 6))
+plt.scatter(b2, b3, b9 = 'red', label='Actual Salary')
+plt.plot(b10, b7.predict(b5.fit_transform(b10)), b9 = 'blue', label='Polynomial Regression')
+plt.title('Polynomial Regression with Higher Resolution')
+plt.xlabel('Position Level')
+plt.ylabel('Salary')
+plt.legend()
+plt.grid(True)
+plt.show()
+a1 = 6.5
+b11 = b4.predict([[a1]])
+b12 = b7.predict(b5.fit_transform([[a1]]))
+print(f"Linear Regression Prediction for position level {a1}: {b11[0]}")
+print(f"Polynomial Regression Prediction for position level {a1}: {b12[0]}")

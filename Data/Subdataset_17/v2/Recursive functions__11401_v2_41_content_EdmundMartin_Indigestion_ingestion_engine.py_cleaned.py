@@ -1,0 +1,67 @@
+import re
+from queue import Queue
+from concurrent.futures import ThreadPoolExecutor
+import requests
+from bs4 import BeautifulSoup
+import logging
+logging.basicConfig(level=logging.INFO)
+class Ingestion:
+    def __init__(self, sitemap, regex, concurrency=20, proxy=None):
+        self.regex = re.compile(regex)
+        self.links = set()
+        self.queue = Queue()
+        self.queue.put(sitemap)
+        self.thread_pool = ThreadPoolExecutor(max_workers=concurrency)
+        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36'
+        self.proxy = {'https': proxy, 'http': proxy} if proxy else None
+    def parser(self, response):
+        raise NotImplementedError("The parser method needs to be implemented in a subclass")
+    def _parser_callback(self, item):
+        result = item.result()
+        if result:
+            self.parser(result)
+    def _recursive_sitemap_parse(self):
+        while not self.queue.empty():
+            sitemap = self.queue.get_nowait()
+            self.__parse_sitemap_xml(sitemap)
+    def __parse_sitemap_xml(self, sitemap):
+        try:
+            response = requests.get(sitemap)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'lxml-xml')
+            raw_urls = soup.find_all('loc')
+            for raw in raw_urls:
+                url = raw.text.strip()
+                if url.endswith('.xml'):
+                    self.queue.put(url)
+                elif self.regex.match(url):
+                    self.links.add(url)
+        except Exception as e:
+            logging.warning(f"Exception retrieving sitemap: {sitemap}, Exception: {e}")
+    def _get_response_object(self, url):
+        try:
+            headers = {'User-Agent': self.user_agent}
+            response = requests.get(url, headers=headers, proxies=self.proxy, timeout=(30, 60))
+            response.raise_for_status()
+            return response
+        except requests.RequestException as e:
+            logging.warning(f"Failed to retrieve URL: {url}, Exception: {e}")
+            return None
+    def digest(self):
+        self._recursive_sitemap_parse()
+        futures = []
+        for link in self.links:
+            future = self.thread_pool.submit(self._get_response_object, link)
+            future.add_done_callback(self._parser_callback)
+            futures.append(future)
+        for future in futures:
+            future.result()
+if __name__ == "__main__":
+    class CustomIngestion(Ingestion):
+        def parser(self, response):
+            if response:
+                logging.info(f"Processing URL: {response.url}")
+    sitemap_url = 'https:
+    url_regex = r'https:
+    custom_ingestion = CustomIngestion(sitemap_url, url_regex)
+    custom_ingestion.digest()

@@ -1,0 +1,23 @@
+import random
+def generate_conf(file_prefix, num_samples, sample_size, algoritmo):
+    config = []
+    for n in range(num_samples):
+        sample = random.sample(range(1000000000, 9999999999), sample_size)
+        config.append(sample)
+        print(n + 1)
+    with open(f'{file_prefix}{algoritmo}.txt', 'a') as file:
+        for sample in config:
+            file.write(f'{sample}\n')
+    return config
+def confA(algoritmo):
+    return generate_conf('confAInicial', 100000, 10, algoritmo)
+def confB(algoritmo):
+    return generate_conf('confBInicial', 10000, 100, algoritmo)
+def confC(algoritmo):
+    return generate_conf('confCInicial', 1000, 1000, algoritmo)
+def confD(algoritmo):
+    return generate_conf('confDInicial', 100, 10000, algoritmo)
+def confE(algoritmo):
+    return generate_conf('confEInicial', 10, 100000, algoritmo)
+def confF(algoritmo):
+    return generate_conf('confFInicial', 1, 1000000, algoritmo)

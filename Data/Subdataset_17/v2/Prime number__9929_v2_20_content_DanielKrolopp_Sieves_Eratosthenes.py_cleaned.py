@@ -1,0 +1,25 @@
+import math
+import sys
+def sieve_of_eratosthenes(limit):
+    print("Starting!")
+    primes = [True] * limit
+    primes[0] = primes[1] = False
+    with open("Eratosthenes_output.txt", "w") as file:
+        for i in range(2, int(math.sqrt(limit)) + 1):
+            if primes[i]:
+                for multiple in range(i * i, limit, i):
+                    primes[multiple] = False
+        for i in range(2, limit):
+            if primes[i]:
+                print(i)
+                file.write(f"{i}\n")
+if __name__ == "__main__":
+    try:
+        limit = int(input("Find primes up to: "))
+        if limit < 2:
+            raise ValueError("The limit should be greater than or equal to 2.")
+        print("Allocating memory...")
+        sieve_of_eratosthenes(limit)
+        print(f"Finished generating all primes less than {limit}!")
+    except ValueError:
+        print("Enter a valid number greater than or equal to 2.")

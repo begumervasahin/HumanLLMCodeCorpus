@@ -1,0 +1,43 @@
+
+from Team import Team
+def display_team_details(teams):
+    print("List of Teams:")
+    for team in teams:
+        abbreviations = ', '.join(team.abbreviations)
+        print(f"Abbreviations: {abbreviations}, Name: {team.name}")
+def main():
+    teams = [
+        Team(['ATL', 'Atlanta']),
+        Team(['BOS', 'Boston']),
+        Team(['BKN', 'Brooklyn']),
+        Team(['CHA', 'Charlotte']),
+        Team(['CHI', 'Chicago']),
+        Team(['CLE', 'Cleveland']),
+        Team(['DAL', 'Dallas']),
+        Team(['DEN', 'Denver']),
+        Team(['DET', 'Detroit']),
+        Team(['GSW', 'Golden State']),
+        Team(['HOU', 'Houston']),
+        Team(['IND', 'Indiana']),
+        Team(['LAC', 'LA Clippers']),
+        Team(['LAL', 'LA Lakers']),
+        Team(['MEM', 'Memphis']),
+        Team(['MIA', 'Miami']),
+        Team(['MIL', 'Milwaukee']),
+        Team(['MIN', 'Minnesota']),
+        Team(['NOP', 'New Orleans']),
+        Team(['NY', 'NYK', 'New York']),
+        Team(['OKC', 'Oklahoma City']),
+        Team(['ORL', 'Orlando']),
+        Team(['PHI', 'Philadelphia']),
+        Team(['PHO', 'Phoenix']),
+        Team(['POR', 'Portland']),
+        Team(['SAC', 'Sacramento']),
+        Team(['SA', 'SAS', 'San Antonio']),
+        Team(['TOR', 'Toronto']),
+        Team(['UTA', 'Utah']),
+        Team(['WAS', 'Washington'])
+    ]
+    display_team_details(teams)
+if __name__ == "__main__":
+    main()

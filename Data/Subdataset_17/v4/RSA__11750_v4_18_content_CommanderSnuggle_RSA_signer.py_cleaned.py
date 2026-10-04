@@ -1,0 +1,62 @@
+import os
+import random
+import struct
+import sys
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA512
+from base64 import b64encode, b64decode
+def load_key(key_path):
+    with open(key_path, 'r') as key_file:
+        key_file_content = key_file.read()
+        decoded_key = b64decode(key_file_content)
+        key = RSA.importKey(decoded_key)
+    return key
+def sign_data(sign_key, data):
+    signature = sign_key.sign(data, '')
+    return signature
+def get_file_signature(file_name, priv_key):
+    with open(file_name, "r") as f:
+        contents = f.read()
+    file_hash = SHA512.new(contents.encode()).hexdigest()
+    signature = sign_data(priv_key, file_hash)
+    return signature
+def verify_file_signature(file_name, pub_key, signature):
+    with open(file_name, "r") as f:
+        contents = f.read()
+    data_hash = SHA512.new(contents.encode()).hexdigest()
+    return pub_key.verify(data_hash, signature)
+def save_signature(file_name, signature):
+    with open(file_name, "w") as f:
+        signature_str = str(signature[0])
+        f.write(signature_str)
+def load_signature(file_name):
+    with open(file_name, "r") as f:
+        contents = int(f.read())
+    return (contents,)
+def verify_signature(data_hash, signature, verify_key):
+    return verify_key.verify(data_hash, signature)
+def main():
+    if len(sys.argv) < 5:
+        print(f"USAGE: {sys.argv[0]} <KEY FILE NAME> <SIGNATURE FILE NAME> <INPUT FILE NAME> <MODE>")
+        exit(-1)
+    key_file_name = sys.argv[1]
+    sig_file_name = sys.argv[2]
+    input_file_name = sys.argv[3]
+    mode = sys.argv[4]
+    key = load_key(key_file_name)
+    if mode == "sign":
+        signature = get_file_signature(input_file_name, key)
+        save_signature(sig_file_name, signature)
+        print(f"Signature saved to file {sig_file_name}")
+    elif mode == "verify":
+        signature = load_signature(sig_file_name)
+        if verify_file_signature(input_file_name, key, signature):
+            print("Match!")
+        else:
+            print("No match!")
+    else:
+        print(f"Invalid mode {mode}")
+if __name__ == "__main__":
+    main()

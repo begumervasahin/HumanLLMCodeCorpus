@@ -1,0 +1,28 @@
+
+class DisjointSet(dict):
+    def add(self, item):
+        self[item] = item
+    def find(self, item):
+        parent = self[item]
+        while self[parent] != parent:
+            parent = self[parent]
+        self[item] = parent
+        return parent
+    def union(self, item1, item2):
+        self[item2] = self[item1]
+def kruskal( nodes, sorted_edge ):
+    forest = DisjointSet()
+    mst = []
+    for n in nodes:
+        forest.add( n )
+    no_edges = len(nodes) - 1
+    for edge in sorted_edge:
+        src, dest, _ = edge
+        t1 = forest.find(src)
+        t2 = forest.find(dest)
+        if t1 != t2:
+            mst.append(edge)
+            no_edges -= 1
+            if no_edges == 0:
+                return mst
+            forest.union(t1, t2)

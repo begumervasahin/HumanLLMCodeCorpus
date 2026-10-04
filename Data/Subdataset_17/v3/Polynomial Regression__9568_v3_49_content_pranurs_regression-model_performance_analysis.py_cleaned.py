@@ -1,0 +1,85 @@
+import numpy as np
+import matplotlib.pyplot as plt
+class Color:
+    '''
+    To modify display of the rendered results.
+    '''
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+def calculate_rmse(actual, predicted):
+    '''
+    Calculate the Root Mean Squared Error for the model prediction.
+    Parameters:
+    actual (numpy array): True values
+    predicted (numpy array): Predicted values
+    Returns:
+    float: Root mean squared error
+    '''
+    size = actual.shape[0]
+    diff = actual - predicted
+    rmse = np.sqrt(np.sum(diff**2) / size)
+    return rmse
+def calculate_r2_score(actual, predicted):
+    '''
+    Calculate the R^2 Score for the model prediction.
+    Parameters:
+    actual (numpy array): True values
+    predicted (numpy array): Predicted values
+    Returns:
+    float: R^2 score
+    '''
+    residual_variance = np.sum((actual - predicted)**2)
+    mean_actual = np.mean(actual)
+    total_variance = np.sum((actual - mean_actual)**2)
+    r_squared_score = 1 - (residual_variance / total_variance)
+    return r_squared_score
+def display_performance_info(actual, predicted, degree, weights, training_technique):
+    '''
+    Display the performance information (R2 Score, RMSE, and weights generated) for a candidate regression model.
+    Parameters:
+    actual (numpy array): True values
+    predicted (numpy array): Predicted values
+    degree (int): Degree of polynomial fitted
+    weights (list): Weights of the model
+    training_technique (str): Technique used to estimate the weights
+    '''
+    r2_score = calculate_r2_score(actual, predicted)
+    rmse = calculate_rmse(actual, predicted)
+    print(f"\n\n\n{Color.BOLD}{Color.UNDERLINE}{training_technique}:{Color.END}\n")
+    print(f"R2-Score: {r2_score}")
+    print(f"RMSE: {rmse}")
+    print(f"Weights Generated for Degree {degree}: {', '.join(str(weight) for weight in weights)}")
+    print("\n\n\n")
+def plot_cost_vs_iterations(cost, interval):
+    '''
+    Plot the halved mean square error cost function used in gradient descent for every (interval) number of iterations.
+    Parameters:
+    cost (list): Halved mean squared errors observed in each iteration of gradient descent
+    interval (int): Interval between successive plotting of cost values
+    '''
+    plt.figure()
+    x = np.arange(1, len(cost) + 1, interval)
+    y = [cost[i - 1] for i in x]
+    plt.plot(x, y)
+    plt.xlabel('Number of Iterations')
+    plt.ylabel('Cost (Halved Mean Square Error)')
+    plt.title(f'Plot of Cost vs Iterations (every {interval} iterations)')
+    plt.show()
+if __name__ == "__main__":
+    actual = np.array([1, 2, 3, 4, 5])
+    predicted = np.array([1.1, 1.9, 3.2, 4.1, 4.8])
+    degree = 2
+    weights = [0.5, 1.2, 0.3]
+    training_technique = "Batch Gradient Descent"
+    display_performance_info(actual, predicted, degree, weights, training_technique)
+    cost = [10, 8, 6, 4, 2, 1, 0.5]
+    interval = 1
+    plot_cost_vs_iterations(cost, interval)

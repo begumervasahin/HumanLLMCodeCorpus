@@ -1,0 +1,46 @@
+import numpy as np
+import sklearn.neighbors
+import scipy.sparse
+import warnings
+import matplotlib.pyplot as plt
+from imageio import imread, imsave
+def knn_matte(img, trimap, mylambda=100):
+    img, trimap = img / 255.0, trimap / 255.0
+    m, n, c = img.shape
+    foreground = (trimap > 0.99).astype(int)
+    background = (trimap < 0.01).astype(int)
+    all_constraints = foreground + background
+    print('Finding nearest neighbors')
+    a, b = np.unravel_index(np.arange(m * n), (m, n))
+    feature_vec = np.hstack((img.reshape(m * n, c), np.c_[a, b] / np.sqrt(m * m + n * n)))
+    nbrs = sklearn.neighbors.NearestNeighbors(n_neighbors=10, n_jobs=4).fit(feature_vec)
+    knns = nbrs.kneighbors(feature_vec)[1]
+    print('Computing sparse matrix A')
+    row_inds = np.repeat(np.arange(m * n), 10)
+    col_inds = knns.flatten()
+    vals = 1 - np.linalg.norm(feature_vec[row_inds] - feature_vec[col_inds], axis=1) / (c + 2)
+    A = scipy.sparse.coo_matrix((vals, (row_inds, col_inds)), shape=(m * n, m * n))
+    D_script = scipy.sparse.diags(A.sum(axis=1).A1)
+    L = D_script - A
+    D = scipy.sparse.diags(all_constraints.ravel())
+    v = foreground.ravel()
+    c = 2 * mylambda * v
+    H = 2 * (L + mylambda * D)
+    print('Solving linear system for alpha')
+    warnings.filterwarnings('error')
+    try:
+        alpha = np.clip(scipy.sparse.linalg.spsolve(H, c), 0, 1).reshape(m, n)
+    except Warning:
+        x = scipy.sparse.linalg.lsqr(H, c)
+        alpha = np.clip(x[0], 0, 1).reshape(m, n)
+    return alpha
+def main():
+    img = imread('donkey.png')[:, :, :3]
+    trimap = imread('donkeyTrimap.png')[:, :, :3]
+    alpha = knn_matte(img, trimap)
+    imsave('donkeyAlpha.png', alpha)
+    plt.title('Alpha Matte')
+    plt.imshow(alpha, cmap='gray')
+    plt.show()
+if __name__ == '__main__':
+    main()
