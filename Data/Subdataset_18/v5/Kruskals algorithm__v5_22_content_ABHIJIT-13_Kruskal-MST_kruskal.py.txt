@@ -1,0 +1,56 @@
+def find_root(vertex, root_ids):
+    """Find the root of the vertex with path compression."""
+    while root_ids[vertex] != vertex:
+        # Path compression: make each node point directly to the root
+        root_ids[vertex] = root_ids[root_ids[vertex]]
+        vertex = root_ids[vertex]
+    return vertex
+
+def union(u, v, root_ids):
+    """Union the sets containing vertices u and v."""
+    root_u = find_root(u, root_ids)
+    root_v = find_root(v, root_ids)
+    if root_u != root_v:
+        root_ids[root_v] = root_u
+
+def kruskal(graph_edges, num_vertices):
+    """Kruskal's algorithm to find the Minimum Spanning Tree (MST).
+    
+    Args:
+        graph_edges (list): A list of edges represented as [u, v, weight].
+        num_vertices (int): The number of vertices in the graph.
+    
+    Returns:
+        int: The total weight of the MST.
+    """
+    # Initialize root ids for each vertex
+    root_ids = list(range(num_vertices + 1))
+    total_weight = 0
+
+    # Process each edge in increasing order of weight
+    for u, v, weight in graph_edges:
+        if find_root(u, root_ids) != find_root(v, root_ids):
+            total_weight += weight
+            union(u, v, root_ids)
+    
+    return total_weight
+
+def main():
+    # Input the number of vertices and edges
+    num_vertices, num_edges = map(int, input("Enter the number of vertices and edges: ").split())
+    graph_edges = []
+
+    # Input each edge with its weight
+    for _ in range(num_edges):
+        u, v, weight = map(int, input("Enter the vertices and weight of the edge: ").split())
+        graph_edges.append([u, v, weight])
+
+    # Sort edges by their weight
+    graph_edges.sort(key=lambda x: x[2])
+
+    # Run Kruskal's algorithm and print the total weight of the MST
+    mst_weight = kruskal(graph_edges, num_vertices)
+    print(f"The total weight of the Minimum Spanning Tree is: {mst_weight}")
+
+if __name__ == "__main__":
+    main()

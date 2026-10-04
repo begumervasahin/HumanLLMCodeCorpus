@@ -1,0 +1,69 @@
+import numpy as np
+import scipy.sparse as sps
+from HopfClass import HopfAlgebra
+from HopfConstructions import Tensor_Product, Drinfeld_Twist
+from itertools import product
+from Example_GeneralizedDihedralGroup import GeneralizedDihedralGroup
+
+def compute_roots_of_unity(n):
+    """
+    Compute the n-th roots of unity.
+
+    :param n: Integer specifying the number of roots.
+    :return: List of n-th roots of unity as complex numbers.
+    """
+    return [np.exp(2j * np.pi * i / n) for i in range(n)]
+
+def compute_bpq_twist_matrices(p, q):
+    """
+    Compute the Bpq twist matrices J and JI.
+
+    :param p: Parameter for the twist.
+    :param q: Parameter for the twist.
+    :return: Tuple containing matrices J and JI.
+    """
+    dimension = (p * q) ** 2
+    roots = compute_roots_of_unity(p)
+    
+    J = np.zeros(dimension, dtype=complex)
+    JI = np.zeros(dimension, dtype=complex)
+    
+    for i, j in product(range(p), repeat=2):
+        index = dimension * i + j
+        J[index] = (1 / p) * roots[(-i * j) % p]
+        JI[index] = (1 / p) * roots[(i * j) % p]
+    
+    return J, JI
+
+def apply_bpq_twist(p, q, r):
+    """
+    Apply a Drinfeld twist to the tensor product of two generalized dihedral groups.
+
+    :param p: Parameter for the first generalized dihedral group.
+    :param q: Parameter for the first generalized dihedral group.
+    :param r: Parameter for the second generalized dihedral group.
+    :return: The result of applying the Drinfeld twist to the tensor product.
+    """
+    # Create the generalized dihedral groups
+    group1 = GeneralizedDihedralGroup(p, q, r, 'a', 'sigma')
+    group2 = GeneralizedDihedralGroup(p, q, r, 'b', 'tau')
+    
+    # Compute the tensor product of these groups
+    tensor_product = Tensor_Product(group1, group2)
+    
+    # Compute the Bpq twist matrices
+    J, JI = compute_bpq_twist_matrices(p, q)
+    
+    # Apply the Drinfeld twist
+    return Drinfeld_Twist(tensor_product, J, JI, 'J')
+
+# Example usage
+if __name__ == '__main__':
+    # Define parameters
+    p = 3
+    q = 2
+    r = 4
+    
+    # Apply the Drinfeld twist and print the result
+    twisted_group = apply_bpq_twist(p, q, r)
+    print("Drinfeld Twist applied:", twisted_group)

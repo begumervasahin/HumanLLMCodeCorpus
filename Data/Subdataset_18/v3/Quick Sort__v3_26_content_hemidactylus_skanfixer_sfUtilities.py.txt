@@ -1,0 +1,142 @@
+import os
+
+# List of acceptable image file extensions
+PIC_SUFFIXES = ['jpg', 'jpeg', 'bmp', 'tiff', 'gif', 'png']
+
+def safe_build_file_name(directory, body, extension):
+    """
+    Combines a directory, filename body, and extension, adding a numeric suffix to the body if the file already exists.
+
+    Args:
+        directory (str): The directory where the file will be saved.
+        body (str): The base name of the file.
+        extension (str): The file extension.
+
+    Returns:
+        str: A unique file path.
+    """
+    new_body = body
+    iteration = 0
+    while True:
+        file_name = os.path.join(directory, f'{new_body}.{extension}')
+        if not os.path.isfile(file_name):
+            return file_name
+        iteration += 1
+        new_body = f'{body}_r{iteration:03d}'
+
+def ensure_directory_exists(dir_name):
+    """
+    Ensures that a directory exists; if not, creates it.
+
+    Args:
+        dir_name (str): The directory to check or create.
+    """
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
+
+def right_clip_text(text, length):
+    """
+    Clips text from the right, ensuring the result does not exceed the specified length.
+
+    Args:
+        text (str): The text to clip.
+        length (int): The maximum length of the clipped text.
+
+    Returns:
+        str: The clipped text.
+    """
+    return text if len(text) <= length else '...' + text[-length:]
+
+def pop_item(q_list, q_item):
+    """
+    Removes the specified item from the list.
+
+    Args:
+        q_list (list): The list from which to remove the item.
+        q_item (any): The item to remove.
+    """
+    q_list.pop(q_list.index(q_item))
+
+def list_image_files(directory):
+    """
+    Builds a list of image files in the given directory.
+
+    Args:
+        directory (str): The directory to search for image files.
+
+    Returns:
+        list: A sorted list of image files in the directory.
+    """
+    return sorted([file_name for file_name in os.listdir(directory) if is_picture(file_name)])
+
+def is_picture(filename):
+    """
+    Checks if a file is an image file based on its extension.
+
+    Args:
+        filename (str): The name of the file to check.
+
+    Returns:
+        bool: True if the file is an image, False otherwise.
+    """
+    return any(filename.lower().endswith(suffix) for suffix in PIC_SUFFIXES)
+
+def find_rescale_factor(img_size, allowed_size, allow_zoom=True):
+    """
+    Finds the rescale factor given an image size and the allowed size of the container.
+
+    Args:
+        img_size (tuple): The size of the image (width, height).
+        allowed_size (tuple): The allowed size of the container (width, height).
+        allow_zoom (bool): Whether to allow zooming in.
+
+    Returns:
+        float: The rescale factor.
+    """
+    max_factor = max(float(img_dim) / float(allowed_dim) for img_dim, allowed_dim in zip(img_size, allowed_size))
+    if not allow_zoom and max_factor < 1:
+        max_factor = 1
+    print(f'Rescale factor = {max_factor:.3f}')
+    return max_factor
+
+file_name_allowed_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_~.,'
+
+def normalize_string(text):
+    """
+    Discards all characters not falling within a specified set of allowed ones. Used to store labels as filename parts.
+
+    Args:
+        text (str): The input text to normalize.
+
+    Returns:
+        str: The normalized text.
+    """
+    return ''.join([char for char in text if char in file_name_allowed_chars])
+
+# Example usage:
+if __name__ == "__main__":
+    dir_path = './test_dir'
+    base_name = 'image'
+    file_ext = 'jpg'
+
+    # Ensure the directory exists
+    ensure_directory_exists(dir_path)
+
+    # Generate a unique filename
+    unique_filename = safe_build_file_name(dir_path, base_name, file_ext)
+    print(f'Unique filename: {unique_filename}')
+
+    # List image files in the directory
+    image_files = list_image_files(dir_path)
+    print(f'Image files in directory: {image_files}')
+
+    # Normalize a string
+    sample_text = "Hello, World! This is a test."
+    normalized_text = normalize_string(sample_text)
+    print(f'Normalized text: {normalized_text}')
+
+    # Find rescale factor
+    image_size = (1920, 1080)
+    allowed_size = (800, 600)
+    rescale_factor = find_rescale_factor(image_size, allowed_size)
+    print(f'Rescale factor: {rescale_factor:.3f}')

@@ -1,0 +1,47 @@
+import numpy as np
+from scipy.optimize import minimize
+def flower_to_float(s):
+    species_map = {
+        b'Iris-setosa': 0.0,
+        b'Iris-versicolor': 1.0,
+        b'Iris-virginica': 2.0
+    }
+    return species_map[s]
+def phi(x, i):
+    return np.hstack(([1.0], x[i, 1:5]))
+def log_likelihood(w, training_x, training_y, prior):
+    N = training_x.shape[0]
+    K = 3
+    log_likelihood_value = 0.0
+    for n in range(N):
+        sum_w_phi = np.array([w[5*k:5*k+5].T.dot(phi(training_x, n)) for k in range(K)])
+        ll2 = np.sum(training_y[n] * sum_w_phi)
+        ll3 = np.sum(np.exp(sum_w_phi))
+        log_likelihood_value += ll2 - np.log(ll3)
+    return prior - log_likelihood_value
+irises = np.loadtxt('iris.txt', delimiter=',', converters={4: flower_to_float})
+x = np.hstack((np.ones((irises.shape[0], 1)), irises[:, :4]))
+y = np.zeros((irises.shape[0], 3))
+for i, label in enumerate(irises[:, 4]):
+    y[i, int(label)] = 1
+indices = np.arange(irises.shape[0])
+np.random.shuffle(indices)
+x = x[indices]
+y = y[indices]
+split_index = irises.shape[0]
+training_x, test_x = x[:split_index], x[split_index:]
+training_y, test_y = y[:split_index], y[split_index:]
+alpha = 0.0031257
+w_init = np.ones(15)
+prior = (alpha / 2.0) * np.dot(w_init.T, w_init)
+w_hat = minimize(log_likelihood, w_init, args=(training_x, training_y, prior)).x
+predicted_labels = []
+true_labels = []
+for i in range(test_x.shape[0]):
+    z = np.array([np.exp(np.dot(w_hat[5*k:5*k+5], phi(test_x, i))) for k in range(3)])
+    s = z / np.sum(z)
+    predicted_labels.append(np.argmax(s))
+for i in range(test_y.shape[0]):
+    true_labels.append(np.argmax(test_y[i]))
+accuracy = np.mean(np.equal(predicted_labels, true_labels)) * 100.0
+print("Overall classification accuracy = ", accuracy, '%')

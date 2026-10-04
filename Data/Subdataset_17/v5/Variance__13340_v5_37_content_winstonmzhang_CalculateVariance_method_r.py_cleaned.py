@@ -1,0 +1,28 @@
+import statistics
+def calculate_standard_deviation(X):
+    mean = sum(X) / len(X)
+    total = sum((x - mean) ** 2 for x in X)
+    return (total / len(X)) ** 0.5
+def display_statistics(data_list, list_name):
+    std_dev = calculate_standard_deviation(data_list)
+    variance = std_dev ** 2
+    sample_std_dev = statistics.stdev(data_list)
+    population_std_dev = statistics.pstdev(data_list)
+    sample_variance = statistics.variance(data_list)
+    population_variance = statistics.pvariance(data_list)
+    print(f'{list_name} statistics:')
+    print(f'WZ standard deviation: {std_dev:15.9f}')
+    print(f'WZ variance: {variance:15.9f}')
+    print(f'Sample standard deviation: {sample_std_dev:15.9f}')
+    print(f'Population standard deviation: {population_std_dev:15.9f}')
+    print(f'Sample variance: {sample_variance:15.9f}')
+    print(f'Population variance: {population_variance:15.9f}')
+    print('...........................................................')
+def main():
+    print('Calculate the variance for Method R MOT Edition 3 Sample Sets on page 8')
+    list_A = [0.924, 0.928, 0.954, 0.957, 0.961, 0.965, 0.972, 0.979, 0.987, 1.373]
+    list_C = [0.091, 0.109, 0.134, 0.136, 0.159, 0.172, 0.185, 0.191, 0.207, 8.616]
+    display_statistics(list_A, 'list_A')
+    display_statistics(list_C, 'list_C')
+if __name__ == "__main__":
+    main()

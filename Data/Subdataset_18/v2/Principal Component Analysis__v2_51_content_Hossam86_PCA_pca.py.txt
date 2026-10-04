@@ -1,0 +1,63 @@
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+from sklearn.decomposition import PCA as sklearnPCA
+
+# Load the Iris dataset
+df = pd.read_csv('/media/hossam/MyFiles/MachineLearning/PCA/PCA/IrisDataSet/iris.data', header=None, sep=',')
+df.columns = ['sepal_len', 'sepal_wid', 'petal_len', 'petal_wid', 'class']
+df.dropna(how="all", inplace=True)
+print("First 5 rows of the dataset:\n", df.head())
+
+# Split the dataset into features (X) and target (y)
+X = df.iloc[:, 0:4].values
+y = df.iloc[:, 4].values
+
+# Standardize the features
+X_std = StandardScaler().fit_transform(X)
+
+# Compute the covariance matrix
+cov_mat = np.cov(X_std.T)
+print('Covariance matrix:\n', cov_mat)
+
+# Compute eigenvalues and eigenvectors
+eig_vals, eig_vecs = np.linalg.eig(cov_mat)
+print('Eigenvectors:\n', eig_vecs)
+print('Eigenvalues:\n', eig_vals)
+
+# Singular Value Decomposition
+u, s, v = np.linalg.svd(X_std.T)
+
+# Validate eigenvectors
+for ev in eig_vecs:
+    np.testing.assert_array_almost_equal(1.0, np.linalg.norm(ev))
+print('Eigenvector validation: Everything is ok!')
+
+# Sort the eigenvalues and eigenvectors
+eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(len(eig_vals))]
+eig_pairs.sort(key=lambda x: x[0], reverse=True)
+
+# Display eigenvalues in descending order
+print('Eigenvalues in descending order:')
+for eig_val, eig_vec in eig_pairs:
+    print(eig_val)
+
+# Calculate the explained variance
+total_eig_val = sum(eig_vals)
+var_exp = [(i / total_eig_val) * 100 for i in sorted(eig_vals, reverse=True)]
+cum_var_exp = np.cumsum(var_exp)
+
+# Create the projection matrix
+matrix_w = np.hstack((eig_pairs[0][1].reshape(4, 1), eig_pairs[1][1].reshape(4, 1)))
+print('Projection matrix W:\n', matrix_w)
+
+# Project the data onto the new feature space
+Y = X_std.dot(matrix_w)
+
+# Perform PCA using scikit-learn
+sklearn_pca = sklearnPCA(n_components=2)
+Y_sklearn = sklearn_pca.fit_transform(X_std)
+
+# Output the results
+print("Projection by manual PCA:\n", Y[:5])
+print("Projection by sklearn PCA:\n", Y_sklearn[:5])

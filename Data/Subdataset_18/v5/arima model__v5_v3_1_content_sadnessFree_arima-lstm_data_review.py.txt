@@ -1,0 +1,73 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, to_datetime
+
+def parse_datetime(x):
+    """
+    Parse the datetime string into a datetime object.
+    
+    Parameters:
+    x (str): Date and time string.
+    
+    Returns:
+    datetime: Parsed datetime object.
+    """
+    return to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+
+def calculate_mape(y_true, y_pred):
+    """
+    Calculate Mean Absolute Percentage Error (MAPE).
+    
+    MAPE is calculated as the mean of the absolute percentage errors
+    between the actual and predicted values.
+    
+    Parameters:
+    y_true (list or array): Actual values.
+    y_pred (list or array): Predicted values.
+    
+    Returns:
+    float: MAPE value.
+    """
+    total_error = sum(abs((predicted - actual) / actual) for actual, predicted in zip(y_true, y_pred))
+    return (total_error / len(y_true)) * 100
+
+def plot_time_series(data, title="Time Series of Traffic Flow", xlabel="Period (15-minute intervals)", ylabel="Volume (vehicle/period)"):
+    """
+    Plot the time series data.
+    
+    Parameters:
+    data (array-like): Time series data to be plotted.
+    title (str): Title of the plot.
+    xlabel (str): Label for the x-axis.
+    ylabel (str): Label for the y-axis.
+    """
+    plt.figure(figsize=(10, 6))
+    plt.plot(data, '-', label="Real Flow")
+    plt.legend(loc='upper right')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.show()
+
+# Replace the file path with the actual CSV file path
+csv_file_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15.csv'
+
+# Read CSV file and parse dates using the defined parse_datetime function
+series = read_csv(csv_file_path, usecols=[2, 3], header=0, parse_dates=[0],
+                  index_col=0, squeeze=True, date_parser=parse_datetime)
+
+# Extract the first 1000 values for plotting
+time_series_data = series.values[:1000]
+
+# Plot the time series data
+plot_time_series(time_series_data)
+
+# Example of using the calculate_mape function
+# Replace y_true and y_pred with your actual data
+actual_values = [1, 2, 3, 4, 5]
+predicted_values = [0.9, 2.1, 3.2, 4.3, 5.1]
+
+# Calculate and print MAPE
+mape = calculate_mape(actual_values, predicted_values)
+print(f"Mean Absolute Percentage Error (MAPE): {mape:.2f}%")

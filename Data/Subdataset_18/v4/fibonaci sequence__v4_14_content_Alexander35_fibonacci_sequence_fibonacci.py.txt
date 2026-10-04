@@ -1,0 +1,65 @@
+import redis
+import json
+
+class Fibonacci:
+    def __init__(self, host, db):
+        """Initialize the Redis connection and set the first two Fibonacci numbers if not already set."""
+        self.redis = redis.StrictRedis(host=host, db=db)
+        if self.get(1) is None:
+            self.redis.set(1, 1)
+            self.redis.set(2, 1)
+            self.save()
+
+    def find_nearest_left(self, n):
+        """Find the nearest left Fibonacci number stored in Redis."""
+        if self.get(n) is None:
+            return self.find_nearest_left(n - 1)
+        return n
+
+    def get(self, k):
+        """Retrieve a Fibonacci number from Redis."""
+        return self.redis.get(k)
+
+    def set(self, k):
+        """Calculate and store the k-th Fibonacci number in Redis."""
+        n1 = int(self.get(k - 1))
+        n2 = int(self.get(k - 2))
+        self.redis.set(k, n1 + n2)
+
+    def save(self):
+        """Save the current state of Redis."""
+        self.redis.bgsave()
+
+    def calculate(self, start, end):
+        """Calculate Fibonacci numbers between start and end."""
+        for n in range(start, end):
+            if self.get(n) is None:
+                self.set(n)
+
+    def numbers(self, start, end):
+        """Ensure all Fibonacci numbers between start and end are calculated."""
+        if self.get(start) is None:
+            nearest_left = self.find_nearest_left(start)
+            self.numbers(nearest_left, end)
+        self.calculate(start + 1, end)
+
+    def control(self, start, end):
+        """Return a list of formatted strings showing Fibonacci numbers between start and end."""
+        return [f'<div>[{k}] == {self.get(k)}</div>' for k in range(start, end)]
+
+def main():
+    """Main function to execute Fibonacci operations based on config settings."""
+    with open('config.json') as file:
+        conf = json.load(file)
+
+    fib = Fibonacci(conf['redis_host'], conf['redis_db'])
+    print(fib.control(1, 50))
+    fib.numbers(5, 7)
+    fib.numbers(30, 40)
+    fib.numbers(25, 35)
+    fib.numbers(49, 50)
+    print(fib.control(1, 50))
+    print(fib.control(9, 13))
+
+if __name__ == '__main__':
+    main()

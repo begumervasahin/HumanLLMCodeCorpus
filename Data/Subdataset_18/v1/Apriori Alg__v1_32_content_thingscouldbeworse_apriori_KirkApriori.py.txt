@@ -1,0 +1,176 @@
+from itertools import combinations
+
+def readFile(filename):
+    """
+    Read data from a file and return a list of transactions.
+
+    Args:
+        filename (str): The name of the input file.
+
+    Returns:
+        list: A list of transactions.
+    """
+    results = []
+    with open(filename, 'r') as fData:
+        for line in fData:
+            results.append(line.strip())
+    return results
+
+def singleCandidates(dataset):
+    """
+    Generate single item candidates from the dataset.
+
+    Args:
+        dataset (list): The list of transactions.
+
+    Returns:
+        list: A list of single item candidates.
+    """
+    results = []
+    for transaction in dataset:
+        items = transaction.split(',')
+        for item in items:
+            if item not in results:
+                results.append(item)
+    return results
+
+def countCandidates(dataset, singles):
+    """
+    Count the frequency of single item candidates in the dataset.
+
+    Args:
+        dataset (list): The list of transactions.
+        singles (list): The list of single item candidates.
+
+    Returns:
+        dict: A dictionary of item candidates with their counts.
+    """
+    candidateCount = {}
+    for transaction in dataset:
+        items = transaction.split(',')
+        for item in items:
+            for candidate in singles:
+                if candidate == item:
+                    candidateCount.setdefault(candidate, 0)
+                    candidateCount[candidate] += 1
+    return candidateCount
+
+def totalItems(dataset):
+    """
+    Calculate the total number of items in the dataset.
+
+    Args:
+        dataset (list): The list of transactions.
+
+    Returns:
+        int: The total number of items.
+    """
+    total = 0
+    for transaction in dataset:
+        items = transaction.split(',')
+        total += len(items)
+    return total
+
+def supportCheck(itemCount, candidateCount, support):
+    """
+    Filter candidates based on support threshold.
+
+    Args:
+        itemCount (int): The total number of items.
+        candidateCount (dict): The dictionary of item candidates with their counts.
+        support (float): The support threshold.
+
+    Returns:
+        dict: A dictionary of frequent item candidates with their support values.
+    """
+    supportNumbers = {}
+    for candidate in candidateCount:
+        if candidateCount[candidate] / itemCount >= support:
+            supportNumbers[candidate] = candidateCount[candidate] / itemCount
+    return supportNumbers
+
+def supportCheckCount(itemCount, candidateCount, support):
+    """
+    Filter candidates based on support threshold and return their counts.
+
+    Args:
+        itemCount (int): The total number of items.
+        candidateCount (dict): The dictionary of item candidates with their counts.
+        support (float): The support threshold.
+
+    Returns:
+        list: A list of frequent item candidates.
+    """
+    result = []
+    for candidate in candidateCount:
+        if candidateCount[candidate] / itemCount >= support:
+            result.append(candidate)
+    return result
+
+def frequentPairs(frequentItems, dataset, itemCount, support):
+    """
+    Generate and filter frequent pairs based on support threshold.
+
+    Args:
+        frequentItems (list): The list of frequent items.
+        dataset (list): The list of transactions.
+        itemCount (int): The total number of items.
+        support (float): The support threshold.
+
+    Returns:
+        dict: A dictionary of frequent pairs with their support values.
+    """
+    results = {}
+    for transaction in dataset:
+        items = transaction.split(',')
+        for item in combinations(items, 2):
+            results.setdefault(item, 0)
+            results[item] += 1
+
+    markForDeletion = []
+    for key in results:
+        if results[key] / itemCount < support:
+            markForDeletion.append(key)
+        else:
+            results[key] = results[key] / itemCount
+
+    for key in markForDeletion:
+        results.pop(key, None)
+
+    return results
+
+if __name__ == "__main__":
+    # Input file and support threshold
+    dataFile = 'mushroom.data'
+    support = 0.03
+
+    # Read data from the file
+    data = readFile(dataFile)
+
+    # Generate single item candidates
+    candidates1 = singleCandidates(data)
+    print("Single item candidates:", candidates1)
+
+    # Count the frequency of single item candidates
+    counts = countCandidates(data, candidates1)
+    print("Counts of single item candidates:", counts)
+
+    # Calculate the total number of items
+    total = totalItems(data)
+    print("Total number of items:", total)
+
+    # Filter frequent candidates based on support threshold
+    frequentCandidates = supportCheck(total, counts, support)
+    print("Frequent single item candidates:", frequentCandidates)
+
+    # Filter frequent candidates based on support threshold and return their counts
+    supportCounts = supportCheckCount(total, counts, support)
+    print("Frequent single item candidates (counts):", supportCounts)
+
+    # Generate and filter frequent pairs based on support threshold
+    pairs = frequentPairs(supportCounts, data, total, support)
+    print("Frequent pairs:")
+    for pair in pairs:
+        print(f"{pair}: {pairs[pair]}")
+
+    print("Time taken:", time.time() - start_time)

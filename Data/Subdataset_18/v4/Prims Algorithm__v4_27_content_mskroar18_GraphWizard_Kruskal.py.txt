@@ -1,0 +1,65 @@
+class Graph:
+    def runKruskal(self, edgelist, nodecount):
+        # Sort the edge list based on edge weights
+        edgelist.sort(key=lambda edge: edge.weight)
+
+        # Initialize variables
+        count = 0
+        setlist = []
+        setcount = 0
+
+        # Select the first edge and create the first set
+        edgelist[count].selected = True
+        setlist.append({edgelist[count]})
+        count += 1
+        setcount += 1
+
+        # Process the remaining edges
+        while count < len(edgelist):
+            edge = edgelist[count]
+            foundfirst, foundsecond = False, False
+            discard = False
+            save1, save2 = -1, -1
+
+            # Check if the current edge forms a cycle
+            for j in range(setcount):
+                for i in setlist[j]:
+                    if i.Vertex2 == edge.Vertex1 or i.Vertex1 == edge.Vertex1:
+                        foundfirst = True
+                        save1 = j
+                    if i.Vertex2 == edge.Vertex2 or i.Vertex1 == edge.Vertex2:
+                        foundsecond = True
+                        save2 = j
+            
+            # If both vertices are found in the same set, discard the edge
+            if foundfirst and foundsecond and save1 == save2:
+                discard = True
+            else:
+                # If vertices are in different sets, union the sets
+                if foundfirst and foundsecond:
+                    if save1 < save2:
+                        setlist[save1].update(setlist[save2])
+                        setlist[save1].add(edge)
+                        setlist[save2].clear()
+                    else:
+                        setlist[save2].update(setlist[save1])
+                        setlist[save1].clear()
+                        setlist[save2].add(edge)
+                    edge.selected = True
+                else:
+                    # Add the edge to the appropriate set
+                    if foundfirst and not foundsecond:
+                        setlist[save1].add(edge)
+                    if not foundfirst and foundsecond:
+                        setlist[save2].add(edge)
+                    edge.selected = True
+            
+            # If neither vertex is found, create a new set
+            if not foundfirst and not foundsecond:
+                edge.selected = True
+                setlist.append({edge})
+                setcount += 1
+            
+            count += 1
+
+        return

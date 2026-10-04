@@ -1,0 +1,75 @@
+import sys
+import webbrowser
+from index_search import index_search, create_index
+from linear_search import linear_search
+from myhtable_search import myhtable_index_search, myhtable_create_index
+from words import filelist, words, results
+
+def main():
+    """
+    Main function to handle different search implementations based on command line arguments.
+    """
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != 3:
+        print_usage()
+        return
+
+    # Extract search implementation type and root directory from command line arguments
+    search_type = sys.argv[1]
+    root_directory = sys.argv[2]
+
+    # Get the list of files in the specified directory
+    files = filelist(root_directory)
+    num_files = len(files)
+    print(f"Number of files found: {num_files}")
+
+    # Initialize the index variable
+    index = None
+
+    while True:
+        # Prompt user to input search terms
+        search_query = input("Enter search terms: ")
+
+        # Tokenize search terms
+        search_terms = words(search_query)
+
+        # Perform search based on chosen implementation
+        if search_type == 'linear':
+            matched_docs = linear_search(files, search_terms)
+        elif search_type == 'index':
+            # Create index if it doesn't exist
+            if index is None:
+                index = create_index(files)
+                print("Index creation complete")
+            matched_docs = index_search(files, index, search_terms)
+        elif search_type == 'myhtable':
+            # Create index if it doesn't exist
+            if index is None:
+                index = myhtable_create_index(files)
+                print("Index creation complete")
+            matched_docs = myhtable_index_search(files, index, search_terms)
+        else:
+            print(f"Invalid search type: {search_type}")
+            break
+
+        # Generate HTML page with search results
+        html_page = results(matched_docs, search_terms)
+
+        # Write results to a temporary HTML file
+        with open("/tmp/results.html", "w") as result_file:
+            result_file.write(html_page)
+
+        # Open the temporary HTML file in a new browser tab
+        webbrowser.open_new_tab("file:///tmp/results.html")
+
+def print_usage():
+    """
+    Print the usage instructions for the script.
+    """
+    print("Usage:")
+    print("$ python search.py linear <root_directory>")
+    print("$ python search.py index <root_directory>")
+    print("$ python search.py myhtable <root_directory>")
+
+if __name__ == "__main__":
+    main()

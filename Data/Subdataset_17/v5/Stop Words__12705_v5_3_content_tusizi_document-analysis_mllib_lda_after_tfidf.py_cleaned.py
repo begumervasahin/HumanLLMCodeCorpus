@@ -1,0 +1,67 @@
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer
+import lda
+def load_corpus(file_path):
+    corpus = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            content_ = json.loads(line)['content']
+            corpus.append(content_.strip())
+    return corpus
+def vectorize_corpus(corpus):
+    vectorizer = CountVectorizer()
+    X = vectorizer.fit_transform(corpus)
+    return X.toarray(), vectorizer
+def print_vectorizer_info(vectorizer, weight):
+    print("Vectorizer:", vectorizer)
+    print("Number of documents:", len(weight))
+    print("Sample weights (first 5x5 slice):\n", weight[:5, :5])
+def lda_modeling(weight, n_topics=2, n_iter=500):
+    model = lda.LDA(n_topics=n_topics, n_iter=n_iter, random_state=1)
+    model.fit(weight)
+    return model
+def print_doc_topic_info(doc_topic, n_docs=10):
+    print("Type of doc_topic:", type(doc_topic))
+    print("Shape of doc_topic:", doc_topic.shape)
+    labels = []
+    for n in range(n_docs):
+        topic_most_pr = doc_topic[n].argmax()
+        labels.append(topic_most_pr)
+        print("Document {} is mostly about topic {}".format(n, topic_most_pr))
+    return labels
+def plot_doc_topics(doc_topic, doc_indices):
+    f, ax = plt.subplots(len(doc_indices), 1, figsize=(8, 8), sharex=True)
+    for i, k in enumerate(doc_indices):
+        ax[i].stem(doc_topic[k, :], linefmt='r-', markerfmt='ro', basefmt='w-')
+        ax[i].set_xlim(-1, 2)
+        ax[i].set_ylim(0, 1.2)
+        ax[i].set_ylabel("Prob")
+        ax[i].set_title("Document {}".format(k))
+    ax[-1].set_xlabel("Topic")
+    plt.tight_layout()
+    plt.show()
+def plot_topic_words(topic_word, topic_indices):
+    f, ax = plt.subplots(len(topic_indices), 1, figsize=(6, 6), sharex=True)
+    for i, k in enumerate(topic_indices):
+        ax[i].stem(topic_word[k, :], linefmt='b-', markerfmt='bo', basefmt='w-')
+        ax[i].set_xlim(-2, 20)
+        ax[i].set_ylim(0, 1)
+        ax[i].set_ylabel("Prob")
+        ax[i].set_title("Topic {}".format(k))
+    ax[-1].set_xlabel("Word")
+    plt.tight_layout()
+    plt.show()
+if __name__ == "__main__":
+    file_path = '/vagrant/data/160928/6335045150218551554'
+    corpus = load_corpus(file_path)
+    weight, vectorizer = vectorize_corpus(corpus)
+    print_vectorizer_info(vectorizer, weight)
+    model = lda_modeling(weight)
+    topic_word = model.topic_word_
+    doc_topic = model.doc_topic_
+    print_doc_topic_info(doc_topic)
+    plot_doc_topics(doc_topic, [0, 1, 2, 3, 8, 9])
+    plot_topic_words(topic_word, [0, 1])

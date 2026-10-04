@@ -1,0 +1,63 @@
+import random
+import itertools
+def is_prf(x):
+    return bool(getattr(x, '_is_prf'))
+def zero(n):
+    return 0
+zero._is_prf = True
+zero._arity = 1
+def successor(n):
+    return n + 1
+successor._is_prf = True
+successor._arity = 1
+def projection(n, i):
+    src = f'lambda {", ".join(f"arg{j}" for j in range(n))}: arg{i}'
+    f = eval(src)
+    f._is_prf = True
+    f._arity = n
+    return f
+def composition(f, *hs):
+    n = len(hs)
+    def composed_function(*args):
+        return f(*(h(*args) for h in hs))
+    composed_function._is_prf = True
+    composed_function._arity = hs[0]._arity
+    assert all(h._arity == composed_function._arity for h in hs)
+    assert f._arity == len(hs)
+    return composed_function
+def primitive_recursion(base, step):
+    assert is_prf(base) and is_prf(step)
+    def recursive_function(ctr, *args):
+        result = base(*args)
+        for i in range(ctr):
+            result = step(result, i, *args)
+        return result
+    recursive_function._is_prf = True
+    assert base._arity + 2 == step._arity
+    recursive_function._arity = 1 + base._arity
+    return recursive_function
+def random_argument_values(n, range_=1000):
+    assert n > 2
+    return [0, 1] + [random.randrange(range_) for _ in range(n-2)]
+def test_function(f, gold, nargs, range_=1000, values=10):
+    for args in itertools.product(*[random_argument_values(values, range_=range_) for _ in range(nargs)]):
+        expected = gold(*args)
+        got = f(*args)
+        if expected != got:
+            raise ValueError(f"Test failed for {args}: expected {expected}, got {got}")
+def accelerate(f, acc, nargs, test=True, range_=1000, values=10):
+    if test:
+        test_function(f, acc, nargs, range_=range_, values=values)
+    acc._is_prf = True
+    acc._orig_prf = f
+    acc._arity = f._arity
+    return acc
+def minimize(predicate):
+    assert predicate._is_prf
+    def minimized_function(*args):
+        for i in itertools.count():
+            if predicate(i, *args) == 0:
+                return i
+    minimized_function._is_prf = True
+    minimized_function._arity = predicate._arity - 1
+    return minimized_function

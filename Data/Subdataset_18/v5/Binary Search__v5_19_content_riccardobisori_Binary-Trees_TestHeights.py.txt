@@ -1,0 +1,183 @@
+import random
+import sys
+import pickle
+import ABR
+import RB
+
+# Increase the recursion limit to handle deep recursive calls in tree operations
+sys.setrecursionlimit(4400)
+
+def test_heights():
+    """
+    Main function to test the heights of Binary Search Trees (ABR) and Red-Black Trees (RB).
+    The results are saved as pickle files.
+    """
+    # Load the test data (elements and ranges) from a pickle file
+    elements, ranges = load_test_data("tests.p")
+
+    # Test and save the heights for Binary Search Trees
+    result_ABR = test_height_ABR(elements, ranges)
+    save_results(result_ABR, "resultHeightABR.p")
+
+    # Test and save the heights for Red-Black Trees
+    result_RB = test_height_RB(elements, ranges)
+    save_results(result_RB, "resultHeightRB.p")
+
+def load_test_data(filename):
+    """
+    Load test data from a pickle file.
+    
+    Args:
+        filename (str): Path to the pickle file containing test data.
+
+    Returns:
+        tuple: Elements and ranges loaded from the pickle file.
+    """
+    with open(filename, "rb") as file:
+        test_data = pickle.load(file)
+    return test_data
+
+def save_results(data, filename):
+    """
+    Save the results to a pickle file.
+    
+    Args:
+        data (any): Data to be saved.
+        filename (str): Path to the file where the data will be saved.
+    """
+    with open(filename, "wb") as file:
+        pickle.dump(data, file)
+
+def test_height_ABR(elements, ranges):
+    """
+    Test the height of Binary Search Trees (ABR) with random elements.
+
+    Args:
+        elements (list): List of numbers of elements to insert into the trees.
+        ranges (list): List of range limits for generating random elements.
+
+    Returns:
+        list: A list of average heights for Binary Search Trees across different configurations.
+    """
+    result_heights = []
+
+    print_test_header("Binary Search Trees (ABR)", elements, ranges, trials=3)
+
+    for num_elements in elements:
+        average_heights = []
+        for range_limit in ranges:
+            heights = [
+                measure_tree_height(ABR.BinarySearchTree(), num_elements, range_limit)
+                for _ in range(3)
+            ]
+            average_heights.append(calculate_average(heights))
+        result_heights.append(average_heights)
+        print(average_heights)
+
+    return result_heights
+
+def test_height_RB(elements, ranges):
+    """
+    Test the height of Red-Black Trees (RB) with random and ordered elements.
+
+    Args:
+        elements (list): List of numbers of elements to insert into the trees.
+        ranges (list): List of range limits for generating random elements.
+
+    Returns:
+        tuple: A tuple containing two lists - average heights for random elements and ordered elements.
+    """
+    result_random_heights = []
+    result_ordered_heights = []
+
+    print_test_header("Red-Black Trees (RB)", elements, ranges, trials=10, test_type="random")
+    result_random_heights = perform_height_tests(RB.RedBlackTree, elements, ranges, trials=10, random_elements=True)
+
+    print_test_header("Red-Black Trees (RB)", elements, ranges, trials=5, test_type="ordered")
+    result_ordered_heights = perform_height_tests(RB.RedBlackTree, elements, ranges, trials=5, random_elements=False)
+
+    return result_random_heights, result_ordered_heights
+
+def print_test_header(tree_type, elements, ranges, trials, test_type="random"):
+    """
+    Print the header for the test results.
+
+    Args:
+        tree_type (str): The type of tree being tested (e.g., "Binary Search Trees").
+        elements (list): List of numbers of elements to insert into the trees.
+        ranges (list): List of range limits for generating random elements.
+        trials (int): Number of trials performed for each test.
+        test_type (str): The type of test being performed ("random" or "ordered").
+    """
+    print("\n", "=" * 100)
+    print(f"Average heights of {tree_type} for {test_type} elements. {trials} executions.")
+    print(f"Columns: ranges {ranges}.")
+    print(f"Lines: elements {elements}.")
+    print("=" * 100, "\n")
+
+def measure_tree_height(tree, num_elements, range_limit, random_elements=True):
+    """
+    Insert elements into the tree and measure its height.
+
+    Args:
+        tree (object): The tree object (ABR or RB).
+        num_elements (int): The number of elements to insert.
+        range_limit (int): The upper limit for the range of elements.
+        random_elements (bool): Whether to insert elements randomly or in order.
+
+    Returns:
+        int: The height of the tree after all insertions.
+    """
+    if random_elements:
+        elements = (random.randint(0, range_limit) for _ in range(num_elements))
+    else:
+        elements = range(num_elements)
+
+    for element in elements:
+        tree.insert(element)
+
+    return tree.getHeight(tree.root)
+
+def perform_height_tests(tree_class, elements, ranges, trials, random_elements=True):
+    """
+    Perform height tests on a specified tree class (ABR or RB).
+
+    Args:
+        tree_class (class): The class of the tree to be tested (ABR.BinarySearchTree or RB.RedBlackTree).
+        elements (list): List of numbers of elements to insert into the trees.
+        ranges (list): List of range limits for generating random elements.
+        trials (int): Number of trials performed for each test.
+        random_elements (bool): Whether to insert elements randomly or in order.
+
+    Returns:
+        list: A list of average heights across different configurations.
+    """
+    result_heights = []
+
+    for num_elements in elements:
+        average_heights = []
+        for range_limit in ranges:
+            heights = [
+                measure_tree_height(tree_class(), num_elements, range_limit, random_elements)
+                for _ in range(trials)
+            ]
+            average_heights.append(calculate_average(heights))
+        result_heights.append(average_heights)
+        print(average_heights)
+
+    return result_heights
+
+def calculate_average(heights):
+    """
+    Calculate the average of a list of heights.
+
+    Args:
+        heights (list): A list of tree heights.
+
+    Returns:
+        float: The average height.
+    """
+    return sum(heights) / len(heights)
+
+if __name__ == "__main__":
+    test_heights()

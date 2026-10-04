@@ -1,0 +1,67 @@
+# Initialize the game board
+tab = [0, 0, 0,
+       0, 0, 0,
+       0, 0, 0]
+
+# Set the initial player (1 for player 1, -1 for player 2)
+player = 1
+
+# Define the winning combinations
+win = [(0, 1, 2), (3, 4, 5), (6, 7, 8),
+       (0, 3, 6), (1, 4, 7), (2, 5, 8),
+       (0, 4, 8), (2, 4, 6)]
+
+def gameState(tab):
+    """Evaluate the current state of the game board."""
+    for i in win:
+        if tab[i[0]] == 1 and tab[i[1]] == 1 and tab[i[2]] == 1:
+            return 1  # Player 1 wins
+        if tab[i[0]] == -1 and tab[i[1]] == -1 and tab[i[2]] == -1:
+            return -1  # Player 2 wins
+    if tab[8] == 0:
+        return -2  # Game is still ongoing
+    for i in tab:
+        if i == 0:
+            return -2  # Game is still ongoing
+    return 0  # It's a draw
+
+def search(tab, player, t):
+    """Search for the best move for the current player."""
+    state = gameState(tab)
+    if state != -2:
+        return (state * player, -1)
+    list_best = [-2]
+    for cell in range(len(tab)):
+        if tab[cell] == 0:
+            tab[cell] = player
+            val = -search(tab, -player, t + 1)[0]
+            if val > list_best[0]:
+                list_best = [val, cell]
+            elif val == list_best[0]:
+                list_best.append(cell)
+            tab[cell] = 0
+    return list_best
+
+# Run the search to find the best move
+res = search(tab, player, 0)
+winner = res[0] * player
+
+# Print the starting player
+if player == 1:
+    print("Player 1 start.")
+elif player == -1:
+    print("Player 2 start.")
+
+# Print the game result
+if winner == 0:
+    print("It's a draw!")
+else:
+    winner_number = int(winner * -0.5 + 1.5)
+    print("Player " + str(winner_number) + " wins!")
+
+# Print the possible moves for the current player
+str_poss = str(res[1] + 1)
+for i in range(2, len(res)):
+    str_poss += ", " + str(res[i] + 1)
+if winner != -player:
+    print("You can play " + str_poss)

@@ -1,0 +1,80 @@
+class DisjointSet:
+    """
+    A class representing a disjoint set data structure with union-find operations
+    using path compression for efficiency.
+
+    Attributes:
+        size: The number of elements in the disjoint set.
+        parent: A list where each index represents an element, and the value
+                at each index represents the parent of that element. Negative
+                values indicate that the index is a root and the absolute value
+                represents the rank of the set.
+
+    Methods:
+        __init__(size): Initializes the disjoint set with a given number of elements.
+        union(root1, root2): Unites the sets containing root1 and root2.
+        find(root): Finds the representative of the set containing root with path compression.
+    
+    Usage:
+        ds = DisjointSet(size)
+        ds.union(root1, root2)
+        representative = ds.find(root)
+    """
+
+    def __init__(self, size):
+        """
+        Initializes the disjoint set with a given number of elements.
+
+        Parameters:
+            size (int): The number of elements in the disjoint set. Each element is
+                        initially its own set with a negative value indicating its rank.
+        """
+        if size < 0:
+            raise ValueError("Size must be >= 0")
+        
+        self.size = size
+        self.parent = [-1] * (size + 1)  # Initialize all elements as their own root
+
+    def union(self, root1, root2):
+        """
+        Unites the sets containing root1 and root2. The root of root2 becomes a child of root1.
+
+        Parameters:
+            root1 (int): The root of the first set.
+            root2 (int): The root of the second set.
+
+        Raises:
+            ValueError: If root1 or root2 are not valid indices.
+        """
+        if not (0 <= root1 <= self.size) or not (0 <= root2 <= self.size):
+            raise ValueError("Invalid root value")
+        
+        # Ensure root1 becomes the root of the united set
+        root1 = self.find(root1)
+        root2 = self.find(root2)
+
+        if root1 != root2:
+            self.parent[root2] = root1
+
+    def find(self, root):
+        """
+        Finds the representative (root) of the set containing the specified element using path compression.
+
+        Parameters:
+            root (int): The element to find the set representative for.
+
+        Returns:
+            int: The representative (root) of the set containing the specified element.
+
+        Raises:
+            ValueError: If the root is not a valid index.
+        """
+        if not (0 <= root <= self.size):
+            raise ValueError("Invalid root value")
+
+        if self.parent[root] < 0:
+            return root
+        else:
+            # Path compression: make the node's parent the root of the set
+            self.parent[root] = self.find(self.parent[root])
+            return self.parent[root]

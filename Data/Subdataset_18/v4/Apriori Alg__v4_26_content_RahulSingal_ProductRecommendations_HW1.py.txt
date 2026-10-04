@@ -1,0 +1,82 @@
+# Assignment: Cpts 315 HW 1 - Apriori Algorithm
+# Programmer: Rahul Singal (11471764)
+# Date Created: 1/30/18
+# Date Last Edited: 1/30/18
+# Description: Use the Apriori Algorithm to determine buying trends in an 
+#              Amazon Dataset of Market Baskets
+# Collaborators: Prof. Doppa in class pseudocode & slides
+
+# Import necessary libraries
+from itertools import combinations
+
+# Import Dataset
+def load_dataset(filename):
+    with open(filename, 'r') as file:
+        return file.read().splitlines()
+
+# Generate candidate itemsets of size 1
+def generate_C1(dataset):
+    C1 = {}
+    for line in dataset:
+        items = line.split()
+        for item in items:
+            if item in C1:
+                C1[item] += 1
+            else:
+                C1[item] = 1
+    return C1
+
+# Generate frequent itemsets of size 1
+def generate_L1(C1, min_support):
+    return {item: count for item, count in C1.items() if count >= min_support}
+
+# Generate candidate itemsets of size 2 from L1
+def generate_C2(L1):
+    C2 = {}
+    items = list(L1.keys())
+    for i in range(len(items)):
+        for j in range(i+1, len(items)):
+            C2[(items[i], items[j])] = 0
+    return C2
+
+# Count support for candidate itemsets of size 2
+def count_support_C2(C2, dataset):
+    for line in dataset:
+        items = set(line.split())
+        for pair in C2.keys():
+            if set(pair).issubset(items):
+                C2[pair] += 1
+    return C2
+
+# Generate frequent itemsets of size 2
+def generate_L2(C2, min_support):
+    return {pair: count for pair, count in C2.items() if count >= min_support}
+
+# Main function to run the Apriori algorithm
+def apriori(dataset, min_support):
+    # Generate candidate itemsets of size 1
+    C1 = generate_C1(dataset)
+    # Generate frequent itemsets of size 1
+    L1 = generate_L1(C1, min_support)
+    print(f"Frequent 1-itemsets: {L1}")
+
+    # Generate candidate itemsets of size 2
+    C2 = generate_C2(L1)
+    # Count support for candidate itemsets of size 2
+    C2 = count_support_C2(C2, dataset)
+    # Generate frequent itemsets of size 2
+    L2 = generate_L2(C2, min_support)
+    print(f"Frequent 2-itemsets: {L2}")
+
+if __name__ == "__main__":
+    # Load dataset
+    dataset = load_dataset('browsingdata.txt')
+
+    # Use a subset of the dataset for practice
+    practice_data = dataset[:12]
+
+    # Minimum support threshold
+    min_support = 4  # Change to 100 for real data
+
+    # Run the Apriori algorithm
+    apriori(practice_data, min_support)

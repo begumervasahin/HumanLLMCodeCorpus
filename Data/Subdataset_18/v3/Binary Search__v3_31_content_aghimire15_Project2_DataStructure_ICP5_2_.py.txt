@@ -1,0 +1,48 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+# Load the dataset
+data = pd.read_csv('winequality-red.csv')
+
+# Select only numerical features and handle missing data by interpolation
+numeric_data = data.select_dtypes(include=[np.number]).interpolate().dropna()
+
+# Log-transform the target variable (wine quality)
+y = np.log(data['quality'])
+
+# Prepare the feature matrix by excluding the target variable
+X = numeric_data.drop(columns=['quality'])
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+# Initialize the linear regression model and fit it to the training data
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+
+# Evaluate the model by printing the R^2 score on the test data
+r2_score = lr_model.score(X_test, y_test)
+print(f"R^2 score: {r2_score:.4f}")
+
+# Generate predictions on the test set
+y_pred = lr_model.predict(X_test)
+
+# Calculate and print the Root Mean Squared Error (RMSE)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+
+# Calculate and display the correlation matrix for numerical features
+correlation_matrix = numeric_data.corr()
+top_correlated_features = correlation_matrix['quality'].sort_values(ascending=False).head(5)
+print("Top 5 features correlated with quality:\n", top_correlated_features)
+
+# Display the number of null values in each feature
+null_counts = data.isnull().sum().sort_values(ascending=False)
+if null_counts.sum() > 0:
+    print("\nNull value counts by feature:\n", null_counts[null_counts > 0])
+else:
+    print("\nNo missing values found in the dataset.")

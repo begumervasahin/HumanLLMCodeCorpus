@@ -1,0 +1,54 @@
+import nltk.corpus
+import re
+import string
+import pandas as pd
+from math import log
+
+# Load the data
+data = pd.read_csv('tf_idf.csv')
+
+# Extract reviewer IDs and document titles
+reviewer = data['id'].tolist()
+reviewer.insert(0, "reviewerID")
+documents = data['title'].tolist()
+
+# Check the type of the documents list and print its length
+print(type(documents))
+print(len(documents))
+
+# Compile a regex pattern to remove punctuation
+punctuation_pattern = re.compile('[%s]' % re.escape(string.punctuation))
+
+# Tokenize and clean each document
+term_vectors = []
+for doc in documents:
+    doc = str(doc).lower()
+    doc = punctuation_pattern.sub('', doc)
+    term_vectors.append(doc.split())
+
+# Flatten the list of lists into a single list of words
+def flatten(lists):
+    return [word for sublist in lists for word in sublist]
+
+word_list = flatten(term_vectors)
+
+# Print the length of the word list
+print(len(word_list))
+
+# Convert the list of words to a frequency dictionary
+def word_list_to_freq_dict(word_list):
+    word_freq = {word: word_list.count(word) for word in word_list}
+    sorted_items = sorted(word_freq.items(), key=lambda item: item[1], reverse=True)
+    
+    final_result = [
+        (word, freq, round(log(len(word_list) / freq, 10), 4), freq * log(len(word_list) / freq, 10))
+        for word, freq in sorted_items
+    ]
+    
+    return final_result
+
+# Generate the final list with word frequencies and additional calculations
+final_results = word_list_to_freq_dict(word_list)
+
+# Print the final results
+print(final_results)

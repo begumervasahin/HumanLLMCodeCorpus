@@ -1,0 +1,69 @@
+import random
+import time
+from graph import Vertex, Graph
+from dijkstra import dijkstra as Dijkstra
+from prim import prim as Prim
+
+def generate_random_weighted_graph(num_vertices, edge_probability, weight_min, weight_max):
+    """
+    Generate a random weighted graph.
+
+    :param num_vertices: Number of vertices in the graph.
+    :param edge_probability: Probability of an edge between any two vertices.
+    :param weight_min: Minimum weight of an edge.
+    :param weight_max: Maximum weight of an edge.
+    :return: An instance of Graph with the specified properties.
+    """
+    graph = Graph()
+    for vertex_id in range(1, num_vertices + 1):
+        graph.addVertex(str(vertex_id))
+    
+    for vertex_a in graph:
+        for vertex_b in graph:
+            if vertex_a.getId() == vertex_b.getId() or vertex_b.getId() in vertex_a.getConnections():
+                continue
+            if edge_probability > random.uniform(0, 100):
+                weight = random.randint(weight_min, weight_max)
+                graph.addEdge(vertex_a.getId(), vertex_b.getId(), weight)
+    
+    return graph
+
+def measure_algorithm_time(graph, algorithm, start_vertex_id):
+    """
+    Measure the execution time of a graph algorithm.
+
+    :param graph: The graph on which the algorithm will run.
+    :param algorithm: The algorithm function to be measured.
+    :param start_vertex_id: The ID of the starting vertex.
+    :return: The execution time in seconds.
+    """
+    start_time = time.time()
+    algorithm(graph, graph.getVertex(start_vertex_id))
+    return time.time() - start_time
+
+def main():
+    """
+    Main function to generate sample graphs and measure the performance of Dijkstra's and Prim's algorithms.
+    """
+    sample_graphs = [
+        (200, 90, 1, 5),
+        (300, 90, 1, 5),
+        (400, 90, 1, 5),
+        (200, 20, 1, 5),
+        (300, 20, 1, 5),
+        (400, 20, 1, 5)
+    ]
+
+    for i, (num_vertices, edge_probability, weight_min, weight_max) in enumerate(sample_graphs):
+        graph = generate_random_weighted_graph(num_vertices, edge_probability, weight_min, weight_max)
+        
+        dijkstra_time = measure_algorithm_time(graph, Dijkstra, '1')
+        prim_time = measure_algorithm_time(graph, Prim, '1')
+        
+        print(f"----------------- Sample {i + 1} -----------------")
+        print(f"Dijkstra: {dijkstra_time:.6f} seconds")
+        print(f"Prim: {prim_time:.6f} seconds")
+        print("----------------------------------------------------\n")
+
+if __name__ == '__main__':
+    main()

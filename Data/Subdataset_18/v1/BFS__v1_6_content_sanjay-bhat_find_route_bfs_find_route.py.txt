@@ -1,0 +1,92 @@
+import romania
+import sys
+
+class FindRoute:
+    def findRoute(self):
+        fileInput = sys.argv[1]
+        dest1 = sys.argv[2]  # First Destination
+        dest2 = sys.argv[3]  # Second Destination
+        totalDistance = 0  # Cumulative Distance
+        stack = []
+
+        # Get Graphical representation of unique vertices and their respective weights
+        biDirGraph = romania.romania(0).getDataRomania(fileInput)
+
+        graph = biDirGraph[0]
+        vertices = biDirGraph[1]
+        visited = [False] * vertices
+
+        for i in range(vertices):
+            if not visited[i]:
+                # Traverse the graph and mark vertices as 'Visited' according to levels
+                self.sort(graph, dest1, visited, stack)
+
+        dist = [float("Inf")] * vertices  # Total Distance From Destination 1 to all vertices
+        dist[list(graph.keys()).index(dest1)] = 0.0
+        fromCity = [0] * vertices  # Destination 1 or via vertices
+        toCity = [0] * vertices  # Destination 2 or via vertices
+        toFroDist = [0] * vertices  # Distance between internal vertices, i.e: city to city till Destination 2
+
+        while stack:
+            pos = stack.pop()  # Get each vertex(city) according to levels
+            for destination, distance in graph[pos]:
+                # Distance between starting or intermediate vertex and adjacent vertex
+                cumulativeDistance = float(dist[list(graph.keys()).index(pos)]) + float(distance)
+
+                # Checks if weight of vertex exceeds cumulative path weight, in this case distances between vertices
+                if float(dist[list(graph.keys()).index(destination)]) > cumulativeDistance:
+                    dist[list(graph.keys()).index(destination)] = cumulativeDistance
+                    fromCity[list(graph.keys()).index(destination)] = pos
+                    toCity[list(graph.keys()).index(destination)] = destination
+                    toFroDist[list(graph.keys()).index(destination)] = float(distance)
+
+                    if destination == dest2:
+                        totalDistance = cumulativeDistance
+
+        pos = 0
+        returnStr = []
+        finalDist = totalDistance
+
+        # Get individual distances between adjacent nodes from Destination 1 to Destination 2
+        while totalDistance != 0:
+            if toCity[pos] == dest2:
+                returnStr.append(fromCity[pos])
+                returnStr.append(toCity[pos])
+                returnStr.append(str(toFroDist[pos]))
+                totalDistance = dist[pos] - toFroDist[pos]
+                dest2 = fromCity[pos]  # Via node
+                pos = 0
+            else:
+                pos += 1
+
+        # Bottom-Up traversal
+        returnStr.reverse()
+
+        # Print the paths
+        if finalDist == 0:
+            pathStr = "distance: infinity\nroute:\nnone\n"
+        else:
+            pathStr = "distance: " + str(finalDist) + " km\n" + "route:\n"
+            pos = 0
+            while pos < len(returnStr):
+                pathStr += returnStr[pos + 2] + " to " + returnStr[pos + 1] + ", " + returnStr[pos] + " km\n"
+                pos += 3
+
+        print(pathStr)
+
+    # Traverse the graph and mark vertices as 'Visited' according to levels
+    def sort(self, graph, dest1, visited, stack):
+        visited[list(graph.keys()).index(dest1)] = True
+        if dest1 in graph.keys():
+            for d, distance in graph[dest1]:
+                if not visited[list(graph.keys()).index(d)]:
+                    self.sort(graph, d, visited, stack)
+        stack.append(dest1)
+
+# Main method
+def main():
+    obj = FindRoute()
+    obj.findRoute()
+
+if __name__ == "__main__":
+    main()

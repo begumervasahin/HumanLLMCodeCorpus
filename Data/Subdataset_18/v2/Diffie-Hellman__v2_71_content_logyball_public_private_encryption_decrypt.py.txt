@@ -1,0 +1,60 @@
+def read_private_key(pub_key_file):
+    """
+    Read the public key file and return the private key and prime number.
+
+    Parameters:
+    pub_key_file (str): Path to the public key file.
+
+    Returns:
+    tuple: A tuple containing the private key and prime number.
+    """
+    with open(pub_key_file, 'r') as file:
+        lines = file.readlines()
+    prime = int(lines[0].strip())
+    private_key = int(lines[2].strip())
+    return private_key, prime
+
+def decrypt_block(private_key, c1, c2, prime):
+    """
+    Decrypt a single block of ciphertext.
+
+    Parameters:
+    private_key (int): The private key.
+    c1 (int): The first part of the ciphertext.
+    c2 (int): The second part of the ciphertext.
+    prime (int): The prime number used in the encryption.
+
+    Returns:
+    int: The decrypted plaintext as an integer.
+    """
+    decrypted_value = (pow(c1, prime - 1 - private_key, prime) * (c2 % prime)) % prime
+    return decrypted_value
+
+def decrypt_file(read_path="test/testEncrypted.txt", write_path="test/testDecrypted.txt", pri_key_path='test/testprikey.txt', debug=False):
+    """
+    Decrypt the contents of a file using a private key.
+
+    Parameters:
+    read_path (str): Path to the file containing the encrypted text.
+    write_path (str): Path to the file where the decrypted text will be written.
+    pri_key_path (str): Path to the file containing the private key.
+    debug (bool): If True, print debug information. Default is False.
+    """
+    private_key, prime = read_private_key(pri_key_path)
+    
+    with open(read_path, 'r') as read_file:
+        cipher_lines = read_file.readlines()
+    
+    decrypted_output = ''
+    for line in cipher_lines:
+        c1, c2 = map(int, line.split())
+        decrypted_output += chr(decrypt_block(private_key, c1, c2, prime))
+    
+    if debug:
+        print(f"DEBUG decrypted output: \n{decrypted_output}\n")
+    
+    with open(write_path, 'w', encoding='utf-8') as write_file:
+        write_file.write(decrypted_output)
+
+if __name__ == '__main__':
+    decrypt_file(debug=True)

@@ -1,0 +1,85 @@
+import numpy as np
+
+def load_data(filename: str) -> np.array:
+    """
+    Loads the dataset from a file and returns it as a NumPy array.
+    
+    Parameters:
+    - filename (str): The name of the file containing the dataset.
+
+    Returns:
+    - np.array: A NumPy array with the dataset, with an additional column for cluster assignment initialized to 0.
+    """
+    data = []
+    with open(filename, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            # Convert each line into a list of floats and append a zero for cluster assignment
+            data.append([float(value) for value in line.strip().split('\t')] + [0])
+    return np.asarray(data)
+
+def compute_error(X: np.array, M: np.array) -> float:
+    """
+    Computes the average error of the clustering.
+    
+    Parameters:
+    - X (np.array): The dataset with cluster assignments.
+    - M (np.array): The array of centroids.
+
+    Returns:
+    - float: The average error of the clustering.
+    """
+    error = 0.0
+    for x in X:
+        # Compute the Euclidean distance between each point and its assigned centroid
+        error += np.linalg.norm(x[:-1] - M[int(x[-1])])
+    return error / X.shape[0]
+
+def calculate_mean(X: np.array, M: np.array) -> np.array:
+    """
+    Recalculates the centroids based on the current cluster assignments.
+    
+    Parameters:
+    - X (np.array): The dataset with cluster assignments.
+    - M (np.array): The array of current centroids.
+
+    Returns:
+    - np.array: The updated centroids.
+    """
+    new_centroids = np.zeros(M.shape)
+    counts = np.zeros(M.shape[0])
+
+    for x in X:
+        cluster_id = int(x[-1])
+        new_centroids[cluster_id] += x[:-1]
+        counts[cluster_id] += 1
+
+    for i in range(M.shape[0]):
+        if counts[i] > 0:
+            new_centroids[i] /= counts[i]  # Avoid division by zero
+
+    return new_centroids
+
+def group_data(X: np.array, M: np.array) -> np.array:
+    """
+    Assigns each data point in the dataset to the nearest cluster based on Euclidean distance.
+    
+    Parameters:
+    - X (np.array): The dataset.
+    - M (np.array): The array of centroids.
+
+    Returns:
+    - np.array: The dataset with updated cluster assignments.
+    """
+    for i in range(X.shape[0]):
+        point = X[i][:-1]
+        shortest_distance = float("inf")
+        cluster_id = 0
+
+        for idx, centroid in enumerate(M):
+            distance = np.linalg.norm(point - centroid)
+            if distance < shortest_distance:
+                shortest_distance = distance
+                X[i][-1] = idx  # Assign the point to the closest centroid
+
+    return X

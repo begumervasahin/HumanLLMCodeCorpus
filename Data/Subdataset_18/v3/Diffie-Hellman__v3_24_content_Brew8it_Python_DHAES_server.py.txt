@@ -1,0 +1,79 @@
+import socket
+from binascii import hexlify
+import DiffieHellman
+import nacl.secret
+
+def initialize_server(server_address=('localhost', 5555)):
+    """
+    Initialize the Diffie-Hellman server and set up the socket connection.
+
+    Args:
+        server_address (tuple): A tuple containing the server IP address and port number.
+
+    Returns:
+        tuple: A tuple containing the server object and the socket object.
+    """
+    server = DiffieHellman.D_H()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(server_address)
+    sock.listen(1)
+    print(f"Server is listening on {server_address[0]}:{server_address[1]}")
+    return server, sock
+
+def perform_key_exchange(connection, server):
+    """
+    Perform the key exchange between the client and the server.
+
+    Args:
+        connection (socket.socket): The client connection socket.
+        server (DiffieHellman.D_H): The Diffie-Hellman server object.
+
+    Returns:
+        nacl.secret.SecretBox: The NaCl SecretBox object for encryption and decryption.
+    """
+    client_pubkey = connection.recv(9000).decode()
+    connection.sendall(str(server.pubKey).encode())
+    server.genKey(int(client_pubkey))
+    secret_key = server.getKey()
+    print("Secret key:", hexlify(secret_key).decode())
+    return nacl.secret.SecretBox(secret_key)
+
+def handle_client_communication(connection, box):
+    """
+    Handle communication with the client, encrypting and decrypting messages.
+
+    Args:
+        connection (socket.socket): The client connection socket.
+        box (nacl.secret.SecretBox): The NaCl SecretBox object for encryption and decryption.
+    """
+    echo_string = "I have received | "
+    
+    while True:
+        msg = connection.recv(9000)
+        if msg:
+            decrypted_msg = box.decrypt(msg).decode()
+            print(f'Received "{decrypted_msg}", echoing back to client.')
+            response_msg = echo_string + decrypted_msg
+            connection.sendall(box.encrypt(response_msg.encode()))
+        else:
+            break
+    
+    print('Closing connection.')
+    connection.close()
+
+def main():
+    """
+    Main function to initialize the server, accept client connections, and handle communication.
+    """
+    server, sock = initialize_server()
+    print('Server is waiting for a connection...')
+    
+    while True:
+        connection, client_address = sock.accept()
+        print('Connection from IP:', client_address)
+        
+        box = perform_key_exchange(connection, server)
+        handle_client_communication(connection, box)
+
+if __name__ == "__main__":
+    main()

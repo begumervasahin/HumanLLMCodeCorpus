@@ -1,0 +1,102 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.spatial.distance as metric
+
+def initialize(dataset, k):
+    """
+    Initialize centroids for k-means clustering.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    k (int): The number of clusters.
+
+    Returns:
+    np.matrix: Initialized centroids.
+    """
+    n_features = np.shape(dataset)[1]
+    centroids = np.mat(np.zeros((k, n_features)))
+    for i in range(n_features):
+        min_val = min(dataset[:, i])
+        range_val = float(max(dataset[:, i]) - min_val)
+        centroids[:, i] = min_val + range_val * np.random.rand(k, 1)
+    return centroids
+
+def cluster(dataset, k):
+    """
+    Perform k-means clustering on the dataset.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    k (int): The number of clusters.
+
+    Returns:
+    np.matrix: Final centroids.
+    np.matrix: Cluster assignment and squared distance.
+    int: Number of iterations.
+    np.matrix: Initial centroids.
+    """
+    n_samples = np.shape(dataset)[0]
+    cluster_class = np.mat(np.zeros((n_samples, 2)))
+    centroids = initialize(dataset, k)
+    centroids_origin = centroids.copy()
+    changed = True
+    n_iter = 0
+
+    while changed:
+        changed = False
+        for i in range(n_samples):
+            min_dist = np.inf
+            min_index = -1
+            for j in range(k):
+                distance = metric.euclidean(centroids[j, :], dataset[i, :])
+                if distance < min_dist:
+                    min_dist = distance
+                    min_index = j
+            if cluster_class[i, 0] != min_index:
+                changed = True
+            cluster_class[i, :] = min_index, min_dist ** 2
+
+        for cent in range(k):
+            points = dataset[np.nonzero(cluster_class[:, 0].A == cent)[0]]
+            centroids[cent, :] = np.mean(points, axis=0)
+
+        n_iter += 1
+        print(f"Iteration {n_iter}")
+
+    return centroids, cluster_class, n_iter, centroids_origin
+
+def main():
+    print('k-Means Clustering Algorithm in Python')
+
+    # Load dataset
+    filename = 'kmeans_data.csv'
+    dataset = np.genfromtxt(filename, delimiter=',')
+
+    # Plot the dataset
+    plt.scatter(dataset[:, 0], dataset[:, 1])
+    plt.title('Dataset')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.show()
+
+    # Get number of clusters from user
+    k = int(input("Number of Centroids: "))
+
+    # Perform clustering
+    centroids, cluster_classes, n, origin_centroids = cluster(dataset, k)
+
+    # Display results
+    print('Number of iterations:', n)
+    print('\nFinal centroids:\n', centroids)
+    print('\nOriginal centroids:\n', origin_centroids)
+
+    # Plot the clustered data
+    newSet = np.concatenate((dataset, cluster_classes), axis=1)
+    plt.scatter(newSet[:, 0], newSet[:, 1], c=newSet[:, 2])
+    plt.title('Clustered Data')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

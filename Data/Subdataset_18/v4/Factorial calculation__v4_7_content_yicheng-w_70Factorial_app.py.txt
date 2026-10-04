@@ -1,0 +1,52 @@
+from flask import Flask, render_template, request
+import util
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    """
+    Render the homepage where users can input their query.
+    """
+    return render_template("index.html")
+
+@app.route("/results", methods=["GET", "POST"])
+def results():
+    """
+    Handle the query from the form submission, process the data, and display the results.
+    """
+    if request.method == "GET":
+        # Retrieve query and mode from request arguments
+        query = request.args.get('question', '').strip()
+        mode = request.args.get('type', '').strip()
+
+        if not query or not mode:
+            # Return to the homepage with an error message if input is invalid
+            return render_template('index.html', error="Both 'question' and 'type' must be provided.")
+
+        # Get a list of URLs based on the query
+        urls = util.get_list_of_urls(query, 10)
+        results = {}
+
+        for url in urls:
+            # Extract text from each URL
+            text = util.get_text_from_url(url)
+            
+            # Process the text based on the mode specified
+            if mode == 'Who':
+                results = util.find_name(text, results)
+            elif mode == 'When':
+                results = util.find_date(text, results)
+            else:
+                # Handle invalid mode
+                return render_template('index.html', error="Invalid 'type' provided. Use 'Who' or 'When'.")
+
+        # Sort results and render the results page
+        sorted_results = util.sort_dict_by_value(results, 10)
+        return render_template('results.html', question=query, results=sorted_results)
+    
+    # If method is POST or any other method, redirect to index.html
+    return render_template('index.html')
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)

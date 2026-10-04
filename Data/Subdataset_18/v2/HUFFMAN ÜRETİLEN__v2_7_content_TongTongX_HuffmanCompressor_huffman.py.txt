@@ -1,0 +1,111 @@
+import heapq
+from collections import Counter
+
+# Tree structures for Huffman encoding
+class TreeLeafEndMessage:
+    pass
+
+class TreeLeaf:
+    def __init__(self, value):
+        self.value = value
+
+class TreeBranch:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+# MinHeap implementation using heapq for managing Huffman Tree nodes
+class MinHeap:
+    def __init__(self):
+        self.heap = []
+    
+    def add(self, priority, item):
+        heapq.heappush(self.heap, (priority, item))
+    
+    def pop_min(self):
+        return heapq.heappop(self.heap)
+    
+    def __len__(self):
+        return len(self.heap)
+
+# Build the Huffman Tree from a frequency table
+def build_huffman_tree(freq_table):
+    heap = MinHeap()
+    heap.add(1, TreeLeafEndMessage())
+    
+    for symbol, freq in freq_table.items():
+        heap.add(freq, TreeLeaf(symbol))
+    
+    while len(heap) > 1:
+        left_freq, left_node = heap.pop_min()
+        right_freq, right_node = heap.pop_min()
+        combined_freq = left_freq + right_freq
+        heap.add(combined_freq, TreeBranch(left_node, right_node))
+    
+    _, huffman_tree = heap.pop_min()
+    return huffman_tree
+
+# Decode a bit stream using the Huffman tree
+def decode_huffman(tree, bitreader):
+    while True:
+        if isinstance(tree, TreeLeafEndMessage):
+            return None
+        elif isinstance(tree, TreeLeaf):
+            return tree.value
+        elif isinstance(tree, TreeBranch):
+            tree = tree.left if bitreader.readbit() == 0 else tree.right
+        else:
+            raise TypeError(f'{type(tree)} is not a recognized tree type')
+
+# Create an encoding table (dictionary) from the Huffman tree
+def create_encoding_table(huffman_tree):
+    encoding_table = {}
+    
+    def traverse(tree, path):
+        if isinstance(tree, TreeLeafEndMessage):
+            encoding_table[None] = path
+        elif isinstance(tree, TreeLeaf):
+            encoding_table[tree.value] = path
+        elif isinstance(tree, TreeBranch):
+            traverse(tree.left, path + (False,))
+            traverse(tree.right, path + (True,))
+        else:
+            raise TypeError(f'{type(tree)} is not a recognized tree type')
+    
+    traverse(huffman_tree, ())
+    return encoding_table
+
+# Generate a frequency table from an input stream
+def generate_freq_table(stream):
+    frequency_counter = Counter()
+    buffer = bytearray(512)
+    
+    while True:
+        bytes_read = stream.readinto(buffer)
+        frequency_counter.update(buffer[:bytes_read])
+        if bytes_read < len(buffer):
+            break
+    
+    return frequency_counter
+
+# Example usage
+if __name__ == "__main__":
+    # Example binary stream (could be a file or other binary source)
+    data = b"example data for Huffman encoding"
+    
+    # Generate frequency table from data stream
+    freq_table = generate_freq_table(iter(data))
+    
+    # Build Huffman tree from frequency table
+    huffman_tree = build_huffman_tree(freq_table)
+    
+    # Create encoding table from Huffman tree
+    encoding_table = create_encoding_table(huffman_tree)
+    
+    # Display the frequency table
+    print("Frequency Table:", freq_table)
+    
+    # Display the encoding table
+    print("Encoding Table:", encoding_table)
+
+    # Note: Decoding requires a bitreader implementation, which is not provided here.

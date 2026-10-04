@@ -1,0 +1,99 @@
+import socket
+import threading
+from Crypto.PublicKey import RSA
+
+class Server:
+    def __init__(self, port=1423):
+        self.PORT = port
+        self.CODING = "ISO-8859-1"
+        self.TEXTCODE = "UTF-8"
+        self.clients = []
+        self.sock = self.setup_server_socket()
+        threading.Thread(target=self.accept_clients).start()
+
+    def setup_server_socket(self):
+        sock = socket.socket()
+        sock.bind(('', self.PORT))
+        sock.listen()
+        print(f"Server started on port {self.PORT}")
+        return sock
+
+    def accept_clients(self):
+        while True:
+            conn, addr = self.sock.accept()
+            client = Client(conn, addr)
+            self.clients.append(client)
+            print(f"Client connected from {addr}")
+            threading.Thread(target=self.handle_client, args=(client,)).start()
+
+    def handle_client(self, client):
+        while True:
+            data = self.receive_data(client.socket)
+            if not data:
+                continue
+            name, message = self.split_message(data)
+            self.process_message(client, name, message)
+
+    def split_message(self, data):
+        name, message = data.split(':', 1)
+        return name, message.encode(self.CODING)
+
+    def process_message(self, client, name, message_bytes):
+        try:
+            public_key = RSA.importKey(message_bytes)
+            print("Public key received.")
+            client.set_key(public_key, name)
+        except Exception as e:
+            print(f"Error importing key: {e}")
+            self.broadcast_message(message_bytes, client, name)
+
+    def broadcast_message(self, message, client, target_name=None):
+        sender = self.get_client_by_name(target_name)
+        if sender and sender.key:
+            try:
+                encrypted_message = sender.key.encrypt(self.encode_text(client.name) + b'->' + message, b'')[0]
+                self.send_to_all_clients(encrypted_message, client)
+            except Exception as e:
+                print(f"Error sending data: {e}")
+
+    def send_to_all_clients(self, message, sender_client):
+        for user in self.clients:
+            if user.name != sender_client.name:
+                user.send_data(message)
+
+    def get_client_by_name(self, name):
+        return next((client for client in self.clients if client.name == name), None)
+
+    def receive_data(self, connection):
+        try:
+            return connection.recv(16384).decode(self.CODING)
+        except Exception as e:
+            print(f"Error receiving data: {e}")
+            return ''
+
+    def encode_text(self, text):
+        try:
+            return text.encode(self.TEXTCODE)
+        except UnicodeEncodeError:
+            return text.encode(self.CODING)
+
+class Client:
+    def __init__(self, connection, address):
+        self.socket = connection
+        self.key = None
+        self.name = None
+        self.address = address
+
+    def set_key(self, key, name):
+        if not self.key:
+            self.key = key
+            self.name = name
+
+    def send_data(self, data):
+        try:
+            self.socket.send(data)
+        except Exception as e:
+            print(f"Error sending data to client {self.address}: {e}")
+
+if __name__ == "__main__":
+    server = Server()

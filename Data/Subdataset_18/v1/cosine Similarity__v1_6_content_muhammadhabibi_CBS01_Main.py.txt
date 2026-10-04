@@ -1,0 +1,50 @@
+import math
+import numpy as np
+import json
+import yaml
+import nltk
+from Preprocessing import preprocess
+from TF_IDF import compute_tfidf
+from CosineSimilarity import compute_similarity
+
+# Load and preprocess comments
+with open('komentar.json', 'r') as output_file:
+    komentar = yaml.safe_load(output_file)
+
+with open('komentar_bersih.txt', 'r') as komentar_bersih:
+    data = komentar_bersih.read().split('\n')
+
+# Preprocess comments
+komen_bersih = [preprocess(komen) for komen in data]
+
+# Compute TF-IDF vectors for comments
+vector = [compute_tfidf(komen) for komen in komen_bersih]
+
+# Test sentences
+kalimat = [
+    "sebaiknya waktu kuliahnya jangan terlalu sore",
+    "lebih keras lagi suara",
+    "buku rujukan kurang jelas mau pakai mana"
+]
+
+# Compute TF-IDF vectors and similarities
+for test in kalimat:
+    print('---------------------------------------------------------------------------------------')
+    print('Data Testing:', test)
+    
+    input_vector = compute_tfidf(nltk.Text(str(test)))
+    results = []
+    
+    for i, t in enumerate(vector):
+        similarity_score = compute_similarity(input_vector, t)
+        results.append((i, similarity_score, komen_bersih[i]))
+    
+    # Sort results by similarity score in descending order and print the best match
+    best_match = sorted(results, key=lambda x: x[1], reverse=True)[0]
+    print('Best Match:', best_match)
+    print('------------------------------------------------------------------------')
+    
+    # Print all comments with a similarity score >= 0.93
+    for (index, cosine, kal) in results:
+        if cosine >= 0.93:
+            print(cosine, kal)

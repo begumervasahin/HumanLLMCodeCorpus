@@ -1,0 +1,149 @@
+import heapq
+
+class Vertex:
+    def __init__(self, vertex_id):
+        """
+        Initialize a vertex with an ID, distance, previous vertex, and adjacency list.
+
+        Parameters:
+        vertex_id (any): The ID of the vertex.
+        """
+        self.vertex_id = vertex_id
+        self.distance = float('inf')
+        self.previous = None
+        self.adjacent = []
+        self.visited = False
+
+    def get_id(self):
+        return self.vertex_id
+
+    def get_distance(self):
+        return self.distance
+
+    def set_distance(self, distance):
+        self.distance = distance
+
+    def get_previous(self):
+        return self.previous
+
+    def set_previous(self, previous):
+        self.previous = previous
+
+    def add_neighbor(self, neighbor, weight):
+        self.adjacent.append((neighbor, weight))
+
+    def get_weight(self, neighbor):
+        for n, weight in self.adjacent:
+            if n == neighbor:
+                return weight
+        return float('inf')
+
+    def set_visited(self):
+        self.visited = True
+
+class Graph:
+    def __init__(self):
+        """
+        Initialize an empty graph with a dictionary of vertices.
+        """
+        self.vertices = {}
+
+    def add_vertex(self, vertex):
+        """
+        Add a vertex to the graph.
+
+        Parameters:
+        vertex (Vertex): The vertex to add.
+        """
+        self.vertices[vertex.get_id()] = vertex
+
+    def get_vertex(self, vertex_id):
+        """
+        Get a vertex from the graph.
+
+        Parameters:
+        vertex_id (any): The ID of the vertex to retrieve.
+
+        Returns:
+        Vertex: The vertex with the specified ID.
+        """
+        return self.vertices.get(vertex_id)
+
+    def add_edge(self, from_id, to_id, weight):
+        """
+        Add an edge between two vertices in the graph.
+
+        Parameters:
+        from_id (any): The ID of the starting vertex.
+        to_id (any): The ID of the ending vertex.
+        weight (float): The weight of the edge.
+        """
+        from_vertex = self.get_vertex(from_id)
+        to_vertex = self.get_vertex(to_id)
+        if from_vertex and to_vertex:
+            from_vertex.add_neighbor(to_vertex, weight)
+            to_vertex.add_neighbor(from_vertex, weight)  # Assuming undirected graph
+
+def dijkstra(graph, start_id):
+    """
+    Compute the shortest paths from the start vertex to all other vertices using Dijkstra's algorithm.
+
+    Parameters:
+    graph (Graph): The graph to compute shortest paths for.
+    start_id (any): The ID of the starting vertex.
+
+    Returns:
+    tuple: A tuple containing two dictionaries:
+        - distances (dict): Shortest distances from the start vertex to each vertex.
+        - predecessors (dict): Predecessors of each vertex in the shortest path.
+    """
+    start_vertex = graph.get_vertex(start_id)
+    start_vertex.set_distance(0)
+
+    # Initialize priority queue with vertices
+    unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph.vertices.values()]
+    heapq.heapify(unvisited_queue)
+
+    while unvisited_queue:
+        current_distance, current_vertex = heapq.heappop(unvisited_queue)
+
+        if current_vertex.visited:
+            continue
+
+        current_vertex.set_visited()
+
+        # Update distances for neighboring vertices
+        for neighbor, weight in current_vertex.adjacent:
+            if neighbor.visited:
+                continue
+
+            new_distance = current_vertex.get_distance() + weight
+            if new_distance < neighbor.get_distance():
+                neighbor.set_distance(new_distance)
+                neighbor.set_previous(current_vertex)
+
+        # Rebuild the priority queue with updated distances
+        unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph.vertices.values() if not vertex.visited]
+        heapq.heapify(unvisited_queue)
+
+    # Extract distances and predecessors for all vertices
+    distances = {vertex.get_id(): vertex.get_distance() for vertex in graph.vertices.values()}
+    predecessors = {vertex.get_id(): vertex.get_previous().get_id() if vertex.get_previous() else None for vertex in graph.vertices.values()}
+    
+    return distances, predecessors
+
+def print_path(vertex, predecessors, graph):
+    """
+    Print the shortest path from the start vertex to a given vertex.
+
+    Parameters:
+    vertex (Vertex): The destination vertex.
+    predecessors (dict): A dictionary of predecessors for each vertex.
+    graph (Graph): The graph instance.
+    """
+    path = []
+    while vertex:
+        path.append(vertex.get_id())
+        vertex = graph.get_vertex(predecessors.get(vertex.get_id()))
+    path.reverse()
+    print(" -> ".join(map(str, path)))

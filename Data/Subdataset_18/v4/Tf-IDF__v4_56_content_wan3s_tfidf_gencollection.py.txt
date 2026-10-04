@@ -1,0 +1,37 @@
+import os
+import morph
+import utils
+from constants import *
+
+def create_collection(articles_path=ARTICLES_DIR_NAME):
+    if not os.path.exists(articles_path):
+        print('ОШИБКА: не получается найти статьи')
+        return -1
+    
+    # Extract and normalize text
+    raw_text = extract_text(articles_path)
+    sentences = raw_text.split(SPLIT_SENTENCES)
+    normalized_docs, tf_counter = morph.normalizeArrayOfDoc(sentences)
+    
+    # Write results to files
+    utils.writeToFile(COLLECTIONS_FILE_NAME, normalized_docs)
+    utils.writeToFile(TF_FILE_NAME, tf_counter)
+    
+    return 0
+
+def extract_text(dir_name):
+    result_text = ''
+    
+    for dir_item in os.listdir(dir_name):
+        path_to_item = os.path.join(dir_name, dir_item)
+        
+        if os.path.isdir(path_to_item):
+            result_text += extract_text(path_to_item)
+        else:
+            _, file_extension = os.path.splitext(path_to_item)
+            
+            if file_extension == TXT_EXTENSION:
+                with open(path_to_item, FILE_MODE_READ) as file:
+                    result_text += file.read()
+    
+    return result_text

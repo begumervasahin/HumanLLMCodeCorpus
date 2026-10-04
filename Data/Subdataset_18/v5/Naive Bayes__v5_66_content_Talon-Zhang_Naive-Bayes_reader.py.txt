@@ -1,0 +1,71 @@
+"""
+This file is responsible for providing functions for reading the files.
+"""
+
+import os
+import numpy as np
+from nltk.stem.porter import PorterStemmer
+
+# Initialize the PorterStemmer
+porter_stemmer = PorterStemmer()
+bad_words = {'aed', 'oed', 'eed'}
+
+def load_dir(directory, stemming):
+    """
+    Loads text files from a directory, optionally applying stemming.
+    
+    Parameters:
+    - directory (str): The path to the directory containing the files.
+    - stemming (bool): Whether to apply stemming to the words in the files.
+    
+    Returns:
+    - list: A list of lists, where each inner list contains the words from a file.
+    """
+    documents = []
+    
+    for filename in os.listdir(directory):
+        full_path = os.path.join(directory, filename)
+        words = []
+
+        with open(full_path, 'rb') as file:
+            for line in file:
+                words += line.decode(errors='ignore').split()
+
+        if stemming:
+            words = [porter_stemmer.stem(word) if word not in bad_words else word for word in words]
+
+        documents.append(words)
+    
+    return documents
+
+def load_dataset(train_dir, dev_dir, stemming):
+    """
+    Loads and preprocesses the training and development datasets.
+    
+    Parameters:
+    - train_dir (str): The path to the training data directory.
+    - dev_dir (str): The path to the development data directory.
+    - stemming (bool): Whether to apply stemming to the words in the files.
+    
+    Returns:
+    - tuple: Four elements - training data (X_train), training labels (Y_train), test data (X_test), test labels (Y_test).
+    """
+    # Load training data
+    X_train_ham = load_dir(os.path.join(train_dir, 'ham'), stemming)
+    X_train_spam = load_dir(os.path.join(train_dir, 'spam'), stemming)
+    X_train = X_train_ham + X_train_spam
+    Y_train = np.array([0] * len(X_train_ham) + [1] * len(X_train_spam))
+
+    # Load test data
+    X_test_ham = load_dir(os.path.join(dev_dir, 'ham'), stemming)
+    X_test_spam = load_dir(os.path.join(dev_dir, 'spam'), stemming)
+    X_test = X_test_ham + X_test_spam
+    Y_test = np.array([0] * len(X_test_ham) + [1] * len(X_test_spam))
+
+    return X_train, Y_train, X_test, Y_test
+
+# Example usage:
+# train_dir = 'path/to/train'
+# dev_dir = 'path/to/dev'
+# stemming = True
+# X_train, Y_train, X_test, Y_test = load_dataset(train_dir, dev_dir, stemming)

@@ -1,0 +1,93 @@
+import math
+import random
+import time
+
+def power_of_two(n):
+    """
+    Decompose n as d * 2^r, returning r and d.
+
+    Args:
+    n (int): The number to decompose.
+
+    Returns:
+    tuple: A tuple containing r and d such that n = d * 2^r.
+    """
+    r = 0
+    d = n
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+    assert 2**r * d == n
+    return r, d
+
+def miller_rabin_test(n, k):
+    """
+    Perform the Miller-Rabin primality test.
+
+    Args:
+    n (int): The number to test for primality.
+    k (int): The number of testing rounds.
+
+    Returns:
+    bool: False if n is certainly not prime, True if n is very likely a prime.
+    """
+    if n <= 3:
+        return n == 2 or n == 3
+    if n % 2 == 0:
+        return False
+
+    r, d = power_of_two(n - 1)
+    for _ in range(k):
+        a = random.randint(2, n - 2)
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+
+def simple_is_prime(n):
+    """
+    Perform a simple primality test for comparison.
+
+    Args:
+    n (int): The number to test for primality.
+
+    Returns:
+    bool: True if n is prime, False otherwise.
+    """
+    if n <= 1:
+        return False
+    if n <= 3:
+        return True
+    if n % 2 == 0 or n % 3 == 0:
+        return False
+    i = 5
+    while i * i <= n:
+        if n % i == 0 or n % (i + 2) == 0:
+            return False
+        i += 6
+    return True
+
+def main():
+    """
+    Main function to compare the performance of the primality tests.
+    """
+    n = 200000015717
+    
+    start_time = time.time()
+    print("Miller-Rabin Test:", miller_rabin_test(n, 8))
+    miller_rabin_time = time.time() - start_time
+    print("Miller-Rabin Time:", miller_rabin_time)
+
+    start_time = time.time()
+    print("Simple Primality Test:", simple_is_prime(n))
+    simple_test_time = time.time() - start_time
+    print("Simple Primality Time:", simple_test_time)
+
+if __name__ == "__main__":
+    main()

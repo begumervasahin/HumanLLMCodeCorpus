@@ -1,0 +1,55 @@
+import requests
+import os
+from bs4 import BeautifulSoup
+
+def download_images_from_url(url, save_directory):
+    """
+    Downloads images from a webpage and saves them to a specified directory.
+
+    Parameters:
+    - url (str): The URL of the webpage to scrape images from.
+    - save_directory (str): Directory path where images will be saved.
+    """
+    # Ensure the save directory exists
+    os.makedirs(save_directory, exist_ok=True)
+
+    while True:
+        # Fetch the content of the webpage
+        print(f"Fetching page: {url}")
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for bad responses
+
+        # Parse the webpage content
+        soup = BeautifulSoup(response.text, "lxml")
+        img_elements = soup.select(".image-size-full")
+
+        # Download each image found on the page
+        for element in img_elements:
+            img_url = element.get('src')
+            if img_url:
+                print(f"Downloading image: {img_url}")
+                img_response = requests.get(img_url)
+                img_response.raise_for_status()  # Raise an error for bad responses
+
+                # Save the image to the specified directory
+                img_filename = os.path.join(save_directory, os.path.basename(img_url))
+                with open(img_filename, 'wb') as img_file:
+                    for chunk in img_response.iter_content(1024):  # 1 KB chunks
+                        img_file.write(chunk)
+
+        # Find the link to the next page
+        next_link = soup.find("a", class_="pagination")
+        if next_link and 'href' in next_link.attrs:
+            url = next_link.get('href')
+        else:
+            print("No more pages to download.")
+            break
+
+    print("All images have been downloaded.")
+
+if __name__ == "__main__":
+    # Define the URL and directory for downloading images
+    url = 'https://www.boredpanda.com/funny-pet-jerks/'
+    save_directory = "/home/maria/Pictures/downloaded/"
+    
+    download_images_from_url(url, save_directory)

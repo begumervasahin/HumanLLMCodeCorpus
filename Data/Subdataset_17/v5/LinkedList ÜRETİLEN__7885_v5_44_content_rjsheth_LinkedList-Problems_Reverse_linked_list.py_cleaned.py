@@ -1,0 +1,51 @@
+from Singly_Linked_List import Singly_Linked_List
+def reverse_list(input_list):
+    linked_list = Singly_Linked_List()
+    for item in input_list:
+        linked_list.add(item)
+    print("Input list:", linked_list)
+    current_node = linked_list.head
+    previous_node = None
+    next_node = None
+    if current_node:
+        next_node = current_node.next
+    while current_node:
+        current_node.next = previous_node
+        previous_node = current_node
+        current_node = next_node
+        if current_node:
+            next_node = current_node.next
+    linked_list.head = previous_node
+    return linked_list
+def main():
+    print('\nReverse and deleting in Singly Linked List \n')
+    test_cases = [
+        (1, 2, 3, 4, 5),
+        ('org', 'com', 'her', 'him', 'blah'),
+        (1, 'com', 3, 'him', 5),
+        (1, 'com', Singly_Linked_List(['Fa', 'la', 'al', 'ta']), 'him', 5),
+        ('B',),
+        ('B', 'B', 'B', 'B'),
+        ()
+    ]
+    for i, test_list in enumerate(test_cases):
+        print(f"Test case {i}")
+        returned_list = reverse_list(test_list)
+        print("Output list:", returned_list)
+        if i == 0:
+            print("Deleting 3")
+            returned_list.delete(3)
+        elif i == 1:
+            print("Deleting 'org'")
+            returned_list.delete('org')
+        elif i == 4:
+            print("Deleting 'B'")
+            returned_list.delete('B')
+        elif i == 5:
+            print("Deleting 'B'")
+            returned_list.delete('B')
+        if i in [0, 1, 4, 5]:
+            print("Output list after delete:", returned_list)
+        print('')
+if __name__ == "__main__":
+    main()

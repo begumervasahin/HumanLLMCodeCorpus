@@ -1,0 +1,91 @@
+import datetime
+import json
+import os
+import util.slurm as slurm
+
+def fetch_slurm_info():
+    """
+    Fetch partition and queue information from SLURM.
+    
+    :return: Partitions and Squeue objects.
+    """
+    return slurm.Partitions(), slurm.Squeue()
+
+def calculate_intellispace_cpus(squeue_entries):
+    """
+    Calculate the number of CPUs used in the 'intellispace' queue.
+    
+    :param squeue_entries: List of entries from SLURM squeue.
+    :return: Number of CPUs used in the 'intellispace' queue.
+    """
+    return sum(int(entry['CPUS']) for entry in squeue_entries if entry['PARTITION'] == 'intellispace')
+
+def determine_best_queue(partitions, squeue, intellispace_cpus, intellispace_cpus_limit, partition_blacklist):
+    """
+    Determine the best queue to submit jobs to based on the current state of the HPC cluster.
+    
+    :param partitions: Partitions object containing SLURM partition information.
+    :param squeue: Squeue object containing SLURM queue information.
+    :param intellispace_cpus: Number of CPUs currently used in the 'intellispace' queue.
+    :param intellispace_cpus_limit: CPU limit for the 'intellispace' queue.
+    :param partition_blacklist: List of partitions to exclude.
+    :return: Tuple containing the best queue, most idle partition, and most mixed partition.
+    """
+    most_idle = partitions.most_idle_nodes(blacklist=partition_blacklist)
+    most_mixed = partitions.most_mixed_nodes(blacklist=partition_blacklist)
+    best_queue = 'intellispace' if intellispace_cpus < intellispace_cpus_limit else (most_idle or most_mixed)
+    
+    return best_queue, most_idle, most_mixed
+
+def save_to_json(data, output_file, temp_output_file):
+    """
+    Save data to a JSON file.
+    
+    :param data: Data to be saved.
+    :param output_file: Path to the output JSON file.
+    :param temp_output_file: Path to the temporary JSON file.
+    """
+    with open(temp_output_file, 'w') as f:
+        json.dump(data, f, indent=4)
+    os.rename(temp_output_file, output_file)
+
+def main():
+    """
+    Check the HPC cluster and determine the following:
+    - Partition with the most idle nodes.
+    - Partition with the most mixed nodes.
+    - Number of CPUs used & requested on the clinical queue 'intellispace'.
+    - Recommended best queue to submit to.
+    Outputs the information to a JSON file.
+    """
+    timestamp = datetime.datetime.now()
+    timestamp_str = timestamp.strftime('%Y-%m-%dT%H:%M:%S')
+    output_json_file = "slurm.json"
+    output_json_file_tmp = "slurm.json.tmp"
+
+    intellispace_cpus_limit = 160
+    partition_blacklist = ["data_mover", "cpu_dev", "gpu4_dev", "gpu8_dev", "fn_long"]
+
+    partitions, squeue = fetch_slurm_info()
+    
+    if partitions.sinfo.returncode != 0 or squeue.returncode != 0:
+        print(f"[{timestamp_str}] error: SLURM command returned invalid exit status; sinfo code: {partitions.sinfo.returncode}, squeue code: {squeue.returncode}")
+        return
+
+    intellispace_cpus = calculate_intellispace_cpus(squeue.entries)
+    best_queue, most_idle, most_mixed = determine_best_queue(partitions, squeue, intellispace_cpus, intellispace_cpus_limit, partition_blacklist)
+
+    print(f"[{timestamp_str}] best queue: {best_queue}, most idle: {most_idle}, most mixed: {most_mixed}, intellispace cpus: {intellispace_cpus}")
+
+    data = {
+        'updated': timestamp_str,
+        'most_idle': most_idle,
+        'most_mixed': most_mixed,
+        'intellispace_cpus': intellispace_cpus,
+        'best_queue': best_queue
+    }
+
+    save_to_json(data, output_json_file, output_json_file_tmp)
+
+if __name__ == '__main__':
+    main()

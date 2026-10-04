@@ -1,0 +1,97 @@
+"""
+PyDex - Experimental control using Python and DExTer
+Stefan Spence 06/12/19
+ - A generic thread.
+ - The thread is started by instantiating it and calling start().
+ - Implements a queue of items to act on.
+ - When the thread is running, it iterates through items in the queue.
+ - If the queue is empty, keep refreshing.
+ - Stop the thread by calling close()
+"""
+
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QApplication
+
+def reset_slot(signal, slot, reconnect=True):
+    """Ensure all instances of slot are disconnected from signal.
+    Prevents multiple connections to the same slot. If reconnect=True,
+    then reconnect slot to signal."""
+    while True:
+        try:
+            signal.disconnect(slot)
+        except TypeError:
+            break
+    if reconnect:
+        signal.connect(slot)
+
+class PyDexThread(QThread):
+    """A template thread that continuously processes items from a FIFO queue."""
+    stop = False
+    queue = []
+
+    def __init__(self):
+        super().__init__()
+        self.app = QApplication.instance()
+
+    @pyqtSlot(object)
+    def add_item(self, new_item):
+        """Append a new item to the queue for processing."""
+        self.queue.append(new_item)
+
+    def process(self, item):
+        """Process an item from the queue. This method should be implemented by subclasses."""
+        raise NotImplementedError("Subclasses should implement this method")
+
+    def run(self):
+        """Run the thread continuously processing items from the queue until stopped."""
+        while True:
+            self.app.processEvents()
+            if self.check_stop():
+                break
+            elif self.queue:
+                self.process(self.queue.pop(0))
+
+    def check_stop(self):
+        """Check if the stop flag is set."""
+        return self.stop
+
+    def reset_stop(self):
+        """Reset the stop flag to allow the event loop to run."""
+        self.stop = False
+
+    def close(self):
+        """Stop the thread safely and reset the stop flag."""
+        reset_slot(self.finished, self.reset_stop)
+        self.stop = True
+
+class ExampleThread(PyDexThread):
+    """An example subclass of PyDexThread demonstrating the process method."""
+    def process(self, item):
+        """Example processing implementation."""
+        print(f"Processing item: {item}")
+        # Add your processing logic here
+
+def main():
+    import sys
+    import time
+
+    app = QApplication(sys.argv)
+
+    # Create and start the example thread
+    thread = ExampleThread()
+    thread.start()
+
+    # Add items to the queue
+    thread.add_item("Item 1")
+    thread.add_item("Item 2")
+
+    # Simulate running for a while before closing
+    time.sleep(5)
+
+    thread.close()
+    thread.wait()
+
+    print("Thread stopped.")
+
+if __name__ == "__main__":
+    main()

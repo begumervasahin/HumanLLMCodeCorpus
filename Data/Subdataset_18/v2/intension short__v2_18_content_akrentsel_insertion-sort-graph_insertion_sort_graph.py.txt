@@ -1,0 +1,67 @@
+import matplotlib.pyplot as plt
+import matplotlib.animation as anim
+import random
+
+# Function to animate the sorting process
+def plot_sort_animation(generator):
+    # Initialize the figure and axis
+    fig, ax = plt.subplots()
+    
+    # Retrieve the initial list and the highlighted index from the generator
+    y_values, highlight_index = next(generator)
+    max_frames = len(y_values) ** 2  # Estimate the number of frames for the animation
+
+    # Update function for the animation
+    def update(frame):
+        y_values, highlight_index = next(generator)
+        
+        # Create the highlighted bar to indicate the current index being sorted
+        highlight_bar = [0] * len(y_values)
+        highlight_bar[highlight_index] = y_values[highlight_index]
+        
+        # Clear the axis and redraw the bars
+        ax.clear()
+        ax.bar(range(len(y_values)), y_values, width=1)
+        ax.bar(range(len(y_values)), highlight_bar, width=1, color="red")
+        print(f'Iteration: {frame}')
+
+    # Create and start the animation
+    animation = anim.FuncAnimation(fig, update, frames=max_frames, repeat=False)
+    plt.show()
+
+# Generator function to perform step-by-step insertion sort
+def insertion_sort_step_generator(lst):
+    # Ensure the list has more than one element
+    assert len(lst) > 1, "List must contain more than one element to sort."
+    
+    current_index = 1
+
+    # Helper function to swap two elements in the list
+    def swap(index1, index2):
+        lst[index1], lst[index2] = lst[index2], lst[index1]
+
+    # Perform the insertion sort, yielding the list and the current index at each step
+    while current_index < len(lst):
+        temp_index = current_index
+        
+        while current_index > 0 and lst[current_index] < lst[current_index - 1]:
+            swap(current_index, current_index - 1)
+            current_index -= 1
+            yield lst, current_index
+        
+        if current_index != temp_index:
+            current_index = temp_index + 1
+        else:
+            current_index += 1
+            yield lst, current_index
+    
+    # Final yield to ensure the generator is exhausted
+    yield lst, len(lst) - 1
+
+# Main script to generate a random list and animate its sorting process
+if __name__ == "__main__":
+    num_elements = 25  # Number of elements in the list
+    random_list = [random.randint(1, 200) for _ in range(num_elements)]  # Generate random list
+    
+    # Start the sorting animation
+    plot_sort_animation(insertion_sort_step_generator(random_list))

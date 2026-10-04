@@ -1,0 +1,115 @@
+import csv
+
+class Rule:
+    """
+    A class to represent an association rule.
+
+    Attributes:
+        A (set): Antecedent.
+        C (set): Consequent.
+        supp (float): Support of the rule.
+        conf (float): Confidence of the rule.
+        lift (float): Lift of the rule.
+        leverage (float): Leverage of the rule.
+    """
+
+    def __init__(self, A, C, supp, conf, lift, leverage):
+        self.A = A
+        self.C = C
+        self.supp = supp
+        self.conf = conf
+        self.lift = lift
+        self.leverage = leverage
+
+    def __str__(self):
+        return f"{list(self.A)} -> {list(self.C)} - support: {self.supp:.4f}, confidence: {self.conf:.4f}, lift: {self.lift:.4f}, leverage: {self.leverage:.4f}"
+
+def apriori(transactions, min_supp=0.01, min_conf=0.1):
+    """
+    Implementation of the Apriori algorithm.
+
+    Args:
+        transactions (list): List of transactions, each transaction is a set of items.
+        min_supp (float): Minimum support threshold.
+        min_conf (float): Minimum confidence threshold.
+
+    Returns:
+        list: List of generated association rules.
+    """
+    num_transactions = len(transactions)
+    supp_count_threshold = min_supp * num_transactions
+    max_item = max(item for transaction in transactions for item in transaction)
+    frequent_itemsets = {frozenset(): 1}
+
+    def get_support(itemset):
+        return frequent_itemsets[itemset]
+
+    def get_confidence(antecedent, consequent):
+        return get_support(antecedent | consequent) / get_support(antecedent)
+
+    def get_lift(antecedent, consequent):
+        return get_confidence(antecedent, consequent) / get_support(consequent)
+
+    def get_leverage(antecedent, consequent):
+        return get_support(antecedent | consequent) - get_support(antecedent) * get_support(consequent)
+
+    # Count one-element sets occurrences
+    item_counts = [0] * max_item
+    for transaction in transactions:
+        for item in transaction:
+            item_counts[item - 1] += 1
+
+    current_frequent_itemsets = {frozenset({item}): count / num_transactions for item, count in zip(range(1, max_item + 1), item_counts) if count >= supp_count_threshold}
+
+    while current_frequent_itemsets:
+        frequent_itemsets.update(current_frequent_itemsets)
+        candidate_itemsets = {}
+        for itemset1 in current_frequent_itemsets:
+            for itemset2 in current_frequent_itemsets:
+                if len(itemset1 - itemset2) == len(itemset2 - itemset1) == 1:
+                    candidate_itemsets[itemset1 | itemset2] = 0
+
+        for transaction in transactions:
+            for candidate in candidate_itemsets:
+                if candidate <= transaction:
+                    candidate_itemsets[candidate] += 1
+
+        current_frequent_itemsets = {candidate: count / num_transactions for candidate, count in candidate_itemsets.items() if count >= supp_count_threshold}
+
+    initial_rules = [Rule(itemset, frozenset(), get_support(itemset), 1.0, 1.0, 0.0) for itemset in frequent_itemsets]
+    all_rules = []
+    while initial_rules:
+        all_rules.extend(initial_rules)
+        next_rules = []
+
+        for rule in initial_rules:
+            for item in rule.A:
+                antecedent = rule.A - {item}
+                consequent = rule.C | {item}
+                if get_confidence(antecedent, consequent) >= min_conf:
+                    next_rules.append(Rule(antecedent, consequent, get_support(antecedent | consequent), get_confidence(antecedent, consequent), get_lift(antecedent, consequent), get_leverage(antecedent, consequent)))
+        initial_rules = next_rules
+    return all_rules
+
+def load_transactions(path='retail.dat'):
+    """
+    Load transactions from the given path.
+
+    Args:
+        path (str): Path to the data file.
+
+    Returns:
+        list: List of transactions, each transaction is a set of items.
+    """
+    transactions = []
+    with open(path, 'r') as file:
+        reader = csv.reader(file, delimiter=' ')
+        for row in reader:
+            transactions.append({int(item) for item in row if item})
+    return transactions
+
+if __name__ == "__main__":
+    transactions = load_transactions('retail.dat')
+    rules = apriori(transactions)
+    for rule in rules:
+        print(rule)

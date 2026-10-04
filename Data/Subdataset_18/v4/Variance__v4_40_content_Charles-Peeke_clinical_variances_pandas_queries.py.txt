@@ -1,0 +1,78 @@
+import os
+import time
+import psycopg2
+import pandas as pd
+from dotenv import load_dotenv
+
+# Initialize global variables
+conn = None
+
+# Load environment variables
+def load_env_vars():
+    load_dotenv()
+    global hostname, port, database, username, password
+    hostname = os.getenv('hostname')
+    port = os.getenv('port')
+    database = os.getenv('database')
+    username = os.getenv('username')
+    password = os.getenv('password')
+
+# Establish database connection
+def connect_to_db():
+    return psycopg2.connect(
+        host=hostname,
+        port=port,
+        database=database,
+        user=username,
+        password=password
+    )
+
+# Fetch data from tables
+def fetch_table_data(query):
+    return pd.read_sql(query, con=conn)
+
+# Fetch specific tables
+def get_studies_table():
+    return fetch_table_data('SELECT * FROM studies')
+
+def get_sponsors_table():
+    return fetch_table_data('SELECT * FROM sponsors')
+
+def get_keywords_table():
+    return fetch_table_data('SELECT * FROM keywords')
+
+# Fetch joined tables
+def get_sponsors_studies():
+    query = """
+        SELECT * 
+        FROM studies 
+        RIGHT JOIN sponsors 
+        ON studies.nct_id = sponsors.nct_id
+    """
+    return fetch_table_data(query)
+
+def get_keywords_studies():
+    query = """
+        SELECT * 
+        FROM studies 
+        RIGHT JOIN keywords 
+        ON studies.nct_id = keywords.nct_id
+    """
+    return fetch_table_data(query)
+
+if __name__ == '__main__':
+    load_env_vars()
+    conn = connect_to_db()
+    
+    # Measure time for fetching and merging tables
+    start_time = time.time()
+    
+    studies_df = get_studies_table()
+    keywords_df = get_keywords_table()
+    
+    merge_result = pd.merge(studies_df, keywords_df, how='right', on='nct_id')
+    
+    end_time = time.time()
+    
+    print("Time taken:", end_time - start_time)
+    print(merge_result)

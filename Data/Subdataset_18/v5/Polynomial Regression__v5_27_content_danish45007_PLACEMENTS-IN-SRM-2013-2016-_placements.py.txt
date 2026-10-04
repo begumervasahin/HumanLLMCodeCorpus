@@ -1,0 +1,45 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
+# Load dataset
+dataset = pd.read_excel('placements.xlsx')
+
+# Select features and target variable
+X = dataset.iloc[:, 2:3].values
+y = dataset.iloc[:, 3].values
+
+# Linear Regression Model
+linear_regressor = LinearRegression()
+linear_regressor.fit(X, y)
+
+# Polynomial Regression Model (degree 4)
+degree = 4
+poly_features = PolynomialFeatures(degree=degree)
+X_poly = poly_features.fit_transform(X)
+poly_regressor = LinearRegression()
+poly_regressor.fit(X_poly, y)
+
+# Function to visualize results
+def visualize_results(X, y, model, title, xlabel, ylabel, transform=None):
+    plt.scatter(X, y, color='red')
+    if transform:
+        plt.plot(X, model.predict(transform(X)), color='blue')
+    else:
+        plt.plot(X, model.predict(X), color='blue')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+
+# Visualize Linear Regression results
+visualize_results(X, y, linear_regressor, 'PLACEMENT RECORD (Linear Regression)', 'NO. of Students placed', 'YEAR')
+
+# Visualize Polynomial Regression results
+visualize_results(X, y, poly_regressor, 'PLACEMENT RECORD (Polynomial Regression)', 'NO. of Students placed', 'YEAR', transform=poly_features.transform)
+
+# Generate a smoother curve for Polynomial Regression
+X_grid = np.arange(min(X), max(X), 0.1).reshape(-1, 1)
+visualize_results(X_grid, y, poly_regressor, 'PLACEMENT RECORD (Polynomial Regression - Smooth Curve)', 'NO. of Students placed', 'YEAR', transform=poly_features.transform)

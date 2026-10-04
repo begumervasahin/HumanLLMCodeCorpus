@@ -1,0 +1,47 @@
+import sys
+import re
+import nltk
+from nltk.corpus import opinion_lexicon
+
+# Reload sys module to set default encoding (optional, not recommended for Python 3)
+reload(sys)
+sys.setdefaultencoding("ISO-8859-1")
+
+# Initialize sentiment words dictionary
+sentiment_words = {}
+flag = 0
+
+# Populate the sentiment words dictionary using the opinion lexicon
+for word in opinion_lexicon.words():
+    sentiment_words[word] = flag
+    if re.search("zombie", word):
+        flag = 1
+
+# Open the test file and the output file
+with open("test.list", 'rb') as test_file, open("baseline_out.txt", 'w') as out_file:
+    line_cnt = 1
+
+    # Process each tweet in the test file
+    for tweet in test_file:
+        words = tweet.split()
+        pos, neg = 0, 0
+
+        # Count positive and negative words
+        for word in words:
+            word = word.lower()
+            if word in sentiment_words:
+                if sentiment_words[word] == 1:
+                    pos += 1
+                elif sentiment_words[word] == 0:
+                    neg += 1
+
+        # Determine sentiment and write to the output file
+        if pos > neg:
+            sentiment = "positive"
+        elif pos < neg:
+            sentiment = "negative"
+        else:
+            sentiment = "neutral"
+        
+        out_file.write(f"{line_cnt} {sentiment}\n")
+        line_cnt += 1

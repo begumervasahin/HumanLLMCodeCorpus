@@ -1,0 +1,172 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, value):
+        new_node = Node(value)
+        if self.root is None:
+            self.root = new_node
+        else:
+            current = self.root
+            while True:
+                if value < current.value:
+                    if current.left is None:
+                        current.left = new_node
+                        break
+                    current = current.left
+                elif value > current.value:
+                    if current.right is None:
+                        current.right = new_node
+                        break
+                    current = current.right
+                else:
+                    break  # value already exists in the tree
+
+    def lookup(self, value):
+        current = self.root
+        while current is not None:
+            if value < current.value:
+                current = current.left
+            elif value > current.value:
+                current = current.right
+            else:  # found the value
+                print(f'Value {value} found:')
+                if current.left:
+                    print(f'Left child: {current.left.value}')
+                else:
+                    print('Left child: None')
+                if current.right:
+                    print(f'Right child: {current.right.value}')
+                else:
+                    print('Right child: None')
+                return
+        print('Value not found')
+
+    def remove(self, value):
+        parent = None
+        current = self.root
+        while current is not None:
+            if value < current.value:
+                parent = current
+                current = current.left
+            elif value > current.value:
+                parent = current
+                current = current.right
+            else:
+                if current.left is None and current.right is None:  # No children
+                    if parent is None:
+                        self.root = None
+                    elif parent.left == current:
+                        parent.left = None
+                    else:
+                        parent.right = None
+                elif current.left is None:  # One right child
+                    if parent is None:
+                        self.root = current.right
+                    elif parent.left == current:
+                        parent.left = current.right
+                    else:
+                        parent.right = current.right
+                elif current.right is None:  # One left child
+                    if parent is None:
+                        self.root = current.left
+                    elif parent.left == current:
+                        parent.left = current.left
+                    else:
+                        parent.right = current.left
+                else:  # Two children
+                    successor = self.find_minimum(current.right)
+                    successor_value = successor.value
+                    self.remove(successor_value)
+                    current.value = successor_value
+                return
+        print("Value not found")
+
+    def find_minimum(self, node):
+        current = node
+        while current.left is not None:
+            current = current.left
+        return current
+
+    def breadthFirstSearch(self):
+        current = self.root
+        arr = []
+        queue = []
+        if current:
+            queue.append(current)
+        while len(queue) > 0:
+            current = queue.pop(0)
+            arr.append(current.value)
+            if current.left is not None:
+                queue.append(current.left)
+            if current.right is not None:
+                queue.append(current.right)
+        return arr
+
+    def breadthFirstSearchRecursive(self, queue, arr):
+        if len(queue) == 0:
+            return arr
+        current = queue.pop(0)
+        arr.append(current.value)
+        if current.left is not None:
+            queue.append(current.left)
+        if current.right is not None:
+            queue.append(current.right)
+        return self.breadthFirstSearchRecursive(queue, arr)
+
+    def height(self, node):
+        if node is None:
+            return 0
+        else:
+            return 1 + max(self.height(node.left), self.height(node.right))
+
+def inOrder(root):
+    if root is not None:
+        inOrder(root.left)
+        print(root.value)
+        inOrder(root.right)
+
+def preOrder(root):
+    if root is not None:
+        print(root.value)
+        preOrder(root.left)
+        preOrder(root.right)
+
+def postOrder(root):
+    if root is not None:
+        postOrder(root.left)
+        postOrder(root.right)
+        print(root.value)
+
+if __name__ == "__main__":
+    tree = BinarySearchTree()
+    # Insert elements into the tree
+    elements = [50, 28, 78, 12, 40, 66, 90, 9, 18, 37, 43, 57, 69, 81, 93, 3, 10, 15, 21, 30, 38, 42, 46, 54, 60, 67, 72, 80, 84, 92, 96, 13, 29, 55, 56]
+    for el in elements:
+        tree.insert(el)
+
+    # Remove an element
+    tree.remove(15)
+
+    # Perform Breadth-First Search
+    print("Breadth-First Search:", tree.breadthFirstSearch())
+
+    # Get the height of the tree
+    print('Height of the tree:', tree.height(tree.root))
+
+    # Perform recursive Breadth-First Search
+    print("Breadth-First Search (Recursive):", tree.breadthFirstSearchRecursive([tree.root], []))
+
+    # Tree traversals
+    print('In-Order Traversal:')
+    inOrder(tree.root)
+    print('Pre-Order Traversal:')
+    preOrder(tree.root)
+    print('Post-Order Traversal:')
+    postOrder(tree.root)

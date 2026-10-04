@@ -1,0 +1,207 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+
+class BST:
+    def __init__(self):
+        self.root = None
+
+    def add_node(self, data):
+        """Adds a node with the given data to the BST."""
+        if not self.root:
+            self.root = Node(data)
+            return
+        
+        current = self.root
+        while True:
+            if data < current.data:
+                if current.left:
+                    current = current.left
+                else:
+                    current.left = Node(data)
+                    break
+            else:
+                if current.right:
+                    current = current.right
+                else:
+                    current.right = Node(data)
+                    break
+
+    def in_order(self):
+        """Prints the BST elements in in-order traversal."""
+        def traverse(node):
+            if node:
+                traverse(node.left)
+                print(node.data, end=" ")
+                traverse(node.right)
+        
+        if not self.root:
+            print("Nothing to print")
+            return
+        
+        print("In-Order Traversal:", end=" ")
+        traverse(self.root)
+        print()
+
+    def level_order(self):
+        """Prints the BST elements in level-order traversal."""
+        if not self.root:
+            print("Tree is empty")
+            return
+        
+        print("Level-Order Traversal:")
+        queue = [self.root]
+        
+        while queue:
+            current = queue.pop(0)
+            print(current.data, end=" ")
+            if current.left:
+                queue.append(current.left)
+            if current.right:
+                queue.append(current.right)
+        print()
+
+    def search_data(self, data, for_deletion=False):
+        """Searches for a node with the given data.
+        If for_deletion is True, returns the parent of the node to be deleted.
+        """
+        current = self.root
+        parent = None
+        
+        while current:
+            if current.data == data:
+                if for_deletion:
+                    return parent
+                print(f"{data} found!")
+                return True
+            
+            parent = current
+            if data < current.data:
+                current = current.left
+            else:
+                current = current.right
+        
+        print(f"{data} not present")
+        return None if for_deletion else False
+
+    def delete_node(self, data):
+        """Deletes a node with the given data from the BST."""
+        parent = self.search_data(data, for_deletion=True)
+        if parent is None and (not self.root or self.root.data != data):
+            print("Node to be deleted not found!")
+            return False
+        
+        # Determine the node to delete
+        node_to_delete = self.root if parent is None else (
+            parent.left if data < parent.data else parent.right)
+        
+        if node_to_delete is None:
+            print("Node to be deleted not found!")
+            return False
+        
+        # Case 1: Node has no children
+        if not (node_to_delete.left or node_to_delete.right):
+            if parent:
+                if parent.left == node_to_delete:
+                    parent.left = None
+                else:
+                    parent.right = None
+            else:
+                self.root = None
+        
+        # Case 2: Node has one child
+        elif node_to_delete.left is None or node_to_delete.right is None:
+            child = node_to_delete.left if node_to_delete.left else node_to_delete.right
+            if parent:
+                if parent.left == node_to_delete:
+                    parent.left = child
+                else:
+                    parent.right = child
+            else:
+                self.root = child
+        
+        # Case 3: Node has two children
+        else:
+            successor_parent = node_to_delete
+            successor = node_to_delete.right
+            while successor.left:
+                successor_parent = successor
+                successor = successor.left
+            node_to_delete.data = successor.data
+            if successor_parent.left == successor:
+                successor_parent.left = successor.right
+            else:
+                successor_parent.right = successor.right
+
+    def search_kth_node(self, k):
+        """Searches for the k-th smallest node in the BST."""
+        def in_order_kth(node):
+            nonlocal k
+            if node is None or k == 0:
+                return None
+            result = in_order_kth(node.left)
+            if result is not None:
+                return result
+            k -= 1
+            if k == 0:
+                return node.data
+            return in_order_kth(node.right)
+        
+        result = in_order_kth(self.root)
+        if result is not None:
+            print(f"{k}-th node: {result}")
+        else:
+            print(f"No {k}-th element found")
+
+    def in_order_successor(self, data):
+        """Finds the in-order successor of the node with the given data."""
+        current = self.root
+        successor = None
+        
+        while current:
+            if data == current.data:
+                break
+            elif data < current.data:
+                successor = current
+                current = current.left
+            else:
+                current = current.right
+        
+        if not current:
+            print("Element not found")
+            return None
+        
+        if current.right:
+            successor = current.right
+            while successor.left:
+                successor = successor.left
+            return successor.data
+        
+        return successor.data if successor else None
+
+    def get_root(self):
+        """Returns the root of the BST."""
+        return self.root
+
+# Example usage:
+if __name__ == "__main__":
+    bst = BST()
+    bst.add_node(10)
+    bst.add_node(5)
+    bst.add_node(20)
+    bst.add_node(15)
+    bst.add_node(25)
+
+    bst.in_order()
+    bst.level_order()
+
+    bst.search_data(15)
+    bst.search_kth_node(3)
+    successor = bst.in_order_successor(15)
+    if successor:
+        print(f"In-order successor of 15: {successor}")
+
+    bst.delete_node(20)
+    bst.level_order()

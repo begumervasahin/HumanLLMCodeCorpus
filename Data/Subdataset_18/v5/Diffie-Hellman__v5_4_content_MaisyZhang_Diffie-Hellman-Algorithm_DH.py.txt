@@ -1,0 +1,67 @@
+from argparse import ArgumentParser
+
+def calc_key(private_key, base, modulus):
+    """
+    Calculate a key using modular exponentiation.
+
+    Parameters:
+    private_key (int): The private key.
+    base (int): The base (generator) for the exponentiation.
+    modulus (int): The modulus for the exponentiation.
+
+    Returns:
+    int: The calculated public key.
+    """
+    return pow(base, private_key, modulus)
+
+def parse_arguments():
+    """
+    Parse command-line arguments.
+
+    Returns:
+    Namespace: Parsed command-line arguments.
+    """
+    parser = ArgumentParser(description="Calculate shared secrets using modular arithmetic.")
+    parser.add_argument("-A", "--A_private_key", type=int, required=True, help="Private key of user A")
+    parser.add_argument("-B", "--B_private_key", type=int, required=True, help="Private key of user B")
+    parser.add_argument("-g", "--base", type=int, required=True, help="Base (generator) for key calculation")
+    parser.add_argument("-p", "--prime", type=int, required=True, help="Prime modulus for key calculation")
+    return parser.parse_args()
+
+def calculate_shared_keys(A_private_key, B_private_key, base, prime):
+    """
+    Calculate the shared secret keys for users A and B.
+
+    Parameters:
+    A_private_key (int): Private key of user A.
+    B_private_key (int): Private key of user B.
+    base (int): Base (generator) for key calculation.
+    prime (int): Prime modulus for key calculation.
+
+    Returns:
+    tuple: Shared secret keys for A and B.
+    """
+    # Calculate public keys for both A and B
+    A_public_key = calc_key(A_private_key, base, prime)
+    B_public_key = calc_key(B_private_key, base, prime)
+
+    # Calculate shared secrets for both A and B
+    A_shared_key = calc_key(A_private_key, B_public_key, prime)
+    B_shared_key = calc_key(B_private_key, A_public_key, prime)
+
+    return A_shared_key, B_shared_key
+
+def main():
+    # Parse command-line arguments
+    args = parse_arguments()
+
+    # Calculate shared keys
+    A_shared_key, B_shared_key = calculate_shared_keys(
+        args.A_private_key, args.B_private_key, args.base, args.prime
+    )
+
+    # Display the shared secret (both should be the same)
+    print(f"Shared secret: {A_shared_key}")
+
+if __name__ == "__main__":
+    main()

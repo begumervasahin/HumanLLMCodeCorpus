@@ -1,0 +1,91 @@
+import numpy as np
+from my_augmentations import zero_pad, random_crop, horizontal_flip
+
+def run_augmentation_v1(image):
+    """
+    Applies a series of augmentations to the input image.
+    
+    Parameters:
+    image (numpy.ndarray): The input image to augment.
+    
+    Returns:
+    numpy.ndarray: The augmented image.
+    """
+    image = zero_pad(image, (40, 40, 3), 4)
+    image = random_crop(image, 32)
+    image = horizontal_flip(image, 0.5)
+    return image
+
+def load_data(path, test=False):
+    """
+    Loads CIFAR-10 data from the specified path.
+    
+    Parameters:
+    path (str): The directory path where data batches are stored.
+    test (bool): Flag indicating whether to load test data. Default is False.
+    
+    Returns:
+    tuple: A tuple containing data (list of numpy.ndarray) and labels (list of int).
+    """
+    data = []
+    labels = []
+    
+    for slice in range(1, 6):
+        batch_file = 'test_batch' if test else f'data_batch_{slice}'
+        data_dict = np.load(path + batch_file, allow_pickle=True)
+        
+        data_batch = data_dict['data'].reshape((len(data_dict['data']), 3, 32, 32)).transpose(0, 2, 3, 1)
+        data.extend(data_batch)
+        labels.extend(data_dict['labels'])
+        
+        if test:
+            break
+    
+    return data, labels
+
+def change_lr(optimizer, lr):
+    """
+    Updates the learning rate for all parameter groups in the optimizer.
+    
+    Parameters:
+    optimizer: The optimizer whose learning rate needs to be changed.
+    lr (float): The new learning rate.
+    """
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+        print(f"LR CHANGED: {param_group['lr']}")
+
+class AverageMeter:
+    """
+    Computes and stores the average and current value.
+    
+    Attributes:
+    val (float): Current value.
+    avg (float): Average value.
+    sum (float): Sum of all values.
+    count (int): Number of updates.
+    """
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        """
+        Resets all attributes to their initial state.
+        """
+        self.val = 0.0
+        self.avg = 0.0
+        self.sum = 0.0
+        self.count = 0.0
+    
+    def update(self, val, n=1):
+        """
+        Updates the meter with a new value.
+        
+        Parameters:
+        val (float): The new value to update.
+        n (int): The number of occurrences of the new value. Default is 1.
+        """
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count

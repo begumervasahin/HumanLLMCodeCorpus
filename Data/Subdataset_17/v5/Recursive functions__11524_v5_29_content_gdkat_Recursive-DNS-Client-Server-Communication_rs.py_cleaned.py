@@ -1,0 +1,79 @@
+import socket as mysoc
+import sys
+def rs(com_host, edu_host, file_name):
+    def create_socket():
+        try:
+            return mysoc.socket(mysoc.AF_INET, mysoc.SOCK_STREAM)
+        except mysoc.error as err:
+            print('Socket creation error:', err)
+            sys.exit()
+    rssd = create_socket()
+    rstotscom = create_socket()
+    rstotsedu = create_socket()
+    try:
+        with open(file_name, "r") as fr:
+            RS_table = {
+                edu_host: {'ip': mysoc.gethostbyname(edu_host), 'flag': 'NS'},
+                com_host: {'ip': mysoc.gethostbyname(com_host), 'flag': 'NS'}
+            }
+            for line in fr:
+                tokenize = line.split()
+                if tokenize[1].strip() != '-':
+                    RS_table[tokenize[0].strip()] = {
+                        'ip': tokenize[1].strip(),
+                        'flag': tokenize[2].strip()
+                    }
+    except IOError as err:
+        print('File Open Error:', err)
+        print("Please ensure the desired file exists in the source folder")
+        sys.exit()
+    server_binding = ('', 50008)
+    rssd.bind(server_binding)
+    rssd.listen(1)
+    host = mysoc.gethostname()
+    localhost_ip = mysoc.gethostbyname(host)
+    print(f"[S]: Server host name is: {host}")
+    print(f"[S]: Server IP address is {localhost_ip}")
+    crsd, addr = rssd.accept()
+    print(f"[S]: Got a connection request from a client at {addr}")
+    first_edu, first_com = True, True
+    while True:
+        data = crsd.recv(100)
+        hnstring = data.decode('utf-8')
+        if not hnstring:
+            break
+        entry = lookup_host(hnstring, RS_table, edu_host, com_host, first_edu, first_com, rstotsedu, rstotscom)
+        if entry:
+            crsd.send(entry.encode('utf-8'))
+    rssd.close()
+    rstotsedu.close()
+    rstotscom.close()
+def lookup_host(hnstring, RS_table, edu_host, com_host, first_edu, first_com, rstotsedu, rstotscom):
+    if hnstring in RS_table:
+        return f"{hnstring} {RS_table[hnstring]['ip']} {RS_table[hnstring]['flag']}"
+    if ".edu" in hnstring:
+        return query_ts(hnstring, edu_host, first_edu, rstotsedu, 5677)
+    if ".com" in hnstring:
+        return query_ts(hnstring, com_host, first_com, rstotscom, 5678)
+    return f"{hnstring} - Error: HOST NOT FOUND"
+def query_ts(hnstring, host, first, rstots, port):
+    if not host:
+        return f"{hnstring} - Error: HOST NOT FOUND"
+    if first:
+        first = False
+        try:
+            server_binding = (mysoc.gethostbyname(host), port)
+            rstots.connect(server_binding)
+        except mysoc.error as err:
+            print('TS connect error:', err)
+            sys.exit()
+    rstots.send(hnstring.strip().encode('utf-8'))
+    dataFromTS = rstots.recv(100).decode('utf-8')
+    if not dataFromTS:
+        return None
+    return dataFromTS
+if __name__ == '__main__':
+    com_host = sys.argv[1]
+    edu_host = sys.argv[2]
+    file_name = sys.argv[3]
+    rs(com_host, edu_host, file_name)

@@ -1,0 +1,130 @@
+import numpy as np
+import math
+
+MAX_ITERATIONS = 100
+
+def kmeans_clustering(data_set, k):
+    """
+    Perform k-means clustering on a dataset.
+    
+    Parameters:
+    - data_set (array): The dataset to be clustered.
+    - k (int): The number of clusters.
+    
+    Returns:
+    - centroids (list): The final centroids of the clusters.
+    - clusters (list): The clusters with their data points.
+    - iterations (int): The number of iterations performed.
+    """
+    iterations = 0
+    centroids = get_random_centroids(data_set, k)
+    old_centroids = [[] for _ in range(k)]
+
+    while not has_converged(old_centroids, centroids, iterations):
+        old_centroids = centroids
+        iterations += 1
+        clusters = assign_clusters(data_set, centroids, k)
+        centroids = calculate_new_centroids(clusters, data_set, k)
+    
+    return centroids, clusters, iterations
+
+def has_converged(old_centroids, centroids, iterations):
+    """
+    Check if the centroids have converged or the maximum iterations have been reached.
+    
+    Parameters:
+    - old_centroids (list): The centroids from the previous iteration.
+    - centroids (list): The current centroids.
+    - iterations (int): The current number of iterations.
+    
+    Returns:
+    - bool: True if the centroids have converged or the maximum iterations have been reached, otherwise False.
+    """
+    return (iterations > MAX_ITERATIONS) or old_centroids == centroids
+
+def get_random_centroids(data_set, k):
+    """
+    Select k random centroids from the dataset.
+    
+    Parameters:
+    - data_set (array): The dataset.
+    - k (int): The number of centroids.
+    
+    Returns:
+    - list: The randomly selected centroids.
+    """
+    centroids = []
+    for _ in range(k):
+        centroids.append(data_set[np.random.randint(0, len(data_set))].tolist())
+    return centroids
+
+def assign_clusters(data_set, centroids, k):
+    """
+    Assign each data point to the nearest centroid to form clusters.
+    
+    Parameters:
+    - data_set (array): The dataset.
+    - centroids (list): The current centroids.
+    - k (int): The number of clusters.
+    
+    Returns:
+    - list: The clusters with their data points.
+    """
+    clusters = [[] for _ in range(k)]
+    for data_point in data_set:
+        closest_centroid_index = np.argmin([euclidean_distance(data_point, centroid) for centroid in centroids])
+        clusters[closest_centroid_index].append(data_point)
+    return clusters
+
+def calculate_new_centroids(clusters, data_set, k):
+    """
+    Calculate new centroids as the mean of the points in each cluster.
+    
+    Parameters:
+    - clusters (list): The current clusters.
+    - data_set (array): The dataset.
+    - k (int): The number of clusters.
+    
+    Returns:
+    - list: The new centroids.
+    """
+    new_centroids = []
+    for cluster in clusters:
+        if not cluster:
+            new_centroids.append(data_set[np.random.randint(0, len(data_set))].tolist())
+        else:
+            new_centroids.append(np.mean(cluster, axis=0).tolist())
+    return new_centroids
+
+def euclidean_distance(point1, point2):
+    """
+    Calculate the Euclidean distance between two points.
+    
+    Parameters:
+    - point1 (list): The first point.
+    - point2 (list): The second point.
+    
+    Returns:
+    - float: The Euclidean distance between the two points.
+    """
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(point1, point2)))
+
+# Example usage
+if __name__ == "__main__":
+    # Generate some example data
+    data_set = np.array([
+        [1.0, 2.0], [1.5, 1.8], [5.0, 8.0], 
+        [8.0, 8.0], [1.0, 0.6], [9.0, 11.0],
+        [8.0, 2.0], [10.0, 2.0], [9.0, 3.0]
+    ])
+    
+    k = 3
+    centroids, clusters, iterations = kmeans_clustering(data_set, k)
+    
+    print("Centroids:")
+    print(centroids)
+    print("\nClusters:")
+    for cluster in clusters:
+        print(cluster)
+    print("\nIterations:")
+    print(iterations)

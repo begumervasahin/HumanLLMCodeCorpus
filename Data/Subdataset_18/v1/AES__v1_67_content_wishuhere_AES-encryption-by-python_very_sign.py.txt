@@ -1,0 +1,92 @@
+import sys
+import getopt
+import os
+from Crypto.Hash import SHA256, MD5, SHA
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto import Random
+
+# Constants
+BLOCK_SIZE = 1024 * 1024
+
+HASH_MODES = {
+    "SHA256": SHA256,
+    "MD5": MD5,
+    "SHA": SHA,
+    "SHA1": SHA,  # SHA1 and SHA-1 are handled by SHA
+    "SHA-1": SHA
+}
+
+def get_hash_mode(hash_mode):
+    """
+    Converts a hash mode string to the corresponding PyCryptodome hash object.
+    """
+    hash_obj = HASH_MODES.get(hash_mode.upper())
+    if hash_obj is None:
+        print("Available modes: SHA256, MD5, SHA.")
+        sys.exit(2)
+    return hash_obj
+
+def verify_signature(hash_mode, input_file, sign_file, public_key_file):
+    """
+    Verifies the signature of the specified input file using the given public key and hash mode.
+    """
+    hash_mode = get_hash_mode(hash_mode)
+    my_hash = hash_mode.new()
+
+    with open(input_file, "rb") as fin:
+        while True:
+            block = fin.read(BLOCK_SIZE)
+            if not block:
+                break
+            my_hash.update(block)
+
+    with open(sign_file, "rb") as fin2:
+        signature = fin2.read()
+
+    if os.path.isfile(public_key_file):
+        with open(public_key_file, "r") as fin3:
+            public_key = RSA.importKey(fin3.read())
+    else:
+        print("Public key doesn't exist... Task failed.")
+        return False
+
+    verifier = PKCS1_v1_5.new(public_key)
+    result = verifier.verify(my_hash, signature)
+    return result
+
+def parse_arguments(argv):
+    """
+    Parses command-line arguments and returns the hash mode, input file, sign file, and public key file.
+    """
+    try:
+        opts, args = getopt.getopt(argv, "h:")
+    except getopt.GetoptError:
+        print_usage()
+        sys.exit(2)
+
+    hash_mode = None
+    for opt, arg in opts:
+        if opt == "-h":
+            hash_mode = arg
+
+    if not hash_mode or len(args) != 3:
+        print_usage()
+        sys.exit(2)
+
+    return hash_mode, args[0], args[1], args[2]
+
+def print_usage():
+    """
+    Prints the usage message for the script.
+    """
+    print("Usage: very_sign.py -h <hash> <input_file> <sign_file> <public_key_file>")
+
+def main(argv):
+    hash_mode, input_file, sign_file, public_key_file = parse_arguments(argv)
+    result = verify_signature(hash_mode, input_file, sign_file, public_key_file)
+    print("Verify result:", result)
+    return result
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

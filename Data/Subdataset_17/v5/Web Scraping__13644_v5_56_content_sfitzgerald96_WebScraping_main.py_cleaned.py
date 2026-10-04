@@ -1,0 +1,61 @@
+from bs4 import BeautifulSoup
+import requests
+import csv
+import classes
+import re
+ROWS = [
+    'mls_num', 'num_pictures', 'list_price', 'price_perANDoriginal_list_price', 'status', 'cdom', 'list_date',
+    'dom', 'address', 'area', 'city', 'county', 'restrictions', 'subdivision', 'taxes', 'zoning1', 'has_hoa',
+    'hoa_transfer', 'hoa_amenities', 'pre_market', 'school_dist', 'elem', 'jr_high', 'sr_high', 'total_sqfoot.text',
+    'total_bedrooms.text', 'total_bath_full.text', 'total_bath_three_fourth.text', 'total_bath_half.text', 'total_family.text',
+    'total_den.text', 'total_formal_living_room.text', 'total_kitchen_k.text', 'total_kitchen_b.text', 'total_kitchen_f.text',
+    'total_kitchen_s.text', 'total_laundry.text', 'total_fireplace.text', 'htype', 'style', 'year_built', 'const_status',
+    'effect_yr_built', 'acres', 'deck_patio', 'frontage', 'garage', 'side', 'carport', 'back', 'prkg_sp', 'irregular',
+    'fin_bsmt', 'roof', 'bsmt', 'heating', 'garage_park', 'air_cond', 'driveway', 'floor', 'water', 'window_cov', 'water_shares',
+    'has_pool', 'has_spa', 'community_pool', 'pool_feat', 'master_level', 'possession', 'senior_comm', 'exterior', 'animals',
+    'has_solar', 'landscape', 'lot_facts', 'inclusions', 'terms', 'storage', 'utilities', 'zoning2', 'remarks', 'exterior_feat',
+    'interior_feat', 'amenities', 'access_feat', 'agt_remarks', 'show_inst', 'owner', 'owner_type', 'contact', 'contact_type', 'l_agent',
+    'l_office', 'l_broker', 'bac', 'dual_var', 'list_type', 'comm_type', 'wthdrwn_dt', 'off_mkt_dt', 'exp_dt',
+]
+def initialize_scraper():
+    cookie = ''
+    host = 'www.utahrealestate.com'
+    user_agent = ''
+    return classes.scrappy(cookie, host, user_agent)
+def scrape_urls(myScraper, max_page=358):
+    while myScraper.page <= max_page:
+        print(f"Finished scraping URLs from page: {myScraper.page}")
+        soup = myScraper.request_next_page()
+        myScraper.append_urls(soup)
+def write_urls_to_csv(urls, filename='urls.csv'):
+    with open(filename, 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        for url in urls:
+            csv_writer.writerow([url])
+    print('Finished printing URLs to CSV')
+def read_urls_from_csv(filename='urls.csv'):
+    urls = []
+    with open(filename, newline='') as csvfile:
+        urlreader = csv.reader(csvfile)
+        for row in urlreader:
+            urls.append(row[0])
+    return urls
+def write_mls_data_to_csv(urls, myScraper, filename='mls_scrape.csv'):
+    with open(filename, 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(ROWS)
+        for i, url in enumerate(urls):
+            data = myScraper.scrape_report(url)
+            csv_writer.writerow(data)
+            if i % 10 == 0:
+                print(i)
+    print('Finished scraping MLS data to CSV')
+def main():
+    myScraper = initialize_scraper()
+    scrape_urls(myScraper)
+    urls = myScraper.urls
+    write_urls_to_csv(urls)
+    urls = read_urls_from_csv()
+    write_mls_data_to_csv(urls, myScraper)
+if __name__ == "__main__":
+    main()

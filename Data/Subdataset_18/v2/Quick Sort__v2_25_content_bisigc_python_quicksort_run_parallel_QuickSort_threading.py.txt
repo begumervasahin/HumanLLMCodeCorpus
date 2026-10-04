@@ -1,0 +1,98 @@
+import threading
+import random
+import time
+
+# Quick Sort implementation
+def quickSort(A, l, r):
+    if l < r:
+        pivot = A[l]
+        s = l
+        for i in range(l + 1, r + 1):
+            if A[i] < pivot:
+                s = s + 1
+                A[s], A[i] = A[i], A[s]
+        A[l], A[s] = A[s], A[l]
+        quickSort(A, l, s - 1)
+        quickSort(A, s + 1, r)
+
+# Merge function used in merge sort
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+# Thread class for sorting
+class SortingThread(threading.Thread):
+    def __init__(self, threadID, name, A, l, h):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.A = A
+        self.l = l
+        self.h = h
+        self.result = []
+
+    def run(self):
+        quickSort(self.A, self.l, self.h)
+        self.result = self.A[self.l:self.h + 1]
+
+# Thread class for merging
+class MergingThread(threading.Thread):
+    def __init__(self, threadID, name, A, l, h, p):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.A = A
+        self.l = l
+        self.h = h
+        self.p = p
+        self.result = []
+
+    def run(self):
+        mid = self.l + (self.h - self.l) // 2
+        if self.p == 2:
+            # Use sorting threads when p is 2
+            t1 = SortingThread(self.threadID + 1, f"SortingThread-{self.threadID + 1}", self.A, self.l, mid)
+            t2 = SortingThread(self.threadID + 2, f"SortingThread-{self.threadID + 2}", self.A, mid + 1, self.h)
+        else:
+            # Use merging threads recursively
+            t1 = MergingThread(self.threadID + 1, f"MergingThread-{self.threadID + 1}", self.A, self.l, mid, self.p // 2)
+            t2 = MergingThread(self.threadID + 2, f"MergingThread-{self.threadID + 2}", self.A, mid + 1, self.h, self.p // 2)
+        
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        
+        self.result = merge(t1.result, t2.result)
+
+if __name__ == '__main__':
+    # Number of partitions
+    p = 32
+    
+    # Generate and shuffle the array
+    A = list(range(0, 1000000))
+    random.shuffle(A)
+
+    # Start the timer
+    start_time = time.time()
+    
+    # Initialize and start the merging thread
+    t = MergingThread(1, "MergingThread-1", A, 0, len(A) - 1, p)
+    t.start()
+    t.join()
+    
+    # End the timer
+    end_time = time.time()
+
+    # Print the result
+    print(f"Execution time: {end_time - start_time} seconds")

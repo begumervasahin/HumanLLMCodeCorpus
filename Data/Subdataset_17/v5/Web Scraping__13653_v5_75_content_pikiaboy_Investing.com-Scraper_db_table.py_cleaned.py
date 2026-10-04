@@ -1,0 +1,53 @@
+import sqlite3
+class DBTable:
+    DB_NAME = "commodity_prices.db"
+    def __init__(self, name, schema):
+        self.validate_params(name, schema)
+        self.name = name
+        self.schema = schema
+        self.db_conn = sqlite3.connect(self.DB_NAME)
+        self.create_table()
+    def validate_params(self, name, schema):
+        if not name:
+            raise ValueError("Invalid table name")
+        if not schema:
+            raise ValueError("Invalid database schema")
+    def create_table(self):
+        columns_query_string = ', '.join([f"{col_name} {col_type}" for col_name, col_type in self.schema.items()])
+        create_query = f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_query_string})"
+        self.execute_query(create_query)
+    def select(self, columns=None, where=None):
+        columns = columns or list(self.schema.keys())
+        columns_query_string = ", ".join(columns)
+        query = f"SELECT {columns_query_string} FROM {self.name}"
+        if where:
+            where_query_string = " AND ".join([f"{col} = '{val}'" for col, val in where.items()])
+            query += f" WHERE {where_query_string}"
+        return self.fetch_results(query, columns)
+    def insert(self, item):
+        columns_query = ", ".join(item.keys())
+        values_query = ", ".join([f"'{val}'" for val in item.values()])
+        insert_query = f"INSERT OR IGNORE INTO {self.name} ({columns_query}) VALUES ({values_query})"
+        return self.execute_query(insert_query)
+    def update(self, values, where):
+        set_query = ", ".join([f"{col} = '{val}'" for col, val in values.items()])
+        where_query = " AND ".join([f"{col} = '{val}'" for col, val in where.items()])
+        update_query = f"UPDATE {self.name} SET {set_query} WHERE {where_query}"
+        return self.execute_query(update_query)
+    def select_prices_between_dates(self, start_date, end_date, commodity_type):
+        sql = f"SELECT Date, {commodity_type} FROM Prices WHERE Date BETWEEN '{start_date}' AND '{end_date}'"
+        return self.fetch_results(sql)
+    def execute_query(self, query):
+        cursor = self.db_conn.cursor()
+        cursor.execute(query)
+        self.db_conn.commit()
+        return cursor.lastrowid if cursor.description is None else cursor.rowcount
+    def fetch_results(self, query, columns=None):
+        cursor = self.db_conn.cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
+        if columns:
+            return [dict(zip(columns, row)) for row in results]
+        return results
+    def close(self):
+        self.db_conn.close()

@@ -1,0 +1,72 @@
+import json
+import http.client
+import string
+
+def recurse_comments(comment):
+    text = []
+    body = ''.join(filter(lambda x: x in string.printable, comment['data']['body']))
+    text.append(body)
+    
+    if comment['data']['replies']:
+        for reply in comment['data']['replies']['data']['children']:
+            if reply['kind'] != 'more':
+                text.extend(recurse_comments(reply))
+                
+    return text
+
+# Establish connection to Reddit
+conn = http.client.HTTPSConnection('www.reddit.com')
+conn.request("GET", "/r/worldnews/hot/.json")
+response = conn.getresponse()
+subreddit_data = json.loads(response.read())
+
+# Get the permalink of the first post
+first_post_permalink = subreddit_data['data']['children'][0]['data']['permalink']
+conn.request("GET", f"{first_post_permalink}.json")
+response = conn.getresponse()
+post_data = json.loads(response.read())
+
+# Extract top-level comments
+top_level_posts = post_data[1]['data']['children']
+all_comments = []
+
+# Recursively get all comments
+for post in top_level_posts:
+    if 'body' in post['data']:
+        all_comments.extend(recurse_comments(post))
+
+print(f"Total comments extracted: {len(all_comments)}")
+
+# Prepare data for API request
+cognitive_body = {
+    'stop_words': [],
+    'topicsToExclude': [],
+    'documents': []
+}
+
+for count, reply in enumerate(all_comments):
+    cognitive_body['documents'].append({
+        'id': str(count),
+        'text': reply
+    })
+
+# Setup headers for API request
+headers = {
+    'Content-Type': 'application/json',
+    'Ocp-Apim-Subscription-Key': 'b3f5d9f8d81046598dedc07a7541e2c9',
+}
+
+# Establish connection to Microsoft Cognitive Services API
+conn2 = http.client.HTTPSConnection('westus.api.cognitive.microsoft.com')
+conn2.request("POST", "/text/analytics/v2.0/topics", json.dumps(cognitive_body), headers)
+response = conn2.getresponse()
+response_headers = response.getheaders()
+response_data = json.loads(response.read())
+
+# Print the response headers and data
+print(response_headers)
+print(response_data)
+
+# Close the connections
+conn2.close()
+conn.close()

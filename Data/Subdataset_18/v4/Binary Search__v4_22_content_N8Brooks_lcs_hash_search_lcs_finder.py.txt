@@ -1,0 +1,51 @@
+"""
+Created on Sat Nov 23 13:50:03 2019
+Author: Nathan
+"""
+
+import sys
+import serial_hash_search
+import parallel_hash_search
+
+# Toggle for choosing between parallel and serial LCS computation
+PARALLEL = False
+
+def read_text(file_name):
+    """Reads the content of a text file and returns it as a string."""
+    with open(file_name, 'r', encoding='utf-8') as file:
+        return file.read()
+
+def main():
+    """
+    Command line arguments:
+        str: The path to the first text file for LCS computation.
+        str: The path to the second text file for LCS computation.
+        
+    Prints:
+        int: The length of the longest common substring (LCS).
+        list: A list of all longest common substrings.
+    """
+    if len(sys.argv) == 3:
+        file_a = read_text(sys.argv[1])
+        file_b = read_text(sys.argv[2])
+    else:
+        print("Please provide two text file paths as arguments.")
+        sys.exit(1)
+
+    # Choose the LCS function based on the PARALLEL flag
+    lcs_function = parallel_hash_search.lcs if PARALLEL else serial_hash_search.lcs
+    length, substrings = lcs_function(file_a, file_b)
+
+    # Determine the appropriate grammar for output
+    if len(substrings) == 1:
+        multiple = ['is', '']
+    else:
+        multiple = ['are', 's']
+
+    # Print the results
+    print(f"The length of the longest common substring is: {length}")
+    print(f"There {multiple[0]} {len(substrings)} longest common substring{multiple[1]}:")
+    print('\n'.join(f'"{s}"' for s in substrings))
+
+if __name__ == '__main__':
+    main()

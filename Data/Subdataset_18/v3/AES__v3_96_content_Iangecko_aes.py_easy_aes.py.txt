@@ -1,0 +1,96 @@
+import aes
+
+class EasyAES:
+    def __init__(self):
+        self.CIPHER = aes.AES(256)
+    
+    def encrypt(self, text, key):
+        """
+        Encrypt the given text using the specified key.
+        
+        :param text: The plaintext to be encrypted.
+        :param key: The encryption key.
+        :return: The encrypted text as a hexadecimal string.
+        """
+        blocks = self._sub_divide(text, 16)
+        if not blocks:
+            return None
+        
+        # Add padding to the last block
+        padding = 16 - len(blocks[-1])
+        blocks[-1] += padding * "="
+        
+        # Append padding information as a separate block
+        padding_info = format(padding, "x") * 16
+        blocks.append(padding_info)
+        
+        key_hash = self._expand_key(key)
+        encrypted_blocks = ""
+        
+        for block in blocks:
+            encrypted_block = self.CIPHER.encrypt(str(key_hash), block)
+            encrypted_blocks += ''.join(f'{byte:02x}' for byte in encrypted_block)
+        
+        return encrypted_blocks
+    
+    def decrypt(self, cipher_text, key):
+        """
+        Decrypt the given ciphertext using the specified key.
+        
+        :param cipher_text: The ciphertext to be decrypted.
+        :param key: The decryption key.
+        :return: The decrypted plaintext.
+        """
+        blocks = self._sub_divide(cipher_text, 32)
+        if not blocks:
+            return None
+        
+        key_hash = self._expand_key(key)
+        plain_text = ""
+        
+        for block in blocks:
+            cipher_block = [int(hex_byte, 16) for hex_byte in self._sub_divide(block, 2)]
+            decrypted_block = self.CIPHER.decrypt(str(key_hash), cipher_block)
+            plain_text += self.CIPHER.to_plain(decrypted_block)
+        
+        # Remove padding
+        padding_length = int(plain_text[-1], 16)
+        return plain_text[:-16 - padding_length]
+    
+    def _sub_divide(self, data, chunk_size):
+        """
+        Subdivide the data into chunks of the given size.
+        
+        :param data: The data to be subdivided.
+        :param chunk_size: The size of each chunk.
+        :return: A list of data chunks.
+        """
+        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+    
+    def _expand_key(self, key):
+        """
+        Expand the given key into a larger hash value.
+        
+        :param key: The original key.
+        :return: The expanded key hash.
+        """
+        key_hash = 1
+        for i, char in enumerate(key):
+            key_hash += ord(char) << (8 * i)
+        
+        while key_hash < 0xfffffffffffff:
+            key_hash *= key_hash
+        
+        key_hash &= 0xfffffffffffff
+        return key_hash
+
+if __name__ == "__main__":
+    cipher = EasyAES()
+    KEY = "Tis but a scratch!"
+    DATA = "A scratch?! your arm's off!"
+    
+    encrypted_text = cipher.encrypt(DATA, KEY)
+    print("CIPHER TEXT: " + encrypted_text)
+    
+    decrypted_text = cipher.decrypt(encrypted_text, KEY)
+    print("\nPLAIN TEXT: " + decrypted_text)

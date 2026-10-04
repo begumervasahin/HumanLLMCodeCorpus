@@ -1,0 +1,96 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+    def __str__(self):
+        return f"{self.value}"
+    __repr__ = __str__
+class OrderedLinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+    def add(self, value):
+        new_node = Node(value)
+        if self.head is None:
+            self.head = self.tail = new_node
+        elif self.head.value > new_node.value:
+            new_node.next = self.head
+            self.head = new_node
+        elif self.tail.value < new_node.value:
+            self.tail.next = new_node
+            self.tail = new_node
+        else:
+            temp = self.head
+            while temp.next and temp.next.value < new_node.value:
+                temp = temp.next
+            new_node.next = temp.next
+            temp.next = new_node
+    def delete(self, value):
+        if not self.head:
+            return
+        if self.head.value == value:
+            self.head = self.head.next
+            if self.head is None:
+                self.tail = None
+            return
+        temp = self.head
+        while temp.next and temp.next.value != value:
+            temp = temp.next
+        if temp.next:
+            temp.next = temp.next.next
+            if temp.next is None:
+                self.tail = temp
+    def search(self, value):
+        temp = self.head
+        while temp:
+            if temp.value == value:
+                return True
+            temp = temp.next
+        return False
+    def pop(self):
+        if not self.head:
+            raise IndexError("pop from empty list")
+        if self.head == self.tail:
+            value = self.head.value
+            self.head = self.tail = None
+            return value
+        temp = self.head
+        while temp.next != self.tail:
+            temp = temp.next
+        value = self.tail.value
+        self.tail = temp
+        self.tail.next = None
+        return value
+    def is_empty(self):
+        return self.head is None
+    def size(self):
+        count = 0
+        temp = self.head
+        while temp:
+            count += 1
+            temp = temp.next
+        return count
+    def print_list(self):
+        temp = self.head
+        while temp:
+            print(temp.value, end=' ')
+            temp = temp.next
+        print()
+if __name__ == "__main__":
+    ordered_list = OrderedLinkedList()
+    ordered_list.add(3)
+    ordered_list.add(1)
+    ordered_list.add(2)
+    ordered_list.add(5)
+    ordered_list.add(4)
+    print("Ordered List:")
+    ordered_list.print_list()
+    print("\nAfter deleting 3:")
+    ordered_list.delete(3)
+    ordered_list.print_list()
+    print("\nSearch for 4:", ordered_list.search(4))
+    print("Search for 3:", ordered_list.search(3))
+    print("\nPop last element:", ordered_list.pop())
+    ordered_list.print_list()
+    print("\nIs empty:", ordered_list.is_empty())
+    print("Size of list:", ordered_list.size())

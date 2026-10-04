@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from sklearn import svm
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+def calculate_mape(y_true, y_pred):
+    sum_errors = np.sum(np.abs((y_true - y_pred) / y_true))
+    return sum_errors / len(y_true)
+def parse_dates(x):
+    return pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+def load_dataset(file_path, usecols, date_col):
+    return pd.read_csv(file_path, usecols=usecols, header=0, parse_dates=[date_col],
+                       index_col=0, squeeze=True, date_parser=parse_dates).values.astype('float32')
+def train_svr_model(train_data):
+    model = svm.SVR()
+    model.fit(train_data[:-1], train_data[1:])
+    return model
+def evaluate_model(y_true, y_pred):
+    mse = mean_squared_error(y_true, y_pred)
+    rmse = math.sqrt(mse)
+    mae = mean_absolute_error(y_true, y_pred)
+    mape = calculate_mape(y_true.flatten(), y_pred.flatten()) * 100
+    return mae, mse, rmse, mape
+def plot_results(real, predicted, title, xlabel, ylabel, ylim, legend_loc='upper right'):
+    plt.figure(figsize=(10, 5))
+    plt.plot(real, '-', label="Real Flow")
+    plt.plot(predicted, '--', color='red', label="Predicted Flow")
+    plt.legend(loc=legend_loc)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.ylim(ylim)
+    plt.title(title)
+    plt.show()
+FILE_PATH = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+USECOLS = [2, 3]
+DATE_COL = 0
+TRAIN_START, TRAIN_END = 4500, 6000
+TEST_START, TEST_END = 6409, 6600
+X = load_dataset(FILE_PATH, USECOLS, DATE_COL)
+svr_train = X[TRAIN_START:TRAIN_END].reshape(-1, 1)
+svr_test = X[TEST_START - 1:TEST_END - 1].reshape(-1, 1)
+svr_real = X[TEST_START:TEST_END].reshape(-1, 1)
+model = train_svr_model(svr_train)
+predictions = model.predict(svr_test)
+mae, mse, rmse, mape = evaluate_model(svr_real, svr_test)
+print(f'SVR Test MAE: {mae:.3f}, MSE: {mse:.3f}, RMSE: {rmse:.3f}, MAPE: {mape:.3f}%')
+plot_results(svr_real, svr_test, "SVR Prediction vs Real Values", "Period (15-minute intervals)",
+             "Volume (vehicle/period)", (0, 800))
+dat_start = 31
+plt.figure(figsize=(12, 6))
+plt.plot(X[dat_start:dat_start + 96 * 7], '-', color='r', label="Real Flow")
+plt.legend(loc='upper right')
+plt.xlabel("Period (15-minute intervals)")
+plt.ylabel("Volume (vehicle/period)")
+plt.title("Real Flow for a Week")
+plt.show()

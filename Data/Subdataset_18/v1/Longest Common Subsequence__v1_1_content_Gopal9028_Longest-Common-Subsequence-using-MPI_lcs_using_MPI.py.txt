@@ -1,0 +1,62 @@
+from mpi4py import MPI
+import time
+
+# Longest Common Subsequence function
+def lcs(s1, s2):
+    matrix = [["" for x in range(len(s2) + 1)] for x in range(len(s1) + 1)]
+    for i in range(1, len(s1) + 1):
+        for j in range(1, len(s2) + 1):
+            if s1[i - 1] == s2[j - 1]:
+                matrix[i][j] = matrix[i - 1][j - 1] + s1[i - 1]
+            else:
+                matrix[i][j] = max(matrix[i - 1][j], matrix[i][j - 1], key=len)
+    cs = matrix[-1][-1]
+    return len(cs), cs
+
+def main():
+    start_time = time.time()
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    if rank == 0:
+        with open('a.txt', 'r') as file:
+            str1 = file.read().strip()
+        with open('b.txt', 'r') as file:
+            str2 = file.read().strip()
+
+        xSize = len(str1)
+        ySize = len(str2)
+
+        # Broadcast the sizes of the strings
+        comm.bcast(xSize, root=0)
+        comm.bcast(ySize, root=0)
+
+        # Broadcast the strings
+        comm.bcast(str1, root=0)
+        comm.bcast(str2, root=0)
+
+        # Perform LCS on the root process
+        lcs_length, lcs_string = lcs(str1, str2)
+        print(f"LCS length: {lcs_length}, LCS string: '{lcs_string}'")
+    else:
+        # Receive the sizes of the strings
+        xSize = comm.bcast(None, root=0)
+        ySize = comm.bcast(None, root=0)
+
+        # Receive the strings
+        str1 = comm.bcast(None, root=0)
+        str2 = comm.bcast(None, root=0)
+
+        # Perform LCS on non-root processes (if needed)
+        # In this example, we are just printing the rank
+        print(f"My rank is {rank}")
+
+    # Synchronize processes
+    comm.Barrier()
+    if rank == 0:
+        print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == '__main__':
+    main()

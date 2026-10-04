@@ -1,0 +1,78 @@
+import numpy as np
+import time
+import Keywords_Algorithm as KA
+import keywords_tools as KT
+
+def initialize_models():
+    """
+    Initialize and return the necessary models and tools for keyword extraction.
+    """
+    tools = KT.Tools()
+    tf_idf = KA.TFIDF(tools)
+    tr = KA.TextRank(3, 0.85, 700, tools)
+    return tf_idf, tr, tools
+
+def extract_and_combine_keywords(tf_idf, tr, tools, text):
+    """
+    Perform keyword extraction using TF-IDF and TextRank, then combine results.
+
+    Args:
+        tf_idf: TF-IDF model.
+        tr: TextRank model.
+        tools: Utility tools for keyword processing.
+        text: The input text to process.
+
+    Returns:
+        The combined keyword extraction results.
+    """
+    # Extract keywords using TF-IDF
+    result, _ = tf_idf.Do_keywords(text)
+    
+    # Extract keywords using TextRank
+    result_tr, _ = tr.calculate_textrank(text)
+    
+    # Combine the results using a weighted cross method
+    method_num = "Weight_Cross"
+    combined_result = tools.Mix_algorithm(method_num, result, result_tr)
+    return combined_result
+
+def process_file_lines(file_path):
+    """
+    Read the file, process each line for keyword extraction, and measure performance.
+
+    Args:
+        file_path: Path to the input file.
+    """
+    # Record the start time of the processing
+    start_time = time.time()
+
+    # Read the file and preprocess the lines
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    cleaned_lines = [line.strip() for line in lines]
+
+    # Initialize the total character counter
+    total_characters = 0
+
+    # Initialize the models and tools
+    tf_idf, tr, tools = initialize_models()
+
+    # Process each line of text
+    for index, line in enumerate(cleaned_lines):
+        total_characters += len(line)
+        extract_and_combine_keywords(tf_idf, tr, tools, line)
+        print(f"Completed: {index}")
+
+    # Record the end time of the processing
+    end_time = time.time()
+    
+    # Print the total number of characters processed and the total time taken
+    print(f"Total characters: {total_characters}")
+    print(f"Total time: {end_time - start_time:.2f} seconds")
+
+if __name__ == '__main__':
+    # Define the path to the input file
+    file_path = "./data/cnews.test.txt"
+    
+    # Process the file lines for keyword extraction
+    process_file_lines(file_path)

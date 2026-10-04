@@ -1,0 +1,65 @@
+import pandas as pd
+import psycopg2 as pg
+
+# Database connection parameters
+db_params = {
+    'dbname': 'datahub',
+    'user': 'CONTACT SLOVAKIA.DIGITAL',
+    'host': 'sql.ekosystem.slovensko.digital',
+    'port': 5432,
+    'password': 'CONTACT SLOVENSKO.DIGITAL'
+}
+
+def connect_to_db(params):
+    """
+    Establish a connection to the PostgreSQL database using the provided parameters.
+    
+    :param params: Dictionary containing database connection parameters
+    :return: Connection object or None if connection fails
+    """
+    try:
+        conn = pg.connect(**params)
+        print("Connected to the database!")
+        return conn
+    except Exception as e:
+        print(f"Error connecting to the database: {e}")
+        return None
+
+def execute_query(connection, query):
+    """
+    Execute a SQL query and return the results in a Pandas DataFrame.
+    
+    :param connection: PostgreSQL connection object
+    :param query: SQL query string
+    :return: DataFrame containing the query results or None if query fails
+    """
+    try:
+        df = pd.read_sql(query, connection)
+        return df
+    except Exception as e:
+        print(f"Error executing query: {e}")
+        return None
+
+def main():
+    """
+    Main function to manage the database connection and query execution.
+    """
+    # Connect to the database
+    conn = connect_to_db(db_params)
+    if conn:
+        # Define the query
+        query = "SELECT * FROM your_table_name"
+        
+        # Execute the query
+        df = execute_query(conn, query)
+        
+        if df is not None:
+            # Perform operations on the DataFrame
+            print(df.head())
+        
+        # Close the database connection
+        conn.close()
+        print("Connection closed.")
+
+if __name__ == "__main__":
+    main()

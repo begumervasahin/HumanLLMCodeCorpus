@@ -1,0 +1,139 @@
+"""
+Name: pynb
+By: CDoyle
+Implementation of a Gaussian Naive Bayes algorithm
+"""
+
+import numpy as np
+
+def separate_classes(data, labels):
+    """
+    Separates data into corresponding classes.
+    
+    Parameters:
+    data (array-like): The dataset to be separated.
+    labels (array-like): The class labels for the dataset.
+    
+    Returns:
+    dict: A dictionary with classes as keys and lists of instances as values.
+    """
+    separated = {}
+    for x, y in zip(data, labels):
+        if y not in separated:
+            separated[y] = []
+        separated[y].append(x)
+    return separated
+
+def summarize(data):
+    """
+    Returns column-wise mean and standard deviation of a dataset.
+    
+    Parameters:
+    data (array-like): The dataset to be summarized.
+    
+    Returns:
+    list: A list of tuples, each containing the mean and standard deviation of a column.
+    """
+    summaries = [(np.mean(data[:, i]), np.std(data[:, i])) for i in range(data.shape[1])]
+    return summaries
+
+def summarize_classes(dataset, labels):
+    """
+    Returns summaries of classes, i.e., a dictionary with each class's
+    feature means and standard deviations.
+    
+    Parameters:
+    dataset (array-like): The dataset to be summarized.
+    labels (array-like): The class labels for the dataset.
+    
+    Returns:
+    dict: A dictionary of summaries for each class.
+    """
+    separated = separate_classes(dataset, labels)
+    summaries = {cls: summarize(np.array(instances)) for cls, instances in separated.items()}
+    return summaries
+
+def gaussian(x, mean, stdev):
+    """
+    Computes the Gaussian probability density function.
+    
+    Parameters:
+    x (float): The value for which the probability density is computed.
+    mean (float): The mean of the distribution.
+    stdev (float): The standard deviation of the distribution.
+    
+    Returns:
+    float: The probability density of x.
+    """
+    exponent = np.exp(-(np.power(x - mean, 2) / (2 * np.power(stdev + 1e-9, 2))))
+    return (1 / (np.sqrt(2 * np.pi) * (stdev + 1e-9))) * exponent
+
+class NaiveBayes:
+    """
+    Implementation of the Naive Bayes algorithm.
+    """
+    def __init__(self, data, labels):
+        """
+        Initializes the NaiveBayes classifier with the training data and labels.
+        
+        Parameters:
+        data (array-like): The training data.
+        labels (array-like): The training labels.
+        """
+        self.summaries = summarize_classes(data, labels)
+
+    def calculate_class_probabilities(self, input_data):
+        """
+        Computes the log probabilities of each class for a given input.
+        
+        Parameters:
+        input_data (array-like): The input data for which probabilities are computed.
+        
+        Returns:
+        dict: A dictionary of log probabilities for each class.
+        """
+        probabilities = {}
+        for cls, class_summaries in self.summaries.items():
+            probabilities[cls] = 0
+            for i in range(len(class_summaries)):
+                mean, stdev = class_summaries[i]
+                x = input_data[i]
+                probabilities[cls] += np.log(gaussian(x, mean, stdev))
+        return probabilities
+
+    def predict(self, input_data):
+        """
+        Predicts the class label for a given input.
+        
+        Parameters:
+        input_data (array-like): The input data to be classified.
+        
+        Returns:
+        int or str: The predicted class label.
+        """
+        probabilities = self.calculate_class_probabilities(input_data)
+        best_label, best_prob = None, -np.inf
+        for cls, probability in probabilities.items():
+            if best_label is None or probability > best_prob:
+                best_prob = probability
+                best_label = cls
+        return best_label
+
+    def get_predictions(self, test_data):
+        """
+        Predicts class labels for a test dataset.
+        
+        Parameters:
+        test_data (array-like): The test dataset.
+        
+        Returns:
+        list: A list of predicted class labels.
+        """
+        return [self.predict(instance) for instance in test_data]
+
+# Example usage:
+# data = np.array(...)  # your training data
+# labels = np.array(...)  # your training labels
+# model = NaiveBayes(data, labels)
+# test_data = np.array(...)  # your test data
+# predictions = model.get_predictions(test_data)

@@ -1,0 +1,73 @@
+from linkedlist import LinkedList
+from vartree import BinarySearchTree
+from infixtotree import to_expr_tree
+
+class VariableTree(BinarySearchTree):
+    """
+    A class that extends BinarySearchTree to handle variable assignments and lookups.
+    """
+    def assign(self, variable, value):
+        """
+        Assigns a value to a variable in the binary search tree.
+        
+        :param variable: Variable to assign value to
+        :param value: Value to assign
+        """
+        self.insert(variable, value)
+
+    def lookup(self, variable):
+        """
+        Looks up the value of a variable in the binary search tree.
+        
+        :param variable: Variable to look up
+        :return: Value of the variable
+        :raises ValueError: If the variable is not found
+        """
+        node = self.search(variable)
+        if node:
+            return node.value
+        raise ValueError(f"Variable '{variable}' not found in the tree")
+
+# Initialize the variable tree
+var_tree = VariableTree()
+
+def eval_postfix(postfix_expr):
+    """
+    Evaluates a postfix expression using a stack and a binary search tree for variable storage.
+    
+    :param postfix_expr: Postfix expression as a list of tokens
+    :return: Evaluation result
+    """
+    stack = LinkedList()
+    
+    for token in postfix_expr:
+        if token[0].isdigit() or token[0].isalpha():
+            stack.push(token)
+        elif token == '=':
+            top = stack.pop()
+            bottom = stack.pop()
+            if top[0].isalpha():
+                top = var_tree.lookup(top)
+            var_tree.assign(bottom, top)
+            stack.push(bottom)
+        else:
+            top = stack.pop()
+            bottom = stack.pop()
+            if top[0].isalpha():
+                top = var_tree.lookup(top)
+            if bottom[0].isalpha():
+                bottom = var_tree.lookup(bottom)
+            temp = eval(f"{bottom} {token} {top}")
+            stack.push(str(temp))
+    
+    result = stack.top()
+    if result[0].isdigit():
+        return float(result)
+    return var_tree.lookup(result)
+
+# Example usage
+if __name__ == "__main__":
+    # Example postfix expression: 12 3 * 5 + a =
+    postfix_expr = ['12', '3', '*', '5', '+', 'a', '=']
+    result = eval_postfix(postfix_expr)
+    print("Result:", result)

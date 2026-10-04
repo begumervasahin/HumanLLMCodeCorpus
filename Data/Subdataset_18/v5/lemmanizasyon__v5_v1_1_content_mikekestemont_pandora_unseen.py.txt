@@ -1,0 +1,89 @@
+from __future__ import print_function
+import os
+import codecs
+from pandora.tagger import Tagger
+import pandora.utils
+
+def main():
+    print('::: started :::')
+
+    # Load the trained Tagger model
+    tagger = load_tagger_model('models/new_cg')
+    print('Tagger loaded, now annotating...')
+
+    # Set the paths for input and output directories
+    input_directory = 'data/limborch/orig/'
+    output_directory = 'data/limborch/tagged/'
+
+    # Process each file in the input directory
+    process_files_in_directory(tagger, input_directory, output_directory)
+
+    print('::: ended :::')
+
+def load_tagger_model(model_directory):
+    """Load the trained Tagger model.
+
+    Args:
+        model_directory (str): Directory where the model is stored.
+
+    Returns:
+        Tagger: Loaded Tagger model.
+    """
+    return Tagger(load=True, model_dir=model_directory)
+
+def process_files_in_directory(tagger, input_directory, output_directory):
+    """Process each file in the input directory and annotate the tokens.
+
+    Args:
+        tagger (Tagger): Loaded Tagger model.
+        input_directory (str): Path to the input directory containing unannotated files.
+        output_directory (str): Path to the output directory to save annotated files.
+    """
+    for filename in os.listdir(input_directory):
+        if filename.endswith('.txt'):
+            print('\t +', filename)
+            annotate_file(tagger, input_directory, output_directory, filename)
+
+def annotate_file(tagger, input_directory, output_directory, filename):
+    """Annotate a single file using the Tagger model.
+
+    Args:
+        tagger (Tagger): Loaded Tagger model.
+        input_directory (str): Path to the input directory containing unannotated files.
+        output_directory (str): Path to the output directory to save annotated files.
+        filename (str): Name of the file to annotate.
+    """
+    input_file_path = os.path.join(input_directory, filename)
+    tokens = load_unannotated_tokens(input_file_path)
+
+    # Annotate the tokens using the loaded tagger
+    annotations = tagger.annotate(tokens)
+
+    # Write annotated data to a new file
+    output_file_path = os.path.join(output_directory, filename)
+    write_annotations_to_file(output_file_path, annotations)
+
+def load_unannotated_tokens(file_path):
+    """Load unannotated tokens from a file.
+
+    Args:
+        file_path (str): Path to the file containing unannotated tokens.
+
+    Returns:
+        list: List of unannotated tokens.
+    """
+    return pandora.utils.load_unannotated_file(file_path, nb_instances=None, tokenized_input=False)
+
+def write_annotations_to_file(output_file_path, annotations):
+    """Write the annotated tokens to a file.
+
+    Args:
+        output_file_path (str): Path to the output file.
+        annotations (dict): Annotations containing tokens, lemmas, and POS tags.
+    """
+    with codecs.open(output_file_path, 'w', 'utf8') as file:
+        for token, lemma, pos in zip(annotations['tokens'], annotations['lemmas'], annotations['pos']):
+            file.write('\t'.join((token.lower(), lemma.lower(), pos.lower())) + '\n')
+
+if __name__ == '__main__':
+    main()

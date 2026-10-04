@@ -1,0 +1,73 @@
+import os
+import sys
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA512
+from base64 import b64encode, b64decode
+
+def loadKey(keyPath):
+    with open(keyPath, 'r') as keyFile:
+        keyFileContent = keyFile.read()
+        decodedKey = b64decode(keyFileContent)
+        key = RSA.import_key(decodedKey)
+    return key
+
+def digSig(sigKey, message):
+    h = SHA512.new(message.encode())
+    signature = pkcs1_15.new(sigKey).sign(h)
+    return signature
+
+def getFileSig(fileName, privKey):
+    with open(fileName, "rb") as f:
+        contents = f.read()
+        fileHash = SHA512.new(contents)
+        signature = pkcs1_15.new(privKey).sign(fileHash)
+    return signature
+
+def verifyFileSig(fileName, pubKey, signature):
+    with open(fileName, "rb") as f:
+        contents = f.read()
+        fileHash = SHA512.new(contents)
+        try:
+            pkcs1_15.new(pubKey).verify(fileHash, signature)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+def saveSig(fileName, signature):
+    with open(fileName, "wb") as f:
+        f.write(signature)
+
+def loadSig(fileName):
+    with open(fileName, "rb") as f:
+        signature = f.read()
+    return signature
+
+def main():
+    if len(sys.argv) < 5:
+        print("USAGE: " + sys.argv[0] + " <KEY FILE NAME> <SIGNATURE FILE NAME> <INPUT FILE NAME> <MODE>")
+        exit(-1)
+    
+    keyFileName = sys.argv[1]
+    sigFileName = sys.argv[2]
+    inputFileName = sys.argv[3]
+    mode = sys.argv[4]
+    
+    key = loadKey(keyFileName)
+    
+    if mode == "sign":
+        result = getFileSig(inputFileName, key)
+        saveSig(sigFileName, result)
+        print("Signature saved to file", sigFileName)
+    elif mode == "verify":
+        signature = loadSig(sigFileName)
+        if verifyFileSig(inputFileName, key, signature):
+            print("Match!")
+        else:
+            print("No match!")
+    else:
+        print("Invalid mode", mode)
+
+if __name__ == "__main__":
+    main()

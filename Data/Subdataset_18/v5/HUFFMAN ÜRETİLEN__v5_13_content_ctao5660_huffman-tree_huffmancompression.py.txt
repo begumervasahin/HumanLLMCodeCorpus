@@ -1,0 +1,108 @@
+import os
+from collections import Counter
+
+class Node:
+    """Represents a node in the Huffman Tree."""
+    
+    def __init__(self, frequency, char=None):
+        self.left = None
+        self.right = None
+        self.frequency = frequency
+        self.char = char
+
+    def is_leaf(self):
+        """Check if the node is a leaf (i.e., has no children)."""
+        return self.left is None and self.right is None
+
+class BinaryTree:
+    """Represents the Huffman Tree and related operations."""
+
+    def __init__(self, frequency_list):
+        self.frequency_list = frequency_list
+        self.code_dict = {}
+        self.reverse_dict = {}
+
+    def create_tree(self):
+        """Build the Huffman Tree from the character frequencies."""
+        nodes = [Node(freq, char) for char, freq in self.frequency_list.items()]
+        
+        while len(nodes) > 1:
+            nodes.sort(key=lambda node: node.frequency)
+            left = nodes.pop(0)
+            right = nodes.pop(0)
+            new_node = Node(left.frequency + right.frequency)
+            new_node.left = left
+            new_node.right = right
+            nodes.append(new_node)
+
+        return nodes[0]
+
+    def generate_codes(self, node, encoded=""):
+        """Generate binary codes for each character based on the Huffman Tree."""
+        if node is None:
+            return
+        if node.is_leaf():
+            self.code_dict[node.char] = encoded
+            self.reverse_dict[encoded] = node.char
+            print(f'Character: {node.char}, Code: {encoded}')
+            return
+        self.generate_codes(node.left, encoded + "1")
+        self.generate_codes(node.right, encoded + "0")
+
+    def encode_message(self, input_file, output_file):
+        """Encode a message from a file using the Huffman Tree and save the encoded message."""
+        with open(input_file, 'r') as input_f, open(output_file, 'w') as output_f:
+            for char, code in self.code_dict.items():
+                output_f.write(f'{char if char != "\n" else "\\n"} -> {code}\n')
+            output_f.write('```\n')
+
+            total_bits = 0
+            for char in input_f.read():
+                encoded_char = self.code_dict[char]
+                output_f.write(encoded_char)
+                total_bits += len(encoded_char)
+
+        print(f'Number of bits: {total_bits / 8:.2f} bytes')
+
+    def decode_message(self, encoded_file, root):
+        """Decode the encoded message from a file using the Huffman Tree."""
+        with open(encoded_file, 'r') as file:
+            encoded_message = file.read().split('```')[-1].strip()
+
+        decoded_message = ''
+        node = root
+        for bit in encoded_message:
+            node = node.left if bit == '1' else node.right
+            if node.is_leaf():
+                decoded_message += node.char
+                node = root
+
+        print("Decoded Message:", decoded_message)
+
+def count_chars(file_location):
+    """Count the frequency of each character in the file."""
+    with open(file_location, 'r') as file:
+        return Counter(file.read())
+
+def main():
+    input_file = '/path/to/your/input.txt'
+    output_file = '/path/to/your/output.txt'
+
+    # Step 1: Count character frequencies in the input file
+    frequency_list = count_chars(input_file)
+
+    # Step 2: Create a Huffman Tree based on the character frequencies
+    tree = BinaryTree(frequency_list)
+    root_node = tree.create_tree()
+
+    # Step 3: Generate binary codes for each character
+    tree.generate_codes(root_node)
+
+    # Step 4: Encode the input message and save it to the output file
+    tree.encode_message(input_file, output_file)
+
+    # Step 5: Decode the message from the encoded file
+    tree.decode_message(output_file, root_node)
+
+if __name__ == '__main__':
+    main()

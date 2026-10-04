@@ -1,0 +1,70 @@
+import requests
+from requests.exceptions import RequestException
+from bs4 import BeautifulSoup
+
+def scrape_rentpad(city, output_file):
+    """
+    Scrapes apartment listings from Rentpad for a given city.
+
+    Args:
+        city (str): The name of the city to scrape listings for.
+        output_file (str): Path to the output CSV file where results will be saved.
+    """
+    # Define payload for the POST request
+    payload = {
+        "a": "31",
+        "cityName": city,
+        "propertyTypeIDs": [2, 3, 5],
+        "furnishTypeIDs": [1, 2, 3],
+        "placeIDs": [],
+        "statusTypeIDs": [],
+        "amenityIDs": [],
+        "longMonthRateLow": "0",
+        "longMonthRateHigh": "30,000",
+        "numBedroomsLow": "0",
+        "numBedroomsHigh": "0",
+        "itemsPerPage": "1000",
+        "pageNumber": "1",
+        "lengthOfStay": "",
+        "ham": "ham"
+    }
+
+    try:
+        # Make a POST request to Rentpad
+        response = requests.post(
+            url="https://rentpad.com.ph/long-term-rentals/mandaluyong/apartment",
+            data=payload,
+        )
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Extract relevant data from the parsed HTML
+        prices = soup.find_all(itemprop="price")
+        apartments = soup.find_all(itemprop="name")
+        links = soup.find_all(itemprop="offers")
+
+        # Open the output file for writing
+        with open(output_file, "w", encoding='utf-8') as file:
+            # Write the header to the CSV file
+            file.write("Apartment Name,Price,Link\n")
+
+            # Iterate through the apartment listings
+            for i, apartment in enumerate(apartments):
+                if apartment.string is None:
+                    continue
+
+                # Extract price and link
+                price = prices[i].string[1:].replace(",", "")
+                link = links[i].find('a').get('href')
+
+                # Print and write the apartment details
+                print(f"{apartment.string}, {price}, {link}")
+                file.write(f"{apartment.string},{price},{link}\n")
+
+    except RequestException as e:
+        print(f"Error fetching data from Rentpad: {e}")
+
+if __name__ == "__main__":
+    scrape_rentpad("Mandaluyong", "rentpad_list.csv")

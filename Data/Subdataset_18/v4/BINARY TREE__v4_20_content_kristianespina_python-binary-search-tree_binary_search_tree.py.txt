@@ -1,0 +1,92 @@
+from random import randint
+
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+    
+    def insert(self, value):
+        if value < self.value:
+            if self.left is None:
+                self.left = Node(value)
+            else:
+                self.left.insert(value)
+        elif value > self.value:
+            if self.right is None:
+                self.right = Node(value)
+            else:
+                self.right.insert(value)
+        else:
+            self.value = value
+
+    def convert_to_array(self, node, array):
+        """
+        Converts the tree to an array using Depth-First Search (DFS).
+        """
+        if node:
+            array.append(node.value)
+            self.convert_to_array(node.left, array)
+            self.convert_to_array(node.right, array)
+        return array
+
+class BinaryTree:
+    def __init__(self):
+        self.root = None
+    
+    def insert(self, data):
+        if self.root is None:
+            self.root = Node(data)
+        else:
+            self.root.insert(data)
+    
+    def find(self, data):
+        return self._find_node(self.root, data)
+    
+    def _find_node(self, node, data):
+        if node is None:
+            return False
+        elif data == node.value:
+            return True
+        elif data < node.value:
+            return self._find_node(node.left, data)
+        else:
+            return self._find_node(node.right, data)
+    
+    def convert_to_array(self):
+        """
+        Converts the entire tree to an array using DFS.
+        """
+        if self.root is not None:
+            return self.root.convert_to_array(self.root, [])
+        return []
+    
+    def rearrange(self):
+        """
+        Re-arranges the binary tree so that the median value becomes the root.
+        Returns the tree in DFS array form.
+        """
+        nodes = self.convert_to_array()
+        nodes.sort()
+        middle_index = len(nodes) // 2
+        
+        # Create a new root with the median value
+        self.root = Node(nodes.pop(middle_index))
+        
+        # Insert the remaining elements
+        for element in nodes:
+            self.root.insert(element)
+        
+        return self.convert_to_array()
+
+# Create a binary tree and insert 50 random integers between 0 and 100
+tree = BinaryTree()
+for _ in range(50):
+    tree.insert(randint(0, 100))
+
+# Print the tree in DFS array form before and after rearranging
+print("Original tree (DFS array):", tree.convert_to_array())
+print("Rearranged tree (DFS array):", tree.rearrange())
+
+# Find and print whether the value 55 exists in the tree
+print("Is 55 in the tree?", tree.find(55))

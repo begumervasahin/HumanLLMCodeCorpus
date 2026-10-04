@@ -1,0 +1,52 @@
+from __future__ import print_function
+import json
+import operator
+import tempfile
+from pyspark import SparkContext
+from pyspark.mllib.feature import Word2Vec
+from pyspark.mllib.feature import Word2VecModel
+def initialize_spark_context(app_name):
+    return SparkContext(appName=app_name)
+def load_data_files(sc, vocab_path, lda_path):
+    vocabulary_rdd = sc.textFile(vocab_path).map(lambda row: row.split(" "))
+    lda_rdd = sc.textFile(lda_path).map(json.loads)
+    return vocabulary_rdd, lda_rdd
+def train_word2vec_model(vocabulary_rdd):
+    word2vec = Word2Vec()
+    return word2vec.fit(vocabulary_rdd)
+def save_model(model, sc):
+    path = tempfile.mkdtemp()
+    model.save(sc, path)
+    return path
+def output_to_file(value, filename):
+    with open(filename, "a+", encoding="utf-8") as file:
+        json_data = json.dumps(value, ensure_ascii=False)
+        file.write(json_data + "\n")
+def get_synonyms_and_weights(lda_list, model_path, sc):
+    word_dict = {}
+    model = Word2VecModel.load(sc, model_path)
+    for word, weight in lda_list:
+        word_dict[word] = weight
+        synonyms = model.findSynonyms(word, 20)
+        for synonym, cosine_distance in synonyms:
+            synonym = synonym.encode("utf-8")
+            print(f"{synonym}: {cosine_distance}")
+            if synonym in word_dict:
+                word_dict[synonym] += weight * cosine_distance
+            else:
+                word_dict[synonym] = weight * cosine_distance
+    sorted_word_dict = sorted(word_dict.items(), key=operator.itemgetter(1), reverse=True)
+    output_to_file(sorted_word_dict, "/vagrant/word2vec/data.txt")
+def main():
+    sc = initialize_spark_context('Word2Vec')
+    vocab_path = '/vagrant/vocabulary/data.txt'
+    lda_path = '/vagrant/word/data.txt'
+    vocabulary_rdd, lda_rdd = load_data_files(sc, vocab_path, lda_path)
+    model = train_word2vec_model(vocabulary_rdd)
+    model_path = save_model(model, sc)
+    lda_data = lda_rdd.collect()
+    for lda_list in lda_data:
+        get_synonyms_and_weights(lda_list, model_path, sc)
+    sc.stop()
+if __name__ == "__main__":
+    main()

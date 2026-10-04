@@ -1,0 +1,60 @@
+import re
+from pyspark import SparkConf, SparkContext
+from pyspark.ml.feature import HashingTF, IDF, NGram
+from pyspark.sql import SparkSession
+
+def preprocess(context):
+    """
+    Preprocesses the input context to extract the file name and clean the words.
+
+    Args:
+        context (tuple): A tuple containing the file path and its content.
+
+    Returns:
+        tuple: A tuple containing the file name and a list of cleaned words.
+    """
+    file_path, content = context
+    words = re.sub('[^a-z0-9]+', ' ', content.lower()).split()
+    file_name = file_path.split("/")[-1]
+    return file_name, words
+
+def main():
+    # Configure Spark
+    conf = SparkConf().setAppName("part2_uni").set("spark.executor.memory", "2g")
+    sc = SparkContext(conf=conf)
+    
+    try:
+        # Initialize Spark session
+        spark = SparkSession(sc)
+
+        # Read the text files
+        lines = sc.wholeTextFiles("/cosc6339_s17/books-longlist/")
+
+        # Check if the lines RDD can be converted to DataFrame
+        assert hasattr(lines, "toDF"), "RDD does not have toDF method"
+
+        # Tokenize the lines
+        tokenized_df = lines.map(preprocess).toDF(["bookname", "words"])
+
+        # Generate unigrams using NGram
+        ngram = NGram(n=2, inputCol="words", outputCol="unigrams")
+        unigram_df = ngram.transform(tokenized_df)
+
+        # Apply HashingTF to the unigrams
+        hashing_tf = HashingTF(inputCol="unigrams", outputCol="unigram_tf")
+        tf = hashing_tf.transform(unigram_df)
+
+        # Compute the IDF for the TF
+        idf = IDF(inputCol="unigram_tf", outputCol="unigram_tf_idf")
+        idf_model = idf.fit(tf)
+        tfidf_df = idf_model.transform(tf)
+
+        # Save the resulting RDD to a text file
+        tfidf_df.rdd.saveAsTextFile("/bigd12/output2_2")
+    
+    finally:
+        # Stop the Spark context
+        sc.stop()
+
+if __name__ == "__main__":
+    main()

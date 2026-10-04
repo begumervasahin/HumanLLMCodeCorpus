@@ -1,0 +1,40 @@
+import re
+import string
+import pandas as pd
+from math import log
+
+# Load data
+data = pd.read_csv('tf_idf.csv')
+
+# Extract the 'title' column as a list of documents
+documents = data['title'].tolist()
+
+# Define a function to preprocess the documents
+def preprocess_document(doc):
+    doc = doc.lower()  # Convert to lowercase
+    doc = re.sub(f'[{re.escape(string.punctuation)}]', '', doc)  # Remove punctuation
+    return doc.split()  # Split into words
+
+# Apply preprocessing to all documents
+term_vectors = [preprocess_document(doc) for doc in documents]
+
+# Flatten the list of term vectors into a single list of words
+word_list = [word for term_vector in term_vectors for word in term_vector]
+
+# Calculate word frequencies and related metrics
+def word_list_to_freq_dict(word_list):
+    word_freq = {word: word_list.count(word) for word in set(word_list)}
+    total_words = len(word_list)
+    freq_list = [
+        (word, freq, round(log(total_words / freq, 10), 4), freq * round(log(total_words / freq, 10), 4))
+        for word, freq in word_freq.items()
+    ]
+    return sorted(freq_list, key=lambda x: x[1], reverse=True)
+
+# Get the final list of word frequencies and metrics
+finals = word_list_to_freq_dict(word_list)
+
+# Print the results
+print(f"Number of documents: {len(documents)}")
+print(f"Number of words: {len(word_list)}")
+print("Word frequencies and metrics:", finals)

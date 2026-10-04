@@ -1,0 +1,38 @@
+import requests
+from bs4 import BeautifulSoup
+BASE_URL = "https:
+LOCATION = "New York,NY"
+PAGE_INCREMENT = 10
+MAX_PAGES = 201
+def fetch_page(url):
+    response = requests.get(url)
+    if response.status_code != 200:
+        print(f"Failed to fetch page: {response.status_code}")
+        return None
+    return BeautifulSoup(response.text, "html.parser")
+def parse_businesses(soup):
+    businesses = soup.findAll("div", {"class": "biz-listing-large"})
+    results = []
+    for biz in businesses:
+        title = biz.find("a", {"class": "biz-name"}).text.strip() if biz.find("a", {"class": "biz-name"}) else "N/A"
+        address = biz.find("address").text.strip() if biz.find("address") else "N/A"
+        phone = biz.find("span", {"class": "biz-phone"}).text.strip() if biz.find("span", {"class": "biz-phone"}) else "N/A"
+        results.append({"title": title, "address": address, "phone": phone})
+    return results
+def save_to_file(businesses, file_path):
+    with open(file_path, "a") as textfile:
+        for biz in businesses:
+            textfile.write(f"{biz['title']}\n{biz['address']}\n{biz['phone']}\n\n")
+def main():
+    current_page = 0
+    file_path = f"yelp-{LOCATION.replace(',', '_')}.txt"
+    while current_page < MAX_PAGES:
+        url = f"{BASE_URL}{LOCATION}&start={current_page}"
+        soup = fetch_page(url)
+        if not soup:
+            break
+        businesses = parse_businesses(soup)
+        save_to_file(businesses, file_path)
+        current_page += PAGE_INCREMENT
+if __name__ == "__main__":
+    main()

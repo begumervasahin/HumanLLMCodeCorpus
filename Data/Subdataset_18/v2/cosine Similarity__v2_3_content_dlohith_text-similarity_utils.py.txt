@@ -1,0 +1,60 @@
+import math
+from scipy import spatial
+
+# Function to calculate inverse document frequency (IDF) of a term
+def inverseDocumentFrequency(term, allDocuments):
+    numDocumentsWithThisTerm = sum(1 for doc in allDocuments if term.lower() in doc.lower().split())
+    if numDocumentsWithThisTerm > 0:
+        return 1.0 + math.log(float(len(allDocuments)) / numDocumentsWithThisTerm)
+    else:
+        return 1.0
+
+# Function to calculate term frequency (TF) of a term in a document
+def termFrequency(term, document):
+    normalizedDocument = document.lower().split()
+    return normalizedDocument.count(term.lower()) / float(len(normalizedDocument))
+
+# Function to calculate TF-IDF vector of a document with respect to a collection of documents
+def getTFIDF(document, allDocuments):
+    terms = document.lower().split()
+    tfidfs = []
+    for term in terms:
+        tf = termFrequency(term, document)
+        idf = inverseDocumentFrequency(term, allDocuments)
+        tfidf = tf * idf
+        tfidfs.append(tfidf)
+    return tfidfs
+
+# Function to calculate cosine similarity between two vectors
+def cosineSimilarity(query, document):
+    # Pad shorter vector with zeros for cosine similarity calculation
+    padding_len = abs(len(query) - len(document))
+    padding = [0] * padding_len
+    if len(query) > len(document):
+        document.extend(padding)
+    elif len(document) > len(query):
+        query.extend(padding)
+    
+    # Calculate cosine similarity using scipy's spatial.distance.cosine
+    return 1 - spatial.distance.cosine(query, document)
+
+# Example usage
+doc1 = "This is a sample document for testing TF-IDF and cosine similarity."
+doc2 = "TF-IDF stands for Term Frequency-Inverse Document Frequency."
+documents = [doc1, doc2]
+
+query = "TF-IDF and cosine similarity are techniques used in information retrieval."
+
+# Calculate TF-IDF vector for the query with respect to all documents
+query_tfidf = getTFIDF(query, documents)
+
+# Calculate TF-IDF vector for each document in the collection
+document_tfidfs = [getTFIDF(doc, documents) for doc in documents]
+
+# Calculate cosine similarity between query and each document
+similarities = [cosineSimilarity(query_tfidf, doc_tfidf) for doc_tfidf in document_tfidfs]
+
+# Print results
+print(f"Query TF-IDF: {query_tfidf}")
+for i, doc in enumerate(documents):
+    print(f"Similarity with Document {i+1}: {similarities[i]}")

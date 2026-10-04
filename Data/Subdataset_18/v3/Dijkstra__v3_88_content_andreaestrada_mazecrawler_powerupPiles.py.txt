@@ -1,0 +1,75 @@
+import pygame
+from random import randint
+import spec
+import powerup
+
+class PowerupPile(powerup.PowerupGeneric):
+    def __init__(self, center_x, center_y, amount, images, group, size):
+        """
+        Initialize a power-up pile with specified attributes.
+
+        Parameters:
+        center_x (int): X-coordinate of the pile's center.
+        center_y (int): Y-coordinate of the pile's center.
+        amount (int): Amount of power-up.
+        images (list): List of images for the power-up.
+        group (pygame.sprite.Group): The group to which the sprite belongs.
+        size (int): The size of the power-up sprite.
+        """
+        super().__init__(center_x, center_y, images, group, size)
+        self.amount = amount
+        pygame.sprite.Sprite.__init__(self)
+
+    @staticmethod
+    def generate_new_powerup(data, powerup_type):
+        """
+        Generate a new power-up based on its type and send its data to the server.
+
+        Parameters:
+        data: Data object for server communication.
+        powerup_type (str): Type of the power-up ("AmmoAdded" or "PointsAdded").
+        
+        Returns:
+        PowerupPile: An instance of AmmoPile or PointPile based on the type.
+        """
+        center_x, center_y = powerup.PowerupGeneric.generate_new_powerup_location()
+        amount = randint(3, 7)
+        message = f"{powerup_type} {center_x} {center_y} {amount}\n"
+        data.server.send(message.encode())
+
+        if powerup_type == "AmmoAdded":
+            return AmmoPile(center_x, center_y, amount)
+        elif powerup_type == "PointsAdded":
+            return PointPile(center_x, center_y, amount)
+        else:
+            raise ValueError(f"Unknown power-up type: {powerup_type}")
+
+class AmmoPile(PowerupPile):
+    def __init__(self, center_x, center_y, amount):
+        """
+        Initialize an ammo pile.
+
+        Parameters:
+        center_x (int): X-coordinate of the pile's center.
+        center_y (int): Y-coordinate of the pile's center.
+        amount (int): Amount of ammo.
+        """
+        images = spec.ammo_pile_images
+        group = spec.static_ammos
+        size = spec.cell_width / 3
+        super().__init__(center_x, center_y, amount, images, group, size)
+
+class PointPile(PowerupPile):
+    def __init__(self, center_x, center_y, amount):
+        """
+        Initialize a point pile.
+
+        Parameters:
+        center_x (int): X-coordinate of the pile's center.
+        center_y (int): Y-coordinate of the pile's center.
+        amount (int): Amount of points.
+        """
+        images = spec.point_pile_images
+        group = spec.static_points
+        size = spec.cell_width / 3
+        super().__init__(center_x, center_y, amount, images, group, size)

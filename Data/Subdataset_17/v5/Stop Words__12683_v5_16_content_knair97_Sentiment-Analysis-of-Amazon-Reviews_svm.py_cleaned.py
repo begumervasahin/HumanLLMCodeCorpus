@@ -1,0 +1,54 @@
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.feature_extraction.text import TfidfTransformer
+import matplotlib.pyplot as plt
+def load_data(file_path):
+    print(f'Reading data from {file_path}')
+    return np.loadtxt(file_path, skiprows=1)
+def split_data(x, y, test_size=1000):
+    return x[test_size:], y[test_size:], x[:test_size], y[:test_size]
+def apply_tfidf_transformer(train_data, *test_data):
+    tfidf = TfidfTransformer()
+    tfidf.fit(train_data)
+    transformed_train_data = tfidf.transform(train_data)
+    transformed_test_data = [tfidf.transform(data) for data in test_data]
+    return transformed_train_data, transformed_test_data
+def run_svm(x_train, y_train, x_test, y_test, c_values):
+    train_err = []
+    test_err = []
+    for c in c_values:
+        print(f'Running SVM for C = {c}')
+        clf = SVC(C=c, gamma=1, kernel='rbf')
+        clf.fit(x_train, y_train)
+        train_err.append(clf.score(x_train, y_train))
+        test_err.append(clf.score(x_test, y_test))
+    return train_err, test_err
+def plot_results(c_values, train_err, test_err, output_file='svm_c.png'):
+    plt.plot(c_values, train_err, label='Training Accuracy')
+    plt.plot(c_values, test_err, label='Testing Accuracy')
+    plt.legend()
+    plt.xlabel('C value')
+    plt.ylabel('Accuracy')
+    plt.xscale('log')
+    plt.savefig(output_file)
+def write_predictions(predictions, output_file='svm_submissions.txt'):
+    print('Writing predictions')
+    with open(output_file, 'w') as f:
+        f.write('Id,Prediction\n')
+        for idx, pred in enumerate(predictions, start=1):
+            f.write(f'{idx},{int(pred)}\n')
+if __name__ == "__main__":
+    training_data = load_data('training_data.txt')
+    y_train = training_data[:, 0]
+    x_train = training_data[:, 1:]
+    test_data = load_data('test_data.txt')
+    x_train, y_train, x_test, y_test = split_data(x_train, y_train)
+    x_train, [x_test, test_data] = apply_tfidf_transformer(x_train, x_test, test_data)
+    c_values = [0.001, 0.01, 0.1, 1, 10, 100]
+    train_err, test_err = run_svm(x_train, y_train, x_test, y_test, c_values)
+    plot_results(c_values, train_err, test_err)
+    clf = SVC(C=c_values[-1], gamma=1, kernel='rbf')
+    clf.fit(x_train, y_train)
+    predictions = clf.predict(test_data)
+    write_predictions(predictions)
+    print('Done')

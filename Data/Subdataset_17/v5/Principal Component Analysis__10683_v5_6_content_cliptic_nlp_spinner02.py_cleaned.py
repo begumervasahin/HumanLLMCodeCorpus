@@ -1,0 +1,63 @@
+import nltk
+import random
+import pandas as pd
+import numpy as np
+from bs4 import BeautifulSoup
+def load_positive_reviews(filepath):
+    with open(filepath, 'r') as file:
+        reviews = BeautifulSoup(file.read(), "html.parser")
+    return reviews.findAll("review_text")
+def create_trigrams(reviews):
+    trigrams = {}
+    for review in reviews:
+        text = review.text.lower()
+        tokens = nltk.tokenize.word_tokenize(text)
+        for i in range(len(tokens) - 2):
+            key = (tokens[i], tokens[i + 2])
+            if key not in trigrams:
+                trigrams[key] = []
+            trigrams[key].append(tokens[i + 1])
+    return trigrams
+def calculate_probabilities(trigrams):
+    probabilities = {}
+    for key, words in trigrams.items():
+        if len(set(words)) > 1:
+            word_counts = {}
+            total_count = 0
+            for word in words:
+                if word not in word_counts:
+                    word_counts[word] = 0
+                word_counts[word] += 1
+                total_count += 1
+            for word, count in word_counts.items():
+                word_counts[word] = count / total_count
+            probabilities[key] = word_counts
+    return probabilities
+def random_sample(word_probabilities):
+    rand_val = random.random()
+    cumulative = 0
+    for word, prob in word_probabilities.items():
+        cumulative += prob
+        if rand_val < cumulative:
+            return word
+def test_spinner(reviews, probabilities):
+    review = random.choice(reviews).text.lower()
+    print('Original text: \n', review)
+    tokens = nltk.tokenize.word_tokenize(review)
+    for i in range(len(tokens) - 2):
+        if random.random() < 0.2:
+            key = (tokens[i], tokens[i + 2])
+            if key in probabilities:
+                new_word = random_sample(probabilities[key])
+                tokens[i + 1] = new_word
+    spun_text = ' '.join(tokens)
+    spun_text = spun_text.replace(" :", ":").replace(" .", ".").replace(" ,", ",").replace(" !", "!").replace(" ?", "?").replace("  ' ", "'")
+    print("Spun: \n")
+    print(spun_text)
+def main():
+    reviews = load_positive_reviews('electronics/positive.review')
+    trigrams = create_trigrams(reviews)
+    probabilities = calculate_probabilities(trigrams)
+    test_spinner(reviews, probabilities)
+if __name__ == "__main__":
+    main()

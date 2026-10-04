@@ -1,0 +1,67 @@
+import torch
+import torch.nn as nn
+from torch.nn import init
+
+class SimpleNNModel(nn.Module):
+    """
+    A simple neural network model with a single linear layer.
+
+    Args:
+        input_features (int): The number of input features.
+        output_features (int): The number of output features.
+    """
+    def __init__(self, input_features=10, output_features=5):
+        super(SimpleNNModel, self).__init__()
+        # Define a linear layer with the specified input and output features
+        self.linear_layer = nn.Linear(in_features=input_features, out_features=output_features)
+
+    def forward(self, x):
+        """
+        Defines the forward pass of the model.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output of the linear layer.
+        """
+        return self.linear_layer(x)
+
+def initialize_weights(model):
+    """
+    Applies Xavier uniform initialization to the weights of linear layers in the model.
+
+    Args:
+        model (nn.Module): The model to which the weight initialization will be applied.
+    """
+    if isinstance(model, nn.Linear):
+        init.xavier_uniform_(model.weight.data)
+
+def print_initialized_weights(model):
+    """
+    Prints the initialized weights of the model's linear layers.
+
+    Args:
+        model (nn.Module): The model whose weights will be printed.
+    """
+    for name, param in model.named_parameters():
+        if 'weight' in name:
+            print(f'Initialized weights for {name} with shape {param.shape}')
+
+def main():
+    # Create an instance of the SimpleNNModel class
+    model = SimpleNNModel()
+
+    # Apply weight initialization to the model
+    model.apply(initialize_weights)
+
+    # Print initialized weights for linear layers
+    print_initialized_weights(model)
+
+    # Example usage: perform a forward pass with an example input tensor
+    example_input = torch.randn(1, 10)  # Create a random input tensor with shape (1, 10)
+    output = model(example_input)  # Perform the forward pass
+    print(f'Output: {output}')  # Print the output
+
+if __name__ == "__main__":
+    main()

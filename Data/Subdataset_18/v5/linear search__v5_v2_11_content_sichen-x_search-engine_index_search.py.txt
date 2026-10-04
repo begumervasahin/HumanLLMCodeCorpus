@@ -1,0 +1,63 @@
+from collections import defaultdict
+from words import get_text, words  # Assuming these functions are implemented correctly
+
+def create_index(files):
+    """
+    Build an index that maps words to sets of document IDs.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+
+    Returns:
+        defaultdict: A mapping from words to sets of document IDs.
+    """
+    index = defaultdict(set)
+
+    for doc_id, file_path in enumerate(files):
+        file_content = get_text(file_path)
+        key_words = words(file_content)
+
+        for word in key_words:
+            index[word].add(doc_id)
+
+    return index
+
+def index_search(files, index, terms):
+    """
+    Search for documents containing all specified terms.
+
+    Parameters:
+        files (list): List of fully-qualified filenames.
+        index (defaultdict): Mapping from word to set of document IDs.
+        terms (list): List of terms to search for.
+
+    Returns:
+        list: List of filenames containing all the specified terms.
+    """
+    if not (files and index and terms):
+        return []
+
+    term_sets = [index.get(term, set()) for term in terms]
+
+    if not term_sets:
+        return []
+
+    matching_ids = set.intersection(*term_sets)
+
+    return [files[doc_id] for doc_id in matching_ids]
+
+# Example usage
+if __name__ == "__main__":
+    # Example list of filenames
+    files = ["file1.txt", "file2.txt", "file3.txt"]
+
+    # Create the index from the files
+    index = create_index(files)
+
+    # Define search terms
+    search_terms = ["term1", "term2"]
+
+    # Search for files containing all search terms
+    results = index_search(files, index, search_terms)
+
+    print("Matching files:", results)

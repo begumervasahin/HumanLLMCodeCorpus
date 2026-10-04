@@ -1,0 +1,75 @@
+import math
+from scipy import spatial
+
+def inverse_document_frequency(term, all_documents):
+    """
+    Calculate the inverse document frequency (IDF) of a term in a collection of documents.
+
+    Args:
+    - term (str): The term for which IDF is calculated.
+    - all_documents (list of str): Collection of all documents.
+
+    Returns:
+    - float: Inverse document frequency of the term.
+    """
+    num_documents_with_this_term = sum(1 for doc in all_documents if term.lower() in doc.lower().split())
+    if num_documents_with_this_term > 0:
+        return 1.0 + math.log(float(len(all_documents)) / num_documents_with_this_term)
+    else:
+        return 1.0
+
+def term_frequency(term, document):
+    """
+    Calculate the term frequency (TF) of a term in a document.
+
+    Args:
+    - term (str): The term for which TF is calculated.
+    - document (str): The document in which TF is calculated.
+
+    Returns:
+    - float: Term frequency of the term in the document.
+    """
+    normalized_document = document.lower().split()
+    return normalized_document.count(term.lower()) / float(len(normalized_document))
+
+def get_tfidf(document, all_documents):
+    """
+    Calculate the TF-IDF vector of a document with respect to a collection of documents.
+
+    Args:
+    - document (str): The document for which TF-IDF vector is calculated.
+    - all_documents (list of str): Collection of all documents.
+
+    Returns:
+    - list of float: TF-IDF vector of the document.
+    """
+    terms = document.lower().split()
+    tfidfs = []
+    for term in terms:
+        tf = term_frequency(term, document)
+        idf = inverse_document_frequency(term, all_documents)
+        tfidf = tf * idf
+        tfidfs.append(tfidf)
+    return tfidfs
+
+def cosine_similarity(query, document):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Args:
+    - query (list of float): Vector representation of the query.
+    - document (list of float): Vector representation of the document.
+
+    Returns:
+    - float: Cosine similarity between the query and the document vectors.
+    """
+    # Pad shorter vector with zeros for cosine similarity calculation
+    padding_len = abs(len(query) - len(document))
+    padding = [0] * padding_len
+    if len(query) > len(document):
+        document.extend(padding)
+    elif len(document) > len(query):
+        query.extend(padding)
+    
+    # Calculate cosine similarity using scipy's spatial.distance.cosine
+    return 1 - spatial.distance.cosine(query, document)

@@ -1,0 +1,50 @@
+from direct.showbase.ShowBase import ShowBase
+from panda3d.core import loadPrcFileData, WindowProperties
+from editorLogHandler import setupLog
+from DirectGuiDesigner.DirectGuiDesigner import DirectGuiDesigner
+
+# Load configuration for the Panda3D window
+loadPrcFileData(
+    "",
+    """
+    sync-video
+    textures-power-2 none
+    window-title DirectGUI Designer
+    maximized
+    win-size 1280 720
+    ime-aware
+    """
+)
+
+# Set up logging and configuration files
+log_filepath, config_file = setupLog("DirectGuiDesigner")
+
+# Initialize the Panda3D application
+class MyApp(ShowBase):
+    def __init__(self):
+        ShowBase.__init__(self)
+        
+        # Set the window title to indicate a "dirty" state
+        self.accept("request_dirty_name", self.set_dirty_name)
+        
+        # Set the window title to indicate a "clean" state
+        self.accept("request_clean_name", self.set_clean_name)
+        
+        # Initialize the DirectGuiDesigner
+        self.dgd = DirectGuiDesigner(self.pixel2d)
+        self.dgd.log_file = log_filepath
+        self.dgd.config_file = config_file
+
+    def set_dirty_name(self):
+        wp = WindowProperties()
+        wp.setTitle("*DirectGUI Designer")
+        self.win.requestProperties(wp)
+
+    def set_clean_name(self):
+        wp = WindowProperties()
+        wp.setTitle("DirectGUI Designer")
+        self.win.requestProperties(wp)
+
+# Create and run the application
+app = MyApp()
+app.run()

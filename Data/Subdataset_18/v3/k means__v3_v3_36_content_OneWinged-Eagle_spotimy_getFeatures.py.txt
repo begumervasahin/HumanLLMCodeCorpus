@@ -1,0 +1,119 @@
+import json
+from time import perf_counter
+from typing import List, Any, Generator
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+import config
+
+def load_tracks_from_json(file_path: str) -> List[dict]:
+    """
+    Load tracks from a JSON file.
+
+    Args:
+        file_path (str): The path to the JSON file containing track data.
+
+    Returns:
+        List[dict]: A list of dictionaries containing track data.
+    """
+    with open(file_path, 'r') as json_file:
+        return json.load(json_file)
+
+def chunker(seq: List[Any], size: int) -> Generator[List[Any], None, None]:
+    """
+    Yield successive n-sized chunks from seq.
+
+    Args:
+        seq (List[Any]): The sequence to be chunked.
+        size (int): The size of each chunk.
+
+    Yields:
+        Generator[List[Any], None, None]: Chunks of the original sequence.
+    """
+    for pos in range(0, len(seq), size):
+        yield seq[pos:pos + size]
+
+def retrieve_spotify_token(username: str, scope: str, client_id: str, client_secret: str, redirect_uri: str) -> str:
+    """
+    Retrieve Spotify token using provided credentials.
+
+    Args:
+        username (str): Spotify username.
+        scope (str): Spotify API scope.
+        client_id (str): Spotify client ID.
+        client_secret (str): Spotify client secret.
+        redirect_uri (str): Redirect URI for Spotify OAuth.
+
+    Returns:
+        str: Spotify access token or None if retrieval fails.
+    """
+    try:
+        sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope=scope, username=username)
+        token_info = sp_oauth.get_access_token(as_dict=False)
+        return token_info
+    except Exception as e:
+        print(f"Failed to obtain token for user {username}: {e}")
+        return None
+
+def retrieve_audio_features(spotify_client: spotipy.Spotify, track_ids: List[str], chunk_size: int = 50) -> List[dict]:
+    """
+    Retrieve audio features for a list of track IDs in chunks.
+
+    Args:
+        spotify_client (spotipy.Spotify): Authenticated Spotify client.
+        track_ids (List[str]): List of track IDs to retrieve audio features for.
+        chunk_size (int): Size of each chunk to process at a time.
+
+    Returns:
+        List[dict]: List of dictionaries containing audio features.
+    """
+    audio_features = []
+    for chunk in chunker(track_ids, chunk_size):
+        audio_features.extend(spotify_client.audio_features(chunk))
+    return [feature for feature in audio_features if feature]
+
+def save_to_json(data: List[dict], file_path: str):
+    """
+    Save data to a JSON file.
+
+    Args:
+        data (List[dict]): Data to be saved.
+        file_path (str): The path to the JSON file where data will be saved.
+    """
+    with open(file_path, 'w') as outfile:
+        json.dump(data, outfile, indent=4)
+
+def main():
+    """Main function to execute the script."""
+    # Load track data from JSON file
+    tracks = load_tracks_from_json("json/tracks.json")
+
+    # Retrieve Spotify access token
+    token = retrieve_spotify_token(
+        config.username, 
+        config.scope, 
+        config.client_id, 
+        config.client_secret, 
+        config.redirect_uri
+    )
+
+    if token:
+        # Create Spotify client with the retrieved token
+        spotify_client = spotipy.Spotify(auth=token)
+        print("Starting retrieval of audio features...")
+
+        # Measure the time taken to retrieve audio features
+        start_time = perf_counter()
+        track_ids = [track["id"] for track in tracks]
+        audio_features = retrieve_audio_features(spotify_client, track_ids)
+        elapsed_time = perf_counter() - start_time
+
+        # Print the results
+        print(f"Retrieved {len(audio_features)} audio features in {elapsed_time:.2f} seconds.")
+
+        # Save the retrieved audio features to a JSON file
+        save_to_json(audio_features, "json/audioFeatures.json")
+    else:
+        print("Failed to obtain Spotify token.")
+
+if __name__ == "__main__":
+    main()

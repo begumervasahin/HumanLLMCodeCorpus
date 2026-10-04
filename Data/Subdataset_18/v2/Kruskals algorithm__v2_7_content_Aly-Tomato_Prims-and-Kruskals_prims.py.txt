@@ -1,0 +1,92 @@
+from typing import Dict, List, Tuple
+
+class PrimAlgorithm:
+    def __init__(self):
+        self.graph: Dict[str, Dict[str, int]] = {}
+        self.visited: List[str] = []
+        self.mst: List[Tuple[str, str, int, int]] = []
+
+    def read_graph(self, file: str, delimiter: str = ',') -> Dict[str, Dict[str, int]]:
+        """
+        Reads a weighted graph from a file and populates the graph attribute.
+
+        :param file: Path to the file containing the graph data.
+        :param delimiter: Delimiter used in the file to separate the graph data.
+        :return: The graph as a dictionary of dictionaries.
+        """
+        with open(file) as file_path:
+            for line in file_path:
+                nodes = [x.strip() for x in line.split(delimiter)]
+                e1, e2, weight = nodes[0], nodes[1], int(nodes[2])
+
+                if e1 not in self.graph:
+                    self.graph[e1] = {}
+                self.graph[e1][e2] = weight
+
+                if e2 not in self.graph:
+                    self.graph[e2] = {}
+                self.graph[e2][e1] = weight  # Since it's an undirected graph, add both directions
+
+        return self.graph
+
+    def add_visited(self, vertex: str) -> bool:
+        """
+        Adds a vertex to the visited list if it has not been visited.
+
+        :param vertex: The vertex to be added.
+        :return: True if the vertex was added, False if it was already visited.
+        """
+        if vertex in self.visited:
+            return False
+        self.visited.append(vertex)
+        return True
+
+    def get_min_edge(self) -> Tuple[str, str, int]:
+        """
+        Finds the minimum weight edge connecting a visited vertex to an unvisited vertex.
+
+        :return: A tuple containing the start vertex, end vertex, and edge weight.
+        """
+        min_vertex1 = min_vertex2 = None
+        min_distance = float('inf')
+
+        for v1 in self.visited:
+            for v2, weight in self.graph.get(v1, {}).items():
+                if v2 in self.visited or v1 == v2:
+                    continue
+                if weight < min_distance:
+                    min_vertex1, min_vertex2, min_distance = v1, v2, weight
+
+        return min_vertex1, min_vertex2, min_distance
+
+    def prims(self) -> Tuple[List[Tuple[str, str, int, int]], int]:
+        """
+        Executes Prim's algorithm to find the Minimum Spanning Tree (MST).
+
+        :return: A tuple containing the MST and the total cost of the MST.
+        """
+        total_distance = 0
+        start_vertex = list(self.graph.keys())[0]
+        self.add_visited(start_vertex)
+
+        while len(self.visited) < len(self.graph):
+            v1, v2, edge_distance = self.get_min_edge()
+            if v1 and v2:
+                total_distance += edge_distance
+                self.mst.append((v1, v2, edge_distance, total_distance))
+                self.add_visited(v2)
+
+        return self.mst, total_distance
+
+# Example usage:
+if __name__ == "__main__":
+    # Replace 'filename.txt' with the actual filename and delimiter with the actual delimiter
+    graph_file = 'filename.txt'
+    delimiter = ','  # Or any other delimiter used in the file
+
+    prim = PrimAlgorithm()
+    prim.read_graph(graph_file, delimiter)
+    mst_result, total_cost = prim.prims()
+
+    print("Minimum Spanning Tree:", mst_result)
+    print("Total Cost:", total_cost)

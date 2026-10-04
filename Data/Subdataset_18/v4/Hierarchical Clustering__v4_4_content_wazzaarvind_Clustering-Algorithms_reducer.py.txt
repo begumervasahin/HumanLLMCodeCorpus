@@ -1,0 +1,41 @@
+import numpy as np
+import sys
+
+def process_clusters():
+    """
+    Processes input from stdin, computes centroids for clusters, and groups indices by cluster.
+    The input format is expected to be tab-separated with the cluster ID, index, and a comma-separated vector.
+    """
+    current_cluster = None
+    cluster_indices = []
+    centroid_sum = None
+
+    for line in sys.stdin:
+        line = line.strip()
+        cluster_id, index, vector_str = line.split('\t')
+        vector = np.array([float(value) for value in vector_str.split(',')])
+        cluster_id = int(cluster_id)
+        index = int(index)
+
+        if current_cluster is None or current_cluster != cluster_id:
+            if current_cluster is not None:
+                # Calculate and output the centroid for the previous cluster
+                centroid = centroid_sum / len(cluster_indices)
+                print(f'{current_cluster}\t{",".join(map(str, cluster_indices))}\t{",".join(map(str, centroid))}')
+            
+            # Initialize for the new cluster
+            current_cluster = cluster_id
+            cluster_indices = []
+            centroid_sum = np.zeros(len(vector))
+        
+        # Update the current cluster's index list and centroid sum
+        cluster_indices.append(index)
+        centroid_sum += vector
+
+    # Handle the final cluster
+    if current_cluster is not None:
+        centroid = centroid_sum / len(cluster_indices)
+        print(f'{current_cluster}\t{",".join(map(str, cluster_indices))}\t{",".join(map(str, centroid))}')
+
+if __name__ == "__main__":
+    process_clusters()

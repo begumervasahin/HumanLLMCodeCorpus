@@ -1,0 +1,48 @@
+import csv
+import fungsi as fg
+
+# Initialize lists
+C1, C2, train, test, hasil = [], [], [], [], []
+
+# Load training data
+with open('TrainsetTugas1ML.csv') as train_file:
+    reader = csv.reader(train_file, delimiter=',')
+    next(reader)  # Skip the header
+    for row in reader:
+        train.append(row)
+
+# Load testing data
+with open('TestsetTugas1ML.csv') as test_file:
+    reader = csv.reader(test_file, delimiter=',')
+    next(reader)  # Skip the header
+    for row in reader:
+        test.append(row)
+
+# Calculate class probabilities
+PC1, nC1 = fg.PC(train, '>50K')
+PC2, nC2 = fg.PC(train, '<=50K')
+
+# Number of features
+n = 8
+
+# Predict and calculate accuracy
+akurasi = 0
+for i in range(len(test)):
+    PC1X, PC2X = 1, 1
+    PXC1, PXC2 = 1, 1
+    for j in range(1, n):
+        a, b = fg.PXC(train, j, nC1, nC2, test[i])
+        PXC1 *= a
+        PXC2 *= b
+    PC1X = PXC1 * PC1
+    PC2X = PXC2 * PC2
+    if PC1X > PC2X:
+        hasil.append('>50K')
+    else:
+        hasil.append('<=50K')
+
+# Write predictions to a CSV file
+with open('TebakanTugas1ML.csv', 'w', newline='') as output_file:
+    writer = csv.writer(output_file, dialect='excel')
+    for result in hasil:
+        writer.writerow([result])

@@ -1,0 +1,77 @@
+import datetime
+import primeSearchServer
+import isPrimeSearch
+import sys
+def main():
+    prime_server_connection = primeSearchServer.primeServer()
+    search_interval = 1000
+    force_use_of_incomplete_intervals = False
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg.isnumeric() and int(arg) > 0:
+            search_interval = int(arg)
+        elif arg == "status":
+            print_status(prime_server_connection)
+            return
+        elif arg == "-?":
+            print_help()
+            return
+        elif arg == "useIntervals":
+            force_use_of_incomplete_intervals = True
+    start_search_at, end_search_at = prime_server_connection.returnSearchInterval(
+        search_interval, force_use_of_incomplete_intervals)
+    prime_counter = 0
+    start_time = datetime.datetime.now()
+    print_start_search_message(start_time, start_search_at, end_search_at)
+    completion_rate = 0
+    current_number = start_search_at
+    while current_number <= end_search_at:
+        if isPrimeSearch.checkForPrime6(current_number):
+            prime_counter += 1
+            prime_server_connection.returnPrimeFound(current_number)
+            current_number += 2
+        else:
+            current_number += 1
+        new_completion_rate = int(round(
+            ((current_number - start_search_at) / (end_search_at - start_search_at)) * 100, 0))
+        if completion_rate < new_completion_rate:
+            completion_rate = new_completion_rate
+            print_progress(completion_rate)
+    print_completion()
+    prime_server_connection.returnSearchedInterval(start_search_at, end_search_at)
+    del prime_server_connection
+    end_time = datetime.datetime.now()
+    print_end_search_message(start_time, end_time, start_search_at, end_search_at, prime_counter)
+def print_status(prime_server_connection):
+    print(f"Number of primes found: {prime_server_connection.returnTotalNumberOfPrimesFound():,}".replace(",", "."))
+    print(f"Biggest prime found: {prime_server_connection.returnHighestPrimeFound():,}".replace(",", "."))
+    print(f"Number of unfinished intervals: {prime_server_connection.returnUnfinishedIntervals():,}".replace(",", "."))
+def print_help():
+    print("useIntervals forces to use any open intervals on the server")
+    print("status gives a status from the server")
+    print("follow command with a number, and that is the interval of primes being searched")
+def print_start_search_message(start_time, start_search_at, end_search_at):
+    print(f"Search for prime numbers\nStarting at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    print(f"Searching from {start_search_at:,}".replace(",", ".") +
+          f" to {end_search_at:,}".replace(",", ".") +
+          f" (interval: {(end_search_at - start_search_at):,}".replace(",", ".") + ")")
+def print_progress(completion_rate):
+    sys.stdout.write(f"\r{completion_rate}% completed")
+    sys.stdout.flush()
+def print_completion():
+    sys.stdout.write("\r100% completed")
+    sys.stdout.flush()
+def print_end_search_message(start_time, end_time, start_search_at, end_search_at, prime_counter):
+    timedelta = end_time - start_time
+    print(f"\n\nStarting at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Ending at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Running time: {timedelta.seconds
+    print(f"Searched from {start_search_at:,}".replace(",", ".") +
+          f" to {end_search_at:,}".replace(",", ".") +
+          f" (interval: {(end_search_at - start_search_at):,}".replace(",", ".") + ")")
+    print(f"Number of primes: {prime_counter:,}".replace(",", ".") +
+          f" ({round(prime_counter / (end_search_at - start_search_at), 5)}%)")
+    if prime_counter > 0:
+        print(f"Seconds per prime: {round(timedelta.seconds / prime_counter, 6)}")
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,76 @@
+from math import sqrt
+
+class Cluster:
+    def __init__(self, name):
+        self.name = name
+        self.points = []
+
+    def addPoint(self, point):
+        self.points.append(point)
+
+    def has(self, point):
+        return point in self.points
+
+class DBScanner:
+    def __init__(self, eps, min_pts):
+        self.eps = eps
+        self.min_pts = min_pts
+        self.dataSet = []
+        self.visited = []
+        self.clusters = []
+        self.noise = []
+
+    def fit(self, D):
+        self.dataSet = D
+        C = -1
+        for point in self.dataSet:
+            if point not in self.visited:
+                self.visited.append(point)
+                neighbour_points = self._region_query(point)
+                if len(neighbour_points) < self.min_pts:
+                    self.noise.append(point)
+                else:
+                    C += 1
+                    cluster = Cluster(f'Cluster{C}')
+                    self._expand_cluster(point, neighbour_points, cluster)
+                    self.clusters.append(cluster)
+
+    def _expand_cluster(self, point, neighbour_points, cluster):
+        cluster.addPoint(point)
+        i = 0
+        while i < len(neighbour_points):
+            p = neighbour_points[i]
+            if p not in self.visited:
+                self.visited.append(p)
+                np = self._region_query(p)
+                if len(np) >= self.min_pts:
+                    neighbour_points += np
+            if not any(c.has(p) for c in self.clusters):
+                cluster.addPoint(p)
+            i += 1
+
+    def _region_query(self, point):
+        result = []
+        for d in self.dataSet:
+            if sqrt((d[0] - point[0]) ** 2 + (d[1] - point[1]) ** 2) <= self.eps:
+                result.append(d)
+        return result
+
+# Example usage:
+if __name__ == "__main__":
+    # Sample dataset
+    points = [
+        [1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80],
+        [0, 2], [1, 1], [2, 1], [7, 8], [8, 9], [25, 81]
+    ]
+    
+    # Initialize DBScanner with epsilon and minimum points
+    dbscanner = DBScanner(eps=2, min_pts=2)
+    dbscanner.fit(points)
+    
+    # Print clusters
+    for cluster in dbscanner.clusters:
+        print(f'{cluster.name}: {cluster.points}')
+    
+    # Print noise points
+    print(f'Noise: {dbscanner.noise}')

@@ -1,0 +1,95 @@
+import sympy as sp
+import numpy as np
+
+def montarEquacao(incognitas, x):
+    """
+    Constructs a polynomial equation with the given coefficients.
+    
+    Args:
+    incognitas (list): List of coefficients.
+    x (symbol): Symbolic variable.
+    
+    Returns:
+    y (expression): Polynomial equation.
+    """
+    y = 0
+    degree = len(incognitas)
+    for i in range(degree):
+        y += incognitas[i] * (x ** (degree - (i + 1)))
+    return y
+
+def isFloat(s):
+    """
+    Checks if a string can be converted to a float.
+    
+    Args:
+    s (str): Input string.
+    
+    Returns:
+    bool: True if s can be converted to float, False otherwise.
+    """
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def read_data(file_name='data.csv'):
+    """
+    Reads data from a CSV file and returns two lists of floats.
+    
+    Args:
+    file_name (str): Path to the CSV file.
+    
+    Returns:
+    xLista (list): List of x values.
+    yLista (list): List of y values.
+    """
+    xLista = []
+    yLista = []
+    with open(file_name, 'r') as f:
+        for line in f:
+            s = line.split(',')
+            if isFloat(s[0]) and isFloat(s[1]):
+                xLista.append(float(s[0]))
+                yLista.append(float(s[1].strip()))
+    return xLista, yLista
+
+def main():
+    """
+    Main function to perform polynomial regression.
+    """
+    # Input for the degree of the polynomial regression
+    n = int(input("Digite a ordem da regressão (ordem máxima = 24): "))
+    if n > 24:
+        print("\n\n------------------\n  Ordem inválida  \n------------------\n\n")
+        return
+
+    # Define the symbolic variable 'x' and the list of coefficients
+    x = sp.symbols('x')
+    lista_simbolos = [sp.symbols(chr(i)) for i in range(97, 123)]  # a to z
+    incognitas = lista_simbolos[:n+1]
+    
+    # Read data from file
+    xLista, yLista = read_data()
+    
+    # Construct the polynomial equation
+    h = montarEquacao(incognitas, x)
+    
+    # Calculate the sum of squared differences
+    somaQuadradaDiferencas = sum((yLista[i] - h.subs(x, xLista[i]))**2 for i in range(len(xLista)))
+    
+    # Calculate the derivatives of the sum of squared differences with respect to each coefficient
+    diffs = [sp.diff(somaQuadradaDiferencas, incognitas[i]) for i in range(len(incognitas))]
+    
+    # Solve the system of equations to find the optimal coefficients
+    solutions = sp.solve(diffs, incognitas)
+    
+    # Substitute the solutions back into the polynomial equation
+    k = h.subs(solutions)
+    
+    # Print the resulting model
+    print("Modelo: ", k)
+
+if __name__ == "__main__":
+    main()

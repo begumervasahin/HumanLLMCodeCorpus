@@ -1,0 +1,22 @@
+from feature_header import *
+from feature_type import *
+class SatisfactionHumidity:
+    def __init__(self, target_val):
+        self.__target_val = target_val
+    def __extract_humidity(self, data):
+        humidity_header = feature_header().get_header(feature_type.HUMIDITY)
+        values = data.get_value().split('\n')
+        for line in values:
+            if line.startswith(humidity_header):
+                return float(line.replace(humidity_header, ""))
+        return 0
+    def get_feature_type(self):
+        return feature_type.HUMIDITY
+    def get_satisfaction(self, data):
+        humidity = self.__extract_humidity(data)
+        if humidity == 0:
+            return 0
+        diff = abs(self.__target_val - humidity)
+        if diff == 0:
+            return 1.0
+        return max(0, 1 - 0.1 * (diff

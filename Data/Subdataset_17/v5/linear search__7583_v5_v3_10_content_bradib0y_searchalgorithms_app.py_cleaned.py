@@ -1,0 +1,49 @@
+import time
+import math
+def recursive_binary_search(lst, target):
+    if not lst:
+        return False
+    midpoint = len(lst)
+    if lst[midpoint] == target:
+        return True
+    elif lst[midpoint] < target:
+        return recursive_binary_search(lst[midpoint + 1:], target)
+    else:
+        return recursive_binary_search(lst[:midpoint], target)
+def binary_search(lst, target):
+    first = 0
+    last = len(lst) - 1
+    while first <= last:
+        midpoint = (first + last)
+        if lst[midpoint] == target:
+            return midpoint
+        elif lst[midpoint] < target:
+            first = midpoint + 1
+        else:
+            last = midpoint - 1
+    return None
+def linear_search(lst, target):
+    for index, value in enumerate(lst):
+        if value == target:
+            return index
+    return None
+def log_search_performance():
+    with open("data.csv", "a") as file:
+        for exponent in range(10, 19):
+            size = int(math.pow(10, exponent))
+            numbers = list(range(size))
+            target = size - 3
+            print(f"\n-> Testing with list size: {size} (10^{exponent})")
+            print("Linear search: skipped")
+            start_time = time.time()
+            binary_result = binary_search(numbers, target)
+            binary_search_time = time.time() - start_time
+            print(f"Binary search time: {binary_search_time:.6f} seconds")
+            start_time = time.time()
+            recursive_result = recursive_binary_search(numbers, target)
+            recursive_search_time = time.time() - start_time
+            print(f"Recursive binary search time: {recursive_search_time:.6f} seconds")
+            log_entry = f"{size};null;{binary_search_time:.6f};{recursive_search_time:.6f}\n"
+            file.write(log_entry)
+if __name__ == "__main__":
+    log_search_performance()

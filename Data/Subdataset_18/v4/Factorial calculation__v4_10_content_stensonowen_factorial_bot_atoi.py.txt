@@ -1,0 +1,56 @@
+import re
+from text2num import text2num, Small, Magnitude
+
+# Dictionary to map specific words to their corresponding numeric values
+Translations = {
+    'a': 'one',
+    'dozen': 'twelve',
+    'and': '',
+}
+
+# Create a set of valid tokens which includes small numbers, magnitudes, and custom translations
+valid_tokens = set(["hundred"])
+for dictionary in [Small, Magnitude, Translations]:
+    valid_tokens.update(dictionary.keys())
+
+def prep(text):
+    """
+    Preprocess the text by replacing non-alphanumeric characters with spaces
+    and translating specific words based on the Translations dictionary.
+    """
+    text = re.sub(r"[\W_]", ' ', text)
+    tokens = []
+    for token in text.split():
+        translated = Translations.get(token)
+        if translated:
+            tokens.append(translated)
+        else:
+            tokens.append(token)
+    return tokens
+
+def extract(text):
+    """
+    Extract the numeric value from the text.
+    """
+    tokens = prep(text)
+    first_valid_index = len(tokens)
+    
+    for i in reversed(range(len(tokens))):
+        if tokens[i] in valid_tokens:
+            first_valid_index = i
+        else:
+            break
+    
+    return text2num(tokens[first_valid_index:])
+
+def atoi(text):
+    """
+    Convert the entire text to an integer.
+    """
+    tokens = prep(text)
+    return text2num(tokens)
+
+if __name__ == "__main__":
+    example_text = "I have a dozen apples and twenty-five oranges"
+    print(f"Extracted number: {extract(example_text)}")
+    print(f"Converted number: {atoi(example_text)}")

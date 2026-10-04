@@ -1,0 +1,118 @@
+import unittest
+from time import time
+from os import remove, path
+from index import getAndFilter, run
+
+# Temporary file names for test outputs
+file_name = 'temp_output_for_index_test.json'
+file_name_csv = 'temp_output_for_index_test.csv'
+
+class IndexTest(unittest.TestCase):
+
+    def test_speed_with_moby(self):
+        """
+        Test the speed of getAndFilter function with a large file (moby_test.txt).
+        """
+        t0 = time()
+        options = {
+            'file': 'moby_test.txt',  # Ensure this file is present in your directory
+            'start': 'whale',
+            'stop': 'mast',
+            'finish': 'ffff9999',
+        }
+        self.assertLess(190000, len(getAndFilter(options)))
+        t1 = time()
+        print('Moby total get & parse time sec:', t1 - t0)
+
+    def test_get_and_filter_simple(self):
+        """
+        Test the getAndFilter function with a small test file (small_test.txt).
+        """
+        options = {
+            'file': 'small_test.txt',  # Ensure this file is present in your directory
+            'start': 'foo',
+            'stop': 'bar',
+            'finish': 'enough',
+        }
+        expected_result = [
+            'cow',
+            'cow',
+            'siamese',
+            'wonderland',
+            'foo',
+            'toothpaste',
+            'milky',
+            'flight-manual',
+            'toothpick',
+        ]
+        self.assertEqual(getAndFilter(options), expected_result)
+
+    def test_index_run(self):
+        """
+        Test the run function to ensure it correctly outputs to a JSON file.
+        """
+        run([
+            '',
+            '--input=small_test.txt',  # Ensure this file is present in your directory
+            '--start=foo',
+            '--stop=bar',
+            '--finish=007',
+            '-s',
+            f'--output={file_name}',
+        ])
+        expected_output = (
+            '{\n'
+            '    "cow": 2,\n'
+            '    "siamese": 1,\n'
+            '    "wonderland": 1,\n'
+            '    "foo": 1,\n'
+            '    "toothpaste": 1,\n'
+            '    "milky": 1,\n'
+            '    "flight-manual": 1,\n'
+            '    "toothpick": 1\n'
+            '}'
+        )
+        with open(file_name, 'r') as file:
+            contents = file.read()
+            self.assertEqual(contents, expected_output)
+
+    def test_index_run_csv(self):
+        """
+        Test the run function to ensure it correctly outputs to a CSV file.
+        """
+        run([
+            '',
+            '--input=small_test.txt',  # Ensure this file is present in your directory
+            '--start=foo',
+            '--stop=bar',
+            '--finish=007',
+            '-s',
+            f'--output={file_name_csv}',
+            '-c',
+        ])
+        expected_output_csv = (
+            'Name,Count\n'
+            'cow,2\n'
+            'siamese,1\n'
+            'wonderland,1\n'
+            'foo,1\n'
+            'toothpaste,1\n'
+            'milky,1\n'
+            'flight-manual,1\n'
+            'toothpick,1\n'
+        )
+        with open(file_name_csv, 'r') as file:
+            contents = file.read()
+            self.assertEqual(contents, expected_output_csv)
+
+    def tearDown(self):
+        """
+        Clean up temporary files after each test.
+        """
+        if path.isfile(file_name):
+            remove(file_name)
+        if path.isfile(file_name_csv):
+            remove(file_name_csv)
+
+if __name__ == '__main__':
+    unittest.main()

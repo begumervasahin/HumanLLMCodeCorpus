@@ -1,0 +1,97 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Load the dataset
+data = pd.read_csv('CMP3751M_ML_Assignment 1_Task1_pol_regression.csv')
+
+# Degrees of polynomials to evaluate
+degrees = [0, 1, 2, 3, 5, 10]
+
+# Initialize lists to store RMSE values for training and testing sets
+rmse_train = []
+rmse_test = []
+
+# Sort the data
+x = np.sort(data['x'].values)
+y = np.sort(data['y'].values)
+
+# Plot the original data
+plt.figure()
+plt.plot(x, y, 'bo')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Original Data')
+plt.show()
+
+# Function to create a design matrix for polynomial regression
+def design_matrix(x, degree):
+    X = np.ones(x.shape)
+    for i in range(1, degree + 1):
+        X = np.column_stack((X, x ** i))
+    return X
+
+# Function to perform polynomial regression
+def polynomial_regression(x, y, degree):
+    X = design_matrix(x, degree)
+    w = np.linalg.solve(X.T.dot(X), X.T.dot(y))
+    return w
+
+# Function to evaluate polynomial regression using RMSE
+def evaluate_polynomial_regression(parameters, X, y):
+    predictions = X.dot(parameters)
+    rmse = np.sqrt(((predictions - y) ** 2).mean())
+    return rmse
+
+# Function to perform evaluation on training and testing sets
+def evaluation():
+    # Split the data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, shuffle=True)
+    
+    for d in degrees[1:]:
+        X_train = design_matrix(x_train, d)
+        X_test = design_matrix(x_test, d)
+        
+        w = polynomial_regression(x_train, y_train, d)
+        
+        rmse_train.append(evaluate_polynomial_regression(w, X_train, y_train))
+        rmse_test.append(evaluate_polynomial_regression(w, X_test, y_test))
+    
+    # Plot the RMSE values
+    plt.figure()
+    plt.semilogy(degrees[1:], rmse_train, label='Train')
+    plt.semilogy(degrees[1:], rmse_test, label='Test')
+    plt.xlabel('Degree of Polynomial')
+    plt.ylabel('RMSE')
+    plt.title('RMSE for Training and Testing Data')
+    plt.legend(loc='upper left')
+    plt.show()
+
+# Main function to perform polynomial regression and plot results
+def main():
+    plt.figure()
+    
+    for d in degrees:
+        if d == 0:
+            plt.plot([-5, 5], [y.mean(), y.mean()], label='Mean')
+        else:
+            w = polynomial_regression(x, y, d)
+            X_poly = design_matrix(x, d)
+            y_poly = X_poly.dot(w)
+            print(f'Degree {d}: {w}')
+            plt.plot(x, y_poly, label=f'Degree {d}')
+    
+    plt.xlim((-6, 6))
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Polynomial Regression Fits')
+    plt.legend(loc='lower right')
+    plt.show()
+    
+    # Perform evaluation on the training and testing sets
+    evaluation()
+
+# Execute the main function
+if __name__ == '__main__':
+    main()

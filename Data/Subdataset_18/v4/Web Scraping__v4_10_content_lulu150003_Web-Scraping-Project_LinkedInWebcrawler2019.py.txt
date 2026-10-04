@@ -1,0 +1,88 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import time
+from bs4 import BeautifulSoup
+import pandas as pd
+
+# User inputs
+COMPANY = input("Enter Company ID: ")
+USERNAME = input("Enter username: ")
+PASSWORD = input("Enter password: ")
+EMPLOYEE_LIMIT = 1000
+
+# LinkedIn URL
+linkedin_url = 'https://www.linkedin.com'
+
+# Initialize browser
+browser = webdriver.Firefox()
+browser.get(linkedin_url)
+time.sleep(3)
+
+# Log in
+email_input = browser.find_element_by_name('session_key')
+password_input = browser.find_element_by_name('session_password')
+email_input.send_keys(USERNAME + Keys.RETURN)
+password_input.send_keys(PASSWORD + Keys.RETURN)
+time.sleep(3)
+
+# Search URL
+search_url = f"https://www.linkedin.com/search/results/people/?facetCurrentCompany=%5B%22{COMPANY}%22%5D"
+browser.get(search_url)
+time.sleep(3)
+
+# Scroll to load the page
+browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+current_url = 'url_placeholder'
+
+# DataFrame to store results
+df = pd.DataFrame(columns=['name', 'title', 'location', 'profile'])
+
+while True:
+    if 'page=100' in current_url:
+        break
+
+    previous_url = current_url
+    current_url = browser.current_url
+
+    if current_url == previous_url:
+        break
+
+    page = BeautifulSoup(browser.page_source, 'lxml')
+    page_names = page.find_all('span', class_='actor-name')
+    page_titles = page.find_all('p', class_='subline-level-1')
+    page_locations = page.find_all('p', class_='subline-level-2')
+    page_profiles = page.find_all('a', class_='search-result__result-link')
+
+    names = [name.text for name in page_names]
+    titles = [title.text.replace('\n', '') for title in page_titles]
+    locations = [location.text.replace('\n', '') for location in page_locations]
+    profiles = [linkedin_url + profile['href'] for profile in page_profiles][::2]
+
+    temp_df = pd.DataFrame({
+        'name': names,
+        'title': titles,
+        'location': locations,
+        'profile': profiles
+    })
+
+    temp_df = temp_df[temp_df['name'] != 'LinkedIn Member']
+    df = df.append(temp_df, ignore_index=True)
+
+    if df.shape[0] >= EMPLOYEE_LIMIT:
+        break
+
+    try:
+        next_button = browser.find_element_by_class_name('next')
+        next_button.click()
+    except Exception as e:
+        print("No more pages or error:", e)
+        break
+
+    time.sleep(5)
+
+# Save to CSV
+df.reset_index(drop=True, inplace=True)
+df.to_csv("output_search.csv", index=False)
+
+# Close the browser
+browser.quit()

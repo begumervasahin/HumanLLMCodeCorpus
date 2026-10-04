@@ -1,0 +1,39 @@
+import pandas as pd
+from pandas_datareader import data
+import datetime
+import qqpat
+def fetch_stock_data(ticker, start_date, end_date):
+    return data.DataReader(ticker, 'yahoo', start=start_date, end=end_date)
+def print_statistics_summary(summary):
+    for idx, statistics in enumerate(summary):
+        print("\nStatistics for system {}:".format(idx))
+        for stat, value in statistics.items():
+            print("{}: {}".format(stat, value))
+        print("")
+def main():
+    start_date = datetime.datetime(2016, 1, 1)
+    end_date = datetime.datetime.now()
+    aapl = fetch_stock_data('AAPL', start_date, end_date)
+    spy = fetch_stock_data('SPY', start_date, end_date)
+    ibm = fetch_stock_data('IBM', start_date, end_date)
+    data = pd.concat([aapl['Close'], spy['Close'], ibm['Close']], axis=1)
+    data.columns = ["AAPL", "SPY", "IBM"]
+    analyzer = qqpat.Analizer(data, column_type='price', titles=["AAPL", "SPY", "IBM"])
+    summary = analyzer.get_statistics_summary()
+    print_statistics_summary(summary)
+    analyzer.plot_analysis_returns()
+    analyzer.min_variance_portfolio_optimization(plotWeights=True)
+    analyzer.plot_mc_wc_evolution_sharpe(index=0, iterations=50, confidence=99, max_period_length=1000)
+    analyzer.plot_mc_wc_evolution_cagr(index=0, iterations=50, confidence=99, max_period_length=1000)
+    analyzer.plot_mc_distributions(index=0, iterations=100)
+    analyzer.plot_mc_simulations(index=0, iterations=100)
+    analyzer.plot_analysis_rolling()
+    analyzer.plot_monthly_returns_heatmap()
+    analyzer.plot_annual_returns()
+    analyzer.plot_monthly_returns()
+    analyzer.plot_monthly_return_distribution()
+    analyzer.plot_drawdown_periods()
+    analyzer.plot_drawdown_distribution()
+    analyzer.plot_drawdown_length_distribution()
+if __name__ == "__main__":
+    main()

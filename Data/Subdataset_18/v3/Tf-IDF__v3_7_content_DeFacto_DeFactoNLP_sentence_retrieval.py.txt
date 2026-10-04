@@ -1,0 +1,65 @@
+import os
+import json
+import codecs
+
+def get_relevant_sentences(relevant_docs, wiki_split_docs_dir):
+    """
+    Extract relevant sentences from JSON files in the given directory.
+
+    Args:
+        relevant_docs (list): List of document filenames without extension.
+        wiki_split_docs_dir (str): Directory path containing the JSON files.
+
+    Returns:
+        list: A list of dictionaries containing document ID, line number, and sentence.
+    """
+    relevant_sentences = []
+
+    for doc in relevant_docs:
+        file_path = os.path.join(wiki_split_docs_dir, f"{doc}.json")
+        with codecs.open(file_path, "r", "utf-8") as file:
+            content = json.load(file)
+            lines = content["lines"]
+
+            for i, line in enumerate(lines):
+                sentence = line['content'].strip()
+                sentence = sentence.replace("-LRB-", " ( ").replace("-RRB-", " ) ")
+
+                if sentence:
+                    relevant_sentences.append({
+                        'id': doc,
+                        'line_num': i,
+                        'sentence': sentence
+                    })
+
+    return relevant_sentences
+
+def get_sentence(wiki_doc_dir, doc_filename, sentence_id):
+    """
+    Retrieve a specific sentence from a text file based on sentence ID.
+
+    Args:
+        wiki_doc_dir (str): Directory path containing the text files.
+        doc_filename (str): Filename of the document without extension.
+        sentence_id (int): ID of the sentence to retrieve.
+
+    Returns:
+        str: The specified sentence.
+    """
+    file_path = os.path.join(wiki_doc_dir, f"{doc_filename}.txt")
+    with codecs.open(file_path, "r", "utf-8") as doc:
+        lines = doc.read().split("\n")
+
+        if 0 <= sentence_id < len(lines):
+            return lines[sentence_id].split("\t")[1]
+        else:
+            raise IndexError("Sentence ID out of range")
+
+# Example usage
+# relevant_docs = ['doc1', 'doc2']
+# wiki_split_docs_dir = '/path/to/wiki/split/docs'
+# wiki_doc_dir = '/path/to/wiki/docs'
+# doc_filename = 'doc1'
+# sentence_id = 0
+# print(get_relevant_sentences(relevant_docs, wiki_split_docs_dir))
+# print(get_sentence(wiki_doc_dir, doc_filename, sentence_id))

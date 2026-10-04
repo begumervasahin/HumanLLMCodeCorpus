@@ -1,0 +1,60 @@
+import chars2vec
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
+# Function to load words from a file
+def load_words(file_path):
+    words = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            word = line.strip()  # Remove any leading/trailing whitespace or newline characters
+            words.append(word)
+    return words
+
+# Function to vectorize words using chars2vec
+def vectorize_words(model, words):
+    return model.vectorize_words(words)
+
+# Function to calculate cosine similarity between embeddings
+def calculate_similarity(embeddings, input_embedding):
+    return cosine_similarity(embeddings, input_embedding)
+
+# Function to find the most similar word
+def find_most_similar_word(words, similarities):
+    max_similarity_index = np.argmax(similarities)
+    max_similarity_value = np.max(similarities)
+    most_similar_word = words[max_similarity_index]
+    return most_similar_word, max_similarity_value
+
+# Main script
+def main():
+    # Load words from a file
+    words_array = load_words('words.txt')
+    print("Words loaded:", words_array)
+
+    # Load chars2vec model
+    c2v_model = chars2vec.load_model('eng_50')
+
+    # Vectorize words using chars2vec
+    word_embeddings = vectorize_words(c2v_model, words_array)
+    print("Shape of word embeddings:", word_embeddings.shape)
+
+    # Prompt user to input a word
+    word_input = input("Enter a word: ")
+    words_input = [word_input]
+
+    # Vectorize the input word using chars2vec
+    word_embed_input = vectorize_words(c2v_model, words_input)
+    print("Embedding for the input word:", word_embed_input)
+
+    # Calculate cosine similarity between input word and all words in words_array
+    similarities = calculate_similarity(word_embeddings, word_embed_input)
+
+    # Retrieve the most similar word based on cosine similarity
+    most_similar_word, max_similarity_value = find_most_similar_word(words_array, similarities)
+    print("Most similar word:", most_similar_word)
+    print("Cosine similarity score:", max_similarity_value)
+
+# Run the main function if the script is executed directly
+if __name__ == "__main__":
+    main()

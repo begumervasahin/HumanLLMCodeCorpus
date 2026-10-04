@@ -1,0 +1,67 @@
+import sys
+import datetime
+import itertools
+
+def parse_date(year, month, day):
+    """
+    Parse the date from year, month, and day strings.
+    Adjusts the year if it is less than 1000.
+    
+    Args:
+    year (str): Year part of the date
+    month (str): Month part of the date
+    day (str): Day part of the date
+
+    Returns:
+    datetime.date: Parsed date object or False if invalid
+    """
+    try:
+        year = int(year) + 2000 if int(year) < 1000 else int(year)
+        return datetime.date(year, int(month), int(day))
+    except ValueError:
+        return False
+
+def process_file(filename):
+    """
+    Process the given file to read lines, parse dates, and print the earliest valid date.
+    
+    Args:
+    filename (str): Name of the file to be processed
+    """
+    try:
+        with open(filename) as file:
+            lines = [line.strip() for line in file]
+    except FileNotFoundError:
+        print(f"File not found: {filename}")
+        sys.exit(1)
+
+    for line in lines:
+        parts = line.split('/')
+        dates = []
+
+        # Generate all permutations of year, month, and day
+        for year, month, day in itertools.permutations(parts, 3):
+            date = parse_date(year, month, day)
+            if date and 2000 <= date.year < 3000:
+                dates.append(date)
+        
+        # Print the earliest valid date or mark the line as illegal
+        if dates:
+            print(min(dates))
+        else:
+            print(f"{line} is illegal")
+
+def main():
+    """
+    Main function to handle command-line arguments and initiate file processing.
+    """
+    # Check if filename is provided as a command-line argument
+    if len(sys.argv) < 2:
+        print("Missing file name!")
+        sys.exit(1)
+    
+    filename = sys.argv[1]
+    process_file(filename)
+
+if __name__ == '__main__':
+    main()

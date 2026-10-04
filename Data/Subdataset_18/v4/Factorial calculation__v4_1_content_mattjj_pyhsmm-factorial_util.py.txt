@@ -1,0 +1,55 @@
+from __future__ import division
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import cbook
+
+def union_changepoints(all_changepoints):
+    """
+    Combines multiple lists of changepoints into a single list with unique start points.
+    """
+    startpoints = sorted(set(cbook.flatten(all_changepoints)))
+    return [(startpoint, nextstartpoint) for startpoint, nextstartpoint in zip(startpoints[:-1], startpoints[1:])]
+
+def plot_with_changepoints(data, changepoints):
+    """
+    Plots the given data with vertical lines at the specified changepoints.
+    """
+    plt.figure()
+    plt.plot(data)
+    rect = plt.axis()
+    changepoint_positions = [c[1] for c in changepoints[:-1]]
+    plt.vlines(changepoint_positions, rect[2], rect[3], color='r', linestyles='dashed')
+    plt.axis(rect)
+    plt.show()
+
+def indicators_to_changepoints(indicators):
+    """
+    Converts a list of boolean indicators into a list of changepoints.
+    Indicators are False everywhere except the indices where a new segment starts.
+    
+    Example:
+        indicators = [False, False, True, False, False, False, False, True, False]
+        -> [(0, 2), (2, 7), (7, 9)]
+    """
+    pos = np.where(np.diff(np.array(indicators, dtype=int)) == 1)[0]
+    pos = np.concatenate(([0], pos + 1, [len(indicators)]))
+    return [(a, b) for a, b in zip(pos[:-1], pos[1:])]
+
+# Example usage
+if __name__ == "__main__":
+    # Example data and indicators
+    data = np.random.rand(100)  # Random data
+    indicators = [False, False, True, False, False, False, False, True, False, False, True, False, False, False, True]
+
+    # Convert indicators to changepoints
+    changepoints = indicators_to_changepoints(indicators)
+
+    # Plot data with changepoints
+    plot_with_changepoints(data, changepoints)
+
+    # Example of combining multiple changepoint sets
+    additional_changepoints = [(0, 5), (5, 10), (10, 15)]
+    all_changepoints = [changepoints, additional_changepoints]
+    unified_changepoints = union_changepoints(all_changepoints)
+    
+    print("Unified Changepoints:", unified_changepoints)

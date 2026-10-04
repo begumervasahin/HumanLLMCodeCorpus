@@ -1,0 +1,127 @@
+import numpy as np
+
+class VPnode:
+    """
+    Implements a Vantage-point tree (VP-tree) that stores indices to data.
+    Distance calculations use the squared L2 norm.
+    """
+
+    def __init__(self, inds, data):
+        """
+        Initialize the VP-tree node.
+
+        Args:
+            inds (np.ndarray): Ordered array of indices.
+            data (np.ndarray): Indexable data for distance calculation, in random order.
+        """
+        if len(inds) == 0:  # Empty node
+            self.ind = None
+            self.radius = None
+            return
+
+        self.ind = inds[0]  # The "center" of this node
+        inds = inds[1:]
+
+        if len(inds) > 0:
+            # Calculate all distances from the current node using the squared L2 norm
+            distances = np.sum((data[1:, :] - data[0, :])**2., axis=1)
+            data = data[1:, :]
+
+            # Set the node radius as the median distance from the node to others
+            self.radius = np.median(distances)
+
+            inds_inside = distances < self.radius
+            inds_outside = ~inds_inside  # Invert the boolean array
+
+            # Attach children nodes
+            self.inside = VPnode(inds[inds_inside], data[inds_inside])
+            self.outside = VPnode(inds[inds_outside], data[inds_outside])
+
+        else:  # Leaf node
+            self.radius = None
+            self.inside = VPnode([], [])
+            self.outside = VPnode([], [])
+
+    def print_node(self, indent=0):
+        """
+        Prints a simple representation of the VP-tree.
+
+        Args:
+            indent (int): The level of indentation for the current node (used for pretty printing).
+        """
+        if self.ind is None:
+            return
+
+        indent_str = "    " * indent
+        print(f"{indent_str}* (Node {self.ind})")
+        if self.inside.ind is not None:
+            print(f"{indent_str}  - Inside {self.ind}:")
+            self.inside.print_node(indent + 1)
+        if self.outside.ind is not None:
+            print(f"{indent_str}  - Outside {self.ind}:")
+            self.outside.print_node(indent + 1)
+
+    def find_neighbors(self, ind, neighbors, distances, data):
+        """
+        Finds the k nearest neighbors of a given index.
+
+        Args:
+            ind (int): The index of the point for which to find neighbors.
+            neighbors (np.ndarray): A numpy array of indices sized k.
+            distances (np.ndarray): A numpy array of distances sized k, should be initialized to infinity.
+            data (np.ndarray): Indexable data for distance calculation.
+        """
+        if self.ind is None:  # Empty node
+            return
+
+        # Calculate distance from the node to the target point
+        dist = np.sum((data[self.ind, :] - data[ind, :])**2.)
+
+        # Set the current search radius to the maximum of the current neighbor distances
+        radius_search = distances[-1]
+
+        if ind != self.ind and dist < radius_search:
+            # Assign the current node as the k+1 neighbor and sort by distance
+            distances[-1] = dist
+            neighbors[-1] = self.ind
+            ind_sort = np.argsort(distances)
+            distances[:] = distances[ind_sort]
+            neighbors[:] = neighbors[ind_sort]
+
+        if self.radius is None:  # Leaf node
+            return
+
+        # Recursively search the appropriate regions
+        if dist >= radius_search + self.radius:  # Target area completely outside
+            self.outside.find_neighbors(ind, neighbors, distances, data)
+        elif self.radius > radius_search + dist:  # Target area completely inside
+            self.inside.find_neighbors(ind, neighbors, distances, data)
+        else:  # Target area may overlap both inside and outside
+            self.inside.find_neighbors(ind, neighbors, distances, data)
+            self.outside.find_neighbors(ind, neighbors, distances, data)
+
+        return neighbors
+
+
+# Example usage:
+
+# Generate some random data
+np.random.seed(42)
+data_points = np.random.rand(10, 2)  # 10 data points in 2D space
+indices = np.arange(len(data_points))
+
+# Create a VP-tree
+vp_tree = VPnode(indices, data_points)
+
+# Print the VP-tree structure
+vp_tree.print_node()
+
+# Find the 3 nearest neighbors of the first data point
+k = 3
+neighbors = np.full(k, -1)  # Initialize neighbors with -1
+distances = np.full(k, np.inf)  # Initialize distances with infinity
+vp_tree.find_neighbors(0, neighbors, distances, data_points)
+
+print("\n3 Nearest Neighbors of the first point:")
+print("Indices:", neighbors)
+print("Distances:", distances)

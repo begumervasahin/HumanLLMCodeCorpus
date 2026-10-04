@@ -1,0 +1,67 @@
+from __future__ import print_function
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import data
+
+# Hyperparameters
+LEARNING_RATE = 0.3
+TRAINING_EPOCHS = 20000
+DISPLAY_STEP = 500
+POLY_DEGREE = 4  # Degree of polynomial
+
+# Load data
+_, Y = data.get_data("BCHAIN/MKPRU", 365)
+_, X = data.get_data("BCHAIN/BLCHS", 365)
+
+# Prepare the data
+m = Y.shape[0]
+train_X = np.zeros([POLY_DEGREE, m])
+
+for i in range(POLY_DEGREE):
+    X_temp = np.power(X, i + 1)
+    train_X[i, :] = (X_temp - np.mean(X_temp)) / np.std(X_temp, axis=0)
+
+# Define model variables
+theta = tf.Variable(tf.random.uniform([1, POLY_DEGREE], -1.0, 1.0, dtype=tf.float64), name="theta")
+bias = tf.Variable(tf.random.uniform([1], -1.0, 1.0, dtype=tf.float64), name="bias")
+
+# Define model
+hypothesis = tf.matmul(theta, train_X) + bias
+cost = tf.reduce_mean(tf.square(hypothesis - Y)) / (2 * m)
+optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(cost)
+
+# Training
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+
+    for epoch in range(TRAINING_EPOCHS):
+        sess.run(optimizer)
+
+        if (epoch + 1) % DISPLAY_STEP == 0:
+            current_cost = sess.run(cost)
+            current_theta = sess.run(theta)
+            current_bias = sess.run(bias)
+            print(f"Epoch: {epoch + 1:04d} cost={current_cost:.9f} theta={current_theta} bias={current_bias}")
+
+    final_cost = sess.run(cost)
+    final_theta = sess.run(theta)
+    final_bias = sess.run(bias)
+    print(f"Training cost={final_cost} theta={final_theta} bias={final_bias}\n")
+
+    # Plotting
+    plt.plot(X, Y, 'r', label='Market Price (training)')
+    plt.plot(X, np.transpose(sess.run(hypothesis)), label='Polynomial Regression Line')
+    plt.title("Bitcoin Price Prediction: Training Polynomial Regression")
+    plt.xlabel("BlockChain Size")
+    plt.ylabel("Price ($)")
+    plt.legend()
+    plt.show()
+
+    # Testing
+    test_X = np.array([100000, 150000])
+    test_X_standardized = (test_X - np.mean(X)) / np.std(X, axis=0)
+    
+    for size, standardized_size in zip(test_X, test_X_standardized):
+        hypothesis_value = standardized_size * final_theta + final_bias
+        print(f"Given Blockchain Size = {size:,} -> Hypothesis = {hypothesis_value}")

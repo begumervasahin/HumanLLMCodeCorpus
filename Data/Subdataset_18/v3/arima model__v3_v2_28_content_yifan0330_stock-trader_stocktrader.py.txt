@@ -1,0 +1,138 @@
+# Import necessary libraries
+from datetime import datetime
+import re
+import csv
+import os
+import pandas as pd
+import numpy as np
+from statsmodels.tsa.arima.model import ARIMA
+import statsmodels.api as sm
+
+# Define custom exceptions
+class TransactionError(Exception):
+    pass
+
+class DateError(Exception):
+    pass
+
+class LinAlgError(Exception):
+    pass
+
+# Define global variables
+stocks = {}
+portfolio = {}
+transactions = []
+
+# Function to normalize date formats
+def normalise_date(date_string):
+    """
+    Convert date_string to 'YYYY-MM-DD' format.
+    Accepts three date formats: YYYY-MM-DD, YYYY/MM/DD, and DD.MM.YYYY.
+    """
+    date_patterns = [
+        (r'^\d{1,2}\.\d{1,2}\.\d{4}$', '%d.%m.%Y'),
+        (r'^\d{4}\-\d{1,2}\-\d{1,2}$', '%Y-%m-%d'),
+        (r'^\d{4}\/\d{1,2}\/\d{1,2}$', '%Y/%m/%d')
+    ]
+    
+    for pattern, date_format in date_patterns:
+        if re.search(pattern, date_string):
+            date_object = datetime.strptime(date_string, date_format)
+            return date_object.strftime("%Y-%m-%d")
+    
+    raise DateError(f"Invalid date format: {date_string}")
+
+# Function to load portfolio data from a file
+def load_portfolio(filename):
+    """
+    Load portfolio data from a CSV file.
+    """
+    global portfolio
+    try:
+        with open(filename, mode='r') as infile:
+            reader = csv.reader(infile)
+            portfolio = {rows[0]: int(rows[1]) for rows in reader}
+    except Exception as e:
+        raise TransactionError(f"Error loading portfolio: {e}")
+
+# Function to load historical stock data
+def load_all_stocks():
+    """
+    Load historical stock data from CSV files in the 'stocks' directory.
+    """
+    global stocks
+    stock_files = os.listdir('stocks')
+    
+    for file in stock_files:
+        if file.endswith('.csv'):
+            stock_name = file.split('.')[0]
+            stock_data = pd.read_csv(f'stocks/{file}', parse_dates=['Date'], index_col='Date')
+            stocks[stock_name] = stock_data
+
+# Function to execute trading strategy 1
+def trade_strategy_1(verbose=False):
+    """
+    Execute trading strategy 1.
+    """
+    global transactions
+    
+    for stock_name, stock_data in stocks.items():
+        # Perform some trading logic here
+        transactions.append({
+            'Date': datetime.now().strftime('%Y-%m-%d'),
+            'Stock': stock_name,
+            'Shares': 10,
+            'Type': 'Buy'
+        })
+        
+        if verbose:
+            print(f"Bought 10 shares of {stock_name}")
+
+# Function to evaluate the portfolio on a specific date
+def valuate_portfolio(date, verbose=False):
+    """
+    Evaluate the portfolio on a specific date.
+    """
+    global portfolio
+    date = normalise_date(date)
+    total_value = 0
+    
+    for stock_name, shares in portfolio.items():
+        if stock_name in stocks:
+            stock_data = stocks[stock_name]
+            
+            if date in stock_data.index:
+                price = stock_data.loc[date]['Close']
+                total_value += shares * price
+                
+                if verbose:
+                    print(f"{shares} shares of {stock_name} at {price} each on {date}")
+            else:
+                if verbose:
+                    print(f"No data for {stock_name} on {date}")
+    
+    if verbose:
+        print(f"Total portfolio value on {date}: {total_value}")
+    
+    return total_value
+
+# Function to execute the main logic of the program
+def main():
+    """
+    Main function to execute the program.
+    """
+    # Load portfolio data from file
+    load_portfolio('portfolio0.csv')
+
+    # Load historical stock data
+    load_all_stocks()
+
+    # Execute trading strategy 1
+    trade_strategy_1(verbose=True)
+
+    # Evaluate portfolio on a specific date
+    valuate_portfolio(date="2018-03-13", verbose=True)
+
+# Check if the script is being executed directly
+if __name__ == '__main__':
+    main()

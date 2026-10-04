@@ -1,0 +1,94 @@
+import logging
+import re
+from pymystem3 import Mystem
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.info("Loading Mystem")
+
+# Initialize Mystem
+m = Mystem()
+logging.info("Loaded Mystem")
+
+def parse_gr(gr):
+    """
+    Parse grammatical information and generate variations.
+    """
+    options = re.search(r'\(([^\)]*)\)', gr)
+    if options:
+        title = options.group(1)
+        for option in title.split('|'):
+            yield gr.replace(f"({title})", option)
+    else:
+        yield gr
+
+def process_input_file(input_path):
+    """
+    Process the input file to extract grammatical information.
+    """
+    lines = set()
+    with open(input_path, "r", encoding="utf-8") as input_file:
+        logging.info("File opened")
+        for line in input_file:
+            analyzed_words = m.analyze(line)
+            for word in analyzed_words:
+                if 'analysis' in word:
+                    for analysis in word['analysis']:
+                        for gramm_info in parse_gr(analysis['gr']):
+                            entry = "\t".join([gramm_info, analysis['lex'], word['text'].lower()])
+                            lines.add(entry + "\n")
+    return lines
+
+def write_to_file(lines, output_path):
+    """
+    Write the processed lines to the specified output file.
+    """
+    with open(output_path, "w", encoding="utf-8") as output_file:
+        output_file.writelines(lines)
+
+def build_dict_from_file(input_path):
+    """
+    Build a dictionary from the input file with grammatical descriptions as keys.
+    """
+    gram_dict = {}
+    with open(input_path, "r", encoding="utf-8") as input_file:
+        for line in input_file:
+            if line.strip():
+                desc, normal, form = line.strip().split("\t")
+                if desc not in gram_dict:
+                    gram_dict[desc] = []
+                gram_dict[desc].append((normal, form))
+    return gram_dict
+
+def write_relation_pairs(gram_dict, output_path):
+    """
+    Write relation pairs to the specified output file.
+    """
+    with open(output_path, "w", encoding="utf-8") as writer:
+        for desc, pairs in gram_dict.items():
+            for p0 in pairs:
+                for p1 in pairs:
+                    if p0 != p1:
+                        writer.write("\t".join([p0[0], p0[1], p1[0], p1[1]]) + "\n")
+
+def main():
+    input_file_path = "data/test.txt"
+    pairs_file_path = "data/pairs_with_grammar.tsv"
+    relations_file_path = "data/relations.pairs.tsv"
+
+    # Process input file and extract grammatical information
+    lines = process_input_file(input_file_path)
+
+    # Write processed data to pairs_with_grammar.tsv
+    write_to_file(lines, pairs_file_path)
+
+    # Build dictionary from pairs_with_grammar.tsv
+    gram_dict = build_dict_from_file(pairs_file_path)
+    logging.info("Pairs acquired")
+
+    # Write relation pairs to relations.pairs.tsv
+    write_relation_pairs(gram_dict, relations_file_path)
+    logging.info("Relations pairs acquired")
+
+if __name__ == "__main__":
+    main()

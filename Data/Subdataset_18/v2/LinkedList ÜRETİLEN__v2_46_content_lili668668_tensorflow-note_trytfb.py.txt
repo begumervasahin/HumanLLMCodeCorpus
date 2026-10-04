@@ -1,0 +1,56 @@
+import tensorflow as tf
+import numpy as np
+
+# Generate random data
+xd = np.random.rand(100).astype(np.float32)
+yd = xd * 0.1 + 0.3
+
+# Define the TensorFlow model
+with tf.name_scope('inputs'):
+    xs = tf.placeholder(tf.float32, name='x_input')
+    ys = tf.placeholder(tf.float32, name='y_input')
+
+with tf.name_scope('layer'):
+    with tf.name_scope('weights'):
+        weights = tf.Variable(tf.random_uniform([1], -1.0, 1.0), name="W")
+        tf.summary.histogram('weights', weights)
+    with tf.name_scope('biases'):
+        biases = tf.Variable(tf.zeros([1]), name="b")
+        tf.summary.histogram('biases', biases)
+    with tf.name_scope('Wx_plus_b'):
+        y_pred = weights * xs + biases
+
+with tf.name_scope('loss'):
+    loss = tf.reduce_mean(tf.square(y_pred - ys))
+    tf.summary.scalar('loss', loss)
+
+with tf.name_scope('train'):
+    optimizer = tf.train.GradientDescentOptimizer(0.5)
+    train_step = optimizer.minimize(loss)
+
+# Initialize variables and create saver
+init = tf.global_variables_initializer()
+saver = tf.train.Saver()
+
+with tf.Session() as sess:
+    merged = tf.summary.merge_all()
+    writer = tf.summary.FileWriter("logs/", sess.graph)
+    sess.run(init)
+
+    # Training loop
+    for step in range(2017):
+        sess.run(train_step, feed_dict={xs: xd, ys: yd})
+        if step % 20 == 0:
+            summary = sess.run(merged, feed_dict={xs: xd, ys: yd})
+            writer.add_summary(summary, step)
+            current_weights, current_biases = sess.run([weights, biases])
+            print(f"Step {step}: Weights = {current_weights}, Biases = {current_biases}")
+
+    # Make predictions
+    test_xs = [10, 20, 40]
+    prediction = sess.run(y_pred, feed_dict={xs: test_xs})
+    print("Predictions:", prediction)
+
+    # Save the model
+    save_path = saver.save(sess, "output/save.ckpt")
+    print(f"Model saved in path: {save_path}")

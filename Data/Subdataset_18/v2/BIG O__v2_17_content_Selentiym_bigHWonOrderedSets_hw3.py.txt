@@ -1,0 +1,79 @@
+import csv
+from bondartsev_nikita.classes import paramClasses, Context, Object
+
+# Configuration for the parameters
+config = ["RealParam"] * 14
+data_filename = "hw3.csv"
+
+def create_object(config, data_line, label='') -> 'Object':
+    """
+    Create an Object with parameters instantiated from the config and data_line values.
+    """
+    params = []
+    for ind, value in enumerate(data_line):
+        param_class = getattr(paramClasses, config[ind])
+        params.append(param_class.instantiate(value))
+    return Object(params, label)
+
+# Read data from CSV file
+with open(data_filename, 'r') as f:
+    reader = csv.reader(f)
+    raw_data_list = list(reader)
+
+# Create the main parameter set and context
+main_param_set = create_object(config, ['__head' for _ in config]).dash()
+context_main = Context(main_param_set)
+
+# Add objects to the context
+counter = 0
+for data_line in raw_data_list:
+    counter += 1
+    obj = create_object(config, data_line, str(counter))
+    context_main.addObject(obj)
+
+def print_objects(objects):
+    """
+    Print a list of objects in sorted order.
+    """
+    sorted_objects = sorted(objects, key=lambda x: str(x))
+    for obj in sorted_objects:
+        print(f'o{obj}', end=',')
+    print()
+
+def count_fc(used: set, to_use: set) -> int:
+    """
+    Count formal concepts in the context.
+    """
+    if not to_use:
+        param = None
+        for obj in used:
+            if param is None:
+                param = obj.dash()
+            else:
+                param = param.intersect(obj.dash())
+        
+        if param is None:
+            return 0
+        
+        closed = context_main.dash(param)
+        if len(closed) == len(used):
+            print_objects(used)
+            return 1
+        else:
+            return 0
+
+    new_el = to_use.pop()
+    used_with_new_el = used.copy()
+    used_with_new_el.add(new_el)
+    
+    return count_fc(used.copy(), to_use.copy()) + count_fc(used_with_new_el, to_use.copy())
+
+# Run the formal concept counting
+count_fc(set(), set(context_main.getObjects()))
+
+# Print the intersection of the first two objects
+objs = list(context_main.getObjects())
+print('\n')
+print_objects([objs[0], objs[1]])
+print()
+print_objects(context_main.dash(objs[0].dash().intersect(objs[1].dash())))

@@ -1,0 +1,128 @@
+"""
+K-Means Algorithm Implementation
+"""
+
+import pandas as pd
+import numpy as np
+import random
+import math
+from read_csvfile import read_csvfile
+
+# Data-Set Information
+city = "san-francisco-ca"
+filename = f"data/propertyInfo/{city}.csv"
+data = read_csvfile(filename)
+data["cluster"] = -1
+
+# Generating Centroids
+def generate_centroids(house_data, k, column_name):
+    """
+    Generate initial centroids randomly.
+    
+    Args:
+        house_data (DataFrame): The dataset containing house information.
+        k (int): Number of centroids.
+        column_name (str): The column to be used for clustering.
+
+    Returns:
+        list: A list of randomly generated centroids.
+    """
+    return [random.randint(1, house_data[column_name].max()) for _ in range(k)]
+
+initial_centroids = generate_centroids(data, 5, 'zestimate')
+
+# Creating Clusters
+def assign_clusters(centroids, house_data, column_name):
+    """
+    Assigns each house to the nearest centroid and calculates the average distance.
+    
+    Args:
+        centroids (list): List of centroids.
+        house_data (DataFrame): The dataset containing house information.
+        column_name (str): The column to be used for clustering.
+
+    Returns:
+        DataFrame: Updated dataset with clusters assigned.
+        list: Average distances of the clusters.
+    """
+    houses = house_data[column_name].values
+    total_distances = []
+    house_data['cluster'] = -1
+
+    for centroid in centroids:
+        distance_to_centroid = [
+            math.sqrt((home - centroid)**2) for home in houses
+        ]
+        house_data.loc[house_data[column_name].apply(lambda x: math.sqrt((x - centroid)**2)).idxmin(), 'cluster'] = centroid
+        total_distances.append(sum(distance_to_centroid))
+
+    avg_distances = [dist / len(houses) for dist in total_distances]
+    return house_data, avg_distances
+
+data, average_distances = assign_clusters(initial_centroids, data, 'zestimate')
+
+# Checking for Convergence
+def check_convergence(previous_centroids, current_centroids, tolerance=1.0):
+    """
+    Check if the algorithm has converged by comparing the previous and current centroids.
+    
+    Args:
+        previous_centroids (list): Previous centroids.
+        current_centroids (list): Current centroids.
+        tolerance (float, optional): Tolerance level for convergence. Default is 1.0.
+
+    Returns:
+        bool: True if converged, otherwise False.
+    """
+    for old, new in zip(previous_centroids, current_centroids):
+        if abs(old - new) > tolerance:
+            return False
+    return True
+
+# Updating Centroids
+def update_centroids(house_data, column_name):
+    """
+    Update the centroids based on the current cluster assignments.
+    
+    Args:
+        house_data (DataFrame): The dataset containing house information.
+        column_name (str): The column to be used for clustering.
+
+    Returns:
+        list: Updated centroids.
+    """
+    new_centroids = house_data.groupby('cluster')[column_name].mean().tolist()
+    return new_centroids
+
+# K-Means Clustering Process
+def k_means_clustering(house_data, k, column_name, max_iterations=100):
+    """
+    Perform K-Means clustering on the dataset.
+    
+    Args:
+        house_data (DataFrame): The dataset containing house information.
+        k (int): Number of centroids.
+        column_name (str): The column to be used for clustering.
+        max_iterations (int, optional): Maximum number of iterations. Default is 100.
+
+    Returns:
+        list: Final centroids after clustering.
+    """
+    centroids = generate_centroids(house_data, k, column_name)
+    for _ in range(max_iterations):
+        previous_centroids = centroids
+        house_data, _ = assign_clusters(centroids, house_data, column_name)
+        centroids = update_centroids(house_data, column_name)
+        if check_convergence(previous_centroids, centroids):
+            break
+    return centroids
+
+# Running K-Means Clustering
+final_centroids = k_means_clustering(data, 5, 'zestimate')
+
+# Formatting and Printing Results
+pd.set_option('display.max_rows', None)
+pd.set_option('display.float_format', lambda x: '%.0f' % x)
+print("Final centroids:", final_centroids)
+print("Clustered Data:")
+print(data)

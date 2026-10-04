@@ -1,0 +1,80 @@
+import time
+import utils
+import sys
+import os
+import csv
+
+# Append necessary paths
+sys.path.append(os.path.abspath('.\\QuadSieve'))
+sys.path.append(os.path.abspath('.\\Pollards'))
+
+# Import the required modules
+import quadSieve
+import pollards
+
+# Open the output file for writing
+with open("output.csv", "w", newline="") as out:
+    # Define the field names for the CSV
+    fieldNames = ["Prime Bit Length", "Max Pollard's Runtime (s)", "Max QuadSieve Runtime (s)"]
+    
+    # Create a CSV DictWriter object
+    outWriter = csv.DictWriter(out, fieldnames=fieldNames)
+    outWriter.writeheader()
+    
+    # Set initial parameters
+    bitlength = 6
+    sampleSize = 5
+    niterations = 7
+    bitincrement = 5
+    
+    # Perform the iterations
+    for i in range(niterations):
+        polFailures = quadFailures = 0
+        polMaxTime = quadMaxTime = 0
+        
+        # Sample the prime numbers
+        for sample in range(sampleSize):
+            p = q = utils.genPrime(bitlength, 40)
+            while q == p:
+                q = utils.genPrime(bitlength, 40)
+            
+            n = p * q
+            print(f"p: {p}\nq: {q}\nn: {n}\n")
+            
+            # Measure time for Pollard's p-1 algorithm
+            start = time.time()
+            p_res = pollards.pollards(n)
+            end = time.time()
+            ptime = end - start
+            print(f"Time for Pollard's p-1 algorithm to factor n: {ptime}s")
+            print(f"Pollards result: {p_res}")
+            
+            # Measure time for Quadratic Sieve algorithm
+            start = time.time()
+            q_res = quadSieve.quadSieve(n)
+            end = time.time()
+            qtime = end - start
+            print(f"Time for Quad. Sieve algorithm to factor n: {qtime}s")
+            print(f"Quad. Sieve result: {q_res}\n\n")
+            
+            # Update max times and failure counts
+            if p_res != {p, q}:
+                polFailures += 1
+            else:
+                polMaxTime = max(polMaxTime, ptime)
+            
+            if q_res != {p, q}:
+                quadFailures += 1
+            else:
+                quadMaxTime = max(quadMaxTime, qtime)
+        
+        # Write the results to the CSV
+        writeData = {
+            "Prime Bit Length": bitlength,
+            "Max Pollard's Runtime (s)": f'{polMaxTime:.5f}',
+            "Max QuadSieve Runtime (s)": f'{quadMaxTime:.5f}'
+        }
+        outWriter.writerow(writeData)
+        
+        # Increment the bit length for the next iteration
+        bitlength += bitincrement

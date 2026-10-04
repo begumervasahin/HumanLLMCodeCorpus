@@ -1,0 +1,70 @@
+import pandas as pd
+from naive_bayes import loocv, et
+
+# Initialize DataFrame to store results
+results = pd.DataFrame(columns=['Dataset', 'Accuracy(%)'])
+
+def process_loocv(file_path, dataset_name, header=None, target_col=-1):
+    """
+    Process dataset using Leave-One-Out Cross-Validation (LOOCV).
+    
+    Parameters:
+        file_path (str): Path to the dataset file.
+        dataset_name (str): Name of the dataset.
+        header (int, optional): Row number to use as column names. Default is None.
+        target_col (int, optional): Column index of the target variable. Default is -1 (last column).
+    
+    Returns:
+        float: Accuracy of the model.
+    """
+    data = pd.read_csv(file_path, header=header)
+    x = data.iloc[:, :target_col].values.tolist()
+    y = data.iloc[:, target_col].values.tolist()
+    unique_labels = set(y)
+    accuracy = loocv(x, y, unique_labels, data.shape[0])
+    print(f"{dataset_name}: {accuracy}")
+    return accuracy
+
+def process_et(train_path, test_path, dataset_name, header=None, x_start_col=2, y_col=1):
+    """
+    Process dataset using a specified evaluation technique.
+    
+    Parameters:
+        train_path (str): Path to the training dataset file.
+        test_path (str): Path to the test dataset file.
+        dataset_name (str): Name of the dataset.
+        header (int, optional): Row number to use as column names. Default is None.
+        x_start_col (int, optional): Starting column index for feature variables. Default is 2.
+        y_col (int, optional): Column index of the target variable. Default is 1.
+    
+    Returns:
+        float: Accuracy of the model.
+    """
+    train_data = pd.read_csv(train_path, header=header)
+    test_data = pd.read_csv(test_path, header=header)
+    x_train = train_data.iloc[:, x_start_col:].values.tolist()
+    x_test = test_data.iloc[:, x_start_col:].values.tolist()
+    y_train = train_data.iloc[:, y_col].values.tolist()
+    y_test = test_data.iloc[:, y_col].values.tolist()
+    unique_labels = set(y_train)
+    accuracy = et(x_train, x_test, y_train, y_test, unique_labels)
+    print(f"{dataset_name}: {accuracy}")
+    return accuracy
+
+# Process datasets
+results.loc[len(results)] = ['Tic-tac-toe Endgame', process_loocv("tic-tac-toe.data", "Tic-tac-toe", header=None)]
+
+results.loc[len(results)] = ['SPECT heart Dataset', process_et("SPECT.train", "SPECT.test", "SPECT", header=None, x_start_col=1, y_col=0)]
+
+results.loc[len(results)] = ['Soybean (small)', process_loocv("soybean-small.data", "Soybean")]
+
+results.loc[len(results)] = ['Shuttle landing control', process_loocv("shuttle-landing-control.data", "Shuttle landing control", target_col=0)]
+
+results.loc[len(results)] = ['Monks-1', process_et("monks-1.train", "monks-1.test", "Monks-1", header=None, x_start_col=2, y_col=1)]
+
+results.loc[len(results)] = ['Monks-2', process_et("monks-2.train", "monks-2.test", "Monks-2", header=None, x_start_col=2, y_col=1)]
+
+results.loc[len(results)] = ['Monks-3', process_et("monks-3.train", "monks-3.test", "Monks-3", header=None, x_start_col=2, y_col=1)]
+
+# Save results to CSV
+results.to_csv("Data.csv", index=False)

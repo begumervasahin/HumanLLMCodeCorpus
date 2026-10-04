@@ -1,0 +1,73 @@
+import os
+import glob
+import pickle
+import tfidf
+
+def read_files(path, label, labels_list):
+    """
+    Reads text files from the specified path, excluding 'LICENSE.txt', and adds them to the TF-IDF model.
+    Also, appends the given label to the labels_list for each file read.
+
+    :param path: Directory containing text files.
+    :param label: Label to assign to the files in this directory.
+    :param labels_list: List to store labels corresponding to the files.
+    """
+    print(f"Reading files from: {path}")
+    files = glob.glob(os.path.join(path, "*.txt"))
+    for file in files:
+        if os.path.basename(file) == 'LICENSE.txt':
+            continue
+        tfidf.add_file(file)
+        labels_list.append(label)
+
+def save_pickle_file(data, filepath):
+    """
+    Saves data to a pickle file and verifies if it was saved successfully.
+
+    :param data: Data to be pickled.
+    :param filepath: Path to save the pickle file.
+    """
+    with open(filepath, 'wb') as file:
+        pickle.dump(data, file)
+    if os.path.exists(filepath):
+        print(f'Pickle file saved successfully at {filepath}')
+    else:
+        print(f'Failed to save pickle file at {filepath}')
+
+def main():
+    # Define paths and their corresponding labels
+    data_paths = {
+        'data/text/sports-watch': 0,
+        'data/text/it-life-hack': 1,
+        'data/text/movie-enter': 2,
+        'data/text/international': 3
+    }
+
+    # List to store labels for each file
+    labels = []
+
+    # Read files and populate the labels list
+    for path, label in data_paths.items():
+        read_files(path, label, labels)
+
+    # Calculate TF-IDF values for the collected files
+    tfidf_values = tfidf.calc_files()
+
+    # Directory to save pickle files
+    pickle_dir = 'data/pkl/'
+    os.makedirs(pickle_dir, exist_ok=True)
+
+    # Save data to a pickle file
+    data_pickle_path = os.path.join(pickle_dir, "data.pkl")
+    save_pickle_file([labels, tfidf_values], data_pickle_path)
+
+    # Save the TF-IDF dictionary to a pickle file
+    dic_pickle_path = os.path.join(pickle_dir, 'dic.pkl')
+    tfidf.save_dic(dic_pickle_path)
+    if os.path.exists(dic_pickle_path):
+        print('Dictionary pickle file saved successfully')
+    else:
+        print('Failed to save dictionary pickle file')
+
+if __name__ == "__main__":
+    main()

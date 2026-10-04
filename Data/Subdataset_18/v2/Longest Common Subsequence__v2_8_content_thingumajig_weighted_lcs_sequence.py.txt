@@ -1,0 +1,67 @@
+import ctypes
+from typing import Iterable, Optional, Callable, Any, TypeVar
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Define a generic type variable
+_T = TypeVar('_T')
+
+class TokenSequence(list[_T]):
+    def extend(self, iterable: Iterable[_T]) -> None:
+        """Extend the list by appending elements from the iterable."""
+        super().extend(iterable)
+
+    def insert(self, index: int, object: _T) -> None:
+        """Insert an element at a given position."""
+        super().insert(index, object)
+
+    def append(self, object: _T) -> None:
+        """Append an element to the end of the list."""
+        super().append(object)
+
+    def remove(self, object: _T) -> None:
+        """Remove the first occurrence of a value."""
+        super().remove(object)
+
+    def pop(self, index: int = ...) -> _T:
+        """Remove and return item at index (default last)."""
+        return super().pop(index)
+
+    def sort(self, *, key: Optional[Callable[[_T], Any]] = ..., reverse: bool = False) -> None:
+        """Sort the list in ascending order by default, reverse if specified."""
+        super().sort(key=key, reverse=reverse)
+
+    def clear(self) -> None:
+        """Remove all items from the list."""
+        super().clear()
+
+    def reverse(self) -> None:
+        """Reverse the elements of the list in place."""
+        super().reverse()
+
+    def __hash__(self):
+        """Return a hash value for the list."""
+        value = 0x345678
+        for item in self:
+            value = c_mul(1000003, value) ^ hash(item)
+        value ^= len(self)
+        if value == -1:
+            value = -2
+        return value
+
+def c_mul(a, b):
+    """Perform multiplication with overflow handling."""
+    return ctypes.c_int64((a * b) & 0xffffffff).value
+
+# Example usage
+if __name__ == "__main__":
+    ts = TokenSequence([1, 2, 3])
+    ts.append(4)
+    ts.extend([5, 6])
+    ts.insert(2, 7)
+    ts.sort(reverse=True)
+    ts.remove(6)
+    popped_item = ts.pop()
+    ts.reverse()
+    print("TokenSequence:", ts)
+    print("Popped item:", popped_item)
+    print("Hash:", hash(ts))

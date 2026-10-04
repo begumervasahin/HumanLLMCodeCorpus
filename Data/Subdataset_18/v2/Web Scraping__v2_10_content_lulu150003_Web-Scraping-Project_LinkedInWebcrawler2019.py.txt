@@ -1,0 +1,102 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+
+# User inputs
+COMPANY = input("Enter Company ID: ")
+USERNAME = input("Enter username: ")
+PASSWORD = input("Enter password: ")
+EMPLOYEE_LIMIT = 1000
+
+# LinkedIn URL
+LINKEDIN_URL = 'https://www.linkedin.com'
+
+# Setup Selenium with Firefox
+options = Options()
+options.headless = False  # Set to True if you want to run in headless mode
+service = Service('/path/to/geckodriver')  # Update the path to your geckodriver
+browser = webdriver.Firefox(service=service, options=options)
+
+def login_to_linkedin(username, password):
+    """Logs into LinkedIn."""
+    browser.get(LINKEDIN_URL)
+    time.sleep(3)
+    email_field = browser.find_element(By.NAME, 'session_key')
+    password_field = browser.find_element(By.NAME, 'session_password')
+    email_field.send_keys(username)
+    password_field.send_keys(password + Keys.RETURN)
+    time.sleep(3)
+
+def search_company_employees(company_id):
+    """Searches for employees of the specified company on LinkedIn."""
+    search_url = f"https://www.linkedin.com/search/results/people/?facetCurrentCompany=%5B%22{company_id}%22%5D"
+    browser.get(search_url)
+    time.sleep(3)
+    browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+def parse_page():
+    """Parses the current page for employee details."""
+    soup = BeautifulSoup(browser.page_source, 'lxml')
+    names = [element.text for element in soup.find_all('span', class_='actor-name')]
+    titles = [element.text.strip() for element in soup.find_all('span', class_='subline-level-1')]
+    locations = [element.text.strip() for element in soup.find_all('span', class_='subline-level-2')]
+    profiles = [LINKEDIN_URL + element['href'] for element in soup.find_all('a', class_='search-result__result-link')][::2]
+
+    return pd.DataFrame({
+        'name': names,
+        'title': titles,
+        'location': locations,
+        'profile': profiles
+    })
+
+def scrape_employees(employee_limit):
+    """Scrapes employee details up to the specified limit."""
+    df = pd.DataFrame(columns=['name', 'title', 'location', 'profile'])
+    current_url = browser.current_url
+    
+    while True:
+        if 'page=100' in current_url or len(df) >= employee_limit:
+            break
+        previous_url = current_url
+        current_url = browser.current_url
+        if current_url == previous_url:
+            break
+        
+        temp_df = parse_page()
+        temp_df = temp_df[temp_df['name'] != 'LinkedIn Member']
+        df = df.append(temp_df, ignore_index=True)
+        
+        try:
+            next_button = browser.find_element(By.CLASS_NAME, 'artdeco-pagination__button--next')
+            next_button.click()
+            time.sleep(5)
+        except Exception as e:
+            print(f"Error: {e}")
+            break
+    
+    return df
+
+def main():
+    # Log in to LinkedIn
+    login_to_linkedin(USERNAME, PASSWORD)
+    
+    # Search for employees of the specified company
+    search_company_employees(COMPANY)
+    
+    # Scrape employee data
+    employee_data = scrape_employees(EMPLOYEE_LIMIT)
+    
+    # Save to CSV
+    employee_data.reset_index(drop=True, inplace=True)
+    employee_data.to_csv("output_search.csv", index=False)
+    
+    # Close the browser
+    browser.quit()
+
+if __name__ == "__main__":
+    main()

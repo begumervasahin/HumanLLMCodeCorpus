@@ -1,0 +1,55 @@
+import xml.etree.ElementTree as etree
+import time
+import os
+import operator
+PATH_WIKI_XML = ''
+FILENAME_WIKI = 'idwiki-20170801-pages-meta-current.xml'
+pathWikiXML = os.path.join(PATH_WIKI_XML, FILENAME_WIKI)
+totalCount = 0
+articleCount = 0
+redirectCount = 0
+templateCount = 0
+title = None
+start_time = time.time()
+def strip_tag_name(tag):
+    idx = tag.rfind("}")
+    if idx != -1:
+        tag = tag[idx + 1:]
+    return tag
+word_counter = {}
+doc_counter = {}
+number = 0
+for event, elem in etree.iterparse(pathWikiXML, events=('start', 'end')):
+    number += 1
+    current_word_check = {}
+    if number > 500000:
+        break
+    tag_name = strip_tag_name(elem.tag)
+    if event == 'start':
+        if tag_name == 'page':
+            title = ''
+            page_id = -1
+            redirect = ''
+            in_revision = False
+            namespace = 0
+        elif tag_name == 'revision':
+            in_revision = True
+        else:
+            if tag_name == 'title':
+                title = elem.text
+            elif tag_name == 'redirect':
+                redirect = elem.attrib['title']
+            elif tag_name == 'text':
+                text = elem.text
+                if text is not None:
+                    for word in text.split():
+                        word_counter[word] = word_counter.get(word, 0) + 1
+                        current_word_check[word] = current_word_check.get(word, 0) + 1
+        for word in current_word_check:
+            doc_counter[word] = doc_counter.get(word, 0) + 1
+result = {word: word_counter[word] * doc_counter[word] for word in doc_counter}
+sorted_words = sorted(word_counter.items(), key=operator.itemgetter(1), reverse=True)
+top_n = 50
+for word, count in sorted_words[:top_n]:
+    print(f"{word}: {count}")
+print(f"Processing time: {time.time() - start_time:.2f} seconds")

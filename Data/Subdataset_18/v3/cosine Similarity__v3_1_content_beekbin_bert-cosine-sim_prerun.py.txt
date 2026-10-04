@@ -1,0 +1,62 @@
+import urllib.request
+import os
+import zipfile
+
+# Directories for storing data and models
+DATA_DIR = 'data/'
+MODEL_DIR = 'models/'
+
+# URLs for downloading BERT model files and STS-B dataset
+BERT_MODEL_URL = 'https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-pytorch_model.bin'
+BERT_CONFIG_URL = 'https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-config.json'
+BERT_VOCAB_URL = 'https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt'
+STSB_DATASET_URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSTS-B.zip?alt=media&token=bddb94a7-8706-4e0d-a694-1109e12273b5'
+
+# Create directories if they don't exist
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+def download_file(url, save_path):
+    """
+    Download a file from a given URL and save it to a specified path.
+
+    Args:
+        url (str): URL of the file to download.
+        save_path (str): Path where the downloaded file will be saved.
+    """
+    file_name = os.path.basename(save_path)
+    print(f"Downloading {file_name}...")
+    urllib.request.urlretrieve(url, save_path)
+    print(f"Saved as {file_name}.")
+
+def download_and_extract_zip(url, extract_to):
+    """
+    Download a ZIP file from a given URL, extract its contents, and remove the ZIP file.
+
+    Args:
+        url (str): URL of the ZIP file to download.
+        extract_to (str): Directory where the ZIP file contents will be extracted.
+    """
+    zip_path = os.path.join(extract_to, 'temp.zip')
+    download_file(url, zip_path)
+    print("Extracting contents...")
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+    os.remove(zip_path)
+    print("Extraction completed.")
+
+def download_models():
+    """
+    Download BERT model files and the STS-B dataset.
+    """
+    # Download BERT model files
+    download_file(BERT_MODEL_URL, os.path.join(MODEL_DIR, "pytorch_model.bin"))
+    download_file(BERT_CONFIG_URL, os.path.join(MODEL_DIR, "bert_config.json"))
+    download_file(BERT_VOCAB_URL, os.path.join(MODEL_DIR, "vocab.txt"))
+    
+    # Download and extract the STS-B dataset
+    download_and_extract_zip(STSB_DATASET_URL, DATA_DIR)
+    print("All downloads and extractions completed.")
+
+if __name__ == "__main__":
+    download_models()

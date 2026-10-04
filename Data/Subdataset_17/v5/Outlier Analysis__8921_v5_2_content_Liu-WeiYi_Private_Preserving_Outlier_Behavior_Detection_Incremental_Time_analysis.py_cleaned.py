@@ -1,0 +1,35 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+def read_all_time(file_path):
+    times = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            times.append(float(line.strip()))
+    return times
+def calculate_incremental_time(all_time):
+    incremental_time = [all_time[0]]
+    for idx in range(1, len(all_time)):
+        time_interval = all_time[idx]
+        incrementalT = incremental_time[-1] + time_interval
+        incremental_time.append(incrementalT)
+    return [t * 1000 for t in incremental_time]
+def save_to_csv(data, file_path):
+    with open(file_path, 'w') as f:
+        for item in data:
+            f.write(f"{item}\n")
+def plot_incremental_time(incremental_time):
+    sns.set_style("darkgrid", {'font.family': 'serif', 'font.serif': 'Times New Roman'})
+    x = list(range(1, len(incremental_time) + 1))
+    plt.figure(figsize=(10, 6))
+    sns.pointplot(x=x, y=incremental_time)
+    plt.xlabel('Cumulative Accounts Number')
+    plt.ylabel('Cumulative Time (ms)')
+    plt.title('Incremental Time Over Cumulative Accounts')
+    plt.savefig('incremental_time.pdf')
+    plt.show()
+if __name__ == "__main__":
+    all_time = read_all_time('all_time')
+    incremental_time = calculate_incremental_time(all_time)
+    save_to_csv(incremental_time, 'incremental_time.csv')
+    plot_incremental_time(incremental_time)

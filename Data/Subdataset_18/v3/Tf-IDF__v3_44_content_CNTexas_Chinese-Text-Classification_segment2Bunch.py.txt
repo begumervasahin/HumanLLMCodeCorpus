@@ -1,0 +1,50 @@
+import os
+import pickle
+from sklearn.datasets import Bunch
+
+def save_file(save_path, content):
+    """Saves content to a specified file path."""
+    with open(save_path, "wb") as file:
+        file.write(content)
+
+def read_file(file_path):
+    """Reads and returns content from a specified file path."""
+    with open(file_path, "rb") as file:
+        return file.read()
+
+def create_bunch_from_directory(segmented_path, wordbag_output_path):
+    """
+    Creates a Bunch object from text files in the segmented directory
+    and saves it to the specified wordbag path.
+    """
+    # Initialize Bunch object
+    bunch = Bunch(target_name=[], label=[], filenames=[], contents=[])
+
+    # List categories (directories) in the segmented path
+    categories = os.listdir(segmented_path)
+    bunch.target_name.extend(categories)
+
+    # Process each category directory
+    for category in categories:
+        category_path = os.path.join(segmented_path, category)
+        file_list = os.listdir(category_path)
+
+        for file_name in file_list:
+            full_path = os.path.join(category_path, file_name)
+            bunch.label.append(category)
+            bunch.filenames.append(full_path)
+            bunch.contents.append(read_file(full_path).strip())
+
+    # Save the Bunch object to a file
+    with open(wordbag_output_path, "wb") as file:
+        pickle.dump(bunch, file)
+
+    print("Bunch object creation completed successfully!")
+
+if __name__ == "__main__":
+    # Define paths
+    segmented_texts_path = "train_corpus_seg/"
+    wordbag_save_path = "train_word_bag/train_set.dat"
+
+    # Create and save the Bunch object
+    create_bunch_from_directory(segmented_texts_path, wordbag_save_path)

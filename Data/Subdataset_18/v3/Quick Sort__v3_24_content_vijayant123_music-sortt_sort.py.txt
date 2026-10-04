@@ -1,0 +1,92 @@
+import os
+import sys
+from os import listdir
+from os.path import isfile, join
+from pygame import mixer
+
+# Define paths
+SONG_DIR = "/home/error-404/Desktop/songs"
+DANCE_DIR = "/home/error-404/Desktop/dance"
+OTHER_DIR = "/home/error-404/Desktop/others"
+
+def list_files(directory):
+    """
+    List all files in the specified directory.
+    
+    Args:
+    directory (str): The path of the directory.
+    
+    Returns:
+    list: A list of file names in the directory.
+    """
+    return [f for f in listdir(directory) if isfile(join(directory, f))]
+
+def play_song(file_path, start_time):
+    """
+    Play the song from the specified start time.
+    
+    Args:
+    file_path (str): The path of the song file.
+    start_time (int): The start time in seconds.
+    """
+    mixer.music.load(file_path)
+    mixer.music.play(0, start_time)
+
+def move_file(src, dest):
+    """
+    Move a file from the source path to the destination path.
+    
+    Args:
+    src (str): The source file path.
+    dest (str): The destination directory.
+    """
+    os.rename(src, join(dest, os.path.basename(src)))
+
+def process_input(file_name):
+    """
+    Process user input to control the music player and move files.
+    
+    Args:
+    file_name (str): The name of the current song file.
+    """
+    global is_paused
+
+    while True:
+        user_input = input()
+
+        if user_input == 'q':
+            sys.exit(0)  # Exit the program
+        elif user_input.isdigit() and 0 <= int(user_input) <= 9:
+            mixer.music.rewind()
+            play_song(join(SONG_DIR, file_name), int(user_input) * 10)  # Play from user specified position
+        elif user_input == '':
+            mixer.music.stop()
+            move_file(join(SONG_DIR, file_name), OTHER_DIR)  # Move to OTHER_DIR
+            break
+        elif user_input == '/':
+            mixer.music.stop()
+            move_file(join(SONG_DIR, file_name), DANCE_DIR)  # Move to DANCE_DIR
+            break
+        elif user_input == 'p':
+            if not is_paused:
+                mixer.music.pause()  # Pause the music
+            else:
+                mixer.music.unpause()  # Unpause the music
+            is_paused = not is_paused
+
+def main():
+    # List all song files
+    song_files = list_files(SONG_DIR)
+
+    # Initialize the mixer
+    mixer.init()
+
+    # Process each song file
+    for file_name in song_files:
+        print(file_name)
+        play_song(join(SONG_DIR, file_name), 40)  # Start playing the song from 40 seconds
+        process_input(file_name)
+
+if __name__ == "__main__":
+    is_paused = False  # Flag to track pause state
+    main()

@@ -1,0 +1,64 @@
+from collections import Counter
+from queue import PriorityQueue
+
+# Read the input text from the file
+with open('rand_file') as file:
+    text = file.read()
+
+# Calculate the frequency of each character in the text
+char_count = Counter(text)
+
+# Select the relevant characters
+selected_chars = ['A', 'B', 'C', 'D', 'E']
+
+# Calculate the sum of the frequencies of the selected characters
+total_count = sum(char_count[char] for char in selected_chars)
+
+# Calculate the probability of each selected character
+probabilities = {char: char_count[char] / total_count for char in selected_chars}
+
+# Define the HuffmanNode class to represent nodes in the Huffman tree
+class HuffmanNode:
+    def __init__(self, left=None, right=None):
+        self.left = left
+        self.right = right
+
+    def children(self):
+        return (self.left, self.right)
+
+# Create the Huffman tree based on the character probabilities
+def create_huffman_tree(frequencies):
+    pq = PriorityQueue()
+    for char, prob in frequencies.items():
+        pq.put((prob, char))
+
+    while pq.qsize() > 1:
+        left, right = pq.get(), pq.get()
+        node = HuffmanNode(left, right)
+        pq.put((left[0] + right[0], node))
+
+    return pq.get()
+
+# Traverse the Huffman tree to generate the binary codes
+def generate_huffman_codes(node, prefix="", code={}):
+    if isinstance(node[1], HuffmanNode):
+        generate_huffman_codes(node[1].left, prefix + "0", code)
+        generate_huffman_codes(node[1].right, prefix + "1", code)
+    else:
+        code[node[1]] = prefix
+    return code
+
+# Create the Huffman tree and generate the codes
+huffman_tree = create_huffman_tree(probabilities)
+huffman_codes = generate_huffman_codes(huffman_tree)
+
+# Print the probabilities and corresponding Huffman codes
+print("Character  Probability       Huffman Code")
+for char in sorted(probabilities, key=probabilities.get, reverse=True):
+    print(f"{char}         {probabilities[char]:.10f}     {huffman_codes[char]}")
+
+# Encode the text using the Huffman codes
+encoded_text = ''.join(huffman_codes[char] for char in text if char in huffman_codes)
+
+# Output the encoded text
+print(f"Encoded text: {encoded_text}")

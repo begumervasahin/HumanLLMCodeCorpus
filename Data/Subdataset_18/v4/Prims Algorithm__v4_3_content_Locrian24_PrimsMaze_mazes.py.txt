@@ -1,0 +1,78 @@
+import random
+
+class Maze:
+    class Cell:
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+            self.wall = True
+            self.in_maze = False
+
+        def get_neighbours(self, size):
+            neighbours = []
+            if self.x > 0:
+                neighbours.append((self.x - 1, self.y))
+            else:
+                neighbours.append(None)
+            if self.x + 1 < size:
+                neighbours.append((self.x + 1, self.y))
+            else:
+                neighbours.append(None)
+            if self.y > 0:
+                neighbours.append((self.x, self.y - 1))
+            else:
+                neighbours.append(None)
+            if self.y + 1 < size:
+                neighbours.append((self.x, self.y + 1))
+            else:
+                neighbours.append(None)
+            return neighbours
+
+        def get_walls(self, size, cells):
+            walls = []
+            for neighbour in self.get_neighbours(size):
+                if neighbour is None:
+                    continue
+                cell = cells[neighbour[0] + neighbour[1] * size]
+                if cell.wall:
+                    walls.append(cell)
+            return walls
+
+        def opposite_is_valid(self, cells, size):
+            opposite_x, opposite_y = -1, -1
+            for neighbour in self.get_neighbours(size):
+                if neighbour is None:
+                    continue
+                cell = cells[neighbour[0] + neighbour[1] * size]
+                if cell.in_maze:
+                    opposite_x, opposite_y = neighbour
+                    break
+            if opposite_x == -1:
+                print("No valid neighbours. SOMETHING IS WRONG?")
+                return None
+            nx, ny = 2 * self.x - opposite_x, 2 * self.y - opposite_y
+            if nx < 0 or ny < 0 or nx >= size or ny >= size:
+                return None
+            other = cells[nx + ny * size]
+            if not other.in_maze:
+                return other
+            return None
+
+    def __init__(self, size):
+        self.cells = [Maze.Cell(x, y) for y in range(size) for x in range(size)]
+        start_x = random.randrange(1, size, 2)
+        start_y = random.randrange(1, size, 2)
+        start = self.cells[start_x + start_y * size]
+        walls_list = start.get_walls(size, self.cells)
+        start.in_maze = True
+        start.wall = False
+
+        while walls_list:
+            current_wall = random.choice(walls_list)
+            cell = current_wall.opposite_is_valid(self.cells, size)
+            if cell:
+                current_wall.wall = False
+                cell.in_maze = True
+                walls_list.extend(cell.get_walls(size, self.cells))
+                walls_list = list(set(walls_list))  # Remove duplicates
+            walls_list.remove(current_wall)

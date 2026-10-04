@@ -1,0 +1,62 @@
+import nltk.corpus as corpus
+from CorpusReader_TFIDF import CorpusReaderTFIDF
+
+def print_top_terms(corpus_reader, top_n=15):
+    """
+    Print the top N TF-IDF terms of the corpus.
+
+    Args:
+    corpus_reader (CorpusReaderTFIDF): The TF-IDF corpus reader.
+    top_n (int): Number of top TF-IDF terms to print.
+    """
+    top_terms = corpus_reader.tf_idf_dim()[:top_n]
+    print("Top TF-IDF terms:")
+    print(", ".join(f"'{term}'" for term in top_terms))
+    print('\n')
+
+def print_tf_idf_vectors(corpus_reader, top_n=15):
+    """
+    Print the TF-IDF vectors for each document, limited to the first N values.
+
+    Args:
+    corpus_reader (CorpusReaderTFIDF): The TF-IDF corpus reader.
+    top_n (int): Number of TF-IDF values to print for each document.
+    """
+    for i, file_id in enumerate(corpus_reader.fileids):
+        vec = corpus_reader.tf_idf()[i][:top_n]
+        vec_str = " ".join(str(round(v, 4)) for v in vec)
+        print(f"{file_id}: {vec_str}")
+
+def print_cosine_similarity(corpus_reader):
+    """
+    Calculate and print the cosine similarity between each pair of documents.
+
+    Args:
+    corpus_reader (CorpusReaderTFIDF): The TF-IDF corpus reader.
+    """
+    doc_count = len(corpus_reader.fileids)
+    for i in range(doc_count):
+        for j in range(i, doc_count):
+            file_id1 = corpus_reader.fileids[i]
+            file_id2 = corpus_reader.fileids[j]
+            similarity = round(corpus_reader.cosine_sim([file_id1, file_id2]), 4)
+            print(f"{file_id1} - {file_id2}: {similarity}")
+
+def test_corpus(corpus_reader, corpus_name):
+    """
+    Tests the given corpus reader by printing the top TF-IDF terms and 
+    the cosine similarity between documents.
+    
+    Args:
+    corpus_reader (CorpusReaderTFIDF): The TF-IDF corpus reader.
+    corpus_name (str): The name of the corpus.
+    """
+    print(f"Corpus: {corpus_name}\n")
+    
+    print_top_terms(corpus_reader)
+    print_tf_idf_vectors(corpus_reader)
+    print_cosine_similarity(corpus_reader)
+
+# Test the corpora
+test_corpus(CorpusReaderTFIDF(corpus=corpus.brown), "Brown Corpus")
+test_corpus(CorpusReaderTFIDF(corpus=corpus.state_union), "State of the Union Corpus")

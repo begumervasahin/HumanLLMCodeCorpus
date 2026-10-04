@@ -1,0 +1,109 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import numpy as np
+from time import sleep
+from random import randint
+
+def fetch_movie_data():
+    # Initialize lists to store movie data
+    titles, years, times, imdb_ratings, metascores, votes, us_gross = ([] for _ in range(7))
+
+    # Set headers for the HTTP request
+    headers = {"Accept-Language": "en-US, en;q=0.5"}
+
+    # Define the range of pages to scrape
+    pages = np.arange(1, 1001, 50)
+
+    # Loop through each page in the range
+    for page in pages:
+        # Send a request to the IMDb website
+        response = requests.get(f"https://www.imdb.com/search/title/?groups=top_1000&start={page}&ref_=adv_nxt", headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find all movie containers on the page
+        movie_containers = soup.find_all('div', class_='lister-item mode-advanced')
+        
+        # Pause to prevent overwhelming the server
+        sleep(randint(2, 10))
+        
+        # Extract data for each movie
+        for container in movie_containers:
+            # Movie title
+            title = container.h3.a.text
+            titles.append(title)
+            
+            # Release year
+            year = container.h3.find('span', class_='lister-item-year').text
+            years.append(year)
+            
+            # Runtime
+            runtime = container.find('span', class_='runtime')
+            time = runtime.text if runtime else '_'
+            times.append(time)
+            
+            # IMDb rating
+            imdb_rating = float(container.strong.text)
+            imdb_ratings.append(imdb_rating)
+            
+            # Metascore
+            metascore = container.find('span', class_='metascore')
+            metascore = metascore.text.strip() if metascore else '-'
+            metascores.append(metascore)
+            
+            # Number of votes and US gross
+            nv = container.find_all('span', attrs={'name': 'nv'})
+            vote = nv[0].text
+            votes.append(vote)
+            
+            us_gross_value = nv[1].text if len(nv) > 1 else '-'
+            us_gross.append(us_gross_value)
+
+    # Return collected data as a dictionary
+    return {
+        'titles': titles,
+        'years': years,
+        'times': times,
+        'imdb_ratings': imdb_ratings,
+        'metascores': metascores,
+        'votes': votes,
+        'us_gross': us_gross
+    }
+
+def create_movie_dataframe(data):
+    # Create a DataFrame from the lists
+    movies_df = pd.DataFrame({
+        'movie': data['titles'],
+        'year': data['years'],
+        'timeMin': data['times'],
+        'imdb': data['imdb_ratings'],
+        'metascore': data['metascores'],
+        'votes': data['votes'],
+        'us_grossMillions': data['us_gross'],
+    })
+
+    # Clean and convert data types
+    movies_df['year'] = movies_df['year'].str.extract('(\d+)').astype(int)
+    movies_df['timeMin'] = movies_df['timeMin'].str.extract('(\d+)').astype(int)
+    movies_df['votes'] = movies_df['votes'].str.replace(',', '').astype(int)
+    movies_df['metascore'] = pd.to_numeric(movies_df['metascore'].str.extract('(\d+)')[0], errors='coerce')
+    movies_df['us_grossMillions'] = pd.to_numeric(movies_df['us_grossMillions'].str.replace('$', '').str.replace('M', ''), errors='coerce')
+
+    return movies_df
+
+def main():
+    # Fetch movie data
+    movie_data = fetch_movie_data()
+
+    # Create DataFrame
+    movies_df = create_movie_dataframe(movie_data)
+
+    # Save the DataFrame to a CSV file
+    movies_df.to_csv('movie.csv', index=False)
+
+    # Print the DataFrame and its data types
+    print(movies_df.to_string())
+    print(movies_df.dtypes)
+
+if __name__ == "__main__":
+    main()

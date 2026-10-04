@@ -1,0 +1,145 @@
+import numpy as np
+
+class Graph:
+    def __init__(self, data):
+        self.size = data["nbNoeuds"]
+        self.sommets_list = data["nomSommets"]
+        self.rdv_list = data["nomRdv"]
+        self.sommets_ini_list = data["nomSommetsInitiaux"]
+        self.arcs = data["arcs"]
+        self.error_code = self._check_data_consistency(data)
+
+        self.path = np.zeros(self.size ** 2, dtype=int)
+        self.visited = np.zeros(self.size ** 2, dtype=bool)
+        self.target = 0
+        self.min_depth = np.inf
+        self.results = []
+
+    def _check_data_consistency(self, data):
+        """Check if the input data is consistent."""
+        if len(self.sommets_list) != data["nbNoeuds"]:
+            return 1
+        if len(self.rdv_list) != data["nbLieuxRdv"]:
+            return 2
+        return 0
+
+    def get_error(self):
+        return self.error_code
+
+    def build_adjacency_matrix(self):
+        """Build the adjacency matrix for the graph."""
+        mat = np.full((self.size, self.size), np.inf)
+        for arc in self.arcs:
+            i, j = self.get_vertex_index(arc["sommetInitial"]), self.get_vertex_index(arc["sommetTerminal"])
+            mat[i, j] = arc["duree"]
+        return mat
+
+    def get_vertex_index(self, vertex):
+        """Get the index of the vertex in the sommets list."""
+        return self.sommets_list.index(vertex)
+
+    def transform_matrix(self, mat):
+        """Transform the adjacency matrix to handle pairs of vertices."""
+        size_pair = self.size * self.size
+        mat_pair = np.full((size_pair, size_pair), np.inf)
+
+        for i in range(self.size):
+            for j in range(self.size):
+                for k in range(self.size):
+                    for l in range(self.size):
+                        if i == k and j == l:
+                            mat_pair[i * self.size + j, k * self.size + l] = np.inf
+                        elif i == k:
+                            mat_pair[i * self.size + j, k * self.size + l] = mat[j, l]
+                        elif j == l:
+                            mat_pair[i * self.size + j, k * self.size + l] = mat[i, k]
+        return mat_pair
+
+    def find_optimal_rdv(self):
+        """Find the optimal rendezvous point."""
+        mat_pcd = self.apply_floyd_warshall(self.transform_matrix(self.build_adjacency_matrix()))
+        init = self.get_vertex_index(self.sommets_ini_list[0]) * self.size + self.get_vertex_index(self.sommets_ini_list[1])
+        rdv_indices = [self.get_vertex_index(c) * self.size + self.get_vertex_index(c) for c in self.rdv_list]
+
+        min_distance = np.inf
+        optimal_rdv_index = None
+
+        for idx, rdv_point in enumerate(rdv_indices):
+            if mat_pcd[init, rdv_point] < min_distance:
+                min_distance = mat_pcd[init, rdv_point]
+                optimal_rdv_index = idx
+
+        return self.rdv_list[optimal_rdv_index] if optimal_rdv_index is not None else ""
+
+    def apply_floyd_warshall(self, mat):
+        """Apply Floyd-Warshall algorithm to find the shortest paths."""
+        size_pair = self.size * self.size
+        for i in range(size_pair):
+            mat[i, i] = 0
+
+        for k in range(size_pair):
+            for i in range(size_pair):
+                for j in range(size_pair):
+                    mat[i, j] = min(mat[i, j], mat[i, k] + mat[k, j])
+
+        return mat
+
+    def explore_paths(self, mat, position, depth):
+        """Explore all paths using depth-first search."""
+        if depth > self.min_depth:
+            return
+
+        self.path[depth] = position
+
+        if position == self.target:
+            if self.min_depth == depth:
+                self.results.append(np.copy(self.path[:depth + 1]).tolist())
+            if self.min_depth > depth:
+                self.min_depth = depth
+                self.results = [np.copy(self.path[:depth + 1]).tolist()]
+            return
+
+        self.visited[position] = True
+
+        for i in range(self.size ** 2):
+            if mat[position][i] != np.inf and not self.visited[i]:
+                self.explore_paths(mat, i, depth + 1)
+
+        self.visited[position] = False
+
+    def find_optimal_rdv2(self):
+        """Find the optimal rendezvous point considering all possible paths."""
+        size_pair = self.size * self.size
+        mat = self.transform_matrix(self.build_adjacency_matrix())
+        init = self.get_vertex_index(self.sommets_ini_list[0]) * self.size + self.get_vertex_index(self.sommets_ini_list[1])
+        rdv_indices = [self.get_vertex_index(c) * self.size + self.get_vertex_index(c) for c in self.rdv_list]
+
+        roadres = []
+        min_size = np.inf
+
+        for target in rdv_indices:
+            self.visited.fill(False)
+            self.path.fill(0)
+            self.min_depth = np.inf
+            self.target = target
+            self.explore_paths(mat, init, 0)
+
+            if len(self.results[0]) < min_size:
+                min_size = len(self.results[0])
+
+            roadres.append(self.results)
+
+        candidates = [roads for roads in roadres if len(roads[0]) == min_size]
+        min_distance = np.inf
+        final_result = None
+
+        if len(candidates) > 1:
+            for roads in candidates:
+                distance = sum(mat[roads[0][j]][roads[0][j + 1]] for j in range(min_size - 1))
+                if distance < min_distance:
+                    final_result = roads[0][min_size - 1]
+                    min_distance = distance
+        else:
+            final_result = candidates[0][0][min_size - 1]
+
+        return self.sommets_list[final_result // self.size]

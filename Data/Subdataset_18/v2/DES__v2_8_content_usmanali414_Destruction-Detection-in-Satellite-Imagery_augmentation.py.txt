@@ -1,0 +1,61 @@
+"""
+Created on Tue Sep 3 17:25:54 2019
+Author: usmal
+"""
+
+import os
+import glob
+import numpy as np
+import cv2
+from PIL import Image
+
+def get_image_paths(folder_path):
+    """
+    Retrieves the image file paths from the specified folder.
+
+    :param folder_path: The folder path containing the images.
+    :return: A list of image file paths.
+    """
+    image_paths = glob.glob(os.path.join(folder_path, "*.jpg"))
+    if not image_paths:
+        raise FileNotFoundError("Error: Path not found to train data folder.")
+    return image_paths
+
+def rotate_and_save_images(image_paths, output_folder):
+    """
+    Rotates the images and saves the results to the output folder.
+
+    :param image_paths: A list of image file paths.
+    :param output_folder: The folder to save the rotated images.
+    """
+    for image_path in image_paths:
+        image_name = os.path.splitext(os.path.basename(image_path))[0]
+        print(f"Processing image: {image_name}")
+        
+        # Read and convert image
+        img = Image.open(image_path)
+        
+        # Define rotations
+        rotations = [180, 270, 350]
+        for idx, angle in enumerate(rotations, start=1):
+            rotated_img = img.rotate(angle)
+            output_path = os.path.join(output_folder, f"{image_name}_{idx}.jpg")
+            rotated_img.save(output_path)
+            print(f"Saved rotated image: {output_path}")
+
+def main():
+    """
+    Main function to read images, rotate them, and save the results.
+    """
+    train_data_folder = os.path.join("Data", "train", "destructed")
+    try:
+        train_destructed_paths = get_image_paths(train_data_folder)
+        print("Successfully read train data folder path!")
+        print("Total images:", len(train_destructed_paths))
+        
+        rotate_and_save_images(train_destructed_paths, train_data_folder)
+    except FileNotFoundError as e:
+        print(e)
+
+if __name__ == "__main__":
+    main()

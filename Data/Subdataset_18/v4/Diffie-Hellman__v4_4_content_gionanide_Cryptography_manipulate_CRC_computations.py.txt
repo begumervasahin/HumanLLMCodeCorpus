@@ -1,0 +1,86 @@
+import itertools
+
+def generate_binary_combinations(num_bits):
+    """
+    Generate all binary combinations of a given length.
+    
+    Parameters:
+    num_bits (int): The length of the binary strings to generate.
+    
+    Returns:
+    list of str: A list of binary strings.
+    """
+    combinations = itertools.product('01', repeat=num_bits)
+    return [''.join(combination) for combination in combinations]
+
+def compute_crc(message, divisor):
+    """
+    Compute the CRC checksum of a message using a given divisor.
+    
+    Parameters:
+    message (str): The binary message to be checked.
+    divisor (str): The binary divisor used for CRC calculation.
+    
+    Returns:
+    str: The CRC checksum.
+    """
+    # Append zeros to the message for CRC calculation
+    padded_message = message + '0' * (len(divisor) - 1)
+    message_list = list(padded_message)
+    divisor_list = list(divisor)
+    
+    # Perform the CRC division
+    for i in range(len(padded_message) - len(divisor) + 1):
+        if message_list[i] == '1':  # Perform division only if the current bit is 1
+            for j in range(len(divisor)):
+                message_list[i + j] = str(int(message_list[i + j]) ^ int(divisor_list[j]))
+    
+    # Return the CRC checksum (last bits after division)
+    return ''.join(message_list[-(len(divisor) - 1):])
+
+def find_crc_collisions(message, divisor, prefix_list=None):
+    """
+    Find all binary strings that produce the same CRC as the given message.
+    
+    Parameters:
+    message (str): The original binary message.
+    divisor (str): The binary divisor used for CRC calculation.
+    prefix_list (list of str, optional): Prefixes to prepend to the binary strings. 
+                                          If None, all possible prefixes are used.
+    
+    Returns:
+    list of str: Binary strings that produce the same CRC as the given message.
+    """
+    # Compute the CRC for the original message
+    target_crc = compute_crc(message, divisor)
+    
+    # Generate binary combinations for collision candidates
+    candidate_combinations = generate_binary_combinations(len(divisor))
+    
+    # If no prefix list is provided, generate all possible prefixes
+    if prefix_list is None:
+        prefix_list = generate_binary_combinations(len(message) - len(divisor))
+    
+    collisions = []
+    
+    # Check for collisions
+    for prefix in prefix_list:
+        for candidate in candidate_combinations:
+            combined_message = prefix + candidate
+            if compute_crc(combined_message, divisor) == target_crc:
+                collisions.append(combined_message)
+    
+    return collisions
+
+# Example usage
+if __name__ == "__main__":
+    original_message = "11010110"
+    crc_divisor = "10011"
+    prefixes = ["111"]
+    
+    # Find and display collisions
+    collision_results = find_crc_collisions(original_message, crc_divisor, prefixes)
+    
+    print("Collisions found:")
+    for collision in collision_results:
+        print(collision)

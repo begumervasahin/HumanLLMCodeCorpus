@@ -1,0 +1,31 @@
+import os
+import pickle
+from sklearn.datasets import Bunch
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+def save_file(save_path, content):
+    with open(save_path, "wb") as fp:
+        fp.write(content)
+def read_file(path):
+    with open(path, "rb") as fp:
+        return fp.read()
+def create_bunch(seg_path, wordbag_path):
+    bunch = Bunch(target_name=[], label=[], filenames=[], contents=[])
+    category_list = os.listdir(seg_path)
+    bunch.target_name.extend(category_list)
+    for category in category_list:
+        class_path = os.path.join(seg_path, category)
+        file_list = os.listdir(class_path)
+        for file_name in file_list:
+            full_path = os.path.join(class_path, file_name)
+            bunch.label.append(category)
+            bunch.filenames.append(full_path)
+            bunch.contents.append(read_file(full_path).strip())
+    with open(wordbag_path, "wb") as file_obj:
+        pickle.dump(bunch, file_obj)
+    print("Text object construction completed!!!")
+if __name__ == "__main__":
+    wordbag_path = "train_word_bag/train_set.dat"
+    seg_path = "train_corpus_seg/"
+    create_bunch(seg_path, wordbag_path)

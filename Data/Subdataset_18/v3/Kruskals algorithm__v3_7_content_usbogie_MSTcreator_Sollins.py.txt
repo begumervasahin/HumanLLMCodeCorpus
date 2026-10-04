@@ -1,0 +1,118 @@
+import copy
+from Node import Node
+
+def run_sollins(trees):
+    """
+    Runs Sollin's algorithm on a list of trees and returns their Minimum Spanning Trees (MSTs).
+    
+    Parameters:
+        trees (list): A list of trees, where each tree is represented as a list of nodes.
+    
+    Returns:
+        list: A list of MSTs corresponding to each tree in the input list.
+    """
+    return [run_sollins_on_tree(tree) for tree in trees]
+
+def run_sollins_on_tree(tree):
+    """
+    Runs Sollin's algorithm on a single tree to compute its Minimum Spanning Tree (MST).
+    
+    Parameters:
+        tree (list): A list of nodes representing a tree.
+    
+    Returns:
+        list: A list of nodes representing the MST of the given tree.
+    """
+    subtrees = initialize_subtrees(tree)
+    
+    while len(subtrees) > 1:
+        subtrees = run_phase(subtrees)
+    
+    return subtrees[0]  # The remaining subtree is the MST
+
+def initialize_subtrees(tree):
+    """
+    Initializes each node in the tree as its own subtree.
+    
+    Parameters:
+        tree (list): A list of nodes representing the original tree.
+    
+    Returns:
+        list: A list of subtrees, where each subtree is a list containing a single node.
+    """
+    tree_to_mst = {}
+    mst_to_tree = {}
+    subtrees = []
+
+    for node in tree:
+        mst_node = copy.copy(node)
+        mst_node.adjList = {}  # Initialize an empty adjacency list for the MST node
+        tree_to_mst[node] = mst_node
+        mst_to_tree[mst_node] = node
+        subtrees.append([mst_node])
+    
+    return subtrees
+
+def run_phase(subtrees):
+    """
+    Performs a single phase of Sollin's algorithm, finding and merging the lightest edge for each subtree.
+    
+    Parameters:
+        subtrees (list): A list of subtrees.
+    
+    Returns:
+        list: A list of subtrees after merging the lightest edges.
+    """
+    for subtree in subtrees:
+        parent, child, weight = find_lightest_edge(subtree)
+        if parent and child:
+            combine_components(subtrees, subtree, parent, child, weight)
+    
+    return subtrees
+
+def find_lightest_edge(subtree):
+    """
+    Finds the lightest edge connecting the given subtree to another subtree.
+    
+    Parameters:
+        subtree (list): The current subtree being processed.
+    
+    Returns:
+        tuple: The parent node, child node, and weight of the lightest edge.
+    """
+    lowest_weight = float('inf')
+    parent, child = None, None
+
+    for node in subtree:
+        tree_node = mst_to_tree[node]
+        for neighbor, weight in tree_node.adjList.items():
+            mst_neighbor = tree_to_mst[neighbor]
+            if mst_neighbor not in subtree and weight < lowest_weight:
+                lowest_weight = weight
+                parent, child = node, mst_neighbor
+
+    return parent, child, lowest_weight
+
+def combine_components(subtrees, subtree, parent, child, weight):
+    """
+    Combines two subtrees by connecting the parent and child nodes with the given edge weight.
+    
+    Parameters:
+        subtrees (list): A list of subtrees.
+        subtree (list): The current subtree being merged.
+        parent (Node): The parent node in the current subtree.
+        child (Node): The child node in the other subtree.
+        weight (float): The weight of the edge connecting the parent and child.
+    """
+    child_subtree = next(sub for sub in subtrees if child in sub)
+
+    if child_subtree:
+        # Connect the parent and child nodes in the MST
+        parent.adjList[child] = weight
+        child.adjList[parent] = weight
+
+        # Merge the child subtree into the current subtree
+        subtree.extend(child_subtree)
+        
+        # Remove the merged subtree from the list
+        subtrees.remove(child_subtree)

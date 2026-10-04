@@ -1,0 +1,131 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.feature_selection import f_regression, mutual_info_regression
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn import metrics
+
+# Function to perform exploratory data analysis
+def perform_eda(data):
+    sns.set_palette("GnBu_d")
+    sns.set_style('whitegrid')
+
+    # Jointplots
+    sns.jointplot(x='Time on Website', y='Yearly Amount Spent', data=data)
+    sns.jointplot(x='Time on App', y='Yearly Amount Spent', data=data)
+    sns.jointplot(x='Time on App', y='Length of Membership', kind='hex', data=data)
+    
+    # Pairplot
+    sns.pairplot(data)
+    
+    # Linear model plot
+    sns.lmplot(x='Length of Membership', y='Yearly Amount Spent', data=data)
+    plt.show()
+
+# Function to prepare the data for modeling
+def prepare_data(data):
+    y = data['Yearly Amount Spent']
+    X = data[['Avg. Session Length', 'Time on App', 'Time on Website', 'Length of Membership']]
+    
+    poly = PolynomialFeatures(degree=2, interaction_only=False, include_bias=True)
+    X_poly = poly.fit_transform(X)
+    
+    return X, X_poly, y
+
+# Function to evaluate features
+def evaluate_features(X, y):
+    f_scores, p_values = f_regression(X, y, center=True)
+    mi_scores = mutual_info_regression(X, y, discrete_features='auto', n_neighbors=3, copy=True, random_state=None)
+    
+    print("F-regression scores:", f_scores)
+    print("Mutual Information Regression scores:", mi_scores)
+
+# Function to split the data into train and test sets
+def split_data(X, y):
+    return train_test_split(X, y, test_size=0.3, random_state=101)
+
+# Function to train linear regression models
+def train_models(X_train, y_train, X_reduced_train, X_poly_train):
+    lm = LinearRegression()
+    lm_reduced = LinearRegression()
+    lm_poly = LinearRegression()
+    
+    lm.fit(X_train, y_train)
+    lm_reduced.fit(X_reduced_train, y_train)
+    lm_poly.fit(X_poly_train, y_train)
+    
+    return lm, lm_reduced, lm_poly
+
+# Function to print model coefficients
+def print_coefficients(lm, lm_reduced, lm_poly):
+    print('Coefficients for model with all features: \n', lm.coef_)
+    print('Coefficients for model without Time on App: \n', lm_reduced.coef_)
+    print('Coefficients for model with polynomial features: \n', lm_poly.coef_)
+
+# Function to make predictions
+def make_predictions(models, test_sets):
+    return [model.predict(test_set) for model, test_set in zip(models, test_sets)]
+
+# Function to plot predictions
+def plot_predictions(y_test, predictions):
+    plt.figure(figsize=(10, 6))
+    labels = ['Model with all features', 'Model without Time on App', 'Model with polynomial features']
+    
+    for prediction, label in zip(predictions, labels):
+        plt.scatter(y_test, prediction, label=label)
+    
+    plt.xlabel('Y Test')
+    plt.ylabel('Predicted Y')
+    plt.legend()
+    plt.show()
+
+# Function to print evaluation metrics
+def print_metrics(y_true, predictions, labels):
+    for prediction, label in zip(predictions, labels):
+        print(f'{label}')
+        print('MAE:', metrics.mean_absolute_error(y_true, prediction))
+        print('MSE:', metrics.mean_squared_error(y_true, prediction))
+        print('RMSE:', np.sqrt(metrics.mean_squared_error(y_true, prediction)))
+        print()
+
+# Main function
+def main():
+    # Read the data
+    data = pd.read_csv("Ecommerce Customers.csv")
+    
+    # Perform exploratory data analysis
+    perform_eda(data)
+    
+    # Prepare the data for modeling
+    X, X_poly, y = prepare_data(data)
+    
+    # Evaluate features
+    evaluate_features(X, y)
+    
+    # Split the data into train and test sets
+    X_train, X_test, y_train, y_test = split_data(X, y)
+    X_reduced = X.drop('Time on App', axis=1)
+    X_reduced_train, X_reduced_test, _, _ = split_data(X_reduced, y)
+    X_poly_train, X_poly_test, _, _ = split_data(X_poly, y)
+    
+    # Train linear regression models
+    lm, lm_reduced, lm_poly = train_models(X_train, y_train, X_reduced_train, X_poly_train)
+    
+    # Print model coefficients
+    print_coefficients(lm, lm_reduced, lm_poly)
+    
+    # Make predictions
+    predictions = make_predictions([lm, lm_reduced, lm_poly], [X_test, X_reduced_test, X_poly_test])
+    
+    # Plot predictions
+    plot_predictions(y_test, predictions)
+    
+    # Print evaluation metrics
+    labels = ['Model with all features', 'Model without Time on App', 'Model with polynomial features']
+    print_metrics(y_test, predictions, labels)
+
+if __name__ == "__main__":
+    main()

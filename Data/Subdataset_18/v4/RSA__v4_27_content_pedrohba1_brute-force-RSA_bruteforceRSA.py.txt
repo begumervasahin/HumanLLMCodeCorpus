@@ -1,0 +1,85 @@
+import math
+import time
+
+def nearest_odd_under(number):
+    """
+    Auxiliary function to calculate the nearest odd number less than the given number.
+    """
+    if number % 2 == 0:
+        number -= 1
+    else:
+        number -= 2
+    return number
+
+def egcd(a, b):
+    """
+    Extended Euclidean Algorithm to find the greatest common divisor of a and b.
+    Returns a tuple (g, x, y) such that a*x + b*y = g = gcd(a, b).
+    """
+    if a == 0:
+        return (b, 0, 1)
+    else:
+        g, y, x = egcd(b % a, a)
+        return (g, x - (b // a) * y, y)
+
+def modinv(a, m):
+    """
+    Modular inverse of a under modulo m using the Extended Euclidean Algorithm.
+    """
+    g, x, y = egcd(a, m)
+    if g != 1:
+        raise Exception('Modular inverse does not exist')
+    else:
+        return x % m
+
+def brute_rsa(n, e):
+    """
+    Function to brute force RSA keys. Given n and e, finds the private key d.
+    """
+    start_time = time.time()
+    c = math.floor(math.sqrt(n))
+    c = nearest_odd_under(c)
+
+    # Discovering p by brute force
+    for i in range(c, 1, -2):
+        if n % i == 0:
+            p = i
+            break
+
+    # Discovering q from p
+    q = n // p
+
+    # Verify if p * q equals n
+    if n != p * q:
+        raise Exception('Failed to find correct p and q')
+
+    # Calculate d such that d * e ≡ 1 (mod φ(n))
+    phi_n = (p - 1) * (q - 1)
+    d = modinv(e, phi_n)
+    
+    # Verify if d * e % φ(n) equals 1
+    if d * e % phi_n != 1:
+        raise Exception('Failed to find correct d')
+
+    total_time = time.time() - start_time
+    return (d, total_time)
+
+# List of RSA key pairs (n, e)
+key_pairs = [
+    (1325147, 79), (13339787, 351047), (87411743, 11),
+    (153988391, 365), (642281891, 80105), (3662937263, 80273),
+    (2461987247, 78703), (10988963221, 118297), (9979645019, 9764819),
+    (36207914857, 89)
+]
+
+total_time = 0
+
+# Process each key pair and print results
+for n, e in key_pairs:
+    private_key, elapsed_time = brute_rsa(n, e)
+    print(f'Key pair (n, e): ({n}, {e})')
+    print(f'Private key d: {private_key}')
+    print(f'Time taken: {elapsed_time:.6f} seconds')
+    total_time += elapsed_time
+
+print(f'Total time taken: {total_time:.6f} seconds')

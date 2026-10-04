@@ -1,0 +1,55 @@
+import random
+
+def generate_random_128_bit_number():
+    """
+    Generate a random 128-bit number.
+    """
+    return random.randint(2**127, 2**128 - 1)
+
+def generate_random_sbox():
+    """
+    Generate a random S-box with 256 entries, each an 8-bit number.
+    """
+    return [random.randint(2**7, 2**8 - 1) for _ in range(256)]
+
+def convert_to_state_array(number):
+    """
+    Convert a 128-bit number into a state array of 8-bit binary strings.
+    """
+    bin_number = bin(number)[2:].zfill(128)  # Ensure binary representation is 128 bits long
+    return [bin_number[i*8:(i+1)*8] for i in range(16)]
+
+def apply_sbox_to_state(state, sbox):
+    """
+    Apply the S-box substitution to the state array.
+    """
+    for i in range(16):
+        z = state[i]
+        row = int(z[:4], 2)
+        col = int(z[4:], 2)
+        sbox_value = sbox[(col + row) % 256]  # Ensure the index is within S-box range
+        state[i] = format(sbox_value, '08b')  # Convert S-box value to 8-bit binary string
+    
+    return state
+
+def main():
+    number = generate_random_128_bit_number()
+    key = generate_random_128_bit_number()
+    
+    print(f"Result of XOR: {bin(number ^ key)}")
+    print(f"Plain text: {bin(number)}")
+    
+    state = convert_to_state_array(number)
+    
+    print("State Array:")
+    print(state)
+    
+    sbox = generate_random_sbox()
+    
+    state = apply_sbox_to_state(state, sbox)
+    
+    print("State Array after the Substitution process:")
+    print(state)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,45 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+dataset = pd.read_csv('Position_Salaries.csv')
+X = dataset.iloc[:, 1:2].values
+y = dataset.iloc[:, 2].values
+def fit_and_plot_linear_regression(X, y):
+    linear_regressor = LinearRegression()
+    linear_regressor.fit(X, y)
+    plt.scatter(X, y, color='red')
+    plt.plot(X, linear_regressor.predict(X), color='blue')
+    plt.title('Truth or Bluff (Linear Regression)')
+    plt.xlabel('Position level')
+    plt.ylabel('Salary')
+    plt.show()
+    return linear_regressor
+def fit_and_plot_polynomial_regression(X, y, degree=4):
+    poly_features = PolynomialFeatures(degree=degree)
+    X_poly = poly_features.fit_transform(X)
+    poly_regressor = LinearRegression()
+    poly_regressor.fit(X_poly, y)
+    plt.scatter(X, y, color='red')
+    plt.plot(X, poly_regressor.predict(X_poly), color='blue')
+    plt.title(f'Truth or Bluff (Polynomial Regression - Degree {degree})')
+    plt.xlabel('Position level')
+    plt.ylabel('Salary')
+    plt.show()
+    X_grid = np.arange(min(X), max(X), 0.1).reshape(-1, 1)
+    plt.scatter(X, y, color='red')
+    plt.plot(X_grid, poly_regressor.predict(poly_features.fit_transform(X_grid)), color='blue')
+    plt.title(f'Truth or Bluff (Polynomial Regression - Degree {degree}, High Resolution)')
+    plt.xlabel('Position level')
+    plt.ylabel('Salary')
+    plt.show()
+    return poly_regressor, poly_features
+linear_regressor = fit_and_plot_linear_regression(X, y)
+poly_regressor, poly_features = fit_and_plot_polynomial_regression(X, y, degree=4)
+def predict_with_models(X, linear_regressor, poly_regressor, poly_features, value=6.5):
+    linear_prediction = linear_regressor.predict([[value]])
+    poly_prediction = poly_regressor.predict(poly_features.fit_transform([[value]]))
+    print(f'Linear Regression prediction for position level {value}: {linear_prediction[0]}')
+    print(f'Polynomial Regression prediction for position level {value}: {poly_prediction[0]}')
+predict_with_models(X, linear_regressor, poly_regressor, poly_features)

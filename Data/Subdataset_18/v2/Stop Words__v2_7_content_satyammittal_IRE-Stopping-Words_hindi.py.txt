@@ -1,0 +1,95 @@
+import os
+import json
+import operator
+
+def list_files(directory):
+    """
+    List all files in the given directory and its subdirectories.
+
+    Args:
+    directory (str): The path of the directory to list files from.
+
+    Returns:
+    list: A list of paths to files found in the directory and subdirectories.
+    """
+    file_list = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_list.append(os.path.join(root, file))
+    return file_list
+
+def process_files(file_paths):
+    """
+    Process the given list of file paths to count word occurrences and document frequencies.
+
+    Args:
+    file_paths (list): A list of file paths to process.
+
+    Returns:
+    tuple: A tuple containing the word counter and document frequency dictionaries.
+    """
+    word_counter = {}
+    doc_frequency = {}
+    total_docs = 0
+
+    for file_path in file_paths:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                check_word = {}
+                json_data = json.loads(line)
+                text = json_data.get('text')
+                total_docs += 1
+                if text:
+                    for word in text.split():
+                        word_counter[word] = word_counter.get(word, 0) + 1
+                        check_word[word] = check_word.get(word, 0) + 1
+
+                for word in check_word:
+                    doc_frequency[word] = doc_frequency.get(word, 0) + 1
+
+    return word_counter, doc_frequency
+
+def calculate_scores(word_counter, doc_frequency):
+    """
+    Calculate scores for each word based on its frequency and document count.
+
+    Args:
+    word_counter (dict): A dictionary of word counts.
+    doc_frequency (dict): A dictionary of document frequencies.
+
+    Returns:
+    dict: A dictionary of words and their calculated scores.
+    """
+    scores = {}
+    for word in doc_frequency:
+        scores[word] = word_counter[word] * (doc_frequency[word] ** 2)
+    return scores
+
+def main():
+    # Directory containing the JSON files
+    directory = 'extracted'
+
+    # List all files in the directory
+    files = list_files(directory)
+
+    # Process the files to get word counts and document frequencies
+    word_counter, doc_frequency = process_files(files)
+
+    # Calculate the scores for each word
+    scores = calculate_scores(word_counter, doc_frequency)
+
+    # Sort the words by their scores in descending order
+    sorted_scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
+
+    # Print the top 50 words and their scores
+    print("Top 50 words and their scores:")
+    for word, score in sorted_scores[:50]:
+        print(f"{word} : {score}")
+
+    # Print the top 50 words
+    print("\nTop 50 words:")
+    for word, _ in sorted_scores[:50]:
+        print(word)
+
+if __name__ == "__main__":
+    main()

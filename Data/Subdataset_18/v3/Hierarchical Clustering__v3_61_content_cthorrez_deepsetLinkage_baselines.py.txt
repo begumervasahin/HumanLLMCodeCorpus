@@ -1,0 +1,95 @@
+import numpy as np
+from eval_utils import pairwise_f1
+
+def load_ground_truth_clusters(filepath):
+    """
+    Load ground truth clusters from a file.
+
+    Parameters:
+    - filepath (str): Path to the ground truth clusters file.
+
+    Returns:
+    - ndarray: Array of ground truth cluster labels.
+    """
+    return np.loadtxt(filepath, delimiter='\t', dtype=float)[:, 1]
+
+def generate_predictions(n_samples, n_clusters):
+    """
+    Generate prediction arrays for different clustering scenarios.
+
+    Parameters:
+    - n_samples (int): Number of samples.
+    - n_clusters (int): Number of clusters.
+
+    Returns:
+    - tuple: Arrays of predictions for one-cluster, n-clusters, and random predictions.
+    """
+    one_cluster_preds = np.zeros(n_samples)
+    n_clusters_preds = np.arange(n_samples)
+    random_preds = np.random.randint(low=0, high=n_clusters, size=n_samples)
+    
+    return one_cluster_preds, n_clusters_preds, random_preds
+
+def compute_f1_scores(blocks):
+    """
+    Compute F1 scores for different clustering prediction scenarios.
+
+    Parameters:
+    - blocks (ndarray): Array of block names.
+
+    Returns:
+    - tuple: Mean F1 scores for one-cluster, n-clusters, and random predictions.
+    """
+    one_cluster_f1s = []
+    n_clusters_f1s = []
+    random_f1s = []
+
+    for block in blocks:
+        gt_clusters = load_ground_truth_clusters(f'data/rexa/{block}/gtClusters.tsv')
+        n_samples = len(gt_clusters)
+        n_clusters = int(np.max(gt_clusters)) + 1
+
+        # Generate predictions for the block
+        one_cluster_preds, n_clusters_preds, random_preds = generate_predictions(n_samples, n_clusters)
+
+        # Calculate and store F1 scores for each scenario
+        one_cluster_f1s.append(pairwise_f1(gt_clusters, one_cluster_preds))
+        n_clusters_f1s.append(pairwise_f1(gt_clusters, n_clusters_preds))
+        random_f1s.append(pairwise_f1(gt_clusters, random_preds))
+
+    return (
+        np.mean(one_cluster_f1s), 
+        np.mean(n_clusters_f1s), 
+        np.mean(random_f1s)
+    )
+
+def display_f1_scores(one_cluster_f1, n_clusters_f1, random_f1):
+    """
+    Display the computed F1 scores.
+
+    Parameters:
+    - one_cluster_f1 (float): Mean F1 score for one-cluster predictions.
+    - n_clusters_f1 (float): Mean F1 score for n-clusters predictions.
+    - random_f1 (float): Mean F1 score for random predictions.
+    """
+    print(f'One cluster F1: {one_cluster_f1:.4f}')
+    print(f'N clusters F1: {n_clusters_f1:.4f}')
+    print(f'Random F1: {random_f1:.4f}')
+
+def main():
+    """
+    Main function to compute and display F1 scores for various clustering scenarios.
+    """
+    blocks = np.array([
+        'allen_d', 'moore_a', 'lee_l', 'robinson_h',
+        'mcguire_j', 'blum_a', 'jones_s', 'young_s'
+    ])
+
+    # Compute F1 scores for the blocks
+    one_cluster_f1, n_clusters_f1, random_f1 = compute_f1_scores(blocks)
+
+    # Display the results
+    display_f1_scores(one_cluster_f1, n_clusters_f1, random_f1)
+
+if __name__ == '__main__':
+    main()

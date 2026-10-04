@@ -1,0 +1,98 @@
+"""
+Handles the encryption and decryption of messages using AES.
+"""
+
+from Crypto.Cipher import AES
+from Crypto import Random
+
+__author__ = "spec"
+__license__ = "MIT"
+__version__ = "0.1"
+__status__ = "Development"
+
+class InvalidMessage(Exception):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+class Message:
+    def __init__(self, key, plaintext=None, ciphertext=None):
+        """
+        Initialize a new message object from a key and either plaintext or ciphertext.
+        
+        :param key: shared key to use for encryption/decryption
+        :param plaintext: plaintext message
+        :param ciphertext: encrypted message
+        """
+        self.key = key
+        if plaintext:
+            self.plaintext = plaintext
+            self.ciphertext, self.iv = self._encrypt()
+        elif ciphertext:
+            self.ciphertext = ciphertext
+            self.plaintext, self.iv = self._decrypt()
+        else:
+            raise InvalidMessage("Either plaintext or ciphertext must be provided")
+
+    def _encrypt(self):
+        """
+        Encrypt a plaintext message.
+        
+        :return: the encrypted message and its corresponding initialization vector
+        """
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        padded_plaintext = self._pad(self.plaintext)
+        encrypted_message = cipher.encrypt(padded_plaintext.encode('utf-8'))
+        return encrypted_message, iv
+
+    def _decrypt(self):
+        """
+        Decrypt a ciphertext message.
+        
+        :return: the decrypted message and its corresponding initialization vector
+        """
+        iv = self.ciphertext[:AES.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted_message = cipher.decrypt(self.ciphertext[AES.block_size:]).decode('utf-8')
+        return self._unpad(decrypted_message), iv
+
+    def pack(self):
+        """
+        Package the message as an encrypted bytes object.
+        
+        :return: encrypted bytes
+        """
+        return self.iv + self.ciphertext
+
+    def _pad(self, text):
+        """
+        Pad the text to be a multiple of AES block size.
+        
+        :param text: text to be padded
+        :return: padded text
+        """
+        buffer_size = AES.block_size - len(text) % AES.block_size
+        return text + " " * buffer_size
+
+    def _unpad(self, text):
+        """
+        Unpad the text by stripping trailing spaces.
+        
+        :param text: text to be unpadded
+        :return: unpadded text
+        """
+        return text.rstrip()
+
+# Example usage
+if __name__ == "__main__":
+    key = b'Sixteen byte key'
+    plaintext = "This is a secret message."
+    
+    # Encrypt the plaintext
+    message = Message(key, plaintext=plaintext)
+    packed_message = message.pack()
+    print(f"Packed Message: {packed_message.hex()}")
+
+    # Decrypt the ciphertext
+    decrypted_message = Message(key, ciphertext=packed_message)
+    print(f"Decrypted Message: {decrypted_message.plaintext}")

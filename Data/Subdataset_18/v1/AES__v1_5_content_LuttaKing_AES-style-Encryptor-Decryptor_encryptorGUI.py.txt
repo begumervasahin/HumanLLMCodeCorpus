@@ -1,0 +1,83 @@
+import pyAesCrypt
+import os
+import PySimpleGUI as sg
+
+# Buffer size for encryption/decryption
+buffer_size = 64 * 1024
+
+def encrypt_file(file, password):
+    """
+    Encrypt the given file with the provided password.
+    """
+    try:
+        pyAesCrypt.encryptFile(file, file + ".ltt", password, buffer_size)
+        print(f"{file} has been encrypted")
+        try:
+            os.remove(file)
+        except PermissionError:
+            print(f"{file} is currently in use and cannot be removed")
+    except FileNotFoundError:
+        print(f"{file} does not exist")
+
+def decrypt_file(file, password):
+    """
+    Decrypt the given file with the provided password.
+    """
+    if file.endswith('.ltt'):
+        original_file = file[:-4]
+        try:
+            pyAesCrypt.decryptFile(file, original_file, password, buffer_size)
+            print(f"{file} has been decrypted")
+        except OSError:
+            pass
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            print(f"{file} was not found")
+
+# Set the look and feel for the GUI
+sg.change_look_and_feel('BluePurple')
+
+# Define the layout for the GUI
+layout = [
+    [sg.Text('Click on the action you wish to perform')],
+    [sg.Text('File path/name', size=(18, 1)), sg.Input(key="chosen_file"), sg.FileBrowse()],
+    [sg.Text(size=(15, 1), key='OUTPUT')],
+    [sg.Button('Encrypt'), sg.Button('Decrypt')],
+    [sg.Button('Exit')]
+]
+
+# Create the window
+window = sg.Window('LUTTA Enc/Decryptor', layout)
+
+# Event loop to process user inputs
+while True:
+    event, values = window.read()
+    print(event, values)
+    if event in (None, 'Exit'):
+        break
+    if event == 'Encrypt':
+        filename = values["chosen_file"]
+        if filename:
+            password = sg.popup_get_text('Enter password', password_char='*')
+            if password:
+                encrypt_file(filename, password)
+                window['OUTPUT'].update("File Encrypted")
+            else:
+                window['OUTPUT'].update("No password provided")
+        else:
+            window['OUTPUT'].update("No file supplied")
+    if event == 'Decrypt':
+        filename = values["chosen_file"]
+        if filename:
+            password = sg.popup_get_text('Enter password', password_char='*')
+            if password:
+                decrypt_file(filename, password)
+                window['OUTPUT'].update("File Decrypted")
+            else:
+                window['OUTPUT'].update("No password provided")
+        else:
+            window['OUTPUT'].update("No file supplied")
+
+# Close the window
+window.close()

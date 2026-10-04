@@ -1,0 +1,106 @@
+import numpy as np
+import itertools as it
+
+# Minimum support and confidence thresholds
+min_supp = 3
+min_confidence = 0.7
+
+# Global counters and dictionaries to store results
+combinations_counter = 1
+frequent_itemsets = {}
+candidates = {}
+
+# List of transactions
+transaction_list = [
+    ['a', 'b'],
+    ['a', 'c', 'd', 'e'],
+    ['a', 'b', 'c', 'e'],
+    ['c', 'd'],
+    ['b', 'c', 'd', 'e'],
+    ['a', 'd', 'e'],
+    ['c', 'd', 'e']
+]
+
+# Set of all unique items
+products_set = set(item for sublist in transaction_list for item in sublist)
+
+def check_last_max_support():
+    """
+    Check if the last iteration's maximum support meets the minimum support.
+    
+    Returns:
+    bool: True if the maximum support meets the minimum support, otherwise False.
+    """
+    max_value = 0
+    for key, value in frequent_itemsets.items():
+        if len(key) == combinations_counter - 1:
+            if value > max_value:
+                max_value = value
+
+    return max_value >= min_supp or combinations_counter == 1
+
+def generate_combinations():
+    """
+    Generate and count candidate itemsets of the current combination size.
+    """
+    if check_last_max_support():
+        combinations = list(it.combinations(products_set, combinations_counter))
+        count_appearances(combinations)
+    else:
+        print_results()
+
+def count_appearances(combinations):
+    """
+    Count the appearances of each candidate combination in the transaction list.
+
+    Parameters:
+    combinations (list): List of candidate itemsets.
+    """
+    global combinations_counter
+    for combination in combinations:
+        for transaction in transaction_list:
+            update_frequent_itemsets(combination, transaction)
+    combinations_counter += 1
+    generate_combinations()
+
+def update_frequent_itemsets(combination, transaction):
+    """
+    Update the frequent itemsets dictionary with the count of appearances.
+
+    Parameters:
+    combination (tuple): Candidate itemset.
+    transaction (list): Transaction containing items.
+    """
+    element = ''.join(sorted(combination))
+    row = ''.join(sorted(transaction))
+    filtered_row = filter_relevant_items(element, row)
+    
+    if element in filtered_row:
+        if element in frequent_itemsets:
+            frequent_itemsets[element] += 1
+        else:
+            frequent_itemsets[element] = 1
+
+def filter_relevant_items(element, row):
+    """
+    Filter out irrelevant items from the transaction row based on the candidate itemset.
+
+    Parameters:
+    element (str): Candidate itemset as a string.
+    row (str): Transaction row as a string.
+
+    Returns:
+    str: Filtered transaction row containing only relevant items.
+    """
+    return ''.join([char for char in row if char in element])
+
+def print_results():
+    """
+    Print the frequent itemsets that meet the minimum support threshold.
+    """
+    for key, value in frequent_itemsets.items():
+        if value >= min_supp:
+            print(f'Elements: {key} support {value}')
+
+if __name__ == "__main__":
+    generate_combinations()

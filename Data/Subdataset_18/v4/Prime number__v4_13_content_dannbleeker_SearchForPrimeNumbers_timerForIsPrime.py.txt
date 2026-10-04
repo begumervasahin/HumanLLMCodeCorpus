@@ -1,0 +1,59 @@
+import timeit
+
+def log_message(message, use_log_file, logfile=None):
+    """
+    Log the message to console and optionally to a file.
+    """
+    print(message)
+    if use_log_file and logfile:
+        print(message, file=logfile)
+
+def format_number(number):
+    """
+    Format the number with thousands separators replaced by dots.
+    """
+    return f"{number:,d}".replace(",", ".")
+
+def main():
+    use_log_file = True
+    start_number = 0
+    end_number = 100_000_000
+
+    # Open log file if logging is enabled
+    logfile = open('log.txt', 'a') if use_log_file else None
+
+    search_range_msg = f"Searching from {format_number(start_number)} to {format_number(end_number)} " \
+                       f"(interval: {format_number(end_number - start_number)})"
+    log_message(search_range_msg, use_log_file, logfile)
+
+    for current_prime_search in range(6, 7):
+        test_code_while = f'''
+import isPrimeSearch
+prime_counter = 0
+current_number = {start_number}
+while current_number <= {end_number}:
+    if isPrimeSearch.checkForPrime{current_prime_search}(current_number):
+        prime_counter += 1
+        current_number += 2
+    else:
+        current_number += 1
+'''
+        time_to_run = round(timeit.timeit(stmt=test_code_while, number=1), 4)
+        log_message(f"CheckForPrime{current_prime_search} (wsa2): {time_to_run}", use_log_file, logfile)
+
+    for current_prime_search in range(6, 7):
+        test_code_for = f'''
+import isPrimeSearch
+prime_counter = 0
+for current_number in range({start_number}, {end_number}):
+    if isPrimeSearch.checkForPrime{current_prime_search}(current_number):
+        prime_counter += 1
+'''
+        time_to_run = round(timeit.timeit(stmt=test_code_for, number=1), 4)
+        log_message(f"CheckForPrime{current_prime_search} (for1): {time_to_run}", use_log_file, logfile)
+
+    if use_log_file:
+        logfile.close()
+
+if __name__ == '__main__':
+    main()

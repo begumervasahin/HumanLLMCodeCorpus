@@ -1,0 +1,76 @@
+import numpy as np
+from numpy.linalg import eig
+from scipy.stats import chi2
+
+def gsis(snp_mat, qr_smy_mat, proj_mat):
+    """
+    Global sure independence screening (GSIS) procedure.
+    
+    Parameters:
+        snp_mat (np.ndarray): SNP data matrix of shape (n x g), where n is the number of samples and g is the number of SNPs.
+        qr_smy_mat (np.ndarray): Common part in the global test statistic of shape (n x n).
+        proj_mat (np.ndarray): Projection matrix of shape (n x n).
+    
+    Returns:
+        g_pv_log10 (np.ndarray): -log10 p-values across all SNPs.
+        g_stat (np.ndarray): The global Wald test statistics across all SNPs.
+    """
+    
+    # Step 1: Calculate ZX matrix
+    zx_mat = np.dot(proj_mat, snp_mat).T
+
+    # Step 2: Calculate Q(ZX)
+    q_zx = np.sum(zx_mat * zx_mat, axis=1)
+    
+    # Step 3: Avoid division by zero by adding a small value to zero elements
+    q_zx[q_zx == 0] += 1e-6
+    
+    # Step 4: Compute the inverse of Q(ZX)
+    inv_q_zx = q_zx ** -1
+    
+    # Step 5: Eigen decomposition of QR summary matrix
+    w, v = eig(qr_smy_mat)
+    
+    # Step 6: Ensure eigenvalues are non-negative and take the square root
+    w = np.real(w)
+    w[w < 0] = 0
+    w_diag = np.diag(w ** 0.5)
+    
+    # Step 7: Compute the square root of the QR summary matrix
+    sq_qr_smy_mat = np.dot(np.dot(v, w_diag), v.T)
+    sq_qr_smy_mat = np.real(sq_qr_smy_mat)
+    
+    # Step 8: Calculate global Wald test statistics
+    g_stat = np.sum(np.dot(zx_mat, sq_qr_smy_mat) ** 2, axis=1) * inv_q_zx
+    
+    # Step 9: Compute moments for the chi-squared distribution
+    k1 = np.mean(g_stat)
+    k2 = np.var(g_stat)
+    k3 = np.mean((g_stat - k1) ** 3)
+    
+    # Step 10: Calculate parameters for chi-squared distribution
+    a = k3 / (4 * k2)
+    b = k1 - 2 * k2 ** 2 / k3
+    d = 8 * k2 ** 3 / k3 ** 2
+    
+    # Step 11: Calculate p-values and their -log10 values
+    g_pv = 1 - chi2.cdf((g_stat - b) / a, d)
+    g_pv_log10 = -np.log10(g_pv)
+    
+    return g_pv_log10, g_stat
+
+# Example usage:
+if __name__ == "__main__":
+    # Generate example data for demonstration purposes
+    n = 100  # Number of samples
+    g = 10   # Number of SNPs
+    snp_mat = np.random.rand(n, g)
+    qr_smy_mat = np.random.rand(n, n)
+    proj_mat = np.random.rand(n, n)
+    
+    # Perform GSIS procedure
+    g_pv_log10, g_stat = gsis(snp_mat, qr_smy_mat, proj_mat)
+    
+    # Print results
+    print("g_pv_log10:", g_pv_log10)
+    print("g_stat:", g_stat)

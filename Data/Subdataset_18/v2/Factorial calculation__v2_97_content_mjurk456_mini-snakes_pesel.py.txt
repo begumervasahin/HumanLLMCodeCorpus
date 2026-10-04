@@ -1,0 +1,46 @@
+import unittest
+
+def check_pesel(pesel_nr):
+    """
+    Validates a PESEL number using the standard PESEL validation algorithm.
+
+    Parameters:
+    - pesel_nr (str): The PESEL number to be validated.
+
+    Returns:
+    - bool: True if the PESEL number is valid, False otherwise.
+    """
+    # PESEL must be exactly 11 digits long
+    if len(pesel_nr) != 11:
+        return False
+
+    # PESEL must contain only digits
+    if not pesel_nr.isdigit():
+        return False
+
+    # Define the weights for each position
+    weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
+    
+    # Calculate the weighted sum of the first 10 digits
+    total_sum = sum(int(pesel_nr[i]) * weights[i] for i in range(10))
+
+    # Compute the expected check digit
+    check_digit = (10 - (total_sum % 10)) % 10
+
+    # Compare the computed check digit with the last digit of the PESEL
+    return check_digit == int(pesel_nr[-1])
+
+class TestPeselValidator(unittest.TestCase):
+    def test_valid_pesel(self):
+        """Test with known valid PESEL numbers."""
+        self.assertTrue(check_pesel("92121510595"))
+        self.assertTrue(check_pesel("99810235403"))
+
+    def test_invalid_pesel(self):
+        """Test with known invalid PESEL numbers."""
+        self.assertFalse(check_pesel("44051401358"))
+        self.assertFalse(check_pesel("51401358"))  # Too short
+        self.assertFalse(check_pesel("12345678901"))  # Incorrect check digit
+
+if __name__ == "__main__":
+    unittest.main()

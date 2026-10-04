@@ -1,0 +1,56 @@
+import re
+import json
+import time
+from string import punctuation
+from joblib import load
+
+def clean_text(text):
+    """Cleans the input text by removing unwanted characters and punctuation."""
+    # Remove specific unwanted characters using regular expressions
+    text = re.sub(r"[-()\"#/@;:<>{}`+=~|.!?,]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    text = text.strip()
+    
+    # Remove punctuation
+    punc = set(punctuation) | {',', "’", '!', ':', "–"}
+    clean_text = ''.join(char for char in text if char not in punc)
+    
+    return clean_text.lower()
+
+def main():
+    # Start timing the execution
+    start_time = time.time()
+    
+    # Initialize the list to store cleaned text features
+    x_test = []
+    
+    # Read and process the input JSON lines file
+    with open(r'..\test_X_languages_homework.json.txt', 'r', encoding='utf-8') as file:
+        for line in file:
+            # Parse the JSON object
+            feature = json.loads(line)
+            feature_text = feature.get('text', '')
+            
+            # Clean the text
+            cleaned_text = clean_text(feature_text)
+            x_test.append(cleaned_text)
+    
+    # Load the pre-trained model
+    pipe = load(r'model.bin')
+    
+    # Predict the classifications
+    y_predicted = pipe.predict(x_test)
+    
+    # Write predictions to an output file
+    with open(r'predictions.txt', 'w', encoding='utf-8') as file:
+        for prediction in y_predicted:
+            predictions = {'classification': prediction}
+            json_obj = json.dumps(predictions)
+            file.write(json_obj + "\n")
+    
+    # Print the elapsed time
+    elapsed_time = time.time() - start_time
+    print(f"{elapsed_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()

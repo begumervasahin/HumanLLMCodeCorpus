@@ -1,0 +1,67 @@
+import os
+import pandas as pd
+import csv
+import re
+
+# Define constants
+DATA_DIR = "data"
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+# Load the CSV file into a pandas DataFrame
+df = pd.read_csv(MBTI_CLEAN_CSV_PATH)
+
+def is_valid_post(post):
+    """
+    Check if a post is valid based on specific criteria.
+    """
+    if "http" in post or post == "" or post is None or not re.search("[a-zA-Z]", post):
+        return False
+    return True
+
+def process_posts_for_letter(df, letter):
+    """
+    Extract and filter posts for a given letter in the personality type.
+    """
+    posts = []
+
+    # Iterate over each row in the DataFrame
+    for _, row in df.iterrows():
+        # Check if the letter is in the personality type
+        if letter in row["type"]:
+            # Split the posts into individual posts
+            individual_posts = row["posts"].split("|||")
+
+            # Filter and collect valid posts
+            for post in individual_posts:
+                if is_valid_post(post):
+                    posts.append(post)
+    
+    return posts
+
+def save_posts_to_csv(posts, letter, data_dir):
+    """
+    Save the filtered posts to a CSV file.
+    """
+    output_csv_path = os.path.join(data_dir, f"test_{letter}.csv")
+
+    with open(output_csv_path, "w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        for post in posts:
+            writer.writerow([post])
+
+def main():
+    """
+    Main function to process and save posts for each personality dimension.
+    """
+    # Iterate over each personality dimension
+    for dimension in DIMENSIONS:
+        letter_1, letter_2 = dimension
+
+        # Process and save posts for each letter in the dimension (e.g., "I" and "E" for "IE")
+        for letter in [letter_1, letter_2]:
+            posts = process_posts_for_letter(df, letter)
+            save_posts_to_csv(posts, letter, DATA_DIR)
+
+if __name__ == "__main__":
+    main()

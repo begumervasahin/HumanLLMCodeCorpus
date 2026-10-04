@@ -1,0 +1,229 @@
+import heapq
+import itertools
+
+class WorldState:
+    """
+    Class to represent the state of the world in the search algorithms.
+    
+    Attributes:
+    state (list): The current state of the world.
+    operator (str): The operator that led to this state.
+    parent (WorldState): The parent state.
+    depth (int): The depth of this state in the search tree.
+    f_value (int): The f-value for A* algorithm (g(x) + h(x)).
+    """
+
+    def __init__(self, state, operator, parent, depth, f_value):
+        self.state = state
+        self.operator = operator
+        self.parent = parent
+        self.depth = depth
+        self.f_value = f_value
+
+    def __eq__(self, other):
+        return self.state == other.state
+
+    def __lt__(self, other):
+        return self.f_value < other.f_value
+
+def read_input(filename):
+    """
+    Read the input from a file and return the algorithm choice, puzzle size, and initial state.
+    
+    Args:
+    filename (str): The name of the input file.
+    
+    Returns:
+    tuple: A tuple containing the algorithm choice, puzzle size, and initial state.
+    """
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    algorithm = int(lines[0].strip())
+    size = int(lines[1].strip())
+    initial_state = list(map(int, lines[2].strip().split(',')))
+    return algorithm, size, initial_state
+
+def goal_state(size):
+    """
+    Generate the goal state for a puzzle of given size.
+    
+    Args:
+    size (int): The size of the puzzle.
+    
+    Returns:
+    list: The goal state of the puzzle.
+    """
+    return list(range(1, size * size)) + [0]
+
+def manhattan_distance(state, size):
+    """
+    Calculate the Manhattan distance heuristic for the given state.
+    
+    Args:
+    state (list): The current state of the puzzle.
+    size (int): The size of the puzzle.
+    
+    Returns:
+    int: The Manhattan distance heuristic value.
+    """
+    distance = 0
+    for idx, value in enumerate(state):
+        if value == 0:
+            continue
+        target_row, target_col = divmod(value - 1, size)
+        current_row, current_col = divmod(idx, size)
+        distance += abs(target_row - current_row) + abs(target_col - current_col)
+    return distance
+
+def get_neighbors(state, size):
+    """
+    Get the neighboring states for the given state.
+    
+    Args:
+    state (list): The current state of the puzzle.
+    size (int): The size of the puzzle.
+    
+    Returns:
+    list: A list of tuples containing the operator and the neighboring state.
+    """
+    zero_index = state.index(0)
+    row, col = divmod(zero_index, size)
+    neighbors = []
+    if row > 0:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index - size] = new_state[zero_index - size], new_state[zero_index]
+        neighbors.append(('Up', new_state))
+    if row < size - 1:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index + size] = new_state[zero_index + size], new_state[zero_index]
+        neighbors.append(('Down', new_state))
+    if col > 0:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index - 1] = new_state[zero_index - 1], new_state[zero_index]
+        neighbors.append(('Left', new_state))
+    if col < size - 1:
+        new_state = state[:]
+        new_state[zero_index], new_state[zero_index + 1] = new_state[zero_index + 1], new_state[zero_index]
+        neighbors.append(('Right', new_state))
+    return neighbors
+
+def bfs(initial_state, size):
+    """
+    Perform Breadth-First Search (BFS) to find the solution.
+    
+    Args:
+    initial_state (list): The initial state of the puzzle.
+    size (int): The size of the puzzle.
+    
+    Returns:
+    WorldState: The goal state if found, otherwise None.
+    """
+    root = WorldState(initial_state, None, None, 0, 0)
+    if root.state == goal_state(size):
+        return root
+    frontier = [root]
+    explored = set()
+    while frontier:
+        state = frontier.pop(0)
+        explored.add(tuple(state.state))
+        for operator, neighbor in get_neighbors(state.state, size):
+            child = WorldState(neighbor, operator, state, state.depth + 1, 0)
+            if tuple(child.state) not in explored and child not in frontier:
+                if child.state == goal_state(size):
+                    return child
+                frontier.append(child)
+    return None
+
+def astar(initial_state, size):
+    """
+    Perform A* search to find the solution.
+    
+    Args:
+    initial_state (list): The initial state of the puzzle.
+    size (int): The size of the puzzle.
+    
+    Returns:
+    WorldState: The goal state if found, otherwise None.
+    """
+    root = WorldState(initial_state, None, None, 0, manhattan_distance(initial_state, size))
+    frontier = []
+    heapq.heappush(frontier, root)
+    explored = set()
+    while frontier:
+        state = heapq.heappop(frontier)
+        if state.state == goal_state(size):
+            return state
+        explored.add(tuple(state.state))
+        for operator, neighbor in get_neighbors(state.state, size):
+            g = state.depth + 1
+            h = manhattan_distance(neighbor, size)
+            child = WorldState(neighbor, operator, state, g, g + h)
+            if tuple(child.state) not in explored:
+                heapq.heappush(frontier, child)
+    return None
+
+def ids(initial_state, size):
+    """
+    Perform Iterative Deepening Search (IDS) to find the solution.
+    
+    Args:
+    initial_state (list): The initial state of the puzzle.
+    size (int): The size of the puzzle.
+    
+    Returns:
+    WorldState: The goal state if found, otherwise None.
+    """
+    def dls(state, limit):
+        if state.state == goal_state(size):
+            return state
+        elif limit == 0:
+            return None
+        else:
+            for operator, neighbor in get_neighbors(state.state, size):
+                child = WorldState(neighbor, operator, state, state.depth + 1, 0)
+                result = dls(child, limit - 1)
+                if result is not None:
+                    return result
+            return None
+
+    depth = 0
+    root = WorldState(initial_state, None, None, 0, 0)
+    while True:
+        result = dls(root, depth)
+        if result is not None:
+            return result
+        depth += 1
+
+def print_solution(solution):
+    """
+    Print the solution steps and the number of moves.
+    
+    Args:
+    solution (WorldState): The goal state.
+    """
+    moves = []
+    while solution.parent is not None:
+        moves.append(solution.operator)
+        solution = solution.parent
+    moves.reverse()
+    print("Solution:", moves)
+    print("Number of moves:", len(moves))
+
+if __name__ == "__main__":
+    # Read input from file
+    algorithm, size, initial_state = read_input("input.txt")
+    solution = None
+
+    # Choose the algorithm to solve the puzzle
+    if algorithm == 1:
+        solution = ids(initial_state, size)
+    elif algorithm == 2:
+        solution = bfs(initial_state, size)
+    elif algorithm == 3:
+        solution = astar(initial_state, size)
+
+    # Print the solution if found
+    if solution is not None:
+        print_solution(solution)
+    else:
+        print("No solution found.")

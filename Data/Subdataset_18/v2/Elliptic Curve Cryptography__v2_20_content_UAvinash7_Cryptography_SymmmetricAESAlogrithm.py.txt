@@ -1,0 +1,75 @@
+import base64
+import hashlib
+from Crypto import Random
+from Crypto.Cipher import AES
+
+# Block size for AES
+BS = 16  
+
+def pad(message):
+    """
+    Pad the message to be a multiple of the block size.
+    
+    :param message: The message to pad.
+    :return: The padded message.
+    """
+    padding = BS - len(message) % BS
+    return message + chr(padding) * padding
+
+def unpad(padded_message):
+    """
+    Remove padding from the decrypted message.
+    
+    :param padded_message: The decrypted message with padding.
+    :return: The message without padding.
+    """
+    return padded_message[:-ord(padded_message[-1])]
+
+class AESAlgorithm:
+    """
+    A class to perform AES encryption and decryption.
+    """
+    
+    def encrypt(self, message, symmetric_key):
+        """
+        Encrypt a message using AES encryption.
+        
+        :param message: The message to encrypt.
+        :param symmetric_key: The symmetric key for encryption.
+        :return: The encrypted message, base64 encoded.
+        """
+        raw = pad(message)
+        symmetric_key = hashlib.sha256(symmetric_key.encode('utf-8')).digest()
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(symmetric_key, AES.MODE_CBC, iv)
+        encrypted_message = iv + cipher.encrypt(raw.encode('utf-8'))
+        return base64.b64encode(encrypted_message).decode('utf-8')
+
+    def decrypt(self, encrypted_message, symmetric_key):
+        """
+        Decrypt an encrypted message using AES decryption.
+        
+        :param encrypted_message: The encrypted message, base64 encoded.
+        :param symmetric_key: The symmetric key for decryption.
+        :return: The decrypted message.
+        """
+        encrypted_message = base64.b64decode(encrypted_message)
+        symmetric_key = hashlib.sha256(symmetric_key.encode('utf-8')).digest()
+        iv = encrypted_message[:16]
+        cipher = AES.new(symmetric_key, AES.MODE_CBC, iv)
+        decrypted_message = cipher.decrypt(encrypted_message[16:])
+        return unpad(decrypted_message).decode('utf-8')
+
+# Example usage
+if __name__ == "__main__":
+    aes_algorithm = AESAlgorithm()
+    plain_text = "Hello World"
+    sym_key = "63757843836583645936548364836"
+
+    # Encrypt the message
+    encrypted_text = aes_algorithm.encrypt(plain_text, sym_key)
+    print("Encrypted Text:", encrypted_text)
+
+    # Decrypt the message
+    decrypted_text = aes_algorithm.decrypt(encrypted_text, sym_key)
+    print("Decrypted Text:", decrypted_text)

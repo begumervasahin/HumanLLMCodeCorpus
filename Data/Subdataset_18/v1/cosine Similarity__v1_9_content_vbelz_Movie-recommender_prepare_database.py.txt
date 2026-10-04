@@ -1,0 +1,67 @@
+import os
+import re
+import pandas as pd
+from sqlalchemy import create_engine
+
+# Define the data folder and file paths
+data_folder = './data/'
+movies_file = os.path.join(data_folder, 'movies.csv')
+ratings_file = os.path.join(data_folder, 'ratings.csv')
+
+# Load the CSV files into DataFrames
+df_movies = pd.read_csv(movies_file)
+df_ratings = pd.read_csv(ratings_file)
+
+# Flags to control where the merged data will be saved
+SAVE_TO_POSTGRES = False
+SAVE_TO_SQLITE = True
+
+# Merge the movies and ratings DataFrames on the movieId column
+df_merge = pd.merge(df_ratings, df_movies, how='outer', on='movieId')
+
+def extract_year(title):
+    """
+    Extract the year from the movie title.
+
+    Args:
+        title (str): The movie title.
+
+    Returns:
+        str: The extracted year, or 0 if not found.
+    """
+    match = re.findall(r"\(([0-9]{4})\)", title)
+    return match[0] if match else 0
+
+# Apply the extract_year function to the title column to create a new year column
+df_merge['year'] = df_merge['title'].apply(extract_year)
+
+# Remove the year from the title column
+df_merge['title'] = df_merge['title'].str.replace(r"\(([0-9]{4})\)", "", regex=True)
+
+# Select relevant columns for the final DataFrame
+cols = ['userId', 'movieId', 'rating', 'title', 'genres', 'year', 'timestamp']
+df_merge = df_merge[cols]
+
+# Sort the DataFrame by movieId
+df_merge.sort_values(by='movieId', inplace=True)
+
+# Drop rows with missing userId values
+df_merge.dropna(subset=['userId'], inplace=True)
+
+# Save the DataFrame to a PostgreSQL database if the flag is set
+if SAVE_TO_POSTGRES:
+    HOST = 'localhost'
+    PORT = '5432'
+    DBNAME = 'movielens'
+    connection_string = f'postgresql://{HOST}:{PORT}/{DBNAME}'
+    db_engine = create_engine(connection_string)
+    df_merge.to_sql('movies_ratings', db_engine, if_exists='replace', index=False)
+
+# Save the DataFrame to a SQLite database if the flag is set
+if SAVE_TO_SQLITE:
+    sqlite_engine = create_engine('sqlite:///data/movielens.db')
+    df_merge.to_sql('movie_ratings', sqlite_engine, if_exists='replace', index=False)
+
+# Remove the original CSV files
+os.remove(movies_file)
+os.remove(ratings_file)

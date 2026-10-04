@@ -1,0 +1,37 @@
+import numpy as np
+
+# Initialize variables
+num_users_full = 8357
+num_users_additional = 1698
+total_users = num_users_full + num_users_additional
+distance = np.zeros((total_users, total_users))
+lst_users = []
+
+# Read the full distance matrix
+with open("distance_matrix_full.csv", "r") as f:
+    for i, line in enumerate(f):
+        values = line.strip().split(",")
+        lst_users.append(values[0])
+        for j, value in enumerate(values[1:], start=0):
+            distance[i][j] = float(value)
+            distance[j][i] = distance[i][j]
+
+# Read the additional distance matrix
+with open("distance_matrix_1698.csv", "r") as f1:
+    for line in f1:
+        values = line.strip().split(",")
+        lst_users.append(values[0])
+        for j, value in enumerate(values[1:], start=len(lst_users) - 1 - num_users_additional):
+            distance[len(lst_users) - 1][j] = float(value)
+            distance[j][len(lst_users) - 1] = distance[len(lst_users) - 1][j]
+
+# Write the final distance matrix with user IDs
+with open("distance_matrix_final.csv", "w") as f2:
+    for i in range(total_users):
+        f2.write(lst_users[i])
+        f2.write("," + ",".join(map(str, distance[i])) + "\n")
+
+# Write the final distance matrix without user IDs
+with open("distance_matrix_final_withoutid.csv", "w") as f3:
+    for i in range(total_users):
+        f3.write(",".join(map(str, distance[i])) + "\n")

@@ -1,0 +1,69 @@
+from key_exchange import add_point
+from multiprocessing import Pool
+
+def decrypt_secret_key(data):
+    """
+    Decrypts the secret key by repeatedly adding the public point until it matches the target.
+    
+    Args:
+        data (dict): Contains the 'send_data', 'point', and 'param' for decryption.
+        
+    Returns:
+        int: The secret key.
+    """
+    target = data['send_data']
+    public_point = data['point']
+    param = data['param']
+    
+    temp_point = public_point
+    secret_key = 1
+
+    while temp_point != target:
+        secret_key += 1
+        temp_point = add_point(temp_point, public_point, param)
+    
+    return secret_key
+
+def decryption_main(info, param):
+    """
+    Handles the decryption process for both Alice and Bob.
+    
+    Args:
+        info (dict): Contains 'public_point', 'send_data_alice', and 'send_data_bob'.
+        param (dict): Parameters for the elliptic curve.
+        
+    Returns:
+        dict: Contains 'alice_secret' and 'bob_secret' keys.
+    """
+    public_point = info['public_point']
+    send_data_alice = info['send_data_alice']
+    send_data_bob = info['send_data_bob']
+
+    # Prepare the data for the multiprocessing pool
+    data_for_decryption = [
+        {'point': public_point, 'send_data': send_data_alice, 'param': param},
+        {'point': public_point, 'send_data': send_data_bob, 'param': param}
+    ]
+
+    # Use a pool of workers to decrypt both keys in parallel
+    with Pool(2) as pool:
+        secret_keys = pool.map(decrypt_secret_key, data_for_decryption)
+
+    alice_secret_key, bob_secret_key = secret_keys
+    print(f'Alice secret key = {alice_secret_key}')
+    print(f'Bob secret key = {bob_secret_key}')
+    
+    return {'alice_secret': alice_secret_key, 'bob_secret': bob_secret_key}
+
+# Example usage
+if __name__ == "__main__":
+    # Replace these with actual values from your key exchange process
+    example_info = {
+        'public_point': (2, 3),  # Example public point
+        'send_data_alice': (5, 1),  # Example data sent by Alice
+        'send_data_bob': (9, 4)  # Example data sent by Bob
+    }
+    example_param = {'a': 1, 'b': 1, 'p': 23}  # Example curve parameters
+
+    result = decryption_main(example_info, example_param)
+    print(result)

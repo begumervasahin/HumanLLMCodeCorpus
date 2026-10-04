@@ -1,0 +1,91 @@
+import createDataSets as cds
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+
+# Initialize global variables
+sorting_times = []
+operation_counts = []
+average_times = np.zeros(5)
+
+def insertion_sort(data):
+    """Sort the list using insertion sort and count the number of operations performed."""
+    operation_count = 1  # Initial comparison
+
+    for i in range(1, len(data)):
+        current_value = data[i]
+        position = i
+        swap_made = False
+
+        while position > 0 and data[position - 1] > current_value:
+            data[position] = data[position - 1]
+            position -= 1
+            operation_count += 1
+            swap_made = True
+        
+        if not swap_made:
+            operation_count += 1  # Counting the non-swap case
+        
+        data[position] = current_value
+    
+    operation_counts.append(operation_count)
+
+def measure_sorting_times():
+    """Measure the execution time of insertion sort on datasets."""
+    global sorting_times
+    sorting_times.clear()
+
+    for filename in cds.fileNames:
+        data = []
+
+        with open(filename, "r") as file:
+            data = [int(line.strip()) for line in file]
+        
+        start_time = time.time()
+        insertion_sort(data)
+        end_time = time.time()
+        
+        sorting_times.append(end_time - start_time)
+    
+    cds.generateAverageValues(sorting_times, average_times)
+
+def generate_case_data():
+    """Generate data for best, average, and worst case scenarios."""
+    best_case = []
+    average_case = []
+    worst_case = []
+
+    for index, count in enumerate(operation_counts):
+        if index % 9 == 0:
+            best_case.append(count)
+        elif index % 9 == 4:
+            worst_case.append(count)
+        elif index % 9 in [1, 2, 3]:
+            average_case.append(count)
+
+    averaged_case = [
+        sum(average_case[i:i+3]) / 3 
+        for i in range(0, len(average_case), 3)
+    ]
+
+    return best_case, averaged_case, worst_case
+
+def plot_case_data(best_case, averaged_case, worst_case):
+    """Plot the best, average, and worst case scenarios."""
+    input_sizes = [200, 400, 600, 800, 1000]
+
+    plt.plot(input_sizes, best_case, '-ro', label="Best Case")
+    plt.plot(input_sizes, averaged_case, '-bo', label="Average Case")
+    plt.plot(input_sizes, worst_case, '-go', label="Worst Case")
+
+    plt.xlabel("Input Size")
+    plt.ylabel("Operation Count")
+    plt.title("Insertion Sort - Best, Average, and Worst Case Scenarios")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+if __name__ == "__main__":
+    measure_sorting_times()
+    best_case, averaged_case, worst_case = generate_case_data()
+    plot_case_data(best_case, averaged_case, worst_case)

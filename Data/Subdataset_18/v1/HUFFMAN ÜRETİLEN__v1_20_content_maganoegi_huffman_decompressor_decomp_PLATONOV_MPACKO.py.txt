@@ -1,0 +1,61 @@
+import time
+import os
+from tqdm import tqdm
+from decomp_lib import hepia_print, read_user_input, bytes_2_array, json_2_dict, strip_zeros, retranslate, write_2_binary, decompressor_display
+
+def update_bar(pbar, task_name):
+    pbar.set_description(f'{task_name}')
+    pbar.update(1)
+
+def main():
+    # Clear terminal screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+    
+    # Display a custom message
+    hepia_print()
+    print("\n")
+    
+    # Progress bar format
+    bar_format = '{l_bar}{bar}| {n_fmt}/{total_fmt}'
+    
+    with tqdm(total=6, ncols=80, bar_format=bar_format) as pbar:
+        # Read input filenames from the user
+        filenames = read_user_input()
+        update_bar(pbar, 'Open File  ')
+        
+        # Extract filenames
+        file_2_read = filenames[0]
+        json_name = filenames[1]
+        file_2_write = filenames[2]
+        
+        # Convert the input file to a byte array
+        byte_array = bytes_2_array(file_2_read)
+        update_bar(pbar, 'File->Array')
+        
+        # Read the JSON dictionary
+        dictionary = json_2_dict(json_name)
+        update_bar(pbar, 'Json Read  ')
+        
+        # Strip trailing zeros from the byte string
+        byte_string_no_zeros = strip_zeros(byte_array)
+        update_bar(pbar, 'Strip Zeros')
+        
+        # Retranslate the byte string based on the dictionary
+        retranslated_byte_array = retranslate(byte_string_no_zeros, dictionary)
+        update_bar(pbar, 'Retranslate')
+        
+        # Write the retranslated byte array to the output binary file
+        write_2_binary(retranslated_byte_array, file_2_write)
+        update_bar(pbar, 'Done       ')
+        
+        # Pause briefly before closing the progress bar
+        time.sleep(0.1)
+        
+        # Close the progress bar
+        pbar.close()
+        
+        # Display the result of the decompression
+        decompressor_display(file_2_write)
+
+if __name__ == "__main__":
+    main()

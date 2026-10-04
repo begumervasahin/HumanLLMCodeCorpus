@@ -1,0 +1,73 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+def process_emails(words_csv, emails_dir, output_csv):
+    # Start the timer
+    start_time = time()
+    
+    # Load the list of words from the CSV file
+    df = pd.read_csv(words_csv, header=0)
+    words = df['word']
+    words_set = set(words)
+    
+    # Initialize the lemmatizer
+    lemmatizer = WordNetLemmatizer()
+    
+    # Prepare the output CSV file and write the header
+    with open(output_csv, "w") as f:
+        f.write(','.join(words) + ',output\n')
+    
+    # Process each email file in the directory
+    directory = os.fsencode(emails_dir)
+    processed_count = 0
+
+    for file in os.listdir(directory):
+        file_name = os.path.join(emails_dir, file.decode("utf-8"))
+        processed_count += 1
+        
+        # Read the content of the email file
+        with open(file_name, "r", encoding='utf-8', errors='ignore') as file:
+            words_list_array = np.zeros(len(words))
+            content = file.read().split()
+            
+            for word in content:
+                word = lemmatizer.lemmatize(word.lower())
+                
+                if word in stopwords.words('english') or word in string.punctuation or len(word) <= 2 or word.isdigit():
+                    continue
+                
+                if word in words_set:
+                    index = words.get_loc(word)
+                    words_list_array[index] += 1
+        
+        # Write the word frequencies to the output CSV file
+        with open(output_csv, "a") as f:
+            f.write(','.join(map(str, map(int, words_list_array))) + ',')
+            
+            # Append the output label based on the file name length
+            if len(file_name) == 68:
+                f.write("-1")
+            elif len(file_name) == 71:
+                f.write("1")
+            f.write('\n')
+        
+        # Print progress every 100 files
+        if processed_count % 100 == 0:
+            print(f"Processed {processed_count} files")
+    
+    # Print the total time taken
+    elapsed_time = round(time() - start_time, 2)
+    print(f"Time (in seconds) to process all emails: {elapsed_time}")
+
+# Define file paths and directory
+words_csv = 'wordslist.csv'
+emails_dir = 'emails/'
+output_csv = 'frequency.csv'
+
+# Run the email processing function
+process_emails(words_csv, emails_dir, output_csv)

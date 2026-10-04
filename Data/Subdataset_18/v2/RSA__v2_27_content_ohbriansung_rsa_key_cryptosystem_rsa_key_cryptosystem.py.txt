@@ -1,0 +1,77 @@
+import random
+
+def is_prime(num):
+    """Check if a number is prime."""
+    if num <= 1:
+        return False
+    for i in range(2, int(num**0.5) + 1):
+        if num % i == 0:
+            return False
+    return True
+
+def greatest_common_divisor(a, b):
+    """Compute the greatest common divisor of a and b."""
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def egcd(a, b):
+    """Extended Euclidean Algorithm."""
+    if a == 0:
+        return b, 0, 1
+    else:
+        g, y, x = egcd(b % a, a)
+        return g, x - (b // a) * y, y
+
+def modular_multiplicative_inverse(e, lcm):
+    """Find the modular multiplicative inverse of e modulo lcm."""
+    g, x, y = egcd(e, lcm)
+    if g != 1:
+        raise Exception('Modular inverse does not exist.')
+    return x % lcm
+
+def key_gen(p, q):
+    """Generate RSA public and private keys."""
+    if p == q:
+        raise Exception(f'{p} and {q} cannot be the same.')
+    if not is_prime(p) or not is_prime(q):
+        raise Exception(f'Both numbers must be prime. {p} or {q} is not prime.')
+
+    n = p * q
+    lcm = (p - 1) * (q - 1)
+    
+    e = random.randrange(1, lcm)
+    while greatest_common_divisor(e, lcm) != 1:
+        e = random.randrange(1, lcm)
+    
+    d = modular_multiplicative_inverse(e, lcm)
+    return (e, n), (d, n)
+
+def encrypt(pk, plaintext):
+    """Encrypt a plaintext message using the provided key."""
+    key, n = pk
+    return [(ord(char) ** key) % n for char in plaintext]
+
+def decrypt(pk, cipher):
+    """Decrypt a cipher message using the provided key."""
+    key, n = pk
+    return ''.join([chr((char ** key) % n) for char in cipher])
+
+if __name__ == '__main__':
+    try:
+        prime1 = int(input('Input a prime number: '))
+        prime2 = int(input('Input another different prime number: '))
+        
+        public_key, private_key = key_gen(prime1, prime2)
+        print(f'Public key = {public_key}')
+        print(f'Private key = {private_key}')
+        
+        message = input('Input a message: ')
+        encrypted_msg = encrypt(private_key, message)
+        print(f'Encrypted message = {" ".join(map(str, encrypted_msg))}')
+        
+        decrypted_msg = decrypt(public_key, encrypted_msg)
+        print(f'Decrypted message = {decrypted_msg}')
+    
+    except Exception as e:
+        print(f'Error: {e}')

@@ -1,0 +1,50 @@
+from Sticker import Sticker
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+from time import sleep
+import cv2
+
+def initialize_camera():
+    """
+    Initialize the PiCamera.
+    
+    :return: An initialized PiCamera object.
+    """
+    camera = PiCamera()
+    return camera
+
+def capture_image(camera):
+    """
+    Capture an image using the PiCamera.
+    
+    :param camera: The PiCamera object.
+    :return: The captured image array.
+    """
+    raw_capture = PiRGBArray(camera)
+    camera.capture(raw_capture, format="bgr")
+    return raw_capture.array
+
+def find_and_print_sticker(image, sticker_detector):
+    """
+    Find the sticker in the image and print the result.
+    
+    :param image: The image to scan for the sticker.
+    :param sticker_detector: The Sticker detector object.
+    """
+    found, x, y = sticker_detector.find_sticker(image, True)
+    print(f"Sticker found: {found}, Coordinates: ({x}, {y})")
+
+def main():
+    """
+    Main function to initialize the camera, capture images, and find stickers.
+    """
+    camera = initialize_camera()
+    sticker_detector = Sticker()
+
+    while True:
+        sleep(0.5)
+        image = capture_image(camera)
+        find_and_print_sticker(image, sticker_detector)
+
+if __name__ == "__main__":
+    main()

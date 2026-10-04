@@ -1,0 +1,101 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import SGD
+import matplotlib.pyplot as plt
+
+# Function to load and prepare data
+def load_data(train_path, test_path):
+    print('Reading training data')
+    train_data = np.loadtxt(train_path, skiprows=1)
+    y_train = train_data[:, 0]
+    x_train = train_data[:, 1:]
+
+    print('Reading testing data')
+    test_data = np.loadtxt(test_path, skiprows=1)
+
+    # Splitting data into training and validation sets
+    x_test = x_train[-1000:]
+    y_test = y_train[-1000:]
+    x_train = x_train[:-1000]
+    y_train = y_train[:-1000]
+    
+    return x_train, y_train, x_test, y_test, test_data
+
+# Function to build the model
+def build_model(input_dim, dropout_rate):
+    model = Sequential([
+        Dense(1000, activation='relu', input_dim=input_dim),
+        Dropout(dropout_rate),
+        Dense(800, activation='relu'),
+        Dropout(dropout_rate),
+        Dense(200, activation='relu'),
+        Dropout(dropout_rate),
+        Dense(1, activation='sigmoid')
+    ])
+    return model
+
+# Function to compile and train the model
+def compile_and_train(model, x_train, y_train, x_val, y_val):
+    sgd = SGD(learning_rate=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=20, batch_size=128)
+    return model
+
+# Function to evaluate the model
+def evaluate_model(model, x_train, y_train, x_val, y_val):
+    train_score = model.evaluate(x_train, y_train, batch_size=128)
+    val_score = model.evaluate(x_val, y_val, batch_size=128)
+    return train_score[1], val_score[1]
+
+# Function to plot the results
+def plot_results(dropout_rates, train_errors, val_errors):
+    plt.plot(dropout_rates, val_errors, label='Validation Accuracy')
+    plt.plot(dropout_rates, train_errors, label='Training Accuracy')
+    plt.xlabel('Dropout Rate')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig('neural_net_dropout.png')
+
+# Function to write predictions to file
+def write_predictions(predictions, output_path):
+    print('Writing predictions')
+    with open(output_path, 'w') as f:
+        f.write('Id,Prediction\n')
+        for idx, pred in enumerate(predictions, 1):
+            f.write(f'{idx},{int(pred[0])}\n')
+
+# Main script
+def main():
+    train_path = 'training_data.txt'
+    test_path = 'test_data.txt'
+    output_path = 'neural_net_pred.txt'
+    
+    x_train, y_train, x_test, y_test, test_data = load_data(train_path, test_path)
+    
+    val_errors = []
+    train_errors = []
+    dropout_rates = np.arange(0, 1, 0.1)
+    
+    for dropout_rate in dropout_rates:
+        model = build_model(input_dim=x_train.shape[1], dropout_rate=dropout_rate)
+        model = compile_and_train(model, x_train, y_train, x_test, y_test)
+        train_acc, val_acc = evaluate_model(model, x_train, y_train, x_test, y_test)
+        
+        val_errors.append(val_acc)
+        train_errors.append(train_acc)
+        
+        print(f'Validation accuracy with dropout rate {dropout_rate}: {val_acc}')
+    
+    plot_results(dropout_rates, train_errors, val_errors)
+    
+    best_dropout = dropout_rates[np.argmax(val_errors)]
+    best_val_acc = val_errors[np.argmax(val_errors)]
+    print(f'Best test accuracy = {best_val_acc} at dropout rate = {best_dropout}')
+    
+    preds = model.predict_classes(test_data)
+    write_predictions(preds, output_path)
+
+if __name__ == '__main__':
+    main()

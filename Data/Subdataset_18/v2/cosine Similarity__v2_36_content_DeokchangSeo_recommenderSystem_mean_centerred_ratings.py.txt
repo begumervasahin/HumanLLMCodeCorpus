@@ -1,0 +1,49 @@
+"""
+This module calculates mean-centered ratings using Surprise library and numpy.
+"""
+from surprise import Dataset, Reader
+import numpy as np
+from six import iteritems
+
+def mean_centered_ratings(dataset_path):
+    # Load dataset
+    file_path = dataset_path
+    reader = Reader(line_format='user item rating', rating_scale=(1, 7), sep='\t')
+    data = Dataset.load_from_file(file_path, reader)
+    trainset = data.build_full_trainset()
+    
+    # Initialize variables
+    number_users = trainset.n_users
+    number_items = trainset.n_items
+    user_ratings = trainset.ur
+    
+    # Initialize matrices
+    u_matrix = np.zeros((number_users, number_items), dtype=float)
+    avg_rating = np.zeros((number_users, 3), dtype=float)
+    avg_matrix = np.zeros((number_users, number_items), dtype=float)
+    
+    # Compute total ratings per user and average ratings per user
+    for user, item_ratings in iteritems(user_ratings):
+        for item, rating in item_ratings:
+            if rating != 0:
+                u_matrix[user, item] += rating
+                avg_rating[user, 1] += rating
+                avg_rating[user, 2] += 1
+    
+    # Print original user ratings matrix
+    print('Original user ratings:\n', u_matrix, '\n')
+    
+    # Compute average rating per item per user
+    for user, item_ratings in iteritems(user_ratings):
+        for item, rating in item_ratings:
+            if rating != 0:
+                avg_matrix[user, item] += avg_rating[user, 1] / avg_rating[user, 2]
+    
+    # Compute mean-centered ratings matrix
+    mean_matrix = u_matrix - avg_matrix
+    return mean_matrix
+
+# Example usage
+file_path = 'data/table2.1_ratings.txt'
+mean_centered = mean_centered_ratings(file_path)
+print('The mean centered ratings:\n', mean_centered)

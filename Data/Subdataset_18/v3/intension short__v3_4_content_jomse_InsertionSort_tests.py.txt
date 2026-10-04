@@ -1,0 +1,71 @@
+# sortit.py
+
+class FileReadError(Exception):
+    """Raised when there is an error reading from a file."""
+    pass
+
+class NotIntError(Exception):
+    """Raised when conversion to integers fails."""
+    pass
+
+def read_lines(file_path):
+    """
+    Reads lines from a file and returns them as a list of strings.
+
+    Args:
+        file_path (str): The path to the file to be read.
+
+    Returns:
+        list of str: The lines read from the file, with newline characters removed.
+
+    Raises:
+        FileReadError: If there is an error reading from the file.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            return file.read().splitlines()
+    except Exception as error:
+        raise FileReadError(f"Failed to read from '{file_path}': {error}")
+
+def write_file(append, file_path, data):
+    """
+    Writes a list of data to a file. Each item in the list is written on a new line.
+
+    Args:
+        append (bool): If True, appends to the file; otherwise, overwrites the file.
+        file_path (str): The path to the file to write to.
+        data (list of str or list of int): The data to write to the file.
+
+    Raises:
+        FileReadError: If there is an error writing to the file.
+    """
+    mode = 'a' if append else 'w'
+    try:
+        with open(file_path, mode) as file:
+            for item in data:
+                file.write(f"{item}\n")
+    except Exception as error:
+        raise FileReadError(f"Failed to write to '{file_path}': {error}")
+
+def convert_lines_to_ints(strict, lines):
+    """
+    Converts a list of strings to a list of integers.
+
+    Args:
+        strict (bool): If True, raises an error when conversion fails; otherwise, skips invalid entries.
+        lines (list of str): The list of strings to convert.
+
+    Returns:
+        list of int: The converted list of integers.
+
+    Raises:
+        NotIntError: If strict is True and any string cannot be converted to an integer.
+    """
+    result = []
+    for line in lines:
+        try:
+            result.append(int(line))
+        except ValueError:
+            if strict:
+                raise NotIntError(f"Cannot convert '{line}' to an integer.")
+    return result

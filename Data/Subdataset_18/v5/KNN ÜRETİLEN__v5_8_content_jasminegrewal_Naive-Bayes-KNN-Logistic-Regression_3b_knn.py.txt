@@ -1,0 +1,87 @@
+import csv
+import math
+import operator
+
+def calculate_distance(set1, set2, length):
+    """
+    Calculate the Euclidean distance between two data points.
+    
+    Parameters:
+    - set1, set2: Lists of numerical features.
+    - length: Number of features to consider.
+    
+    Returns:
+    - Euclidean distance between set1 and set2.
+    """
+    return math.sqrt(sum((set1[x] - set2[x]) ** 2 for x in range(length)))
+
+def find_neighbors(training_data, test_sample, k):
+    """
+    Find the k nearest neighbors of the test_sample from the training_data.
+    
+    Parameters:
+    - training_data: List of training data points.
+    - test_sample: A single data point to find neighbors for.
+    - k: Number of neighbors to find.
+    
+    Returns:
+    - List of k nearest neighbors.
+    """
+    distances = [(data, calculate_distance(test_sample, data, len(test_sample))) for data in training_data]
+    distances.sort(key=operator.itemgetter(1))
+    return [distances[x][0] for x in range(k)]
+
+def make_prediction(neighbors):
+    """
+    Predict the class label based on the majority vote of the nearest neighbors.
+    
+    Parameters:
+    - neighbors: List of nearest neighbors.
+    
+    Returns:
+    - Predicted class label.
+    """
+    label_counts = {}
+    for neighbor in neighbors:
+        label = neighbor[-1]
+        label_counts[label] = label_counts.get(label, 0) + 1
+
+    return max(label_counts.items(), key=operator.itemgetter(1))[0]
+
+def load_training_data(filename):
+    """
+    Load and preprocess the training data from a CSV file.
+    
+    Parameters:
+    - filename: Path to the CSV file.
+    
+    Returns:
+    - List of preprocessed training data points.
+    """
+    training_data = []
+    with open(filename, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            row[:3] = map(float, row[:3])
+            row[3] = 1 if row[3] == 'M' else 2
+            training_data.append(row)
+    return training_data
+
+def main():
+    training_data = load_training_data('data.csv')
+    
+    k = int(input('Enter number of neighbors to use: '))
+    test_sample = [float(x) for x in input('Enter data to be predicted (comma separated values): ').split(',')]
+    
+    nearest_neighbors = find_neighbors(training_data, test_sample, k)
+    result = make_prediction(nearest_neighbors)
+    
+    print('Nearest neighbors:')
+    for neighbor in nearest_neighbors:
+        print(neighbor)
+    
+    print('Prediction for gender with given data:')
+    print('M' if result == 1 else 'F')
+
+if __name__ == "__main__":
+    main()

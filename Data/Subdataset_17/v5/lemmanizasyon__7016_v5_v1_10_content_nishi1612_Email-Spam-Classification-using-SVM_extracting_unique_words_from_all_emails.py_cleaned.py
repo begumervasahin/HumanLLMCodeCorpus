@@ -1,0 +1,49 @@
+import os
+import nltk
+import time
+import string
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+nltk.download('stopwords')
+nltk.download('wordnet')
+def text_cleanup(text):
+    text_without_punctuation = ''.join([c for c in text if c not in string.punctuation])
+    stop_words = set(stopwords.words('english'))
+    text_without_stopwords = ' '.join([word for word in text_without_punctuation.split() if word.lower() not in stop_words])
+    cleaned_text = [word.lower() for word in text_without_stopwords.split()]
+    return cleaned_text
+def process_files(directory_path):
+    lemmatizer = WordNetLemmatizer()
+    word_count = {}
+    file_count = 0
+    for file in os.listdir(directory_path):
+        file_name = os.fsdecode(file)
+        full_path = os.path.join(os.getcwd(), directory_path, file_name)
+        with open(full_path, "r", encoding='utf-8', errors='ignore') as file:
+            words = text_cleanup(file.read())
+            for word in words:
+                if not (word.isdigit() or len(word) <= 2):
+                    word = lemmatizer.lemmatize(word)
+                    word_count[word] = word_count.get(word, 0) + 1
+        file_count += 1
+        if file_count % 100 == 0:
+            print(f"Processed {file_count} files")
+    return word_count
+def write_word_count_to_csv(word_count, output_file_path):
+    sorted_word_count = sorted(word_count.items(), key=lambda item: item[1], reverse=True)
+    with open(output_file_path, "w", encoding='utf-8') as output_file:
+        output_file.write('word,count\n')
+        for word, count in sorted_word_count:
+            if count < 100:
+                break
+            output_file.write(f"{word},{count}\n")
+def main():
+    start_time = time.time()
+    directory_path = "emails/"
+    output_file_path = "wordslist.csv"
+    word_count = process_files(directory_path)
+    write_word_count_to_csv(word_count, output_file_path)
+    elapsed_time = round(time.time() - start_time, 2)
+    print(f'Time (in seconds) to preprocess the emails: {elapsed_time}')
+if __name__ == "__main__":
+    main()

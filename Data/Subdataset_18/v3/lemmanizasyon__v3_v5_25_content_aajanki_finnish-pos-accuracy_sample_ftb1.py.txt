@@ -1,0 +1,102 @@
+import hashlib
+import re
+
+def main():
+    input_file = 'data/test/ftb1/ftb1u.tsv'
+    output_file = 'data/test/ftb1/ftb1u_sample.tsv'
+
+    # Read and process sentences from the input file
+    sentences = read_sentences_from_file(input_file)
+    selected_sentences = select_sentences_by_hash_prefix(sentences)
+
+    # Report the number of sentences processed and written
+    report_sentences(selected_sentences, sentences)
+
+    # Write the selected sentences to the output file
+    write_sentences_to_file(output_file, selected_sentences)
+    print(f'Sentences written to {output_file}')
+
+def read_sentences_from_file(file_path):
+    """
+    Reads sentences from a file, splitting by blank lines.
+    
+    Args:
+    - file_path (str): Path to the input file.
+    
+    Returns:
+    - List of sentences (list of str).
+    """
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    return list(split_lines_into_sentences(lines))
+
+def split_lines_into_sentences(lines):
+    """
+    Splits lines into sentences based on blank lines as separators.
+    
+    Args:
+    - lines (list of str): Lines read from the file.
+    
+    Yields:
+    - Each sentence as a string.
+    """
+    sentence = []
+    for line in lines:
+        if not line.strip() and sentence:
+            yield ''.join(sentence).strip()
+            sentence = []
+        elif line.strip():
+            sentence.append(line)
+    if sentence:
+        yield ''.join(sentence).strip()
+
+def select_sentences_by_hash_prefix(sentences):
+    """
+    Selects sentences whose SHA256 hash starts with '0'.
+    
+    Args:
+    - sentences (list of str): List of sentences to filter.
+    
+    Returns:
+    - List of selected sentences (list of str).
+    """
+    return [sentence for sentence in sentences if is_hash_starting_with_zero(sentence)]
+
+def is_hash_starting_with_zero(sentence):
+    """
+    Checks if the SHA256 hash of a sentence starts with '0'.
+    
+    Args:
+    - sentence (str): Sentence to hash and check.
+    
+    Returns:
+    - bool: True if hash starts with '0', False otherwise.
+    """
+    hash_digest = hashlib.sha256(sentence.encode('utf-8')).hexdigest()
+    return hash_digest.startswith('0')
+
+def write_sentences_to_file(file_path, sentences):
+    """
+    Writes a list of sentences to a file, each on a new line.
+    
+    Args:
+    - file_path (str): Path to the output file.
+    - sentences (list of str): Sentences to write to the file.
+    """
+    with open(file_path, 'w') as file:
+        file.write('\n'.join(sentences))
+
+def report_sentences(selected_sentences, all_sentences):
+    """
+    Prints a report of the number of selected and total sentences.
+    
+    Args:
+    - selected_sentences (list of str): List of selected sentences.
+    - all_sentences (list of str): List of all sentences.
+    """
+    total_count = len(all_sentences)
+    selected_count = len(selected_sentences)
+    print(f'Sampled {selected_count} out of {total_count} sentences')
+
+if __name__ == '__main__':
+    main()

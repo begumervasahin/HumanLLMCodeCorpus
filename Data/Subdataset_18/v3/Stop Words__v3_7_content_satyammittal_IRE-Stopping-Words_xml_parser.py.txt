@@ -1,0 +1,72 @@
+import xml.etree.ElementTree as etree
+import time
+import os
+import operator
+
+# Configuration for the path and file name
+PATH_WIKI_XML = ''
+FILENAME_WIKI = 'idwiki-20170801-pages-meta-current.xml'
+pathWikiXML = os.path.join(PATH_WIKI_XML, FILENAME_WIKI)
+
+# Initialize counters and other necessary variables
+totalCount = 0
+articleCount = 0
+redirectCount = 0
+templateCount = 0
+title = None
+start_time = time.time()
+
+# Function to strip the namespace from the XML tag name
+def strip_tag_name(tag):
+    idx = tag.rfind("}")
+    if idx != -1:
+        tag = tag[idx + 1:]
+    return tag
+
+# Dictionaries for counting word occurrences and document occurrences
+word_counter = {}
+doc_counter = {}
+
+# Function to process the text content and update word counters
+def process_text(text):
+    current_doc_words = {}
+    if text:
+        words = text.split()
+        for word in words:
+            word_counter[word] = word_counter.get(word, 0) + 1
+            current_doc_words[word] = current_doc_words.get(word, 0) + 1
+    for word in current_doc_words:
+        doc_counter[word] = doc_counter.get(word, 0) + 1
+
+# Parse the XML file
+for event, elem in etree.iterparse(pathWikiXML, events=('start', 'end')):
+    if len(doc_counter) > 500000:
+        break
+    
+    tag_name = strip_tag_name(elem.tag)
+    
+    if event == 'start':
+        if tag_name == 'page':
+            title = ''
+            inrevision = False
+        elif tag_name == 'revision':
+            inrevision = True
+        elif tag_name == 'title':
+            title = elem.text
+        elif tag_name == 'redirect':
+            redirect = elem.attrib.get('title', '')
+        elif tag_name == 'text':
+            process_text(elem.text)
+
+# Calculate result based on word and document counts
+result = {word: word_counter[word] * doc_counter[word] for word in doc_counter}
+
+# Sort the words by their frequency and print the top 50 words
+sorted_words = sorted(word_counter.items(), key=operator.itemgetter(1), reverse=True)
+top_n = 50
+for word, count in sorted_words[:top_n]:
+    print(f"{word}: {count}")
+
+# Print the elapsed time for processing
+elapsed_time = time.time() - start_time
+print(f"Elapsed time: {elapsed_time:.2f} seconds")

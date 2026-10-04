@@ -1,0 +1,55 @@
+import hashlib
+import logging
+import sys
+import time
+import libnacl.sign
+def setup_logging():
+    logging.basicConfig(level=logging.INFO)
+def read_file(filename):
+    with open(filename, "r") as file:
+        return file.readlines()
+def generate_keys():
+    private_key = libnacl.sign.Signer()
+    public_key = libnacl.sign.Verifier(private_key.hex_vk())
+    return private_key, public_key
+def sign_message(private_key, message):
+    return private_key.sign(message.encode()), private_key.signature(message.encode())
+def verify_message(public_key, signature, message):
+    try:
+        public_key.verify(signature + message.encode())
+        logging.debug("Verified: True")
+    except ValueError as e:
+        logging.warning("ValueError: %s", e)
+        sys.exit(1)
+def log_time_statistics(start, key_time, sign_time, verify_time):
+    total_time = key_time + sign_time + verify_time
+    logging.info(f"Total time cost for generating key: {key_time:.6f} s")
+    logging.info(f"Total time cost for signing the message: {sign_time:.6f} s")
+    logging.info(f"Total time cost for verifying the message: {verify_time:.6f} s")
+    logging.info(f"Total time cost for key generation, message signing, and verifying: {total_time:.6f} s")
+    logging.info(f"Total system time: {time.time() - start:.6f} s")
+def main():
+    setup_logging()
+    if len(sys.argv) < 2:
+        logging.error("Please provide a filename as an argument.")
+        sys.exit(1)
+    filename = sys.argv[1]
+    messages = read_file(filename)
+    key_time, sign_time, verify_time = 0, 0, 0
+    logging.info("Started libnacl libsodium Ed25519 operations")
+    start = time.time()
+    for message in messages:
+        message = message.strip()
+        logging.debug(message)
+        start_keygen = time.time()
+        private_key, public_key = generate_keys()
+        key_time += time.time() - start_keygen
+        start_sign = time.time()
+        signed_message, signature = sign_message(private_key, message)
+        sign_time += time.time() - start_sign
+        start_verify = time.time()
+        verify_message(public_key, signature, message)
+        verify_time += time.time() - start_verify
+    log_time_statistics(start, key_time, sign_time, verify_time)
+if __name__ == "__main__":
+    main()

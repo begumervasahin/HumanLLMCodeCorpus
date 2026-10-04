@@ -1,0 +1,66 @@
+import os
+import requests
+from bs4 import BeautifulSoup
+import constants as const
+
+def month_to_digit(month):
+    """Convert a month name to its corresponding two-digit representation."""
+    month_dict = {
+        'January': '01', 'February': '02', 'March': '03',
+        'April': '04', 'May': '05', 'June': '06', 'July': '07',
+        'August': '08', 'September': '09', 'October': '10',
+        'November': '11', 'December': '12'
+    }
+    return month_dict.get(month, '00')
+
+def convert_to_filename(date_string):
+    """Convert a date string into a filename.
+
+    Args:
+        date_string (str): Date string in the format "Day Month Year".
+
+    Returns:
+        tuple: A tuple containing the filename and the year.
+    """
+    day, month, year = date_string.split()
+    month_digit = month_to_digit(month)
+    day = day.zfill(2)  # Zero padding for day
+    filename = "1" + year[2:] + month_digit + day
+    return filename, year
+
+def fetch_data(index):
+    """Fetch data from the website for a given index.
+
+    Args:
+        index (int): Index of the page to fetch data from.
+    """
+    url = f"{const.URL_PREFIX}{index}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = soup.find_all("p", class_="text-center")
+
+        if len(links) != 1:
+            title = soup.find("h1").text
+            date = soup.find_all("div", class_="myd")[1].text
+            content = soup.find("p", class_="").text
+
+            filename, year = convert_to_filename(date)
+            dataset_dir = "DataSet"
+            filename_with_path = os.path.join(dataset_dir, f"{filename}{index}.utf8")
+
+            with open(filename_with_path, 'w', encoding='utf-8') as file:
+                file.write(f"<DOC>\n<DOCNO>{filename}</DOCNO>\n<TEXT>\n{title}\n{date}\n{content}\n</TEXT>\n</DOC>")
+            print(f"Writing file {filename} to {dataset_dir}")
+        else:
+            print(f"File missing at {url}")
+    else:
+        print(f"Failed to fetch data from {url}. Status code: {response.status_code}")
+
+def main():
+    """Main function."""
+    print('This program is obsolete since the website structure has changed')
+
+if __name__ == "__main__":
+    main()

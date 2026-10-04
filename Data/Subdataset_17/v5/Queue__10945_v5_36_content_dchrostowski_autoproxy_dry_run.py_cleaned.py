@@ -1,0 +1,77 @@
+import random
+import time
+import threading
+from scrapy_autoproxy.config import configuration
+from scrapy_autoproxy.storage_manager import StorageManager, Redis
+from scrapy_autoproxy.proxy_manager import ProxyManager
+redis = Redis(**configuration.redis_config)
+redis.flushall()
+TEST_SITES = [
+    'https:
+    'http:
+    'http:
+    'http:
+    'http:
+    'http:
+    'http:
+]
+CRAWL_STATUSES = [True, False]
+successful = {site: 0 for site in TEST_SITES}
+failures = {site: 0 for site in TEST_SITES}
+def print_scoreboard():
+    print("--------------------------------------")
+    print("Successes:")
+    print(successful)
+    print("--------------------------------------")
+    print("Failures:")
+    print(failures)
+    print("--------------------------------------")
+def get_running_threads_count():
+    running = 0
+    for t in threading.enumerate():
+        print(t)
+        if t.is_alive():
+            running += 1
+    return running
+def worker():
+    print(f"{threading.current_thread().getName()} starting")
+    time.sleep(random.randint(1, 10))
+    pm = ProxyManager()
+    for _ in range(5):
+        url = random.choice(TEST_SITES)
+        print(f"{threading.current_thread().getName()} crawling {url}")
+        proxy = pm.get_proxy(url)
+        time.sleep(random.randint(1, 12))
+        success = random.choice(CRAWL_STATUSES)
+        print(f"{threading.current_thread().getName()} crawl success={success}")
+        if success:
+            successful[url] += 1
+        else:
+            failures[url] += 1
+        proxy.callback(success=success)
+        time.sleep(random.randint(1, 6))
+    print(f"{threading.current_thread().getName()} stopping")
+def create_workers(num_workers=5):
+    workers = []
+    for i in range(num_workers):
+        worker_name = f"worker_{i}"
+        worker_thread = threading.Thread(name=worker_name, target=worker)
+        workers.append(worker_thread)
+    return workers
+def daemon():
+    print(f"{threading.current_thread().getName()} starting daemon.")
+    for w in workers:
+        w.start()
+    time.sleep(15)
+    while True:
+        print_scoreboard()
+        if get_running_threads_count() == 1:
+            break
+        time.sleep(5)
+    sm = StorageManager()
+    sm.sync_to_db()
+    print_scoreboard()
+workers = create_workers()
+daemon_thread = threading.Thread(name='daemon', target=daemon)
+daemon_thread.setDaemon(True)
+daemon_thread.start()

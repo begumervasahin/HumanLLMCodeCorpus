@@ -1,0 +1,55 @@
+from collections import defaultdict
+from words import get_text, words
+
+def create_index(files):
+    """
+    Given a list of fully-qualified filenames, build an index mapping words to
+    sets of document IDs. A document ID is the index of the filename in the files
+    list. For each word in file i, add i to the set of document IDs containing
+    that word. Return a dictionary mapping words to sets of document IDs.
+    """
+    if not files:
+        return None
+
+    index = defaultdict(set)
+    
+    for doc_id, file in enumerate(files):
+        content = get_text(file)
+        key_words = words(content)
+        for word in key_words:
+            index[word].add(doc_id)
+    
+    return index
+
+def index_search(files, index, terms):
+    """
+    Given an index and a list of filenames, return a list of filenames whose content
+    contains all words in the terms list. The terms list is normalized using the words()
+    function. The index is used to find matching files; the files are not opened
+    for searching.
+    """
+    if not files or not index or not terms:
+        return None
+
+    # Find sets of document IDs for each term
+    matching_doc_ids_sets = []
+    for term in terms:
+        doc_ids = index.get(term)
+        if doc_ids:
+            matching_doc_ids_sets.append(doc_ids)
+        else:
+            return None
+    
+    # Intersect the sets of document IDs
+    if matching_doc_ids_sets:
+        intersecting_ids = set.intersection(*matching_doc_ids_sets)
+        return [files[doc_id] for doc_id in intersecting_ids]
+    
+    return None
+
+# Example usage:
+# files = ['file1.txt', 'file2.txt', 'file3.txt']
+# index = create_index(files)
+# terms = ['word1', 'word2']
+# matching_files = index_search(files, index, terms)
+# print(matching_files)

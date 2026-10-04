@@ -1,0 +1,66 @@
+import sys
+import string
+from collections import Counter
+import numpy as np
+LANGUAGES = ['EN', 'DE']
+DEFAULT_LANGUAGE = 'EN'
+DEFAULT_FILE = 'files/sample.txt'
+DEFAULT_STOPWORDS = f'stopwords/stop_words_{DEFAULT_LANGUAGE}.txt'
+DEFAULT_OUTPUT_FILE = 'out.txt'
+def main():
+    selected_language = get_language()
+    stopwords_file = get_stopwords_file(selected_language)
+    output_file = get_output_file()
+    print(f"Using '{DEFAULT_FILE}' as input file and '{stopwords_file}' as stop words reference, outputting to '{output_file}'.\n")
+    if len(sys.argv) > 2:
+        print_usage_instructions()
+        sys.exit()
+    elif len(sys.argv) == 2:
+        input_file = sys.argv[1]
+    else:
+        input_file = DEFAULT_FILE
+    index_text(input_file, stopwords_file, output_file)
+def print_usage_instructions():
+    print("\nUsage: python indexer.py <yourFile>")
+    print(f"If no arguments are given, '{DEFAULT_FILE}' and '{DEFAULT_STOPWORDS}' will be used as default files.\n")
+def get_language():
+    prompt = f"Select Language from the following ({', '.join(LANGUAGES)}) - default is {DEFAULT_LANGUAGE}: "
+    user_input = input(prompt).upper()
+    if user_input in LANGUAGES:
+        print(f"Parsing your text with the {user_input} stopwords.")
+        return user_input
+    else:
+        print("Not a valid language. Assuming English...")
+        return DEFAULT_LANGUAGE
+def get_stopwords_file(language):
+    return f'stopwords/stop_words_{language}.txt'
+def get_output_file():
+    prompt = f"Select name of output text file (default is {DEFAULT_OUTPUT_FILE}): "
+    user_input = input(prompt)
+    if not user_input:
+        return DEFAULT_OUTPUT_FILE
+    return user_input if user_input.endswith('.txt') else f'{user_input}.txt'
+def index_text(input_file, stopwords_file, output_file):
+    text = read_file(input_file).lower()
+    stopwords = read_file(stopwords_file, encoding='utf-8-sig').splitlines()
+    words = extract_words(text)
+    filtered_words = [word for word in words if word and word not in stopwords]
+    word_counts = Counter(filtered_words)
+    frequent_words = get_frequent_words(word_counts)
+    sorted_frequent_words = sorted(frequent_words.items())
+    write_output(sorted_frequent_words, output_file)
+def read_file(file_path, encoding='utf-8'):
+    with open(file_path, 'r', encoding=encoding) as file:
+        return file.read()
+def extract_words(text):
+    return [word.strip(string.punctuation) for word in text.split()]
+def get_frequent_words(word_counts):
+    total_words = sum(word_counts.values())
+    average_frequency = total_words / len(word_counts)
+    return {word: count for word, count in word_counts.items() if count >= average_frequency}
+def write_output(frequent_words, output_file):
+    with open(output_file, 'w', encoding='utf-8') as file:
+        for word, count in frequent_words:
+            file.write(f'{word}: {count}\n')
+if __name__ == '__main__':
+    main()

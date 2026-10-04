@@ -1,0 +1,112 @@
+import cv2
+
+class AppError(Exception):
+    """Custom exception class for application-specific errors."""
+    pass
+
+def int_to_bin(i, length):
+    """Convert an integer to a binary string of a given length."""
+    binary = bin(i)[2:]  # Convert to binary and remove '0b' prefix
+    if len(binary) > length:
+        raise AppError("Bit size is larger than expected.")
+    return binary.zfill(length)
+
+def char_to_bin(c):
+    """Convert a character to an 8-bit binary string."""
+    return int_to_bin(ord(c), 8)
+
+class LSB:
+    MAX_BIT_LENGTH = 16
+
+    def __init__(self, img):
+        self.size_x, self.size_y, self.size_channel = img.shape
+        self.image = img
+        self.cur_x = 0
+        self.cur_y = 0
+        self.cur_channel = 0
+
+    def next_pixel(self):
+        """Move to the next pixel/channel in the image."""
+        if self.cur_channel < self.size_channel - 1:
+            self.cur_channel += 1
+        else:
+            self.cur_channel = 0
+            if self.cur_y < self.size_y - 1:
+                self.cur_y += 1
+            else:
+                self.cur_y = 0
+                if self.cur_x < self.size_x - 1:
+                    self.cur_x += 1
+                else:
+                    raise AppError("Need a larger image.")
+
+    def put_bit(self, bit):
+        """Embed a single bit into the current pixel/channel."""
+        v = self.image[self.cur_x, self.cur_y][self.cur_channel]
+        binary_v = bin(v)[2:].zfill(8)
+        if binary_v[-1] != bit:
+            binary_v = binary_v[:-1] + bit
+        self.image[self.cur_x, self.cur_y][self.cur_channel] = int(binary_v, 2)
+        self.next_pixel()
+
+    def put_bits(self, bits):
+        """Embed multiple bits into the image."""
+        for bit in bits:
+            self.put_bit(bit)
+
+    def read_bit(self):
+        """Read a single bit from the current pixel/channel."""
+        v = self.image[self.cur_x, self.cur_y][self.cur_channel]
+        return bin(v)[-1]
+
+    def read_bits(self, length):
+        """Read multiple bits from the image."""
+        bits = ""
+        for _ in range(length):
+            bits += self.read_bit()
+            self.next_pixel()
+        return bits
+
+    def embed(self, text):
+        """Embed a text message into the image."""
+        text_length = int_to_bin(len(text), self.MAX_BIT_LENGTH)
+        self.put_bits(text_length)
+        for char in text:
+            bits = char_to_bin(char)
+            self.put_bits(bits)
+
+    def extract(self):
+        """Extract a text message from the image."""
+        length = int(self.read_bits(self.MAX_BIT_LENGTH), 2)
+        text = ""
+        for _ in range(length):
+            char = int(self.read_bits(8), 2)
+            text += chr(char)
+        return text
+
+    def save(self, dst_path):
+        """Save the image with the embedded message."""
+        cv2.imwrite(dst_path, self.image)
+
+if __name__ == "__main__":
+    image_path = 'dst.png'
+    output_path = 'output.png'
+    text_to_embed = "Hidden Message"
+
+    # Embed the text into the image
+    img = cv2.imread(image_path)
+    if img is None:
+        raise AppError(f"Image not found at path: {image_path}")
+    
+    lsb = LSB(img)
+    lsb.embed(text_to_embed)
+    lsb.save(output_path)
+
+    # Extract the text from the image
+    img = cv2.imread(output_path)
+    if img is None:
+        raise AppError(f"Image not found at path: {output_path}")
+    
+    lsb = LSB(img)
+    extracted_text = lsb.extract()
+    print("Extracted text:", extracted_text)

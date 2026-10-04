@@ -1,0 +1,84 @@
+import tensorflow as tf
+import numpy as np
+
+# Dictionary to store the primality of numbers
+prime_states = {
+    2: True,
+    3: True,
+    4: False
+}
+
+def is_prime(number):
+    """
+    Check if a given number is prime and cache the result in prime_states.
+    """
+    if number not in prime_states:
+        prime_states[number] = True
+        for num in range(2, int(number ** 0.5) + 1):
+            if number % num == 0:
+                prime_states[number] = False
+                break
+    return prime_states[number]
+
+def get_next_prime(x):
+    """
+    Get the next prime number greater than or equal to x.
+    """
+    while not is_prime(x):
+        x += 1
+    return x
+
+def build_model():
+    """
+    Build and compile the neural network model.
+    """
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(24, activation='relu', input_dim=1),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(24, activation='relu'),
+        tf.keras.layers.Dense(1)
+    ])
+    model.compile(optimizer=tf.keras.optimizers.Adam(), loss=tf.keras.losses.MeanAbsoluteError())
+    return model
+
+def train_model(model, batch_size=64, steps=500):
+    """
+    Train the model with given batch size and steps.
+    """
+    for step in range(steps):
+        x = np.array(range(step * batch_size, (step + 1) * batch_size))
+        y = np.array([get_next_prime(n) for n in x])
+        loss = model.train_on_batch(x, y)
+        print(f'Step {step + 1}/{steps}, Loss: {loss}')
+
+def test_model(model, start, count=50):
+    """
+    Test the model with new data.
+    """
+    for i in range(start, start + count):
+        x = np.array([i]).reshape((1, 1))
+        expected = get_next_prime(i)
+        pred = model.predict(x)
+        print(f"Input: {i}\tExpected: {expected}\tPredicted: {int(pred[0])}")
+
+if __name__ == "__main__":
+    # Get the next prime number starting from 500
+    next_prime = get_next_prime(500)
+    print(next_prime)
+
+    # Build and compile the neural network model
+    prime_model = build_model()
+    prime_model.summary()
+
+    # Training parameters
+    batch_size = 64
+    steps = 500
+
+    # Train the model
+    train_model(prime_model, batch_size, steps)
+
+    # Test the model with new data
+    test_start = steps * batch_size
+    test_model(prime_model, test_start)

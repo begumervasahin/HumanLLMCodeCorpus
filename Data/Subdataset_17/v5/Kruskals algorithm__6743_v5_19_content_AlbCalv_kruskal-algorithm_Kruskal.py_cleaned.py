@@ -1,0 +1,56 @@
+class Graph:
+    def __init__(self, vertices):
+        self.V = vertices
+        self.edges = []
+        self.parent = []
+        self.rank = []
+    def initialize_disjoint_sets(self):
+        self.parent = list(range(self.V))
+        self.rank = [0] * self.V
+    def add_edge(self, u, v, weight):
+        self.edges.append((u, v, weight))
+    def find(self, vertex):
+        if self.parent[vertex] != vertex:
+            self.parent[vertex] = self.find(self.parent[vertex])
+        return self.parent[vertex]
+    def union(self, set1, set2):
+        root1 = self.find(set1)
+        root2 = self.find(set2)
+        if root1 != root2:
+            if self.rank[root1] > self.rank[root2]:
+                self.parent[root2] = root1
+            elif self.rank[root1] < self.rank[root2]:
+                self.parent[root1] = root2
+            else:
+                self.parent[root2] = root1
+                self.rank[root1] += 1
+def kruskal(graph):
+    graph.initialize_disjoint_sets()
+    mst = []
+    sorted_edges = sorted(graph.edges, key=lambda edge: edge[2])
+    for u, v, weight in sorted_edges:
+        root_u = graph.find(u)
+        root_v = graph.find(v)
+        if root_u != root_v:
+            mst.append((u, v, weight))
+            graph.union(root_u, root_v)
+        if len(mst) == graph.V - 1:
+            break
+    print_mst(mst)
+    return mst
+def print_mst(mst):
+    print("Resulting Minimum Spanning Tree (MST):")
+    total_weight = sum(weight for _, _, weight in mst)
+    for u, v, weight in mst:
+        print(f"{u} -- {v} == Weight: {weight}")
+    print(f"The total weight of the MST is {total_weight}")
+g = Graph(5)
+g.add_edge(0, 1, 9)
+g.add_edge(0, 2, 7)
+g.add_edge(0, 3, 2)
+g.add_edge(1, 2, 2)
+g.add_edge(2, 3, 2)
+g.add_edge(1, 3, 2)
+g.add_edge(1, 4, 3)
+g.add_edge(3, 4, 3)
+kruskal(g)

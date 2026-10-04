@@ -1,0 +1,175 @@
+import math
+import os
+import numpy as np
+import pycuda.driver as cuda
+import pycuda.autoinit
+from pycuda.compiler import SourceModule
+kernel = SourceModule()
+class Primes:
+    def __init__(self, cache_results=False):
+        self.set_primes = set()
+        self.set_primes_to_be_excluded = set()
+        self.set_twinprimes = set()
+        self.set_nonprimes = set()
+        self.list_sorted_primes = []
+        self.list_sorted_twinprimes = []
+        self.list_sorted_nonprimes = []
+        self.list_of_primes_used = []
+        self.caching_primality_results = cache_results
+    def init_set(self, filename, number_type):
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                for line in f:
+                    numbers = map(int, line.strip('[]\n').split(','))
+                    for number in numbers:
+                        if number_type == 1:
+                            self.add_to_primes_set(number)
+                        elif number_type == 2:
+                            self.add_to_twinprimes_set(number)
+                        elif number_type == 3:
+                            self.add_to_nonprimes_set(number)
+    def get_list_sorted_primes(self):
+        return self.list_sorted_primes
+    def get_list_sorted_twinprimes(self):
+        return self.list_sorted_twinprimes
+    def get_list_sorted_nonprimes(self):
+        return self.list_sorted_nonprimes
+    def is_in_primes_set(self, n):
+        return n in self.set_primes
+    def is_in_primes_set_to_be_excluded(self, n):
+        return n in self.set_primes_to_be_excluded
+    def is_in_twinprimes_set(self, n):
+        return n in self.set_twinprimes
+    def is_in_nonprimes_set(self, n):
+        return n in self.set_nonprimes
+    def sort_primes_set(self):
+        self.list_sorted_primes = sorted(self.set_primes)
+    def sort_twinprimes_set(self):
+        self.list_sorted_twinprimes = sorted(self.set_twinprimes)
+    def sort_nonprimes_set(self):
+        self.list_sorted_nonprimes = sorted(self.set_nonprimes)
+    def add_to_primes_set(self, n):
+        self.set_primes.add(n)
+    def add_to_twinprimes_set(self, n):
+        self.set_twinprimes.add(n)
+    def add_to_nonprimes_set(self, n):
+        self.set_nonprimes.add(n)
+    def add_to_primes_set_to_be_excluded(self, n):
+        self.set_primes_to_be_excluded.add(n)
+    def is_prime(self, n):
+        if n in self.set_primes_to_be_excluded or n < 2:
+            return False
+        if n in self.set_primes:
+            return True
+        if n in self.set_nonprimes:
+            return False
+        if n % 2 == 0 or n % 3 == 0:
+            return False
+        i = 5
+        while i * i <= n:
+            if n % i == 0 or n % (i + 2) == 0:
+                if self.caching_primality_results:
+                    self.add_to_nonprimes_set(n)
+                return False
+            i += 6
+        if self.caching_primality_results:
+            self.add_to_primes_set(n)
+        return True
+    def is_twinprime(self, n):
+        if n in self.set_twinprimes:
+            return True
+        if n in self.set_nonprimes:
+            return False
+        if self.is_lesser_twin_prime(n) or self.is_greater_twin_prime(n):
+            if self.caching_primality_results:
+                self.add_to_twinprimes_set(n)
+            return True
+        if self.caching_primality_results:
+            self.add_to_nonprimes_set(n)
+        return False
+    def is_lesser_twin_prime(self, n):
+        return self.is_prime(n) and self.is_prime(n + 2)
+    def is_greater_twin_prime(self, n):
+        return self.is_prime(n) and self.is_prime(n - 2)
+    def is_prime_cuda(self, n):
+        def min2(lst, bound=0):
+            for item in lst:
+                if item > bound:
+                    return item
+            return None
+        first_factor = kernel.get_function('first_factor')
+        if n in (1, 2, 3):
+            return n != 1
+        all_primes = np.array([2, 3], dtype=np.int32)
+        num_primes = len(all_primes)
+        result = np.zeros(num_primes, dtype=np.int32)
+        first_factor(np.int64(n), cuda.InOut(result), cuda.In(all_primes), block=(384, 1, 1))
+        prime = min2(result, 1)
+        return prime is None
+    def get_ith_prime(self, i):
+        if i < len(self.list_sorted_primes):
+            return self.list_sorted_primes[i]
+        n = self.list_sorted_primes[-1] if self.list_sorted_primes else 2
+        while len(self.list_sorted_primes) <= i:
+            n += 1
+            if self.is_prime(n):
+                self.list_sorted_primes.append(n)
+        return self.list_sorted_primes[i]
+    def get_ith_twinprime(self, i):
+        if i < len(self.list_sorted_twinprimes):
+            return self.list_sorted_twinprimes[i]
+        n = self.list_sorted_twinprimes[-1] if self.list_sorted_twinprimes else 3
+        while len(self.list_sorted_twinprimes) <= i:
+            n += 1
+            if self.is_twinprime(n):
+                self.list_sorted_twinprimes.append(n)
+        return self.list_sorted_twinprimes[i]
+    def get_ith_composite(self, i):
+        if i < len(self.list_sorted_nonprimes):
+            return self.list_sorted_nonprimes[i]
+        n = self.list_sorted_nonprimes[-1] if self.list_sorted_nonprimes else 4
+        while len(self.list_sorted_nonprimes) <= i:
+            n += 1
+            if not self.is_prime(n):
+                self.list_sorted_nonprimes.append(n)
+        return self.list_sorted_nonprimes[i]
+    def get_all_primes_leq(self, n):
+        return sum(1 for i in range(n + 1) if self.is_prime(i))
+    def factorize(self, n):
+        if n <= 1:
+            return []
+        factors = []
+        for i in range(2, math.isqrt(n) + 1):
+            while n % i == 0:
+                factors.append(i)
+                n
+        if n > 1:
+            factors.append(n)
+        return factors
+    def is_symmetric_prime(self, n, i):
+        k1, k2 = n - i, n + i
+        if self.is_prime(k1) and self.is_prime(k2):
+            return True, k1, k2
+        return False, 0, 0
+    def is_6km1(self, n):
+        return n > 3 and n % 6 == 5 and self.is_prime(n)
+    def is_6kp1(self, n):
+        return n > 3 and n % 6 == 1 and self.is_prime(n)
+    def find_unique_prime_in_sum(self, n):
+        print("Starting sum decomposition for:", n)
+        k = 1
+        while True:
+            q = self.get_ith_prime(k)
+            print("Current prime:", q, "Index:", k, "Used primes:", self.list_of_primes_used)
+            if 2 <= n - q and q not in self.list_of_primes_used:
+                print("Next step in sum decomposition:", n - q)
+                self.list_of_primes_used.append(q)
+                self.find_unique_prime_in_sum(n - q)
+            elif 2 <= n - q:
+                print("Prime already used:", n - q)
+                k += 1
+            else:
+                print("Adding prime to used list:", q)
+                self.list_of_primes_used.append(q)
+                break
+        print("Sum decomposition result:", n, self.list_of_primes_used)

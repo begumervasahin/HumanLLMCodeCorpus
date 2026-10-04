@@ -1,0 +1,27 @@
+import inspect
+class DPifier:
+    def __init__(self, f, lambda_mode=False):
+        self.dp = {}
+        self.Y = self._y_combinator()
+        self.f = f if lambda_mode else self._parse_function(f)
+    def __call__(self, *args):
+        return self.Y(self.f)(*args)
+    def _y_combinator(self):
+        def Y(f):
+            def g(*args):
+                if args in self.dp:
+                    return self.dp[args]
+                else:
+                    result = f(Y(f))(*args)
+                    self.dp[args] = result
+                    return result
+            return g
+        return Y
+    def _parse_function(self, f):
+        function_name = f.__name__
+        source_code = inspect.getsource(f)
+        modified_code = source_code.replace(function_name, 'h', 1).replace(function_name + '(', 'abc(', 1)
+        def g(abc):
+            exec(modified_code, {'abc': abc}, globals())
+            return h
+        return g

@@ -1,0 +1,66 @@
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException, TimeoutException, WebDriverException
+import time
+
+def get_search_results(driver, url):
+    while True:
+        driver.get(url)
+        while True:
+            try:
+                results = driver.find_elements(By.XPATH, '//*[@id="rso"]')
+                for result in results:
+                    print(result.text)
+                
+                next_button = driver.find_element(By.XPATH, '//*[@id="pnnext"]')
+                next_button.click()
+            except NoSuchElementException:
+                # Handle captcha
+                try:
+                    frame = driver.find_element(By.XPATH, '//iframe[contains(@src, "recaptcha")]')
+                    driver.switch_to.frame(frame)
+                    captcha_box = driver.find_element(By.XPATH, "//*[@id='recaptcha-anchor']")
+                    break
+                except NoSuchElementException:
+                    # If no captcha found, end the loop
+                    return
+            except TimeoutException:
+                # If we timeout, continue
+                continue
+
+def setup_proxy():
+    profile = webdriver.FirefoxProfile()
+    driver = webdriver.Firefox(firefox_profile=profile)
+    driver.get("https://www.sslproxies.org/")
+    
+    tbody = driver.find_element(By.TAG_NAME, "tbody")
+    rows = tbody.find_elements(By.TAG_NAME, "tr")
+    for row in rows:
+        columns = row.text.split()
+        if len(columns) >= 2:
+            host = columns[0]
+            port = columns[1]
+            profile.set_preference("network.proxy.type", 1)
+            profile.set_preference("network.proxy.http", host)
+            profile.set_preference("network.proxy.http_port", int(port))
+            profile.set_preference("network.proxy.ssl", host)
+            profile.set_preference("network.proxy.ssl_port", int(port))
+            break
+    
+    driver.quit()
+    return profile
+
+def main():
+    url = "http://www.google.com/search?q=chanel"
+    profile = setup_proxy()
+    driver = webdriver.Firefox(firefox_profile=profile)
+    
+    try:
+        get_search_results(driver, url)
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    main()

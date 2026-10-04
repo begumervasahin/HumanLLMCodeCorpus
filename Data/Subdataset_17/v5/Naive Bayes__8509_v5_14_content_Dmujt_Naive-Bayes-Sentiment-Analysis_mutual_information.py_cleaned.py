@@ -1,0 +1,75 @@
+from model import SentimentNaiveBayes, format_data, FOLD1_DATA, FOLD2_DATA, FOLD3_DATA, POS_FILES, NEG_FILES
+import math
+import operator
+def prepare_data():
+    format_data(POS_FILES, 1)
+    format_data(NEG_FILES, -1)
+    print(f"PREPARED FOLD 1 DOCS: {len(FOLD1_DATA)}")
+    print(f"PREPARED FOLD 2 DOCS: {len(FOLD2_DATA)}")
+    print(f"PREPARED FOLD 3 DOCS: {len(FOLD3_DATA)}")
+def run_trial(train_data, test_data):
+    model = SentimentNaiveBayes()
+    model.train(train_data)
+    return model.accuracy(test_data)
+def calculate_average_accuracy():
+    total_accuracy = 0
+    total_accuracy += run_trial(FOLD1_DATA + FOLD2_DATA, FOLD3_DATA)
+    total_accuracy += run_trial(FOLD1_DATA + FOLD3_DATA, FOLD2_DATA)
+    total_accuracy += run_trial(FOLD3_DATA + FOLD2_DATA, FOLD1_DATA)
+    average_accuracy = (total_accuracy / 3) * 100
+    print(f"The average accuracy across 3-folds is {average_accuracy:.2f}%")
+def calculate_mutual_information(token_data):
+    vocab = {}
+    total_docs = len(token_data)
+    pos_count = sum(1 for doc in token_data if doc[1] == 1)
+    neg_count = total_docs - pos_count
+    for tokens, sentiment in token_data:
+        already_counted = set()
+        for token in tokens:
+            if token not in already_counted:
+                if token not in vocab:
+                    vocab[token] = [0, 0]
+                vocab[token][sentiment == 1] += 1
+                already_counted.add(token)
+    print("Vocab Counted...")
+    mutual_information = {}
+    for token, counts in vocab.items():
+        n11 = counts[0]
+        n01 = counts[1]
+        n10 = pos_count - n11
+        n00 = neg_count - n01
+        mi = 0
+        if n11 > 0:
+            mi += (n11 / total_docs) * math.log2((total_docs * n11) / ((n11 + n10) * (n11 + n01)))
+        if n01 > 0:
+            mi += (n01 / total_docs) * math.log2((total_docs * n01) / ((n01 + n00) * (n11 + n01)))
+        if n10 > 0:
+            mi += (n10 / total_docs) * math.log2((total_docs * n10) / ((n11 + n10) * (n10 + n00)))
+        if n00 > 0:
+            mi += (n00 / total_docs) * math.log2((total_docs * n00) / ((n01 + n00) * (n10 + n00)))
+        mutual_information[token] = mi
+    print("Mutual Information Calculated...\n")
+    return mutual_information
+def print_mutual_information(mutual_information):
+    print(f"Mutual information for 'the': {mutual_information.get('the', 0):.4f}")
+    print(f"Mutual information for 'like': {mutual_information.get('like', 0):.4f}")
+    print(f"Mutual information for 'good': {mutual_information.get('good', 0):.4f}")
+    print(f"Mutual information for 'movie': {mutual_information.get('movie', 0):.4f}")
+    print("\nTop 10 Words:")
+    sorted_vocab = sorted(mutual_information.items(), key=operator.itemgetter(1), reverse=True)
+    top_10_words = sorted_vocab[:10]
+    for idx, (word, mi) in enumerate(top_10_words, start=1):
+        print(f"{idx}) {word}: {mi:.4f}")
+    print("Unexpected:")
+    print(f"? : {mutual_information.get('?', 0):.4f}")
+    print(f"also : {mutual_information.get('also', 0):.4f}")
+    print(f"both : {mutual_information.get('both', 0):.4f}")
+    print("\nAll words sorted by mutual information:")
+    for idx, (word, mi) in enumerate(sorted_vocab, start=1):
+        print(f"{idx}) {word}: {mi:.4f}")
+if __name__ == "__main__":
+    prepare_data()
+    calculate_average_accuracy()
+    token_data = FOLD1_DATA + FOLD2_DATA + FOLD3_DATA
+    mutual_information = calculate_mutual_information(token_data)
+    print_mutual_information(mutual_information)

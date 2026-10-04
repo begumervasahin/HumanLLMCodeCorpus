@@ -1,0 +1,98 @@
+import math
+
+class Content:
+    def __init__(self, key, value):
+        self.value = [value]
+        self.key = key
+
+class HashTable:
+    def __init__(self, size, limit, hash_method="division", collision_method='linear'):
+        self.array = [None] * size
+        self.size = size
+        self.limit = limit
+        self.count = 0
+        self.keys = []
+        if hash_method == 'multiplication':
+            self.hash = self.get_value_multiplication
+        else:
+            self.hash = self.get_value_division
+        if collision_method == 'quadratic':
+            self.collision = self.get_quadratic_value
+        else:
+            self.collision = self.get_linear_value
+
+    def get_array(self):
+        return self.array
+
+    def get_keys(self):
+        return self.keys
+
+    def insert_value(self, key, value):
+        if len(key) < self.limit:
+            return False
+        count = 0
+        numeric_key = self.hash(key)
+        if key not in self.keys:
+            self.keys.append(key)
+        while True:
+            obj = Content(key, value)
+            if self.array[numeric_key] is not None:
+                if self.array[numeric_key].key != key:
+                    numeric_key = self.collision(numeric_key, count)
+                    count += 1
+                else:
+                    self.array[numeric_key].value.append(value)
+                    break
+            else:
+                self.array[numeric_key] = obj
+                self.count += 1
+                break
+        return True
+
+    def get_value(self, key):
+        if len(key) < self.limit:
+            return None
+        count = 0
+        numeric_key = self.hash(key)
+        if self.array[numeric_key] is None:
+            return None
+        while True:
+            if self.array[numeric_key] is None:
+                return None
+            if self.array[numeric_key].key == key:
+                return self.array[numeric_key].value
+            else:
+                numeric_key = self.collision(numeric_key, count)
+                count = (count + 1) % self.size
+        return None
+
+    def get_value_division(self, key):
+        numeric_key = 0
+        for x in range(self.limit):
+            numeric_key += int(ord(key[x]))
+        numeric_key = numeric_key % len(self.array)
+        return numeric_key
+
+    def get_value_multiplication(self, key):
+        a = (math.sqrt(5) - 1) / 2
+        numeric_key = 0
+        for x in range(self.limit):
+            numeric_key += int(ord(key[x]))
+        numeric_key = math.floor(self.size * ((a * numeric_key) % 1))
+        return numeric_key
+
+    def get_quadratic_value(self, key, count):
+        index = (key + count * count) % self.size
+        return index
+
+    def get_linear_value(self, key, addition):
+        return (key + addition) % self.size
+
+# Example Usage
+ht = HashTable(size=10, limit=5, hash_method="division", collision_method='linear')
+ht.insert_value("apple", 1)
+ht.insert_value("banana", 2)
+print(ht.get_value("apple"))  # Output: [1]
+print(ht.get_value("banana"))  # Output: [2]
+print(ht.get_array())
+print(ht.get_keys())

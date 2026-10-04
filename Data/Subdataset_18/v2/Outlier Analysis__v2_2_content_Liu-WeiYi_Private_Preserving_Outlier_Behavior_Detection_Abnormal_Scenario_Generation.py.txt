@@ -1,0 +1,117 @@
+import networkx as nx
+import glob
+import random
+import copy
+import numpy as np
+import sys
+from sklearn.metrics import roc_auc_score
+import time
+from interruptingcow import timeout
+from Algorithms.pylouvain import LouvainCommunities
+
+def add_synthetic_nodes(syntheticFlag, network, devices_number):       
+    """
+    Add synthetic nodes or edges to the network.
+    @param syntheticFlag: Type of synthetic modification to apply.
+    @param network: The original network.
+    @param devices_number: Number of devices to modify.
+    @return: Modified network with synthetic nodes or edges.
+    """
+    abnormal_network = copy.deepcopy(network)
+    node = "abnormal_device"
+    
+    if syntheticFlag == "add_edges":
+        devices = random.sample(network.nodes(), devices_number) if len(network.nodes()) >= devices_number else random.sample(network.nodes(), 1)
+        for device in devices:
+            weight = random.uniform(0, 1)
+            abnormal_network.add_weighted_edges_from([(node, device, weight)])
+    
+    elif syntheticFlag == "add_isolated_nodes":
+        abnormal_network.add_node(node)
+    
+    return abnormal_network
+
+def detect_outliers(network):
+    """
+    Detect outliers in a network using the Louvain community detection algorithm.
+    @param network: Weighted network.
+    @return: A set of community scores and a dictionary of communities with their scores.
+    """
+    modify_weight_network = nx.Graph()
+    
+    for u, v, data in network.edges(data=True):
+        weight = data['weight']
+        modify_weight_network.add_edge(u, v, weight=1 if weight in {0, 1} else weight / 100)
+
+    restart_time = 10
+    while restart_time > 0:
+        try:
+            with timeout(10, exception=RuntimeError):
+                NodeCommunity, Modularity = LouvainCommunities(modify_weight_network)
+                break
+        except RuntimeError:
+            sys.stdout.write(f'\r [!!!] Louvain needs reboot...remain {restart_time} / 10 times ')
+            sys.stdout.flush()
+            restart_time -= 1
+            NodeCommunity, Modularity = [modify_weight_network.nodes()], 0
+
+    for node in nx.isolates(network):
+        NodeCommunity.append([node])
+
+    score_set = set()
+    score_com = {}
+    
+    for com in NodeCommunity:
+        current_score = sum(network.get_edge_data(n1, n2)['weight'] for n1 in com for n2 in nx.neighbors(network, n1) if n2 in com)
+        score_set.add(current_score)
+        score_com.setdefault(current_score, []).append(com)
+
+    return score_set, score_com
+
+def synthetic_nodes(normal_path, synthetic_type):
+    """
+    Add new nodes and test if the algorithm can detect them.
+    @param normal_path: Path to normal network files.
+    @param synthetic_type: Type of synthetic modification.
+    @return: Lists of precision, recall, and F1 scores.
+    """
+    Precision, Recall, F1 = [], []
+    normal_files = glob.glob(f"{normal_path}/*.gml")
+    networks = [nx.read_gml(file) for file in normal_files]
+    
+    syntheticFlags = {
+        "Mix": ["add_edges", "add_isolated_nodes"],
+        "Nodes": ["add_isolated_nodes"],
+        "Edges": ["add_edges"]
+    }[synthetic_type]
+    
+    for _ in range(1000):
+        syntheticFlag = random.choice(syntheticFlags)
+        network = random.choice(networks)
+        new_network = add_synthetic_nodes(syntheticFlag, network, 1)
+        score_set, score_coms = detect_outliers(new_network)
+        
+        min_score = sorted(score_set)[0]
+        min_coms = score_coms[min_score]
+        recallFlag = any('abnormal_device' in node for com in min_coms for node in com)
+
+        Recall.append(1.0 if recallFlag else 0.0)
+        total_coms = len(min_coms)
+        Precision.append(Recall[-1] / total_coms)
+        
+        if Precision[-1] == 0 and Recall[-1] == 0:
+            F1.append(0)
+        else:
+            F1.append(2 * Precision[-1] * Recall[-1] / (Precision[-1] + Recall[-1]))
+
+    return Precision, Recall, F1
+
+if __name__ == "__main__":
+    normal_path = "path_to_normal_networks"  # Update this path to your normal network files
+    synthetic_type = "Mix"  # Can be "Mix", "Nodes", or "Edges"
+    
+    precision, recall, f1 = synthetic_nodes(normal_path, synthetic_type)
+    
+    print("Precision: ", np.mean(precision))
+    print("Recall: ", np.mean(recall))
+    print("F1 Score: ", np.mean(f1))

@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun  4 15:50:01 2018
+@author: Navneet
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from itertools import cycle, islice
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from pandas.plotting import parallel_coordinates
+
+# Load the dataset
+data = pd.read_csv('./weather/minute_weather.csv')
+print(f"Data shape: {data.shape}")
+print(data.head())
+
+# Sample the dataset
+sampled_df = data[data['rowID'] % 10 == 0]
+print(f"Sampled data shape: {sampled_df.shape}")
+
+# Data summary
+print(sampled_df.describe().transpose())
+
+# Check for rain accumulation and duration
+print(f"Rows with zero rain accumulation: {sampled_df[sampled_df['rain_accumulation'] == 0].shape}")
+print(f"Rows with zero rain duration: {sampled_df[sampled_df['rain_duration'] == 0].shape}")
+
+# Drop rain columns
+sampled_df.drop(['rain_accumulation', 'rain_duration'], axis=1, inplace=True)
+
+# Drop rows with missing values
+rows_before = sampled_df.shape[0]
+sampled_df.dropna(inplace=True)
+rows_after = sampled_df.shape[0]
+print(f"Rows dropped due to NA: {rows_before - rows_after}")
+
+# Define feature columns
+features = [
+    'air_pressure', 'air_temp', 'avg_wind_direction', 
+    'avg_wind_speed', 'max_wind_direction', 
+    'max_wind_speed', 'relative_humidity'
+]
+select_df = sampled_df[features]
+print(f"Selected features: {select_df.columns.tolist()}")
+
+# Standardize the features
+X = StandardScaler().fit_transform(select_df)
+
+# KMeans clustering
+kmeans = KMeans(n_clusters=12, random_state=42)
+model = kmeans.fit(X)
+print("KMeans model:", model)
+
+# Cluster centers
+centers = model.cluster_centers_
+
+# Create DataFrame with cluster centers
+def create_centers_df(features_used, centers):
+    col_names = list(features_used)
+    col_names.append('prediction')
+    data = [np.append(center, idx) for idx, center in enumerate(centers)]
+    centers_df = pd.DataFrame(data, columns=col_names)
+    centers_df['prediction'] = centers_df['prediction'].astype(int)
+    return centers_df
+
+# Parallel plot function
+def parallel_plot(data, y_label='prediction'):
+    colors = list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(data)))
+    plt.figure(figsize=(15, 8))
+    plt.gca().axes.set_ylim([-3, +3])
+    parallel_coordinates(data, y_label, color=colors, marker='o')
+    plt.show()
+
+# Generate and plot cluster centers
+P = create_centers_df(features, centers)
+print(P)
+
+# Plotting specific conditions
+parallel_plot(P[P['relative_humidity'] < -0.5])
+parallel_plot(P[P['air_temp'] > 0.5])
+parallel_plot(P[(P['relative_humidity'] > 0.5) & (P['air_temp'] < 0.5)])

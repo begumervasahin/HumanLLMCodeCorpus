@@ -1,0 +1,175 @@
+import random
+
+def random_n(n):
+    """
+    Generate a random n-bit number.
+    
+    Args:
+    n (int): The bit length of the number to generate.
+    
+    Returns:
+    int: A random n-bit number.
+    """
+    return random.randrange(2**(n-1) + 1, 2**n - 1)
+
+def read_list(file_path):
+    """
+    Read a list of primes from a file and return them as a list of integers.
+    
+    Args:
+    file_path (str): The path to the file containing prime numbers.
+    
+    Returns:
+    list: A list of prime numbers.
+    
+    Raises:
+    Exception: If the file cannot be read.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            first_primes_list = list(map(int, file.read().split()))
+        return first_primes_list
+    except Exception as e:
+        raise Exception("Couldn't read first primes from file") from e
+
+def is_prime_with_small_primes(sample, first_primes_list):
+    """
+    Check if a sample number is prime using a list of small primes.
+    
+    Args:
+    sample (int): The number to check.
+    first_primes_list (list): A list of small prime numbers.
+    
+    Returns:
+    bool: True if the sample is prime, False otherwise.
+    """
+    for prime in first_primes_list:
+        if sample % prime == 0:
+            return False
+        if sample < prime ** 2:
+            return True
+    return True
+
+def gen_prime_1(n, first_primes_list):
+    """
+    Generate a prime number of n bits by checking divisibility against a list of small primes.
+    
+    Args:
+    n (int): The bit length of the prime number to generate.
+    first_primes_list (list): A list of small prime numbers.
+    
+    Returns:
+    int: A prime number.
+    """
+    while True:
+        sample = random_n(n)
+        if is_prime_with_small_primes(sample, first_primes_list):
+            return sample
+
+def miller_rabin_test(n):
+    """
+    Perform the Miller-Rabin primality test.
+    
+    Args:
+    n (int): The number to test for primality.
+    
+    Returns:
+    bool: True if the number is probably prime, False otherwise.
+    """
+    if n in {0, 1, 4, 6, 8, 9}:
+        return False
+    if n in {2, 3, 5, 7}:
+        return True
+    
+    s, d = 0, n - 1
+    while d % 2 == 0:
+        d >>= 1
+        s += 1
+    assert 2**s * d == n - 1
+    
+    def trial_composite(a):
+        if pow(a, d, n) == 1:
+            return False
+        for i in range(s):
+            if pow(a, 2**i * d, n) == n - 1:
+                return False
+        return True
+    
+    for _ in range(20):
+        a = random.randrange(2, n)
+        if trial_composite(a):
+            return False
+    return True
+
+def gen_prime_2(n, first_primes_list):
+    """
+    Generate a prime number of n bits, incorporating all tests.
+    
+    Args:
+    n (int): The bit length of the prime number to generate.
+    first_primes_list (list): A list of small prime numbers.
+    
+    Returns:
+    int: A prime number.
+    """
+    while True:
+        sample = gen_prime_1(n, first_primes_list)
+        if miller_rabin_test(sample):
+            return sample
+
+def fermat_test(p, a=2):
+    """
+    Perform the Fermat primality test.
+    
+    Args:
+    p (int): The number to test for primality.
+    a (int): The base to use for the test (default is 2).
+    
+    Returns:
+    bool: True if the number is probably prime, False otherwise.
+    """
+    return pow(a, p-1, p) == 1
+
+def crypto_prime(n):
+    """
+    Generate a prime number using the Crypto.Util.number library.
+    
+    Args:
+    n (int): The bit length of the prime number to generate.
+    
+    Returns:
+    int: A prime number.
+    """
+    from Crypto.Util import number
+    return number.getPrime(n)
+
+def erik_tews_SSL_prime(n):
+    """
+    Generate a prime number using the gensafeprime library.
+    
+    Args:
+    n (int): The bit length of the prime number to generate.
+    
+    Returns:
+    int: A prime number.
+    """
+    import gensafeprime
+    return gensafeprime.generate(n)
+
+if __name__ == "__main__":
+    # Example usage
+    n_bits = 16  # Example bit length
+    first_primes_list = read_list("firstPrimes.txt")  # Path to the file containing small prime numbers
+    
+    prime1 = gen_prime_1(n_bits, first_primes_list)
+    print(f"Generated prime using gen_prime_1: {prime1}")
+
+    prime2 = gen_prime_2(n_bits, first_primes_list)
+    print(f"Generated prime using gen_prime_2: {prime2}")
+
+    # Example using crypto_prime and erik_tews_SSL_prime
+    prime_crypto = crypto_prime(n_bits)
+    print(f"Generated prime using crypto_prime: {prime_crypto}")
+
+    prime_erik_tews = erik_tews_SSL_prime(n_bits)
+    print(f"Generated prime using erik_tews_SSL_prime: {prime_erik_tews}")

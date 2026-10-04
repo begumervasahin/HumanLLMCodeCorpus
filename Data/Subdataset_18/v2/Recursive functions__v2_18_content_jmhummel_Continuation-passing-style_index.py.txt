@@ -1,0 +1,83 @@
+def fact_rec(n):
+    """Calculate the factorial of n using recursion."""
+    if n == 0:
+        return 1
+    return n * fact_rec(n - 1)
+
+def fact_cps(n, cont):
+    """Calculate the factorial of n using continuation-passing style (CPS)."""
+    if n == 0:
+        return cont(1)
+    return fact_cps(n - 1, lambda value: cont(n * value))
+
+def end_cont(n):
+    """The final continuation that returns the result."""
+    return n
+
+def trampoline(f, *args):
+    """Trampoline to avoid recursion depth issues."""
+    result = f(*args)
+    while callable(result):
+        result = result()
+    return result
+
+def fact_cps_thunked(n, cont):
+    """Calculate the factorial of n using CPS with thunking."""
+    if n == 0:
+        return cont(1)
+    return lambda: fact_cps_thunked(n - 1, lambda value: lambda: cont(n * value))
+
+def fib_rec(n):
+    """Calculate the nth Fibonacci number using recursion."""
+    if n <= 2:
+        return 1
+    return fib_rec(n - 1) + fib_rec(n - 2)
+
+def fib_cps(n, cont):
+    """Calculate the nth Fibonacci number using CPS."""
+    if n <= 2:
+        return cont(1)
+    return fib_cps(n - 1, lambda value1: fib_cps(n - 2, lambda value2: cont(value1 + value2)))
+
+def fib_cps_thunked(n, cont):
+    """Calculate the nth Fibonacci number using CPS with thunking."""
+    if n <= 2:
+        return cont(1)
+    return lambda: fib_cps_thunked(n - 1, lambda value1: fib_cps_thunked(n - 2, lambda value2: cont(value1 + value2)))
+
+def main():
+    """Test the different implementations of factorial and Fibonacci functions."""
+    print("Testing Factorial Functions")
+    try:
+        print(fact_rec(10))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+    try:
+        print(fact_cps(10, end_cont))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+    try:
+        print(trampoline(fact_cps_thunked(10, end_cont)))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+    print("\nTesting Fibonacci Functions")
+    try:
+        print(fib_rec(10))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+    try:
+        print(fib_cps(10, end_cont))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+    try:
+        print(trampoline(fib_cps_thunked(10, end_cont)))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+
+if __name__ == '__main__':
+    main()

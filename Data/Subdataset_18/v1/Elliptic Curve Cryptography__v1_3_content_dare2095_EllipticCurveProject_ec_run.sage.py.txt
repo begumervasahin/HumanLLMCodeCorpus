@@ -1,0 +1,51 @@
+from sage.all import *
+import os
+
+# Define constants
+p = RealNumber('29579385439865947694694684968492467204765870577.')
+field = GF(p)
+curve = EllipticCurve(field, [32934893483948394, 593439483948394349])
+path = 'data.txt'
+
+# Read the last line of the file
+with open(path, 'r') as file:
+    lines = file.read().splitlines()
+
+inputValues = lines[-1].split(' ')
+x1 = int(inputValues[1])
+startPoint = curve.lift_x(x1)
+e = int(inputValues[0])
+testPoint = e * startPoint
+lowest_x2 = int(inputValues[2])
+lowest_y2 = int(inputValues[3])
+lowest_e = int(inputValues[4])
+
+print("All values read in as the following:")
+print(f"\te = {inputValues[0]}")
+print(f"\tx1 = {inputValues[1]}")
+print(f"\tlowest_x2 = {inputValues[2]}")
+print(f"\tlowest_y2 = {inputValues[3]}")
+print(f"\tlowest_e = {inputValues[4]}")
+
+runBlock = 2000000000
+writeBlock = 100000000
+
+while e < runBlock:
+    if testPoint[1] < lowest_y2:
+        lowest_x2 = testPoint[0]
+        lowest_y2 = testPoint[1]
+        lowest_e = e
+        print("!!!!!!! Found new lowest y2")
+        print(testPoint)
+        print(e)
+        with open(path, "a") as dataFile:
+            dataFile.write(f"\n\n!!!!!!!!!!!!!!!!!! NEW LOWEST FOUND {e} !!!!!!!!!!!!!!!!!!\n")
+            dataFile.write(f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}\n")
+    
+    if e % writeBlock == 0:
+        with open(path, "a") as dataFile:
+            dataFile.write(f"\n\n/////////////////// Block {e} /////////////////////////\n")
+            dataFile.write(f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}\n")
+    
+    e += 1
+    testPoint = testPoint + startPoint

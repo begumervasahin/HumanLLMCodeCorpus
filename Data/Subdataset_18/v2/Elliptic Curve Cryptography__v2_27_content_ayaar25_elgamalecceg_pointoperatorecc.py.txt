@@ -1,0 +1,124 @@
+import sys
+from point import Point
+from base.general import is_prime, inverse
+
+class PointOperatorECC:
+    def __init__(self, A, B, P):
+        self.A = A
+        self.B = B
+        self.P = P
+
+    def _get_A(self):
+        return self.A
+
+    def _get_B(self):
+        return self.B
+
+    def _get_P(self):
+        return self.P
+
+    def double_point(self, p):
+        """
+        Double a point on the elliptic curve.
+
+        :param p: Point to be doubled.
+        :return: Resulting point after doubling.
+        """
+        result = Point()
+        if p._get_y() == 0:
+            result._set_x(sys.maxsize)
+            result._set_y(sys.maxsize)
+        else:
+            inv = inverse(2 * p._get_y(), self._get_P())
+            lamda = ((3 * (p._get_x()) ** 2 + self._get_A()) * inv) % self._get_P()
+            xr = (lamda ** 2 - 2 * p._get_x()) % self._get_P()
+            yr = (lamda * (p._get_x() - xr) - p._get_y()) % self._get_P()
+            result._set_x(int(xr))
+            result._set_y(int(yr))
+        return result
+
+    def add(self, p1, p2):
+        """
+        Add two points on the elliptic curve.
+
+        :param p1: First point.
+        :param p2: Second point.
+        :return: Resulting point after addition.
+        """
+        result = Point()
+        if p1._get_x() == 0 and p1._get_y() == 0:
+            result._set_x(p2._get_x())
+            result._set_y(p2._get_y())
+        elif p2._get_x() == 0 and p2._get_y() == 0:
+            result._set_x(p1._get_x())
+            result._set_y(p1._get_y())
+        elif p1._get_y() == p2._get_y() and p1._get_x() == p2._get_x():
+            result = self.double_point(p1)
+        elif p1._get_x() == p2._get_x():
+            result._set_x(sys.maxsize)
+            result._set_y(sys.maxsize)
+        else:
+            inv = inverse((p1._get_x() - p2._get_x()), self._get_P())
+            lamda = ((p1._get_y() - p2._get_y()) * inv) % self._get_P()
+            xr = (lamda ** 2 - p1._get_x() - p2._get_x()) % self._get_P()
+            yr = (lamda * (p1._get_x() - xr) - p1._get_y()) % self._get_P()
+            result._set_x(xr)
+            result._set_y(yr)
+        return result
+
+    def minus(self, p1, p2):
+        """
+        Subtract one point from another on the elliptic curve.
+
+        :param p1: Point from which to subtract.
+        :param p2: Point to be subtracted.
+        :return: Resulting point after subtraction.
+        """
+        temp = Point()
+        temp._set_x(p2._get_x())
+        temp._set_y(-p2._get_y())
+        return self.add(p1, temp)
+
+    def multiply(self, k, p):
+        """
+        Multiply a point on the elliptic curve by a scalar.
+
+        :param k: Scalar value.
+        :param p: Point to be multiplied.
+        :return: Resulting point after multiplication.
+        """
+        result = Point()
+        base = Point()
+        base._set_x(p._get_x())
+        base._set_y(p._get_y())
+        bin_k = bin(k)[2:]  # Convert k to binary and strip the '0b' prefix
+        for bit in bin_k:
+            if bit == '1':
+                result = self.add(result, base)
+            base = self.double_point(base)
+        return result
+
+if __name__ == '__main__':
+    # Create points for testing
+    point = Point()
+    point._set_x(1)
+    point._set_y(375)
+
+    p1 = Point()
+    p1._set_x(361)
+    p1._set_y(41)
+
+    p2 = Point()
+    p2._set_x(2)
+    p2._set_y(4)
+
+    # Initialize PointOperatorECC with specific curve parameters
+    op = PointOperatorECC(-1, 751, 11)
+
+    # Perform point multiplication and doubling
+    result = op.multiply(2, point)
+    result_double = op.double_point(point)
+
+    # Print the results
+    print(f"Multiplication Result: ({result._get_x()}, {result._get_y()})")
+    print(f"Doubling Result: ({result_double._get_x()}, {result_double._get_y()})")

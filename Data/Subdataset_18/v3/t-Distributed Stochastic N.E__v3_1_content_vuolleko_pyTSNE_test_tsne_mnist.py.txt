@@ -1,0 +1,88 @@
+import time
+import data
+import tsne
+import bh_tsne
+import matplotlib.pyplot as plt
+
+def load_mnist_data(image_file, label_file, n_samples=1000):
+    """
+    Load and preprocess the MNIST dataset.
+
+    Args:
+        image_file (str): Path to the MNIST images file in IDX format.
+        label_file (str): Path to the MNIST labels file in IDX format.
+        n_samples (int): Number of samples to load and process.
+
+    Returns:
+        tuple: A tuple containing:
+            - np.ndarray: Preprocessed image data.
+            - np.ndarray: Corresponding labels.
+    """
+    images, labels = data.read_MNIST(image_file, label_file)
+    images = images[:n_samples] / 255.0  # Normalize images to range [0, 1]
+    labels = labels[:n_samples]
+    return images, labels
+
+def apply_tsne(images, labels, use_bh_tsne=False, max_iter=1000, animate=False):
+    """
+    Apply t-SNE or Barnes-Hut t-SNE to the dataset.
+
+    Args:
+        images (np.ndarray): Preprocessed image data.
+        labels (np.ndarray): Corresponding labels.
+        use_bh_tsne (bool): Whether to use Barnes-Hut t-SNE.
+        max_iter (int): Maximum number of iterations for t-SNE.
+        animate (bool): Whether to animate the t-SNE process.
+
+    Returns:
+        object: The fitted t-SNE model.
+    """
+    tsne_model = bh_tsne.BH_TSNE(max_iter=max_iter, bh_threshold=0.5) if use_bh_tsne else tsne.TSNE(max_iter=max_iter)
+    tsne_model.fit(images, animate=animate, labels=labels, anim_file="tsne_movie.mp4" if animate else None)
+    return tsne_model
+
+def display_embedding(tsne_model, labels):
+    """
+    Display the 2D embedding produced by t-SNE.
+
+    Args:
+        tsne_model (object): The fitted t-SNE model.
+        labels (np.ndarray): Corresponding labels.
+    """
+    fig, ax = plt.subplots()
+    tsne_model.plot_embedding2D(labels, ax)
+    plt.show()
+
+def main():
+    start_time = time.time()
+
+    # Load and preprocess the MNIST data
+    print("Loading data...")
+    images_file = "MNIST/train-images.idx3-ubyte"
+    labels_file = "MNIST/train-labels.idx1-ubyte"
+    images_train, labels_train = load_mnist_data(images_file, labels_file)
+
+    # Apply PCA for dimensionality reduction before t-SNE
+    images_train = tsne.get_pca_proj(images_train, n_components=30)
+
+    print(f"Data loaded and preprocessed. Time elapsed: {time.time() - start_time:.2f} seconds")
+
+    # Configure t-SNE settings
+    animate = False
+    use_bh_tsne = False  # Set to True to use Barnes-Hut t-SNE
+
+    if animate:
+        import matplotlib
+        matplotlib.use("Agg")
+
+    # Run t-SNE or Barnes-Hut t-SNE
+    tsne_model = apply_tsne(images_train, labels_train, use_bh_tsne=use_bh_tsne, max_iter=1000, animate=animate)
+
+    print(f"t-SNE completed. Total time: {time.time() - start_time:.2f} seconds")
+
+    # Display the embedding if not animating
+    if not animate:
+        display_embedding(tsne_model, labels_train)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,122 @@
+import numpy as np
+import pandas as pd
+from visualizer import Visualizer
+from preprocessor import Preprocessor
+from classifier import Classifier
+from regressor import Regressor
+from clustering import Clustering
+from sklearn.datasets import load_iris
+
+def main():
+    # Prompt user to select method
+    method_identifier = int(input('Enter 1 for Classification, 2 for Regression, or 3 for Clustering: '))
+
+    # Load the appropriate dataset based on the chosen method
+    dataset, X = load_dataset(method_identifier)
+
+    # Prompt user to select the specific algorithm
+    algorithm_name = select_algorithm(method_identifier)
+
+    # Initialize the Preprocessor
+    preprocess = Preprocessor()
+
+    # Handle missing data based on the chosen method
+    if method_identifier == 3:
+        X = preprocess.drop_missing(X)
+    else:
+        dataset = preprocess.drop_missing(dataset)
+
+    # Process the dataset accordingly
+    if method_identifier in [1, 2]:
+        X, y = preprocess_data(dataset, method_identifier)
+    else:
+        y = None  # No target variable for clustering
+
+    # Split the dataset into training and testing sets
+    X_train, X_test, y_train, y_test = split_data(preprocess, X, y, method_identifier)
+
+    # Scale the data
+    X_train, X_test = preprocess.scaling(X_train, X_test, scale_type='Standard Scaler')
+
+    # Execute the chosen workflow based on the method
+    execute_workflow(method_identifier, X_train, y_train, X_test, y_test, algorithm_name)
+
+def load_dataset(method_identifier):
+    if method_identifier == 1:
+        dataset = pd.read_csv('wisconsin_breast_cancer.csv')
+        X = None
+    elif method_identifier == 2:
+        dataset = pd.read_csv('diamonds.csv')
+        X = None
+    elif method_identifier == 3:
+        iris_data = load_iris(return_X_y=False)
+        dataset = None
+        X = iris_data['data']
+    return dataset, X
+
+def select_algorithm(method_identifier):
+    if method_identifier == 1:
+        identifier = int(input('Enter 1 for KNN, 2 for Decision Tree, 3 for Naive Bayes, 4 for Random Forest, or 5 for Neural Network: '))
+        algorithms = ['KNN', 'Decision Tree', 'Naive Bayes', 'Random Forest', 'Neural Network']
+    elif method_identifier == 2:
+        identifier = int(input('Enter 1 for Linear Regression, 2 for Polynomial Regression, 3 for Decision Tree, 4 for KNN Regression, 5 for Random Forest Regressor, or 6 for Neural Network: '))
+        algorithms = ['Linear Regression', 'Polynomial Regression', 'Decision Tree', 'KNN Regression', 'Random Forest', 'Neural Network']
+    else:
+        return 'K-Means'
+    return algorithms[identifier - 1]
+
+def preprocess_data(dataset, method_identifier):
+    preprocess = Preprocessor()
+    if method_identifier == 1:
+        X, y = preprocess.dataframe_to_numpy(dataset, 'breast cancer')
+        X, y = preprocess.encoding(X, y, 'breast cancer')
+    elif method_identifier == 2:
+        X, y = preprocess.dataframe_to_numpy(dataset, 'diamonds')
+        X, y = preprocess.encoding(X, y, 'diamonds')
+    return X, y
+
+def split_data(preprocess, X, y, method_identifier):
+    if method_identifier in [1, 2]:
+        X_train, X_test, y_train, y_test = preprocess.split_data(X, 0.19, y)
+    else:
+        X_train, X_test = preprocess.split_data(X, test_ratio=0.3)
+        y_train, y_test = None, None  # No target variable for clustering
+    return X_train, X_test, y_train, y_test
+
+def execute_workflow(method_identifier, X_train, y_train, X_test, y_test, algorithm_name):
+    if method_identifier == 1:
+        classifier_workflow(X_train, y_train, X_test, y_test, algorithm_name)
+    elif method_identifier == 2:
+        regressor_workflow(X_train, y_train, X_test, y_test, algorithm_name)
+    elif method_identifier == 3:
+        clustering_workflow(X_train, X_test, algorithm_name)
+
+def classifier_workflow(X_train, y_train, X_test, y_test, algorithm_name):
+    classifier = Classifier(algorithm_name)
+    y_predicted = classifier.classify(X_train, y_train, X_test, y_test)
+    classifier_accuracy = classifier.get_accuracy(y_test, y_predicted)
+    visualizer = Visualizer()
+    visualizer.plot_classifier_regressor(y_test, y_predicted, 1)
+    print(f'The accuracy is: {classifier_accuracy:.2f} %')
+    print(algorithm_name)
+
+def regressor_workflow(X_train, y_train, X_test, y_test, algorithm_name):
+    regressor = Regressor(algorithm_name)
+    y_predicted = regressor.predict(X_train, y_train, X_test)
+    regressor_score = regressor.get_score(y_test, y_predicted)
+    visualizer = Visualizer()
+    visualizer.plot_classifier_regressor(y_test, y_predicted, 2)
+    print(f'The coefficient of determination is: {regressor_score:.2f}')
+    print(algorithm_name)
+
+def clustering_workflow(X_train, X_test, algorithm_name):
+    clustering = Clustering(algorithm_name)
+    n_clusters, inertia = clustering.tune_parameters(X_train)
+    clusters = clustering.cluster(X_train, X_test, n_clusters)
+    visualizer = Visualizer()
+    visualizer.plot_clustering(X_test, clusters)
+    print(f"The clustering model's inertia: {inertia:.2f}")
+    print(algorithm_name)
+
+if __name__ == "__main__":
+    main()

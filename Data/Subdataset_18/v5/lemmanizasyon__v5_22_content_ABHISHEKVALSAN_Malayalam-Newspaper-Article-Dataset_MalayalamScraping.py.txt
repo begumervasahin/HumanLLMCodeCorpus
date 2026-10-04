@@ -1,0 +1,58 @@
+import requests
+from bs4 import BeautifulSoup
+import os
+import constants as const
+
+def month_to_digit(month):
+    """Converts month name to its corresponding digit representation."""
+    month_dict = {
+        'January': '01', 'February': '02', 'March': '03',
+        'April': '04', 'May': '05', 'June': '06', 'July': '07',
+        'August': '08', 'September': '09', 'October': '10',
+        'November': '11', 'December': '12'
+    }
+    return month_dict.get(month, '00')
+
+def convert_to_filename(date_str):
+    """Converts a date string to a specific filename format."""
+    parts = date_str.split()
+    month = month_to_digit(parts[2])
+    day = parts[1].zfill(2)
+    year = parts[3][2:]
+    filename = f"1{year}{month}{day}"
+    return filename, parts[3]
+
+def get_data(index):
+    """Fetches data from a specified URL and writes it to a file if valid."""
+    url = f"{const.URL_PREFIX}{index}"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = soup.find_all("p", class_="text-center")
+        
+        if len(links) != 1:
+            title = soup.find("h1").text
+            date_info = soup.find_all("div", class_="myd")[1].text
+            content = soup.find("p", class_="").text
+            
+            filename, year = convert_to_filename(date_info)
+            path = "DataSet/"
+            complete_filename = f"{filename}{index}.utf8"
+            filepath = os.path.join(path, complete_filename)
+            
+            with open(filepath, 'w+', encoding='utf-8') as file:
+                file.write(f"<DOC>\n<DOCNO>{complete_filename}</DOCNO>\n<TEXT>\n{title}\n{date_info}\n{content}\n</TEXT>\n</DOC>")
+            
+            print(f"Writing file {complete_filename} to {path}")
+        else:
+            print(f"File missing at {url}")
+    else:
+        print(f"Error fetching data from {url}")
+
+def main():
+    """Main function indicating the program's obsolescence."""
+    print('This program is obsolete since the website structure has changed')
+
+if __name__ == "__main__":
+    main()

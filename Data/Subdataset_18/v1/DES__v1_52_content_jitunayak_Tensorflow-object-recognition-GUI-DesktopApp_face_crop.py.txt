@@ -1,0 +1,50 @@
+import cv2
+import os
+
+# Directory containing images
+directory = "images/"
+# Directory to save cropped faces
+f_directory = "faces/"
+
+def facecrop(image_path):
+    """
+    Detects faces in an image and saves the cropped faces to a specified directory.
+
+    :param image_path: Path to the image file
+    """
+    facedata = "haarcascade_frontalface_alt.xml"
+    cascade = cv2.CascadeClassifier(facedata)
+    img = cv2.imread(image_path)
+
+    if img is None:
+        print(f"Could not read image: {image_path}")
+        return
+
+    try:
+        minisize = (img.shape[1], img.shape[0])
+        miniframe = cv2.resize(img, minisize)
+        faces = cascade.detectMultiScale(miniframe)
+
+        for f in faces:
+            x, y, w, h = [v for v in f]
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            sub_face = img[y:y + h, x:x + w]
+
+            f_name = os.path.basename(image_path)
+            output_path = os.path.join(f_directory, f_name)
+            cv2.imwrite(output_path, sub_face)
+            print(f"Writing: {output_path}")
+
+    except Exception as e:
+        print(f"Error processing image {image_path}: {e}")
+
+if __name__ == '__main__':
+    if not os.path.exists(f_directory):
+        os.makedirs(f_directory)
+
+    images = os.listdir(directory)
+
+    for i, img in enumerate(images):
+        img_path = os.path.join(directory, img)
+        print(f"Processing {i + 1}/{len(images)}: {img}")
+        facecrop(img_path)

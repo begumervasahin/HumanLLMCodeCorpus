@@ -1,0 +1,65 @@
+import PolynomialModel
+import DataUtils
+import pandas as pd
+import numpy as np
+from time import time
+import matplotlib.pyplot as plt
+
+# Load and preprocess dataset
+dataset = pd.read_csv("dataset.csv")
+dataset = dataset.drop(columns="OSM_ID")
+degree = 1
+method = "L2GD"
+
+# Transform and normalize dataset
+dataset = PolynomialModel.transform_dataset(dataset, degree)
+dataset = DataUtils.normalize(dataset, type="min-max")
+
+# Split dataset into training and testing sets
+train, test = DataUtils.data_split(dataset, split_at=0.80)
+x_train, y_train = DataUtils.xy_split(train)
+x_test, y_test = DataUtils.xy_split(test)
+
+# Add a constant term to the features
+x_test.insert(0, "Const", np.ones(x_test.shape[0]))
+x_train.insert(0, "Const", np.ones(x_train.shape[0]))
+
+# Start timing the execution
+st_time = time()
+print(f"Using polynomial of degree: {degree}")
+
+# Fit the model
+w_list, lambdas, val_errs, train_errs = PolynomialModel.reg_fit(train, alpha=7e-7, epsilon=1e-3, method=method, degree=degree)
+
+# Calculate test errors for each set of weights
+test_errs = [PolynomialModel.test(w, x_test, y_test) for w in w_list]
+
+# Plot validation error with respect to lambda
+plt.title(f'Error w.r.t lambda - degree: {degree}, method: {method}')
+plt.ylabel('Error')
+plt.xlabel('Lambda')
+plt.plot(lambdas, val_errs, label="Validation Error")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Select the best lambda and corresponding weights
+min_index = np.argmin(lambdas)
+w = w_list[min_index]
+print("\nSelected Regularization parameter: ", lambdas[min_index])
+
+# Print execution time
+print(f"\nExecution Time: {time() - st_time}")
+
+# Print model weights
+print(w)
+
+# Calculate and print errors
+train_error_mse = PolynomialModel.error(w, x_train.values, y_train.values)
+test_error_mse = PolynomialModel.test(w, x_test, y_test)
+print('Train Error (MSE):', train_error_mse)
+print('Test Error (MSE):', test_error_mse)
+print('Train Error (RMSE):', np.sqrt(train_error_mse))
+print('Test Error (RMSE):', np.sqrt(test_error_mse))
+print('Train Error (R2):', PolynomialModel.r2_error(w, x_train, y_train))
+print('Test Error (R2):', PolynomialModel.r2_error(w, x_test, y_test))

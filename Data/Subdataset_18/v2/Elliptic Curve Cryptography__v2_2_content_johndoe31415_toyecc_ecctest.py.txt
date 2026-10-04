@@ -1,0 +1,104 @@
+import sys
+from toyecc import AffineCurvePoint, ShortWeierstrassCurve, getcurvebyname, ECPrivateKey
+
+def separator():
+    """Print a separator line."""
+    print("-" * 150)
+
+def main():
+    # Select the elliptic curve
+    used_curve = getcurvebyname("secp112r1")
+    print("Selected curve parameters:")
+    print(used_curve)
+    separator()
+
+    # Generate a private key
+    private_key = ECPrivateKey(0x12345, used_curve)
+    print("Generated private key:")
+    print(private_key)
+    separator()
+
+    # Encrypt a message
+    encryption = private_key.pubkey.ecies_encrypt()
+    print("Encryption")
+    print("Transmitted R  :", encryption["R"])
+    print("Symmetric key S:", encryption["S"])
+    separator()
+
+    # Decrypt the message
+    print("Decryption")
+    recovered_s = private_key.ecies_decrypt(encryption["R"])
+    print("Recovered S    :", recovered_s)
+    separator()
+
+    # Sign a message
+    print("Signing message")
+    signature = private_key.ecdsa_sign(b"foobar", "sha1")
+    print("r:", signature.r)
+    print("s:", signature.s)
+    separator()
+
+    # Verify the signature
+    print("Verification of signature")
+    verify_original = private_key.pubkey.ecdsa_verify(b"foobar", signature)
+    verify_modified = private_key.pubkey.ecdsa_verify(b"foobaz", signature)
+    print(f"Original message: {verify_original} (should be True)")
+    print(f"Modified message: {verify_modified} (should be False)")
+    assert verify_original
+    assert not verify_modified
+    separator()
+
+    # Generate signatures with identical nonces for exploitation
+    print("Generating signatures with identical nonces for exploitation")
+    signature1 = private_key.ecdsa_sign(b"foobar", "sha1", k=123456)
+    signature2 = private_key.ecdsa_sign(b"foobaz", "sha1", k=123456)
+    print("r1:", signature1.r)
+    print("s1:", signature1.s)
+    print("r2:", signature2.r)
+    print("s2:", signature2.s)
+    recvr = private_key.pubkey.ecdsa_exploit_reused_nonce(b"foobar", signature1, b"foobaz", signature2)
+    print("Recovered nonce      :", int(recvr["nonce"]))
+    print(f"Recovered private key: 0x{int(recvr['privatekey']):x}")
+    separator()
+
+    # Find points on the curve with a specific x-coordinate
+    x = 123456
+    print(f"Finding points on the curve with x == {x}")
+    points = used_curve.getpointwithx(x)
+    if points:
+        pt1, pt2 = points
+        print("Point 1:", pt1)
+        print("Point 2:", pt2)
+        print(f"On curve? {pt1.oncurve()}/{pt2.oncurve()} (should be True/True)")
+        assert pt1.oncurve()
+        assert pt2.oncurve()
+    else:
+        print("No point found")
+    separator()
+
+    # Generate a tiny curve for demonstration
+    print("Generating a tiny curve")
+    tiny_curve = ShortWeierstrassCurve(2, 3, 263, 270, 1, 200, 39)
+    print(tiny_curve)
+    print(f"Curve order is {tiny_curve.order}")
+    print(f"Generator is of order {tiny_curve.G.naive_order_calculation()}")
+    print("Determining points of small order (weak points), this could take a while...")
+    for point in tiny_curve.enumerate_points():
+        order = point.naive_order_calculation()
+        if order <= 6:
+            print(f"{point:<20} order {order}")
+    separator()
+
+    # Work with compressed and uncompressed points
+    for random_number in range(125, 127):
+        p = used_curve.G * random_number
+        print("Uncompressed point:", p)
+        c = p.compress()
+        print("Compressed point  :", c)
+        u = used_curve.uncompress(c)
+        print("Uncompressed point:", u)
+        assert u == p
+        separator()
+
+if __name__ == "__main__":
+    main()

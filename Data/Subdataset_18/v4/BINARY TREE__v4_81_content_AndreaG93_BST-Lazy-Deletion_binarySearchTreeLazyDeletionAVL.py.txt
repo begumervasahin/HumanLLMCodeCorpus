@@ -1,0 +1,125 @@
+'''
+Created on Nov 29, 2017
+Author: Andrea Graziani - matricola 0189326
+Version: 1.0
+'''
+
+from binarySearchTreeNode import binarySearchTreeNodeAVLwithLazyDeletion
+from binarySearchTreeAVL import binarySearchTreeAVL
+
+class binarySearchTreeLazyDeletionAVL(binarySearchTreeAVL):
+    """
+    This class represents a Binary Search Tree (BST) with AVL properties and lazy deletion.
+    """
+
+    def __init__(self, root_node=None):
+        """
+        Constructs a new 'binarySearchTreeLazyDeletionAVL' object.
+        
+        :param root_node: A 'binarySearchTreeNodeAVLwithLazyDeletion' object.
+        """
+        super().__init__(root_node)
+
+    def insert(self, key, value):
+        """
+        Insert a new (key, value) pair into the tree.
+
+        :param key: The key to insert.
+        :param value: The value associated with the key.
+        """
+        if not self._rootNode:
+            self._rootNode = binarySearchTreeNodeAVLwithLazyDeletion(key, value)
+            return
+
+        current_node = self._rootNode
+        parent_node = None
+        insert_to_left = True
+
+        while current_node is not None:
+            parent_node = current_node
+
+            if current_node._isValid:
+                if key <= current_node._key:
+                    current_node = current_node._leftSon
+                    insert_to_left = True
+                else:
+                    current_node = current_node._rightSon
+                    insert_to_left = False
+            else:
+                if current_node.hasRightSon() and key > current_node._rightSon._key:
+                    current_node = current_node._rightSon
+                    insert_to_left = False
+                elif current_node.hasLeftSon() and key < current_node._leftSon._key:
+                    current_node = current_node._leftSon
+                    insert_to_left = True
+                else:
+                    current_node._isValid = True
+                    current_node._key = key
+                    current_node._value = value
+                    return
+
+        new_node = binarySearchTreeNodeAVLwithLazyDeletion(key, value)
+        new_node._parent = parent_node
+
+        if insert_to_left:
+            parent_node._leftSon = new_node
+            new_node._isLeftSon = True
+        else:
+            parent_node._rightSon = new_node
+            new_node._isLeftSon = False
+
+        if parent_node.hasOnlyOneSon():
+            self._updateNodeSubtreesHeightAlongTree(new_node)
+
+    def delete(self, key):
+        """
+        Delete the first occurrence of a node with the specified key from the tree.
+
+        :param key: The key to delete.
+        :return: True if the node is successfully deleted, otherwise False.
+        """
+        current_node = self._rootNode
+
+        while current_node:
+            if key < current_node._key:
+                current_node = current_node._leftSon
+            elif key > current_node._key:
+                current_node = current_node._rightSon
+            else:
+                if current_node._isValid:
+                    current_node._isValid = False
+                    return True
+                else:
+                    current_node = current_node._leftSon
+
+        return False
+
+    def search(self, key, allow_restructuring):
+        """
+        Search for the first occurrence of a node with the specified key in the tree.
+
+        :param key: The key to search for.
+        :param allow_restructuring: Boolean indicating whether tree restructuring is allowed.
+        :return: The node if it exists, otherwise None.
+        """
+        invalid_node_list = []
+        current_node = self._rootNode
+
+        while current_node:
+            if allow_restructuring and not current_node._isValid:
+                invalid_node_list.append(current_node)
+
+            if key < current_node._key:
+                current_node = current_node._leftSon
+            elif key > current_node._key:
+                current_node = current_node._rightSon
+            else:
+                if current_node._isValid:
+                    break
+                else:
+                    current_node = current_node._leftSon
+
+        for item in invalid_node_list:
+            self.deleteNode(item)
+
+        return current_node

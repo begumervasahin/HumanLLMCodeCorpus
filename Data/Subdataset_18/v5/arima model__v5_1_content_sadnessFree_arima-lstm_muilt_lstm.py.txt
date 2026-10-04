@@ -1,0 +1,84 @@
+import math
+from math import sqrt
+import numpy as np
+from numpy import concatenate
+from pandas import read_csv, DataFrame, concat
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+import matplotlib.pyplot as plt
+
+def mean_absolute_percentage_error(y_true, y_pred):
+    """
+    Calculate the mean absolute percentage error.
+    
+    Parameters:
+    y_true (list or array): Actual values.
+    y_pred (list or array): Predicted values.
+    
+    Returns:
+    float: Mean absolute percentage error.
+    """
+    error_sum = sum(abs(y_pred[i] - y_true[i]) / y_true[i] for i in range(len(y_true)))
+    return error_sum / len(y_true)
+
+def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
+    """
+    Convert time series data to a supervised learning format.
+    
+    Parameters:
+    data (list or array): Time series data.
+    n_in (int): Number of lag observations as input (X).
+    n_out (int): Number of observations as output (y).
+    dropnan (bool): Whether or not to drop rows with NaN values.
+    
+    Returns:
+    DataFrame: Supervised learning format of the time series data.
+    """
+    n_vars = 1 if isinstance(data, list) else data.shape[1]
+    df = DataFrame(data)
+    cols, names = [], []
+    
+    # Input sequence (t-n, ... t-1)
+    for i in range(n_in, 0, -1):
+        cols.append(df.shift(i))
+        names += [f'var{j+1}(t-{i})' for j in range(n_vars)]
+    
+    # Forecast sequence (t, t+1, ... t+n)
+    for i in range(n_out):
+        cols.append(df.shift(-i))
+        if i == 0:
+            names += [f'var{j+1}(t)' for j in range(n_vars)]
+        else:
+            names += [f'var{j+1}(t+{i})' for j in range(n_vars)]
+    
+    # Concatenate all columns
+    agg = concat(cols, axis=1)
+    agg.columns = names
+    
+    # Drop rows with NaN values
+    if dropnan:
+        agg.dropna(inplace=True)
+    
+    return agg
+
+# Example usage of the functions:
+# Load dataset
+# dataset = read_csv('your_dataset.csv')
+
+# Convert series to supervised learning
+# supervised_data = series_to_supervised(dataset, n_in=3, n_out=1)
+
+# Create and train LSTM model
+# model = Sequential()
+# model.add(LSTM(50, input_shape=(n_in, dataset.shape[1])))
+# model.add(Dense(1))
+# model.compile(loss='mae', optimizer='adam')
+# history = model.fit(train_X, train_y, epochs=50, batch_size=72, validation_data=(test_X, test_y), verbose=2, shuffle=False)
+
+# Evaluate model
+# y_pred = model.predict(test_X)
+# mae = mean_absolute_error(test_y, y_pred)
+# rmse = sqrt(mean_squared_error(test_y, y_pred))
+# mape = mean_absolute_percentage_error(test_y, y_pred)

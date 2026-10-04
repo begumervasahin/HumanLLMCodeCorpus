@@ -1,0 +1,138 @@
+import numpy as np
+import scipy.stats as stats
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+
+def load_and_display_iris_dataset():
+    """
+    Load the Iris dataset and display basic information.
+    
+    Returns:
+        tuple: Features, target values, number of classes, class names, and number of samples.
+    """
+    iris_dataset = load_iris()
+    
+    print("\nIris Dataset Keys:")
+    print(iris_dataset.keys())
+
+    X = iris_dataset.data
+    y = iris_dataset.target
+
+    print("\nClass Labels:")
+    class_names = iris_dataset.target_names
+    print(class_names)
+    num_classes = len(class_names)
+    print(f"Number of class labels: {num_classes}")
+
+    num_samples, num_features = X.shape
+    print(f"\nNumber of samples: {num_samples}")
+    print(f"Number of features per sample: {num_features}")
+
+    return X, y, num_classes, class_names, num_samples, num_features
+
+def compute_class_statistics(X_train, y_train, num_classes, num_features):
+    """
+    Compute mean and standard deviation for each class.
+    
+    Args:
+        X_train (array): Training features.
+        y_train (array): Training target values.
+        num_classes (int): Number of classes.
+        num_features (int): Number of features.
+    
+    Returns:
+        tuple: Mean matrix and standard deviation matrix for each class.
+    """
+    mu_mat = np.zeros((num_classes, num_features))
+    sig_mat = np.zeros((num_classes, num_features))
+    
+    for i in range(num_classes):
+        mu_mat[i] = X_train[y_train == i].mean(axis=0)
+        sig_mat[i] = X_train[y_train == i].std(axis=0)
+    
+    return mu_mat, sig_mat
+
+def compute_class_likelihoods(y_train, num_classes, num_train_samples):
+    """
+    Calculate the likelihood of each class.
+    
+    Args:
+        y_train (array): Training target values.
+        num_classes (int): Number of classes.
+        num_train_samples (int): Number of training samples.
+    
+    Returns:
+        array: Class likelihoods.
+    """
+    class_likelihood = np.zeros(num_classes)
+    
+    for i in range(num_classes):
+        class_likelihood[i] = (y_train == i).sum() / num_train_samples
+    
+    return class_likelihood
+
+def calculate_probabilities(X_test, mu_mat, sig_mat, class_likelihood, epsilon=0.01):
+    """
+    Calculate probabilities for the test set.
+    
+    Args:
+        X_test (array): Test features.
+        mu_mat (array): Mean matrix for each class.
+        sig_mat (array): Standard deviation matrix for each class.
+        class_likelihood (array): Class likelihoods.
+        epsilon (float): Small value to avoid division by zero.
+    
+    Returns:
+        array: Log probabilities for each class given the test data.
+    """
+    num_test_samples, num_features = X_test.shape
+    num_classes = mu_mat.shape[0]
+    class_given_data_mat = np.zeros((num_test_samples, num_classes))
+    
+    for i in range(num_test_samples):
+        for k in range(num_classes):
+            log_prob = np.log(class_likelihood[k])
+            for j in range(num_features):
+                log_prob += np.log(stats.norm.pdf(X_test[i, j], mu_mat[k, j], sig_mat[k, j]) + epsilon)
+            class_given_data_mat[i, k] = log_prob
+    
+    return class_given_data_mat
+
+def calculate_accuracy(predicted_classes, y_test):
+    """
+    Calculate the accuracy of the model.
+    
+    Args:
+        predicted_classes (array): Predicted class labels.
+        y_test (array): Actual class labels.
+    
+    Returns:
+        float: Accuracy of the model.
+    """
+    accuracy = (predicted_classes == y_test).sum() / len(y_test)
+    return accuracy
+
+def main():
+    X, y, num_classes, class_names, num_samples, num_features = load_and_display_iris_dataset()
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+    
+    num_train_samples = len(X_train)
+    num_test_samples = len(X_test)
+
+    print(f"\nNumber of training samples: {num_train_samples}")
+    print(f"Number of testing samples: {num_test_samples}")
+
+    mu_mat, sig_mat = compute_class_statistics(X_train, y_train, num_classes, num_features)
+    class_likelihood = compute_class_likelihoods(y_train, num_classes, num_train_samples)
+    
+    class_given_data_mat = calculate_probabilities(X_test, mu_mat, sig_mat, class_likelihood)
+    
+    predicted_classes = class_given_data_mat.argmax(axis=1)
+    accuracy = calculate_accuracy(predicted_classes, y_test)
+    
+    print("\nModel Accuracy:")
+    print(f"{accuracy:.2f}")
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,80 @@
+"""
+This file is responsible for providing functions for reading the files
+"""
+from os import listdir
+import numpy as np
+from nltk.stem.porter import PorterStemmer
+
+# Initialize Porter Stemmer
+porter_stemmer = PorterStemmer()
+bad_words = {'aed', 'oed', 'eed'}
+
+def loadDir(name, stemming):
+    """
+    Load all files in a directory, optionally apply stemming, and return a list of lists of words.
+    
+    Parameters:
+    name (str): Directory path
+    stemming (bool): Whether to apply stemming to the words
+    
+    Returns:
+    list: List of lists of words from each file
+    """
+    X0 = []
+    for f in listdir(name):
+        fullname = name + f
+        text = []
+        with open(fullname, 'rb') as file:
+            for line in file:
+                text += line.decode(errors='ignore').split(' ')
+        if stemming:
+            for i in range(len(text)):
+                if text[i] in bad_words:
+                    continue
+                text[i] = porter_stemmer.stem(text[i])
+        X0.append(text)
+    return X0
+
+def load_dataset(train_dir, dev_dir, stemming):
+    """
+    Load training and development datasets from directories.
+    
+    Parameters:
+    train_dir (str): Directory path for training data
+    dev_dir (str): Directory path for development (testing) data
+    stemming (bool): Whether to apply stemming to the words
+    
+    Returns:
+    tuple: Training data (X), Training labels (Y), Test data (X_test), Test labels (Y_test)
+    """
+    # Load training data
+    X0 = loadDir(train_dir + '/ham/', stemming)
+    X1 = loadDir(train_dir + '/spam/', stemming)
+    X = X0 + X1
+    Y = len(X0) * [0] + len(X1) * [1]
+    Y = np.array(Y)
+    
+    # Load test data
+    X_test0 = loadDir(dev_dir + '/ham/', stemming)
+    X_test1 = loadDir(dev_dir + '/spam/', stemming)
+    X_test = X_test0 + X_test1
+    Y_test = len(X_test0) * [0] + len(X_test1) * [1]
+    Y_test = np.array(Y_test)
+    
+    return X, Y, X_test, Y_test
+
+# Example usage:
+if __name__ == "__main__":
+    train_dir = "path/to/train"
+    dev_dir = "path/to/dev"
+    stemming = True  # Change to False if you don't want stemming
+
+    X_train, Y_train, X_test, Y_test = load_dataset(train_dir, dev_dir, stemming)
+
+    print("Training data loaded:")
+    print(f"X_train: {len(X_train)} samples")
+    print(f"Y_train: {len(Y_train)} labels")
+    
+    print("Test data loaded:")
+    print(f"X_test: {len(X_test)} samples")
+    print(f"Y_test: {len(Y_test)} labels")

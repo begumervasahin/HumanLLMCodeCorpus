@@ -1,0 +1,100 @@
+import networkx as nx
+from random import randint
+
+class AdjacencyMatrix:
+    def __init__(self):
+        self.num_vertices = 0
+        self.matrix = []
+
+    def populate_matrix(self, num_vertices, matrix_data):
+        """
+        Populate the adjacency matrix with the provided data.
+        
+        Args:
+            num_vertices (int): The number of vertices in the graph.
+            matrix_data (list of list of int): The adjacency matrix data.
+        """
+        self.num_vertices = num_vertices
+        self.matrix = matrix_data
+
+    def to_graph(self):
+        """
+        Convert the adjacency matrix to a NetworkX graph.
+        
+        Returns:
+            nx.Graph: The generated NetworkX graph.
+        """
+        G = nx.Graph()
+        G.add_nodes_from(range(self.num_vertices))
+        
+        for i in range(self.num_vertices):
+            for j in range(i, self.num_vertices):
+                weight = self.matrix[i][j]
+                if weight > 0:
+                    G.add_edge(i, j, weight=weight)
+        
+        return G
+
+    def generate_random_graph(self, num_vertices):
+        """
+        Generate a random connected graph and populate the adjacency matrix.
+        
+        Args:
+            num_vertices (int): The number of vertices in the graph.
+        
+        Returns:
+            nx.Graph: The generated NetworkX graph.
+        """
+        self.num_vertices = num_vertices
+        G = nx.connected_watts_strogatz_graph(num_vertices, randint(num_vertices // 2, num_vertices - 1), 0.5)
+        self.matrix = [[0] * num_vertices for _ in range(num_vertices)]
+        
+        for u, v in G.edges():
+            weight = randint(1, 50)
+            self.matrix[u][v] = weight
+            self.matrix[v][u] = weight
+            G.edges[u, v]['weight'] = weight
+        
+        return G
+
+    def clear_matrix(self):
+        """Clear the adjacency matrix and reset the number of vertices."""
+        self.num_vertices = 0
+        self.matrix = []
+
+    def generate_complete_graph(self, num_vertices):
+        """
+        Generate a complete graph and populate the adjacency matrix.
+        
+        Args:
+            num_vertices (int): The number of vertices in the graph.
+        
+        Returns:
+            nx.Graph: The generated NetworkX graph.
+        """
+        self.num_vertices = num_vertices
+        G = nx.complete_graph(num_vertices)
+        self.matrix = [[0] * num_vertices for _ in range(num_vertices)]
+        
+        for u, v in G.edges():
+            weight = randint(1, 50)
+            self.matrix[u][v] = weight
+            self.matrix[v][u] = weight
+            G.edges[u, v]['weight'] = weight
+        
+        return G
+
+    def get_adjacency_matrix(self):
+        """
+        Get the current adjacency matrix.
+        
+        Returns:
+            list of list of int: The adjacency matrix.
+        """
+        return self.matrix
+
+# Example usage:
+# adj_matrix = AdjacencyMatrix()
+# adj_matrix.populate_matrix(4, [[0, 1, 2, 3], [1, 0, 4, 5], [2, 4, 0, 6], [3, 5, 6, 0]])
+# graph = adj_matrix.to_graph()
+# nx.draw(graph, with_labels=True)

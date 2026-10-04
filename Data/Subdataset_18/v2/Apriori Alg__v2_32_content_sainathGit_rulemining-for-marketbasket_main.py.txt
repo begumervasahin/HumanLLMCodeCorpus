@@ -1,0 +1,197 @@
+import sys
+
+def load_transactions(input_file):
+    """
+    Load the transaction database from the input file.
+
+    Args:
+        input_file (str): Path to the input file containing transactions.
+
+    Returns:
+        list: List of transactions, where each transaction is a list of items.
+    """
+    transactions = []
+    with open(input_file, "r") as file:
+        for line in file:
+            transactions.append([int(x) for x in line.split()])
+    return transactions
+
+def adjust_support(min_support, total_transactions):
+    """
+    Adjust minimum support to the absolute count.
+
+    Args:
+        min_support (float): Minimum support as a fraction.
+        total_transactions (int): Total number of transactions.
+
+    Returns:
+        int: Minimum support count.
+    """
+    return min_support * total_transactions
+
+def clear(table, min_support):
+    """
+    Remove infrequent itemsets from the table.
+
+    Args:
+        table (dict): Dictionary of itemsets with their support counts.
+        min_support (int): Minimum support count threshold.
+    """
+    infrequent_keys = [k for k in table.keys() if table[k] < min_support]
+    for key in infrequent_keys:
+        del table[key]
+
+def get_key(l1, l2):
+    """
+    Generate a new itemset key from two itemsets.
+
+    Args:
+        l1 (tuple): First itemset.
+        l2 (tuple): Second itemset.
+
+    Returns:
+        tuple: Combined itemset key.
+    """
+    key = list(l1[:-1])
+    key.extend([l1[-1], l2[-1]])
+    return tuple(key)
+
+def can_mix(l1, l2):
+    """
+    Check if two itemsets can be combined.
+
+    Args:
+        l1 (tuple): First itemset.
+        l2 (tuple): Second itemset.
+
+    Returns:
+        bool: True if the itemsets can be combined, False otherwise.
+    """
+    return l1[:-1] == l2[:-1] and l1[-1] < l2[-1]
+
+def apriori_gen(table):
+    """
+    Generate candidate itemsets from the current table.
+
+    Args:
+        table (dict): Dictionary of current itemsets.
+
+    Returns:
+        dict: Dictionary of new candidate itemsets.
+    """
+    new_table = {}
+    for l1 in table.keys():
+        for l2 in table.keys():
+            if can_mix(l1, l2):
+                new_table[get_key(l1, l2)] = 0
+    return new_table
+
+def count_values(table, db):
+    """
+    Count the support of each itemset in the transaction database.
+
+    Args:
+        table (dict): Dictionary of itemsets with their support counts.
+        db (list): List of transactions.
+    """
+    for k in table.keys():
+        for transaction in db:
+            if set(k).issubset(transaction):
+                table[k] += 1
+
+def powerset(seq):
+    """
+    Generate all non-empty subsets of a sequence.
+
+    Args:
+        seq (list): The sequence to generate subsets from.
+
+    Yields:
+        list: Non-empty subsets of the sequence.
+    """
+    if len(seq) <= 1:
+        yield seq
+        yield []
+    else:
+        for item in powerset(seq[1:]):
+            yield [seq[0]] + item
+            yield item
+
+def print_rule(s, l_s, conf):
+    """
+    Print an association rule.
+
+    Args:
+        s (list): Antecedent of the rule.
+        l_s (list): Consequent of the rule.
+        conf (float): Confidence of the rule.
+    """
+    print(f"{s} ==> {l_s}              {conf:.2f}")
+
+def print_confs(item, L):
+    """
+    Generate and print association rules for an itemset.
+
+    Args:
+        item (tuple): The itemset to generate rules for.
+        L (dict): Dictionary of all itemsets with their support counts.
+    """
+    global rule_count
+    for s in powerset(list(item)):
+        if not s or s == list(item):
+            continue
+        l_s = [x for x in item if x not in s]
+        conf = L[item] / L[tuple(s)]
+        if conf >= min_confidence:
+            print_rule(s, l_s, conf)
+            rule_count += 1
+
+if __name__ == "__main__":
+    # Get input parameters from command line arguments
+    min_support = float(sys.argv[1])
+    min_confidence = float(sys.argv[2])
+    input_file = sys.argv[3]
+
+    # Load the transaction database
+    transaction_list = load_transactions(input_file)
+
+    # Adjust minimum support to the absolute count
+    min_support = adjust_support(min_support, len(transaction_list))
+
+    # Initialize the table with single items
+    l = []
+    table = {}
+    for transaction in transaction_list:
+        for item in transaction:
+            if (item,) not in table.keys():
+                table[(item,)] = 1
+            else:
+                table[(item,)] += 1
+
+    clear(table, min_support)
+    l.append(table)
+
+    # Main loop to generate itemsets of increasing size
+    k = 1
+    while len(l[k-1]) != 0:
+        table = apriori_gen(l[k-1])
+        count_values(table, transaction_list)
+        clear(table, min_support)
+        l.append(table)
+        k += 1
+
+    l.pop()
+
+    # Combine all itemsets into a single dictionary
+    L = {}
+    for level in l:
+        L.update(level)
+
+    # Generate and print association rules
+    rule_count = 0
+    for item in L.keys():
+        if len(item) > 1:
+            print_confs(item, L)
+
+    print(f"Mined file {input_file}")
+    print(f"Found a total of {rule_count} association rules")

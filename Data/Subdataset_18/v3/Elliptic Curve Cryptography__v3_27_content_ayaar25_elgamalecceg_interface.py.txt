@@ -1,0 +1,143 @@
+from ecceg import EllipticCurveCryptoElGamal
+from elgamal import ElGamal
+
+def print_colored(text, color_code):
+    print(f'\033[1;{color_code}m{text}\033[1;m')
+
+def print_blue(text):
+    print_colored(text, '34')
+
+def print_green(text):
+    print_colored(text, '32')
+
+def print_magenta(text):
+    print_colored(text, '35')
+
+def display_file_content(file_path):
+    """
+    Display the content of a file in hexadecimal format.
+
+    :param file_path: Path to the file to display.
+    """
+    with open(file_path, 'rb') as file:
+        file_data = file.read()
+    for c in file_data:
+        print(hex(c), end=' ')
+    print()
+
+def get_algorithm_choice():
+    """
+    Prompt the user to choose an encryption algorithm.
+
+    :return: An instance of the chosen algorithm.
+    """
+    print("\n")
+    print_green("- Choose algorithm -")
+    print_magenta("[1] ElGamal \t [2] ECC")
+    choice = input("Enter Choice: ")
+
+    if choice == '1':
+        return ElGamal()
+    elif choice == '2':
+        print("\n================")
+        print_green("- Enter constants -")
+        print_magenta("Formula: y^2 = ( x^3 + Ax + B ) mod P")
+        print_magenta("K is used in encoding/decoding process")
+        in_a = int(input("Enter A: "))
+        in_b = int(input("Enter B: "))
+        in_p = int(input("Enter P: "))
+        in_k = int(input("Enter K: "))
+        return EllipticCurveCryptoElGamal(in_a, in_b, in_p, in_k)
+    else:
+        print("Invalid choice!")
+        return None
+
+def get_operation_choice():
+    """
+    Prompt the user to choose an operation (encrypt or decrypt).
+
+    :return: The chosen operation.
+    """
+    print("\n================")
+    print_green("- Choose operation -")
+    print_magenta("[1] Encrypt \t [2] Decrypt")
+    return input("Enter Choice: ")
+
+def get_key_choice():
+    """
+    Prompt the user to choose whether to use an existing key or create a new one.
+
+    :return: A tuple containing the paths to the public and private key files.
+    """
+    print("\n================")
+    print_green("- Do you already have the key? -")
+    print_magenta("[1] Yes \t [2] No, create new key")
+    choice = input("Enter Choice: ")
+
+    if choice == '2':
+        print("\n================")
+        print_green("- Enter new key seed -")
+        seed = input("Enter seed: ")
+        algo.key_gen(seed)
+        return "key.pub", "key.pri"
+    elif choice == '1':
+        print("\n================")
+        print_green("- Enter public key location -")
+        pub_key = input("Enter file location: ")
+        print_green("\nPublic Key File:")
+        display_file_content(pub_key)
+
+        print("\n================")
+        print_green("- Enter private key location -")
+        pri_key = input("Enter file location: ")
+        print_green("\nPrivate Key File:")
+        display_file_content(pri_key)
+        return pub_key, pri_key
+    else:
+        print("Invalid choice!")
+        return None, None
+
+def main():
+    """
+    Main function to demonstrate the usage of ElGamal and ECC algorithms for encryption and decryption.
+    """
+    algo = get_algorithm_choice()
+    if not algo:
+        return
+
+    operation = get_operation_choice()
+    if operation not in ['1', '2']:
+        print("Invalid choice!")
+        return
+
+    pub_key, pri_key = get_key_choice()
+    if not pub_key or not pri_key:
+        return
+
+    print("\n================")
+    print_green("- Enter target file -")
+    target_file = input("Enter file: ")
+
+    print("\n================")
+    print_green("- Input File: -")
+    with open(target_file, 'r') as file:
+        file_data = file.read()
+    print(file_data)
+
+    if operation == '1':
+        if isinstance(algo, ElGamal):
+            algo.encrypt(target_file, pub_key, pri_key)
+            output_file = 'cipher.txt'
+        else:
+            algo.encrypt(target_file, pub_key, pri_key, in_k)
+            output_file = 'cipher_ecceg.txt'
+    else:
+        algo.decrypt(target_file, pub_key, pri_key)
+        output_file = 'out.txt'
+
+    print("\n================")
+    print_green("- Output File: -")
+    display_file_content(output_file)
+
+if __name__ == '__main__':
+    main()

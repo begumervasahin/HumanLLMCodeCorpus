@@ -1,0 +1,50 @@
+"""
+Lightweight helper for creating tail-recursive functions.
+"""
+
+from functools import wraps
+from typing import Callable, Dict, Generic, Tuple, Type, TypeVar, Union
+
+# Define type variables
+VT = TypeVar('VT')
+KT = TypeVar('KT')
+RT = TypeVar('RT')
+
+# Define type alias for the tail-recursive function
+TailRecFunction = Callable[..., RT]
+
+# Sentinel value to indicate a result is not set
+class NotSet:
+    """Sentinel value used to indicate an unset result."""
+    pass
+
+class Recursion(BaseException, Generic[VT, KT]):
+    """Exception to indicate a recursive call with specific arguments."""
+    def __init__(self, *args: VT, **kwargs: KT) -> None:
+        """Initialize with the arguments for the recursive call."""
+        super().__init__()
+        self.args = args
+        self.kwargs = kwargs
+
+def virtual_recurse(func: TailRecFunction, *args: VT, **kwargs: KT) -> RT:
+    """Call a function and handle recursive calls via Recursion exception."""
+    result: Union[Type[NotSet], RT] = NotSet
+    while result is NotSet:
+        try:
+            result = func(*args, **kwargs)
+        except Recursion as next_call:
+            args = next_call.args
+            kwargs = next_call.kwargs
+    return result
+
+def tail_recursive(func: TailRecFunction) -> TailRecFunction:
+    """Decorator to enable tail recursion using the Recursion exception."""
+    @wraps(func)
+    def _trampolined(*args: VT, **kwargs: KT) -> RT:
+        return virtual_recurse(func, *args, **kwargs)
+    return _trampolined
+
+__all__ = (
+    'Recursion',
+    'tail_recursive',
+)

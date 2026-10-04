@@ -1,0 +1,42 @@
+import json
+import numpy as np
+import sys
+from datetime import datetime
+def validate_date(date_str):
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("The dates should be in the following format: YYYY-MM-DD")
+def validate_arguments(arguments):
+    if len(arguments) != 4:
+        raise AssertionError("Exactly 3 arguments are required: Starting Date, Ending Date, and Commodity Name")
+    validate_date(arguments[1])
+    validate_date(arguments[2])
+    if arguments[3] not in ["gold", "silver"]:
+        raise ValueError("The third argument must be either 'silver' or 'gold'")
+def load_json_data(file_path='result.json'):
+    with open(file_path, 'r') as file:
+        return json.load(file)
+def validate_date_range(starting, ending, commodity, data):
+    all_dates = list(data[commodity].keys())
+    max_date = max(all_dates)
+    min_date = min(all_dates)
+    if ending > max_date:
+        raise ValueError(f"Ending date exceeds available data. Maximum date is {max_date}.")
+    if starting < min_date:
+        raise ValueError(f"Starting date is before available data. Minimum date is {min_date}.")
+def calculate_price_statistics(starting, ending, commodity, data):
+    relevant_dates = [date for date in data[commodity] if starting <= date <= ending]
+    prices = [float(data[commodity][date]["Price"].replace(',', '')) for date in relevant_dates]
+    return np.mean(prices), np.var(prices)
+def main():
+    validate_arguments(sys.argv)
+    starting_date = sys.argv[1]
+    ending_date = sys.argv[2]
+    commodity_name = sys.argv[3]
+    data = load_json_data()
+    validate_date_range(starting_date, ending_date, commodity_name, data)
+    mean_price, price_variance = calculate_price_statistics(starting_date, ending_date, commodity_name, data)
+    print(f"{commodity_name}: Mean Price = {mean_price:.2f}, Price Variance = {price_variance:.2f}")
+if __name__ == "__main__":
+    main()

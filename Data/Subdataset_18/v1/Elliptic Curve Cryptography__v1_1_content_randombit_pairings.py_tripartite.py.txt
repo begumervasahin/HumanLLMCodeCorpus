@@ -1,0 +1,32 @@
+import random
+import bn256
+
+# Generate random private keys for a, b, and c
+a_k = random.randrange(2, bn256.order)
+b_k = random.randrange(2, bn256.order)
+c_k = random.randrange(2, bn256.order)
+
+# Generate corresponding public keys in G1
+a_g1 = bn256.g1_scalar_base_mult(a_k)
+b_g1 = bn256.g1_scalar_base_mult(b_k)
+c_g1 = bn256.g1_scalar_base_mult(c_k)
+
+# Generate corresponding public keys in G2
+a_g2 = bn256.g2_scalar_base_mult(a_k)
+b_g2 = bn256.g2_scalar_base_mult(b_k)
+c_g2 = bn256.g2_scalar_base_mult(c_k)
+
+# Generate shared keys in GT
+a_key = bn256.gt_scalar_mult(bn256.optimal_ate(b_g2, c_g1), a_k)
+b_key = bn256.gt_scalar_mult(bn256.optimal_ate(c_g2, a_g1), b_k)
+c_key = bn256.gt_scalar_mult(bn256.optimal_ate(a_g2, b_g1), c_k)
+
+# Hash the shared keys
+a_key_hash = bn256.gt_hash(a_key)
+b_key_hash = bn256.gt_hash(b_key)
+c_key_hash = bn256.gt_hash(c_key)
+
+# Print the hashed keys
+print(f"Hashed Key for a: {a_key_hash}")
+print(f"Hashed Key for b: {b_key_hash}")
+print(f"Hashed Key for c: {c_key_hash}")

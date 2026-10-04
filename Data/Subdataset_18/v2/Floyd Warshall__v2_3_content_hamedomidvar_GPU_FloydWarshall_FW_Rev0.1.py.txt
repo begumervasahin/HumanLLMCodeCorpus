@@ -1,0 +1,69 @@
+import numpy as np
+import cupy as cp
+
+# Define a large value to represent infinity
+INFINITY = 1e6
+
+def floyd_warshall(W, n):
+    """
+    Perform the Floyd-Warshall algorithm using GPU operations to find the shortest paths between all pairs of nodes.
+    
+    Parameters:
+    W (cupy.ndarray): The adjacency matrix of the graph.
+    n (int): The number of vertices in the graph.
+    
+    Returns:
+    cupy.ndarray: A matrix representing the shortest path distances between all pairs of nodes.
+    """
+    # Initialize the distance matrix with infinity
+    distance_matrix = cp.ones([n, n]) * INFINITY
+    
+    # Use GPU operations to compute shortest paths
+    for k in range(n):
+        dk = cp.log(cp.dot(cp.exp(W[:, k].reshape(n, 1)), cp.exp(W[k, :].reshape(1, n))))
+        update_mask = cp.sign(distance_matrix - dk)
+        update_indices = cp.where(update_mask > 0)
+        distance_matrix[update_indices] = dk[update_indices]
+    
+    return distance_matrix
+
+def create_adjacency_matrix(n=4):
+    """
+    Create an adjacency matrix and weight matrix for a random graph.
+    
+    Parameters:
+    n (int): The number of vertices in the graph.
+    
+    Returns:
+    cupy.ndarray: The adjacency matrix with weights.
+    """
+    # Generate a random adjacency matrix
+    adjacency_matrix = np.random.binomial(1, 0.5, [n, n])
+    adjacency_matrix = np.triu(adjacency_matrix, 1)
+    adjacency_matrix += adjacency_matrix.T
+    adjacency_matrix = cp.array(adjacency_matrix)
+    
+    # Generate a random weight matrix
+    weight_matrix = cp.array(np.random.exponential(scale=1, size=(n, n)))
+    weight_matrix = cp.multiply(adjacency_matrix, weight_matrix)
+    weight_matrix = cp.array(np.triu(weight_matrix.get(), 1))
+    weight_matrix += weight_matrix.T
+    weight_matrix += (cp.ones([n, n]) - adjacency_matrix) * INFINITY
+    cp.fill_diagonal(weight_matrix, 0)
+    
+    return weight_matrix
+
+def main():
+    # Number of vertices in the graph
+    n = 4
+    
+    # Create the adjacency matrix
+    adjacency_matrix = create_adjacency_matrix(n)
+    print("Adjacency Matrix:\n", adjacency_matrix)
+    
+    # Compute the shortest path distances using the Floyd-Warshall algorithm
+    distances = floyd_warshall(adjacency_matrix, n)
+    print("Distances:\n", distances)
+
+if __name__ == '__main__':
+    main()

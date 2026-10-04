@@ -1,0 +1,79 @@
+import nltk
+import random
+from nltk.corpus import movie_reviews
+from nltk.classify.scikitlearn import SklearnClassifier
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.linear_model import LogisticRegression
+from nltk.classify import ClassifierI
+from statistics import mode
+
+class VoteClassifier(ClassifierI):
+    def __init__(self, *classifiers):
+        self._classifiers = classifiers
+
+    def classify(self, features):
+        votes = [c.classify(features) for c in self._classifiers]
+        return mode(votes)
+
+    def confidence(self, features):
+        votes = [c.classify(features) for c in self._classifiers]
+        choice_votes = votes.count(mode(votes))
+        return choice_votes / len(votes)
+
+# Load and shuffle the movie reviews dataset
+documents = [(list(movie_reviews.words(fileid)), category)
+             for category in movie_reviews.categories()
+             for fileid in movie_reviews.fileids(category)]
+random.shuffle(documents)
+
+# Get the most frequent words
+all_words = nltk.FreqDist(w.lower() for w in movie_reviews.words())
+word_features = list(all_words.keys())[:3500]
+
+# Define a function to find features in a document
+def find_features(document):
+    words = set(document)
+    features = {w: (w in words) for w in word_features}
+    return features
+
+# Create the feature sets
+feature_sets = [(find_features(rev), category) for (rev, category) in documents]
+
+# Split the data into training and testing sets
+training_set = feature_sets[:1900]
+testing_set = feature_sets[1900:]
+
+# Train a Naive Bayes classifier
+nb_classifier = nltk.NaiveBayesClassifier.train(training_set)
+print("Naive Bayes accuracy:", nltk.classify.accuracy(nb_classifier, testing_set))
+
+# Train a Multinomial Naive Bayes classifier
+mnb_classifier = SklearnClassifier(MultinomialNB())
+mnb_classifier.train(training_set)
+print("Multinomial NB accuracy:", nltk.classify.accuracy(mnb_classifier, testing_set))
+
+# Train a Bernoulli Naive Bayes classifier
+bernoulli_classifier = SklearnClassifier(BernoulliNB())
+bernoulli_classifier.train(training_set)
+print("Bernoulli NB accuracy:", nltk.classify.accuracy(bernoulli_classifier, testing_set))
+
+# Train a Logistic Regression classifier
+logistic_classifier = SklearnClassifier(LogisticRegression(max_iter=10000))
+logistic_classifier.train(training_set)
+print("Logistic Regression accuracy:", nltk.classify.accuracy(logistic_classifier, testing_set))
+
+# Create a voting classifier
+voted_classifier = VoteClassifier(nb_classifier, mnb_classifier, bernoulli_classifier)
+print("Voted classifier accuracy:", nltk.classify.accuracy(voted_classifier, testing_set))
+
+# Display some classifications and their confidence levels
+for i in range(5):
+    print(f"Classification: {voted_classifier.classify(testing_set[i][0])}, "
+          f"Confidence: {voted_classifier.confidence(testing_set[i][0])}")
+
+# Show the most informative features
+nb_classifier.show_most_informative_features(15)
+
+# Optionally, save the classifier
+# with open("naivebayes.pickle", "wb") as save_classifier:
+#     pickle.dump(nb_classifier, save_classifier)

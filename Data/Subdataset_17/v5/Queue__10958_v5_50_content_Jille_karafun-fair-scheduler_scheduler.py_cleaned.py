@@ -1,0 +1,96 @@
+import argparse
+import functools
+import os
+import socketio
+import threading
+from qmgr import QueueManager
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Karafun fair scheduler.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable logging')
+    parser.add_argument('--hide-singers', action='store_true', help='Hide who queued each song')
+    parser.add_argument('channel', help='Karafun session ID')
+    return parser.parse_args()
+def initialize_socketio_client(verbose):
+    return socketio.Client(logger=verbose)
+def initialize_queue_manager(hide_singers):
+    return QueueManager(hide_singers)
+def mlock(f):
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        with mtx:
+            return f(*args, **kwargs)
+    return inner
+@mlock
+def connect():
+    if args.verbose:
+        print('Connection established')
+    sio.emit('authenticate', {
+        'login': 'fair scheduler',
+        'channel': args.channel,
+        'role': 'participant',
+        'app': 'karafun',
+        'socket_id': None,
+    })
+@mlock
+def login_already_taken():
+    if args.verbose:
+        print('Login already taken')
+    sio.emit('authenticate', {
+        'login': f'fair scheduler {os.getpid()}',
+        'channel': args.channel,
+        'role': 'participant',
+        'app': 'karafun',
+        'socket_id': None,
+    })
+@mlock
+def permissions(data):
+    if args.verbose:
+        print('Permissions received:', data)
+@mlock
+def preferences(data):
+    if args.verbose:
+        print('Preferences received:', data)
+    if not data.get('askSingerName'):
+        print('You must turn on "Ask singer\'s name when adding to queue" in the Karafun remote control settings for the scheduler to work.')
+        sio.disconnect()
+@mlock
+def status(data):
+    if args.verbose:
+        print('Status received:', data)
+@mlock
+def queue(data):
+    if args.verbose:
+        print('Queue received:', data)
+    @mlock
+    def handle():
+        action = qm.reconcile(data)
+        if action:
+            print('Sending:', action)
+            sio.emit(action[0], action[1])
+    global queue_handle_timer
+    queue_handle_timer.cancel()
+    queue_handle_timer = threading.Timer(0.3, handle)
+    queue_handle_timer.start()
+@mlock
+def server_unreachable():
+    print('Server unreachable. Try restarting the Karafun App?')
+    sio.disconnect()
+@mlock
+def disconnect():
+    print('Disconnected from server.')
+if __name__ == '__main__':
+    args = parse_arguments()
+    sio = initialize_socketio_client(args.verbose)
+    mtx = threading.Lock()
+    qm = initialize_queue_manager(args.hide_singers)
+    queue_handle_timer = threading.Timer(999.0, lambda: None)
+    sio.event(connect)
+    sio.event(login_already_taken)
+    sio.event(permissions)
+    sio.event(preferences)
+    sio.event(status)
+    sio.event(queue)
+    sio.event(server_unreachable)
+    sio.event(disconnect)
+    sio.connect(f'https:
+    sio.wait()

@@ -1,0 +1,112 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue May 02 18:05:42 2017
+
+Author: Zhongjie Zhang
+
+This is an example for pyfpgrowth and fp2ar
+"""
+
+import pyfpgrowth as pyfp  # Import the package for FP-Growth algorithm
+import fp2ar  # Import the package to form association rules from frequent patterns
+import re  # Import the regular expression package
+
+def read_transactional_dataset(file_name):
+    """
+    Reads a transactional dataset from a file and returns a list of transactions.
+    Each transaction is a list of item IDs (integers).
+
+    Args:
+    file_name (str): The path to the transactional dataset file.
+
+    Returns:
+    list: A list of transactions, where each transaction is a list of integers.
+    """
+    with open(file_name, 'r') as file:
+        content = file.readlines()
+
+    transactions = []
+    for line in content:
+        items = re.split(r' |\n', line)
+        transaction = [int(item) for item in items if item.isdigit()]
+        if transaction:
+            transactions.append(transaction)
+    
+    return transactions
+
+def mine_frequent_patterns(dataset, min_support):
+    """
+    Mine the dataset to find frequent patterns using the FP-Growth algorithm.
+
+    Args:
+    dataset (list): A list of transactions.
+    min_support (float): Minimum support threshold.
+
+    Returns:
+    dict: A dictionary of frequent patterns and their support counts.
+    """
+    return pyfp.getFP(dataset, min_support)
+
+def generate_association_rules(frequent_patterns, dataset_size, min_confidence, min_lift):
+    """
+    Generate association rules from frequent patterns.
+
+    Args:
+    frequent_patterns (dict): A dictionary of frequent patterns and their support counts.
+    dataset_size (int): The number of transactions in the dataset.
+    min_confidence (float): Minimum confidence threshold.
+    min_lift (float): Minimum lift threshold.
+
+    Returns:
+    dict: A dictionary of association rules.
+    """
+    return fp2ar.getAR(frequent_patterns, dataset_size, min_confidence, min_lift)
+
+def print_frequent_patterns(frequent_patterns):
+    """
+    Print the frequent patterns.
+
+    Args:
+    frequent_patterns (dict): A dictionary of frequent patterns and their support counts.
+    """
+    print("Frequent Patterns:")
+    for pattern, support in frequent_patterns.items():
+        print(f"Pattern: {pattern}, Support: {support}")
+
+def print_association_rules(association_rules):
+    """
+    Print the association rules.
+
+    Args:
+    association_rules (dict): A dictionary of association rules.
+    """
+    print("\nAssociation Rules:")
+    for rule, metrics in association_rules.items():
+        print(f"Rule: {rule}, Confidence: {metrics['confidence']}, Lift: {metrics['lift']}")
+
+def main():
+    # Path to the transactional dataset
+    dataset_path = "kosarak.dat"
+    
+    # Read the transactional dataset
+    dataset = read_transactional_dataset(dataset_path)
+
+    # Parameters for mining frequent patterns and generating association rules
+    min_support = 0.01
+    min_confidence = 0.75
+    min_lift = 1
+
+    # Mine frequent patterns from the dataset
+    frequent_patterns = mine_frequent_patterns(dataset, min_support)
+
+    # Generate association rules from frequent patterns
+    association_rules = generate_association_rules(frequent_patterns, len(dataset), min_confidence, min_lift)
+
+    # Print the frequent patterns
+    print_frequent_patterns(frequent_patterns)
+
+    # Print the association rules
+    print_association_rules(association_rules)
+
+if __name__ == "__main__":
+    main()

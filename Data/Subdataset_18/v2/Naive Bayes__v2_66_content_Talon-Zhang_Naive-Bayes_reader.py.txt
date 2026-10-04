@@ -1,0 +1,78 @@
+"""
+This file is responsible for providing functions for reading and processing files.
+"""
+
+from os import listdir
+import numpy as np
+from nltk.stem.porter import PorterStemmer
+
+# Initialize Porter Stemmer
+porter_stemmer = PorterStemmer()
+bad_words = {'aed', 'oed', 'eed'}
+
+def load_dir(directory_path, apply_stemming):
+    """
+    Load all files in a directory, optionally apply stemming, and return a list of lists of words.
+
+    Parameters:
+    directory_path (str): Directory path
+    apply_stemming (bool): Whether to apply stemming to the words
+
+    Returns:
+    list: List of lists of words from each file
+    """
+    documents = []
+    for file_name in listdir(directory_path):
+        full_path = directory_path + file_name
+        words = []
+        with open(full_path, 'rb') as file:
+            for line in file:
+                words += line.decode(errors='ignore').split(' ')
+        
+        if apply_stemming:
+            words = [porter_stemmer.stem(word) if word not in bad_words else word for word in words]
+        
+        documents.append(words)
+    return documents
+
+def load_dataset(train_directory, dev_directory, apply_stemming):
+    """
+    Load training and development datasets from directories.
+
+    Parameters:
+    train_directory (str): Directory path for training data
+    dev_directory (str): Directory path for development (testing) data
+    apply_stemming (bool): Whether to apply stemming to the words
+
+    Returns:
+    tuple: Training data (X), Training labels (Y), Test data (X_test), Test labels (Y_test)
+    """
+    # Load training data
+    train_ham = load_dir(train_directory + '/ham/', apply_stemming)
+    train_spam = load_dir(train_directory + '/spam/', apply_stemming)
+    X_train = train_ham + train_spam
+    Y_train = np.array([0] * len(train_ham) + [1] * len(train_spam))
+
+    # Load test data
+    test_ham = load_dir(dev_directory + '/ham/', apply_stemming)
+    test_spam = load_dir(dev_directory + '/spam/', apply_stemming)
+    X_test = test_ham + test_spam
+    Y_test = np.array([0] * len(test_ham) + [1] * len(test_spam))
+
+    return X_train, Y_train, X_test, Y_test
+
+# Example usage:
+if __name__ == "__main__":
+    train_directory = "path/to/train"
+    dev_directory = "path/to/dev"
+    apply_stemming = True  # Change to False if you don't want stemming
+
+    X_train, Y_train, X_test, Y_test = load_dataset(train_directory, dev_directory, apply_stemming)
+
+    print("Training data loaded:")
+    print(f"X_train: {len(X_train)} samples")
+    print(f"Y_train: {len(Y_train)} labels")
+    
+    print("Test data loaded:")
+    print(f"X_test: {len(X_test)} samples")
+    print(f"Y_test: {len(Y_test)} labels")

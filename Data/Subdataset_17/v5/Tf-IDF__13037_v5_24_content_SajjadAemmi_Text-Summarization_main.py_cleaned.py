@@ -1,0 +1,29 @@
+import argparse
+from text_summarization import TextSummarization
+def summarize_text(args):
+    ts = TextSummarization(
+        input_file=args.input,
+        stop_words_file=args.stop_words,
+        important_words_file=args.important_words,
+        output_file=args.output
+    )
+    ts.build_matrix()
+    ts.remove_stop_words()
+    ts.calculate_tf_idf()
+    ts.search_important_words()
+    ts.sum_words_weight_for_sentence_weight()
+    max_size_of_small_text = int(input("Enter the maximum number of words for the output text: "))
+    ts.MaxSizeOfSmallText = max_size_of_small_text
+    ts.create_small_text()
+    print(ts.SmallText)
+    ts.write_output_file()
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Summarize a large text file based on given parameters.")
+    parser.add_argument("--input", default="io/input/big_text.txt", type=str, help="Input big text file path")
+    parser.add_argument("--stop-words", default="io/input/stop_words.txt", type=str, help="Stop words file path")
+    parser.add_argument("--important-words", default="io/input/important_words.txt", type=str, help="Important words file path")
+    parser.add_argument("--output", default="io/output/small_text.txt", type=str, help="Output summarized text file path")
+    return parser.parse_args()
+if __name__ == "__main__":
+    args = parse_arguments()
+    summarize_text(args)

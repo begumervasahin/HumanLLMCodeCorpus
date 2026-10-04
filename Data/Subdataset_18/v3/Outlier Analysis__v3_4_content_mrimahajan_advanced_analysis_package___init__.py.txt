@@ -1,0 +1,123 @@
+# advanced_analysis_package.py
+
+import pandas as pd
+import numpy as np
+
+class AdvancedAnalysis:
+    def __init__(self, data_file):
+        """
+        Initialize with the path to a CSV data file.
+        
+        Parameters:
+            data_file (str): Path to the CSV file containing the dataset.
+        """
+        self.data_file = data_file
+        self.data = self.load_data()
+
+    def load_data(self):
+        """
+        Load data from a CSV file into a pandas DataFrame.
+        
+        Returns:
+            pd.DataFrame: Loaded data.
+        """
+        try:
+            data = pd.read_csv(self.data_file)
+            print("Data loaded successfully.")
+            return data
+        except FileNotFoundError:
+            print(f"File '{self.data_file}' not found.")
+            return None
+
+    def summary_statistics(self):
+        """
+        Return summary statistics of the dataset.
+        
+        Returns:
+            pd.DataFrame: Summary statistics.
+        """
+        if self.data is not None:
+            summary = self.data.describe()
+            print("Summary statistics calculated.")
+            return summary
+        else:
+            print("Data not loaded.")
+            return None
+
+    def missing_values(self):
+        """
+        Return the count of missing values for each column.
+        
+        Returns:
+            pd.Series: Count of missing values per column.
+        """
+        if self.data is not None:
+            missing = self.data.isnull().sum()
+            print("Missing values counted.")
+            return missing
+        else:
+            print("Data not loaded.")
+            return None
+
+    def fill_missing_values(self, strategy='mean'):
+        """
+        Fill missing values using the specified strategy ('mean', 'median', 'mode').
+        
+        Parameters:
+            strategy (str): Strategy to use for filling missing values.
+        """
+        if self.data is not None:
+            if strategy == 'mean':
+                self.data.fillna(self.data.mean(), inplace=True)
+            elif strategy == 'median':
+                self.data.fillna(self.data.median(), inplace=True)
+            elif strategy == 'mode':
+                self.data.fillna(self.data.mode().iloc[0], inplace=True)
+            else:
+                print("Invalid strategy. Choose from 'mean', 'median', or 'mode'.")
+                return
+            print(f"Missing values filled using {strategy} strategy.")
+        else:
+            print("Data not loaded.")
+
+    def correlation_matrix(self):
+        """
+        Return the correlation matrix of the dataset.
+        
+        Returns:
+            pd.DataFrame: Correlation matrix.
+        """
+        if self.data is not None:
+            correlation = self.data.corr()
+            print("Correlation matrix calculated.")
+            return correlation
+        else:
+            print("Data not loaded.")
+            return None
+
+    def export_to_csv(self, output_file):
+        """
+        Export the processed data to a CSV file.
+        
+        Parameters:
+            output_file (str): Path to the output CSV file.
+        """
+        if self.data is not None:
+            self.data.to_csv(output_file, index=False)
+            print(f"Data exported to '{output_file}'.")
+        else:
+            print("Data not loaded.")
+
+if __name__ == "__main__":
+    # Example usage
+    analysis = AdvancedAnalysis('data.csv')
+
+    print("Summary Statistics:\n", analysis.summary_statistics())
+    print("Missing Values:\n", analysis.missing_values())
+
+    analysis.fill_missing_values(strategy='mean')
+    print("Missing Values After Filling:\n", analysis.missing_values())
+
+    print("Correlation Matrix:\n", analysis.correlation_matrix())
+
+    analysis.export_to_csv('processed_data.csv')

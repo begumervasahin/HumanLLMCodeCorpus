@@ -1,0 +1,153 @@
+import numpy as np
+from scipy.misc import imread, imresize
+import matplotlib.pyplot as plt
+import queue
+
+class Node:
+    """
+    A class representing a node in the Huffman tree.
+
+    Attributes
+    ----------
+    prob : float
+        The probability of the node.
+    data : int or None
+        The pixel value (used only for leaf nodes).
+    left : Node or None
+        The left child node.
+    right : Node or None
+        The right child node.
+    """
+    def __init__(self, data=None, prob=None):
+        self.prob = prob
+        self.data = data
+        self.left = None
+        self.right = None
+
+    def __lt__(self, other):
+        return self.prob < other.prob
+
+def rgb_to_gray(img):
+    """
+    Convert an RGB image to grayscale.
+
+    Parameters
+    ----------
+    img : ndarray
+        The RGB image array.
+
+    Returns
+    -------
+    ndarray
+        The grayscale image array.
+    """
+    return np.rint(img[:, :, 0] * 0.2989 + img[:, :, 1] * 0.5870 + img[:, :, 2] * 0.1140).astype(int)
+
+def build_huffman_tree(probabilities):
+    """
+    Build the Huffman tree from the given probabilities.
+
+    Parameters
+    ----------
+    probabilities : ndarray
+        The array of probabilities for each pixel value.
+
+    Returns
+    -------
+    Node
+        The root node of the Huffman tree.
+    """
+    priority_queue = queue.PriorityQueue()
+    for pixel_value, prob in enumerate(probabilities):
+        if prob > 0:  # Ignore pixel values with zero probability
+            priority_queue.put(Node(data=pixel_value, prob=prob))
+    
+    while priority_queue.qsize() > 1:
+        left = priority_queue.get()
+        right = priority_queue.get()
+        merged_node = Node(prob=left.prob + right.prob, data=None)
+        merged_node.left = left
+        merged_node.right = right
+        priority_queue.put(merged_node)
+    
+    return priority_queue.get()
+
+def generate_huffman_codes(node, code=''):
+    """
+    Recursively traverse the Huffman tree to generate codes for each pixel value.
+
+    Parameters
+    ----------
+    node : Node
+        The current node in the Huffman tree.
+    code : str, optional
+        The accumulated binary code string for the current path.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping each pixel value to its corresponding Huffman code.
+    """
+    if node is None:
+        return {}
+
+    if node.left is None and node.right is None:
+        return {node.data: code}
+
+    codes = {}
+    codes.update(generate_huffman_codes(node.left, code + '0'))
+    codes.update(generate_huffman_codes(node.right, code + '1'))
+    return codes
+
+def calculate_compression_ratio(hist, huffman_codes, image_size):
+    """
+    Calculate the compression ratio achieved using Huffman encoding.
+
+    Parameters
+    ----------
+    hist : ndarray
+        The histogram of pixel values in the image.
+    huffman_codes : dict
+        The dictionary of Huffman codes for each pixel value.
+    image_size : int
+        The total number of bits in the original image.
+
+    Returns
+    -------
+    float
+        The compression ratio as a percentage.
+    """
+    total_bits = sum(len(huffman_codes[val]) * count for val, count in enumerate(hist) if count > 0)
+    compression_ratio = (1 - total_bits / image_size) * 100
+    return compression_ratio
+
+def main():
+    # Load and resize the image
+    img = imread('tiger.bmp')
+    img = imresize(img, 10)
+
+    # Convert to grayscale
+    gray_img = rgb_to_gray(img)
+
+    # Calculate the histogram and probabilities of pixel values
+    hist = np.bincount(gray_img.ravel(), minlength=256)
+    probabilities = hist / np.sum(hist)
+
+    # Build the Huffman tree
+    root_node = build_huffman_tree(probabilities)
+
+    # Generate Huffman codes
+    huffman_codes = generate_huffman_codes(root_node)
+
+    # Write Huffman codes to a file
+    with open('codes.txt', 'w') as code_file:
+        for pixel_value, code in huffman_codes.items():
+            code_file.write(f'{pixel_value} {code}\n')
+
+    # Calculate and display the compression ratio
+    original_image_bits = img.shape[0] * img.shape[1] * 8
+    compression_ratio = calculate_compression_ratio(hist, huffman_codes, original_image_bits)
+    print(f'Compression achieved: {compression_ratio:.2f}%')
+
+if __name__ == "__main__":
+    main()

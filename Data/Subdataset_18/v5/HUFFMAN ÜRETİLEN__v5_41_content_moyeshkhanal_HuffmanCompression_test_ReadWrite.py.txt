@@ -1,0 +1,60 @@
+import os
+import sys
+import unittest
+from WriteBitFile import WriteBitFile
+from ReadBitFile import ReadBitFile
+
+class ReadWriteTest(unittest.TestCase):
+    def setUp(self):
+        self.test_file = "data.bin"
+        self.test_file_2 = "data2.bin"
+
+    def tearDown(self):
+        self._remove_file(self.test_file)
+        self._remove_file(self.test_file_2)
+
+    def _remove_file(self, file_path):
+        """Helper method to remove a file if it exists."""
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    def test_mixed_operations(self):
+        """Test writing and reading a mix of bits and data types."""
+        with WriteBitFile(self.test_file) as writer:
+            writer.writeBit(1)
+            writer.writeBit(0)
+            writer.writeBit(1)
+            writer.writeBit(1)
+            writer.writeUInt(10000042)
+            writer.writeBit(1)
+            writer.writeBit(0)
+            writer.writeUShort(50000)
+            writer.writeBit(1)
+            writer.writeUByte(42)
+
+        with ReadBitFile(self.test_file) as reader:
+            self.assertEqual(reader.readBit(), 1)
+            self.assertEqual(reader.readBit(), 0)
+            self.assertEqual(reader.readBit(), 1)
+            self.assertEqual(reader.readBit(), 1)
+            self.assertEqual(reader.readUInt(), 10000042)
+            self.assertEqual(reader.readBit(), 1)
+            self.assertEqual(reader.readBit(), 0)
+            self.assertEqual(reader.readUShort(), 50000)
+            self.assertEqual(reader.readBit(), 1)
+            self.assertEqual(reader.readUByte(), 42)
+
+    def test_repeated_bit_patterns(self):
+        """Test writing and reading repeated bit patterns."""
+        with WriteBitFile(self.test_file_2) as writer:
+            for _ in range(4):
+                writer.writeBit(1)
+                writer.writeBit(0)
+
+        with ReadBitFile(self.test_file_2) as reader:
+            for _ in range(4):
+                self.assertEqual(reader.readBit(), 1)
+                self.assertEqual(reader.readBit(), 0)
+
+if __name__ == '__main__':
+    unittest.main(argv=sys.argv, exit=False)

@@ -1,0 +1,60 @@
+import os
+import string
+import numpy as np
+import pandas as pd
+from time import time
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+
+# Start the timer
+start_time = time()
+
+# Load the list of words from wordslist.csv
+df = pd.read_csv('wordslist.csv')
+words = df['word'].tolist()
+lmtzr = WordNetLemmatizer()
+
+# Define the directory containing the email files
+directory_path = "emails/"
+directory = os.fsencode(directory_path)
+
+# Create and write headers to the frequency.csv file
+with open("frequency.csv", "w") as freq_file:
+    header = ','.join(words) + ',output\n'
+    freq_file.write(header)
+
+# Initialize email processing count
+processed_count = 0
+
+# Process each email file in the directory
+for file in os.listdir(directory):
+    # Decode the file name
+    file_name = os.fsdecode(file)
+    file_path = os.path.join(directory_path, file_name)
+    processed_count += 1
+
+    # Read the email file content
+    with open(file_path, "r", encoding='utf-8', errors='ignore') as email_file:
+        words_list_array = np.zeros(len(words))
+
+        # Process each word in the email content
+        for word in email_file.read().split():
+            word = lmtzr.lemmatize(word.lower())
+            if word in stopwords.words('english') or word in string.punctuation or len(word) <= 2 or word.isdigit():
+                continue
+            if word in words:
+                words_list_array[words.index(word)] += 1
+
+        # Write the word frequencies and output label to the frequency.csv file
+        with open("frequency.csv", "a") as freq_file:
+            freq_file.write(','.join(map(str, map(int, words_list_array))) + ',')
+            output_label = "1" if len(file_name) == 71 else "-1"
+            freq_file.write(output_label + '\n')
+
+    # Print progress every 100 files processed
+    if processed_count % 100 == 0:
+        print(f"Processed {processed_count} files")
+
+# Print the total time taken for processing
+elapsed_time = round(time() - start_time, 2)
+print(f"Time (in seconds) to process the entire dataset: {elapsed_time}")

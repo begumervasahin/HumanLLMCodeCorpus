@@ -1,0 +1,59 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May 08 10:01:31 2017
+
+Author: Zhongjie Zhang
+
+This script demonstrates the use of the Central Limit Theorem based algorithm to mine frequent patterns and 
+form association rules from a transactional dataset.
+"""
+
+import pyclt  # Import the Central Limit Theorem based algorithm package
+import fp2ar  # Import the package to form association rules from frequent patterns
+import re  # Import the regular expression package for splitting strings and extracting items from transactions
+
+def read_dataset(file_name):
+    """
+    Read the transactional dataset from a file.
+
+    Parameters:
+    file_name (str): The name of the file containing the dataset.
+
+    Returns:
+    list: A list of transactions, each transaction is a list of items.
+    """
+    with open(file_name, 'r') as file:
+        transactions = []
+        content = file.readlines()
+        for line in content:
+            items = re.split(r' |\n', line)
+            transaction = [int(item) for item in items if item.isdigit()]
+            if transaction:
+                transactions.append(transaction)
+    return transactions
+
+def main():
+    # Read the transactional dataset
+    # The dataset kosarak.dat can be downloaded from http://fimi.ua.ac.be/data/
+    dataset = read_dataset("kosarak.dat")
+
+    # Mine the dataset with a minimum support of 3%
+    # The range of deviation of any support is limited to [-0.5%, 0.5%] with a probability of at least 99%
+    # `fi` is the formed frequent pattern
+    # `sN` is the size of the sample
+    fi, sN = pyclt.getFP(dataset, 0.03, 0.005, 0.01)
+
+    # Form association rules from `fi` with a minimum confidence of 75% and a minimum lift of 1
+    association_rules = fp2ar.getAR(fi, sN, 0.75, 1)
+
+    # Output the frequent patterns and association rules
+    print("Frequent Patterns:")
+    for pattern in fi:
+        print(pattern)
+    
+    print("\nAssociation Rules:")
+    for rule in association_rules:
+        print(rule)
+
+if __name__ == "__main__":
+    main()

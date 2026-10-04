@@ -1,0 +1,84 @@
+import pandas as pd
+
+# Load the CSV files
+info_path = 'path/to/weebtoon_star_info.csv'
+reply_path = 'path/to/weebtoon_reply_info.csv'
+info_df = pd.read_csv(info_path)
+reply_df = pd.read_csv(reply_path)
+reply_df = reply_df.drop(columns=['Unnamed: 0'])
+
+# Initialize reply lists
+reply_list = [[] for _ in range(10)]
+
+# Sort and filter low star point entries
+sorted_info_df = info_df.sort_values(by='star_point')
+low_star_df = sorted_info_df.head(1000).drop_duplicates(subset=["titleId", "nom"])
+
+print(low_star_df)
+
+# Get titleId and nom lists for low star point entries
+low_star_title_ids = low_star_df['titleId'].tolist()
+low_star_noms = low_star_df['nom'].tolist()
+
+# Extract comments for low star point entries
+for title_id, nom in zip(low_star_title_ids, low_star_noms):
+    filtered_replies = reply_df[(reply_df['titleId'] == title_id) & (reply_df['nom'] == nom)]
+    for i in range(10):
+        try:
+            reply_list[i].append(str(filtered_replies[f'comment{i+1}'].values[0]))
+        except IndexError:
+            reply_list[i].append('')
+
+# Add comments to low star DataFrame
+for i in range(10):
+    low_star_df[f'comment{i+1}'] = reply_list[i]
+
+# Drop rows with empty first comments
+low_star_df = low_star_df[low_star_df['comment1'] != '']
+
+print(low_star_df)
+
+# Limit to 500 entries
+low_star_df = low_star_df.head(500)
+
+print(low_star_df)
+
+# Save to CSV
+low_star_df.to_csv("./lowstar_reply.csv", encoding="utf_8_sig", mode='w')
+
+# Filter high star point entries
+high_star_df = info_df[info_df['star_point'] == 9.99].sample(n=1000).drop(columns=['Unnamed: 0'])
+high_star_df = high_star_df.drop_duplicates(subset=["titleId", "nom"])
+
+# Get titleId and nom lists for high star point entries
+high_star_title_ids = high_star_df['titleId'].tolist()
+high_star_noms = high_star_df['nom'].tolist()
+
+# Initialize reply lists for high star entries
+reply_list = [[] for _ in range(10)]
+
+# Extract comments for high star point entries
+for title_id, nom in zip(high_star_title_ids, high_star_noms):
+    filtered_replies = reply_df[(reply_df['titleId'] == title_id) & (reply_df['nom'] == nom)]
+    for i in range(10):
+        try:
+            reply_list[i].append(str(filtered_replies[f'comment{i+1}'].values[0]))
+        except IndexError:
+            reply_list[i].append('')
+
+# Add comments to high star DataFrame
+for i in range(10):
+    high_star_df[f'comment{i+1}'] = reply_list[i]
+
+# Drop rows with empty first comments
+high_star_df = high_star_df[high_star_df['comment1'] != '']
+
+print(high_star_df)
+
+# Limit to 500 entries
+high_star_df = high_star_df.head(500)
+
+print(high_star_df)
+
+# Save to CSV
+high_star_df.to_csv("./highstar_reply.csv", encoding="utf_8_sig", mode='w')

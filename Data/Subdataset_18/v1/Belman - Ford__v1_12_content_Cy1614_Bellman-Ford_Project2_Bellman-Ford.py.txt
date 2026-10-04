@@ -1,0 +1,63 @@
+import numpy as np
+import sys
+
+def bellman_ford(start, end, weights):
+    """
+    Bellman-Ford algorithm to find the shortest path from start to end in a weighted graph.
+    :param start: The starting node.
+    :param end: The ending node.
+    :param weights: The weight matrix of the graph.
+    :return: The shortest path from start to end as a list of nodes.
+    """
+    V = weights.shape[0]  # Number of vertices
+    Inf = sys.maxsize
+    dist = np.ones(V) * np.inf  # Distance to each vertex
+    pred = np.zeros(V, dtype=int) * Inf  # Predecessor of each vertex
+    dist[start] = 0
+
+    # Relax edges V-1 times
+    for _ in range(V - 1):
+        for u in range(V):
+            for v in range(V):
+                w = weights[u, v]
+                if w != 0 and dist[u] + w < dist[v]:
+                    dist[v] = dist[u] + w
+                    pred[v] = u
+
+    # Check for negative-weight cycles
+    for u in range(V):
+        for v in range(V):
+            w = weights[u, v]
+            if w != 0 and dist[u] + w < dist[v]:
+                raise ValueError('Graph contains a negative-weight cycle')
+
+    # Reconstruct the shortest path
+    path = []
+    current = end
+    while current != start:
+        path.append(current)
+        current = pred[current]
+    path.append(start)
+    path.reverse()
+
+    return path
+
+if __name__ == '__main__':
+    start_node = 4
+    end_node = 3
+    weights = np.array([
+        [0, 20,  0, 80, 0,  0, 90,  0],
+        [0,  0,  0,  0, 0, 10,  0,  0],
+        [0,  0,  0, 10, 0, 50,  0, 20],
+        [0,  0, 10,  0, 0,  0, 20,  0],
+        [0, 50,  0,  0, 0,  0, 30,  0],
+        [0,  0, 10, 40, 0,  0,  0,  0],
+        [20,  0,  0,  0, 0,  0,  0,  0],
+        [0,  0,  0,  0, 0,  0,  0,  0]
+    ])
+
+    try:
+        shortest_path = bellman_ford(start_node, end_node, weights)
+        print(f"The shortest path from {start_node} to {end_node} is: {shortest_path}")
+    except ValueError as e:
+        print(e)

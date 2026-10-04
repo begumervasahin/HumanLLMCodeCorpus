@@ -1,0 +1,195 @@
+from collections import deque
+from heapq import heappop, heappush
+
+class DGraph:
+    def __init__(self, matrix, goal_indices, start_state=0):
+        """
+        Initialize a directed graph represented by an adjacency matrix.
+
+        Args:
+            matrix (list of list of int): Adjacency matrix representing the graph.
+            goal_indices (set of int): Set of goal state indices.
+            start_state (int, optional): Index of the start state. Defaults to 0.
+        """
+        self.matrix = matrix
+        self.goal_indices = goal_indices
+        self.start_state = start_state
+
+    def get_start_state(self):
+        """
+        Get the start state of the graph.
+
+        Returns:
+            int: The index of the start state.
+        """
+        return self.start_state
+
+    def is_goal_state(self, state):
+        """
+        Check if the given state is a goal state.
+
+        Args:
+            state (int): The state to check.
+
+        Returns:
+            bool: True if the state is a goal state, False otherwise.
+        """
+        return state in self.goal_indices
+
+    def get_successors(self, state):
+        """
+        Get the successors of a given state.
+
+        Args:
+            state (int): The state for which to find successors.
+
+        Returns:
+            dict: A dictionary of successor states and their costs.
+        """
+        row = self.matrix[state]
+        return {index: cost for index, cost in enumerate(row) if cost is not None}
+
+def bfs(graph):
+    """
+    Perform Breadth-First Search (BFS) on the graph.
+
+    Args:
+        graph (DGraph): The graph to search.
+
+    Returns:
+        int: The goal state if found, otherwise None.
+    """
+    start_state = graph.get_start_state()
+    frontier = deque([start_state])
+    explored = set()
+
+    while frontier:
+        state = frontier.popleft()
+        if graph.is_goal_state(state):
+            return state
+        explored.add(state)
+        for successor in graph.get_successors(state):
+            if successor not in explored and successor not in frontier:
+                frontier.append(successor)
+    return None
+
+def dfs(graph):
+    """
+    Perform Depth-First Search (DFS) on the graph.
+
+    Args:
+        graph (DGraph): The graph to search.
+
+    Returns:
+        int: The goal state if found, otherwise None.
+    """
+    start_state = graph.get_start_state()
+    frontier = [start_state]
+    explored = set()
+
+    while frontier:
+        state = frontier.pop()
+        if graph.is_goal_state(state):
+            return state
+        explored.add(state)
+        for successor in graph.get_successors(state):
+            if successor not in explored and successor not in frontier:
+                frontier.append(successor)
+    return None
+
+def ids(graph):
+    """
+    Perform Iterative Deepening Search (IDS) on the graph.
+
+    Args:
+        graph (DGraph): The graph to search.
+
+    Returns:
+        int: The goal state if found, otherwise None.
+    """
+    def dls(state, depth):
+        if depth == 0 and graph.is_goal_state(state):
+            return state
+        if depth > 0:
+            for successor in graph.get_successors(state):
+                result = dls(successor, depth - 1)
+                if result is not None:
+                    return result
+        return None
+
+    depth = 0
+    while True:
+        result = dls(graph.get_start_state(), depth)
+        if result is not None:
+            return result
+        depth += 1
+
+def astar(graph, heuristic):
+    """
+    Perform A* search on the graph.
+
+    Args:
+        graph (DGraph): The graph to search.
+        heuristic (function): Heuristic function to estimate the cost to the goal.
+
+    Returns:
+        int: The goal state if found, otherwise None.
+    """
+    start_state = graph.get_start_state()
+    frontier = [(0, start_state)]
+    explored = set()
+    cost_so_far = {start_state: 0}
+
+    while frontier:
+        current_cost, state = heappop(frontier)
+
+        if graph.is_goal_state(state):
+            return state
+
+        explored.add(state)
+        for successor, step_cost in graph.get_successors(state).items():
+            new_cost = current_cost + step_cost
+            if successor not in explored or new_cost < cost_so_far.get(successor, float('inf')):
+                cost_so_far[successor] = new_cost
+                priority = new_cost + heuristic(successor)
+                heappush(frontier, (priority, successor))
+    return None
+
+def heuristic(state):
+    """
+    Heuristic function for A* search.
+
+    Args:
+        state (int): The state for which to estimate the cost to the goal.
+
+    Returns:
+        int: The heuristic estimate.
+    """
+    return 0  # Implement your heuristic function here
+
+if __name__ == "__main__":
+    # Define a matrix representation of a directed graph
+    matrix = [
+        [None, 1, None, None, None],
+        [None, None, 1, None, None],
+        [None, None, None, 1, None],
+        [None, None, None, None, 1],
+        [None, None, None, None, None],
+    ]
+    goal_indices = {4}
+
+    # Create a graph instance
+    graph = DGraph(matrix, goal_indices)
+
+    # Perform search algorithms
+    bfs_result = bfs(graph)
+    print("BFS Result:", bfs_result)
+
+    dfs_result = dfs(graph)
+    print("DFS Result:", dfs_result)
+
+    ids_result = ids(graph)
+    print("IDS Result:", ids_result)
+
+    astar_result = astar(graph, heuristic)
+    print("A* Result:", astar_result)

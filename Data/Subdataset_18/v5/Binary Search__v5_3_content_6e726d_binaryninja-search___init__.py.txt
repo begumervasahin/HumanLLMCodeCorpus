@@ -1,0 +1,102 @@
+from binaryninja import *
+
+def instruction_text_token_to_string(instruction_token_list):
+    """
+    Converts a list of InstructionTextToken objects to a formatted string.
+    """
+    if not all(isinstance(token, function.InstructionTextToken) for token in instruction_token_list):
+        raise TypeError("List must contain InstructionTextToken objects only.")
+    
+    return " ".join(token.text.strip() for token in instruction_token_list)
+
+def process_immediate(immediate):
+    """
+    Converts a string representing an immediate value to an integer.
+    Supports hexadecimal (0x) and decimal formats.
+    """
+    if not isinstance(immediate, str):
+        raise TypeError("Immediate must be a string object.")
+    
+    try:
+        return int(immediate, 16) if immediate.startswith("0x") else int(immediate)
+    except ValueError:
+        raise ValueError(f"Invalid immediate value: {immediate}")
+
+def lookup_immediate_instructions(bv, immediate):
+    """
+    Searches all functions in the binary view (bv) for instructions 
+    containing the specified immediate value.
+    
+    Returns a list of tuples with the address, function name, and instruction text.
+    """
+    results = []
+    
+    for func in bv.functions:
+        for instruction, address in func.instructions:
+            if any(token.type == InstructionTextTokenType.PossibleAddressToken and token.value == immediate 
+                   for token in instruction):
+                instruction_text = instruction_text_token_to_string(instruction)
+                results.append((address, func.name, instruction_text))
+    
+    return results
+
+def display_results_report(bv, value, results):
+    """
+    Displays an HTML report of the search results.
+    """
+    html = """
+    <!DOCTYPE html>
+    <html>
+        <body>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr>
+                    <th width="150">Address</th>
+                    <th width="150">Function</th>
+                    <th>Instruction</th>
+                </tr>
+    """
+    
+    for address, function_name, instruction_text in results:
+        html += f"""
+                <tr>
+                    <td><pre>0x{address:016X}</pre></td>
+                    <td><pre>{function_name}</pre></td>
+                    <td><pre>{instruction_text}</pre></td>
+                </tr>
+        """
+    
+    html += """
+            </table>
+        </body>
+    </html>
+    """
+    
+    bv.show_html_report(f"Search Immediate - 0x{value:X}", html)
+
+def search_immediate(bv):
+    """
+    Main function to handle user input and trigger the search for immediate values.
+    """
+    immediate_str = get_text_line_input("Value to search", "Search Immediate")
+    if immediate_str is None:
+        return  # User canceled the input
+
+    try:
+        immediate = process_immediate(immediate_str)
+    except ValueError as e:
+        show_message_box("Error", str(e))
+        return
+
+    results = lookup_immediate_instructions(bv, immediate)
+    
+    if results:
+        display_results_report(bv, immediate, results)
+    else:
+        show_message_box("Search Immediate", "No results found.")
+
+# Register the plugin command
+PluginCommand.register(
+    "Search Immediate", 
+    "Search for the specific value in the instruction operands.", 
+    search_immediate
+)

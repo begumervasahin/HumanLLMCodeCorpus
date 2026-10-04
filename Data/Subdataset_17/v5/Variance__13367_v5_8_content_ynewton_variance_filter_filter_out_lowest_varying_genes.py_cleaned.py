@@ -1,0 +1,58 @@
+import optparse
+import sys
+import numpy as np
+import math
+def parse_arguments():
+    parser = optparse.OptionParser()
+    parser.add_option("--in_file", dest="in_file", action="store", default="", help="Input file")
+    parser.add_option("--filter_level", dest="filter_level", action="store", default="", help="Filter level (float between 0 and 1)")
+    parser.add_option("--out_file", dest="out_file", action="store", default="", help="Output file")
+    return parser.parse_args()
+def validate_filter_level(filter_level):
+    try:
+        filter_level = float(filter_level)
+        if not (0.0 <= filter_level <= 1.0):
+            raise ValueError
+    except ValueError:
+        sys.stderr.write("ERROR: --filter_level must be a float in the interval [0,1].\n")
+        sys.exit(1)
+    return filter_level
+def read_input_file(file_path):
+    with open(file_path, 'r') as f:
+        return f.readlines()
+def calculate_variances(lines):
+    variances = []
+    genes = []
+    for line in lines[1:]:
+        columns = line.strip().split("\t")
+        gene = columns[0]
+        values = np.array([float(x) for x in columns[1:]])
+        variances.append(np.std(values))
+        genes.append(gene)
+    return genes, variances
+def filter_genes_by_variance(genes, variances, filter_level):
+    gene_variance_pairs = sorted(zip(genes, variances), key=lambda x: x[1])
+    cut_index = int(math.ceil(len(variances) * filter_level))
+    filtered_genes = [gene for gene, _ in gene_variance_pairs[cut_index:]]
+    return set(filtered_genes)
+def write_filtered_output(in_file, out_file, valid_genes):
+    with open(in_file, 'r') as input_file, open(out_file, 'w') as output_file:
+        for i, line in enumerate(input_file):
+            line = line.strip()
+            if i == 0 or line.split("\t")[0] in valid_genes:
+                output_file.write(line + "\n")
+def main():
+    opts, _ = parse_arguments()
+    in_file = opts.in_file
+    filter_level = validate_filter_level(opts.filter_level)
+    out_file = opts.out_file
+    sys.stderr.write("Reading in input...\n")
+    lines = read_input_file(in_file)
+    sys.stderr.write("Calculating variances...\n")
+    genes, variances = calculate_variances(lines)
+    sys.stderr.write("Filtering genes...\n")
+    valid_genes = filter_genes_by_variance(genes, variances, filter_level)
+    sys.stderr.write("Outputting filtered data...\n")
+    write_filtered_output(in_file, out_file, valid_genes)
+if __name__ == "__main__":
+    main()

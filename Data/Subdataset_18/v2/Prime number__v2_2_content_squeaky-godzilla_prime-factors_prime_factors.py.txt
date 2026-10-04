@@ -1,0 +1,94 @@
+"""
+Script to find prime factors of an integer value
+by Vitek Urbanec, 2019
+"""
+
+import sys
+import time
+import json
+import argparse
+
+
+def init_archive(archive_file_path):
+    """Initialize the archive file in case it's missing or corrupted."""
+    with open(archive_file_path, 'w') as archive_file:
+        json.dump({}, archive_file)
+
+
+def load_archive(archive_file_path):
+    """Load the archive file into memory as a dictionary."""
+    try:
+        with open(archive_file_path, 'r') as archive_file:
+            return json.load(archive_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        print('Error: archive JSON cannot be decoded. Initializing a new archive.')
+        init_archive(archive_file_path)
+        return {}
+
+
+def validate_number(number_str):
+    """Validate if the input string is a valid natural number."""
+    try:
+        number = int(number_str)
+        if number < 0:
+            raise ValueError
+        return number
+    except ValueError:
+        raise ValueError('Input is not a valid natural number')
+
+
+def get_prime_factors(number):
+    """Find prime factors of a given number."""
+    start_time = time.time()
+    factors = []
+    divisor = 2
+    while divisor * divisor <= number:
+        if number % divisor:
+            divisor += 1
+        else:
+            number //= divisor
+            factors.append(divisor)
+    if number > 1:
+        factors.append(number)
+    return factors, time.time() - start_time
+
+
+def record_result(number, factors, archive_file_path):
+    """Record the result into the archive JSON file."""
+    archive_data = load_archive(archive_file_path)
+    archive_data[str(number)] = factors
+    with open(archive_file_path, 'w') as archive_file:
+        json.dump(archive_data, archive_file)
+
+
+def main():
+    """Main function to parse arguments and find prime factors."""
+    parser = argparse.ArgumentParser(
+        description='Find prime factors of an integer number and store the results in an archive JSON file.'
+    )
+    parser.add_argument('-n', type=str, required=True, help='Integer number to factorize', dest='number')
+    parser.add_argument('-a', type=str, default='archive.json', help='Archive JSON file path', dest='archive_file')
+    parser.add_argument('-t', action='store_true', default=False, help='Flag for testing output format', dest='testing')
+
+    args = parser.parse_args()
+    number = validate_number(args.number)
+    archive_file = args.archive_file
+    testing = args.testing
+
+    archive_data = load_archive(archive_file)
+
+    if str(number) in archive_data:
+        prime_factors = archive_data[str(number)]
+        compute_time = 0
+    else:
+        prime_factors, compute_time = get_prime_factors(number)
+        record_result(number, prime_factors, archive_file)
+
+    if testing:
+        print(json.dumps({number: prime_factors, "compute_time": compute_time}))
+    else:
+        print(f'Prime factors of {number} are {", ".join(map(str, prime_factors))} - found in: {compute_time:.6f} sec')
+
+
+if __name__ == '__main__':
+    main()

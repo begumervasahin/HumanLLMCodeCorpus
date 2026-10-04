@@ -1,0 +1,56 @@
+import numpy as np
+import operator
+
+def loadDataSet():
+    """Load the Iris dataset from a CSV file."""
+    iris = np.loadtxt(open("./Iris.csv", "rb"), delimiter=",", skiprows=1)
+    features = iris[:, 1:5]  # Extract the feature columns
+    labels = iris[:, 5].astype(int)  # Extract the label column and convert to integers
+    return features, labels
+
+def classifierKNN(inX, dataSet, labels, k):
+    """Classify the input sample using the k-Nearest Neighbors algorithm."""
+    dataSetSize = dataSet.shape[0]
+    diffMat = np.tile(inX, (dataSetSize, 1)) - dataSet
+    sqDiffMat = diffMat ** 2
+    sqDistances = sqDiffMat.sum(axis=1)
+    distances = np.sqrt(sqDistances)
+    sortedDistIndices = distances.argsort()
+    
+    classCount = {}
+    for i in range(k):
+        voteLabel = labels[sortedDistIndices[i]]
+        classCount[voteLabel] = classCount.get(voteLabel, 0) + 1
+    
+    sortedClassCount = sorted(classCount.items(), key=operator.itemgetter(1), reverse=True)
+    return sortedClassCount[0][0]
+
+def main():
+    """Main function to run the k-NN classifier on the Iris dataset."""
+    features, labels = loadDataSet()
+    
+    # Initialize test and training datasets
+    testFeatures = np.zeros((30, 4))
+    testLabels = np.zeros(30)
+    trainFeatures = np.zeros((120, 4))
+    trainLabels = np.zeros(120)
+    
+    # Split the dataset into training and test sets
+    for i in range(3):
+        testFeatures[i * 10: i * 10 + 10] = features[i * 50: i * 50 + 10]
+        testLabels[i * 10: i * 10 + 10] = labels[i * 50: i * 50 + 10]
+        trainFeatures[i * 10: i * 10 + 40] = features[i * 50 + 10: i * 50 + 50]
+        trainLabels[i * 10: i * 10 + 40] = labels[i * 50 + 10: i * 50 + 50]
+    
+    # Evaluate the classifier
+    errorCount = 0
+    for i in range(30):
+        classifierResult = classifierKNN(testFeatures[i], trainFeatures, trainLabels, 5)
+        print(f"The classifier came back with: {classifierResult}, the real answer is: {testLabels[i]}")
+        if classifierResult != testLabels[i]:
+            errorCount += 1
+    
+    print(f"The total error rate is: {errorCount / 30.0:.2f}")
+
+if __name__ == "__main__":
+    main()

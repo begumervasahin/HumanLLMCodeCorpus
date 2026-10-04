@@ -1,0 +1,47 @@
+import random
+import numpy as np
+import time
+from Graph import Graph
+def calculate_cost(solution, graph):
+    return sum(graph.costs[solution[i], solution[i + 1]] for i in range(len(solution) - 1))
+def compare_solutions(sol1, sol2, graph):
+    return calculate_cost(sol1, graph) - calculate_cost(sol2, graph)
+def perturb_solution(solution, graph, temperature):
+    new_solution = exchange(solution)
+    cost_difference = compare_solutions(new_solution, solution, graph)
+    if cost_difference < 0:
+        return new_solution
+    acceptance_probability = np.exp(-cost_difference / temperature)
+    return new_solution if random.random() < acceptance_probability else solution
+def exchange(solution):
+    new_solution = solution.copy()
+    indices = range(1, len(solution) - 2)
+    i, j = random.sample(indices, 2)
+    new_solution[i], new_solution[j] = new_solution[j], new_solution[i]
+    return new_solution
+def simulated_annealing(graph, num_nodes, initial_temperature=1000, cooling_rate=0.98, min_temperature=5):
+    initial_solution = list(range(1, num_nodes))
+    random.shuffle(initial_solution)
+    solution = [0] + initial_solution + [0]
+    temperature = initial_temperature
+    start_time = time.time()
+    while temperature > min_temperature:
+        for _ in range(num_nodes ** 2):
+            solution = perturb_solution(solution, graph, temperature)
+        temperature *= cooling_rate
+    elapsed_time = time.time() - start_time
+    return solution, calculate_cost(solution, graph), elapsed_time
+def main():
+    num_nodes = 17
+    graph = Graph("N17.data")
+    total_cost = 0
+    total_time = 0
+    for _ in range(10):
+        solution, cost, elapsed_time = simulated_annealing(graph, num_nodes)
+        print(f"Solution: {solution}")
+        total_cost += cost
+        total_time += elapsed_time
+    print(f"Average cost: {total_cost / 10}")
+    print(f"Average time: {total_time / 10:.2f} seconds")
+if __name__ == '__main__':
+    main()

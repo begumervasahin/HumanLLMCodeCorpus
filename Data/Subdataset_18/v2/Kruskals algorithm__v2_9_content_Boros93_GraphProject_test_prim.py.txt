@@ -1,0 +1,79 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+from fibonacci_heap_mod import FibonacciHeap  # Assumed to be available
+from prim_algorithm import prim  # Custom implementation assumed to be available
+
+def build_heap(vertices, key_dict, heap):
+    """
+    Build a Fibonacci heap with initial keys for all vertices.
+
+    Parameters:
+    - vertices (iterable): The set of vertices.
+    - key_dict (dict): A dictionary containing keys (weights) for each vertex.
+    - heap (FibonacciHeap): An instance of a FibonacciHeap.
+
+    Returns:
+    - dict: A dictionary mapping each vertex to its corresponding Fibonacci heap node.
+    """
+    nodes_heap = {}
+    for vertex in vertices:
+        nodes_heap[vertex] = heap.insert(key_dict[vertex], vertex)
+    return nodes_heap
+
+def main():
+    # Create a graph with NetworkX
+    G = nx.Graph()
+
+    # Define nodes with their positions and initial key values
+    node_positions = {
+        'a': (0, 1),
+        'b': (2, 1),
+        'c': (1, 0),
+        'd': (1, 2)
+    }
+    for node, pos in node_positions.items():
+        G.add_node(node, pos=pos, key=0)
+
+    # Add edges with weights to the graph
+    edges_with_weights = [
+        ('a', 'b', 2),
+        ('a', 'c', 30),
+        ('b', 'c', 90),
+        ('d', 'b', 1),
+        ('d', 'a', 3)
+    ]
+    for u, v, weight in edges_with_weights:
+        G.add_edge(u, v, weight=weight)
+
+    # Extract weights and positions for visualization
+    edge_weights = nx.get_edge_attributes(G, 'weight')
+    node_positions = nx.get_node_attributes(G, 'pos')
+
+    # Apply Prim's algorithm to find the Minimum Spanning Tree (MST)
+    start_node = 'a'
+    node_set = node_positions.keys()
+    mst = prim(G, edge_weights, start_node, node_set)
+
+    # Extract edges and weights from the MST
+    mst_edges = mst.edges()
+    mst_edge_weights = nx.get_edge_attributes(mst, 'weight')
+
+    # Plot the original graph
+    plt.figure(figsize=(10, 5))
+
+    plt.subplot(121)
+    nx.draw(G, node_positions, with_labels=True)
+    nx.draw_networkx_edge_labels(G, node_positions, edge_labels=edge_weights)
+    plt.title("Original Graph")
+
+    # Plot the MST
+    plt.subplot(122)
+    nx.draw(mst, node_positions, with_labels=True)
+    nx.draw_networkx_edge_labels(mst, node_positions, edge_labels=mst_edge_weights)
+    plt.title("Minimum Spanning Tree (MST)")
+
+    # Display the plots
+    plt.show()
+
+if __name__ == "__main__":
+    main()

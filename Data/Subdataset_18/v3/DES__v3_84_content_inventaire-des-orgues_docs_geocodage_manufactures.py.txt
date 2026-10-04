@@ -1,0 +1,48 @@
+import json
+import requests
+import geojson
+
+# URL for the French government geocoding API
+GEOCODING_URL = "https://api-adresse.data.gouv.fr/search/?q="
+
+def geocode_address(address):
+    """
+    Geocode an address using the French government geocoding API.
+
+    :param address: The address to geocode.
+    :return: A tuple (latitude, longitude) of the geocoded address.
+    """
+    address_query = address.replace(" ", "+")  # URL encode the address
+    response = requests.get(GEOCODING_URL + address_query)  # Send request to the API
+    feature_collection = geojson.loads(response.text)  # Parse the response as GeoJSON
+    point = feature_collection['features'][0]['geometry']['coordinates']  # Extract coordinates
+    return point[1], point[0]  # Return latitude and longitude
+
+def update_addresses_with_geolocation(data_dict):
+    """
+    Geocode each address in the data dictionary and update it with latitude and longitude.
+
+    :param data_dict: Dictionary containing address data.
+    :return: Updated data dictionary with geolocation.
+    """
+    for facteur in data_dict:
+        address = facteur['adresse']
+        latitude, longitude = geocode_address(address)
+        facteur['latitude'] = latitude
+        facteur['longitude'] = longitude
+    return data_dict
+
+def main():
+    """
+    Main function to load addresses, geocode them, and save the updated data.
+    """
+    with open('datas.json') as json_file:
+        data_dict = json.load(json_file)  # Load address data from JSON file
+
+    updated_data_dict = update_addresses_with_geolocation(data_dict)  # Geocode and update addresses
+
+    with open('facteurs_localisation.json', 'w') as output_file:
+        json.dump(updated_data_dict, output_file, ensure_ascii=False, indent=4)  # Save updated data to JSON file
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,55 @@
+import crypto.hashing as hashing
+import crypto.keys as keys
+import users.user as user
+import crypto.signature as signature
+import crypto.encrypt as encrypt
+import database.db as db
+import json
+import azure.cosmos.documents as documents
+import azure.cosmos.cosmos_client as cosmos_client
+import azure.cosmos.errors as errors
+
+def main():
+    # Initialize the necessary cryptographic modules
+    hasher = hashing.Hash()
+    key_generator = keys.Key()
+    signer = signature.Signature()
+    encryptor = encrypt.Encrypt()
+
+    # Generate keys for Alice and Bob
+    alice_keys = key_generator.generate_keys()
+    bob_keys = key_generator.generate_keys()
+
+    # Create user instances for Alice and Bob with their respective keys
+    alice = user.User(alice_keys['publicKey'], alice_keys['privateKey'])
+    bob = user.User(bob_keys['publicKey'], bob_keys['privateKey'])
+
+    # Create a Cosmos client and connect to the database
+    with db.IDisposable(cosmos_client.CosmosClient(db.HOST, {'masterKey': db.MASTER_KEY})) as client:
+        try:
+            # Attempt to create the database
+            try:
+                client.CreateDatabase({"id": db.DATABASE_ID})
+                print(f"Database with id '{db.DATABASE_ID}' created")
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    print(f"Database with id '{db.DATABASE_ID}' already exists")
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+
+            # Attempt to create the container/collection
+            try:
+                client.CreateContainer(db.database_link, {"id": db.COLLECTION_ID})
+                print(f"Collection with id '{db.COLLECTION_ID}' created")
+            except errors.HTTPFailure as e:
+                if e.status_code == 409:
+                    print(f"Collection with id '{db.COLLECTION_ID}' already exists")
+                else:
+                    raise errors.HTTPFailure(e.status_code)
+        except errors.HTTPFailure as e:
+            print(f"An error occurred: {e._http_error_message}")
+        finally:
+            print("Process completed")
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,69 @@
+import numpy as np
+import os
+
+def compute_euclidean_distance(point, centroid):
+    """Compute the Euclidean distance between a point and a centroid."""
+    return np.linalg.norm(point - centroid)
+
+def assign_label_cluster(distances):
+    """Assign a data point to the nearest centroid based on the computed distances."""
+    return min(distances, key=distances.get)
+
+def compute_new_centroid(cluster_points):
+    """Compute the new centroid as the mean of the cluster points."""
+    return np.mean(cluster_points, axis=0)
+
+def k_means_clustering(data_points, centroids, total_iterations):
+    """Perform the k-means clustering algorithm."""
+    k = len(centroids)
+    
+    for _ in range(total_iterations):
+        # Initialize clusters
+        clusters = {i: [] for i in range(k)}
+        
+        # Assign each data point to the nearest centroid
+        for data_point in data_points:
+            distances = {i: compute_euclidean_distance(data_point, centroids[i]) for i in range(k)}
+            nearest_centroid_index = assign_label_cluster(distances)
+            clusters[nearest_centroid_index].append(data_point)
+        
+        # Update centroids
+        for i in range(k):
+            if clusters[i]:
+                centroids[i] = compute_new_centroid(clusters[i])
+
+    # Assign final labels
+    cluster_labels = []
+    for data_point in data_points:
+        distances = {i: compute_euclidean_distance(data_point, centroids[i]) for i in range(k)}
+        nearest_centroid_index = assign_label_cluster(distances)
+        cluster_labels.append((nearest_centroid_index, data_point, centroids[nearest_centroid_index]))
+
+    return cluster_labels, centroids
+
+def print_cluster_results(cluster_labels, centroids):
+    """Print the results of the k-means clustering."""
+    print("Result of k-Means Clustering:\n")
+    for label in cluster_labels:
+        print("Data point:", label[1])
+        print("Cluster number:", label[0], "\n")
+    print("Last centroids position:\n", centroids)
+
+def create_initial_centroids():
+    """Create initial centroids."""
+    return np.array([[5.0, 0.0], [45.0, 70.0], [50.0, 90.0]])
+
+if __name__ == "__main__":
+    # Load data points from a CSV file
+    filename = os.path.join(os.path.dirname(__file__), "data-example-1.csv")
+    data_points = np.genfromtxt(filename, delimiter=",")
+    
+    # Initialize centroids and set the number of iterations
+    centroids = create_initial_centroids()
+    total_iterations = 100
+    
+    # Perform k-means clustering
+    cluster_labels, new_centroids = k_means_clustering(data_points, centroids, total_iterations)
+    
+    # Print the results
+    print_cluster_results(cluster_labels, new_centroids)

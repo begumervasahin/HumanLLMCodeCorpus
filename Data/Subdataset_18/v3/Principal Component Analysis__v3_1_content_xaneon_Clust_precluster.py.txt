@@ -1,0 +1,167 @@
+import numpy as np
+import princomp
+import thresh
+import spktimes
+import get_stimtrigavs
+import spkwaveform
+import filter_spikes
+
+def precluster_signal(signal, sampling_rate, spike_window_duration):
+    """
+    Precluster a signal by applying filtering, spike detection, and PCA.
+    
+    Args:
+        signal (np.array): The input signal.
+        sampling_rate (float): The sampling rate of the signal.
+        spike_window_duration (float): Duration of the spike window.
+        
+    Returns:
+        tuple: Containing threshold, spike times, spike heights, spike waveforms, and principal components.
+    """
+    # Preserve the original signal
+    original_signal = signal.copy()
+    
+    # Apply high-pass and low-pass filtering
+    filtered_signal = apply_filters(signal, sampling_rate)
+    
+    # Detect threshold manually
+    threshold = detect_threshold(filtered_signal)
+    
+    # Detect spikes based on the threshold
+    spike_times = detect_spikes(filtered_signal, threshold, sampling_rate)
+    
+    # Extract spike waveforms
+    spike_waveforms = extract_spike_waveforms(filtered_signal, spike_times, spike_window_duration, sampling_rate)
+    
+    # Align spike waveforms
+    spike_times, spike_waveforms = align_waveforms(spike_times, spike_waveforms, spike_window_duration, sampling_rate)
+    
+    # Perform window detection
+    spike_times, spike_waveforms = perform_window_detection(spike_times, spike_waveforms, sampling_rate)
+    
+    # Calculate principal components of the spike waveforms
+    principal_components = calculate_principal_components(spike_waveforms)
+    
+    # Recalculate spike waveforms from the original signal and align again
+    spike_heights, spike_waveforms = recalculate_and_align_waveforms(original_signal, spike_times, spike_window_duration, sampling_rate)
+    
+    return threshold, spike_times, spike_heights, spike_waveforms, principal_components
+
+def apply_filters(signal, sampling_rate):
+    """
+    Apply high-pass and low-pass filters to the signal.
+    
+    Args:
+        signal (np.array): The input signal.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        np.array: The filtered signal.
+    """
+    filtered_signal = filter_spikes.high_pass(signal, sampling_rate, 1000, 3)
+    filtered_signal = filter_spikes.low_pass(filtered_signal, sampling_rate, sampling_rate / 2.0, 1)
+    return filtered_signal
+
+def detect_threshold(filtered_signal):
+    """
+    Detect threshold manually.
+    
+    Args:
+        filtered_signal (np.array): The filtered signal.
+        
+    Returns:
+        float: The detected threshold.
+    """
+    return thresh.detect(filtered_signal, 'manual')
+
+def detect_spikes(filtered_signal, threshold, sampling_rate):
+    """
+    Detect spikes based on the threshold.
+    
+    Args:
+        filtered_signal (np.array): The filtered signal.
+        threshold (float): The threshold value.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        np.array: The spike times.
+    """
+    spikes_detected = spktimes.detect(filtered_signal, threshold)
+    spike_indices = np.where(spikes_detected == True)[0]
+    return spike_indices / float(sampling_rate)
+
+def extract_spike_waveforms(filtered_signal, spike_times, spike_window_duration, sampling_rate):
+    """
+    Extract spike waveforms.
+    
+    Args:
+        filtered_signal (np.array): The filtered signal.
+        spike_times (np.array): The spike times.
+        spike_window_duration (float): Duration of the spike window.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        np.array: The extracted spike waveforms.
+    """
+    return get_stimtrigavs.get_avs(filtered_signal, sampling_rate, spike_times, spike_window_duration, 'zeros')
+
+def align_waveforms(spike_times, spike_waveforms, spike_window_duration, sampling_rate):
+    """
+    Align spike waveforms.
+    
+    Args:
+        spike_times (np.array): The spike times.
+        spike_waveforms (np.array): The spike waveforms.
+        spike_window_duration (float): Duration of the spike window.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        tuple: Containing aligned spike times and spike waveforms.
+    """
+    return spkwaveform.align(spike_times, spike_waveforms, spike_window_duration, sampling_rate)
+
+def perform_window_detection(spike_times, spike_waveforms, sampling_rate):
+    """
+    Perform window detection.
+    
+    Args:
+        spike_times (np.array): The spike times.
+        spike_waveforms (np.array): The spike waveforms.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        tuple: Containing spike times and spike waveforms after window detection.
+    """
+    return spkwaveform.window_detect(spike_times, spike_waveforms, [0.0005, 0.001], sampling_rate * 10, 'manual')
+
+def calculate_principal_components(spike_waveforms):
+    """
+    Calculate principal components of the spike waveforms.
+    
+    Args:
+        spike_waveforms (np.array): The spike waveforms.
+        
+    Returns:
+        dict: Containing principal components (coefficients, scores, and latent values).
+    """
+    principal_components = {}
+    principal_components['coeff'], principal_components['score'], principal_components['latent'] = princomp.get(spike_waveforms)
+    return principal_components
+
+def recalculate_and_align_waveforms(original_signal, spike_times, spike_window_duration, sampling_rate):
+    """
+    Recalculate spike waveforms from the original signal and align again.
+    
+    Args:
+        original_signal (np.array): The original signal.
+        spike_times (np.array): The spike times.
+        spike_window_duration (float): Duration of the spike window.
+        sampling_rate (float): The sampling rate of the signal.
+        
+    Returns:
+        tuple: Containing spike heights and aligned spike waveforms.
+    """
+    spike_waveforms = get_stimtrigavs.get_avs(original_signal, sampling_rate, spike_times, spike_window_duration, 'zeros')
+    spike_heights = spike_waveforms.max(axis=1)
+    spike_times, spike_waveforms = spkwaveform.align(spike_times, spike_waveforms, spike_window_duration, sampling_rate)
+    return spike_heights, spike_waveforms

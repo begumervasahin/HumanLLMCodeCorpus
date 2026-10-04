@@ -1,0 +1,68 @@
+from __future__ import print_function
+import sys
+import pandora.utils
+from pandora.tagger import Tagger
+
+def load_annotated_data(directory, params, nb_instances=None):
+    """
+    Load annotated data from the specified directory.
+
+    Parameters:
+    directory (str): Directory containing the annotated data.
+    params (dict): Dictionary of parameters.
+    nb_instances (int, optional): Number of instances to load. Defaults to None.
+
+    Returns:
+    list: Annotated data.
+    """
+    return pandora.utils.load_annotated_dir(
+        directory,
+        format='tab',
+        extension='.tsv',
+        include_pos=params['include_pos'],
+        include_lemma=params['include_lemma'],
+        include_morph=params['include_morph'],
+        nb_instances=nb_instances
+    )
+
+def train_tagger(config_path):
+    """
+    Train the tagger using the specified configuration.
+
+    Parameters:
+    config_path (str): Path to the configuration file.
+    """
+    print('::: Training Started :::')
+
+    # Load configuration parameters
+    params = pandora.utils.get_param_dict(config_path)
+    params['config_path'] = config_path
+
+    # Load training and development data
+    train_data = load_annotated_data('data/medieval_latin/train', params)
+    dev_data = load_annotated_data('data/medieval_latin/test', params)
+
+    # Initialize and set up the tagger for training
+    tagger = Tagger(**params)
+    tagger.setup_to_train(train_data=train_data, dev_data=dev_data)
+
+    # Train the tagger for the specified number of epochs
+    for epoch in range(int(params['nb_epochs'])):
+        tagger.epoch()
+        tagger.save()
+
+    # Save the final trained model
+    tagger.save()
+    print('::: Training Ended :::')
+
+if __name__ == '__main__':
+    # Check if the correct number of command-line arguments is provided
+    if len(sys.argv) != 2:
+        print('Usage: python script.py <config_file_path>')
+        sys.exit(1)
+
+    # Retrieve the configuration file path from the command-line argument
+    config_path = sys.argv[1]
+
+    # Start training the tagger
+    train_tagger(config_path)

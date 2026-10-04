@@ -1,0 +1,63 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import seaborn as sb
+from statsmodels.tsa.stattools import acf, pacf
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+# Set seaborn style for plots
+sb.set_style('darkgrid')
+
+# Define the path to the CSV file
+csv_path = os.path.join(os.getcwd(), 'q_table.csv')
+
+# Read stock data from the CSV file
+stock_data = pd.read_csv(csv_path)
+
+# Convert the 'Date' column to datetime format and sort by date
+stock_data['Date'] = pd.to_datetime(stock_data['Date'])
+stock_data.sort_values(by='Date', ascending=True, inplace=True)
+stock_data.set_index('Date', inplace=True)
+
+# Calculate the first difference of the 'Close' prices
+stock_data['First Difference'] = stock_data['Close'].diff()
+
+# Calculate the natural log of the 'Close' prices
+stock_data['Natural Log'] = np.log(stock_data['Close'])
+
+# Calculate the rolling variance of the original and logged 'Close' prices
+stock_data['Original Variance'] = stock_data['Close'].rolling(window=30).var()
+stock_data['Log Variance'] = stock_data['Natural Log'].rolling(window=30).var()
+
+# Calculate the logged first difference of the 'Natural Log' prices
+stock_data['Logged First Difference'] = stock_data['Natural Log'].diff()
+
+# Calculate the lag 20 of the logged first difference
+stock_data['Lag 20'] = stock_data['Logged First Difference'].shift(20)
+
+# Calculate autocorrelation and partial autocorrelation
+logged_diff = stock_data['Logged First Difference'].dropna()
+lag_corr = acf(logged_diff)
+lag_partial_corr = pacf(logged_diff)
+
+# Decompose the time series into trend, seasonal, and residual components
+decomposition = seasonal_decompose(stock_data['Natural Log'], model='additive', period=30)
+
+# Fit an ARIMA model to the logged first difference
+arima_model = sm.tsa.ARIMA(logged_diff, order=(0, 0, 1))
+arima_results = arima_model.fit(disp=-1)
+
+# Generate forecast from the ARIMA model
+stock_data['Forecast'] = arima_results.fittedvalues
+
+# Plot the logged first difference and the forecast
+plt.figure(figsize=(16, 12))
+plt.plot(stock_data['Logged First Difference'], label='Logged First Difference')
+plt.plot(stock_data['Forecast'], label='Forecast')
+plt.legend()
+plt.title('Logged First Difference and Forecast')
+plt.xlabel('Date')
+plt.ylabel('Value')
+plt.show()

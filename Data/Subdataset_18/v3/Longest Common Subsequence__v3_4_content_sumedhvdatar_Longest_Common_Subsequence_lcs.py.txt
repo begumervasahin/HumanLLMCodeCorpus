@@ -1,0 +1,64 @@
+import numpy as np
+
+def get_sequence(position_row, position_column):
+    # Base case: reached the edge of the table
+    if position_row == 1 or position_column == 1:
+        return
+
+    # If the current value came from the left, move left
+    if table[position_row][position_column] == table[position_row][position_column-1]:
+        get_sequence(position_row, position_column-1)
+    
+    # If the current value came from above, move up
+    elif table[position_row][position_column] == table[position_row-1][position_column]:
+        get_sequence(position_row-1, position_column)
+    
+    # If the current value came from the diagonal, add to sequence and move diagonally
+    else:
+        diagonal_element = table[position_row-1][position_column-1]
+        if table[position_row][position_column] == diagonal_element + 1:
+            final_sequence.append(table[0][position_column])
+            get_sequence(position_row-1, position_column-1)
+
+# Strings to find the LCS for
+s1 = "ACCGGTCGAGTGCGCGGAAGCCGGCCGAA"
+s2 = "GTCGTTCGGAATGCCGTTGCTCTGTAAA"
+
+# Initialize the dimensions of the LCS table
+num_columns = len(s1) + 2
+num_rows = len(s2) + 2
+
+# Create a 2D array (table) with zeros
+table = [[0] * num_columns for _ in range(num_rows)]
+
+# Populate the table with the characters of s1 and s2
+table[0][2:] = list(s1)  # Fill first row with characters of s1
+table[1][2:] = [0] * len(s1)  # Initialize the second row with 0s
+
+for i, letter in enumerate(s2, start=2):
+    table[i][0] = letter  # Fill first column with characters of s2
+    table[i][1] = 0  # Initialize the rest of the column with 0s
+
+# Fill the LCS table
+for i in range(2, num_rows):
+    for j in range(2, num_columns):
+        if table[i][0] == table[0][j]:
+            table[i][j] = table[i-1][j-1] + 1
+        else:
+            table[i][j] = max(table[i][j-1], table[i-1][j])
+
+# Print the matrix for visualization
+print("Printing the matrix:")
+print(np.matrix(table))
+
+# Initialize the final sequence list
+final_sequence = []
+print("We are sending row " + str(num_rows))
+print("We are sending column " + str(num_columns))
+
+# Start retrieving the sequence from the bottom-right corner of the matrix
+get_sequence(num_rows-1, num_columns-1)
+
+# Convert the sequence list to a string and reverse it for the correct order
+lcs = "".join(final_sequence)[::-1]
+print("Longest Common Subsequence:", lcs)

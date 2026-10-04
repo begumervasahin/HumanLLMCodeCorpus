@@ -1,0 +1,38 @@
+from prf import *
+
+# Define basic projection and constant functions
+id = Proj(1, 0)
+one = C(S, zero)
+
+# Define addition using primitive recursion
+S3 = C(S, Proj(3, 0))
+add = PR(id, S3)
+add = accel(add, lambda x, y: x + y, 2)
+
+# Define predecessor function
+pred = C(PR(id, Proj(3, 1)), Proj(1, 0), Proj(1, 0))
+pred = accel(pred, lambda x: x - 1 if x > 0 else 0, 1)
+pred3 = C(pred, Proj(3, 0))
+
+# Define subtraction using primitive recursion
+rsub = PR(id, pred3)
+sub = C(rsub, Proj(2, 1), Proj(2, 0))
+sub = accel(sub, lambda x, y: x - y if x >= y else 0, 2)
+
+# Define multiplication using primitive recursion
+mul_step = C(add, Proj(3, 0), Proj(3, 2))
+mul = PR(zero, mul_step)
+mul = accel(mul, lambda x, y: x * y, 2)
+
+# Define exponentiation using primitive recursion
+pow_step = C(mul, Proj(3, 0), Proj(3, 2))
+rpow = PR(one, pow_step)
+pow = C(rpow, Proj(2, 1), Proj(2, 0))
+pow = accel(pow, lambda x, y: x ** y, 2)
+
+# Example usage
+if __name__ == "__main__":
+    print("Addition of 3 and 5:", add(3, 5))  # Should print 8
+    print("Subtraction of 7 and 2:", sub(7, 2))  # Should print 5
+    print("Multiplication of 4 and 6:", mul(4, 6))  # Should print 24
+    print("Exponentiation of 2 to the power 3:", pow(2, 3))  # Should print 8

@@ -1,0 +1,92 @@
+import networkx as nx
+import math
+import matplotlib.pyplot as plt
+from fibonacci_heap import FibonacciHeap
+
+def build_heap(nodes, keys, heap):
+    """Builds a Fibonacci heap from the given nodes and their keys."""
+    return {node: heap.insert(keys[node], node) for node in nodes}
+
+def initialize_graph():
+    """Initializes the graph with nodes, their positions, and edges with weights."""
+    G = nx.Graph()
+    node_set = ['a', 'b', 'c', 'd']
+    positions = [(0, 2), (1, 2), (2, 0), (3, -2)]
+    
+    for node, pos in zip(node_set, positions):
+        G.add_node(node, pos=pos, key=0)
+    
+    edges = [
+        ('a', 'b', 2),
+        ('a', 'c', 10),
+        ('b', 'c', 9),
+        ('b', 'd', 1),
+        ('d', 'a', 3)
+    ]
+    G.add_weighted_edges_from(edges)
+    
+    return G, node_set
+
+def initialize_node_attributes(G, source):
+    """Initializes the node attributes for Prim's algorithm."""
+    for node in G.nodes:
+        G.nodes[node]['key'] = math.inf
+        G.nodes[node]['pred'] = None
+        G.nodes[node]['flag'] = False
+    G.nodes[source]['key'] = 0
+
+def draw_graph(G, pos, subplot_index, title, edge_labels=None):
+    """Draws the graph with given node positions and edge labels."""
+    plt.subplot(subplot_index)
+    nx.draw(G, pos, with_labels=True)
+    if edge_labels:
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+    plt.title(title)
+
+def prim_algorithm(G, source):
+    """Performs Prim's algorithm to find the Minimum Spanning Tree (MST)."""
+    Q = FibonacciHeap()
+    keys = nx.get_node_attributes(G, 'key')
+    nodes_heap = build_heap(G.nodes, keys, Q)
+    
+    while Q.total_nodes != 0:
+        u = Q.extract_min().value
+        G.nodes[u]['flag'] = True
+        
+        for v in G.neighbors(u):
+            if not G.nodes[v]['flag'] and G[u][v]['weight'] < G.nodes[v]['key']:
+                G.nodes[v]['key'] = G[u][v]['weight']
+                G.nodes[v]['pred'] = u
+                Q.decrease_key(nodes_heap[v], G[u][v]['weight'])
+
+def build_mst(G, node_set):
+    """Builds the Minimum Spanning Tree (MST) from the graph."""
+    MST = nx.Graph()
+    for v in node_set:
+        if G.nodes[v]['pred'] is not None:
+            MST.add_edge(G.nodes[v]['pred'], v, weight=G.nodes[v]['key'])
+    return MST
+
+# Main execution
+if __name__ == "__main__":
+    # Initialize the graph
+    G, node_set = initialize_graph()
+    pos = nx.get_node_attributes(G, 'pos')
+    edge_weights = nx.get_edge_attributes(G, 'weight')
+
+    # Draw the initial graph
+    plt.figure(figsize=(12, 6))
+    draw_graph(G, pos, 121, "Initial Graph", edge_labels=edge_weights)
+
+    # Initialize node attributes and run Prim's algorithm
+    source = 'a'
+    initialize_node_attributes(G, source)
+    prim_algorithm(G, source)
+
+    # Build and draw the Minimum Spanning Tree (MST)
+    MST = build_mst(G, node_set)
+    mst_edge_weights = nx.get_edge_attributes(MST, 'weight')
+    draw_graph(MST, pos, 122, "Minimum Spanning Tree (MST)", edge_labels=mst_edge_weights)
+
+    plt.show()
+w

@@ -1,0 +1,93 @@
+import numpy as np
+from scipy.linalg import svd
+from scipy.stats import f_oneway
+
+def swpca(dataset, catvar, k=0.05, trset=None):
+    """
+    Perform Sparse Weighted Principal Component Analysis (SWPCA) on the given dataset.
+    
+    Parameters:
+    - dataset: numpy array, shape (n_samples, n_features)
+    - catvar: numpy array, categorical variable for ANOVA
+    - k: float, parameter for calculating weights
+    - trset: numpy array or None, training set indicator; if None, use all data as training set
+    
+    Returns:
+    - Xhat: numpy array, reconstructed dataset
+    - weights: numpy array, weights for each principal component
+    - A: numpy array, transformation matrix
+    """
+    N = dataset.shape[0]
+    if trset is None:
+        trset = np.ones(N, dtype=bool)
+        training = False
+    else:
+        training = True
+
+    # Center the dataset by subtracting the mean of each subject
+    subjMean = dataset.mean(axis=1)
+    X = (dataset.T - subjMean).T
+
+    # Subtract the mean and normalize by the variance for the training set
+    meanTr = X[trset].mean(axis=0)
+    X -= meanTr
+    varTr = X[trset].var(axis=0)
+    varTr = np.maximum(varTr, 1)
+    X /= varTr
+
+    if training:
+        XNTEST = X[~trset]
+    XNTRAIN = X[trset]
+
+    # Perform Singular Value Decomposition (SVD)
+    U, s, Wt = svd(XNTRAIN, full_matrices=False)
+    W = Wt.T
+
+    # Sort components by descending singular values
+    ind = np.argsort(s)[::-1]
+    U = U[:, ind]
+    s = s[ind]
+    W = W[:, ind]
+
+    # Project the training data onto the principal components
+    STr = XNTRAIN.dot(W)
+    if training:
+        STe = XNTEST.dot(W)
+
+    # Calculate ANOVA F-statistics and weights for each principal component
+    labs = np.unique(catvar)
+    F, p_val = f_oneway(STr[catvar[trset] == labs[0]], STr[catvar[trset] == labs[1]])
+    weights = 1 - np.exp(-p_val / k)
+
+    # Reconstruct the data using the weights
+    A = np.linalg.pinv(W)
+    weightMat = np.diag(weights)
+    if training:
+        XTRhat = STr.dot(weightMat).dot(A)
+        XTEhat = STe.dot(weightMat).dot(A)
+        Xhat = np.zeros((N, XTRhat.shape[1]))
+        Xhat[trset] = XTRhat
+        Xhat[~trset] = XTEhat
+    else:
+        Xhat = STr.dot(weightMat).dot(A)
+
+    # Reverse normalization and centering
+    Xhat *= varTr
+    Xhat += meanTr
+    Xhat = (Xhat.T + subjMean).T
+
+    return Xhat, weights, A
+
+# Example usage
+if __name__ == "__main__":
+    # Example dataset and category variable
+    dataset = np.random.rand(100, 10)  # Replace with your dataset
+    catvar = np.random.randint(0, 2, 100)  # Replace with your categorical variable
+
+    # Run SWPCA
+    Xhat, weights, A = swpca(dataset, catvar)
+
+    # Print the results
+    print("Reconstructed Dataset:\n", Xhat)
+    print("Weights:\n", weights)
+    print("Transformation Matrix:\n", A)

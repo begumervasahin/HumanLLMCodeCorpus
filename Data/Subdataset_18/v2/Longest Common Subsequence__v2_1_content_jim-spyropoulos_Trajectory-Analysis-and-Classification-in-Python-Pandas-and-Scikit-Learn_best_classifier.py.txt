@@ -1,0 +1,76 @@
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
+from sklearn import preprocessing
+from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score
+
+def compute_and_print(X_train, Y_train, pipeline, kf):
+    """
+    This function performs K-Fold cross-validation and computes the accuracy score for each fold.
+    
+    Parameters:
+    X_train (numpy array): The feature data.
+    Y_train (numpy array): The target labels.
+    pipeline (Pipeline object): The machine learning pipeline.
+    kf (KFold object): The K-Fold cross-validator.
+    
+    Returns:
+    list: A list of accuracy scores for each fold.
+    """
+    stats = []
+    for train_index, test_index in kf.split(X_train):
+        # Split the data into training and testing sets for this fold
+        X_train1, X_test = X_train[train_index], X_train[test_index]
+        Y_train1, Y_test = Y_train[train_index], Y_train[test_index]
+        
+        # Fit the pipeline on the training set and predict on the test set
+        probas_ = pipeline.fit(X_train1, Y_train1).predict(X_test)
+        
+        # Compute the accuracy score and append to stats list
+        stats.append(accuracy_score(Y_test, probas_))
+    
+    return stats
+
+# Load the data
+df = pd.read_csv("grids.csv")
+
+# Preprocessing the labels
+le = preprocessing.LabelEncoder()
+le.fit(df["TripId"])
+Y_train = le.transform(df["TripId"])
+
+# Extract the features
+X_train = df['Grids'].values
+
+# Define the vectorizer and transformers
+vectorizer = CountVectorizer()
+transformer = TfidfTransformer()
+svd = TruncatedSVD(n_components=300, random_state=42)
+
+# Define the K-Fold cross-validator
+kf = KFold(n_splits=10, shuffle=True, random_state=42)
+
+# Define the classifiers
+clf1 = RandomForestClassifier(n_estimators=40, n_jobs=-1)
+clf2 = RandomForestClassifier(n_estimators=50, n_jobs=-1)
+clf3 = KNeighborsClassifier(n_neighbors=7, n_jobs=-1)
+
+# Combine the classifiers in a voting classifier
+clf = VotingClassifier(estimators=[('rf1', clf1), ('rf2', clf2), ('knn', clf3)], voting='hard')
+
+# Create the pipeline
+pipeline = Pipeline([
+    ('vect', vectorizer),
+    ('tfidf', transformer),
+    ('svd', svd),
+    ('clf', clf)
+])
+
+# Compute and print the accuracy scores
+stats = compute_and_print(X_train, Y_train, pipeline, kf)
+print(stats)

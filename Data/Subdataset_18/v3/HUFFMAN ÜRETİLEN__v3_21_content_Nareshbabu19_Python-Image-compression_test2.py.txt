@@ -1,0 +1,161 @@
+import heapq
+import os
+
+class HeapNode:
+    def __init__(self, char, freq):
+        """
+        Initialize a node for the Huffman tree.
+
+        Args:
+            char (str): The character represented by this node.
+            freq (int): The frequency of the character.
+        """
+        self.char = char
+        self.freq = freq
+        self.left = None
+        self.right = None
+
+    def __lt__(self, other):
+        """Define the less-than operator for HeapNode based on frequency."""
+        return self.freq < other.freq
+
+    def __eq__(self, other):
+        """Define the equality operator for HeapNode based on frequency."""
+        return self.freq == other.freq if isinstance(other, HeapNode) else False
+
+class HuffmanCoding:
+    def __init__(self, path):
+        """
+        Initialize the HuffmanCoding class with the path to the file.
+
+        Args:
+            path (str): The path to the file to be compressed.
+        """
+        self.path = path
+        self.heap = []
+        self.codes = {}
+        self.reverse_mapping = {}
+
+    def _build_frequency_dict(self, text):
+        """Create a frequency dictionary from the text."""
+        frequency = {}
+        for character in text:
+            frequency[character] = frequency.get(character, 0) + 1
+        return frequency
+
+    def _build_heap(self, frequency):
+        """Create a heap from the frequency dictionary."""
+        for char, freq in frequency.items():
+            node = HeapNode(char, freq)
+            heapq.heappush(self.heap, node)
+
+    def _merge_nodes(self):
+        """Merge nodes to create the Huffman tree."""
+        while len(self.heap) > 1:
+            node1 = heapq.heappop(self.heap)
+            node2 = heapq.heappop(self.heap)
+            merged_node = HeapNode(None, node1.freq + node2.freq)
+            merged_node.left = node1
+            merged_node.right = node2
+            heapq.heappush(self.heap, merged_node)
+
+    def _generate_codes_helper(self, node, current_code):
+        """Recursively generate Huffman codes for each character."""
+        if node is None:
+            return
+
+        if node.char is not None:
+            self.codes[node.char] = current_code
+            self.reverse_mapping[current_code] = node.char
+
+        self._generate_codes_helper(node.left, current_code + "0")
+        self._generate_codes_helper(node.right, current_code + "1")
+
+    def _generate_codes(self):
+        """Generate the Huffman codes by traversing the Huffman tree."""
+        root = heapq.heappop(self.heap)
+        self._generate_codes_helper(root, "")
+
+    def _encode_text(self, text):
+        """Encode the input text using the generated Huffman codes."""
+        return ''.join(self.codes[char] for char in text)
+
+    def _pad_encoded_text(self, encoded_text):
+        """Pad the encoded text to make its length a multiple of 8."""
+        extra_padding = 8 - len(encoded_text) % 8
+        padded_encoded_text = encoded_text + "0" * extra_padding
+        padded_info = f"{extra_padding:08b}"
+        return padded_info + padded_encoded_text
+
+    def _convert_to_byte_array(self, padded_encoded_text):
+        """Convert the padded encoded text into a byte array."""
+        if len(padded_encoded_text) % 8 != 0:
+            raise ValueError("Encoded text not padded properly")
+
+        return bytearray(int(padded_encoded_text[i:i+8], 2) for i in range(0, len(padded_encoded_text), 8))
+
+    def compress(self):
+        """Compress the file and write the output to a .bin file."""
+        filename, _ = os.path.splitext(self.path)
+        output_path = filename + ".bin"
+
+        with open(self.path, 'r') as file:
+            text = file.read().rstrip()
+
+        frequency = self._build_frequency_dict(text)
+        self._build_heap(frequency)
+        self._merge_nodes()
+        self._generate_codes()
+
+        encoded_text = self._encode_text(text)
+        padded_encoded_text = self._pad_encoded_text(encoded_text)
+
+        with open(output_path, 'wb') as output:
+            byte_array = self._convert_to_byte_array(padded_encoded_text)
+            output.write(bytes(byte_array))
+
+        print(f"File compressed successfully: {output_path}")
+        return output_path
+
+    def _remove_padding(self, padded_encoded_text):
+        """Remove padding from the encoded text."""
+        padded_info = padded_encoded_text[:8]
+        extra_padding = int(padded_info, 2)
+        return padded_encoded_text[8:-extra_padding]
+
+    def _decode_text(self, encoded_text):
+        """Decode the encoded text using the Huffman tree."""
+        current_code = ""
+        decoded_text = []
+
+        for bit in encoded_text:
+            current_code += bit
+            if current_code in self.reverse_mapping:
+                decoded_text.append(self.reverse_mapping[current_code])
+                current_code = ""
+
+        return ''.join(decoded_text)
+
+    def decompress(self, input_path):
+        """Decompress the .bin file and write the output to a .txt file."""
+        filename, _ = os.path.splitext(self.path)
+        output_path = filename + "_decompressed.txt"
+
+        with open(input_path, 'rb') as file:
+            bit_string = ''.join(f"{byte:08b}" for byte in file.read())
+
+        encoded_text = self._remove_padding(bit_string)
+        decompressed_text = self._decode_text(encoded_text)
+
+        with open(output_path, 'w') as output:
+            output.write(decompressed_text)
+
+        print(f"File decompressed successfully: {output_path}")
+        return output_path
+
+if __name__ == "__main__":
+    path = "example.txt"  # Replace with your file path
+    huffman = HuffmanCoding(path)
+
+    compressed_file = huffman.compress()
+    decompressed_file = huffman.decompress(compressed_file)

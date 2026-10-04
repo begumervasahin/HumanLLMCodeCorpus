@@ -1,0 +1,96 @@
+import urllib.request as urllib2
+from bs4 import BeautifulSoup
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
+
+def fetch_wiki_links(url):
+    """
+    Fetches Wikipedia article links and titles from the given URL.
+
+    Args:
+        url (str): URL of the Wikipedia page listing selected articles.
+
+    Returns:
+        tuple: A tuple containing two lists - links and titles.
+    """
+    links = []
+    titles = []
+    
+    try:
+        response = urllib2.urlopen(url)
+        soup = BeautifulSoup(response, 'html.parser')
+        content_div = soup.find('div', class_='mw-parser-output')
+        
+        # Extract article links and titles
+        for tr in content_div.find_all('tr'):
+            for td in tr.find_all('td'):
+                for a_tag in td.find_all('a'):
+                    title = a_tag.get('title')
+                    if title:
+                        full_url = 'https://az.wikipedia.org' + a_tag.get('href')
+                        links.append(full_url)
+                        titles.append(title)
+    except Exception as e:
+        print(f"Error fetching or parsing URL: {e}")
+    
+    return links, titles
+
+def tokenize_wiki_pages(links):
+    """
+    Tokenizes the text content of Wikipedia pages from the given links.
+
+    Args:
+        links (list): List of Wikipedia article links.
+
+    Returns:
+        list: A list of tokenized words from the articles.
+    """
+    tokenizer = RegexpTokenizer(r'\w+')
+    all_tokens = []
+    
+    for index, link in enumerate(links):
+        print(f"Processing {index + 1}/{len(links)}: {link}")
+        
+        try:
+            response = urllib2.urlopen(link)
+            soup = BeautifulSoup(response, 'html.parser')
+            content_div = soup.find('div', class_='mw-parser-output')
+            content = content_div.get_text()
+            
+            tokens = tokenizer.tokenize(content)
+            all_tokens.extend(tokens)
+        except Exception as e:
+            print(f"Error fetching or parsing URL: {e}")
+    
+    return all_tokens
+
+def save_counter_to_file(counter, filename):
+    """
+    Saves the token frequency counter to a file.
+
+    Args:
+        counter (Counter): Counter object with token frequencies.
+        filename (str): Path to the file where the counter will be saved.
+    """
+    try:
+        with open(filename, 'w') as file:
+            file.write(str(counter))
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+
+def main():
+    wiki_page_url = "https://az.wikipedia.org/wiki/Vikipediya:Seçilmiş_məqalələr"
+    links, _ = fetch_wiki_links(wiki_page_url)
+    
+    # For testing, limit the number of links to process
+    test_links = [
+        'https://az.wikipedia.org/wiki/GRB_970508',
+        'https://az.wikipedia.org/wiki/Günəş_sistemi'
+    ]
+    
+    tokenized_words = tokenize_wiki_pages(test_links)
+    word_counter = Counter(tokenized_words)
+    save_counter_to_file(word_counter, 'stopwordsAZE.txt')
+
+if __name__ == "__main__":
+    main()

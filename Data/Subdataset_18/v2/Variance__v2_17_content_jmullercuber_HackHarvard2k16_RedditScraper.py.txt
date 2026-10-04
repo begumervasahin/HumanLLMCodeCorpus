@@ -1,0 +1,81 @@
+import json
+import http.client as httplib
+import string
+
+# Abstract base class Scraper
+class Scraper:
+    def get_documents(self, subreddit, qty):
+        """Fetch documents from a given subreddit."""
+        raise NotImplementedError("This method should be overridden.")
+
+    def get_comments_for_post(self, link):
+        """Fetch comments for a given post."""
+        raise NotImplementedError("This method should be overridden.")
+
+    def recurse_comments(self, comment):
+        """Recursively fetch comments and their replies."""
+        raise NotImplementedError("This method should be overridden.")
+
+# RedditScraper class inheriting from Scraper
+class RedditScraper(Scraper):
+    def __init__(self):
+        self.depth = 0  # Initialize depth to manage recursion level
+
+    def get_documents(self, subreddit, qty):
+        """Fetch the specified number of documents from the subreddit."""
+        conn = httplib.HTTPSConnection('www.reddit.com')
+        conn.request("GET", f"/r/{subreddit}/hot/.json")
+        response = conn.getresponse()
+        subreddit_data = json.loads(response.read())
+        documents = []
+
+        # Iterate through the subreddit posts
+        for i in range(min(qty, len(subreddit_data['data']['children']))):
+            permalink = subreddit_data['data']['children'][i]['data']['permalink']
+            documents.extend(self.get_comments_for_post(permalink))
+
+        conn.close()
+        return documents
+
+    def get_comments_for_post(self, link):
+        """Fetch all comments for a given post."""
+        conn = httplib.HTTPSConnection('www.reddit.com')
+        conn.request("GET", f"{link}.json?limit=500")
+        response = conn.getresponse()
+        post_data = json.loads(response.read())
+        tl_comments = post_data[1]['data']['children']
+        all_comments = []
+
+        # Process each top-level comment
+        for comment in tl_comments:
+            if 'body' in comment['data']:
+                self.depth = 0
+                all_comments.extend(self.recurse_comments(comment))
+
+        conn.close()
+        return all_comments
+
+    def recurse_comments(self, comment):
+        """Recursively fetch comments and their replies."""
+        comment_bodies = []
+        # Filter out non-printable characters
+        body = ''.join(filter(lambda x: x in string.printable, comment['data']['body']))
+        comment_bodies.append(body)
+
+        # Check for replies and recurse if depth limit is not reached
+        if comment['data'].get('replies') and self.depth < 1:
+            for reply in comment['data']['replies']['data']['children']:
+                if reply['kind'] != 'more':
+                    self.depth += 1
+                    comment_bodies.extend(self.recurse_comments(reply))
+
+        return comment_bodies
+
+# Example usage
+if __name__ == "__main__":
+    scraper = RedditScraper()
+    subreddit = "python"
+    qty = 5
+    documents = scraper.get_documents(subreddit, qty)
+    for doc in documents:
+        print(doc)

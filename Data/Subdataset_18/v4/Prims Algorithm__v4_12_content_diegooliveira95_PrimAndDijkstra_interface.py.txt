@@ -1,0 +1,46 @@
+import random
+import time
+from graph import Vertex, Graph
+from dijkstra import dijkstra as Dijkstra
+from prim import prim as Prim
+
+def generate_random_weighted_graph(num_vertices, probability, lower_weight, higher_weight):
+    graph = Graph()
+    for i in range(1, num_vertices + 1):
+        graph.addVertex(str(i))
+    
+    for vertex in graph:
+        for other_vertex in graph:
+            if other_vertex.getId() == vertex.getId() or other_vertex.getId() in vertex.getConnections():
+                continue
+            if probability > random.randrange(0, 100):
+                graph.addEdge(vertex.getId(), other_vertex.getId(), random.randint(lower_weight, higher_weight))
+    
+    return graph
+
+def measure_algorithms_performance(graph, graph_label):
+    start_time_dijkstra = time.time()
+    Dijkstra(graph, graph.getVertex('1'))
+    total_time_dijkstra = time.time() - start_time_dijkstra
+
+    start_time_prim = time.time()
+    Prim(graph, graph.getVertex('1'))
+    total_time_prim = time.time() - start_time_prim
+
+    print(f"----------------- {graph_label} -----------------")
+    print(f"Dijkstra: {total_time_dijkstra:.6f} seconds")
+    print(f"Prim: {total_time_prim:.6f} seconds")
+    print("----------------------------------------------------\n")
+
+if __name__ == '__main__':
+    graphs = [
+        (generate_random_weighted_graph(200, 90, 1, 5), "First Sample"),
+        (generate_random_weighted_graph(300, 90, 1, 5), "Second Sample"),
+        (generate_random_weighted_graph(400, 90, 1, 5), "Third Sample"),
+        (generate_random_weighted_graph(200, 20, 1, 5), "Fourth Sample"),
+        (generate_random_weighted_graph(300, 20, 1, 5), "Fifth Sample"),
+        (generate_random_weighted_graph(400, 20, 1, 5), "Sixth Sample")
+    ]
+
+    for graph, label in graphs:
+        measure_algorithms_performance(graph, label)

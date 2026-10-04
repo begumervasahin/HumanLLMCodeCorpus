@@ -1,0 +1,58 @@
+import unittest
+from utils import dealArgs, cleanWord
+args = [
+    '--input=small_test.txt',
+    '--start=foo',
+    '--stop=bar',
+    '--finish=enough',
+    '--output=output',
+    '-s',
+    '-f',
+]
+class UtilsTest(unittest.TestCase):
+    def setUp(self):
+        self.expected_result = {
+            'file': 'small_test.txt',
+            'start': 'foo',
+            'stop': 'bar',
+            'finish': 'enough',
+            'format': False,
+            'output': 'output.json',
+            'stats': True,
+            'csv': False,
+        }
+        self.options = dealArgs(args)
+    def test_deal_args(self):
+        self.assertEqual(self.expected_result, self.options.to_object())
+    def test_change_format(self):
+        self.options.format = True
+        self.assertTrue(self.options.format)
+    def test_change_format_override(self):
+        self.options.format = 'foo'
+        self.assertFalse(self.options.format)
+    def test_change_file(self):
+        self.options.file = 'foo.txt'
+        self.assertEqual('foo.txt', self.options.file)
+    def test_change_output_override(self):
+        self.options.output = 'foo'
+        self.assertEqual('foo.json', self.options.output)
+    def test_change_csv_override(self):
+        self.options.csv = True
+        self.assertTrue(self.options.csv)
+        self.assertFalse(self.options.format)
+    def test_change_stats(self):
+        self.options.stats = True
+        self.assertTrue(self.options.stats)
+        self.assertFalse(self.options.format)
+    def test_change_stats_override(self):
+        self.options.stats = 'foo'
+        self.assertFalse(self.options.stats)
+    def test_deal_no_args(self):
+        self.assertRaises(ValueError, dealArgs, [])
+    def test_clean_word(self):
+        words = ['it!', 'is', 't1me', 'for', 'a11', 'g00d', '4', 'all', 'men']
+        expected_cleaned_words = ['it', 'is', 't1me', 'for', 'a11', 'g00d', '4', 'all', 'men']
+        cleaned_words = [cleanWord(word) for word in words]
+        self.assertEqual(expected_cleaned_words, cleaned_words)
+if __name__ == '__main__':
+    unittest.main()

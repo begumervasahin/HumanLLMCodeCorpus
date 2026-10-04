@@ -1,0 +1,96 @@
+import networkx as nx
+from random import randint
+
+class GraphManager:
+    def __init__(self):
+        self.quant_vert = 0
+        self.matriz = []
+
+    def load_from_matrix(self, matrix):
+        """
+        Load the adjacency matrix directly, skipping user input.
+        """
+        self.matriz = matrix
+        self.quant_vert = len(matrix)
+
+    def to_graph(self):
+        """
+        Convert the adjacency matrix to a NetworkX graph.
+        """
+        G = nx.Graph()
+        for i in range(self.quant_vert):
+            G.add_node(i)
+        for i in range(self.quant_vert):
+            for j in range(i, self.quant_vert):  # Only traverse upper triangle
+                if self.matriz[i][j] > 0:
+                    weight = self.matriz[i][j]
+                    G.add_edge(i, j, weight=weight)
+        return G
+
+    def generate_random_graph(self):
+        """
+        Generate a random connected graph using the Watts-Strogatz model.
+        """
+        n = self.quant_vert
+        G = nx.connected_watts_strogatz_graph(n, randint(int(n / 2), n - 1), 0.5, 100)
+        self.matriz = [[0] * n for _ in range(n)]
+        for v1, v2 in G.edges():
+            weight = randint(1, 50)
+            self.matriz[v1][v2] = weight
+            self.matriz[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        return G
+
+    def get_adjacency_matrix(self):
+        """
+        Return the current adjacency matrix.
+        """
+        return self.matriz
+
+    def clear_matrix(self):
+        """
+        Clear the adjacency matrix and reset vertex count.
+        """
+        self.quant_vert = 0
+        self.matriz = []
+
+    def generate_complete_graph(self, v):
+        """
+        Generate a complete graph with `v` vertices and random weights.
+        """
+        G = nx.complete_graph(v)
+        self.quant_vert = v
+        self.matriz = [[0] * v for _ in range(v)]
+        for v1, v2 in G.edges():
+            weight = randint(1, 50)
+            self.matriz[v1][v2] = weight
+            self.matriz[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        return G
+
+# Example usage:
+if __name__ == "__main__":
+    gm = GraphManager()
+
+    # Load a predefined adjacency matrix (example)
+    matrix = [
+        [0, 2, 0, 6, 0],
+        [2, 0, 3, 8, 5],
+        [0, 3, 0, 0, 7],
+        [6, 8, 0, 0, 9],
+        [0, 5, 7, 9, 0]
+    ]
+    gm.load_from_matrix(matrix)
+    
+    # Convert to graph and print edges
+    G = gm.to_graph()
+    print("Edges from matrix:", G.edges(data=True))
+
+    # Generate and print a random graph
+    gm.quant_vert = 10
+    random_graph = gm.generate_random_graph()
+    print("Random graph edges:", random_graph.edges(data=True))
+
+    # Generate and print a complete graph
+    complete_graph = gm.generate_complete_graph(5)
+    print("Complete graph edges:", complete_graph.edges(data=True))

@@ -1,0 +1,84 @@
+import torch
+import torch.optim as optim
+
+class LRDecay:
+    def __init__(self, optimizers, hidden_dim, base_learning_rate, warmup_steps, initial_step=0):
+        """
+        Initializes the LRDecay object.
+
+        Args:
+            optimizers (list): List of optimizers.
+            hidden_dim (int): Hidden dimension.
+            base_learning_rate (float): Base learning rate.
+            warmup_steps (int): Number of warmup steps.
+            initial_step (int, optional): Initial step. Defaults to 0.
+        """
+        self.optimizers = optimizers
+        self.hidden_dim = hidden_dim
+        self.base_learning_rate = base_learning_rate
+        self.warmup_steps = warmup_steps
+        self.step = initial_step
+
+    def update_learning_rate(self):
+        """
+        Updates the learning rate based on the current step and warmup logic.
+
+        Returns:
+            float: The current learning rate.
+        """
+        self.step += 1
+        learning_rate = self.calculate_learning_rate()
+        self.apply_learning_rate(learning_rate)
+        return learning_rate
+
+    def calculate_learning_rate(self):
+        """
+        Calculates the learning rate based on the current step and warmup logic.
+
+        Returns:
+            float: The calculated learning rate.
+        """
+        if self.step < self.warmup_steps:
+            return (self.hidden_dim ** -0.5) * (self.step * self.warmup_steps ** -1.5) * self.base_learning_rate
+        else:
+            return 0.5 * (self.hidden_dim ** -0.5) * (self.step ** -0.5) * self.base_learning_rate
+
+    def apply_learning_rate(self, learning_rate):
+        """
+        Applies the calculated learning rate to each optimizer.
+
+        Args:
+            learning_rate (float): The calculated learning rate.
+        """
+        for optimizer in self.optimizers:
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = learning_rate
+
+
+# Example usage
+if __name__ == "__main__":
+    # Create dummy model parameters
+    model_params = [torch.nn.Parameter(torch.randn(2, 2, requires_grad=True))]
+    
+    # Initialize optimizers
+    optimizer1 = optim.SGD(model_params, lr=0.01)
+    optimizer2 = optim.Adam(model_params, lr=0.01)
+    optimizers = [optimizer1, optimizer2]
+
+    # Set parameters for LRDecay
+    hidden_dim = 512
+    base_learning_rate = 0.001
+    warmup_steps = 1000
+    initial_step = 0
+
+    # Initialize the LRDecay object
+    lr_decay = LRDecay(optimizers, hidden_dim, base_learning_rate, warmup_steps, initial_step)
+
+    # Demonstrate learning rate decay over several steps
+    for _ in range(10):
+        current_learning_rate = lr_decay.update_learning_rate()
+        print(f"Current learning rate: {current_learning_rate}")
+
+        # Optionally perform a step of optimization
+        for optimizer in optimizers:
+            optimizer.step()

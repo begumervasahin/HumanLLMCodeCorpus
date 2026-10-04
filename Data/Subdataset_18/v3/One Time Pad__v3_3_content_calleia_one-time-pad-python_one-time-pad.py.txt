@@ -1,0 +1,83 @@
+import random
+import sys
+
+def encrypt_byte(byte):
+    """
+    Encrypts a single byte using a random key and XOR operation.
+
+    Args:
+        byte (bytes): The byte to encrypt.
+
+    Returns:
+        tuple: A tuple containing the random key and the encrypted byte.
+    """
+    byte_value = ord(byte)
+    key = random.randint(0, 255)
+    encrypted_byte = byte_value ^ key
+    return key, encrypted_byte
+
+def decrypt_byte(key_byte, encrypted_byte):
+    """
+    Decrypts a pair of bytes using XOR operation.
+
+    Args:
+        key_byte (bytes): The byte containing the random key.
+        encrypted_byte (bytes): The byte containing the encrypted value.
+
+    Returns:
+        int: The decrypted byte.
+    """
+    key_value = ord(key_byte)
+    encrypted_value = ord(encrypted_byte)
+    return key_value ^ encrypted_value
+
+def encrypt_file(input_filename, key_filename, encrypted_filename):
+    """
+    Encrypts the contents of the input file and writes the result to two output files.
+
+    Args:
+        input_filename (str): The name of the input file to encrypt.
+        key_filename (str): The name of the output file to store the random keys.
+        encrypted_filename (str): The name of the output file to store the encrypted bytes.
+    """
+    with open(input_filename, "rb") as infile, open(key_filename, 'wb') as key_out, open(encrypted_filename, 'wb') as encrypted_out:
+        byte = infile.read(1)
+        while byte:
+            key, encrypted = encrypt_byte(byte)
+            key_out.write(key.to_bytes(1, byteorder="big", signed=False))
+            encrypted_out.write(encrypted.to_bytes(1, byteorder="big", signed=False))
+            byte = infile.read(1)
+
+def decrypt_file(key_filename, encrypted_filename, output_filename):
+    """
+    Decrypts the contents of two input files and writes the result to an output file.
+
+    Args:
+        key_filename (str): The name of the input file containing the random keys.
+        encrypted_filename (str): The name of the input file containing the encrypted bytes.
+        output_filename (str): The name of the output file to store the decrypted bytes.
+    """
+    with open(key_filename, "rb") as key_in, open(encrypted_filename, "rb") as encrypted_in, open(output_filename, 'wb') as outfile:
+        key_byte = key_in.read(1)
+        encrypted_byte = encrypted_in.read(1)
+        while key_byte and encrypted_byte:
+            decrypted_byte = decrypt_byte(key_byte, encrypted_byte)
+            outfile.write(decrypted_byte.to_bytes(1, byteorder="big", signed=False))
+            key_byte = key_in.read(1)
+            encrypted_byte = encrypted_in.read(1)
+
+if __name__ == "__main__":
+    print("Starting script...")
+    if len(sys.argv) == 2:
+        input_filename = sys.argv[1]
+        encrypt_file(input_filename, input_filename + ".key", input_filename + ".enc")
+    elif len(sys.argv) == 3:
+        key_filename = sys.argv[1]
+        encrypted_filename = sys.argv[2]
+        output_filename = key_filename[:-4]  # Assuming the key file has a ".key" extension
+        decrypt_file(key_filename, encrypted_filename, output_filename)
+    else:
+        print("Argument parsing error. Usage:")
+        print("  To encrypt: python script.py input_filename")
+        print("  To decrypt: python script.py key_filename encrypted_filename")
+    print("Script finished.")

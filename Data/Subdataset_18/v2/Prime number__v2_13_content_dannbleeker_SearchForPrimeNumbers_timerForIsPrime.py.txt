@@ -1,0 +1,55 @@
+import timeit
+
+# Configuration for logging
+use_log_file = True
+logfile = open('log.txt', 'a') if use_log_file else None
+
+# Range for prime number search
+start_number = 0
+end_number = 100_000_000
+
+def log_message(message):
+    """
+    Logs a message to the console and optionally to a log file.
+
+    Args:
+        message (str): The message to log.
+    """
+    print(message)
+    if use_log_file:
+        print(message, file=logfile)
+
+# Log the search range
+log_message(f"Searching from {start_number:,d}".replace(",", ".") + 
+            f" to {end_number:,d}".replace(",", ".") + 
+            f" (interval: {(end_number - start_number):,d}".replace(",", ".") + ")")
+
+# Testing prime search algorithms
+for current_prime_search in range(6, 7):
+    TEST_CODE_WSA2 = f'''
+import isPrimeSearch
+prime_counter = 0
+current_number = {start_number}
+while current_number <= {end_number}:
+    if isPrimeSearch.checkForPrime{current_prime_search}(current_number):
+        prime_counter += 1
+        current_number += 2
+    else:
+        current_number += 1
+'''
+    time_to_run_wsa2 = round(timeit.timeit(stmt=TEST_CODE_WSA2, number=1), 4)
+    log_message(f"CheckForPrime{current_prime_search} (wsa2): {time_to_run_wsa2}")
+
+    TEST_CODE_FOR1 = f'''
+import isPrimeSearch
+prime_counter = 0
+for current_number in range({start_number}, {end_number}):
+    if isPrimeSearch.checkForPrime{current_prime_search}(current_number):
+        prime_counter += 1
+'''
+    time_to_run_for1 = round(timeit.timeit(stmt=TEST_CODE_FOR1, number=1), 4)
+    log_message(f"CheckForPrime{current_prime_search} (for1): {time_to_run_for1}")
+
+# Close the log file if used
+if use_log_file:
+    logfile.close()

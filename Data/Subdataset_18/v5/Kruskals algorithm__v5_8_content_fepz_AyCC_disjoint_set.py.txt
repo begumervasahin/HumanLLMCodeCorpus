@@ -1,0 +1,53 @@
+class DisjointSets:
+    def __init__(self, elements):
+        """
+        Initializes the disjoint set structure.
+
+        Parameters:
+            elements (list or set): A list or set of elements to be managed in disjoint sets.
+        """
+        self.elements = list(elements)
+        self.parent = {element: element for element in elements}  # Initially, each element is its own parent
+        self.rank = {element: 1 for element in elements}  # Initialize ranks with 1 for each element
+
+    def find(self, x):
+        """
+        Finds the representative (root) of the set containing element x with path compression.
+
+        Parameters:
+            x (any): The element whose set representative is to be found.
+
+        Returns:
+            any: The representative element (root) in the disjoint set.
+        """
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # Path compression
+        return self.parent[x]
+
+    def merge(self, set_a, set_b):
+        """
+        Merges the sets containing set_a and set_b. Assumes that set_a and set_b are different.
+
+        Parameters:
+            set_a (any): The representative (root) of the first set.
+            set_b (any): The representative (root) of the second set.
+        """
+        root_a = self.find(set_a)
+        root_b = self.find(set_b)
+
+        if root_a != root_b:
+            # Merge by rank
+            if self.rank[root_a] > self.rank[root_b]:
+                self.parent[root_b] = root_a
+            elif self.rank[root_a] < self.rank[root_b]:
+                self.parent[root_a] = root_b
+            else:
+                self.parent[root_b] = root_a
+                self.rank[root_a] += 1
+
+# Example usage:
+# elements = ['a', 'b', 'c', 'd', 'e']
+# ds = DisjointSets(elements)
+# print(ds.find('a'))  # Finds the set containing 'a'
+# ds.merge('a', 'b')  # Merges sets containing 'a' and 'b'
+# print(ds.find('b'))  # Should now have the same representative as 'a'

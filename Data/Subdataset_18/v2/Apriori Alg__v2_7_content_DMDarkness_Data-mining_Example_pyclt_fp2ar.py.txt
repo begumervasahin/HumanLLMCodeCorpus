@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May 08 10:01:31 2017
+
+Author: Zhongjie Zhang
+
+Description:
+This script demonstrates the usage of the pyclt package for mining frequent patterns using a central limit theorem based algorithm and forming association rules from those patterns.
+
+"""
+
+import pyclt  # Import the package of central limit theorem based algorithm
+import fp2ar  # Import the package to form association rules from frequent patterns
+import re  # Import the regular expression module to split the string and extract items from transactions
+
+def read_dataset(file_path):
+    """
+    Read the transactional dataset and store it in a list of transactions.
+
+    Args:
+        file_path (str): Path to the dataset file.
+
+    Returns:
+        list: List of transactions, where each transaction is a list of items.
+    """
+    transactions = []
+    with open(file_path, 'r') as file:
+        content = file.readlines()  # Read all the lines from the dataset
+        for line in content:
+            sline = re.split(r' |\n', line)  # Split the dataset by space and newline
+            trans = [int(item) for item in sline if item.isdigit()]  # Extract items that are digits
+            if trans:
+                transactions.append(trans)
+    return transactions
+
+if __name__ == "__main__":
+    # Path to the transactional dataset
+    dataset_path = "kosarak.dat"
+    
+    # Read the transactional dataset and store it in the dataset variable
+    dataset = read_dataset(dataset_path)
+
+    # Mine the dataset with the following parameters:
+    # Minimum support: 3%
+    # Range of deviation of any support is limited in [-0.5%, 0.5%] with probability at least 99%
+    frequent_patterns, sample_size = pyclt.getFP(dataset, 0.03, 0.005, 0.01)
+
+    # Form the association rules from the frequent patterns with the following parameters:
+    # Minimum confidence: 75%
+    # Minimum lift: 1
+    association_rules = fp2ar.getAR(frequent_patterns, sample_size, 0.75, 1)
+
+    # Print the association rules
+    for rule in association_rules:
+        print(rule)

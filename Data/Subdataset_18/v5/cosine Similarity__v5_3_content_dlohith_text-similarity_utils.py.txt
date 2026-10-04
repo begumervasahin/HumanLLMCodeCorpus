@@ -1,0 +1,75 @@
+import math
+from scipy import spatial
+
+def inverse_document_frequency(term, all_documents):
+    """
+    Calculate the inverse document frequency (IDF) of a term in a collection of documents.
+
+    Args:
+    - term (str): The term for which IDF is calculated.
+    - all_documents (list of str): Collection of all documents.
+
+    Returns:
+    - float: Inverse document frequency of the term.
+    """
+    num_documents_with_term = sum(1 for doc in all_documents if term.lower() in doc.lower().split())
+    if num_documents_with_term > 0:
+        return 1.0 + math.log(float(len(all_documents)) / num_documents_with_term)
+    else:
+        return 1.0
+
+def term_frequency(term, document):
+    """
+    Calculate the term frequency (TF) of a term in a document.
+
+    Args:
+    - term (str): The term for which TF is calculated.
+    - document (str): The document in which TF is calculated.
+
+    Returns:
+    - float: Term frequency of the term in the document.
+    """
+    normalized_document = document.lower().split()
+    return normalized_document.count(term.lower()) / float(len(normalized_document))
+
+def get_tfidf(document, all_documents):
+    """
+    Calculate the TF-IDF vector of a document with respect to a collection of documents.
+
+    Args:
+    - document (str): The document for which TF-IDF vector is calculated.
+    - all_documents (list of str): Collection of all documents.
+
+    Returns:
+    - list of float: TF-IDF vector of the document.
+    """
+    terms = document.lower().split()
+    tfidf_vector = []
+    for term in terms:
+        tf = term_frequency(term, document)
+        idf = inverse_document_frequency(term, all_documents)
+        tfidf = tf * idf
+        tfidf_vector.append(tfidf)
+    return tfidf_vector
+
+def cosine_similarity(vector1, vector2):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Args:
+    - vector1 (list of float): Vector representation of the first entity.
+    - vector2 (list of float): Vector representation of the second entity.
+
+    Returns:
+    - float: Cosine similarity between the two vectors.
+    """
+    # Pad shorter vector with zeros for cosine similarity calculation
+    padding_length = abs(len(vector1) - len(vector2))
+    padding = [0] * padding_length
+    if len(vector1) > len(vector2):
+        vector2.extend(padding)
+    elif len(vector2) > len(vector1):
+        vector1.extend(padding)
+    
+    # Calculate cosine similarity using scipy's spatial.distance.cosine
+    return 1 - spatial.distance.cosine(vector1, vector2)

@@ -1,0 +1,75 @@
+"""
+SCOPE:
+1) Launch browser
+2) Navigate to http://qainterview.pythonanywhere.com/
+3) Find elements using id, xpath..
+4) Input the value 5, click on Calculate button and check whether calculated factorial value is 120
+5) Close the browser
+"""
+
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+
+def create_driver() -> WebDriver:
+    """
+    Create a remote WebDriver instance.
+
+    Returns:
+        WebDriver: An instance of the remote WebDriver.
+    """
+    desired_capabilities = {
+        'device': 'iPhone 7',
+        'realMobile': 'true',
+        'platform': 'iOS',
+        'browserName': 'safari',
+        'browserstack.debug': 'true'
+    }
+    return webdriver.Remote(
+        command_executor='http://sharadag1:ve5y9kXqdCoseBQYsxQ9@hub.browserstack.com:80/wd/hub',
+        desired_capabilities=desired_capabilities
+    )
+
+def main():
+    """
+    Main function to execute the test steps.
+    """
+    driver = create_driver()
+
+    try:
+        # Navigate to the target URL
+        driver.get("https://qainterview.pythonanywhere.com/")
+        
+        # Verify the page title
+        if driver.title == "Factoriall":
+            print("Success: QA Interview Application page launched successfully")
+        else:
+            print("Failure: QA Interview Application page title is incorrect")
+            return
+
+        # Input the value 5 and click the Calculate button
+        number_input = driver.find_element(By.ID, 'number')
+        number_input.send_keys('5')
+        
+        calculate_button = driver.find_element(By.ID, 'getFactorial')
+        calculate_button.click()
+
+        # Wait for the result to be displayed
+        time.sleep(5)
+
+        # Get the result text and verify the factorial value
+        result_text = driver.find_element(By.ID, 'resultDiv').text
+        result_value = int(result_text.split(':')[1].strip())
+
+        if result_value == 120:
+            print(f"Success: Result for 5! is correct: {result_value}")
+        else:
+            print(f"Failure: Result for 5! is incorrect: {result_value}")
+
+    finally:
+        # Close the browser
+        driver.quit()
+
+if __name__ == "__main__":
+    main()

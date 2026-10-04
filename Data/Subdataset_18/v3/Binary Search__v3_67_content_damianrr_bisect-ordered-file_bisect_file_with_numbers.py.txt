@@ -1,0 +1,74 @@
+import os
+
+def bisect_big_file_looking_for_number(file, target):
+    """
+    Perform a binary search in a large, ordered file to find a specific number.
+
+    This function efficiently searches for a number by dividing the file into 
+    chunks, finding the nearest newline to read whole lines, and comparing 
+    the value to determine which part of the file to search next.
+
+    Parameters:
+    file (file object): File object to search within.
+    target (int): The number to search for in the file.
+
+    Returns:
+    dict: {'result': line_content, 'position': position_in_file} if the number is found.
+    bool: False if the number is not found.
+
+    Examples:
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 5)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 100000000)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 0)
+    False
+
+    >>> with open('test.log', 'r') as file:
+    ...    bisect_big_file_looking_for_number(file, 59953)
+    {'result': '59953', 'position': 348612}
+    """
+
+    low, high = 0, os.fstat(file.fileno()).st_size
+    target_number = int(target)
+
+    while high - low > 1:
+        middle = (high + low) // 2
+        file.seek(middle)
+
+        # Move to the start of the next full line
+        file.readline()
+        line = file.readline()
+
+        if not line:  # Handle end of file or empty line
+            high = middle
+            continue
+
+        current_number = int(line.strip())
+
+        if target_number < current_number:
+            high = middle
+        elif target_number > current_number:
+            low = file.tell()
+        else:
+            return {"result": line.strip(), "position": file.tell()}
+
+    return False
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+
+    # Example usage:
+    with open('test.log', 'r') as file:
+        search_value = 59953
+        result = bisect_big_file_looking_for_number(file, search_value)
+        if result:
+            print(f"Number {search_value} found at position {result['position']}")
+        else:
+            print(f"Number {search_value} not found.")

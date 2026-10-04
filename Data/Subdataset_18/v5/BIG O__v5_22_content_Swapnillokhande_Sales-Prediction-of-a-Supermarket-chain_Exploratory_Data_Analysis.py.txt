@@ -1,0 +1,165 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+
+def load_data(train_path, test_path):
+    """
+    Load the train and test datasets.
+
+    Args:
+        train_path (str): Path to the train data CSV file.
+        test_path (str): Path to the test data CSV file.
+
+    Returns:
+        tuple: DataFrames of train and test data.
+    """
+    train_data = pd.read_csv(train_path, na_values='.')
+    test_data = pd.read_csv(test_path)
+    return train_data, test_data
+
+def combine_datasets(train_data, test_data):
+    """
+    Combine the train and test datasets for preprocessing.
+
+    Args:
+        train_data (DataFrame): The train dataset.
+        test_data (DataFrame): The test dataset.
+
+    Returns:
+        DataFrame: Combined dataset.
+    """
+    train_data['source'] = 'train_data'
+    test_data['source'] = 'test_data'
+    return pd.concat([train_data, test_data], ignore_index=True)
+
+def display_summary(combined_data):
+    """
+    Display summary statistics of the combined dataset.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+    """
+    print("Number of rows and columns in combined dataset:", combined_data.shape)
+    print("\nSummary for unique values:\n", combined_data.apply(lambda x: len(x.unique())))
+    print("Summary for missing values:\n", combined_data.isnull().sum())
+    print(combined_data.isnull().sum() / combined_data.shape[0] * 100)
+    print("\nStatistical Summary of Item Visibility:\n", combined_data['Item_Visibility'].describe())
+    print("\n", combined_data.describe())
+
+def analyze_categorical_variables(combined_data):
+    """
+    Analyze and display the frequency of categorical variables.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+    """
+    categorical_columns = [col for col in combined_data.dtypes.index if combined_data.dtypes[col] == 'object']
+    categorical_columns = [col for col in categorical_columns if col not in ['Item_Identifier', 'Outlet_Identifier', 'source']]
+    
+    for column in categorical_columns:
+        print(f'\nFrequency of Categories for variable {column}')
+        print(combined_data[column].value_counts())
+
+def handle_missing_values(combined_data):
+    """
+    Handle missing values in the dataset.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+
+    Returns:
+        DataFrame: Dataset with missing values handled.
+    """
+    # Handle missing values in Item_Weight
+    combined_data['Item_Weight'] = combined_data.groupby('Item_Identifier')['Item_Weight'].transform(lambda x: x.fillna(x.mean()))
+    
+    # Handle missing values in Outlet_Size
+    combined_data['Outlet_Size'] = combined_data.groupby('Outlet_Type')['Outlet_Size'].apply(lambda x: x.fillna(x.mode().iloc[0]))
+    
+    return combined_data
+
+def handle_item_visibility(combined_data):
+    """
+    Handle zero values in Item_Visibility by replacing them with the mean visibility of the same item.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+    """
+    combined_data['Item_Visibility'] = combined_data.groupby('Item_Identifier')['Item_Visibility'].transform(lambda x: x.replace(0, x.mean()))
+
+def create_new_features(combined_data):
+    """
+    Create new features in the dataset.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+    """
+    combined_data['Outlet_Years'] = 2013 - combined_data['Outlet_Establishment_Year']
+    combined_data['Item_Type_Combined'] = combined_data['Item_Identifier'].apply(lambda x: x[0:2])
+    combined_data['Item_Type_Combined'] = combined_data['Item_Type_Combined'].map({'FD': 'Food', 'NC': 'Non-Consumable', 'DR': 'Drinks'})
+
+    combined_data['Item_Fat_Content'] = combined_data['Item_Fat_Content'].replace({'LF': 'Low Fat', 'reg': 'Regular', 'low fat': 'Low Fat'})
+    combined_data.loc[combined_data['Item_Type_Combined'] == "Non-Consumable", 'Item_Fat_Content'] = "Non-Edible"
+
+    visibility_avg = combined_data.pivot_table(values='Item_Visibility', index='Item_Identifier')
+    visibility_avg_dict = visibility_avg['Item_Visibility'].to_dict()
+    combined_data['Item_Visibility_MeanRatio'] = combined_data.apply(lambda x: x['Item_Visibility'] / visibility_avg_dict[x['Item_Identifier']], axis=1)
+
+def encode_categorical_variables(combined_data):
+    """
+    Encode categorical variables in the dataset.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+
+    Returns:
+        DataFrame: Dataset with encoded categorical variables.
+    """
+    le = LabelEncoder()
+    combined_data['Outlet'] = le.fit_transform(combined_data['Outlet_Identifier'])
+    var_mod = ['Item_Fat_Content', 'Outlet_Location_Type', 'Outlet_Size', 'Item_Type_Combined', 'Outlet_Type', 'Outlet']
+    for col in var_mod:
+        combined_data[col] = le.fit_transform(combined_data[col])
+    
+    return pd.get_dummies(combined_data, columns=var_mod)
+
+def split_and_save_data(combined_data, train_path, test_path):
+    """
+    Split the combined dataset back into train and test sets and save to CSV.
+
+    Args:
+        combined_data (DataFrame): The combined dataset.
+        train_path (str): Path to save the modified train data CSV file.
+        test_path (str): Path to save the modified test data CSV file.
+    """
+    train = combined_data[combined_data['source'] == "train_data"].copy()
+    test = combined_data[combined_data['source'] == "test_data"].copy()
+    train.drop(['source'], axis=1, inplace=True)
+    test.drop(['Item_Outlet_Sales', 'source'], axis=1, inplace=True)
+
+    train.to_csv(train_path, index=False)
+    test.to_csv(test_path, index=False)
+
+def main():
+    train_path = "D:/Github/Big Mart Sales/Train_Data.csv"
+    test_path = "D:/Github/Big Mart Sales/Test_Data.csv"
+    train_data, test_data = load_data(train_path, test_path)
+
+    combined_data = combine_datasets(train_data, test_data)
+
+    display_summary(combined_data)
+    analyze_categorical_variables(combined_data)
+
+    combined_data = handle_missing_values(combined_data)
+    handle_item_visibility(combined_data)
+    create_new_features(combined_data)
+
+    combined_data = encode_categorical_variables(combined_data)
+
+    # Drop unnecessary columns
+    combined_data.drop(['Item_Type', 'Outlet_Establishment_Year'], axis=1, inplace=True)
+
+    split_and_save_data(combined_data, "D:/Github/Big Mart Sales/train_modified.csv", "D:/Github/Big Mart Sales/test_modified.csv")
+
+if __name__ == "__main__":
+    main()

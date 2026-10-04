@@ -1,0 +1,103 @@
+from array import array
+from zlib import crc32
+import multiprocessing as mp
+
+PARALLEL = 4
+
+def hash_function(word, base):
+    """Computes a hash for a given word based on the provided base."""
+    return crc32(word.encode(), base)
+
+def found_common_substring(hash_set_a, hash_set_b, str_a, str_b, substring_length):
+    """
+    Checks if there is a common substring of a given length in two strings.
+    
+    Args:
+        hash_set_a (array): Hashes of substrings from the first string.
+        hash_set_b (array): Hashes of substrings from the second string.
+        str_a (str): The first string.
+        str_b (str): The second string.
+        substring_length (int): The length of the substrings to compare.
+    
+    Returns:
+        bool: True if a common substring exists, False otherwise.
+    """
+    hash_dict_a = {hash_value: idx for idx, hash_value in enumerate(hash_set_a)}
+    return any(
+        hash_value in hash_dict_a and 
+        str_a[hash_dict_a[hash_value]:hash_dict_a[hash_value] + substring_length] == str_b[i:i + substring_length] 
+        for i, hash_value in enumerate(hash_set_b)
+    )
+
+def compute_hashes(pool, string, length, previous_hashes):
+    """
+    Computes the hashes for substrings of a string with a specified length using multiprocessing.
+    
+    Args:
+        pool (multiprocessing.Pool): Pool for multiprocessing.
+        string (str): The input string.
+        length (int): The length of substrings to compute the hash for.
+        previous_hashes (array): Previously computed hashes.
+    
+    Returns:
+        array: An array of computed hashes.
+    """
+    substrings = (string[i:i + length] for i in range(length, len(string)))
+    return array('L', pool.starmap(hash_function, zip(substrings, previous_hashes[:-length])))
+
+def longest_common_substring(str_a, str_b):
+    """
+    Computes the longest common substring (LCS) of two strings.
+    
+    Args:
+        str_a (str): The first string.
+        str_b (str): The second string.
+    
+    Returns:
+        int: The length of the LCS.
+        list: A list of the longest common substrings between the two strings.
+    """
+    with mp.Pool(PARALLEL) as pool:
+        # Ensure `str_a` is the shorter string
+        if len(str_a) > len(str_b):
+            str_a, str_b = str_b, str_a
+        
+        len_a, len_b = len(str_a) + 1, len(str_b) + 1
+        
+        # Initial hash arrays
+        hash_a = array('L', [0] * len_a)
+        hash_a_next = compute_hashes(pool, str_a, 1, hash_a[1:])
+        
+        hash_b = array('L', [0] * len_b)
+        hash_b_next = compute_hashes(pool, str_b, 1, hash_b[1:])
+        
+        # Binary search to find the LCS length
+        l, r = 0, 1
+        while r < len_a and found_common_substring(hash_a_next, hash_b_next, str_a, str_b, r):
+            hash_a, hash_a_next = hash_a_next, compute_hashes(pool, str_a, r, hash_a_next)
+            hash_b, hash_b_next = hash_b_next, compute_hashes(pool, str_b, r, hash_b_next)
+            l, r = r, r * 2
+        
+        r = min(r, len(str_a))
+        
+        while l < r:
+            m = (l + r) // 2
+            hash_a_next = compute_hashes(pool, str_a, m - l, hash_a)
+            hash_b_next = compute_hashes(pool, str_b, m - l, hash_b)
+            
+            if found_common_substring(hash_a_next, hash_b_next, str_a, str_b, m):
+                l = m
+                hash_a, hash_b = hash_a_next, hash_b_next
+            else:
+                r = m
+        
+        # Extract the unique LCS strings
+        hash_dict_a = {hash_value: idx for idx, hash_value in enumerate(hash_a)}
+        unique_lcs = []
+        
+        for i, hash_value in enumerate(hash_b):
+            loc = hash_dict_a.get(hash_value)
+            if loc is not None and str_a[loc:loc + l] == str_b[i:i + l]:
+                unique_lcs.append(str_a[loc:loc + l])
+        
+        return l, unique_lcs

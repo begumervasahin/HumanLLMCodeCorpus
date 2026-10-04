@@ -1,0 +1,95 @@
+import logging
+import random
+
+def setup_logger():
+    """
+    Configure the logger to log messages to a file.
+    """
+    logging.info("Configuring logger...")
+    try:
+        filename = f"./chatterbot/logs{(__file__).split('.')[0]}.log"
+        logging.basicConfig(filename=filename, format='%(asctime)s %(message)s', filemode='w')
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+        logging.info("Logger configured...")
+    except Exception as err:
+        logging.error(f"Logging not configured: {err}")
+
+def check_file_exists(filename):
+    """
+    Check if the specified file exists.
+    
+    Args:
+    filename (str): The name of the file to check.
+    """
+    try:
+        with open(filename, 'rb'):
+            pass
+        logging.info(f"File {filename} was found")
+    except Exception as err:
+        logging.error(f"File check failed: {err}")
+        exit()
+
+def generate_key():
+    """
+    Generate a random key for encryption.
+    
+    Returns:
+    int: The selected random key.
+    """
+    print("Please select a random word from the list and share it with the receiver of this file by typing the number adjacent to the word")
+    keys = [random.randint(10000, 65535) for _ in range(6)]
+    for idx, key in enumerate(keys):
+        print(f"[{idx}] - {key}")
+    try:
+        selected_key_index = int(input("Select a number: "))
+        return keys[selected_key_index]
+    except Exception as err:
+        logging.error(f"Key generation failed: {err}")
+        exit()
+
+def convert_to_file(bits_matrix, filename):
+    """
+    Convert the bits matrix to a file.
+    
+    Args:
+    bits_matrix (list): The matrix of bits to convert.
+    filename (str): The name of the file to write to.
+    """
+    bit_strings = [''.join(map(str, row)) for matrix in bits_matrix for row in matrix]
+    chars = [chr(int(bits, 2)) for bits in bit_strings]
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(''.join(chars))
+
+def convert_to_encrypted_file(bits_matrix):
+    """
+    Convert the bits matrix to an encrypted file.
+    
+    Args:
+    bits_matrix (list): The matrix of bits to convert.
+    """
+    convert_to_file(bits_matrix, 'msg.enc')
+
+def convert_to_decrypted_file(bits_matrix):
+    """
+    Convert the bits matrix to a decrypted file.
+    
+    Args:
+    bits_matrix (list): The matrix of bits to convert.
+    """
+    convert_to_file(bits_matrix, 'msg.txt')
+
+def quit_program():
+    """
+    Quit the program.
+    """
+    logging.info("Quitting")
+    exit()
+
+# Example usage
+if __name__ == "__main__":
+    setup_logger()
+    filename = "example.txt"
+    check_file_exists(filename)
+    key = generate_key()
+    print(f"Generated key: {key}")

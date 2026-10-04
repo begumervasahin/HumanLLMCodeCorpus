@@ -1,0 +1,68 @@
+import random
+import copy
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Assuming the Ind class is defined in the Ind module
+import Ind
+
+def crossover(ps):
+    child = Ind.Ind()
+    r1, r2 = random.sample(range(4), 2)
+    child.cof[r1] = ps[0].cof[r1]
+    child.cof[r2] = ps[0].cof[r2]
+    remaining_indices = [i for i in range(4) if i not in (r1, r2)]
+    child.cof[remaining_indices[0]] = ps[1].cof[remaining_indices[0]]
+    child.cof[remaining_indices[1]] = ps[1].cof[remaining_indices[1]]
+    return child
+
+def mutation(guy, mut_rate, sigma):
+    if random.random() <= mut_rate:
+        noise = np.random.normal(0, sigma, 4)
+        guy.cof += noise
+    return guy
+
+def gen(pop, mut_rate, sigma, ys, xs):
+    fathers = [(copy.deepcopy(random.choice(pop)), copy.deepcopy(random.choice(pop))) for _ in range(len(pop))]
+    new_born = [crossover(pair) for pair in fathers]
+    new_born = [mutation(ind, mut_rate, sigma) for ind in new_born]
+    for ind in new_born:
+        ind.fit_ness(ys, xs)
+    
+    combined = pop + new_born
+    combined.sort(key=lambda ind: ind.fitness, reverse=True)
+    return combined[:50]
+
+def main(gens, pop_size, tor_size, mut_rate, sigma):
+    with open('input.csv', 'r') as f:
+        ys = [float(f.readline().strip()) for _ in range(100)]
+    
+    xs = [round(x * 0.1, 1) for x in range(100)]
+    
+    pop = [Ind.Ind() for _ in range(pop_size)]
+    for ind in pop:
+        ind.fit_ness(ys, xs)
+    
+    b, m, w, cnt = [], [], [], []
+    for gen_num in range(gens):
+        pop = gen(pop, mut_rate, sigma, ys, xs)
+        cnt.append(gen_num)
+        b.append(pop[0].fitness)
+        m.append((pop[0].fitness + pop[-1].fitness) / 2)
+        w.append(pop[-1].fitness)
+        print(f'{gen_num + 1} - {pop[0].fitness}')
+    
+    x = np.linspace(0, 10, 100)
+    cof = pop[0].cof
+    y = cof[3] * x**3 + cof[2] * x**2 + cof[1] * x + cof[0]
+    plt.plot(xs, ys, 'co', x, y, '-g', label='Best Fit')
+    plt.show()
+
+    plt.plot(cnt, b, 'g^', label='Best')
+    plt.plot(cnt, m, 'co', label='Mean')
+    plt.plot(cnt, w, 'rs', label='Worst')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    main(gens=5000, pop_size=50, tor_size=2, mut_rate=0.1, sigma=0.1)

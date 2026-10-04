@@ -1,0 +1,99 @@
+import math
+from typing import List
+
+def divide_swing_and_conquer(number: int) -> int:
+    """
+    Computes the swinging factorial of a number using a divide-and-conquer approach.
+    
+    :param number: The number for which to compute the swinging factorial
+    :return: The swinging factorial of the specified number
+    """
+    if number <= 1:
+        return 1
+
+    # Get all prime numbers up to the given number
+    primes = get_all_primes_up_to(number)
+
+    # Calculate the exponents of the prime factors for the given number
+    prime_exponents = calculate_prime_exponents(number, primes)
+
+    # Compute the swinging factorial using the prime numbers and their exponents
+    swinging_factorial = compute_swinging_factorial(primes, prime_exponents)
+
+    # Recursively compute the swinging factorial for number // 2
+    return divide_swing_and_conquer(number // 2) ** 2 * swinging_factorial
+
+def calculate_prime_exponents(number: int, primes: List[int]) -> List[int]:
+    """
+    Calculates the exponents of each prime in the prime factorization of the given number.
+    
+    :param number: The number for which to calculate prime exponents
+    :param primes: List of prime numbers to use for factorization
+    :return: List of exponents corresponding to each prime number
+    """
+    max_power = math.floor(math.log2(number))
+    exponents = []
+
+    for prime in primes:
+        exponent = 0
+        for i in range(1, max_power + 1):
+            exponent += number // (prime ** i) % 2
+        exponents.append(exponent)
+
+    return exponents
+
+def compute_swinging_factorial(primes: List[int], exponents: List[int]) -> int:
+    """
+    Computes the swinging factorial based on the prime numbers and their exponents.
+    
+    :param primes: List of prime numbers
+    :param exponents: List of exponents corresponding to each prime number
+    :return: The swinging factorial
+    """
+    result = 1
+    for prime, exponent in zip(primes, exponents):
+        if exponent > 0:
+            result *= prime ** exponent
+    return result
+
+def is_prime(n: int) -> bool:
+    """
+    Checks if a number is a prime number.
+    
+    :param n: The number to check
+    :return: True if the number is prime, otherwise False
+    """
+    if n <= 1:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    max_divisor = math.isqrt(n)
+    for divisor in range(3, max_divisor + 1, 2):
+        if n % divisor == 0:
+            return False
+    return True
+
+def get_all_primes_up_to(n: int) -> List[int]:
+    """
+    Generates a list of all prime numbers up to a specified number.
+    
+    :param n: The upper limit for generating prime numbers
+    :return: List of all prime numbers up to the specified number
+    """
+    return [num for num in range(2, n + 1) if is_prime(num)]
+
+if __name__ == "__main__":
+    try:
+        # Read input from the user
+        n = int(input('Enter a non-negative integer to compute its swinging factorial: '))
+        if n < 0:
+            raise ValueError("The number must be a non-negative integer.")
+        
+        # Compute and display the swinging factorial
+        print(f"The swinging factorial of {n} is: {divide_swing_and_conquer(n)}")
+    
+    except ValueError as e:
+        print(f"Error: {e}")

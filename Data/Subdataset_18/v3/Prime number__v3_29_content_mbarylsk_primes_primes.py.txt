@@ -1,0 +1,286 @@
+import math
+import os
+import numpy
+import pycuda.driver as cuda
+import pycuda.autoinit
+from pycuda.compiler import SourceModule
+
+# CUDA kernel for finding the first factor of a number
+kernel = SourceModule("""
+    __global__ void first_factor(long long n, int *value, int *primes) {
+        int i = threadIdx.x;
+        int p = primes[i];
+        if (n % p == 0) {
+            value[i] = p;
+        } else {
+            value[i] = 0;
+        }
+    }
+""")
+
+class Primes:
+    def __init__(self, cache_results):
+        self.primes_set = set()
+        self.primes_exclude_set = set()
+        self.twin_primes_set = set()
+        self.non_primes_set = set()
+        self.sorted_primes = []
+        self.sorted_twin_primes = []
+        self.sorted_non_primes = []
+        self.primes_used = []
+        self.cache_primality = cache_results
+
+    def init_set(self, filename, number_type):
+        """Initialize sets from a file."""
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                lines = f.readlines()
+                for line in lines:
+                    line = line.replace('[', '').replace(']', '')
+                    numbers = map(int, line.split(','))
+                    for number in numbers:
+                        if number_type == 1:
+                            self.add_to_primes_set(number)
+                        elif number_type == 2:
+                            self.add_to_twin_primes_set(number)
+                        elif number_type == 3:
+                            self.add_to_non_primes_set(number)
+
+    def get_sorted_primes(self):
+        return self.sorted_primes
+
+    def get_sorted_twin_primes(self):
+        return self.sorted_twin_primes
+
+    def get_sorted_non_primes(self):
+        return self.sorted_non_primes
+
+    def is_in_primes_set(self, n):
+        return n in self.primes_set
+
+    def is_in_primes_exclude_set(self, n):
+        return n in self.primes_exclude_set
+
+    def is_in_twin_primes_set(self, n):
+        return n in self.twin_primes_set
+
+    def is_in_non_primes_set(self, n):
+        return n in self.non_primes_set
+
+    def sort_primes_set(self):
+        self.sorted_primes = sorted(self.primes_set)
+
+    def sort_twin_primes_set(self):
+        self.sorted_twin_primes = sorted(self.twin_primes_set)
+
+    def sort_non_primes_set(self):
+        self.sorted_non_primes = sorted(self.non_primes_set)
+
+    def add_to_primes_set(self, n):
+        self.primes_set.add(n)
+
+    def add_to_twin_primes_set(self, n):
+        self.twin_primes_set.add(n)
+
+    def add_to_non_primes_set(self, n):
+        self.non_primes_set.add(n)
+
+    def add_to_primes_exclude_set(self, n):
+        self.primes_exclude_set.add(n)
+
+    def is_prime(self, n):
+        """Check if a number is prime."""
+        if self.is_in_primes_exclude_set(n):
+            return False
+        if n < 2:
+            return False
+        if n in {2, 3}:
+            return True
+        if self.is_in_primes_set(n):
+            return True
+        if self.is_in_non_primes_set(n):
+            return False
+        if n % 2 == 0 or n % 3 == 0:
+            return False
+
+        result = True
+        i = 5
+        while i * i <= n:
+            if n % i == 0 or n % (i + 2) == 0:
+                result = False
+                break
+            i += 6
+
+        if self.cache_primality:
+            if result:
+                self.add_to_primes_set(n)
+            else:
+                self.add_to_non_primes_set(n)
+
+        return result
+
+    def is_twin_prime(self, n):
+        """Check if a number is a twin prime."""
+        if self.is_in_twin_primes_set(n):
+            return True
+        if self.is_in_non_primes_set(n):
+            return False
+        if self.is_lesser_twin_prime(n) or self.is_greater_twin_prime(n):
+            result = True
+        else:
+            result = False
+
+        if self.cache_primality:
+            if result:
+                self.add_to_twin_primes_set(n)
+            else:
+                self.add_to_non_primes_set(n)
+
+        return result
+
+    def is_lesser_twin_prime(self, n):
+        return self.is_prime(n) and self.is_prime(n + 2)
+
+    def is_greater_twin_prime(self, n):
+        return self.is_prime(n) and self.is_prime(n - 2)
+
+    def is_prime_cuda(self, n):
+        """Check if a number is prime using CUDA."""
+        def min_greater_than(lst, bound=0):
+            for item in lst:
+                if item > bound:
+                    return item
+            return None
+
+        first_factor = kernel.get_function('first_factor')
+        if n == 1:
+            return False
+        if n in {2, 3}:
+            return True
+
+        all_primes = [2, 3]
+        num_primes = len(all_primes)
+        num_threads = 384
+        result = numpy.zeros(num_primes, numpy.int32)
+        primes = numpy.array(all_primes).astype(numpy.int32)
+
+        while True:
+            first_factor(numpy.int64(n), cuda.InOut(result), cuda.In(primes), block=(num_threads, 1, 1))
+            prime = min_greater_than(result, 1)
+            if prime is None:
+                break
+            return False
+
+        return True
+
+    def get_ith_prime(self, i):
+        """Get the ith prime number."""
+        max_known_index = len(self.sorted_primes)
+        if i < max_known_index:
+            return self.sorted_primes[i]
+        else:
+            n = 2 if max_known_index == 0 else self.sorted_primes[max_known_index - 1]
+            primes_to_be_found = i - max_known_index
+
+            while primes_to_be_found > 0:
+                n += 1
+                if self.is_prime(n):
+                    primes_to_be_found -= 1
+
+            return n
+
+    def get_ith_twin_prime(self, i):
+        """Get the ith twin prime number."""
+        max_known_index = len(self.sorted_twin_primes)
+        if i < max_known_index:
+            return self.sorted_twin_primes[i]
+        else:
+            n = 3 if max_known_index == 0 else self.sorted_twin_primes[max_known_index - 1]
+            twin_primes_to_be_found = i - max_known_index
+
+            while twin_primes_to_be_found > 0:
+                n += 1
+                if self.is_twin_prime(n):
+                    twin_primes_to_be_found -= 1
+
+            return n
+
+    def get_ith_composite(self, i):
+        """Get the ith composite number."""
+        max_known_index = len(self.sorted_non_primes)
+        if i < max_known_index:
+            return self.sorted_non_primes[i]
+        else:
+            n = 4 if max_known_index == 0 else self.sorted_non_primes[max_known_index - 1]
+            composites_to_be_found = i - max_known_index
+
+            while composites_to_be_found > 0:
+                n += 1
+                if not self.is_prime(n):
+                    composites_to_be_found -= 1
+
+            return n
+
+    def get_all_primes_leq(self, n):
+        """Get the count of all prime numbers less than or equal to n."""
+        counter = 0
+        for i in range(n + 1):
+            if self.is_prime(i):
+                counter += 1
+        return counter
+
+    def factorize(self, n):
+        """Factorize a number into its prime factors."""
+        if n <= 1:
+            return []
+        i = 2
+        e = math.floor(math.sqrt(n))
+        factors = []
+        while i <= e:
+            if n % i == 0:
+                factors.append(i)
+                n //= i
+                e = math.floor(math.sqrt(n))
+            else:
+                i += 1
+        if n > 1:
+            factors.append(int(n))
+        return factors
+
+    def is_symmetric_prime(self, n, i):
+        """Check if a number is a symmetric prime."""
+        k1 = n - i
+        k2 = n + i
+        if self.is_prime(k1) and self.is_prime(k2):
+            return True, k1, k2
+        else:
+            return False, 0, 0
+
+    def is_6km1(self, n):
+        """Check if a number is of the form 6k - 1 and prime."""
+        return self.is_prime(n) and n > 3 and n % 6 == 5
+
+    def is_6kp1(self, n):
+        """Check if a number is of the form 6k + 1 and prime."""
+        return self.is_prime(n) and n > 3 and n % 6 == 1
+
+    def find_unique_prime_in_sum(self, n):
+        """Find unique primes that sum up to a given number."""
+        print("Initial number:", n, "Primes used:", self.primes_used)
+        is_prime_lower_than_current_sum = True
+        k = 1
+        while is_prime_lower_than_current_sum:
+            q = self.get_ith_prime(k)
+            print("Current prime:", q, "Index:", k, "Primes used:", self.primes_used)
+            if 2 <= n - q and q not in self.primes_used:
+                print("Remaining sum:", n - q)
+                self.primes_used.append(q)
+                self.find_unique_prime_in_sum(n - q)
+            elif 2 <= n - q:
+                print("Increasing index for next prime.")
+                k += 1
+            else:
+                print("Adding final prime:", q)
+                self.primes_used.append(q)
+                is_prime_lower_than_current_sum = False
+        print("Final result:", n, "Primes used:", self.primes_used)

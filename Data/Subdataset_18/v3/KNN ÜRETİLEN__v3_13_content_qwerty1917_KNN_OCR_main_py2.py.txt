@@ -1,0 +1,128 @@
+import sys
+import numpy as np
+import cv2
+from math import sqrt
+import time
+from operator import itemgetter
+
+# Constants
+RESOLUTION = 32
+AREA_SIZE = 10
+CHAR_HEIGHT = 10
+MARGIN = 5
+X_SCALE = 1
+Y_SCALE = 15
+
+def preprocess_image(file_name):
+    """Preprocess the image for OCR."""
+    image = cv2.imread(file_name)
+    if image is None:
+        raise FileNotFoundError(f"Error: Could not read image {file_name}")
+
+    image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image_blur = cv2.GaussianBlur(image_bw, (5, 5), 0)
+    image_threshold = cv2.adaptiveThreshold(
+        image_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
+    )
+    return image, image_threshold
+
+def extract_contours(image_threshold):
+    """Extract and filter contours from the thresholded image."""
+    contours, _ = cv2.findContours(image_threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours_filtered = filter(
+        lambda contour: cv2.contourArea(contour) > AREA_SIZE and cv2.boundingRect(contour)[3] > CHAR_HEIGHT,
+        contours
+    )
+    return sorted(
+        contours_filtered,
+        key=lambda contour: cv2.boundingRect(contour)[0] * X_SCALE + cv2.boundingRect(contour)[1] * Y_SCALE
+    )
+
+def process_contours(contours, image, image_threshold, show_loop=False):
+    """Process contours to extract ROI and vectorize them."""
+    vectors = np.empty((0, RESOLUTION ** 2))
+    previous_rect = [0, 0, 0, 0]
+    
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        x_prev, y_prev, w_prev, h_prev = previous_rect
+        
+        nested = x >= x_prev and y >= y_prev and x + w <= x_prev + w_prev and y + h <= y_prev + h_prev
+        go_back = x < x_prev and abs(y - y_prev) < h * 0.8
+        
+        if not nested and not go_back:
+            cv2.rectangle(image, (x - MARGIN, y - MARGIN), (x + w + MARGIN, y + h + MARGIN), (0, 0, 255), 2)
+            roi = image_threshold[y - MARGIN:y + h + MARGIN, x - MARGIN:x + w + MARGIN]
+            roismall = cv2.resize(roi, (RESOLUTION, RESOLUTION))
+            sample = roismall.reshape((1, RESOLUTION ** 2)).astype(bool)
+            vectors = np.append(vectors, sample, 0)
+            
+            if show_loop:
+                cv2.imshow('Image', image)
+                if cv2.waitKey(0) == 27:
+                    sys.exit()
+            previous_rect = [x, y, w, h]
+    
+    return vectors
+
+def image2vector_list(file_name, show_loop=False, show_recognized=False):
+    """Convert image to a list of vectors."""
+    image, image_threshold = preprocess_image(file_name)
+    contours = extract_contours(image_threshold)
+    vectors = process_contours(contours, image, image_threshold, show_loop)
+    
+    if show_recognized:
+        cv2.imshow('Recognized', image)
+        cv2.waitKey(0)
+    
+    return vectors
+
+def make_file_path_list(chars):
+    """Create a list of file paths for training images."""
+    return [f"train_image/{char}.png" for char in chars]
+
+def make_train_set(file_path, char):
+    """Generate training set vectors for a given character."""
+    vectors = image2vector_list(file_path)
+    return [[vector, char] for vector in vectors]
+
+def most_common(input_list):
+    """Find the most common element in a list."""
+    return max(set(input_list), key=input_list.count)
+
+def get_euclidean_distance(vec1, vec2):
+    """Calculate the Euclidean distance between two vectors."""
+    return sqrt(np.sum((vec1 - vec2) ** 2))
+
+def ocr(file_path, trained_list, k, show_progress=False):
+    """Perform OCR on the given image using the trained data."""
+    input_vectors = image2vector_list(file_path).tolist()
+    result_str = ""
+    
+    for input_vector in input_vectors:
+        distances = [(trained_char[1], get_euclidean_distance(trained_char[0], input_vector)) for trained_char in trained_list]
+        nearest_neighbors = sorted(distances, key=itemgetter(1))[:k]
+        votes = [neighbor[0] for neighbor in nearest_neighbors]
+        result_str += most_common(votes)
+        
+        if show_progress:
+            print(result_str[-1])
+    
+    return result_str
+
+if __name__ == '__main__':
+    start_time = time.process_time()
+
+    image_file = 'russell.png'
+    chars = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    training_file_paths = make_file_path_list(chars)
+
+    trained_data = []
+    for char, path in zip(chars, training_file_paths):
+        trained_data.extend(make_train_set(path, char))
+
+    result = ocr("russell_short.png", trained_data, k=10, show_progress=True)
+    print(f"Recognized Text: {result}")
+
+    end_time = time.process_time()
+    print(f"Processing Time: {end_time - start_time} seconds")

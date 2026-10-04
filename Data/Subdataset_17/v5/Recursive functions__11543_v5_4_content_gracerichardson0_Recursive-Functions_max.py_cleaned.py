@@ -1,0 +1,17 @@
+def main():
+    n_max = -1
+    while n_max <= 0:
+        s = input('Enter a positive integer: ')
+        try:
+            n_max = int(s)
+            if n_max <= 0:
+                print('Please enter a positive integer.')
+        except ValueError:
+            print('Invalid input. Please enter a valid positive integer.')
+        print()
+    f1, f2 = 1, 2
+    for n in range(1, n_max + 1):
+        print(f'{n:4d}: {f1}')
+        f1, f2 = f2, f1 + f2
+if __name__ == '__main__':
+    main()

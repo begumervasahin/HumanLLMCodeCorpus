@@ -1,0 +1,47 @@
+import numpy as np
+import princomp
+import thresh
+import spktimes
+import get_stimtrigavs
+import spkwaveform
+import filter_spikes
+
+def get(signal, Fs, dt_swf):
+    # Make a copy of the original signal
+    signal_copy = signal.copy()
+    
+    # Apply high-pass filter
+    signal = filter_spikes.high_pass(signal, Fs, 1000, 3)
+    
+    # Apply low-pass filter
+    signal = filter_spikes.low_pass(signal, Fs, Fs / 2.0, 1)
+    
+    # Detect threshold
+    thres = thresh.detect(signal, 'manual')
+    
+    # Detect spikes
+    isspike = spktimes.detect(signal, thres)
+    idcs = np.where(isspike == True)
+    spiketimes = idcs[0] / float(Fs)
+    
+    # Get spike waveforms
+    swfs = get_stimtrigavs.get_avs(signal, Fs, spiketimes, dt_swf, 'zeros')
+    
+    # Align spike waveforms
+    spiketimes, swfs = spkwaveform.align(spiketimes, swfs, dt_swf, Fs)
+    
+    # Window detection
+    spiketimes, swfs = spkwaveform.window_detect(spiketimes, swfs, [0.0005, 0.001], Fs * 10, 'manual')
+    
+    # Determine principal components
+    PCs = {}
+    PCs['coeff'], PCs['score'], PCs['latent'] = princomp.get(swfs)
+    
+    # Recalculate spike waveforms from original signal
+    swfs = get_stimtrigavs.get_avs(signal_copy, Fs, spiketimes, dt_swf, 'zeros')
+    heights = swfs.max(axis=1)
+    
+    # Realign spike waveforms
+    spiketimes, swfs = spkwaveform.align(spiketimes, swfs, dt_swf, Fs)
+    
+    return thres, spiketimes, heights, swfs, PCs

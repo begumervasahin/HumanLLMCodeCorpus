@@ -1,0 +1,80 @@
+import io
+import pyAesCrypt
+from tkinter import *
+
+# Constants for buffer size and password
+BUFFER_SIZE = 64 * 1024
+PASSWORD = "foopassword"
+
+# Global variable for encrypted data
+fCiph = io.BytesIO()
+
+def encrypt_text(entry):
+    """Encrypt the input text and display the encrypted data."""
+    encryption_output.delete(0.0, END)  # Clear the encryption output Text widget
+    
+    plaintext_bytes = bytes(entry, encoding='utf-8')  # Convert entry text to bytes
+    plaintext_stream = io.BytesIO(plaintext_bytes)  # Prepare the input stream
+    
+    fCiph.seek(0)
+    fCiph.truncate(0)  # Reset the encrypted data stream
+    
+    pyAesCrypt.encryptStream(plaintext_stream, fCiph, PASSWORD, BUFFER_SIZE)  # Encrypt the input stream
+    
+    fCiph.seek(0)
+    encrypted_bytes = fCiph.getvalue()  # Get the encrypted data
+    
+    with open('CipherText.txt', 'wb') as f:
+        f.write(encrypted_bytes)  # Save the encrypted data to a file
+    
+    encryption_output.insert(END, str(encrypted_bytes))  # Display the encrypted data
+
+def decrypt_text():
+    """Decrypt the encrypted data and display the decrypted text."""
+    decryption_output.delete(0.0, END)  # Clear the decryption output Text widget
+    
+    decrypted_data = io.BytesIO()  # Prepare a new BytesIO object for decrypted data
+    
+    encrypted_length = len(fCiph.getvalue())  # Get the length of the encrypted data
+    
+    fCiph.seek(0)
+    pyAesCrypt.decryptStream(fCiph, decrypted_data, PASSWORD, BUFFER_SIZE, encrypted_length)  # Decrypt the encrypted data stream
+    
+    decrypted_text = decrypted_data.getvalue().decode('utf-8')  # Get the decrypted data
+    
+    decryption_output.insert(END, decrypted_text)  # Display the decrypted data
+
+# Set up the main window
+window = Tk()
+window.title("AES Encryption/Decryption")
+window.configure(background="black")
+
+# Label for input text
+Label(window, text="Enter the text", bg="black", fg="white", font="none 12 bold").grid(row=0, column=0, sticky='w')
+
+# Entry widget for input text
+text_entry = Entry(window, width=20, bg='white')
+text_entry.grid(row=2, column=0, sticky='w')
+
+# Button to encrypt the input text
+Button(window, text="Encrypt", width=6, command=lambda: encrypt_text(text_entry.get())).grid(row=2, column=3, sticky='e')
+
+# Label for encryption output
+Label(window, text="\nEncrypted Output", bg="black", fg="white", font="none 12 bold").grid(row=4, column=0, sticky='w')
+
+# Text widget to display encrypted output
+encryption_output = Text(window, width=75, height=6, wrap=WORD, background="white")
+encryption_output.grid(row=5, column=0, columnspan=2, sticky='w')
+
+# Button to decrypt the encrypted data
+Button(window, text="Decrypt", width=6, command=decrypt_text).grid(row=8, column=3, sticky='e')
+
+# Label for decryption output
+Label(window, text="\nDecrypted Output", bg="black", fg="white", font="none 12 bold").grid(row=11, column=0, sticky='w')
+
+# Text widget to display decrypted output
+decryption_output = Text(window, width=75, height=6, wrap=WORD, background="white")
+decryption_output.grid(row=14, column=0, columnspan=2, sticky='w')
+
+# Start the main loop
+window.mainloop()

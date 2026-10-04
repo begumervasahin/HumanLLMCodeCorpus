@@ -1,0 +1,180 @@
+import numpy as np
+
+class Board:
+    """
+    Board class for the 8-puzzle problem.
+    """
+    def __init__(self, state, parent=None, operator=None, depth=0):
+        """
+        Initialize the Board with the given state, parent, operator, and depth.
+
+        Args:
+            state (list): The initial state of the board.
+            parent (Board, optional): The parent board. Defaults to None.
+            operator (str, optional): The move that led to this state. Defaults to None.
+            depth (int, optional): The depth of this board in the search tree. Defaults to 0.
+        """
+        self.parent = parent
+        self.state = np.array(state)
+        self.operator = operator
+        self.depth = depth
+        self.zero = self.find_zero()
+        self.cost = self.depth + self.manhattan_distance()
+
+    def __lt__(self, other):
+        """
+        Less-than comparison for priority queue ordering.
+
+        Args:
+            other (Board): Another board to compare with.
+
+        Returns:
+            bool: True if this board has lower cost or same cost but lower operator priority.
+        """
+        if self.cost != other.cost:
+            return self.cost < other.cost
+        else:
+            op_priority = {'Up': 0, 'Down': 1, 'Left': 2, 'Right': 3}
+            return op_priority[self.operator] < op_priority[other.operator]
+
+    def __str__(self):
+        """
+        String representation of the board.
+
+        Returns:
+            str: The string representation of the board.
+        """
+        return f"{self.state[:3]}\n{self.state[3:6]}\n{self.state[6:]} {self.depth} {self.operator}\n"
+
+    def goal_test(self):
+        """
+        Check if the board is in the goal state.
+
+        Returns:
+            bool: True if the board is in the goal state, False otherwise.
+        """
+        return np.array_equal(self.state, np.arange(9))
+
+    def find_zero(self):
+        """
+        Find the position of the empty tile (0).
+
+        Returns:
+            int: The index of the empty tile.
+        """
+        return np.where(self.state == 0)[0][0]
+
+    def manhattan_distance(self):
+        """
+        Calculate the Manhattan distance heuristic.
+
+        Returns:
+            int: The total Manhattan distance.
+        """
+        current_index = self.index(self.state)
+        goal_index = self.index(np.arange(9))
+        return sum((abs(current_index // 3 - goal_index // 3) + abs(current_index % 3 - goal_index % 3))[1:])
+
+    @staticmethod
+    def index(state):
+        """
+        Create an index mapping for the tiles.
+
+        Args:
+            state (np.array): The current state of the board.
+
+        Returns:
+            np.array: The index mapping of the tiles.
+        """
+        index = np.zeros(9, dtype=int)
+        for x, y in enumerate(state):
+            index[y] = x
+        return index
+
+    def swap(self, i, j):
+        """
+        Swap two tiles in the board.
+
+        Args:
+            i (int): Index of the first tile.
+            j (int): Index of the second tile.
+
+        Returns:
+            np.array: The new state after swapping.
+        """
+        new_state = self.state.copy()
+        new_state[i], new_state[j] = new_state[j], new_state[i]
+        return new_state
+
+    def move_up(self):
+        """
+        Move the empty tile up.
+
+        Returns:
+            Board: The new board state after moving up, or None if not possible.
+        """
+        if self.zero > 2:
+            return Board(self.swap(self.zero, self.zero - 3), self, 'Up', self.depth + 1)
+        return None
+
+    def move_down(self):
+        """
+        Move the empty tile down.
+
+        Returns:
+            Board: The new board state after moving down, or None if not possible.
+        """
+        if self.zero < 6:
+            return Board(self.swap(self.zero, self.zero + 3), self, 'Down', self.depth + 1)
+        return None
+
+    def move_left(self):
+        """
+        Move the empty tile left.
+
+        Returns:
+            Board: The new board state after moving left, or None if not possible.
+        """
+        if self.zero % 3 != 0:
+            return Board(self.swap(self.zero, self.zero - 1), self, 'Left', self.depth + 1)
+        return None
+
+    def move_right(self):
+        """
+        Move the empty tile right.
+
+        Returns:
+            Board: The new board state after moving right, or None if not possible.
+        """
+        if (self.zero + 1) % 3 != 0:
+            return Board(self.swap(self.zero, self.zero + 1), self, 'Right', self.depth + 1)
+        return None
+
+    def neighbors(self):
+        """
+        Generate all possible moves from the current state.
+
+        Returns:
+            list: A list of neighbor board states.
+        """
+        neighbors = [self.move_up(), self.move_down(), self.move_left(), self.move_right()]
+        return [neighbor for neighbor in neighbors if neighbor is not None]
+
+    __repr__ = __str__
+
+
+if __name__ == "__main__":
+    # Example usage of the Board class
+    initial_state = [1, 2, 5, 3, 4, 0, 6, 7, 8]
+    board = Board(initial_state)
+
+    print("Initial Board State:")
+    print(board)
+
+    print("\nIs Goal State:", board.goal_test())
+
+    print("\nManhattan Distance:", board.manhattan_distance())
+
+    print("\nPossible Moves and States:")
+    for neighbor in board.neighbors():
+        print(neighbor)

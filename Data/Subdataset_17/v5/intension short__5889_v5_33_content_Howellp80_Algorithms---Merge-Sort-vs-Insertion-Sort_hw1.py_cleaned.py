@@ -1,0 +1,52 @@
+import time
+import random
+def merge_sort(arr):
+    if len(arr) > 1:
+        mid = len(arr)
+        left_half = arr[:mid]
+        right_half = arr[mid:]
+        merge_sort(left_half)
+        merge_sort(right_half)
+        i = j = k = 0
+        while i < len(left_half) and j < len(right_half):
+            if left_half[i] < right_half[j]:
+                arr[k] = left_half[i]
+                i += 1
+            else:
+                arr[k] = right_half[j]
+                j += 1
+            k += 1
+        while i < len(left_half):
+            arr[k] = left_half[i]
+            i += 1
+            k += 1
+        while j < len(right_half):
+            arr[k] = right_half[j]
+            j += 1
+            k += 1
+def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        current_value = arr[i]
+        position = i
+        while position > 0 and arr[position - 1] > current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+        arr[position] = current_value
+def generate_random_array(size, lower=1, upper=1000):
+    return [random.randint(lower, upper) for _ in range(size)]
+def measure_sort_time(sort_function, arr):
+    start_time = time.time()
+    sort_function(arr)
+    return time.time() - start_time
+def main():
+    array_sizes = [0, 2000, 8000, 32000, 128000, 512000, 1024000, 4096000]
+    for size in array_sizes:
+        arr = generate_random_array(size)
+        merge_time = measure_sort_time(merge_sort, arr.copy())
+        insertion_time = measure_sort_time(insertion_sort, arr.copy())
+        print(f"Array Size: {size}")
+        print(f"Merge Sort Time: {merge_time:.6f} seconds")
+        print(f"Insertion Sort Time: {insertion_time:.6f} seconds")
+        print("-" * 40)
+if __name__ == "__main__":
+    main()

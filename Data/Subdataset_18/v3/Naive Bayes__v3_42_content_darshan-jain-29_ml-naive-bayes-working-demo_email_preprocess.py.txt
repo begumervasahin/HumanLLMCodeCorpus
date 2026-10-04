@@ -1,0 +1,63 @@
+import pickle
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectPercentile, f_classif
+
+def load_data(words_file, authors_file):
+    """Load the authors and words data from the provided pickle files."""
+    with open(authors_file, "rb") as af:
+        authors = pickle.load(af)
+    with open(words_file, "rb") as wf:
+        word_data = pickle.load(wf)
+    return word_data, authors
+
+def split_data(word_data, authors, test_size=0.1, random_state=42):
+    """Split the data into training and testing sets."""
+    return train_test_split(word_data, authors, test_size=test_size, random_state=random_state)
+
+def vectorize_data(features_train, features_test):
+    """Vectorize the data into a TF-IDF matrix."""
+    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, stop_words='english')
+    features_train_transformed = vectorizer.fit_transform(features_train)
+    features_test_transformed = vectorizer.transform(features_test)
+    return features_train_transformed, features_test_transformed
+
+def select_features(features_train_transformed, labels_train, features_test_transformed, percentile=10):
+    """Select the most helpful features using SelectPercentile."""
+    selector = SelectPercentile(f_classif, percentile=percentile)
+    selector.fit(features_train_transformed, labels_train)
+    features_train_transformed = selector.transform(features_train_transformed).toarray()
+    features_test_transformed = selector.transform(features_test_transformed).toarray()
+    return features_train_transformed, features_test_transformed
+
+def print_statistics(labels_train):
+    """Print some statistics about the training data."""
+    num_chris_emails = sum(labels_train)
+    num_sara_emails = len(labels_train) - num_chris_emails
+    print("Number of Chris training emails:", num_chris_emails)
+    print("Number of Sara training emails:", num_sara_emails)
+
+def preprocess(words_file="../tools/word_data.pkl", authors_file="../tools/email_authors.pkl"):
+    """
+    This function preprocesses email texts and corresponding authors by performing several steps:
+        -- Splits into training/testing sets (10% testing)
+        -- Vectorizes into a TF-IDF matrix
+        -- Selects and keeps the most helpful features
+    After preprocessing, the features and labels are converted into numpy arrays for compatibility with sklearn functions.
+    The function returns four objects:
+        -- training features
+        -- testing features
+        -- training labels
+        -- testing labels
+    """
+    word_data, authors = load_data(words_file, authors_file)
+    features_train, features_test, labels_train, labels_test = split_data(word_data, authors)
+    features_train_transformed, features_test_transformed = vectorize_data(features_train, features_test)
+    features_train_transformed, features_test_transformed = select_features(features_train_transformed, labels_train, features_test_transformed)
+    print_statistics(labels_train)
+    
+    return features_train_transformed, features_test_transformed, labels_train, labels_test
+
+# Example usage
+features_train, features_test, labels_train, labels_test = preprocess()

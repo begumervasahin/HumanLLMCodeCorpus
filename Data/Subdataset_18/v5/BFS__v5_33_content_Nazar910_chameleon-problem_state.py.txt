@@ -1,0 +1,72 @@
+from collections import deque
+
+class State:
+    """
+    Class representing the state of chameleons on an island.
+    Tracks the number of red, green, and blue chameleons.
+    """
+    def __init__(self, red, green, blue):
+        self.red_count = red
+        self.green_count = green
+        self.blue_count = blue
+        self.parent = None
+
+    def has_only_one_color(self):
+        """
+        Check if the state has chameleons of only one color.
+        """
+        return any([
+            self.red_count > 0 and self.green_count == 0 and self.blue_count == 0,
+            self.green_count > 0 and self.red_count == 0 and self.blue_count == 0,
+            self.blue_count > 0 and self.red_count == 0 and self.green_count == 0
+        ])
+
+    def red_meets_green(self):
+        """
+        Red and green chameleons meet, creating two blue chameleons.
+        """
+        return self._create_new_state(self.red_count - 1, self.green_count - 1, self.blue_count + 2)
+
+    def green_meets_blue(self):
+        """
+        Green and blue chameleons meet, creating two red chameleons.
+        """
+        return self._create_new_state(self.red_count + 2, self.green_count - 1, self.blue_count - 1)
+
+    def blue_meets_red(self):
+        """
+        Blue and red chameleons meet, creating two green chameleons.
+        """
+        return self._create_new_state(self.red_count - 1, self.green_count + 2, self.blue_count - 1)
+
+    def get_path(self):
+        """
+        Get the path from the initial state to the current state.
+        """
+        path = deque([str(self)])
+        parent = self.parent
+        while parent:
+            path.appendleft(str(parent))
+            parent = parent.parent
+        return path
+
+    def _create_new_state(self, red, green, blue):
+        """
+        Create a new state with updated chameleon counts.
+        """
+        if red < 0 or green < 0 or blue < 0:
+            raise ValueError('Invalid chameleon count')
+        new_state = State(red, green, blue)
+        new_state.parent = self
+        return new_state
+
+    def __str__(self):
+        return f'(red={self.red_count}, green={self.green_count}, blue={self.blue_count})'
+
+# Example usage:
+if __name__ == "__main__":
+    initial_state = State(red=13, green=16, blue=17)
+    print("Initial state:", initial_state)
+    next_state = initial_state.red_meets_green()
+    print("Next state:", next_state)
+    print("Path to next state:", list(next_state.get_path()))

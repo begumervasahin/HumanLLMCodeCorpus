@@ -1,0 +1,130 @@
+import numpy as np
+from scipy.spatial import distance_matrix
+from scipy.cluster import hierarchy
+from matplotlib import pyplot as plt
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.datasets import make_blobs
+
+def generate_synthetic_data(n_samples, centers, cluster_std):
+    """
+    Generate synthetic data using make_blobs.
+
+    Parameters:
+    - n_samples (int): The number of samples to generate.
+    - centers (list of lists): The coordinates of the centers for each blob.
+    - cluster_std (float): The standard deviation of the blobs.
+
+    Returns:
+    - X (ndarray): The generated feature data.
+    - y (ndarray): The integer labels for cluster membership of each sample.
+    """
+    X, y = make_blobs(n_samples=n_samples, centers=centers, cluster_std=cluster_std)
+    return X, y
+
+def plot_data_points(X, title):
+    """
+    Plot the data points.
+
+    Parameters:
+    - X (ndarray): The data points to plot.
+    - title (str): The title of the plot.
+    """
+    plt.scatter(X[:, 0], X[:, 1], marker='o')
+    plt.title(title)
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.show()
+
+def perform_agglomerative_clustering(X, n_clusters, linkage_method):
+    """
+    Apply Agglomerative Clustering to the data.
+
+    Parameters:
+    - X (ndarray): The data to cluster.
+    - n_clusters (int): The number of clusters to find.
+    - linkage_method (str): The linkage criterion to use.
+
+    Returns:
+    - agglom (AgglomerativeClustering): The fitted clustering model.
+    """
+    agglom = AgglomerativeClustering(n_clusters=n_clusters, linkage=linkage_method)
+    agglom.fit(X)
+    return agglom
+
+def plot_clusters(X, y, labels, title):
+    """
+    Plot the clustered data with labels.
+
+    Parameters:
+    - X (ndarray): The data points to plot.
+    - y (ndarray): The true labels of the data points.
+    - labels (ndarray): The cluster labels assigned by the clustering algorithm.
+    - title (str): The title of the plot.
+    """
+    plt.figure(figsize=(6, 4))
+    x_min, x_max = np.min(X, axis=0), np.max(X, axis=0)
+    X_normalized = (X - x_min) / (x_max - x_min)
+
+    for i in range(X_normalized.shape[0]):
+        plt.text(X_normalized[i, 0], X_normalized[i, 1], str(y[i]),
+                 color=plt.cm.nipy_spectral(labels[i] / 10.),
+                 fontdict={'weight': 'bold', 'size': 9})
+
+    plt.xticks([])
+    plt.yticks([])
+    plt.scatter(X_normalized[:, 0], X_normalized[:, 1], marker='.')
+    plt.title(title)
+    plt.show()
+
+def compute_and_print_distance_matrix(X):
+    """
+    Compute the distance matrix for the data and print it.
+
+    Parameters:
+    - X (ndarray): The data points for which to compute the distance matrix.
+
+    Returns:
+    - dist_matrix (ndarray): The computed distance matrix.
+    """
+    dist_matrix = distance_matrix(X, X)
+    print("Distance Matrix:\n", dist_matrix)
+    return dist_matrix
+
+def plot_hierarchical_dendrogram(Z, title):
+    """
+    Plot a dendrogram for hierarchical clustering.
+
+    Parameters:
+    - Z (ndarray): The linkage matrix.
+    - title (str): The title of the plot.
+    """
+    plt.figure(figsize=(10, 7))
+    hierarchy.dendrogram(Z)
+    plt.title(title)
+    plt.xlabel('Sample Index')
+    plt.ylabel('Distance')
+    plt.show()
+
+def main():
+    """Main function to execute the clustering and visualization."""
+    # Generate synthetic data
+    X1, y1 = generate_synthetic_data(n_samples=50, centers=[[4, 4], [-2, -1], [1, 1], [10, 4]], cluster_std=0.9)
+
+    # Plot the generated data points
+    plot_data_points(X1, title='Generated Data Points')
+
+    # Apply Agglomerative Clustering
+    agglom = perform_agglomerative_clustering(X1, n_clusters=4, linkage_method='average')
+
+    # Plot the clustered data
+    plot_clusters(X1, y1, agglom.labels_, title='Agglomerative Clustering')
+
+    # Compute and print the distance matrix
+    dist_matrix = compute_and_print_distance_matrix(X1)
+
+    # Perform hierarchical clustering and plot the dendrogram
+    Z = hierarchy.linkage(dist_matrix, 'complete')
+    plot_hierarchical_dendrogram(Z, title='Dendrogram')
+
+if __name__ == "__main__":
+    main()

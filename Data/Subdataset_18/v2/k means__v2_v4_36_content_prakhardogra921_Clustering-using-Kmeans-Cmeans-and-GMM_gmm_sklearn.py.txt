@@ -1,0 +1,74 @@
+import numpy as np
+from sklearn import mixture
+import matplotlib.pyplot as plt
+import random
+
+def generate_synthetic_data(size, loc1, scale1, loc2, scale2, loc3, scale3):
+    """
+    Generates three sets of synthetic data based on normal distributions.
+
+    Parameters:
+    size (int): Size of each data set.
+    loc1, loc2, loc3 (float): Mean of the normal distributions.
+    scale1, scale2, scale3 (float): Standard deviations of the normal distributions.
+
+    Returns:
+    tuple: Three sets of synthetic data.
+    """
+    set1 = np.random.normal(loc=loc1, scale=scale1, size=size)
+    set2 = np.random.normal(loc=loc2, scale=scale2, size=size)
+    set3 = np.random.normal(loc=loc3, scale=scale3, size=size)
+    return set1, set2, set3
+
+def combine_data_sets(set1, set2, set3, p1, p2, p3, size):
+    """
+    Combines three data sets based on specified proportions.
+
+    Parameters:
+    set1, set2, set3 (array-like): Data sets to combine.
+    p1, p2, p3 (float): Proportions for each data set.
+    size (int): Total size of the combined data set.
+
+    Returns:
+    np.array: Combined data set.
+    """
+    combined_data = np.array(
+        random.sample(list(set1), int(p1 * size)) +
+        random.sample(list(set2), int(p2 * size)) +
+        random.sample(list(set3), int(p3 * size))
+    )
+    return combined_data
+
+def generate_gmm(data):
+    """
+    Fits a Gaussian Mixture Model (GMM) to the data and generates a scatter plot.
+
+    Parameters:
+    data (np.array): Data to fit the GMM.
+    """
+    gmm = mixture.GaussianMixture(n_components=3)
+    gmm.fit(data.reshape(-1, 1))
+    y = gmm.predict(data.reshape(-1, 1))
+    plt.scatter(data, y, c=y, cmap='viridis', marker='o', edgecolor='k')
+    plt.title('Gaussian Mixture Model')
+    plt.xlabel('Data')
+    plt.ylabel('Cluster')
+    plt.show()
+
+# Parameters
+size = 500
+p1, p2, p3 = 0.25, 0.5, 0.25
+
+# Generate and combine first set of synthetic data
+set1, set2, set3 = generate_synthetic_data(size, 1, 0.1, 1.5, 0.1, 2, 0.2)
+dset = combine_data_sets(set1, set2, set3, p1, p2, p3, size)
+
+# Generate and combine second set of synthetic data
+set4, set5, set6 = generate_synthetic_data(size, 1, 0.3, 1.5, 0.4, 2, 0.3)
+dset2 = combine_data_sets(set4, set5, set6, p1, p2, p3, size)
+
+# Generate GMM plot for the first data set
+generate_gmm(dset)
+
+# Uncomment the following line to generate GMM plot for the second data set
+# generate_gmm(dset2)

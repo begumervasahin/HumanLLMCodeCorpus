@@ -1,0 +1,68 @@
+import time
+import logging
+import threading
+from queue import Queue
+from pyaltt import background_worker, background_task, task_supervisor, TASK_HIGH
+
+# Set up logging configuration
+logging.basicConfig(level=logging.DEBUG)
+
+# Create an event and a task queue
+task_event = threading.Event()
+task_queue = Queue()
+
+@background_worker(interval=2)
+def interval_worker(**kwargs):
+    """Worker function that runs at regular intervals."""
+    logging.info('Interval Worker running')
+    time.sleep(2.1)
+
+@background_worker(queue=task_queue, priority=TASK_HIGH)
+def queued_worker(task, **kwargs):
+    """Worker function that processes tasks from a queue."""
+    logging.info(f'Queued Worker running, task: {task}')
+
+@background_worker(event=task_event)
+def event_worker(**kwargs):
+    """Worker function that runs based on an event."""
+    logging.info('Event Worker running')
+    time.sleep(1)
+
+def test_function():
+    """Test function to be run as a background task."""
+    logging.info('Test function running')
+
+def main():
+    # Set up the task supervisor configuration
+    task_supervisor.set_config(pool_size=2, reserve_normal=0)
+    task_supervisor.poll_delay = 0.01
+    task_supervisor.start()
+
+    # Start the background workers
+    interval_worker.start()
+    queued_worker.start()
+    event_worker.start()
+
+    # Add tasks to the queue and trigger the event
+    task_queue.put('task1')
+    task_event.set()
+    task_queue.put('task2')
+    task_queue.put('task3')
+    task_queue.put('task4')
+
+    logging.info('All set')
+
+    # Start a background task
+    background_task(test_function, name='test_task', wait_start=True)()
+    logging.info('Test task started')
+
+    # Allow some time for the tasks to run
+    time.sleep(5)
+
+    # Stop the background workers
+    interval_worker.stop()
+    queued_worker.stop()
+    event_worker.stop()
+
+if __name__ == '__main__':
+    main()

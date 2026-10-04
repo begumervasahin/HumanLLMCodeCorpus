@@ -1,0 +1,110 @@
+import number_theory as nt
+from random import randint
+
+def elgamal_sign(message, key, private_key):
+    """
+    Generate an ElGamal signature for a given message.
+
+    Args:
+        message (int): The message to be signed.
+        key (tuple): A tuple (p, g) where p is a prime and g is a generator.
+        private_key (int): The private key.
+
+    Returns:
+        tuple: The signature (s1, s2).
+    """
+    p, g = key
+    while True:
+        k = randint(2, p - 2)
+        if nt.euclid(k, p - 1) == 1:  # Ensure k is coprime with p-1
+            break
+    s1 = pow(g, k, p)
+    s2 = ((message - private_key * s1) * nt.mod_mult_inv(k, p - 1)) % (p - 1)
+    if s2 == 0:
+        print('Try again')
+        return None
+    return s1, s2
+
+def elgamal_verify(message, key, signature):
+    """
+    Verify an ElGamal signature for a given message.
+
+    Args:
+        message (int): The message to be verified.
+        key (tuple): A tuple (p, g, y) where p is a prime, g is a generator, and y is the public key.
+        signature (tuple): The signature (s1, s2).
+
+    Returns:
+        bool: True if the signature is valid, False otherwise.
+    """
+    s1, s2 = signature
+    p, g, y = key
+    return pow(g, message, p) == (pow(y, s1, p) * pow(s1, s2, p)) % p
+
+def dsa_sign(message, key, private_key):
+    """
+    Generate a DSA signature for a given message.
+
+    Args:
+        message (int): The message to be signed.
+        key (tuple): A tuple (q, g) where q is a prime and g is a generator.
+        private_key (int): The private key.
+
+    Returns:
+        tuple: The signature (s1, s2).
+    """
+    q, g = key
+    k = randint(2, q - 1)
+    s1 = pow(g, k, q)
+    s2 = ((message + private_key * s1) * nt.mod_mult_inv(k, q)) % q
+    return s1, s2
+
+def dsa_verify(message, key, signature):
+    """
+    Verify a DSA signature for a given message.
+
+    Args:
+        message (int): The message to be verified.
+        key (tuple): A tuple (q, g, y) where q is a prime, g is a generator, and y is the public key.
+        signature (tuple): The signature (s1, s2).
+
+    Returns:
+        bool: True if the signature is valid, False otherwise.
+    """
+    s1, s2 = signature
+    q, g, y = key
+    v1 = (message * nt.mod_mult_inv(s2, q)) % q
+    v2 = (s1 * nt.mod_mult_inv(s2, q)) % q
+    return (pow(g, v1, q) * pow(y, v2, q)) % q == s1
+
+# Example usage
+if __name__ == "__main__":
+    # ElGamal parameters and keys
+    p = 23  # Example prime
+    g = 5   # Example generator
+    y = 8   # Example public key
+    x = 6   # Example private key
+    elgamal_key = (p, g)
+    elgamal_pub_key = (p, g, y)
+    message = 15  # Example message
+
+    # ElGamal signing and verification
+    elgamal_signature = elgamal_sign(message, elgamal_key, x)
+    if elgamal_signature:
+        print("ElGamal Signature:", elgamal_signature)
+        is_valid = elgamal_verify(message, elgamal_pub_key, elgamal_signature)
+        print("ElGamal Signature Valid:", is_valid)
+
+    # DSA parameters and keys
+    q = 23  # Example prime
+    g = 5   # Example generator
+    y = 8   # Example public key
+    x = 6   # Example private key
+    dsa_key = (q, g)
+    dsa_pub_key = (q, g, y)
+
+    # DSA signing and verification
+    dsa_signature = dsa_sign(message, dsa_key, x)
+    print("DSA Signature:", dsa_signature)
+    is_valid = dsa_verify(message, dsa_pub_key, dsa_signature)
+    print("DSA Signature Valid:", is_valid)

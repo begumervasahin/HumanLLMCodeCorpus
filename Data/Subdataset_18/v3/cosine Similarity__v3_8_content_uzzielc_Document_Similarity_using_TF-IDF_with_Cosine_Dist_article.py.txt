@@ -1,0 +1,98 @@
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def load_data(file_path):
+    """
+    Load data from a CSV file.
+    
+    Args:
+        file_path (str): Path to the CSV file.
+
+    Returns:
+        pd.DataFrame: Loaded data as a pandas DataFrame.
+    """
+    return pd.read_csv(file_path)
+
+def extract_texts(df, text_column):
+    """
+    Extract text data from a specified column in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing text data.
+        text_column (str): Column name containing the text data.
+
+    Returns:
+        list: List of texts.
+    """
+    return df[text_column].tolist()
+
+def compute_tfidf_matrix(texts, stop_words='english'):
+    """
+    Compute the TF-IDF matrix for a list of texts.
+
+    Args:
+        texts (list): List of text documents.
+        stop_words (str or list): Stop words to use for vectorization.
+
+    Returns:
+        scipy.sparse.csr.csr_matrix: TF-IDF matrix.
+    """
+    vectorizer = CountVectorizer(stop_words=stop_words)
+    freq_term_matrix = vectorizer.fit_transform(texts)
+
+    tfidf_transformer = TfidfTransformer(norm="l2")
+    tfidf_transformer.fit(freq_term_matrix)
+    tf_idf_matrix = tfidf_transformer.transform(freq_term_matrix)
+
+    return tf_idf_matrix
+
+def compute_cosine_similarities(tf_idf_matrix, target_index=0):
+    """
+    Compute cosine similarity scores between the target document and all documents.
+
+    Args:
+        tf_idf_matrix (scipy.sparse.csr.csr_matrix): TF-IDF matrix.
+        target_index (int): Index of the target document.
+
+    Returns:
+        np.ndarray: Array of cosine similarity scores.
+    """
+    cos_sim_matrix = cosine_similarity(tf_idf_matrix[target_index:target_index + 1], tf_idf_matrix)
+    return cos_sim_matrix[0]
+
+def add_cosine_similarities_to_df(df, cos_sim_scores):
+    """
+    Add cosine similarity scores to a DataFrame.
+
+    Args:
+        df (pd.DataFrame): Original DataFrame.
+        cos_sim_scores (np.ndarray): Array of cosine similarity scores.
+
+    Returns:
+        pd.DataFrame: DataFrame with added cosine similarity scores.
+    """
+    cos_sim_df = pd.DataFrame(cos_sim_scores, columns=['Cos_Sim'])
+    df_with_cos_sim = pd.concat([df, cos_sim_df], axis=1)
+    df_sorted = df_with_cos_sim.sort_values(by='Cos_Sim', ascending=False)
+    return df_sorted
+
+if __name__ == '__main__':
+    # Load article data from a CSV file
+    df_articles = load_data('article_data.csv')
+
+    # Extract text data
+    texts = extract_texts(df_articles, text_column='content')
+
+    # Compute the TF-IDF matrix
+    tf_idf_matrix = compute_tfidf_matrix(texts, stop_words='english')
+
+    # Compute cosine similarity scores
+    cos_sim_scores = compute_cosine_similarities(tf_idf_matrix, target_index=0)
+
+    # Add cosine similarity scores to the DataFrame
+    df_result = add_cosine_similarities_to_df(df_articles, cos_sim_scores)
+
+    # Print the top results
+    print(df_result.head(6))

@@ -1,0 +1,41 @@
+import os
+import unittest
+import tempfile
+from app import app, init_db
+class AppTestCase(unittest.TestCase):
+    def setUp(self):
+        self.db_fd, app.config['DATABASE'] = tempfile.mkstemp()
+        app.testing = True
+        self.client = app.test_client()
+        with app.app_context():
+            init_db()
+    def tearDown(self):
+        os.close(self.db_fd)
+        os.unlink(app.config['DATABASE'])
+    def test_empty_db(self):
+        response = self.client.get('/')
+        self.assertIn(b'No entries here so far', response.data)
+    def login(self, username, password):
+        return self.client.post('/login', data=dict(
+            username=username, password=password), follow_redirects=True)
+    def logout(self):
+        return self.client.get('/logout', follow_redirects=True)
+    def test_login_logout(self):
+        response = self.login('admin', 'default')
+        self.assertIn(b'You were logged in', response.data)
+        response = self.logout()
+        self.assertIn(b'You were logged out', response.data)
+        response = self.login('adminx', 'default')
+        self.assertIn(b'Invalid username', response.data)
+        response = self.login('admin', 'defaultx')
+        self.assertIn(b'Invalid password', response.data)
+    def test_add_list(self):
+        self.login('admin', 'default')
+        response = self.client.post('/add_list', data=dict(
+            id='1', title='Sample Title', qnty='10', date='2024-07-27'), follow_redirects=True)
+        self.assertIn(b'1', response.data)
+        self.assertIn(b'Sample Title', response.data)
+        self.assertIn(b'10', response.data)
+        self.assertIn(b'2024-07-27', response.data)
+if __name__ == '__main__':
+    unittest.main()

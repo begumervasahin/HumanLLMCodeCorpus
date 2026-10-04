@@ -1,0 +1,48 @@
+import distsim
+from collections import defaultdict
+
+def main():
+    word_to_vec_dict = distsim.load_word2vec("nyt_word2vec.4k")
+    task_accuracies = defaultdict(list)
+    
+    with open("word-test.v3.txt", "r") as file:
+        category = None
+        for line in file:
+            line = line.strip('\n')
+            if line.startswith('//'):
+                continue
+            if line.startswith(":"):
+                category = line[2:]
+            else:
+                words = line.split()
+                w1_vec = word_to_vec_dict[words[0]]
+                w2_vec = word_to_vec_dict[words[1]]
+                w4_vec = word_to_vec_dict[words[3]]
+                result_vec = w1_vec - w2_vec + w4_vec
+                result = distsim.show_nearest(word_to_vec_dict, result_vec, {words[0], words[1], words[3]}, distsim.cossim_dense)
+                
+                match = False
+                for i, (word, score) in enumerate(result):
+                    if word == words[2]:
+                        match = True
+                        break
+                if not match:
+                    i = 0
+                else:
+                    i += 1
+                task_accuracies[category].append(i)
+
+    for category, positions in task_accuracies.items():
+        top1 = sum(1 for pos in positions if pos == 1)
+        top5 = sum(1 for pos in positions if pos <= 5)
+        top10 = sum(1 for pos in positions if pos <= 10)
+        
+        num_positions = len(positions)
+        top1_accuracy = round(float(top1) / num_positions, 2)
+        top5_accuracy = round(float(top5) / num_positions, 2)
+        top10_accuracy = round(float(top10) / num_positions, 2)
+        
+        print(f"{category}:     {top1_accuracy}    {top5_accuracy}    {top10_accuracy}")
+
+if __name__ == "__main__":
+    main()

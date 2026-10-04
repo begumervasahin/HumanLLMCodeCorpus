@@ -1,0 +1,100 @@
+import os
+
+def file_read(file_path):
+    """
+    Strip lines of ASCII text from file.
+    
+    Parameters:
+    file_path (str): The path to the file to read.
+    
+    Returns:
+    list: List of lines from the file with the first and last lines removed.
+    """
+    print(f'Reading {file_path}....')
+    with open(file_path, 'r') as file:
+        lines = file.read().split('\n')
+    
+    # Remove the first and last lines if the list is not empty
+    if lines:
+        del lines[0]  # Remove the first line
+        if lines:
+            del lines[-1]  # Remove the last line
+    
+    if lines:
+        print(lines[0])  # Print the first line of the resulting list
+    
+    return lines
+
+def file_write(file_path, data):
+    """
+    Write lines of data to ASCII file.
+    
+    Parameters:
+    file_path (str): The path to the file to write to.
+    data (list): List of lists, where each inner list represents a line of data.
+    """
+    with open(file_path, 'w') as file:
+        for line in data:
+            joined_line = '\t'.join(line)
+            file.write(joined_line + '\r')
+
+def add_filename_prefix(path, prefix=""):
+    """
+    Add a prefix to the filename in the given path.
+    
+    Parameters:
+    path (str): The original file path.
+    prefix (str): The prefix to add to the filename.
+    
+    Returns:
+    str: The new file path with the prefix added to the filename.
+    """
+    directory, filename = os.path.split(path)
+    new_filename = prefix + filename
+    return os.path.join(directory, new_filename)
+
+def lines_into_traces(lines):
+    """
+    Convert a list of ASCII text lines into traces (a list of lists of floats).
+    
+    Parameters:
+    lines (list): List of ASCII text lines.
+    
+    Returns:
+    list: List of lists of floats representing the traces.
+    """
+    split_lines = [line.split('\t') for line in lines]
+    num_of_traces = len(split_lines[0])
+    
+    traces = [[] for _ in range(num_of_traces)]
+    
+    for line in split_lines:
+        for i in range(num_of_traces):
+            traces[i].append(float(line[i]))
+    
+    return traces
+
+def traces_into_lines(traces):
+    """
+    Convert traces (a list of lists of floats) into a list of ASCII text lines.
+    
+    Parameters:
+    traces (list): List of lists of floats representing the traces.
+    
+    Returns:
+    list: List of ASCII text lines.
+    """
+    lines_of_output = len(traces[0])
+    lines = [[''] * len(traces) for _ in range(lines_of_output)]
+    
+    for point in range(lines_of_output):
+        for trace_index, trace in enumerate(traces):
+            lines[point][trace_index] = str(trace[point])
+    
+    return ['\t'.join(line) for line in lines]
+
+# Example usage:
+# file_content = file_read('example.txt')
+# traces = lines_into_traces(file_content)
+# lines = traces_into_lines(traces)
+# file_write('output.txt', lines)

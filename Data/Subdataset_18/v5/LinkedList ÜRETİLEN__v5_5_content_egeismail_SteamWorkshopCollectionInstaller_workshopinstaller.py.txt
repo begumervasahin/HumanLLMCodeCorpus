@@ -1,0 +1,100 @@
+import requests
+import sys
+import json
+import os
+import zipfile
+
+def create_folder(directory):
+    """Create a directory if it doesn't exist."""
+    if not os.path.isdir(directory):
+        os.makedirs(directory)
+        return directory
+    return False
+
+def extract_zip(filename, extract_dir):
+    """Extract a zip file to the specified directory."""
+    with zipfile.ZipFile(filename, 'r') as zip_ref:
+        zip_ref.extractall(extract_dir)
+
+class PluginContent:
+    def __init__(self, data):
+        self.data = data
+        self.fid = data["publishedfileid"]
+        self.filename = data["filename"]
+        self.file_size = data["file_size"]
+        self.file_url = data["file_url"]
+        self.file_title = data["title"]
+        self.nfilename = f"{self.fid}-{self.file_title}.zip"
+        self.fmid = f"M{self.fid}-{self.file_title}"
+        self.mfolder = os.path.join(workshop_dir, self.fmid)
+
+    def create_folder(self):
+        """Create a folder for the plugin."""
+        return create_folder(self.mfolder)
+
+    def install(self):
+        """Install the plugin by downloading and extracting the zip file."""
+        if self.create_folder():
+            local_filename = os.path.join(self.mfolder, self.nfilename)
+            with requests.get(self.file_url, stream=True) as r:
+                with open(local_filename, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+            extract_zip(local_filename, self.mfolder)
+            os.remove(local_filename)
+            return local_filename
+        return None
+
+    def download(self):
+        """Download the plugin file."""
+        if self.create_folder():
+            local_filename = os.path.join(self.mfolder, self.filename)
+            with requests.get(self.file_url, stream=True) as r:
+                with open(local_filename, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+            return local_filename
+        return None
+
+def get_plugin_content(published_file_id):
+    """Fetch plugin content details from Steam API."""
+    payload = {'itemcount': 1, 'publishedfileids[0]': published_file_id}
+    response = requests.post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", data=payload)
+    return PluginContent(json.loads(response.text)["response"]["publishedfiledetails"][0])
+
+def get_pid(url):
+    """Extract published file ID from the URL."""
+    args = dict(tuple(i.split("=")) for i in url.split("?")[-1].split("&"))
+    return int(args.get("id", None))
+
+def main():
+    """Main function to process plugins."""
+    with open(links, "r") as file:
+        plugins = [line.strip() for line in file if line.strip()]
+    
+    for plugin_url in plugins:
+        pid = get_pid(plugin_url)
+        if pid:
+            plugin_content = get_plugin_content(pid)
+            if mode == "install":
+                if plugin_content.install():
+                    print(f"{plugin_content.fmid} install complete.")
+                else:
+                    print(f"{plugin_content.fmid} already installed.")
+            else:
+                if plugin_content.download():
+                    print(f"{plugin_content.fmid} download complete.")
+                else:
+                    print(f"{plugin_content.fmid} already downloaded.")
+
+if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        sys.exit("Usage: script.py <workshop_directory> <links_file> <install/download>")
+
+    workshop_dir = sys.argv[1]
+    links = sys.argv[2]
+    mode = sys.argv[3].lower()
+
+    main()

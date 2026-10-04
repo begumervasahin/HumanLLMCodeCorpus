@@ -1,0 +1,142 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.spatial.distance as metric
+
+def initialize_centroids(dataset, k):
+    """
+    Initialize centroids for k-means clustering.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    k (int): The number of clusters.
+
+    Returns:
+    np.matrix: Initialized centroids.
+    """
+    n_features = dataset.shape[1]
+    centroids = np.zeros((k, n_features))
+    for i in range(n_features):
+        feature_min = np.min(dataset[:, i])
+        feature_range = np.ptp(dataset[:, i])  # Peak-to-peak (range) of values along an axis.
+        centroids[:, i] = feature_min + feature_range * np.random.rand(k)
+    return np.matrix(centroids)
+
+def assign_clusters(dataset, centroids):
+    """
+    Assign clusters to each data point based on the closest centroid.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    centroids (np.matrix): The current centroids.
+
+    Returns:
+    np.matrix: Cluster assignments and distances.
+    """
+    n_samples = dataset.shape[0]
+    cluster_info = np.zeros((n_samples, 2))
+    
+    for i in range(n_samples):
+        min_dist = np.inf
+        for j in range(centroids.shape[0]):
+            dist = metric.euclidean(centroids[j, :], dataset[i, :])
+            if dist < min_dist:
+                min_dist = dist
+                cluster_info[i, :] = j, min_dist ** 2
+    return np.matrix(cluster_info)
+
+def update_centroids(dataset, cluster_info, k):
+    """
+    Update centroids by calculating the mean of all points assigned to each centroid.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    cluster_info (np.matrix): Cluster assignments and distances.
+    k (int): The number of clusters.
+
+    Returns:
+    np.matrix: Updated centroids.
+    """
+    centroids = np.zeros((k, dataset.shape[1]))
+    for cent in range(k):
+        points = dataset[np.where(cluster_info[:, 0].A == cent)[0]]
+        centroids[cent, :] = np.mean(points, axis=0) if points.size else centroids[cent, :]
+    return np.matrix(centroids)
+
+def kmeans_clustering(dataset, k):
+    """
+    Perform k-means clustering on the dataset.
+
+    Args:
+    dataset (np.array): The dataset to be clustered.
+    k (int): The number of clusters.
+
+    Returns:
+    np.matrix: Final centroids.
+    np.matrix: Cluster assignment and squared distance.
+    int: Number of iterations.
+    np.matrix: Initial centroids.
+    """
+    centroids = initialize_centroids(dataset, k)
+    initial_centroids = centroids.copy()
+    cluster_info = np.matrix(np.zeros((dataset.shape[0], 2)))
+    changed = True
+    iterations = 0
+
+    while changed:
+        iterations += 1
+        cluster_info = assign_clusters(dataset, centroids)
+        new_centroids = update_centroids(dataset, cluster_info, k)
+        if np.allclose(centroids, new_centroids):
+            changed = False
+        centroids = new_centroids
+        print(f"Iteration {iterations}")
+
+    return centroids, cluster_info, iterations, initial_centroids
+
+def plot_data(dataset, title, xlabel, ylabel):
+    """
+    Plot the dataset with given title and axis labels.
+
+    Args:
+    dataset (np.array): The dataset to be plotted.
+    title (str): The title of the plot.
+    xlabel (str): The label for the x-axis.
+    ylabel (str): The label for the y-axis.
+    """
+    plt.scatter(dataset[:, 0], dataset[:, 1])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+
+def main():
+    print('k-Means Clustering Algorithm in Python')
+
+    # Load dataset
+    filename = 'kmeans_data.csv'
+    dataset = np.genfromtxt(filename, delimiter=',')
+
+    # Plot the dataset
+    plot_data(dataset, 'Dataset', 'Feature 1', 'Feature 2')
+
+    # Get number of clusters from user
+    k = int(input("Number of Centroids: "))
+
+    # Perform clustering
+    centroids, cluster_info, iterations, initial_centroids = kmeans_clustering(dataset, k)
+
+    # Display results
+    print('Number of iterations:', iterations)
+    print('\nFinal centroids:\n', centroids)
+    print('\nInitial centroids:\n', initial_centroids)
+
+    # Plot the clustered data
+    clustered_dataset = np.hstack((dataset, cluster_info))
+    plt.scatter(clustered_dataset[:, 0], clustered_dataset[:, 1], c=clustered_dataset[:, 2])
+    plt.title('Clustered Data')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,127 @@
+import romania
+import sys
+
+class FindRoute:
+    """
+    This class finds the shortest route between any two given unique vertices (cities) using Breadth-First Search (BFS).
+    """
+
+    def find_route(self):
+        """
+        Finds and prints the shortest route between two cities specified in the command line arguments.
+        """
+        file_input = sys.argv[1]
+        start_city = sys.argv[2]  # Starting city
+        destination_city = sys.argv[3]  # Destination city
+
+        # Get the graph representation of the cities and their distances
+        graph, vertices_count = romania.Romania().get_data(file_input)
+
+        visited = [False] * vertices_count
+        stack = []
+
+        # Traverse the graph and mark vertices as 'visited'
+        for i in range(vertices_count):
+            if not visited[i]:
+                self.topological_sort(graph, start_city, visited, stack)
+
+        distances = [float("Inf")] * vertices_count
+        distances[list(graph.keys()).index(start_city)] = 0.0
+        from_city = [None] * vertices_count
+        to_city = [None] * vertices_count
+        edge_distances = [0] * vertices_count
+
+        total_distance = 0
+
+        while stack:
+            current_city = stack.pop()
+            for neighbor, distance in graph[current_city]:
+                neighbor_index = list(graph.keys()).index(neighbor)
+                new_distance = distances[list(graph.keys()).index(current_city)] + float(distance)
+
+                # Update distance if a shorter path is found
+                if distances[neighbor_index] > new_distance:
+                    distances[neighbor_index] = new_distance
+                    from_city[neighbor_index] = current_city
+                    to_city[neighbor_index] = neighbor
+                    edge_distances[neighbor_index] = float(distance)
+
+                    if neighbor == destination_city:
+                        total_distance = new_distance
+
+        result_path = self.build_path(from_city, to_city, edge_distances, start_city, destination_city, total_distance)
+
+        # Print the paths
+        self.print_result(result_path, total_distance)
+
+    def topological_sort(self, graph, start_city, visited, stack):
+        """
+        Traverse the graph and mark vertices as 'visited' according to levels.
+
+        Args:
+            graph (dict): The graph representation of the cities.
+            start_city (str): The starting city.
+            visited (list): List to keep track of visited vertices.
+            stack (list): Stack to keep track of the vertices to be visited.
+        """
+        city_index = list(graph.keys()).index(start_city)
+        visited[city_index] = True
+
+        for neighbor, _ in graph[start_city]:
+            neighbor_index = list(graph.keys()).index(neighbor)
+            if not visited[neighbor_index]:
+                self.topological_sort(graph, neighbor, visited, stack)
+
+        stack.append(start_city)
+
+    def build_path(self, from_city, to_city, edge_distances, start_city, destination_city, total_distance):
+        """
+        Build the path from start city to destination city.
+
+        Args:
+            from_city (list): List of from cities.
+            to_city (list): List of to cities.
+            edge_distances (list): Distances between cities.
+            start_city (str): The starting city.
+            destination_city (str): The destination city.
+            total_distance (float): The total distance of the path.
+
+        Returns:
+            list: The path from start city to destination city.
+        """
+        result_path = []
+        current_distance = total_distance
+        pos = list(to_city).index(destination_city)
+
+        while current_distance != 0:
+            result_path.append(from_city[pos])
+            result_path.append(to_city[pos])
+            result_path.append(str(edge_distances[pos]))
+            current_distance = distances[pos] - edge_distances[pos]
+            destination_city = from_city[pos]
+            pos = list(to_city).index(destination_city)
+
+        result_path.reverse()
+        return result_path
+
+    def print_result(self, result_path, total_distance):
+        """
+        Print the result path and distance.
+
+        Args:
+            result_path (list): The path from start city to destination city.
+            total_distance (float): The total distance of the path.
+        """
+        if total_distance == 0:
+            print("distance: infinity\nroute:\nnone\n")
+        else:
+            print(f"distance: {total_distance} km\nroute:")
+            for i in range(0, len(result_path), 3):
+                print(f"{result_path[i]} to {result_path[i + 1]}, {result_path[i + 2]} km")
+
+def main():
+    route_finder = FindRoute()
+    route_finder.find_route()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,84 @@
+import random
+import csv
+
+class Tree:
+    def __init__(self, value=None, left=None, right=None):
+        self.value = value
+        self.left = left
+        self.right = right
+
+    def insert(self, x):
+        """
+        Insert a value into the binary search tree.
+        """
+        self._insert_recursive(x)
+
+    def _insert_recursive(self, x):
+        """
+        Helper method to recursively insert a value into the tree.
+        """
+        if self.value is None:
+            self.value = x
+        elif x < self.value:
+            if self.left is None:
+                self.left = Tree(x)
+            else:
+                self.left._insert_recursive(x)
+        else:
+            if self.right is None:
+                self.right = Tree(x)
+            else:
+                self.right._insert_recursive(x)
+
+    def height(self):
+        """
+        Calculate the height of the tree.
+        """
+        if self.value is None:
+            return 0
+        left_height = self.left.height() if self.left else 0
+        right_height = self.right.height() if self.right else 0
+        return max(left_height, right_height) + 1
+
+def generate_random_array(n):
+    """
+    Generate a random array of integers from 0 to n-1.
+    """
+    array = list(range(n))
+    random.shuffle(array)
+    return array
+
+def build_tree(arr):
+    """
+    Build a binary search tree from the given array.
+    """
+    tree = Tree(arr[0])
+    for value in arr[1:]:
+        tree.insert(value)
+    return tree
+
+def main():
+    print("n is the number of vertices in the Binary Search Tree")
+    print("h is the corresponding average height of 500 randomly generated samples\n")
+
+    results = [["number of nodes", "average height"]]
+    trials = 500
+
+    print("Generating results.....")
+    for n in range(100, 1001, 100):
+        height_sum = 0
+        for _ in range(trials):
+            arr = generate_random_array(n)
+            tree = build_tree(arr)
+            height_sum += tree.height()
+        average_height = height_sum / trials
+        results.append([n, average_height])
+        print(f"n = {n:4d}, h = {average_height:.3f}")
+
+    # Write results to a CSV file
+    with open("results.csv", "w", newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerows(results)
+
+if __name__ == "__main__":
+    main()

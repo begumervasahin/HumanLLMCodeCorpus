@@ -1,0 +1,67 @@
+import tkinter as tk
+import tkinter.messagebox
+import os
+from sympy.ntheory import isprime
+from funcoesAux import pqeValidacao
+
+class Option01(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Title and instructions
+        self.create_label("Gerar chave publica", 22, "top")
+        self.create_label("Insira os valores abaixo", 10, "top")
+        self.add_spacing(5)
+        
+        # Input labels and fields
+        self.create_label_and_entry("p:", 80, 65)
+        self.create_label_and_entry("q:", 80, 90)
+        self.create_label_and_entry("e:", 80, 115)
+
+        # Generate key button
+        self.create_button("Gerar chave", self.gerar, 95, 145)
+
+    def create_label(self, text, font_size, side):
+        tk.Label(self, text=text, font=('Verdana', font_size)).pack(side=side, fill="x")
+
+    def add_spacing(self, count):
+        for _ in range(count):
+            self.create_label("", 22, "top")
+
+    def create_label_and_entry(self, text, x, y):
+        label = tk.Label(self, text=text)
+        label.pack()
+        label.place(x=x, y=y)
+        entry = tk.Entry(self)
+        entry.pack()
+        entry.place(x=x + 20, y=y)
+        setattr(self, text[0], entry)
+
+    def create_button(self, text, command, x, y):
+        button = tk.Button(self, text=text, command=command)
+        button.pack()
+        button.place(x=x, y=y)
+
+    def gerar(self):
+        p_value = self.p.get()
+        q_value = self.q.get()
+        e_value = self.e.get()
+        
+        error_message, title = pqeValidacao(p_value, q_value, e_value), "ERRO!"
+        if not error_message:
+            self.write_public_key(p_value, q_value, e_value)
+            error_message, title = "Chave Gerada com Sucesso!", "Concluido"
+        tkinter.messagebox.showinfo(title, error_message)
+
+    def write_public_key(self, p, q, e):
+        if os.path.exists("chavePublica.txt"):
+            os.remove("chavePublica.txt")
+        with open("chavePublica.txt", "w") as file:
+            file.write(str((int(p) * int(q), int(e))))
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    Option01(root).pack(side="top", fill="both", expand=True)
+    root.mainloop()

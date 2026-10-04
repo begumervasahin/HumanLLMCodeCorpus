@@ -1,0 +1,52 @@
+import numpy as np
+
+class VariancePlugin:
+    def __init__(self):
+        self.bacteria_names = []
+        self.data_matrix = []
+
+    def input(self, filename):
+        """Reads the input file and initializes the data structure."""
+        self.input_file = filename
+
+    def run(self):
+        """Processes the input file to extract bacteria names and their corresponding values."""
+        with open(self.input_file, 'r') as file:
+            # Read the first line to get bacteria names
+            first_line = file.readline().strip()
+            self.bacteria_names = [name for name in first_line.split(',') if name != '\"\"']
+            num_bacteria = len(self.bacteria_names)
+            
+            # Initialize the data matrix with empty lists
+            self.data_matrix = [[] for _ in range(num_bacteria)]
+
+            # Read the rest of the file to populate the data matrix
+            for line in file:
+                values = line.strip().split(',')
+                for index in range(1, len(values)):
+                    self.data_matrix[index - 1].append(float(values[index]))
+
+    def output(self, filename):
+        """Calculates the variance for each bacteria and writes the results to the output file."""
+        variances = []
+
+        # Calculate variance for each list of values in the data matrix
+        for index, values in enumerate(self.data_matrix):
+            if values:
+                variance = np.var(values)
+                variances.append((variance, self.bacteria_names[index]))
+
+        # Sort the variances in descending order
+        variances.sort(reverse=True)
+
+        # Write the sorted variances to the output file
+        with open(filename, 'w') as file:
+            file.write("Element\tVariance\n\n")
+            for variance, name in variances:
+                file.write(f"{name}\t{variance:.6f}\n")
+
+# Example usage:
+# plugin = VariancePlugin()
+# plugin.input('input_file.csv')
+# plugin.run()
+# plugin.output('output_file.txt')

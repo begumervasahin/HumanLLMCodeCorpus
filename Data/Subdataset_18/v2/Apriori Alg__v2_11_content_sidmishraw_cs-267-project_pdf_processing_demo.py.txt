@@ -1,0 +1,68 @@
+# pdf_processing_demo.py
+# -*- coding: utf-8 -*-
+# @Author: Sidharth Mishra
+# @Date: 2017-03-06 17:14:07
+# @Last Modified by: Sidharth Mishra
+# @Last Modified time: 2017-04-03 19:56:00
+
+__author__ = 'sidmishraw'
+__email__ = 'sidharth.mishra@sjsu.edu'
+
+"""
+This is a demo for the PDF processing module.
+"""
+
+# Python standard library imports
+from pprint import pprint
+from json import dumps
+from pdb import set_trace
+
+# cs_267_project specific imports
+from pdf_processing import (
+    extract_pages,
+    extract_page_contents,
+    get_pdf_contents,
+    create_json_file,
+    extract_words,
+    build_pdf_json,
+    cleanse_extracted_words,
+    cleansed_pdf_json
+)
+from pdf_processing.pdf_processor import TEST_PDF, TEST_PDF_2
+
+def process_pdf(doc_name, phase1_file, phase2_file, cleanse_function):
+    """
+    Processes the given PDF and saves the results in JSON files.
+
+    Args:
+        doc_name (str): The name of the PDF document to process.
+        phase1_file (str): The name of the first phase output JSON file.
+        phase2_file (str): The name of the second phase output JSON file.
+        cleanse_function (function): The function to cleanse the extracted words.
+    """
+    print(f'Processing {doc_name}...')
+    
+    # Extract contents from the PDF
+    get_pdf_contents(doc_name)
+    
+    # Extract words and save to the first phase JSON file
+    def_dict = extract_words()
+    with open(phase1_file, 'w') as fp:
+        fp.write(dumps(def_dict))
+
+    # Cleanse the extracted words and save to the second phase JSON file
+    def_dict = cleanse_function(def_dict)
+    with open(phase2_file, 'w') as fp:
+        fp.write(dumps(def_dict))
+
+if __name__ == '__main__':
+    """
+    Main entry point for the demo.
+    """
+    print('Converting PDFs into JSONs and making your life simpler...')
+
+    # Process the first PDF
+    process_pdf(TEST_PDF, 'phase3_1.json', 'phase3.json', cleanse_extracted_words)
+
+    # Process the second PDF
+    process_pdf(TEST_PDF_2, 'phase3_2_1.json', 'phase3_2.json', cleansed_pdf_json)

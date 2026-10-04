@@ -1,0 +1,65 @@
+class DisjointSets:
+    def __init__(self, elements):
+        """
+        Initialize the disjoint sets data structure.
+        Each element is initially its own set.
+        """
+        self.elems = list(elements)  # List of elements
+        self.sets = list(range(len(elements)))  # Parent pointers, initialized to self
+        self.ranks = [1] * len(elements)  # Ranks for union by rank
+
+    def find(self, x):
+        """
+        Finds the representative (root) of the set containing element x.
+        Implements path compression to flatten the structure.
+        """
+        i = r = self.elems.index(x)
+        # Find the root
+        while self.sets[r] != r:
+            r = self.sets[r]
+        # Path compression
+        while i != r:
+            j = self.sets[i]
+            self.sets[i] = r
+            i = j
+        return r
+
+    def merge(self, a, b):
+        """
+        Merges the sets containing elements a and b.
+        Uses union by rank to keep the tree shallow.
+        """
+        root_a = self.find(self.elems[a])
+        root_b = self.find(self.elems[b])
+        if root_a != root_b:
+            # Merge the trees based on rank
+            if self.ranks[root_a] > self.ranks[root_b]:
+                self.sets[root_b] = root_a
+            elif self.ranks[root_a] < self.ranks[root_b]:
+                self.sets[root_a] = root_b
+            else:
+                self.sets[root_b] = root_a
+                self.ranks[root_a] += 1
+
+# Example usage:
+if __name__ == "__main__":
+    elements = ['A', 'B', 'C', 'D', 'E']
+    ds = DisjointSets(elements)
+
+    print("Initial sets:")
+    for e in elements:
+        print(f"{e}: {ds.find(e)}")
+
+    ds.merge(0, 1)  # Merge sets containing 'A' and 'B'
+    ds.merge(1, 2)  # Merge sets containing 'B' and 'C'
+
+    print("\nSets after some merges:")
+    for e in elements:
+        print(f"{e}: {ds.find(e)}")
+
+    ds.merge(3, 4)  # Merge sets containing 'D' and 'E'
+    ds.merge(2, 3)  # Merge sets containing 'C' and 'D'
+
+    print("\nFinal sets after all merges:")
+    for e in elements:
+        print(f"{e}: {ds.find(e)}")

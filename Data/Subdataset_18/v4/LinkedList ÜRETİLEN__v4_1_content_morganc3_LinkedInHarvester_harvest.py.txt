@@ -1,0 +1,129 @@
+import json
+import re
+import ssl
+import argparse
+from urllib.request import build_opener
+from unidecode import unidecode
+
+# Disable SSL verification
+ssl._create_default_https_context = ssl._create_unverified_context
+
+# Argument parser setup
+parser = argparse.ArgumentParser(description='Creates email addresses with optional formatters from names of employees of a company on LinkedIn.')
+parser.add_argument('COMPANY', help='Company ID')
+parser.add_argument('DOMAIN', help='Domain to be used in email address')
+parser.add_argument('COOKIE', help='Cookie file', metavar="FILE")
+parser.add_argument('-o', '--output', default='emails.txt', help="Path to output text file for emails")
+parser.add_argument('-f', action='store_true', dest='abbrevF', default=False, help="Abbreviate first name")
+parser.add_argument('-l', action='store_true', dest='abbrevL', default=False, help="Abbreviate last name")
+parser.add_argument('-s', action='store_true', dest='swap', default=False, help="Switch order of first and last names")
+args = parser.parse_args()
+
+# Read cookies from file
+with open(args.COOKIE, "r") as f:
+    content = f.readlines()
+    csrf_token = content[0].strip()
+    session_id = content[1].strip()
+
+cookie1 = f'li_at={session_id}'
+cookie2 = f'JSESSIONID={csrf_token}'
+
+# Email credentials
+creds = '''AAMS
+ACA
+ADPA
+AIF
+AWMA
+CAIA
+CAP
+CDFA
+CEP
+CFA
+CFP
+ChFC
+CIMA
+CLU
+CPA
+CMA
+CMM
+CMP
+CDFA
+CPWA
+CRPC
+CRPS
+CTP
+CWS
+Jr.
+MBA
+M.A.
+RICP
+Sr.
+WMS'''.split('\n')
+
+def format_name(original_name):
+    original_name = unidecode(original_name)
+    pattern = r'\s*(?:(?:(?:[\x80-\xff]|\)(?:[Rr]|[Tt][Mm])\()?(?:%s),?)+|[^,]+,)*\s*([A-Za-z \-\.\'\(\)]+)\s*' % '|'.join([x[::-1] for x in creds])
+    match = re.match(pattern, original_name[::-1])
+    if not match:
+        print(f'Unexpected format for {original_name}')
+        return None
+    name = match.group(1)[::-1]
+    final_name = re.subn(r'(\(.*\)%s|[-\'\.,\\])' % (r'|[A-Z]\.' if not (args.abbrevF or args.abbrevL) else ''), '', name)[0].lower().split(' ')
+    email = '.'.join([part for part in final_name if part]) + '@' + args.DOMAIN
+    return email
+
+def harvest_emails(start_index):
+    global last_page
+    url = (
+        f"https://www.linkedin.com/voyager/api/search/blended?"
+        f"count=49&origin=OTHER&queryContext=List(spellCorrectionEnabled-%3Etrue,"
+        f"relatedSearchesEnabled-%3Etrue,kcardTypes-%3EPROFILE%7CCOMPANY)&q=all&filters=List(currentCompany-%3E{args.COMPANY},resultType-%3EPEOPLE)&start={start_index}"
+    )
+    opener = build_opener()
+    opener.addheaders.append(('csrf-token', csrf_token))
+    opener.addheaders.append(('Cookie', f'{cookie1}; {cookie2}'))
+    opener.addheaders.append(('x-restli-protocol-version', '2.0.0'))
+    response = opener.open(url)
+    data = json.load(response)
+    employees = data["elements"][0]["elements"]
+
+    if len(employees) < 49:
+        last_page = True
+
+    for employee in employees:
+        profile = employee["image"]["attributes"][0]["miniProfile"]
+        first_name = profile["firstName"].replace(' ', '')
+        last_name = profile["lastName"].replace(' ', '')
+        if not first_name:
+            continue
+        if args.abbrevF:
+            first_name = first_name[0]
+        if args.abbrevL:
+            last_name = last_name[0]
+        if args.swap:
+            full_name = f'{last_name} {first_name}'
+        else:
+            full_name = f'{first_name} {last_name}'
+        email = format_name(full_name)
+        if email:
+            emails.append(email)
+
+# Initialize variables
+emails = []
+last_page = False
+current_index = 0
+
+# Harvest emails
+while not last_page:
+    harvest_emails(current_index)
+    current_index += 49
+
+# Write emails to file
+with open(args.output, "w") as f:
+    for email in emails:
+        try:
+            f.write(f'{email}\n')
+        except Exception as e:
+            print(f'Error writing email "{email}" due to: {e}')
+
+print(f"Done! {len(emails)} emails have been written to {args.output}")

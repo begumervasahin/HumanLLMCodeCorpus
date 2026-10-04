@@ -1,0 +1,74 @@
+import os
+import re
+import glob
+from urllib.parse import urljoin
+import requests
+from bs4 import BeautifulSoup
+
+class Raipodcast:
+    def __init__(self, url):
+        self.url = url
+
+    def get_file(self, url, filename):
+        response = requests.get(url, stream=True)
+        with open(filename, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=128):
+                file.write(chunk)
+
+    def process(self, folder):
+        if not os.path.exists('./tmp'):
+            os.makedirs('./tmp')
+
+        files = glob.glob('tmp/*')
+        for f in files:
+            os.remove(f)
+
+        print(self.url)
+        result = requests.get(self.url)
+        if result.status_code != 200:
+            return None
+
+        soup = BeautifulSoup(result.content, "html.parser")
+        title = soup.find('title').text
+        finalfilename = re.sub(r'(?u)[^-\w.]', '', title.strip().replace(' ', '_'))
+
+        print("Starting download for \"" + title + "\"")
+        allelements = soup.find_all(['li', 'div'])
+        print("Download single MP3s...")
+
+        elementID = 1
+        for element in allelements:
+            if element.has_attr('data-mediapolis') and element.has_attr('data-title'):
+                mp3 = urljoin(self.url, element['data-mediapolis'])
+                singletitle = re.sub(r'(?u)[^-\w.]', '', element['data-title'])
+                filename = str(elementID).zfill(2) + "_" + finalfilename + ".mp3"
+                elementID += 1
+
+                print("Download \"" + singletitle + "\" (" + mp3 + ")")
+                self.get_file(mp3, "tmp/" + singletitle + ".mp3")
+
+        print("Done!\nFiles saved in ./tmp/ --> Move them or they will be removed next time you run this code.")
+
+def main():
+    print("""
+ ____       _ ____  _
+|  _ \ __ _(_)  _ \| | __ _ _   _
+| |_) / _` | | |_) | |/ _` | | | |
+|  _ < (_| | |  __/| | (_| | |_| |
+|_| \_\__,_|_|_|   |_|\__,_|\__, |
+       Downloader           |___/
+ ---------------------------------
+ Proudly developed by Andrea Fortuna
+ andrea@andreafortuna.org
+ https://www.andreafortuna.org
+    """)
+
+    if len(sys.argv) < 2:
+        print('Need a url')
+        exit(2)
+
+    getPodcast = Raipodcast(sys.argv[1])
+    getPodcast.process('.')
+
+if __name__ == '__main__':
+    main()

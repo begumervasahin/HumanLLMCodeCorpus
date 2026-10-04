@@ -1,0 +1,84 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Load the dataset
+data = pd.read_csv('CMP3751M_ML_Assignment 1_Task1_pol_regression.csv')
+
+# Set the degrees of the polynomial to evaluate
+degrees = [0, 1, 2, 3, 5, 10]
+
+# Initialize lists to store RMSE values for training and testing datasets
+RMSETrain = []
+RMSETest = []
+
+# Sort the data
+x = np.sort(data['x'].values, axis=0)
+y = np.sort(data['y'].values, axis=0)
+
+# Plot the original data
+plt.figure()
+plt.plot(x, y, 'bo')
+plt.xlabel('X')
+plt.ylabel('Y')
+
+# Function to create a design matrix
+def Designmatrix(x, degree):
+    X = np.ones(x.shape)
+    for i in range(1, degree + 1):
+        X = np.column_stack((X, x ** i))
+    return X
+
+# Function to perform polynomial regression
+def pol_regression(x, y, degree):
+    X = Designmatrix(x, degree)
+    XX = X.T.dot(X)
+    w = np.linalg.solve(XX, X.T.dot(y))
+    return w
+
+# Function to evaluate the polynomial regression
+def eval_pol_regression(parameters, x, y):
+    rmse = np.sqrt(((x.dot(parameters) - y) ** 2).mean())
+    return rmse
+
+# Function to perform evaluation
+def evaluation():
+    index = 0
+    xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.30, shuffle=True)
+    for d in degrees[1:]:
+        x_train = Designmatrix(xtrain, d)
+        x_test = Designmatrix(xtest, d)
+        w = pol_regression(xtrain, ytrain, d)
+        RMSETrain.append(eval_pol_regression(w, x_train, ytrain))
+        RMSETest.append(eval_pol_regression(w, x_test, ytest))
+        index += 1
+    plt.semilogy(degrees[1:], RMSETrain)
+    plt.semilogy(degrees[1:], RMSETest)
+    plt.legend(('Train', 'Test'), loc='upper left')
+    plt.xlabel('Degree of polynomial')
+    plt.ylabel('RMSE')
+    plt.title('RMSE for Training and Testing Data')
+    plt.show()
+
+# Main function to perform polynomial regression and plot results
+def main():
+    for d in degrees:
+        if d == 0:
+            plt.plot([-5, 5], [y.mean(), y.mean()])
+        else:
+            w = pol_regression(x, y, d)
+            X = Designmatrix(x, d)
+            X = X.dot(w)
+            print(f'Degree: {d} : {w}')
+            plt.plot(x, X)
+    plt.xlim((-6, 6))
+    plt.legend(('ground truth', '$x$', '$x^2$', '$x^3$', '$x^5$', '$x^{10}$'), loc='lower right')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Polynomial Regression Fits')
+    plt.show()
+    evaluation()
+
+# Execute the main function
+main()

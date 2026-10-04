@@ -1,0 +1,64 @@
+import sys
+import os
+import argparse
+import json
+from base64 import b64decode, b64encode
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
+from AesEncipher import AesEncipher
+
+MAX_BUFFER_SIZE = 4096
+KEY_LENGTH = 32
+
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description='AES(CTR Mode) Encipher Program')
+    parser.add_argument('tool_mode', choices=['e', 'd'], help='Choose e (encrypt) or d (decrypt)')
+    parser.add_argument('input_file', help='File to encrypt or decrypt')
+    parser.add_argument('--nonce', help='Nonce for decryption', type=str, default="")
+    parser.add_argument('--key', help='Key for decryption', type=str, default="")
+    return parser.parse_args()
+
+def check_args(args):
+    """Check the validity of command-line arguments."""
+    if not os.path.isfile(args.input_file):
+        print("Error: The input file does not exist.")
+        sys.exit(1)
+    if args.tool_mode == 'd' and not args.nonce:
+        print("Error: --nonce is required in decrypt mode.")
+        sys.exit(1)
+    if args.tool_mode == 'd' and not args.key:
+        print("Error: --key is required in decrypt mode.")
+        sys.exit(1)
+
+def main():
+    args = parse_args()
+    check_args(args)
+
+    encrypt_mode = args.tool_mode == 'e'
+    key = get_random_bytes(KEY_LENGTH) if not args.key else b64decode(args.key)
+    nonce = b64decode(args.nonce) if args.nonce else None
+
+    aes_encipher = AesEncipher(AES.MODE_CTR, key, nonce)
+    translated_bytes = bytearray()
+
+    with open(args.input_file, 'rb') as f:
+        for chunk in iter(lambda: f.read(MAX_BUFFER_SIZE), b''):
+            if encrypt_mode:
+                translated_bytes.extend(aes_encipher.encrypt(chunk))
+            else:
+                translated_bytes.extend(aes_encipher.decrypt(chunk))
+
+    output_file = f"{args.input_file}_{'encrypted' if encrypt_mode else 'decrypted'}"
+    with open(output_file, 'wb') as translated_file:
+        translated_file.write(translated_bytes)
+
+    if encrypt_mode:
+        encrypt_info = json.dumps({
+            'nonce': b64encode(aes_encipher.get_nonce()).decode('utf-8'),
+            'key': b64encode(aes_encipher.get_key()).decode('utf-8')
+        })
+        print("Encryption information:", encrypt_info)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,78 @@
+import sys
+import math
+from collections import defaultdict
+
+def euclidean_distance(point1, point2):
+    """
+    Calculate the Euclidean distance between two points.
+    """
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(point1, point2)))
+
+def knn(k, training_file, testing_file):
+    """
+    Perform k-nearest neighbors classification.
+
+    Parameters:
+    k (int): The number of nearest neighbors to consider.
+    training_file (str): Path to the training data file.
+    testing_file (str): Path to the testing data file.
+    """
+    def load_data(file_path):
+        with open(file_path, 'r') as file:
+            total, dimensions = map(int, file.readline().split())
+            points = [line.split() for line in file]
+            return total, dimensions, points
+
+    def convert_points(points, dimensions):
+        for point in points:
+            for d in range(dimensions):
+                point[d] = float(point[d])
+            point[dimensions] = int(point[dimensions]) if len(point) > dimensions else None
+        return points
+
+    train_total, train_dimensions, training_points = load_data(training_file)
+    test_total, test_dimensions, testing_points = load_data(testing_file)
+
+    training_points = convert_points(training_points, train_dimensions)
+    testing_points = convert_points(testing_points, test_dimensions)
+
+    # Classify each test point
+    for test_point in testing_points:
+        distances = []
+
+        # Calculate distance from test point to each training point
+        for train_point in training_points:
+            label = train_point[-1]
+            train_coords = train_point[:-1]
+            distance = euclidean_distance(train_coords, test_point)
+            distances.append((distance, label))
+
+        # Sort distances and select k nearest neighbors
+        distances.sort()
+        k_nearest = distances[:k]
+
+        # Count class occurrences among k nearest neighbors
+        class_votes = defaultdict(int)
+        for _, label in k_nearest:
+            class_votes[label] += 1
+
+        # Determine the most popular class(es)
+        max_votes = max(class_votes.values())
+        most_popular_classes = [label for label, votes in class_votes.items() if votes == max_votes]
+
+        # Break ties using nearest neighbors
+        if len(most_popular_classes) == 1:
+            test_point.append(most_popular_classes[0])
+        else:
+            k_nearest_filtered = [x for x in k_nearest if x[1] in most_popular_classes]
+            k_nearest_filtered.sort()
+            test_point.append(k_nearest_filtered[0][1])
+
+    # Print results
+    for count, item in enumerate(testing_points, 1):
+        formatted_coords = ' '.join(f"{x:.1f}" for x in item[:-1])
+        print(f"{count}. {formatted_coords} -- {item[-1]}")
+
+# Example usage: knn(3, 'training.txt', 'testing.txt')
+# Uncomment the line below if running as a script with command line arguments
+# knn(int(sys.argv[1]), sys.argv[2], sys.argv[3])

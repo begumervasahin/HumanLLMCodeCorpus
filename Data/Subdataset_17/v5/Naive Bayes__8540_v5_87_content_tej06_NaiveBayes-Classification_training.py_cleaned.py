@@ -1,0 +1,30 @@
+import pandas as pd
+import json
+import argparse
+def summarize_data(train_data, features, label):
+    neg_x = train_data[train_data[label] == 0][features]
+    pos_x = train_data[train_data[label] == 1][features]
+    summary = {0: {}, 1: {}}
+    for feat in features:
+        summary[0][feat] = [neg_x[feat].mean(), neg_x[feat].std()]
+        summary[1][feat] = [pos_x[feat].mean(), pos_x[feat].std()]
+    return summary
+def training(input_file, output_file, label):
+    train_data = pd.read_csv(input_file)
+    train_data.set_index('Date', inplace=True)
+    features = train_data.select_dtypes(include='float64').columns.tolist()
+    summary = summarize_data(train_data, features, label)
+    with open(output_file, 'w') as out_file:
+        json.dump(summary, out_file, indent=4)
+def main():
+    parser = argparse.ArgumentParser(description="Train a model by summarizing the training data.")
+    parser.add_argument('-i', '--input_file', default='train-data.csv', dest='input_file',
+                        help="Input file for training (default: train-data.csv)")
+    parser.add_argument('-o', '--output_file', default='summary.json', dest='output_file',
+                        help="Output summary file (default: summary.json)")
+    parser.add_argument('-l', '--target_label', default='RainToday', dest='label',
+                        help="Target label (default: RainToday)")
+    args = parser.parse_args()
+    training(args.input_file, args.output_file, args.label)
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,70 @@
+# Importing necessary libraries
+from json import dump
+from typing import Any, List
+from time import perf_counter
+from sys import stderr
+import spotipy
+import spotipy.util as util
+import config
+
+def get_spotify_client() -> spotipy.Spotify:
+    """
+    Retrieve token and create a Spotify object.
+
+    Returns:
+        spotipy.Spotify: Spotify client object or None if token retrieval fails.
+    """
+    try:
+        token = util.prompt_for_user_token(
+            config.username,
+            config.scope,
+            config.client_id,
+            config.client_secret,
+            config.redirect_uri
+        )
+        return spotipy.Spotify(token)
+    except Exception as e:
+        print(f"Token is not accessible for {config.username}: {e}", file=stderr)
+        return None
+
+def retrieve_artists(sp: spotipy.Spotify) -> List[Any]:
+    """
+    Retrieve all followed artists for the current user.
+
+    Args:
+        sp (spotipy.Spotify): Spotify client object.
+
+    Returns:
+        List[Any]: List of followed artists.
+    """
+    artists = []
+    last_artist_id = None
+    while True:
+        response = sp.current_user_followed_artists(limit=50, after=last_artist_id)
+        items = response['artists']['items']
+        if not items:
+            break
+        last_artist_id = items[-1]['id']
+        artists.extend(items)
+    return artists
+
+def main():
+    """
+    Main function to retrieve followed artists and save them to a JSON file.
+    """
+    print("Start retrieving artists...")
+    sp = get_spotify_client()
+    if not sp:
+        return
+
+    start_time = perf_counter()
+    artists = retrieve_artists(sp)
+    elapsed_time = perf_counter() - start_time
+
+    print(f"Retrieved {len(artists)} artists in {elapsed_time:.2f} seconds.")
+
+    with open("json/artists.json", "w") as outfile:
+        dump(artists, outfile)
+
+if __name__ == "__main__":
+    main()

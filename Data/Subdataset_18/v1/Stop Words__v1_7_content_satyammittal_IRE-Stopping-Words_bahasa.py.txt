@@ -1,0 +1,63 @@
+import os
+import json
+import operator
+
+def list_files(dir):
+    r = []
+    for subdir, _, files in os.walk(dir):
+        for file in files:
+            r.append(os.path.join(subdir, file))
+    return r
+
+# List of files to process
+mn = list_files('extracted')
+mn = ['out.txt']  # Overwriting the list with a single file 'out.txt' for simplicity
+
+counter = {}
+check_word = {}
+check_doc = {}
+d_counter = {}
+number = 0
+d_counter_num = 0
+
+for file in mn:
+    with open(file) as f:
+        for line in f:
+            jfile = json.loads(line)
+            text = jfile['desc']
+            check_word = {}
+            number += 1
+            d_counter_num = 0
+            d_counter = {}
+            if text is not None:
+                for word in text.split():
+                    d_counter_num += 1.0
+                    if "," not in word and "-" not in word:
+                        if word in counter:
+                            counter[word] += 1
+                        else:
+                            counter[word] = 1
+                        
+                        if word in check_word:
+                            check_word[word] += 1
+                        else:
+                            check_word[word] = 1
+                
+                for a in check_word:
+                    if a in check_doc:
+                        check_doc[a] += 1
+                    else:
+                        check_doc[a] = 1
+
+result = {}
+for a in check_doc:
+    result[a] = counter[a] * check_doc[a] * check_doc[a]
+
+sorted_c = sorted(result.items(), key=operator.itemgetter(1), reverse=True)
+number = 50
+
+for d in sorted_c:
+    number -= 1
+    if number < 0:
+        break
+    print(d[0])

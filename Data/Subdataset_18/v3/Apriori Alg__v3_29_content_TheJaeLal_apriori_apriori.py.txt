@@ -1,0 +1,134 @@
+def read_from_file(fname):
+    """
+    Read data from a file and preprocess it into a dataset.
+
+    Args:
+        fname (str): The name of the input file.
+
+    Returns:
+        list: A list of transactions.
+    """
+    with open(fname, 'r') as file:
+        dataset = [
+            line.split(':')[1].split(',') 
+            for line in file 
+            if not (line.startswith('#') or line.strip() == "")
+        ]
+    return dataset
+
+def prune(item_set, threshold):
+    """
+    Remove items/sets whose frequency/count/support is less than the threshold.
+
+    Args:
+        item_set (dict): The dictionary of itemsets with their counts.
+        threshold (int): The support threshold.
+
+    Returns:
+        list: A list of frequent itemsets.
+    """
+    return [item for item in item_set if item_set[item] >= threshold]
+
+def combine_sets(frequent_items):
+    """
+    Generate new itemsets by combining the frequent itemsets.
+
+    Args:
+        frequent_items (list): The list of frequent itemsets.
+
+    Returns:
+        list: A list of new itemsets.
+    """
+    new_item_set = []
+    for i in range(len(frequent_items)):
+        for j in range(i + 1, len(frequent_items)):
+            new_set = frequent_items[i].union(frequent_items[j])
+            if new_set not in new_item_set:
+                new_item_set.append(new_set)
+    return new_item_set
+
+def get_count(new_item_set, database):
+    """
+    Calculate the count/frequency of the new itemsets in the database.
+
+    Args:
+        new_item_set (list): The list of new itemsets.
+        database (list): The list of transactions.
+
+    Returns:
+        dict: A dictionary of itemsets with their counts.
+    """
+    item_set = defaultdict(int)
+    for item in new_item_set:
+        for entry in database:
+            if item.issubset(entry):
+                item_set[item] += 1
+    return item_set
+
+def display_frequent_items(frequent_items, message):
+    """
+    Display the frequent items.
+
+    Args:
+        frequent_items (list): The list of frequent items.
+        message (str): The message to display before the items.
+    """
+    print(f'\n**** {message} ****')
+    for item in frequent_items:
+        print(f"{item}")
+
+def main():
+    input_file = 'input.dat'
+
+    # Read and preprocess the data
+    database = read_from_file(input_file)
+    database = [frozenset(entry) for entry in database]
+
+    # Display the dataset
+    print("Database Transactions:")
+    for transaction in database:
+        print(transaction)
+
+    # Get initial frequency count for every item in the database
+    item_set = defaultdict(int)
+    for transaction in database:
+        for item in transaction:
+            item_set[frozenset([item])] += 1
+
+    # Display initial frequency count
+    display_frequent_items(item_set.items(), 'Initial Frequency Count')
+
+    # Get the support threshold from the user
+    threshold = int(input('\nEnter Support Threshold:\n>>> '))
+    print('Threshold =', threshold)
+
+    previous_item_set = item_set
+
+    while True:
+        # Create a list of itemsets whose support is greater than the threshold
+        frequent_items = prune(item_set, threshold)
+        display_frequent_items(frequent_items, 'Frequent Items')
+
+        # Stop if there are no more frequent items
+        if not frequent_items:
+            frequent_items = previous_item_set
+            break
+
+        print("\n*** New Iteration ***")
+        # Generate new itemsets
+        new_item_set = combine_sets(frequent_items)
+        previous_item_set = frequent_items
+
+        # Get the count/frequency of new itemsets in the database
+        item_set = get_count(new_item_set, database)
+        display_frequent_items(item_set.items(), 'Frequency Count')
+
+    # Display the most frequently associated items
+    print('\n***************************************************************')
+    print('The most frequently associated items are:')
+    for item in frequent_items:
+        print(f"{{ {', '.join(item)} }}")
+    print('\n')
+
+if __name__ == "__main__":
+    main()

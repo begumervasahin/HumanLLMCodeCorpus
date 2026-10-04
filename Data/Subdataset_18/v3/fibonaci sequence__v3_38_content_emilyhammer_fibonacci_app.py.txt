@@ -1,0 +1,56 @@
+from flask import Flask, jsonify, Response
+
+app = Flask(__name__)
+
+@app.route('/fibonacci/<int:end_number>', methods=['GET'])
+def get_fibonacci_sequence(end_number: int) -> Response:
+    """
+    Return a Fibonacci sequence up to the nth number.
+
+    Args:
+        end_number (int): The end number for the Fibonacci sequence.
+
+    Returns:
+        Response: A JSON response containing the Fibonacci sequence.
+    """
+    if end_number == 0:
+        return jsonify([])  # Return an empty list for 0 input
+    elif end_number > 0:
+        return jsonify(generate_fibonacci_sequence(end_number))
+    else:
+        return handle_invalid_usage()
+
+def generate_fibonacci_sequence(n: int) -> list:
+    """
+    Generate a Fibonacci sequence up to the nth number.
+
+    Args:
+        n (int): The number of Fibonacci numbers to generate.
+
+    Returns:
+        list: A list containing the Fibonacci sequence.
+    """
+    result = []
+    a, b = 0, 1
+    for _ in range(n):
+        result.append(a)
+        a, b = b, a + b
+    return result
+
+@app.errorhandler(400)
+def handle_invalid_usage(error=None) -> Response:
+    """
+    Handle invalid usage with a custom error message.
+
+    Args:
+        error (HTTPException, optional): The error that occurred.
+
+    Returns:
+        Response: A JSON response with an error message and a 400 status code.
+    """
+    response = jsonify(message="Please enter a positive number only")
+    response.status_code = 400
+    return response
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', debug=True)

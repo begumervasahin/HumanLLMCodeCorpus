@@ -1,0 +1,97 @@
+import queue
+
+def max_value(a, b):
+    """
+    Return the maximum of two values.
+    """
+    return a if a >= b else b
+
+def write_output(distance, farthest_node, parents):
+    """
+    Write the output to a file.
+    
+    Args:
+    distance (int): The distance of the farthest node from the start node.
+    farthest_node (int): The farthest node from the start node.
+    parents (list): The parent list to reconstruct the path.
+    """
+    with open('output.txt', 'w') as output:
+        output.write(f"{distance}\n")
+        path = []
+        node = farthest_node
+        while node != -1:
+            path.append(node + 1)  # Convert to one-based index for output
+            node = parents[node]
+        output.write(' '.join(map(str, path[::-1])))
+
+def bfs(graph, start, total_nodes):
+    """
+    Perform BFS to find the farthest node and its distance from the start node.
+    
+    Args:
+    graph (list): The adjacency list representation of the graph.
+    start (int): The starting node for BFS.
+    total_nodes (int): The total number of nodes in the graph.
+    """
+    q = queue.Queue()
+    q.put(start)
+    
+    distances = [-1] * total_nodes
+    visited = [False] * total_nodes
+    parents = [None] * total_nodes
+    
+    distances[start] = 0
+    visited[start] = True
+    parents[start] = -1
+    
+    while not q.empty():
+        current_node = q.get()
+        for neighbor in graph[current_node]:
+            if not visited[neighbor]:
+                visited[neighbor] = True
+                distances[neighbor] = distances[current_node] + 1
+                parents[neighbor] = current_node
+                q.put(neighbor)
+    
+    farthest_node = max(range(total_nodes), key=lambda x: distances[x])
+    
+    write_output(distances[farthest_node], farthest_node, parents)
+
+def read_input(filename):
+    """
+    Read the input from a file and build the graph.
+    
+    Args:
+    filename (str): The name of the input file.
+    
+    Returns:
+    tuple: A tuple containing the graph, start node, and total number of nodes.
+    """
+    with open(filename, 'r') as input_file:
+        edges, start_node = map(int, input_file.readline().split())
+        start_node -= 1  # Convert to zero-based index
+        total_nodes = 0
+        edge_list = []
+        
+        for _ in range(edges):
+            from_node, to_node = map(int, input_file.readline().split())
+            edge_list.append((from_node - 1, to_node - 1))  # Convert to zero-based index
+            total_nodes = max_value(total_nodes, max_value(from_node, to_node))
+        
+        total_nodes += 1  # Adjust the total number of nodes
+        
+        graph = [[] for _ in range(total_nodes)]
+        for from_node, to_node in edge_list:
+            graph[from_node].append(to_node)
+    
+    return graph, start_node, total_nodes
+
+def main():
+    """
+    Main function to read the input, build the graph, and perform BFS.
+    """
+    graph, start_node, total_nodes = read_input('input.txt')
+    bfs(graph, start_node, total_nodes)
+
+if __name__ == "__main__":
+    main()

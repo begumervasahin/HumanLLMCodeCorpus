@@ -1,0 +1,67 @@
+import numpy as np
+import struct
+
+def read_MNIST(image_file, label_file):
+    """
+    Reads and returns the MNIST dataset from the specified image and label files.
+
+    Args:
+        image_file (str): Path to the file containing the MNIST images in IDX format.
+        label_file (str): Path to the file containing the MNIST labels in IDX format.
+
+    Returns:
+        tuple: A tuple containing:
+            - np.ndarray: Array of images with shape (n_samples, n_rows * n_cols).
+            - np.ndarray: Array of labels with shape (n_samples,).
+    """
+    images = _read_images(image_file)
+    labels = _read_labels(label_file)
+    return images, labels
+
+def _read_images(image_file):
+    """
+    Reads the images from the MNIST dataset in IDX format.
+
+    Args:
+        image_file (str): Path to the file containing the MNIST images in IDX format.
+
+    Returns:
+        np.ndarray: Array of images with shape (n_samples, n_rows * n_cols).
+    """
+    with open(image_file, 'rb') as f:
+        # Skip the magic number
+        f.seek(4)
+        # Read the number of samples, rows, and columns
+        n_samples = struct.unpack('>I', f.read(4))[0]
+        n_rows = struct.unpack('>I', f.read(4))[0]
+        n_cols = struct.unpack('>I', f.read(4))[0]
+        n_dim = n_rows * n_cols
+
+        # Read the image data
+        images = np.fromfile(f, dtype=np.uint8).reshape(n_samples, n_dim)
+
+    return images
+
+def _read_labels(label_file):
+    """
+    Reads the labels from the MNIST dataset in IDX format.
+
+    Args:
+        label_file (str): Path to the file containing the MNIST labels in IDX format.
+
+    Returns:
+        np.ndarray: Array of labels with shape (n_samples,).
+    """
+    with open(label_file, 'rb') as f:
+        # Skip the magic number and the number of labels
+        f.seek(8)
+
+        # Read the label data
+        labels = np.fromfile(f, dtype=np.uint8)
+
+    return labels
+
+# Example usage:
+# image_file = 'path/to/train-images-idx3-ubyte'
+# label_file = 'path/to/train-labels-idx1-ubyte'
+# images, labels = read_MNIST(image_file, label_file)

@@ -1,0 +1,57 @@
+import TFIDF
+import gensim
+import numpy as np
+import pickle
+from sklearn.neighbors import BallTree
+
+def load_word2vec_model(file_path: str):
+    """Load the word2vec model from the specified file."""
+    return gensim.models.KeyedVectors.load_word2vec_format(file_path, binary=False)
+
+def create_embeddings_matrix(model):
+    """Create the embeddings matrix and corresponding word list from the word2vec model."""
+    vocab = model.key_to_index
+    length = len(vocab)
+    embeddings_matrix = np.ndarray(shape=(length, 300))
+    words = []
+
+    for i, word in enumerate(vocab):
+        words.append(word)
+        embeddings_matrix[i] = model[word]
+    
+    return embeddings_matrix, words
+
+def serialize_ball_tree(embeddings_matrix):
+    """Create and serialize a BallTree from the embeddings matrix."""
+    tree = BallTree(embeddings_matrix)
+    return pickle.dumps(tree)
+
+def load_ball_tree(serialized_tree):
+    """Deserialize the BallTree."""
+    return pickle.loads(serialized_tree)
+
+def find_nearest_word(tree, model, words, target_word, dictionary, k=100):
+    """Find the nearest word in the dictionary to the target word."""
+    if target_word in dictionary:
+        return target_word
+    
+    q_embedding = model[target_word].reshape(1, 300)
+    dist, ind = tree.query(q_embedding, k=k)
+    candidates = [words[idx] for idx in ind[0]]
+    
+    for candidate in candidates:
+        if candidate in dictionary:
+            return candidate
+    return None
+
+def main():
+    model = load_word2vec_model('embedding.txt')
+    embeddings_matrix, words = create_embeddings_matrix(model)
+    serialized_tree = serialize_ball_tree(embeddings_matrix)
+    tree = load_ball_tree(serialized_tree)
+    
+    rewritten_word = find_nearest_word(tree, model, words, 'fib', TFIDF.dictionary)
+    print(rewritten_word)
+
+if __name__ == '__main__':
+    main()

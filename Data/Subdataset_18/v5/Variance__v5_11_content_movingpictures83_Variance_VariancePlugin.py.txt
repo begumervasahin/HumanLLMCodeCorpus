@@ -1,0 +1,50 @@
+import numpy as np
+
+class VariancePlugin:
+    def __init__(self):
+        self.myfile = ""
+        self.bacteria = []
+        self.n = 0
+        self.ADJ = []
+
+    def input(self, filename):
+        """Reads the input file name."""
+        self.myfile = filename
+
+    def run(self):
+        """Processes the input file to extract bacteria names and their corresponding data."""
+        with open(self.myfile, 'r') as filestuff:
+            # Read and process the first line to get the bacteria names
+            firstline = filestuff.readline().strip()
+            self.bacteria = [b for b in firstline.split(',') if b]
+            self.n = len(self.bacteria)
+            self.ADJ = [[] for _ in range(self.n)]
+            
+            # Process each line to fill the adjacency matrix
+            for line in filestuff:
+                contents = list(map(float, line.strip().split(',')[1:]))
+                for j, value in enumerate(contents):
+                    self.ADJ[j].append(value)
+
+    def output(self, filename):
+        """Calculates the variance for each bacteria and writes the results to the output file."""
+        with open(filename, 'w') as filestuff2:
+            filestuff2.write("Element\tVariance\n\n")
+            variances = []
+
+            for i in range(self.n):
+                if self.ADJ[i]:
+                    avg = np.mean(self.ADJ[i])
+                    variance = np.var(self.ADJ[i])
+                    variances.append((variance, self.bacteria[i]))
+
+            variances.sort(reverse=True)
+
+            for variance, bacterium in variances:
+                filestuff2.write(f"{bacterium}\t{variance}\n")
+
+# Example usage:
+# plugin = VariancePlugin()
+# plugin.input('input.csv')
+# plugin.run()
+# plugin.output('output.txt')

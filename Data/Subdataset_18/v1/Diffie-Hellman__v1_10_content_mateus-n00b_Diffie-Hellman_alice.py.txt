@@ -1,0 +1,53 @@
+import os
+import json
+from socket import *
+import random
+
+# Function to get a random prime number from the list
+def get_random_prime():
+    PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+    return random.choice(PRIMES)
+
+# Initialize socket
+tcp = socket(AF_INET, SOCK_STREAM)
+tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+tcp.bind(('', 2222))
+tcp.listen(2)
+
+# Generate random private key and select random prime and base
+a = random.randint(1, 35535)
+p = get_random_prime()
+g = random.randint(1, 35535)
+TEMP = {'p': p, 'base': g}
+
+# Accept connection
+conn, addr = tcp.accept()
+
+# Negotiate the parameters
+while True:
+    msg = conn.recv(1024).decode('utf-8')
+    if "NEGOCIATION" in msg:
+        conn.send(json.dumps(TEMP).encode('utf-8'))
+        print("Sending base and prime number...")
+        break
+
+# Compute A and receive B
+A = (g ** a) % p
+msg = conn.recv(1024).decode('utf-8')
+FOO = json.loads(msg)
+B = FOO['B']
+
+# Compute the shared secret
+s = (B ** a) % p
+
+# Send A to the other party
+print("Sending my g^a mod p")
+TEMP = {'A': A}
+conn.send(json.dumps(TEMP).encode('utf-8'))
+
+# Print the secret
+print(f"The secret is {s}")
+
+# Close the connection
+conn.close()
+tcp.close()

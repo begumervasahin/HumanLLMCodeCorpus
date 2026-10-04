@@ -1,0 +1,73 @@
+from __future__ import print_function
+import sys
+import pandora.utils
+from pandora.tagger import Tagger
+
+def load_data(directory, params):
+    """
+    Load annotated data from a specified directory with given parameters.
+    
+    Args:
+        directory (str): The path to the directory containing the data files.
+        params (dict): Configuration parameters.
+    
+    Returns:
+        list: Loaded annotated data.
+    """
+    return pandora.utils.load_annotated_dir(
+        directory=directory,
+        format='tab',
+        extension='.tsv',
+        include_pos=params.get('include_pos', False),
+        include_lemma=params.get('include_lemma', False),
+        include_morph=params.get('include_morph', False),
+        nb_instances=None
+    )
+
+def train_tagger(params):
+    """
+    Train a tagger model using the provided parameters.
+    
+    Args:
+        params (dict): Configuration parameters for training.
+    """
+    # Load training and development data
+    train_data = load_data('data/medieval_latin/train', params)
+    dev_data = load_data('data/medieval_latin/test', params)
+    
+    # Initialize the tagger with parameters
+    tagger = Tagger(**params)
+    tagger.setup_to_train(train_data=train_data, dev_data=dev_data)
+    
+    # Training loop
+    num_epochs = int(params.get('nb_epochs', 10))  # Default to 10 epochs if not specified
+    for epoch in range(num_epochs):
+        tagger.epoch()
+        tagger.save()  # Save the model after each epoch
+    
+    # Final save after training
+    tagger.save()
+
+def main(config_path):
+    """
+    Main function to execute the training process.
+    
+    Args:
+        config_path (str): Path to the configuration file.
+    """
+    print('::: started :::')
+    
+    # Load configuration parameters
+    params = pandora.utils.get_param_dict(config_path)
+    params['config_path'] = config_path
+    
+    # Train the tagger
+    train_tagger(params)
+    
+    print('::: ended :::')
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <config_path>")
+    else:
+        main(sys.argv[1])

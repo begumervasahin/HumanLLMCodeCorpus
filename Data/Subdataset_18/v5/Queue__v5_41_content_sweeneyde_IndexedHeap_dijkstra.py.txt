@@ -1,0 +1,94 @@
+from collections import defaultdict
+from math import inf
+from indexedheap import IndexedHeap
+
+class Graph:
+    """
+    A nonnegatively weighted, directed multigraph stored as a list of outgoing edges for each vertex.
+
+    >>> g = Graph()
+    >>> for source, dest, weight in [ \
+            ('a', 'b', 7), ('a', 'b', 8), ('a', 'c', 9), ('a', 'f', 14), \
+            ('b', 'c', 10), ('b', 'd', 15), ('c', 'd', 11), ('c', 'f', 2), \
+            ('d', 'e', 6), ('e', 'f', 9), ('f', 'g', 100), ('g', 'b', 100), \
+            ('a', 'a', 100) \
+        ]: \
+            g.add_edge(source, dest, weight)
+    >>> g.distance_and_shortest_path('a', 'f')
+    (11, ['a', 'c', 'f'])
+    >>> g.distance_and_shortest_path('b', 'e')
+    (21, ['b', 'd', 'e'])
+    >>> g.distance_and_shortest_path('a', 'a')
+    (0, ['a'])
+    >>> g.distance_and_shortest_path('f', 'a')
+    (inf, None)
+    >>> g.distance_and_shortest_path('garbage', 'junk')
+    (inf, None)
+    """
+    
+    def __init__(self):
+        """Initialize an empty graph with vertices and edges."""
+        self.vertices = set()
+        self.edges = defaultdict(list)
+
+    def add_edge(self, source, destination, weight):
+        """
+        Add a weighted edge from source to destination.
+        
+        :param source: The source vertex.
+        :param destination: The destination vertex.
+        :param weight: The weight of the edge.
+        """
+        if weight < 0:
+            raise ValueError("Edge weights cannot be negative.")
+        self.vertices.update({source, destination})
+        self.edges[source].append((destination, weight))
+
+    def distance_and_shortest_path(self, source, destination):
+        """
+        Find the shortest path from source to destination using Dijkstra's algorithm with an indexed heap.
+        
+        :param source: The starting vertex.
+        :param destination: The destination vertex.
+        :return: A tuple (d, [v0, v1, ..., vn]) where d is the total distance and [v0, v1, ..., vn] is the path.
+        """
+        if not {source, destination} <= self.vertices:
+            return inf, None
+
+        # Initialize distances and predecessors
+        distance = {v: inf for v in self.vertices}
+        distance[source] = 0
+        predecessor = {}
+
+        # Initialize the indexed heap
+        heap = IndexedHeap((distance[v], v) for v in self.vertices)
+
+        # Dijkstra's algorithm
+        while heap:
+            current_distance, current_vertex = heap.pop()
+            if current_vertex == destination:
+                break
+            for neighbor, weight in self.edges[current_vertex]:
+                alternative_route = current_distance + weight
+                if alternative_route < distance[neighbor]:
+                    distance[neighbor] = alternative_route
+                    predecessor[neighbor] = current_vertex
+                    heap.change_weight(neighbor, alternative_route)
+
+        if distance[destination] == inf:
+            return inf, None
+
+        # Reconstruct the path
+        path = []
+        current_vertex = destination
+        while current_vertex != source:
+            path.append(current_vertex)
+            current_vertex = predecessor[current_vertex]
+        path.append(source)
+        path.reverse()
+
+        return distance[destination], path
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

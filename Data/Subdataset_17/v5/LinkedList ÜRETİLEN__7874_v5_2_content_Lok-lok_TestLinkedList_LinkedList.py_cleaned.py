@@ -1,0 +1,131 @@
+
+class Node:
+    def __init__(self, data):
+        if isinstance(data, int) or data is None:
+            self.data = data
+            self.previous = None
+            self.next = None
+        else:
+            raise TypeError("Input must be an int or None")
+    def __str__(self):
+        return str(self.data)
+class LinkedList:
+    def __init__(self):
+        self.first = Node(None)
+        self.last = Node(None)
+        self.first.next = self.last
+        self.last.previous = self.first
+        self._size = 0
+    def __str__(self):
+        result = "("
+        current = self.first.next
+        while current != self.last:
+            result += str(current.data) + " "
+            current = current.next
+        result = result.strip() + ")"
+        return result
+    def add_to_front(self, data):
+        self._validate_int(data)
+        new_node = Node(data)
+        new_node.next = self.first.next
+        new_node.previous = self.first
+        self.first.next.previous = new_node
+        self.first.next = new_node
+        self._size += 1
+    def add_to_back(self, data):
+        self._validate_int(data)
+        new_node = Node(data)
+        new_node.previous = self.last.previous
+        new_node.next = self.last
+        self.last.previous.next = new_node
+        self.last.previous = new_node
+        self._size += 1
+    def remove_front(self):
+        self._check_empty()
+        front_node = self.first.next
+        self.first.next = front_node.next
+        front_node.next.previous = self.first
+        self._size -= 1
+        return front_node.data
+    def remove_last(self):
+        self._check_empty()
+        last_node = self.last.previous
+        self.last.previous = last_node.previous
+        last_node.previous.next = self.last
+        self._size -= 1
+        return last_node.data
+    def size(self):
+        return self._size
+    def front(self):
+        self._check_empty()
+        return self.first.next.data
+    def get(self, pos):
+        self._validate_position(pos)
+        current = self.first.next
+        for _ in range(pos):
+            current = current.next
+        return current.data
+    def insert(self, data, pos):
+        self._validate_int(data)
+        self._validate_insert_position(pos)
+        current = self.first
+        for _ in range(pos):
+            current = current.next
+        new_node = Node(data)
+        new_node.previous = current
+        new_node.next = current.next
+        current.next.previous = new_node
+        current.next = new_node
+        self._size += 1
+    def remove(self, pos):
+        self._validate_position(pos)
+        current = self.first.next
+        for _ in range(pos):
+            current = current.next
+        current.previous.next = current.next
+        current.next.previous = current.previous
+        self._size -= 1
+        return current.data
+    def contains(self, data):
+        self._validate_int(data)
+        count = 0
+        current = self.first.next
+        while current != self.last:
+            if current.data == data:
+                count += 1
+            current = current.next
+        return count
+    def is_empty(self):
+        return self._size == 0
+    def _validate_int(self, data):
+        if not isinstance(data, int):
+            raise TypeError("Input must be an int")
+    def _check_empty(self):
+        if self.is_empty():
+            raise IndexError("Operation on empty list")
+    def _validate_position(self, pos):
+        if not isinstance(pos, int):
+            raise TypeError("Position must be an int")
+        if pos < 0 or pos >= self._size:
+            raise IndexError("Position out of range")
+    def _validate_insert_position(self, pos):
+        if not isinstance(pos, int):
+            raise TypeError("Position must be an int")
+        if pos < 0 or pos > self._size:
+            raise IndexError("Position out of range")
+if __name__ == "__main__":
+    linked_list = LinkedList()
+    linked_list.add_to_back(5)
+    linked_list.add_to_front(10)
+    linked_list.add_to_back(12)
+    linked_list.insert(7, 1)
+    linked_list.insert(6, 1)
+    print(linked_list.get(2))
+    print(linked_list.remove(2))
+    print(linked_list)
+    print(linked_list.size())
+    print(linked_list.contains(10))
+    print(linked_list.remove_front())
+    print(linked_list.remove_front())
+    print(linked_list.remove_last())
+    print(linked_list.size())

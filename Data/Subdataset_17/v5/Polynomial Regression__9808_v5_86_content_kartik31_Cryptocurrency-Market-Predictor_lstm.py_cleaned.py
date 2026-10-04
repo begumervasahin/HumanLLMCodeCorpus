@@ -1,0 +1,71 @@
+import numpy as np
+import math
+import pandas as pd
+from keras.models import Sequential, model_from_json
+from keras.layers import Dense, LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+def create_dataset(dataset, look_back=5):
+    dataX, dataY = [], []
+    for i in range(len(dataset) - look_back - 1):
+        dataX.append(dataset[i:(i + look_back), 0])
+        dataY.append(dataset[i + look_back, 0])
+    return np.array(dataX), np.array(dataY)
+def load_and_preprocess_data(file_path, usecols, skipfooter):
+    dataframe = pd.read_csv(file_path, usecols=usecols, engine='python', skipfooter=skipfooter)
+    dataset = dataframe.values.astype('float32')
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    dataset = scaler.fit_transform(dataset)
+    return dataset, scaler
+def split_dataset(dataset, train_ratio=0.9):
+    train_size = int(len(dataset) * train_ratio)
+    train, test = dataset[0:train_size, :], dataset[train_size:len(dataset), :]
+    return train, test
+def reshape_data(dataX):
+    return np.reshape(dataX, (dataX.shape[0], 1, dataX.shape[1]))
+def load_model(model_json_path, model_weights_path):
+    with open(model_json_path, 'r') as json_file:
+        loaded_model_json = json_file.read()
+    loaded_model = model_from_json(loaded_model_json)
+    loaded_model.load_weights(model_weights_path)
+    loaded_model.compile(loss='mean_squared_error', optimizer='adam')
+    return loaded_model
+def inverse_transform_predictions(scaler, predictions, true_values):
+    predictions = scaler.inverse_transform(predictions)
+    true_values = scaler.inverse_transform([true_values])
+    return predictions, true_values
+def calculate_rmse(true_values, predicted_values):
+    return math.sqrt(mean_squared_error(true_values[0], predicted_values[:, 0]))
+np.random.seed(7)
+dataset, scaler = load_and_preprocess_data('int2.csv', usecols=[1], skipfooter=3)
+train, test = split_dataset(dataset)
+look_back = 1
+trainX, trainY = create_dataset(train, look_back)
+testX, testY = create_dataset(test, look_back)
+trainX = reshape_data(trainX)
+testX = reshape_data(testX)
+print(f"Training data (X): {trainX}")
+print(f"Training data shape (X): {trainX.shape}")
+print(f"Training data (Y): {trainY}")
+print(f"Training data shape (Y): {trainY.shape}")
+print(f"Testing data (X): {testX}")
+print(f"Testing data shape (X): {testX.shape}")
+print(f"Testing data (Y): {testY}")
+print(f"Testing data shape (Y): {testY.shape}")
+print("-----------------------------")
+model = load_model('model.json', 'model.h5')
+print("Loaded model from disk")
+trainPredict = model.predict(trainX)
+testPredict = model.predict(testX)
+print("--------------------------------------------------------")
+print(f"Train Predictions: {trainPredict}")
+print(f"Train Predictions shape: {trainPredict.shape}")
+print(f"Test Predictions: {testPredict}")
+print(f"Test Predictions shape: {testPredict.shape}")
+print("--------------------------------------------------------")
+trainPredict, trainY = inverse_transform_predictions(scaler, trainPredict, trainY)
+testPredict, testY = inverse_transform_predictions(scaler, testPredict, testY)
+trainScore = calculate_rmse(trainY, trainPredict)
+print(f'Train Score: {trainScore:.2f} RMSE')
+testScore = calculate_rmse(testY, testPredict)
+print(f'Test Score: {testScore:.2f} RMSE')

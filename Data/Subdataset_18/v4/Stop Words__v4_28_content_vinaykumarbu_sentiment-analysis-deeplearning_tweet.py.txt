@@ -1,0 +1,62 @@
+import json
+import nltk
+import re
+import sys
+from tweepy import Stream, OAuthHandler
+from tweepy.streaming import StreamListener
+
+# Twitter API credentials
+ckey = "ZmPXKTWphyiVnQxlCa2erNy64"
+csecret = "gI3B2iQflMbB166VFI55Gll84S7I8Izb73iyaWoMTyc2QdU4HU"
+atoken = "2697779004-2Pk3eVHdgdHYtsnbDxGjKEopbh5moyVER09hHDV"
+asecret = "LwR4bT6bMNGVi43RXtKehreBzns7AEKBhhxvGMdmXbqwV"
+
+# Set of English words for filtering
+words = set(nltk.corpus.words.words())
+
+# Command-line arguments
+args = sys.argv[1:]
+
+class TweetListener(StreamListener):
+    tweet_count = 0
+    
+    def on_data(self, data):
+        try:
+            all_data = json.loads(data)
+            user_name = all_data["user"]["name"]
+            verified = all_data["user"]["verified"]
+            text = all_data["text"]
+            
+            if "extended_tweet" in all_data:
+                text = all_data["extended_tweet"]["full_text"]
+            
+            clean_text = re.sub(r"[^A-Za-z0-9_@./#&+-]", ' ', text)
+            
+            with open("new_tweets.txt", "a") as output:
+                output.write(f'Username: {user_name}, verified: {verified}, text: {clean_text}\n')
+            
+            self.tweet_count += 1
+            if self.tweet_count >= 30:
+                print("Fetched 30 tweets. Exiting.")
+                return False
+            return True
+        
+        except Exception as e:
+            print(f"Error on_data: {str(e)}")
+            return True
+
+def main():
+    # Authenticating with Twitter API
+    auth = OAuthHandler(ckey, csecret)
+    auth.set_access_token(atoken, asecret)
+
+    # Forming query string from command-line arguments
+    query_string = " ".join(args).strip()
+    print("Query String:", query_string)
+
+    # Initializing stream
+    twitter_stream = Stream(auth, TweetListener())
+    twitter_stream.filter(languages=["en"], track=[query_string])
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,84 @@
+import numpy as np
+from sympy import symbols, diff, solve
+from math import *
+
+def montar_equacao(coefs, x):
+    """
+    Constructs a polynomial equation using the given coefficients and variable x.
+
+    Args:
+        coefs (list): List of coefficients.
+        x (Symbol): The variable of the polynomial.
+
+    Returns:
+        Expr: The polynomial expression.
+    """
+    y = sum(coefs[i] * (x ** (len(coefs) - (i + 1))) for i in range(len(coefs)))
+    return y
+
+def is_float(value):
+    """
+    Checks if the given value can be converted to a float.
+
+    Args:
+        value (str): The value to check.
+
+    Returns:
+        bool: True if the value can be converted to float, False otherwise.
+    """
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+def main():
+    MAX_ORDER = 24
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+    
+    # Get the polynomial order from the user
+    n = int(input("Digite a ordem da regressão (ordem máxima = 24): "))
+    if n > MAX_ORDER:
+        print("\n\n------------------\n  Ordem inválida  \n------------------\n\n")
+        return
+
+    # Define the variable for the polynomial
+    x = symbols('x')
+    x_list, y_list = [], []
+
+    # Read data from the CSV file
+    with open('data.csv', 'r') as file:
+        for line in file:
+            values = line.strip().split(',')
+            if len(values) == 2 and is_float(values[0]) and is_float(values[1]):
+                x_list.append(float(values[0]))
+                y_list.append(float(values[1]))
+
+    # Define the coefficients as symbolic variables
+    coefs = [symbols(ALPHABET[i]) for i in range(n + 1)]
+
+    # Construct the polynomial equation
+    polynomial = montar_equacao(coefs, x)
+    squared_diff_sum = sum((y - polynomial.subs(x, x_val)) ** 2 for x_val, y in zip(x_list, y_list))
+
+    # Calculate the derivatives
+    derivatives = [diff(squared_diff_sum, coef) for coef in coefs]
+    solutions = []
+
+    # Solve the system of equations
+    for i in range(len(coefs)):
+        if i == 0:
+            solved_value = solve(derivatives[-1], coefs[-1])[0]
+            derivatives[-1] = solved_value
+            solutions.append((coefs[-1], solved_value))
+        else:
+            solved_value = solve(derivatives[-(i + 1)].subs(solutions), coefs[-(i + 1)])[0]
+            derivatives[-(i + 1)] = solved_value
+            solutions.append((coefs[-(i + 1)], solved_value))
+
+    # Construct the final model
+    final_model = sum(derivatives[i] * x ** (len(coefs) - (i + 1)) for i in range(len(coefs)))
+    print("Modelo:", final_model)
+
+if __name__ == "__main__":
+    main()

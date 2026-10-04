@@ -1,0 +1,76 @@
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def load_data(file_path):
+    """
+    Load data from a CSV file.
+
+    Args:
+        file_path (str): Path to the CSV file.
+
+    Returns:
+        DataFrame: Loaded data as a pandas DataFrame.
+    """
+    return pd.read_csv(file_path)
+
+def preprocess_texts(df, text_column):
+    """
+    Preprocess text data from a DataFrame.
+
+    Args:
+        df (DataFrame): DataFrame containing text data.
+        text_column (str): Column name containing the text data.
+
+    Returns:
+        list: List of preprocessed texts.
+    """
+    return df[text_column].tolist()
+
+def compute_cosine_similarity(df, target_index=0, text_column='content', stop_words='english'):
+    """
+    Compute cosine similarity of texts in a DataFrame.
+
+    Args:
+        df (DataFrame): DataFrame containing text data.
+        target_index (int): Index of the target text.
+        text_column (str): Column name containing the text data.
+        stop_words (str or list): Stop words to use for vectorization.
+
+    Returns:
+        DataFrame: DataFrame with cosine similarity scores.
+    """
+    # Extract texts
+    texts = preprocess_texts(df, text_column)
+    target_text = texts[target_index]
+
+    # Vectorize texts
+    vectorizer = CountVectorizer(stop_words=stop_words)
+    freq_term_matrix = vectorizer.fit_transform(texts)
+
+    # Compute TF-IDF
+    tfidf_transformer = TfidfTransformer(norm="l2")
+    tfidf_transformer.fit(freq_term_matrix)
+    tf_idf_matrix = tfidf_transformer.transform(freq_term_matrix)
+
+    # Compute cosine similarity
+    cos_sim_matrix = cosine_similarity(tf_idf_matrix[target_index:target_index + 1], tf_idf_matrix)
+    cos_sim_scores = cos_sim_matrix[0]
+
+    # Add cosine similarity scores to DataFrame
+    cos_sim_df = pd.DataFrame(cos_sim_scores, columns=['Cos_Sim'])
+    df_with_cos_sim = pd.concat([df, cos_sim_df], axis=1)
+
+    # Sort DataFrame by cosine similarity scores
+    df_sorted = df_with_cos_sim.sort_values(by='Cos_Sim', ascending=False)
+
+    return df_sorted
+
+if __name__ == '__main__':
+    # Load data
+    df_articles = load_data('article_data.csv')
+
+    # Compute cosine similarity and print top results
+    df_result = compute_cosine_similarity(df_articles, target_index=0, text_column='content', stop_words='english')
+    print(df_result.head(6))

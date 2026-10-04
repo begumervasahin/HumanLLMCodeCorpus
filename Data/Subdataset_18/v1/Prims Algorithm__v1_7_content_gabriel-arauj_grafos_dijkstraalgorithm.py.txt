@@ -1,0 +1,81 @@
+import time
+import networkx as nx
+import heapq
+import sys
+
+def dijkstra(digrafo, fonte, destino):
+    # Initialize distances and labels
+    for node in digrafo:
+        digrafo.nodes[node]['distance'] = sys.maxsize
+        digrafo.nodes[node]['rotulado'] = False
+    digrafo.nodes[fonte]['distance'] = 0
+
+    # Priority queue with (distance, node) tuples
+    priority_queue = [(0, fonte)]
+    heapq.heapify(priority_queue)
+    
+    while priority_queue:
+        current_distance, current_node = heapq.heappop(priority_queue)
+        
+        if digrafo.nodes[current_node]['rotulado']:
+            continue
+        
+        digrafo.nodes[current_node]['rotulado'] = True
+        
+        for neighbor in digrafo.successors(current_node):
+            if not digrafo.nodes[neighbor]['rotulado']:
+                new_distance = current_distance + digrafo.edges[current_node, neighbor]['weight']
+                if new_distance < digrafo.nodes[neighbor]['distance']:
+                    digrafo.nodes[neighbor]['distance'] = new_distance
+                    digrafo.nodes[neighbor]['precedente'] = current_node
+                    heapq.heappush(priority_queue, (new_distance, neighbor))
+    
+    # Retrieve the shortest path
+    path_distance = digrafo.nodes[destino]['distance']
+    path = [{'peso': path_distance}]
+    node = destino
+    
+    while node != fonte:
+        path.append(node)
+        node = digrafo.nodes[node].get('precedente', fonte)
+    path.append(fonte)
+    
+    return path[::-1]
+
+def teste():
+    digrafo = nx.DiGraph()
+    digrafo.add_nodes_from(range(1, 10))
+    digrafo.add_edges_from([
+        (1, 2, {'weight': 11}), (1, 3, {'weight': 9}),
+        (2, 4, {'weight': 4}), (2, 5, {'weight': 8}),
+        (3, 4, {'weight': 8}), (3, 5, {'weight': 6}),
+        (4, 6, {'weight': 6}), (4, 7, {'weight': 5}),
+        (5, 7, {'weight': 6}), (5, 8, {'weight': 4}),
+        (6, 9, {'weight': 6}), (7, 9, {'weight': 4}),
+        (8, 9, {'weight': 6})
+    ])
+
+    print("Nodes\n", digrafo.nodes())
+    print("Edges\n", digrafo.edges(data=True))
+    
+    fonte = input("Digite o vértice fonte: ")
+    destino = input("Digite o vértice destino: ")
+
+    try:
+        fonte = int(fonte)
+        destino = int(destino)
+    except ValueError:
+        print("Os vértices devem ser números inteiros.")
+        return
+
+    if fonte in digrafo and destino in digrafo:
+        start = time.time()
+        caminho_minimo = dijkstra(digrafo, fonte, destino)
+        tempo = time.time() - start
+        print("Algoritmo Dijkstra executado em ", tempo, "segundos.")
+        print("Caminho Mínimo: ", caminho_minimo)
+    else:
+        print("O vértice fonte ou destino não está no grafo")
+
+if __name__ == "__main__":
+    teste()

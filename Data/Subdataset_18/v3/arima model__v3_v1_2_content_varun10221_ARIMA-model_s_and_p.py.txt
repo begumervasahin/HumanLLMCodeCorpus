@@ -1,0 +1,97 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sb
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import acf, pacf
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+# Set Seaborn style for plots
+sb.set_style('darkgrid')
+
+def load_and_prepare_data(file_path):
+    """Load stock data from a CSV file and prepare it for analysis."""
+    stock_data = pd.read_csv(file_path)
+
+    # Convert 'Date' column to datetime and sort the DataFrame by date
+    stock_data['Date'] = pd.to_datetime(stock_data['Date'])
+    stock_data.sort_values(by='Date', ascending=True, inplace=True)
+    stock_data.set_index('Date', inplace=True)
+    
+    return stock_data
+
+def calculate_differences(stock_data):
+    """Calculate various differences and transformations of the stock data."""
+    stock_data['First Difference'] = stock_data['Close'].diff()
+    stock_data['Natural Log'] = stock_data['Close'].apply(np.log)
+    stock_data['Logged First Difference'] = stock_data['Natural Log'].diff()
+    return stock_data
+
+def calculate_rolling_variances(stock_data):
+    """Calculate rolling variances for the original and log-transformed 'Close' column."""
+    stock_data['Original Variance'] = stock_data['Close'].rolling(window=30).var()
+    stock_data['Log Variance'] = stock_data['Natural Log'].rolling(window=30).var()
+    return stock_data
+
+def calculate_lagged_values(stock_data):
+    """Calculate lagged values for the logged first difference."""
+    stock_data['Lag 20'] = stock_data['Logged First Difference'].shift(20)
+    return stock_data
+
+def calculate_acf_pacf(stock_data):
+    """Calculate autocorrelation and partial autocorrelation for the logged first difference."""
+    lag_corr = acf(stock_data['Logged First Difference'].dropna())
+    lag_partial_corr = pacf(stock_data['Logged First Difference'].dropna())
+    return lag_corr, lag_partial_corr
+
+def decompose_time_series(stock_data):
+    """Decompose the time series into trend, seasonal, and residual components."""
+    decomposition = seasonal_decompose(stock_data['Natural Log'].dropna(), model='additive', period=30)
+    return decomposition
+
+def fit_arima_model(stock_data):
+    """Fit an ARIMA model to the logged first difference."""
+    model = sm.tsa.ARIMA(stock_data['Logged First Difference'].dropna(), order=(0, 0, 1))
+    results = model.fit(disp=-1)
+    return results
+
+def plot_forecast(stock_data, results):
+    """Plot the logged first difference and the forecast."""
+    stock_data['Forecast'] = results.fittedvalues
+    
+    plt.figure(figsize=(16, 12))
+    plt.plot(stock_data['Logged First Difference'], label='Logged First Difference')
+    plt.plot(stock_data['Forecast'], label='Forecast', color='red')
+    plt.title('Logged First Difference and Forecast')
+    plt.xlabel('Date')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.show()
+
+def main():
+    # Define the path to the CSV file
+    file_path = os.path.join(os.getcwd(), 'q_table.csv')
+    
+    # Load and prepare data
+    stock_data = load_and_prepare_data(file_path)
+    
+    # Perform calculations
+    stock_data = calculate_differences(stock_data)
+    stock_data = calculate_rolling_variances(stock_data)
+    stock_data = calculate_lagged_values(stock_data)
+    
+    # Calculate autocorrelation and partial autocorrelation
+    lag_corr, lag_partial_corr = calculate_acf_pacf(stock_data)
+    
+    # Decompose the time series
+    decomposition = decompose_time_series(stock_data)
+    
+    # Fit ARIMA model
+    results = fit_arima_model(stock_data)
+    
+    # Plot forecast
+    plot_forecast(stock_data, results)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,52 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Step 1: Generate random data
+mean = [5, 5]
+cov = [[1, 0], [0, 100]]
+data = pd.DataFrame(np.random.multivariate_normal(mean, cov, 100), columns=['Feature 1', 'Feature 2'])
+
+# Step 2: Scatter plot of the original data
+plt.scatter(data['Feature 1'], data['Feature 2'], color='b', label='Original Data')
+
+# Function to subtract the mean from each column
+def subtract_mean(matrix):
+    return matrix.apply(lambda col: col - col.mean())
+
+# Function to calculate the covariance matrix
+def calculate_covariance(matrix):
+    return np.cov(matrix.T, bias=False)
+
+# Function to get the principal components
+def get_principal_components(eig_vals, eig_vecs, num_components):
+    sorted_indices = np.argsort(eig_vals)[::-1]
+    return eig_vecs[:, sorted_indices[:num_components]]
+
+# Step 6: Adjust the data by subtracting the mean
+mean_adjusted_data = subtract_mean(data)
+
+# Step 7: Calculate the covariance matrix
+covariance_matrix = calculate_covariance(mean_adjusted_data)
+
+# Step 8: Calculate the eigenvalues and eigenvectors
+eig_vals, eig_vecs = np.linalg.eig(covariance_matrix)
+
+# Step 9: Get the principal components
+principal_components = get_principal_components(eig_vals, eig_vecs, 2)
+
+# Step 10: Transform the data using the principal components
+transformed_data = np.dot(principal_components.T, mean_adjusted_data.T).T
+
+# Step 11: Scatter plot of the transformed data
+plt.scatter(transformed_data[:, 0], transformed_data[:, 1], color='r', marker='x', label='PCA Transformed Data')
+
+# Step 12: Show the plots
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.title('PCA Transformation')
+plt.legend()
+plt.show()
+
+# Print the transformed feature vector
+print(transformed_data)

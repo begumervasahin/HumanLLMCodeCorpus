@@ -1,0 +1,74 @@
+import utils.dictUtils
+
+def encrypt_msg(key, message):
+    """Encrypts the message using the provided key."""
+    return translate_msg(key, message, 'encrypt')
+
+def decrypt_msg(key, message):
+    """Decrypts the message using the provided key."""
+    return translate_msg(key, message, 'decrypt')
+
+def translate_msg(key, message, mode):
+    """Translates the message based on the mode (encrypt/decrypt) using the Vigenère cipher."""
+    translated = []
+    key = key.upper()
+    key_index = 0
+    is_encrypt = (mode == 'encrypt')
+    
+    for symbol in message:
+        symbol_offset = get_alphabet().find(symbol.upper())
+        if symbol_exists(symbol_offset):
+            offset = calculate_alphabet_offset(is_encrypt, key, key_index, symbol_offset)
+            if symbol.isupper():
+                translated.append(get_alphabet()[offset])
+            elif symbol.islower():
+                translated.append(get_alphabet()[offset].lower())
+            key_index = increment_key_index(key, key_index)
+        else:
+            translated.append(symbol)
+    
+    return ''.join(translated)
+
+def symbol_exists(offset):
+    """Checks if the symbol exists in the alphabet."""
+    return offset != -1
+
+def get_alphabet():
+    """Returns the uppercase alphabet used for encryption/decryption."""
+    return utils.dictUtils.ALPHABET_UPPER
+
+def calculate_alphabet_offset(is_encrypt, key, key_index, offset):
+    """Calculates the new offset for a symbol based on encryption or decryption."""
+    key_char_offset = get_alphabet().find(key[key_index])
+    if is_encrypt:
+        offset += key_char_offset
+    else:
+        offset -= key_char_offset
+    return offset % len(get_alphabet())
+
+def increment_key_index(key, key_index):
+    """Increments the key index and wraps around if necessary."""
+    key_index += 1
+    if key_index == len(key):
+        key_index = 0
+    return key_index
+
+def main():
+    """Main function to run the encryption/decryption process based on user input."""
+    print('1. Introduce a message: ')
+    message = input()
+    print('2. Introduce the key: ')
+    key = input()
+    print('3. Introduce the word "encrypt" to encrypt the message or push Enter to decrypt: ')
+    mode = input().lower()
+    
+    if mode == 'encrypt':
+        translated_message = encrypt_msg(key, message)
+    else:
+        translated_message = decrypt_msg(key, message)
+    
+    print(f'{mode.title()}ed message:')
+    print(translated_message)
+
+if __name__ == '__main__':
+    main()

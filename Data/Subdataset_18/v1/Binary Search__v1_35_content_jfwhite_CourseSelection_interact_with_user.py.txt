@@ -1,0 +1,89 @@
+import sqlite3
+import pandas as pd
+
+# Connect to the SQLite database
+conn = sqlite3.connect("courses.db")
+c = conn.cursor()
+
+# Remove rows where course_level, course_category, or course_enrollment is -1
+statement = "DELETE FROM coursedata WHERE course_level = -1 OR course_category = -1 OR course_enrollment = -1"
+conn.execute(statement)
+
+# Load the data from the 'coursedata' table into a pandas DataFrame
+data = pd.read_sql("SELECT * FROM coursedata", con=conn)
+
+def which_col(data):
+    """
+    Determine which column has the highest variability.
+    Returns the name of the column with the highest normalized range.
+    """
+    results = []
+    
+    # Calculate normalized range for each column
+    for column in ['course_level', 'course_category', 'course_enrollment']:
+        column_data = data[column]
+        if column_data.max() != column_data.min():
+            normalized_range = (column_data.max() - column_data.min()) / column_data.std()
+            results.append((normalized_range, column))
+    
+    # Return the column with the maximum normalized range
+    _, max_dimension = max(results)
+    return max_dimension
+
+def print_options(low, med, high):
+    """
+    Print the details of three example courses (low, med, high).
+    """
+    print("Here are three example courses:")
+    for course in [low, med, high]:
+        print(course["course_name"])
+        print(f"\tLevel:\t\t{course['course_level']}")
+        print(f"\tCategory:\t{course['course_category']}")
+        print(f"\tEnrollment:\t{course['course_enrollment']}")
+
+def parse(selection):
+    """
+    Parse the user input to ensure a valid selection (1, 2, or 3).
+    """
+    if selection in ["1", "2", "3"]:
+        return int(selection)
+    else:
+        return parse(input("Please enter 1, 2, or 3.\n"))
+
+def step(data):
+    """
+    Process a step in the course selection, narrowing down the dataset.
+    """
+    col = which_col(data)
+    data.sort_values(by=col, inplace=True)
+
+    print_options(
+        data.iloc[0],                 # Low value example
+        data.iloc[len(data) // 2],    # Median value example
+        data.iloc[-1]                 # High value example
+    )
+
+    print(f"Based on the dimension of {col.split('_')[1]},")
+    selection = parse(input("Do you prefer course 1, 2, or 3?\n"))
+
+    segment_start = round((selection - 1) * len(data) / 3)
+    segment_end = round(selection * len(data) / 3)
+
+    return data.iloc[segment_start:segment_end]
+
+# Main loop for refining course selection
+while len(data) > 6:
+    print("__________________________________________")
+    new_data = step(data)
+    print("Your top courses are: ")
+    print(new_data.head())
+    print(f"There are {len(new_data)} courses remaining.")
+    
+    if len(new_data) < 3:
+        print("Stopping execution because there are too few courses.")
+        break
+    
+    data = new_data
+
+# Close the database connection
+conn.close()

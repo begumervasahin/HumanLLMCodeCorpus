@@ -1,0 +1,72 @@
+import time
+import os
+from tqdm import tqdm
+from decomp_lib import (
+    hepia_print, 
+    read_user_input, 
+    bytes_2_array, 
+    json_2_dict, 
+    strip_zeros, 
+    retranslate, 
+    write_2_binary, 
+    decompressor_display
+)
+
+def update_progress_bar(pbar, task_name):
+    """
+    Update the progress bar with the current task.
+
+    Parameters
+    ----------
+    pbar : tqdm.tqdm
+        The progress bar object to update.
+    task_name : str
+        A description of the current task.
+    """
+    pbar.set_description(task_name)
+    pbar.update(1)
+
+def main():
+    # Clear terminal screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+    
+    # Display custom welcome message
+    hepia_print()
+    print("\n")
+    
+    # Define progress bar format
+    bar_format = '{l_bar}{bar}| {n_fmt}/{total_fmt}'
+
+    with tqdm(total=6, ncols=80, bar_format=bar_format) as pbar:
+        # Step 1: Read input filenames from the user
+        input_filename, json_filename, output_filename = read_user_input()
+        update_progress_bar(pbar, 'Reading Input Files')
+
+        # Step 2: Convert the input file to a byte array
+        byte_array = bytes_2_array(input_filename)
+        update_progress_bar(pbar, 'Converting File to Array')
+        
+        # Step 3: Read the JSON dictionary
+        dictionary = json_2_dict(json_filename)
+        update_progress_bar(pbar, 'Reading JSON Dictionary')
+        
+        # Step 4: Strip trailing zeros from the byte string
+        byte_string_no_zeros = strip_zeros(byte_array)
+        update_progress_bar(pbar, 'Stripping Zeros')
+        
+        # Step 5: Retranslate the byte string using the dictionary
+        retranslated_byte_array = retranslate(byte_string_no_zeros, dictionary)
+        update_progress_bar(pbar, 'Retranslating Byte Array')
+        
+        # Step 6: Write the retranslated byte array to the output binary file
+        write_2_binary(retranslated_byte_array, output_filename)
+        update_progress_bar(pbar, 'Writing Output File')
+        
+        # Brief pause before closing the progress bar
+        time.sleep(0.1)
+        
+        # Display the result of the decompression
+        decompressor_display(output_filename)
+
+if __name__ == "__main__":
+    main()

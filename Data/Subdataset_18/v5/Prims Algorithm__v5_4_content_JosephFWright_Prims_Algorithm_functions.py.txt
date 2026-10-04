@@ -1,0 +1,68 @@
+from Weighted_Graph import Weighted_Graph
+
+# Load the graph from a file
+G = Weighted_Graph('test_graph.txt')
+
+def cost(edge, graph):
+    """
+    Determines the cost of an edge in the graph.
+    """
+    return graph.edge_dict()[edge]
+
+def incident_edges(tree, graph):
+    """
+    Returns all possible edges that can be added to the tree without forming a cycle.
+    """
+    vertices_in_tree, edges_in_tree = tree
+    possible_edges = [
+        edge for vertex in vertices_in_tree 
+        for edge in graph.edge_set() 
+        if vertex in edge and edge not in edges_in_tree
+    ]
+    return possible_edges
+
+def valid_edges(tree, graph):
+    """
+    Filters the incident edges to ensure no edge will create a cycle in the tree.
+    """
+    vertices_in_tree, _ = tree
+    all_vertices = graph.vertex_set()
+    vertices_not_in_tree = all_vertices - vertices_in_tree
+    
+    valid_edges_list = [
+        edge for edge in incident_edges(tree, graph)
+        if not any(
+            v in edge and u in edge
+            for v in vertices_in_tree 
+            for u in vertices_not_in_tree
+        )
+    ]
+    
+    return valid_edges_list
+
+def min_valid_edge(tree, graph):
+    """
+    Returns the minimum cost valid edge that can be added to the tree.
+    """
+    edges = valid_edges(tree, graph)
+    min_edge = min(edges, key=lambda e: cost(e, graph))
+    return min_edge
+
+def update_tree(tree, graph):
+    """
+    Updates the tree with the minimum valid edge.
+    """
+    vertices_in_tree, edges_in_tree = tree
+    new_edge = min_valid_edge(tree, graph)
+    
+    updated_edges = edges_in_tree + [new_edge]
+    updated_vertices = vertices_in_tree | set(new_edge)
+    
+    return updated_vertices, updated_edges
+
+def total_cost(tree, graph):
+    """
+    Calculates the total cost of all the edges in the tree.
+    """
+    _, edges_in_tree = tree
+    return sum(cost(edge, graph) for edge in edges_in_tree)

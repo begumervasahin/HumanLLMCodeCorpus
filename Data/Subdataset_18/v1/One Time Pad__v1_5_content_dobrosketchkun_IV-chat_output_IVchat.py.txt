@@ -1,0 +1,88 @@
+import ipfsapi
+from roster import roster as roster
+
+# Connect to IPFS API
+api = ipfsapi.connect('127.0.0.1', 5001)
+
+DEBUG = 0
+
+def printt(x, *kargs):
+    """
+    Print debug information if debugging is enabled.
+    
+    Args:
+    x (any): The information to print.
+    *kargs (any): Additional arguments.
+    """
+    if DEBUG == 1:
+        print(x)
+
+# Read the random key from the file
+with open('TEST_RANDOM_DO_NOT_USE_IN_REAL_CONVERSATION.txt', 'r') as f:
+    all_random = f.read()
+
+def encrypt(string, key):
+    """
+    Encrypt a string using a key with XOR encryption.
+    
+    Args:
+    string (str): The input string to encrypt.
+    key (str): The key to use for encryption.
+    
+    Returns:
+    str: The encrypted string.
+    """
+    return "".join(chr(ord(i) ^ ord(j)) for (i, j) in zip(string, key))
+
+def decrypt(ciphertext, key):
+    """
+    Decrypt a ciphertext using a key with XOR decryption (same as encryption).
+    
+    Args:
+    ciphertext (str): The encrypted string to decrypt.
+    key (str): The key to use for decryption.
+    
+    Returns:
+    str: The decrypted string.
+    """
+    return encrypt(ciphertext, key)
+
+print('Chat:')
+
+data1 = [None for x in roster]
+data2 = [None for x in roster]
+
+while True:
+    try:
+        for number in range(len(roster)):
+            printt('number', number)
+            printt(roster[number][0])
+            
+            # Retrieve data from IPFS
+            data = api.get_pyobj('/ipns/' + roster[number][0])
+            printt(['data2', data])
+            
+            # Extract point and end indices
+            point = data[1]
+            printt(['point', point])
+            end = data[2]
+            printt(['end', end])
+            
+            # Retrieve the key segment
+            key = all_random[point:end]
+            printt(['key', key])
+            
+            # Decrypt the message
+            decr = decrypt(data[0], key)
+            printt(['decr', decr])
+            
+            # Update the stored data for the user
+            data2[number] = data
+            printt(data2)
+            
+            # Print new messages
+            if decr != data1[number]:
+                print(roster[number][1] + ':', decr)
+                data1[number] = decr
+    except Exception as e:
+        printt(['Nope,', e])

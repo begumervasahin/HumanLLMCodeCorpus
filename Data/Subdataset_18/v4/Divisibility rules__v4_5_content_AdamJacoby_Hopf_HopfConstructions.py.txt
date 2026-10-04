@@ -1,0 +1,123 @@
+import scipy.sparse as sps
+import numpy as np
+from HopfConstructions_Functions import (
+    Tensor_Mult, Tensor_Comult, Drinfeld_Twist_Comult, Drinfeld_Twist_Antipode,
+    Left_Adjoint_Action, Left_Smash_Product_Mult, Left_Smash_Element_Names, 
+    Tensor_Type, Dual_Element_Names
+)
+from HopfClass import HopfAlgebra, BiAlgebra, Algebra, CoAlgebra, ModuleAlgebra
+from Frobenius_Tools import HigmanTrace
+
+def tensor_product(A, B):
+    """
+    Compute the tensor product of two algebraic structures.
+
+    Parameters:
+    A (Algebra): The first algebraic structure.
+    B (Algebra): The second algebraic structure.
+
+    Returns:
+    Algebra: The tensor product of A and B.
+    """
+    _type = Tensor_Type(A, B)
+    name = f"{A.name}(T){B.name}"
+    element_names = [f"{A.element_names[iA]}(T){B.element_names[iB]}" for iA in range(A.dim) for iB in range(B.dim)]
+
+    if _type == 'HopfAlgebra':
+        mult = Tensor_Mult(A, B)
+        comult = Tensor_Comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        antipode = sps.kron(A.antipode, B.antipode)
+        result = HopfAlgebra(name, element_names, mult, comult, counit, antipode)
+        if A.int_flag != 'no' and B.int_flag != 'no':
+            result.Input_Integral(np.kron(A.int, B.int))
+    elif _type == 'BiAlgebra':
+        mult = Tensor_Mult(A, B)
+        comult = Tensor_Comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        result = BiAlgebra(name, element_names, mult, comult, counit)
+    elif _type == 'Algebra':
+        mult = Tensor_Mult(A, B)
+        result = Algebra(name, element_names, mult)
+    elif _type == 'CoAlgebra':
+        comult = Tensor_Comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        result = CoAlgebra(name, element_names, comult, counit)
+    
+    return result
+
+def drinfeld_twist(H, J, JI, twist_name):
+    """
+    Apply a Drinfeld twist to a Hopf algebra.
+
+    Parameters:
+    H (HopfAlgebra): The Hopf algebra.
+    J (ndarray): The twist element.
+    JI (ndarray): The inverse of the twist element.
+    twist_name (str): The name of the twist.
+
+    Returns:
+    HopfAlgebra: The twisted Hopf algebra.
+    """
+    comult = Drinfeld_Twist_Comult(H, J, JI)
+    name = f"{H.name}({twist_name})"
+    antipode = Drinfeld_Twist_Antipode(H, J, JI)
+    result = HopfAlgebra(name, H.element_names, H.mult, comult, H.counit, antipode)
+    result.Input_Integral(H.int)
+    return result
+
+def left_adjoint_module(H):
+    """
+    Create a left adjoint module for a Hopf algebra.
+
+    Parameters:
+    H (HopfAlgebra): The Hopf algebra.
+
+    Returns:
+    ModuleAlgebra: The left adjoint module.
+    """
+    action = Left_Adjoint_Action(H)
+    return ModuleAlgebra(f'ad{H.name}', H.name, action, H.element_names, H.mult)
+
+def left_smash_product(A, H):
+    """
+    Compute the left smash product of an algebra and a Hopf algebra.
+
+    Parameters:
+    A (Algebra): The algebra.
+    H (HopfAlgebra): The Hopf algebra.
+
+    Returns:
+    Algebra: The left smash product.
+    """
+    mult = Left_Smash_Product_Mult(A, H)
+    element_names = Left_Smash_Element_Names(A, H)
+    return Algebra(f"{A.name}(#){H.name}", element_names, mult)
+
+def dual_hopf_algebra(H):
+    """
+    Compute the dual of a Hopf algebra.
+
+    Parameters:
+    H (HopfAlgebra): The Hopf algebra.
+
+    Returns:
+    HopfAlgebra: The dual Hopf algebra.
+    """
+    mult = H.comult.transpose()
+    comult = H.comult.transpose()
+    antipode = H.antipode.transpose()
+    element_names = Dual_Element_Names(H.element_names)
+    counit = np.zeros(H.dim, dtype=complex)
+    counit[0] = 1
+    return HopfAlgebra(f"{H.name}^*", element_names, mult, comult, counit, antipode)
+
+# Example usage
+if __name__ == "__main__":
+    # Assuming 'A' and 'B' are predefined Algebra objects, and 'H' is a predefined HopfAlgebra object
+    # tensor_product(A, B)
+    # drinfeld_twist(H, J, JI, "twist_name")
+    # left_adjoint_module(H)
+    # left_smash_product(A, H)
+    # dual_hopf_algebra(H)
+    pass

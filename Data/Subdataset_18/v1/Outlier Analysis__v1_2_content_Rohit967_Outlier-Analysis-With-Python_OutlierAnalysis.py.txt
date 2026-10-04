@@ -1,0 +1,125 @@
+import numpy as np
+import pandas as pd
+from sklearn import metrics
+from sklearn.model_selection import train_test_split
+from sklearn import svm
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+import matplotlib.pyplot as plt
+
+# Load the feature names
+data_names = pd.read_csv('kddcup.names', skiprows=1, header=None, sep=':')
+data_names_dict = dict(data_names[0])
+data_names_dict[41] = 'label'
+
+# Convert the dictionary to a list
+column_names = list(data_names_dict.values())
+
+# Load the data
+data = pd.read_csv('kddcup.data_10_percent', low_memory=False, header=None, names=column_names)
+
+# Filter the data
+data = data[(data['service'] == "http") & (data["logged_in"] == 1)]
+
+# Plot the label distribution
+data.label.value_counts().plot(kind='bar')
+plt.title('Label Distribution')
+plt.show()
+
+# Select relevant features
+relevant_features = ["duration", "src_bytes", "dst_bytes", "label"]
+data = data[relevant_features]
+
+# Create the target column
+data['attack'] = np.where(data['label'] == "normal.", 1, -1)
+target = data['attack']
+
+# Print outliers information
+outliers = target[target == -1]
+print("outliers.shape:", outliers.shape)
+print("outlier fraction:", outliers.shape[0] / target.shape[0])
+
+# Drop the label and attack columns from the data
+data.drop(["label", "attack"], axis=1, inplace=True)
+
+# Split the data into training and test sets
+train_data, test_data, train_target, test_target = train_test_split(data, target, train_size=0.8)
+print("Training data shape:", train_data.shape)
+
+# Calculate the nu parameter for OneClassSVM
+nu = outliers.shape[0] / target.shape[0]
+print("nu:", nu)
+
+# OneClassSVM model
+print("One Class SVM")
+model_svm = svm.OneClassSVM(nu=nu, kernel='rbf', gamma=0.00005)
+model_svm.fit(train_data)
+
+# Evaluate the model on training data
+preds_train = model_svm.predict(train_data)
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy:", metrics.accuracy_score(train_target, preds_train))
+print("precision:", metrics.precision_score(train_target, preds_train))
+print("recall:", metrics.recall_score(train_target, preds_train))
+print("f1:", metrics.f1_score(train_target, preds_train))
+
+# Evaluate the model on test data
+preds_test = model_svm.predict(test_data)
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy:", metrics.accuracy_score(test_target, preds_test))
+print("precision:", metrics.precision_score(test_target, preds_test))
+print("recall:", metrics.recall_score(test_target, preds_test))
+print("f1:", metrics.f1_score(test_target, preds_test))
+
+# Isolation Forest model
+print("Isolation Forest")
+model_if = IsolationForest(contamination=nu, random_state=42)
+model_if.fit(train_data)
+
+# Evaluate the model on training data
+preds_train_if = model_if.predict(train_data)
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy:", metrics.accuracy_score(train_target, preds_train_if))
+print("precision:", metrics.precision_score(train_target, preds_train_if))
+print("recall:", metrics.recall_score(train_target, preds_train_if))
+print("f1:", metrics.f1_score(train_target, preds_train_if))
+
+# Evaluate the model on test data
+preds_test_if = model_if.predict(test_data)
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy:", metrics.accuracy_score(test_target, preds_test_if))
+print("precision:", metrics.precision_score(test_target, preds_test_if))
+print("recall:", metrics.recall_score(test_target, preds_test_if))
+print("f1:", metrics.f1_score(test_target, preds_test_if))
+
+# Local Outlier Factor model
+print("Local Outlier Factor")
+lof = LocalOutlierFactor(n_neighbors=35, contamination=nu)
+
+# Evaluate the model on training data
+preds_train_lof = lof.fit_predict(train_data)
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy:", metrics.accuracy_score(train_target, preds_train_lof))
+print("precision:", metrics.precision_score(train_target, preds_train_lof))
+print("recall:", metrics.recall_score(train_target, preds_train_lof))
+print("f1:", metrics.f1_score(train_target, preds_train_lof))
+
+# Evaluate the model on test data
+preds_test_lof = lof.fit_predict(test_data)
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy:", metrics.accuracy_score(test_target, preds_test_lof))
+print("precision:", metrics.precision_score(test_target, preds_test_lof))
+print("recall:", metrics.recall_score(test_target, preds_test_lof))
+print("f1:", metrics.f1_score(test_target, preds_test_lof))

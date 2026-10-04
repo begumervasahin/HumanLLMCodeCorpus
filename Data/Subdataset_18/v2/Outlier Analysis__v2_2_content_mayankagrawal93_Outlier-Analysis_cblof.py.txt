@@ -1,0 +1,176 @@
+"""
+Created on Tue Sep 20 15:24:15 2016
+Author: MayankAgrawal
+Refactored by: ChatGPT
+"""
+
+import pandas as pd
+import numpy as np
+import time
+
+
+def to_float(x):
+    """Convert a value to float."""
+    return float(x)
+
+
+def mutate_dict(f, d):
+    """Apply a function to all values in a dictionary."""
+    for k, v in d.items():
+        d[k] = f(v)
+
+
+def new_cluster(key, current_tuple):
+    """
+    Create a new cluster with the given key and tuple.
+    
+    Args:
+        key: The key identifying the new cluster.
+        current_tuple: The initial tuple of the new cluster.
+    
+    Returns:
+        A new cluster structure.
+    """
+    summary = []
+    cluster_structure = []
+    for k in current_tuple:
+        value_summary = {current_tuple[k]: 1}
+        summary.append([value_summary])
+    cluster_structure.append([key])
+    cluster_structure.append(summary)
+    return cluster_structure
+
+
+def add_same(cluster, current_tuple):
+    """
+    Update the cluster with the same tuple values.
+    
+    Args:
+        cluster: The cluster to be updated.
+        current_tuple: The current tuple to update the cluster with.
+    """
+    for k in current_tuple:
+        if current_tuple[k] in cluster[k][0]:
+            cluster[k][0][current_tuple[k]] += 1
+        else:
+            cluster[k][0][current_tuple[k]] = 1
+
+
+def calculate_similarity(cluster, current_tuple):
+    """
+    Calculate similarity between the cluster and current tuple.
+    
+    Args:
+        cluster: The cluster to compare against.
+        current_tuple: The current tuple to be compared.
+    
+    Returns:
+        The similarity score.
+    """
+    similarity = 0
+    for k in current_tuple:
+        support = cluster[k][0].get(current_tuple[k], 0)
+        total_support = sum(cluster[k][0].values())
+        similarity += support / float(total_support)
+    return similarity
+
+
+# Load data
+dataframe = pd.read_csv("fsd.csv")
+data_array = np.array(dataframe)
+
+# Create a dictionary to count occurrences of each value
+value_counts = {}
+for col in dataframe:
+    col_array = np.array(dataframe[col])
+    for key in col_array:
+        value_counts[key] = value_counts.get(key, 0) + 1
+    break
+
+print("1")
+
+# Initialize dictionary D to hold clusters and process data
+clusters_dict = {}
+index = 0
+
+start_time = time.time()
+for row in data_array:
+    clusters_dict[index] = {i: key for i, key in enumerate(row)}
+    mutate_dict(to_float, clusters_dict[index])
+    index += 1
+
+processing_time = time.time() - start_time
+
+# Clustering
+clusters = []
+start_time = time.time()
+
+for key, current_tuple in clusters_dict.items():
+    print("2", key)
+    if key == 0:
+        clusters.append(new_cluster(key, current_tuple))
+    else:
+        similarities = [calculate_similarity(cluster[1], current_tuple) for cluster in clusters]
+        max_similarity = max(similarities)
+        max_index = similarities.index(max_similarity)
+        similarity_threshold = 5
+
+        if max_similarity >= similarity_threshold:
+            clusters[max_index][0].append(key)
+            add_same(clusters[max_index][1], current_tuple)
+        else:
+            clusters.append(new_cluster(key, current_tuple))
+            print(key)
+
+clustering_time = time.time() - start_time
+
+# Cluster size analysis
+cluster_size_dict = {len(cluster[0]): cluster for cluster in clusters}
+sorted_cluster_sizes = sorted(cluster_size_dict.keys())
+
+# Determine small and large clusters
+alpha = 0.1
+sum_of_cluster_sizes = 0
+large_clusters = []
+small_clusters = []
+
+for size in sorted_cluster_sizes:
+    sum_of_cluster_sizes += size
+    if sum_of_cluster_sizes <= alpha * len(clusters_dict):
+        small_clusters.append(size)
+    else:
+        large_clusters.append(size)
+
+# Calculate CBLOF
+start_time = time.time()
+cblof_scores = {}
+
+for key, current_tuple in clusters_dict.items():
+    for cluster_size in cluster_size_dict:
+        if key in cluster_size_dict[cluster_size][0]:
+            cluster = cluster_size
+            break
+
+    print("2")
+    if cluster in large_clusters:
+        similarity = calculate_similarity(cluster_size_dict[cluster][1], current_tuple)
+        lof = cluster * similarity
+        cblof_scores[key] = round(lof, 6)
+        print("yes")
+    else:
+        similarities = [calculate_similarity(cluster_size_dict[c][1], current_tuple) for c in large_clusters]
+        max_similarity = min(similarities)
+        lof = cluster * max_similarity
+        cblof_scores[key] = round(lof, 6)
+        print("no")
+    print("4")
+
+cblof_calculation_time = time.time() - start_time
+
+# Identify outliers
+sorted_cblof = sorted(cblof_scores, key=cblof_scores.get, reverse=True)
+top_n_percentage = 5
+num_outliers = int((top_n_percentage / 100.0) * len(sorted_cblof))
+outliers = sorted_cblof[:num_outliers]
+
+print("Outliers:", outliers)

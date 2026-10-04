@@ -1,0 +1,105 @@
+import romania
+import sys
+
+class FindRoute:
+    """
+    This class finds the shortest route between any two given unique vertices (cities) using Breadth-First Search (BFS).
+    """
+
+    def find_route(self):
+        """
+        Finds and prints the shortest route between two cities specified in the command line arguments.
+        """
+        file_input = sys.argv[1]
+        dest1 = sys.argv[2]  # Starting city
+        dest2 = sys.argv[3]  # Destination city
+        total_distance = 0   # Cumulative distance
+        stack = []
+
+        # Get the graph representation of the cities and their distances
+        bi_dir_graph = romania.Romania().get_data(file_input)
+
+        graph = bi_dir_graph[0]
+        vertices = bi_dir_graph[1]
+        visited = [False] * vertices
+
+        # Traverse the graph and mark vertices as 'visited'
+        for i in range(vertices):
+            if not visited[i]:
+                self.sort(graph, dest1, visited, stack)
+
+        dist = [float("Inf")] * vertices    # Total distance from starting city to all vertices
+        dist[list(graph.keys()).index(dest1)] = 0.0
+        from_city = [0] * vertices  # Starting city or via vertices
+        to_city = [0] * vertices    # Destination city or via vertices
+        to_fro_dist = [0] * vertices  # Distance between intermediate vertices
+
+        while stack:
+            pos = stack.pop()  # Get each vertex according to levels
+            for destination, distance in graph[pos]:
+                cumulative_distance = float(dist[list(graph.keys()).index(pos)]) + float(distance)
+
+                # Update distance if a shorter path is found
+                if float(dist[list(graph.keys()).index(destination)]) > cumulative_distance:
+                    dist[list(graph.keys()).index(destination)] = cumulative_distance
+                    from_city[list(graph.keys()).index(destination)] = pos
+                    to_city[list(graph.keys()).index(destination)] = destination
+                    to_fro_dist[list(graph.keys()).index(destination)] = float(distance)
+
+                    if destination == dest2:
+                        total_distance = cumulative_distance
+
+        pos = 0
+        result_path = []
+        final_distance = total_distance
+
+        # Get individual distances between adjacent nodes from start to destination
+        while total_distance != 0:
+            if to_city[pos] == dest2:
+                result_path.append(from_city[pos])
+                result_path.append(to_city[pos])
+                result_path.append(str(to_fro_dist[pos]))
+                total_distance = dist[pos] - to_fro_dist[pos]
+                dest2 = from_city[pos]  # Update destination to the previous node
+                pos = 0
+            else:
+                pos += 1
+
+        # Reverse the path for bottom-up traversal
+        result_path.reverse()
+
+        # Print the paths
+        if final_distance == 0:
+            path_str = "distance: infinity\nroute:\nnone\n"
+        else:
+            path_str = f"distance: {final_distance} km\nroute:\n"
+            pos = 0
+            while pos < len(result_path):
+                path_str += f"{result_path[pos]} to {result_path[pos + 1]}, {result_path[pos + 2]} km\n"
+                pos += 3
+
+        print(path_str)
+
+    def sort(self, graph, dest1, visited, stack):
+        """
+        Traverse the graph and mark vertices as 'visited' according to levels.
+
+        Args:
+            graph (dict): The graph representation of the cities.
+            dest1 (str): The starting city.
+            visited (list): List to keep track of visited vertices.
+            stack (list): Stack to keep track of the vertices to be visited.
+        """
+        visited[list(graph.keys()).index(dest1)] = True
+        if dest1 in graph:
+            for d, distance in graph[dest1]:
+                if not visited[list(graph.keys()).index(d)]:
+                    self.sort(graph, d, visited, stack)
+        stack.append(dest1)
+
+def main():
+    route_finder = FindRoute()
+    route_finder.find_route()
+
+if __name__ == "__main__":
+    main()

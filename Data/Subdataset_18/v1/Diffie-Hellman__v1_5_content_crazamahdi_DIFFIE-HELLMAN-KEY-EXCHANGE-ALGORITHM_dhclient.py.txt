@@ -1,0 +1,50 @@
+import random
+import socket
+
+def generate_private_component(q):
+    """Generate a random private component."""
+    return random.randint(1, q - 1)
+
+def calculate_public_component(q, a, private_component):
+    """Calculate the public component using modular exponentiation."""
+    return pow(a, private_component, q)
+
+def main():
+    # Define the server connection details
+    host = 'localhost'
+    port = int(input("Enter port: "))
+
+    # Establish a connection to the server
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((host, port))
+        
+        # Receive the prime number (q) from the server
+        q = int(s.recv(1024).decode())
+        print("Prime:", q)
+        
+        # Request and receive the primitive root (a) from the server
+        s.send(b"Send primitive root")
+        a = int(s.recv(1024).decode())
+        print("Primitive root:", a)
+        
+        # Generate the private component
+        private_component = generate_private_component(q)
+        print("Private component:", private_component)
+        
+        # Calculate the public component
+        public_component = calculate_public_component(q, a, private_component)
+        print("Public component:", public_component)
+        
+        # Send the public component to the server
+        s.send(str(public_component).encode())
+        
+        # Receive the server's public component
+        server_public_component = int(s.recv(1024).decode())
+        print("Server public component:", server_public_component)
+        
+        # Calculate the shared secret key
+        shared_secret_key = pow(server_public_component, private_component, q)
+        print("Secret key is", shared_secret_key)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,41 @@
+import re
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+
+def get_score(auth, api):
+    """Main function to parse through HTML to find tennis data"""
+    tennis_ref = 'http://m.espn.com/general/tennis/dailyresults?date=20200125&matchType=1&wjb='
+    score_url = urlopen(tennis_ref)
+    tennis_score = BeautifulSoup(score_url, 'html.parser')
+
+    tournament = tennis_score.find("div", class_="sec row")
+    tournament_tag = ''.join(re.findall(r'([A-Z]\w+-*\w*)', tournament.text))
+
+    round_section = tennis_score.findAll("div", class_="ind sub bold")
+    full_round = next((line.text for line in round_section if line.text != "FULL TOURNAMENT RESULTS"), "")
+
+    game_section = tennis_score.findAll("div", class_="ind")
+    matches = [line.text.split("Final")[0] for line in game_section if "Final" in line.text]
+
+    count_matches(matches, auth, api, tournament_tag, full_round)
+
+def count_matches(matches, auth, api, tournament_tag, full_round):
+    """Count the number of matches and pass data to final_score function"""
+    match_count = sum(1 for match in matches if match)
+    final_score(matches, match_count, auth, api, tournament_tag, full_round)
+
+def final_score(matches, count, auth, api, tournament_tag, full_round):
+    """Process and print the final scores"""
+    for match in matches:
+        if match and match not in ["FULL TOURNAMENT RESULTS", "TENNIS HOME PAGE"]:
+            score = re.sub(r'([a-z])(\d{1})', r'\1 \2', match)
+            players = re.findall(r'([A-Z]\w+-*\w*)', score)
+            round_name = re.findall(r'^[^:]+', full_round)
+
+            if len(players) > 1:
+                print(f"{round_name[0]} of the {tournament_tag}")
+                print(f"Match: {players[0]} vs {players[1]}")
+                print(f"Score: {score}")
+
+# Example usage (auth and api would need to be defined elsewhere)
+# get_score(auth, api)

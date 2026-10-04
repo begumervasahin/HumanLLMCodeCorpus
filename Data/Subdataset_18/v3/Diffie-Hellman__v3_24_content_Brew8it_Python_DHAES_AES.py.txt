@@ -1,0 +1,92 @@
+from base64 import b64decode, b64encode
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+
+BLOCK_SIZE = 16
+
+def pad(data):
+    """
+    Pad the input string to be a multiple of BLOCK_SIZE.
+    
+    Args:
+        data (str): The input string to pad.
+    
+    Returns:
+        str: The padded string.
+    """
+    padding_length = BLOCK_SIZE - len(data) % BLOCK_SIZE
+    padding = chr(padding_length) * padding_length
+    return data + padding
+
+def unpad(data):
+    """
+    Remove the padding from the input string.
+    
+    Args:
+        data (str): The padded input string.
+    
+    Returns:
+        str: The unpadded string.
+    """
+    padding_length = ord(data[-1])
+    return data[:-padding_length]
+
+class AESCipher:
+    """
+    A class that provides AES encryption and decryption using a specified key.
+    
+    Usage:
+        c = AESCipher('password').encrypt('message')
+        m = AESCipher('password').decrypt(c)
+    
+    Tested under Python 3 and PyCryptoDome.
+    """
+    def __init__(self, key):
+        self.key = key.encode('utf-8')
+    
+    def encrypt(self, raw):
+        """
+        Encrypt the input string using AES encryption.
+        
+        Args:
+            raw (str): The input string to encrypt.
+        
+        Returns:
+            str: The base64 encoded encrypted string.
+        """
+        raw_padded = pad(raw)
+        iv = get_random_bytes(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        encrypted = cipher.encrypt(raw_padded.encode('utf-8'))
+        return b64encode(iv + encrypted).decode('utf-8')
+    
+    def decrypt(self, enc):
+        """
+        Decrypt the input string using AES encryption.
+        
+        Args:
+            enc (str): The base64 encoded encrypted string to decrypt.
+        
+        Returns:
+            str: The decrypted string.
+        """
+        enc_bytes = b64decode(enc)
+        iv = enc_bytes[:BLOCK_SIZE]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        decrypted = cipher.decrypt(enc_bytes[BLOCK_SIZE:])
+        return unpad(decrypted.decode('utf-8'))
+
+def main():
+    key = 'password'
+    message = 'This is a secret message.'
+    
+    cipher = AESCipher(key)
+    
+    encrypted_message = cipher.encrypt(message)
+    print(f'Encrypted: {encrypted_message}')
+    
+    decrypted_message = cipher.decrypt(encrypted_message)
+    print(f'Decrypted: {decrypted_message}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,127 @@
+import sys
+from copy import deepcopy
+from anytree import Node, RenderTree
+import numpy as np
+import matplotlib.pyplot as plt
+
+def read_data(path: str) -> list:
+    """
+    Reads data from a file and returns a list of nodes.
+    """
+    nodes = []
+    with open(path, 'r') as file:
+        for line in file:
+            layer = line.strip().split()
+            nodes.append(layer)
+    nodes.reverse()
+    return nodes
+
+def build_tree(nodes: list) -> tuple:
+    """
+    Builds a tree from the given nodes.
+    """
+    depth = len(nodes)
+    assert len(nodes[0]) == 1, "Root node must be a single element."
+    tree = []
+    leaves = []
+
+    for i in range(depth):
+        if i == 0:
+            root = Node(nodes[0][0])
+            tree.append([root])
+        else:
+            n_pre = len(nodes[i - 1])
+            n_cur = len(nodes[i])
+            assert n_cur == n_pre or n_cur == 2 * n_pre, "Incorrect number of nodes in layer: %d" % i
+            layer = []
+            for j in range(n_cur):
+                parent_index = j if n_cur == n_pre else j // 2
+                layer.append(Node(nodes[i][j], parent=tree[i - 1][parent_index]))
+                if i == depth - 1:
+                    leaves.append((i, j))
+            tree.append(layer)
+    return tree, leaves
+
+def update_tree(tree: list, i: int, j: int) -> list:
+    """
+    Updates the tree by removing the specified node.
+    """
+    dup_tree = deepcopy(tree)
+    layer = dup_tree[i]
+    node = layer[j]
+    node.parent = None
+    return dup_tree
+
+def traverse(tree: list, leaves: list, path: str):
+    """
+    Traverses the tree to find all paths and saves them to the paths set.
+    """
+    for i, j in leaves:
+        node = tree[i][j]
+        if node.is_leaf:
+            if node.is_root:
+                paths.add(path + node.name)
+                if len(paths) % 100 == 0:
+                    print(len(paths))
+                    sys.stdout.flush()
+                if len(paths) % 800 == 0:
+                    for path in paths:
+                        fw.write(f"{path}\n")
+                    fw.flush()
+                    sys.exit(-1)
+            else:
+                mod_leaves = deepcopy(leaves)
+                if len(node.parent.children) == 1:
+                    mod_leaves.append((i - 1, j if len(tree[i]) == len(tree[i - 1]) else j // 2))
+                mod_leaves.remove((i, j))
+                traverse(update_tree(tree, i, j), mod_leaves, path + node.name)
+
+def display_tree(root: Node):
+    """
+    Displays the tree structure.
+    """
+    for pre, fill, node in RenderTree(root):
+        print(f"{pre}{node.name}")
+
+def save_image(data: np.ndarray, filename: str):
+    """
+    Saves an image representation of the given data.
+    """
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    ax.imshow(data, cmap='gray', interpolation='nearest')
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
+
+if len(sys.argv) != 4:
+    print("Usage: python generate.py [input_file] [output_file] [image_file]", file=sys.stderr)
+    sys.exit(-1)
+
+# Read input data and build the tree
+nodes = read_data(sys.argv[1])
+tree, leaves = build_tree(nodes)
+
+# Initialize paths set and output file
+paths = set()
+fw = open(sys.argv[2], "w")
+
+# Traverse the tree to find all paths
+traverse(tree, leaves, "")
+
+# Display the input tree
+print("Input tree:")
+display_tree(tree[0][0])
+
+# Process paths and save to output file
+paths = sorted(paths, reverse=True)
+paths = [path[::-1] for path in paths]
+
+with open(sys.argv[2], "w") as fw:
+    for path in paths:
+        fw.write(f"{path}\n")
+
+# Create and save the image representation of paths
+matrix = np.array([list(map(int, list(e))) for e in paths])
+matrix = 1 - matrix
+plt.imshow(matrix, cmap='gray', interpolation='none')
+plt.savefig(sys.argv[3], bbox_inches='tight')

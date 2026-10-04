@@ -1,0 +1,92 @@
+import random
+def modular_exp(base, exponent, modulus):
+    result = 1
+    while exponent > 0:
+        if exponent & 1:
+            result = (result * base) % modulus
+        base = (base * base) % modulus
+        exponent >>= 1
+    return result
+def generate_random_odd_number(bit_length):
+    bits = [random.randint(0, 1) for _ in range(bit_length - 2)]
+    result = 1
+    for bit in bits:
+        result = result * 2 + bit
+    return result * 2 + 1
+def miller_rabin_primality_test(n, rounds=100):
+    if n in (2, 3):
+        return True
+    if n == 1 or n % 2 == 0:
+        return False
+    d = n - 1
+    s = 0
+    while d % 2 == 0:
+        d
+        s += 1
+    for _ in range(rounds):
+        a = random.randint(2, n - 2)
+        x = modular_exp(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(s - 1):
+            x = modular_exp(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+def generate_prime(bit_length):
+    while True:
+        candidate = generate_random_odd_number(bit_length)
+        if miller_rabin_primality_test(candidate):
+            return candidate
+def extended_gcd(a, b):
+    old_r, r = a, b
+    old_s, s = 1, 0
+    old_t, t = 0, 1
+    while r != 0:
+        quotient = old_r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    return old_r, old_s, old_t
+def generate_private_key(e, phi):
+    _, x, _ = extended_gcd(e, phi)
+    return x % phi
+def LSB_leak_attack(e, n, ciphertext, oracle):
+    lower_bound, upper_bound = 0.0, n
+    i = 1
+    while upper_bound - lower_bound >= 1:
+        midpoint = (lower_bound + upper_bound) / 2
+        if oracle(modular_exp(2, i * e, n) * ciphertext % n) == 0:
+            upper_bound = midpoint
+        else:
+            lower_bound = midpoint
+        i += 1
+    return int(lower_bound)
+if __name__ == '__main__':
+    bit_length = 256
+    p = generate_prime(bit_length)
+    q = generate_prime(bit_length)
+    e = 65537
+    phi = (p - 1) * (q - 1)
+    d = generate_private_key(e, phi)
+    n = p * q
+    print("p:", p)
+    print("q:", q)
+    print("e:", e)
+    print("d:", d)
+    print("n:", n)
+    print()
+    message = 123456789
+    ciphertext = modular_exp(message, e, n)
+    decrypted_message = modular_exp(ciphertext, d, n)
+    print("Clear text:", message)
+    print("Encrypted text:", ciphertext)
+    print("Decrypted text:", decrypted_message)
+    print()
+    print("LSB Leak Attack")
+    oracle = lambda x: modular_exp(x, d, n) % 2
+    leaked_message = LSB_leak_attack(e, n, ciphertext, oracle)
+    print("Leaked clear text:", leaked_message)
+    print()

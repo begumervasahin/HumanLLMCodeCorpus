@@ -1,0 +1,84 @@
+import nltk
+from nltk.tokenize import word_tokenize
+from stop_words import get_stop_words
+from nltk.stem.isri import ISRIStemmer
+from nltk.tag import StanfordPOSTagger
+import os
+
+class Song:
+    def __init__(self, lyrics):
+        self.lyrics = lyrics
+
+    def read_from_list(self):
+        tokenized_sents = [word_tokenize(sent) for sent in self.lyrics]
+        as_list = "\n".join([", ".join(sent) for sent in tokenized_sents])
+        return as_list
+
+    def tokenizer(self):
+        return word_tokenize(self.lyrics[0])
+
+    def stop_words_remove(self):
+        doc_a = self.lyrics[0]
+        sw = get_stop_words('ar')
+        tokens = word_tokenize(doc_a)
+        stopped_tokens = [token for token in tokens if token not in sw]
+        return ' '.join(stopped_tokens)
+
+    def stemming(self):
+        st = ISRIStemmer()
+        tokens = self.tokenizer()
+        stemmed_tokens = [st.stem(token) for token in tokens]
+        return ' '.join(stemmed_tokens)
+
+    def part_of_speech(self):
+        os.environ["JAVA_HOME"] = "/usr/bin/java"
+        jar = '/path/to/stanford-postagger.jar'
+        model = '/path/to/arabic.tagger'
+        tagger = StanfordPOSTagger(model, jar)
+        tagger.java_options = '-mx4096m'
+        tagged_text = tagger.tag(word_tokenize(self.lyrics[0]))
+        return ' / '.join([f"{word} {tag}" for word, tag in tagged_text])
+
+# Writing sample lyrics to a file
+with open("testfile.txt", "w", encoding="utf-8") as file:
+    file.write("ليس العيب في أن نسقط ولكن العيب أن لا تستطيع النهوض.\n")
+    file.write("من أحب الله، رأى كل شيء جميلا.\n")
+    file.write("الفاشلون يقولون: إن النجاح هو مجرد حظ.\n")
+    file.write("لا تبصق في البئر، فقد تشرب منه يوما.\n")
+    file.write("يسرنا إعلامكم بإنضمام فروعنا التالية لخدمة عملائنا الكرام.\n")
+    file.write("رسمياً: ريال مدريد سيواجه بايرن ميونخ في دور الربع النهائي لدوري أبطال أوروبا.\n")
+
+# Reading the lyrics from the file
+with open("testfile.txt", "r", encoding="utf-8") as file:
+    rawsong = file.read()
+
+# Creating a Song object
+my_song = Song([rawsong])
+
+print('|IIIIIIIIIIIIII| First Stage |IIIIIIIIIIIIII|\n')
+print('\n------- tokenizer ------------\n')
+print(my_song.tokenizer())
+print('\n------- read ------------\n')
+print(my_song.read_from_list())
+print('\n------- stop words ------------\n')
+print(my_song.stop_words_remove())
+print('\n------- stemming ------------\n')
+print(my_song.stemming())
+print('\n------- part of speech ------------\n')
+print(my_song.part_of_speech())
+
+print('\n\n|IIIIIIIIIIIIII| Second Stage |IIIIIIIIIIIIII|\n')
+print('\n------- tokenizer ------------\n')
+print(my_song.tokenizer())
+print('\n--------- read ------------\n')
+print(my_song.read_from_list())
+print('\n--------- stop words ------------\n')
+song_stop_word_removed = [my_song.stop_words_remove()]
+my_song_stage2 = Song(song_stop_word_removed)
+print(my_song_stage2.stop_words_remove())
+print('\n--------- stemming ------------\n')
+stemming = [my_song_stage2.stemming()]
+my_song_stage3 = Song(stemming)
+print(my_song_stage3.stemming())
+print('\n-------- part of speech ------------\n')
+print(my_song.part_of_speech())

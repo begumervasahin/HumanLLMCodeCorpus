@@ -1,0 +1,92 @@
+import pandas as pd
+import re
+from datetime import datetime
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+from wordcloud import WordCloud
+import seaborn as sns
+import numpy as np
+from PIL import Image
+
+# Load the data
+news = pd.read_csv('news.csv')
+
+# Filter data for years between 2011 and 2019
+news = news[(news['Year'] >= 2011) & (news['Year'] <= 2019)]
+
+# Combine 'Year', 'Month', and 'Day' into a single 'Date' column
+news['Date'] = news['Year'].astype(str) + ' ' + news['Month'] + ' ' + news['Day'].astype(str)
+news['Date'] = news['Date'].apply(lambda x: datetime.strptime(x, '%Y %b %d').date())
+
+# Function to check for keywords
+def check_any(pattern1, pattern2, string):
+    string = string.lower()
+    if re.search(pattern1, string) is not None and re.search(pattern2, string) is not None:
+        return 1
+    else:
+        return 0
+
+# Apply the check_any function to the 'Article' column
+news['Article_bank_purdue'] = news['Article'].apply(lambda x: check_any('purdue', 'bankruptcy', x))
+print(news['Article_bank_purdue'].sum())
+
+# Create columns for keyword counts in 'Header' and 'Article'
+def check_keyword(column, keyword):
+    return column.apply(lambda x: 1 if re.search(keyword, x.lower()) else 0)
+
+for column in ['Header', 'Article']:
+    for keyword in ['opioid', 'purdue', 'bankruptcy']:
+        news[f'{column}_{keyword}'] = check_keyword(news[column], keyword)
+        print(news[f'{column}_{keyword}'].sum())
+
+# Convert 'Date' column to datetime and set as index
+news['Date'] = pd.to_datetime(news['Date'])
+news = news.set_index('Date')
+
+# Filter the data for the specified date range
+news = news['2011-09-26':'2019-09-14']
+
+# Drop unnecessary columns
+news = news.drop(columns=['Unnamed: 0'])
+
+# Group data by year and aggregate counts of keyword appearances
+df_grouped = news.groupby(news.index.year).agg({
+    'Article_opioid': 'sum',
+    'Article_purdue': 'sum',
+    'Article_bank_purdue': 'sum'
+})
+print(df_grouped)
+
+# Compute the correlation matrix
+df_corr = df_grouped.corr(method="pearson")
+print(df_corr)
+
+# Plot the number of articles per year containing certain words
+sns.set(rc={'figure.figsize': (11, 4)})
+ax = df_grouped.plot(marker='o', linestyle='-')
+ax.set_ylabel('Number of Articles')
+ax.set_title('Number of Articles per Year Containing Certain Words')
+plt.savefig('Trend_words.png', bbox_inches='tight')
+
+# Create a word cloud for articles containing 'opioid'
+stop_words = set(stopwords.words('english')).union(set([
+    'one', 'told cnn', 'trump', 'president', 'say', 'said', 'may', 'new', 'according', 'many', 'two',
+    'make', 'made', 'including', 'work', 'need', 'know', 'year', 'still', 'want', 'take', 'going',
+    'state', 'monday', 'first', 'week', 'pr', 'michael', 'jackson', 'donald'
+]))
+
+mask = np.array(Image.open("usa_map.jpg"))
+wc = WordCloud(background_color="black", max_words=2000, width=800, height=400, mask=mask)
+
+articles_with_opioid = news.loc[news.Article_opioid == 1]['Article']
+for_cloud = " ".join(
+    word for text in articles_with_opioid
+    for word in text.lower().split()
+    if word not in stop_words
+)
+
+wc.generate(for_cloud)
+wc.to_file("cloud_opioid.png")
+
+# Save the processed dataframe to a new CSV file
+news.to_csv('news_final.csv')

@@ -1,0 +1,76 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+def generate_exponential_sma(data, window):
+    """
+    Generates exponential Simple Moving Average (eSMA) from data.
+    
+    Parameters:
+    data (pd.Series): Time series data.
+    window (int): Sliding window size.
+    
+    Returns:
+    pd.Series: Exponential SMA result.
+    """
+    return data.ewm(span=window).mean()
+
+def import_clean_ts(filename):
+    """
+    Reads and selects time series data from a CSV file.
+    
+    Parameters:
+    filename (str): Path to the CSV file.
+    
+    Returns:
+    pd.DataFrame: Cleaned time series data sorted by date.
+    """
+    ts_data = pd.read_csv(filename)
+    ts_data['Date'] = pd.to_datetime(ts_data['Date'])
+    ts_data.sort_values(by='Date', inplace=True)
+    return ts_data
+
+def collect_user_input(window_default):
+    """
+    Collects window size from user or uses the default value.
+    
+    Parameters:
+    window_default (int): Default window size in weeks.
+    
+    Returns:
+    int: User-specified or default window size in days.
+    """
+    user_input = input(f'Enter Long Term Window or press Enter to use default ({window_default} Weeks): ')
+    if not user_input:
+        return window_default * 5  # Convert weeks to days
+    return int(user_input) * 5  # Convert weeks to days
+
+def main():
+    """
+    Main function to read data, apply exponential smoothing, and plot results.
+    """
+    # Import and clean the stock data
+    stock_data = import_clean_ts("data/goog.csv")
+    stock_close_prices = pd.Series(np.float32(stock_data['Close']), index=stock_data['Date'])
+    
+    # Collect user input and generate exponential SMAs
+    long_term_window = collect_user_input(4)
+    short_term_window = collect_user_input(2)
+    
+    long_term_sma = generate_exponential_sma(stock_close_prices, long_term_window)
+    short_term_sma = generate_exponential_sma(stock_close_prices, short_term_window)
+    
+    # Calculate differences between long-term and short-term averages
+    diff_long_short = long_term_sma - short_term_sma
+    smoothed_diff = generate_exponential_sma(diff_long_short, 7.5)
+    second_derivative = smoothed_diff - diff_long_short
+    
+    # Plot the results
+    plt.figure(figsize=(10, 6))
+    second_derivative.plot(style='k', title="2nd Derivative of GOOG Close Price")
+    plt.xlabel('Date')
+    plt.ylabel('Value')
+    plt.show()
+
+if __name__ == '__main__':
+    main()

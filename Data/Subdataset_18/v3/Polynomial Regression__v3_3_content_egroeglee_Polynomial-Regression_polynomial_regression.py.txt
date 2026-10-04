@@ -1,0 +1,47 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
+# Load the dataset
+dataset = pd.read_csv('Position_Salaries.csv')
+x = dataset.iloc[:, 1:2].values  # Extracting the Position levels
+y = dataset.iloc[:, 2].values    # Extracting the Salaries
+
+# Fit Linear Regression to the dataset
+linear_regressor = LinearRegression()
+linear_regressor.fit(x, y)
+
+# Fit Polynomial Regression to the dataset
+polynomial_features = PolynomialFeatures(degree=4)
+x_poly = polynomial_features.fit_transform(x)
+polynomial_regressor = LinearRegression()
+polynomial_regressor.fit(x_poly, y)
+
+# Function to visualize results
+def visualize_results(x, y, model, title, xlabel, ylabel, transform=None):
+    plt.scatter(x, y, color='red')
+    if transform:
+        x_grid = np.arange(min(x), max(x), 0.1).reshape(-1, 1)  # Create a grid for smoother curve
+        plt.plot(x_grid, model.predict(transform(x_grid)), color='blue')
+    else:
+        plt.plot(x, model.predict(x), color='blue')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+
+# Visualize the Linear Regression results
+visualize_results(x, y, linear_regressor, 'Truth or Bluff (Linear Regression)', 'Position Level', 'Salary')
+
+# Visualize the Polynomial Regression results
+visualize_results(x, y, polynomial_regressor, 'Truth or Bluff (Polynomial Regression)', 'Position Level', 'Salary', transform=polynomial_features.fit_transform)
+
+# Predict a new result with Linear Regression
+linear_prediction = linear_regressor.predict([[6.5]])
+print(f"Linear Regression Prediction for position level 6.5: {linear_prediction[0]}")
+
+# Predict a new result with Polynomial Regression
+poly_prediction = polynomial_regressor.predict(polynomial_features.fit_transform([[6.5]]))
+print(f"Polynomial Regression Prediction for position level 6.5: {poly_prediction[0]}")

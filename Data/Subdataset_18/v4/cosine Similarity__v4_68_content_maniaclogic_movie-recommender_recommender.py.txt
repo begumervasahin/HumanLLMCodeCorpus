@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+from models import R, nmf, DF  # Ensure that R, nmf, and DF are properly defined and loaded in the models module
+
+def recommend(user_input_dict):
+    """
+    Generate movie recommendations based on user input ratings.
+
+    Args:
+        user_input_dict (dict): Dictionary containing movie IDs as keys and user ratings as values.
+
+    Returns:
+        list: List of recommended movie titles.
+    """
+    # Get all movie IDs from the rating matrix columns
+    movie_ids = sorted(R.columns)
+    
+    # Initialize a dictionary with NaN values for all movie IDs
+    ratings_dict = dict(zip(movie_ids, [np.nan] * len(movie_ids)))
+    
+    # Update ratings_dict with user input ratings
+    for movie_id, rating in user_input_dict.items():
+        ratings_dict[movie_id] = rating
+    
+    # Create user profile DataFrame
+    user_profile = pd.DataFrame([list(ratings_dict.values())], columns=movie_ids)
+    
+    # Fill missing values with 3.0 (neutral rating)
+    user_profile_filled = user_profile.fillna(3.0)
+    
+    # Transform the user profile using the pre-trained NMF model
+    hidden_profile = nmf.transform(user_profile_filled)
+    
+    # Predict ratings for all movies
+    predictions = np.dot(hidden_profile, nmf.components_)
+    
+    # Convert predictions to DataFrame
+    predicted_ratings = pd.DataFrame(predictions, columns=R.columns)
+    
+    # Get movies that the user has not watched
+    unwatched_movies = user_profile.isna().T[0]
+    movies_not_watched = predicted_ratings.T[0][unwatched_movies]
+    
+    # Sort the predicted ratings for unwatched movies in descending order and get the top 5
+    top_movie_ids = movies_not_watched.sort_values(ascending=False).index[:5]
+    
+    # Get movie titles for the recommended movie IDs
+    recommendations = DF.loc[DF['movieId'].isin(top_movie_ids), 'title'].values.tolist()
+    
+    return recommendations
+
+# Example usage
+if __name__ == "__main__":
+    # Example user input dictionary
+    user_input_dict = {
+        1: 5.0,  # User rated movie with ID 1 as 5.0
+        2: 3.5,  # User rated movie with ID 2 as 3.5
+        # Add more user ratings as needed
+    }
+    
+    recommendations = recommend(user_input_dict)
+    print("Recommended Movies:")
+    for movie in recommendations:
+        print(movie)

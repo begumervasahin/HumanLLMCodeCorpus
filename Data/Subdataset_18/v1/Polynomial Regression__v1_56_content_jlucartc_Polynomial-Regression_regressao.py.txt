@@ -1,0 +1,60 @@
+import sympy as sp
+import numpy as np
+
+def montarEquacao(incognitas, x):
+    y = 0
+    for i in range(len(incognitas)):
+        y += incognitas[i] * (x ** (len(incognitas) - (i + 1)))
+    return y
+
+def isFloat(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+# Function to read data from 'data.csv'
+def read_data(file_name='data.csv'):
+    xLista = []
+    yLista = []
+    with open(file_name, 'r') as f:
+        for line in f:
+            s = line.split(',')
+            if isFloat(s[0]) and isFloat(s[1]):
+                xLista.append(float(s[0]))
+                yLista.append(float(s[1].strip()))
+    return xLista, yLista
+
+def main():
+    # Input for the degree of the polynomial regression
+    n = int(input("Digite a ordem da regressão (ordem máxima = 24): "))
+    if n > 24:
+        print("\n\n------------------\n  Ordem inválida  \n------------------\n\n")
+        return
+
+    # Define symbol 'x' and list of coefficients
+    x = sp.symbols('x')
+    lista_simbolos = [sp.symbols(chr(i)) for i in range(97, 123)] # a to z
+    incognitas = lista_simbolos[:n+1]
+    
+    # Read data from file
+    xLista, yLista = read_data()
+    
+    # Construct the polynomial equation
+    h = montarEquacao(incognitas, x)
+    
+    # Sum of squared differences
+    somaQuadradaDiferencas = sum((yLista[i] - h.subs(x, xLista[i]))**2 for i in range(len(xLista)))
+    
+    # Calculate the derivatives and solve
+    diffs = [sp.diff(somaQuadradaDiferencas, incognitas[i]) for i in range(len(incognitas))]
+    solutions = sp.solve(diffs, incognitas)
+    
+    # Substitute solutions into the polynomial
+    k = h.subs(solutions)
+    
+    print("Modelo: ", k)
+
+if __name__ == "__main__":
+    main()

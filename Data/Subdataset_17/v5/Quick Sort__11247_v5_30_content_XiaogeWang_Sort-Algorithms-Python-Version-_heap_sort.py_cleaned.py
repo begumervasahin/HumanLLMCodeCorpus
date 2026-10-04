@@ -1,0 +1,48 @@
+from collections import deque
+class MinHeap:
+    def __init__(self):
+        self.heap = deque()
+    def push(self, value):
+        self.heap.append(value)
+        self._sift_up()
+    def pop(self):
+        if not self.heap:
+            raise IndexError("pop from an empty heap")
+        min_value = self.heap[0]
+        last_element = self.heap.pop()
+        if self.heap:
+            self.heap[0] = last_element
+            self._sift_down()
+        return min_value
+    def _sift_up(self):
+        idx = len(self.heap) - 1
+        parent_idx = (idx - 1)
+        while idx > 0 and self.heap[idx] < self.heap[parent_idx]:
+            self.heap[idx], self.heap[parent_idx] = self.heap[parent_idx], self.heap[idx]
+            idx = parent_idx
+            parent_idx = (idx - 1)
+    def _sift_down(self):
+        idx = 0
+        length = len(self.heap)
+        left_child_idx = 2 * idx + 1
+        right_child_idx = 2 * idx + 2
+        while left_child_idx < length:
+            smallest_idx = idx
+            if self.heap[left_child_idx] < self.heap[smallest_idx]:
+                smallest_idx = left_child_idx
+            if right_child_idx < length and self.heap[right_child_idx] < self.heap[smallest_idx]:
+                smallest_idx = right_child_idx
+            if smallest_idx == idx:
+                break
+            self.heap[idx], self.heap[smallest_idx] = self.heap[smallest_idx], self.heap[idx]
+            idx = smallest_idx
+            left_child_idx = 2 * idx + 1
+            right_child_idx = 2 * idx + 2
+data = [8, 1, 3, 4, 2, 5, 0, 9, 6, 7]
+heap = MinHeap()
+for num in data:
+    heap.push(num)
+sorted_data = []
+for _ in range(len(data)):
+    sorted_data.append(heap.pop())
+print(sorted_data)

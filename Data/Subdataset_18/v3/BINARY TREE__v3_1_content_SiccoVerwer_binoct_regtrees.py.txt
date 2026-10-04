@@ -1,0 +1,113 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier, export_graphviz
+from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
+
+# Global variables
+df = None
+dt = None
+features = None
+targets = None
+
+def get_data(inputfile):
+    global df
+    df = pd.read_csv(inputfile, sep=';')
+    return df
+
+def prepare_data():
+    global features, targets
+    features = list(df.columns)
+    target_feature = features.pop()  # Remove and get the last column name
+    targets = df[target_feature].unique()
+    
+    X = df[features]
+    y = df[target_feature]
+    
+    return X, y, target_feature
+
+def learn_trees(depth):
+    global dt
+    
+    X, y, target_feature = prepare_data()
+    print('Targets:', targets)
+    print('Features:', features)
+    
+    # Split data
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.0, random_state=0)
+    
+    # Train Decision Tree Classifier
+    dt = DecisionTreeClassifier(max_depth=depth)
+    dt.fit(X_train, y_train)
+    prediction = dt.predict(X_train)
+    
+    # Print metrics
+    print('Accuracy:', accuracy_score(y_train, prediction))
+    print('Number correct:', accuracy_score(y_train, prediction) * len(y_train))
+    print('R2 Score:', r2_score(y_train, prediction))
+    print('Absolute error:', mean_absolute_error(y_train, prediction) * len(X_train))
+
+def learn_reg_trees(depth):
+    global dt
+    
+    X, y, target_feature = prepare_data()
+    print('Targets:', targets)
+    print('Features:', features)
+    
+    # Split data
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.0, random_state=0)
+    
+    # Train Decision Tree Regressor
+    dt = DecisionTreeRegressor(max_depth=depth, criterion="mae")
+    dt.fit(X_train, y_train)
+    prediction = dt.predict(X_train)
+    
+    # Print metrics
+    print('R2 Score:', r2_score(y_train, prediction))
+    print('Absolute error:', mean_absolute_error(y_train, prediction) * len(X_train))
+
+def generate_pseudo_code(spacer_base="    "):
+    global dt, features, targets
+    
+    tree = dt.tree_
+    feature_names = features
+    target_names = targets
+    
+    left = tree.children_left
+    right = tree.children_right
+    threshold = tree.threshold
+    feats = [feature_names[i] for i in tree.feature]
+    value = tree.value
+    
+    def recurse(node, depth):
+        spacer = spacer_base * depth
+        if threshold[node] != -2:
+            print(f"{spacer}if ( {feats[node]} <= {threshold[node]} ) {{")
+            if left[node] != -1:
+                recurse(left[node], depth + 1)
+            print(f"{spacer}}}\n{spacer}else {{")
+            if right[node] != -1:
+                recurse(right[node], depth + 1)
+            print(f"{spacer}}}")
+        else:
+            target = value[node]
+            target_name = target_names[np.argmax(target)]
+            target_count = int(np.sum(target))
+            print(f"{spacer}return {target_name} ( {target_count} examples )")
+    
+    recurse(0, 0)
+
+def visualize_tree(output_file="tree.dot"):
+    """Visualize the decision tree using graphviz."""
+    with open(output_file, 'w') as f:
+        export_graphviz(dt, out_file=f, feature_names=features)
+
+def run_tree():
+    global df
+    inputfile = 'data.csv'  # Specify the path to your CSV file here
+    df = get_data(inputfile)
+    learn_trees(3)
+    generate_pseudo_code()
+
+if __name__ == '__main__':
+    run_tree()

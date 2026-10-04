@@ -1,0 +1,156 @@
+import os
+import torch
+import json
+import glob
+from configs.evaluation_config import obtain_evaluation_args
+from models.new_gumbel_model import NewGumbelAutoDeeplab
+from utils.common import (
+    set_manual_seed, 
+    time_for_file, 
+    save_configs, 
+    create_exp_dir, 
+    configs_resume
+)
+from run_manager import RunConfig, RunManager
+from utils.logger import prepare_logger, display_all_families_information
+from utils.visdom_utils import visdomer
+from models.gumbel_cells import autodeeplab, proxyless, my_search_space
+
+def load_configurations(args):
+    """Load and return the configuration dictionary from a checkpoint."""
+    config_file_path = os.path.join(args.resume_file, 'retrain.config')
+    if not os.path.exists(config_file_path):
+        raise FileNotFoundError(f'Cannot find config file: {config_file_path}')
+    
+    with open(config_file_path, 'r') as config_file:
+        config_dict = json.load(config_file)
+    
+    return config_dict
+
+def setup_experiment(args, config_dict):
+    """Setup the experiment directory and environment."""
+    previous_exp_time = config_dict['path'].split('/')[-1].split('-resume-')[0]
+    current_exp_time = time_for_file()
+    args.path = os.path.join(args.path, args.exp_name, f'{current_exp_time}-evaluation-{previous_exp_time}')
+
+    # Set the number of threads and random seed
+    torch.set_num_threads(args.workers)
+    set_manual_seed(args.random_seed)
+
+    # Create experiment directory and save configurations
+    os.makedirs(args.path, exist_ok=True)
+    create_exp_dir(args.path, scripts_to_save=glob.glob('./*/*.py'))
+    save_configs(args.__dict__, args.path, 'test')
+
+def initialize_search_space(args):
+    """Initialize and return the search space based on the argument provided."""
+    search_spaces = {
+        'autodeeplab': autodeeplab,
+        'proxyless': proxyless,
+        'my_search_space': my_search_space
+    }
+
+    if args.search_space not in search_spaces:
+        raise ValueError(f'Search space {args.search_space} is not supported')
+    
+    return search_spaces[args.search_space]
+
+def load_checkpoint(args, logger):
+    """Load the model checkpoint."""
+    checkpoint_file = os.path.join(args.resume_file, 'checkpoints', f'seed-{args.random_seed}-retrain-best.pth')
+
+    if not os.path.exists(checkpoint_file):
+        raise FileNotFoundError(f'Cannot find checkpoint file: {checkpoint_file}')
+    
+    logger.log(f'=> Loading checkpoint from {checkpoint_file} in the retrain checkpoint')
+    return torch.load(checkpoint_file)
+
+def process_cell_genotypes(cell_genotypes, conv_candidates):
+    """Process the cell genotypes using the convolution candidates."""
+    new_genotypes = []
+    for index, genotype in cell_genotypes:
+        new_genotype = [(node_str, conv_candidates[select_index]) for node_str, select_index in genotype]
+        new_genotypes.append((index, new_genotype))
+    return new_genotypes
+
+def log_genotypes(logger, actual_path, new_genotypes):
+    """Log the obtained actual path and genotypes."""
+    log_str = f'Obtained actual_path and cell_genotypes:\nActual_path: {actual_path}\nGenotype:\n'
+    for index, genotype in new_genotypes:
+        log_str += f'index: {index}, arch: {genotype}\n'
+    logger.log(log_str, mode='info')
+
+def main(args):
+    # Ensure CUDA is available
+    if not torch.cuda.is_available():
+        raise RuntimeError('CUDA is not available')
+
+    # Enable and configure cuDNN
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = True
+
+    # Load configuration from the checkpoint
+    config_dict = load_configurations(args)
+
+    # Resume configurations from the checkpoint
+    configs_resume(args, config_dict, mode='test')
+
+    # Prepare experiment paths and directories
+    setup_experiment(args, config_dict)
+
+    # Initialize logger
+    logger = prepare_logger(args)
+    logger.log(f'=> Loading configs from {os.path.join(args.resume_file, "retrain.config")} in the retrain checkpoint')
+
+    # Determine the search space
+    conv_candidates = initialize_search_space(args)
+
+    # Set regularization loss parameters
+    if args.reg_loss_type == 'add':
+        args.reg_loss_params = {'lambda': args.reg_loss_lambda}
+    elif args.reg_loss_type == 'mul':
+        args.reg_loss_params = {'alpha': args.reg_loss_alpha, 'beta': args.reg_loss_beta}
+    else:
+        args.reg_loss_params = None
+
+    # Load model checkpoint
+    checkpoint = load_checkpoint(args, logger)
+    actual_path, cell_genotypes = checkpoint['actual_path'], checkpoint['cell_genotypes']
+
+    # Process cell genotypes with convolution candidates
+    new_genotypes = process_cell_genotypes(cell_genotypes, conv_candidates)
+
+    # Log the obtained paths and genotypes
+    log_genotypes(logger, actual_path, new_genotypes)
+
+    # Initialize the model for evaluation
+    model = NewGumbelAutoDeeplab(
+        nb_layers=args.nb_layers, 
+        filter_multiplier=args.filter_multiplier, 
+        block_multiplier=args.block_multiplier, 
+        steps=args.steps,
+        nb_classes=args.nb_classes, 
+        actual_path=actual_path, 
+        cell_genotypes=cell_genotypes, 
+        search_space=args.search_space, 
+        affine=True
+    )
+
+    # Set up the run manager and validate the model
+    run_config = RunConfig(**args.__dict__)
+    run_manager = RunManager(args.path, model, logger, run_config)
+    model.load_state_dict(checkpoint['state_dict'])
+    display_all_families_information(args, 'retrain', run_manager, logger)
+
+    logger.log(f'=> Loaded checkpoint file {os.path.join(args.resume_file, "checkpoints", f"seed-{args.random_seed}-retrain-best.pth")} from the retrain-best')
+    run_manager.validate(is_test=True, use_train_mode=False)
+    logger.close()
+
+if __name__ == '__main__':
+    args = obtain_evaluation_args()
+
+    if not os.path.exists(args.resume_file):
+        raise FileNotFoundError(f'Cannot find resume_file: {args.resume_file}')
+
+    main(args)

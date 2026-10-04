@@ -1,0 +1,48 @@
+import requests
+from random import choice
+from throttle import Throttle
+class Downloader:
+    def __init__(self, delay=5, user_agent='wswp', proxies=None, cache=None, timeout=60):
+        self.throttle = Throttle(delay)
+        self.user_agent = user_agent
+        self.proxies = proxies
+        self.cache = cache if cache is not None else {}
+        self.timeout = timeout
+    def __call__(self, url, num_retries=2):
+        self.num_retries = num_retries
+        result = self._get_cached_result(url)
+        if result is None or (self._is_server_error(result) and self.num_retries):
+            self.throttle.wait(url)
+            proxies = self._get_random_proxy()
+            headers = self._get_headers()
+            result = self._download(url, headers, proxies)
+            self.cache[url] = result
+        return result['html']
+    def _get_cached_result(self, url):
+        try:
+            result = self.cache[url]
+            print('Loaded from cache:', url)
+            return result
+        except KeyError:
+            return None
+    def _is_server_error(self, result):
+        return 500 <= result['code'] < 600
+    def _get_random_proxy(self):
+        return choice(self.proxies) if self.proxies else None
+    def _get_headers(self):
+        return {'User-Agent': self.user_agent}
+    def _download(self, url, headers, proxies):
+        print('Downloading:', url)
+        try:
+            response = requests.get(url, headers=headers, proxies=proxies, timeout=self.timeout)
+            html = response.text
+            if response.status_code >= 400:
+                print('Download error:', response.text)
+                html = None
+                if self._is_server_error({'code': response.status_code}):
+                    self.num_retries -= 1
+                    return self._download(url, headers, proxies)
+        except requests.exceptions.RequestException as e:
+            print('Download error:', e)
+            return {'html': None, 'code': 500}
+        return {'html': html, 'code': response.status_code}

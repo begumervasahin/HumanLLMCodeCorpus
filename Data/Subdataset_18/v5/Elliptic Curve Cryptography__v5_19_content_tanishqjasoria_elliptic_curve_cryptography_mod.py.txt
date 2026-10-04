@@ -1,0 +1,80 @@
+"""
+This is a naive implementation of various modular
+arithmetic operations which would be used for various operations
+in analyzing and solving Elliptic Curves.
+"""
+
+def euclidean_gcd(a, b):
+    """
+    Implementation of Euclidean algorithm to get the GCD of two numbers.
+    :param a: First number
+    :param b: Second number
+    :return: Greatest common divisor of a and b
+    """
+    while b:
+        a, b = b, a % b
+    return a
+
+def extended_euclidean(a, b):
+    """
+    Extended algorithm for calculation of GCD of two numbers.
+    It also provides additional values x, y such that ax + by = gcd(a, b).
+    :param a: First number
+    :param b: Second number
+    :return: Tuple (x, y, gcd) where x and y are coefficients and gcd is the greatest common divisor
+    """
+    x, y, gcd = _extended_euclidean_util(a, b)
+    return x, y, gcd
+
+def _extended_euclidean_util(a, b):
+    """
+    Utility function for calculation of x, y, gcd for ax + by = gcd(a, b).
+    :param a: First number
+    :param b: Second number
+    :return: Tuple (x, y, gcd)
+    """
+    if a == 0:
+        return 0, 1, b
+    x1, y1, gcd = _extended_euclidean_util(b % a, a)
+    x = y1 - (b // a) * x1
+    y = x1
+    return x, y, gcd
+
+def inverse_brute_force(n, p):
+    """
+    Calculation of inverse in modular arithmetic using brute force.
+    Calculate inverse of n in n (mod p).
+    :param n: Number to find the inverse of
+    :param p: Modulus
+    :return: Modular inverse of n mod p
+    """
+    for i in range(1, p):
+        if (n * i) % p == 1:
+            return i
+    raise ValueError(f"No modular inverse found for {n} mod {p}")
+
+def inverse_extended_euclidean(n, p):
+    """
+    Use extended Euclidean method to calculate inverse in modular arithmetic.
+    Calculate inverse of n in n (mod p).
+    :param n: Number to find the inverse of
+    :param p: Modulus
+    :return: Modular inverse of n mod p
+    """
+    n = n % p
+    inv, _, gcd = extended_euclidean(n, p)
+    if gcd != 1:
+        raise ValueError(f"No modular inverse exists for {n} mod {p}")
+    return inv % p
+
+# Example usage
+if __name__ == "__main__":
+    a, b = 30, 20
+    print(f"GCD of {a} and {b} using Euclidean algorithm: {euclidean_gcd(a, b)}")
+
+    x, y, gcd = extended_euclidean(a, b)
+    print(f"Extended Euclidean algorithm result for {a} and {b}: x={x}, y={y}, gcd={gcd}")
+
+    n, p = 3, 11
+    print(f"Brute force inverse of {n} mod {p}: {inverse_brute_force(n, p)}")
+    print(f"Extended Euclidean inverse of {n} mod {p}: {inverse_extended_euclidean(n, p)}")

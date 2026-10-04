@@ -1,0 +1,76 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+
+# Load the dataset
+dataset = pd.read_csv('datas.csv')
+
+# Define the feature matrix X and the target vector y
+X = dataset.iloc[0:100, 1:6].values
+y = dataset.iloc[0:100, 6].values
+
+# Define the prediction feature matrix
+X_Pred = dataset.iloc[100:120, 1:6].values
+
+# Initialize KFold cross-validation with 10 splits
+kf = KFold(n_splits=10)
+
+# Initialize lists to hold predictions and true values
+y_preds = []
+y_tests = []
+
+# Initialize an array to hold final predictions
+Y_final_pred = np.array([])
+first_iteration = True
+
+# Perform KFold cross-validation
+for train_index, test_index in kf.split(X):
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
+    
+    # Initialize and train the RandomForestRegressor
+    regressor = RandomForestRegressor(n_estimators=10, random_state=0)
+    regressor.fit(X_train, y_train)
+    
+    # Predict on the test set
+    y_pred = regressor.predict(X_test)
+    
+    # Append predictions and true values to respective lists
+    y_preds.extend(y_pred)
+    y_tests.extend(y_test)
+    
+    # Predict on the prediction feature matrix
+    if first_iteration:
+        Y_final_pred = regressor.predict(X_Pred)
+        first_iteration = False
+    else:
+        Y_final_pred = np.vstack([Y_final_pred, regressor.predict(X_Pred)])
+
+# Print the final predictions before averaging
+print("Final Predictions before averaging:\n", Y_final_pred)
+
+# Calculate the mean of the final predictions
+Y_final_pred = np.mean(Y_final_pred, axis=0)
+
+# Plot true values vs predictions
+plt.scatter(y_tests, y_preds)
+plt.plot(y_tests, y_tests, color="black")
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("True Values vs Predictions")
+plt.show()
+
+# Calculate and print evaluation metrics
+ex_var_score = explained_variance_score(y_tests, y_preds)
+m_absolute_error = mean_absolute_error(y_tests, y_preds)
+m_squared_error = mean_squared_error(y_tests, y_preds)
+r_2_score = r2_score(y_tests, y_preds)
+
+print(f"Explained Variance Score: {ex_var_score:.4f}")
+print(f"Mean Absolute Error: {m_absolute_error:.4f}")
+print(f"Mean Squared Error: {m_squared_error:.4f}")
+print(f"R Squared Error: {r_2_score:.4f}")
+print("Final Averaged Predictions:\n", Y_final_pred)

@@ -1,0 +1,62 @@
+import socket
+
+def powmod(base, exponent, modulus):
+    """
+    Compute (base^exponent) % modulus using an iterative method.
+    
+    Args:
+        base (int): The base value.
+        exponent (int): The exponent.
+        modulus (int): The modulus value.
+    
+    Returns:
+        int: Result of (base^exponent) % modulus.
+    """
+    result = 1
+    while exponent != 0:
+        result = (result * base) % modulus
+        exponent -= 1
+    return result % modulus
+
+def main():
+    """
+    Main function to handle the server-side operations of the Diffie-Hellman key exchange.
+    """
+    # Set up the socket connection
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host = socket.gethostname()
+    port = 1024
+
+    print("Server will start on host:", host)
+    server_socket.bind((host, port))
+
+    print("\nServer done binding host and port successfully")
+    print("\nServer is waiting for connection...\n")
+
+    server_socket.listen(1)
+    conn, addr = server_socket.accept()
+    print(f"{addr} is connected to the server and is online now...\n")
+
+    # Get the private key from the user
+    private_key = int(input("Enter server private key: "))
+
+    # Compute the message to send to the client
+    base = 17
+    modulus = 23
+    server_message = str(powmod(base, private_key, modulus))
+
+    # Send the computed message to the client
+    conn.send(server_message.encode())
+    print("Message has been sent\n")
+
+    # Receive and print the message from the client
+    client_message = conn.recv(1024).decode()
+    print("Client:", client_message)
+
+    # Compute and print the shared secret key
+    client_message_int = int(client_message)
+    shared_secret = powmod(client_message_int, private_key, modulus)
+    print("Shared secret key:", shared_secret)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,47 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load the data from the Excel file
+data_file = pd.ExcelFile('mice_protein.xlsx')
+df1 = data_file.parse('Data_Cortex_Nuclear')
+
+# Select the relevant columns and fill NaN values with the mean of each column
+v1_null = df1.iloc[:, 1:78]
+modified_v1 = v1_null.apply(lambda col: col.fillna(col.mean()), axis=0)
+
+# Compute the covariance matrix of the modified data
+covariance_matrix = np.cov(modified_v1.transpose())
+
+# Perform eigen decomposition on the covariance matrix
+eigen_values, eigen_vectors = np.linalg.eig(covariance_matrix)
+
+# Select the first two eigenvectors
+top_two_eigen_vectors = eigen_vectors[:, :2]
+
+# Project the data onto the first two principal components
+projected_data = np.dot(top_two_eigen_vectors.T, modified_v1.transpose()).transpose()
+
+# Extract the first two principal components
+pc1 = projected_data[:, 0]
+pc2 = projected_data[:, 1]
+
+# Plot the data, color-coded by group
+plt.figure(figsize=(10, 8))
+plt.plot(pc1[0:149], pc2[0:149], '*', markersize=3, color='blue', alpha=0.5, label='c-CS-m')     
+plt.plot(pc1[150:299], pc2[150:299], '*', markersize=3, color='red', alpha=0.5, label='c-SC-m')   
+plt.plot(pc1[300:434], pc2[300:434], '*', markersize=3, color='green', alpha=0.5, label='c-CS-s') 
+plt.plot(pc1[435:569], pc2[435:569], '*', markersize=3, color='yellow', alpha=0.5, label='c-SC-s')
+plt.plot(pc1[570:704], pc2[570:704], '*', markersize=3, color='orange', alpha=0.5, label='t-CS-m')
+plt.plot(pc1[705:839], pc2[705:839], '*', markersize=3, color='pink', alpha=0.5, label='t-SC-m')  
+plt.plot(pc1[840:944], pc2[840:944], '*', markersize=3, color='black', alpha=0.5, label='t-CS-s') 
+plt.plot(pc1[945:1079], pc2[945:1079], '*', markersize=3, color='brown', alpha=0.5, label='t-SC-s')
+
+# Add title and labels to the plot
+plt.title("Scatter Plot of Principal Components")
+plt.xlabel("PC1")
+plt.ylabel("PC2")
+
+# Show legend and display the plot
+plt.legend()
+plt.show()

@@ -1,0 +1,90 @@
+import numpy as np
+from cvxpy import quad_form, Variable, Problem, Maximize, norm
+from sklearn.covariance import shrunk_covariance
+
+def ret2prices(ret_series, base_value):
+    """
+    Converts a series of returns to prices.
+
+    Parameters:
+    ret_series (array-like): Series of returns.
+    base_value (float): Initial price value.
+
+    Returns:
+    numpy.ndarray: Array of prices.
+    """
+    prices = np.zeros(len(ret_series) + 1)
+    prices[0] = base_value
+    for i in range(len(ret_series)):
+        if np.isnan(ret_series[i]):
+            prices[i + 1] = prices[i]
+        else:
+            prices[i + 1] = prices[i] * np.exp(ret_series[i])
+    return prices
+
+def is_pos_def(x):
+    """
+    Checks if a matrix is positive definite.
+
+    Parameters:
+    x (numpy.ndarray): Input matrix.
+
+    Returns:
+    bool: True if matrix is positive definite, False otherwise.
+    """
+    return np.all(np.linalg.eigvals(x) > 0)
+
+def cv_opt(mu, Sigma, e_mu=None, glambda=None, h=0):
+    """
+    Optimizes a portfolio using convex optimization.
+
+    Parameters:
+    mu (numpy.ndarray): Expected returns.
+    Sigma (numpy.ndarray): Covariance matrix.
+    e_mu (float, optional): Expected portfolio return. Default is None.
+    glambda (float, optional): Regularization parameter. Default is None.
+    h (float, optional): Minimum weight for each asset. Default is 0.
+
+    Returns:
+    tuple: Optimized weights, expected return, and risk.
+    """
+    n = len(mu)
+    w = Variable(n)
+    ret = mu.T @ w
+
+    # Ensure Sigma is positive definite
+    if not is_pos_def(Sigma):
+        for i in np.linspace(0.01, 10000, 1000000):
+            test = shrunk_covariance(Sigma, shrinkage=i)
+            if is_pos_def(test):
+                Sigma = test
+                break
+        if not is_pos_def(Sigma):
+            print('Error: Covariance matrix is not positive definite', flush=True)
+            print(Sigma)
+            return np.full(n, np.nan), np.nan, np.nan
+    
+    risk = quad_form(w, Sigma)
+
+    # Define the optimization problem
+    constraints = [sum(w) == 1, w >= h]
+    if e_mu is not None:
+        constraints.append(ret == e_mu)
+    if glambda is not None:
+        prob = Problem(Maximize(ret - risk - glambda * norm(w, 1)), constraints)
+    else:
+        prob = Problem(Maximize(ret - risk), constraints)
+
+    prob.solve()
+
+    # Extract results
+    try:
+        rw = w.value
+        rr = ret.value
+        rri = risk.value
+    except:
+        rw = np.full(n, np.nan)
+        rr = np.nan
+        rri = np.nan
+    
+    return rw, rr, rri

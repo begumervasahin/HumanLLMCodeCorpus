@@ -1,0 +1,69 @@
+import pandas as pd
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv
+from datetime import datetime
+from sklearn import svm
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+def mean_a_p_e(y_true, y_pred):
+    sum = 0
+    for i in range(len(y_true)):
+        sum += math.fabs(y_pred[i] - y_true[i]) / y_true[i]
+    return sum / len(y_true)
+
+def parser(x):
+    return datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
+
+# Load dataset
+series = read_csv('/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv', usecols=[2, 3], header=0, parse_dates=[0],
+                  index_col=0, date_parser=parser)
+
+X = series.values
+X = X.astype('float32')
+
+# Define training and testing intervals
+train_start = 4500
+train_end = 6000
+test_start = 6409
+test_end = 6600
+
+# Prepare training and testing datasets
+svr_train = X[train_start:train_end]
+svr_test = X[test_start - 1:test_end - 1]
+svr_real = np.array(X[test_start:test_end]).reshape(-1, 1)
+svr_train = np.array(svr_train).reshape(-1, 1)
+svr_test = np.array(svr_test).reshape(-1, 1)
+
+# Train SVR model
+model = svm.SVR()
+model.fit(svr_train[0:train_end - train_start - 1], svr_train[1:train_end - train_start])  
+p = model.predict(svr_test)
+
+# Calculate error metrics
+mse = mean_squared_error(svr_real, svr_test)
+rmse = math.sqrt(mean_squared_error(svr_real, svr_test))
+mae = mean_absolute_error(svr_real, svr_test)
+mape = mean_a_p_e(svr_real, svr_test)
+
+print('SVR Test MAE: %.3f MSE: %.3f RMSE: %.3f MAPE: %.3f' % (mae, mse, rmse, mape))
+
+# Plot real vs predicted values
+plt.figure(figsize=(12, 6))
+plt.plot(svr_real, '-', label="Real Flow")
+plt.plot(svr_test, '--', color='red', label="SVR")
+plt.legend(loc='upper right')
+plt.xlabel("Period (15-minute intervals)")
+plt.ylabel("Volume (vehicle/period)")
+plt.ylim(0, 800)
+plt.show()
+
+# Plot real flow for a specific range
+datStart = 31
+plt.figure(figsize=(12, 6))
+plt.plot(X[datStart:datStart + 96*7], '-', color='r', label="Real Flow")
+plt.legend(loc='upper right')
+plt.xlabel("Period (15min)")
+plt.ylabel("Traffic Volume (vehicles/period)")
+plt.show()

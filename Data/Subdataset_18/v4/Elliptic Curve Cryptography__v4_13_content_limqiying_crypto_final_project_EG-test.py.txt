@@ -1,0 +1,67 @@
+from ecc_simple import *
+import random
+
+def elgamal_encrypt(message, public_key_Bob, private_key_Alice, g):
+    """
+    Encrypts a message using ElGamal encryption.
+
+    :param message: The message to be encrypted.
+    :param public_key_Bob: Bob's public key.
+    :param private_key_Alice: Alice's private key.
+    :param g: The base point for the elliptic curve.
+    :return: The ciphertext (c1, c2).
+    """
+    shared_key_Alice = times(private_key_Alice, public_key_Bob)
+    c1 = times(private_key_Alice, g)
+    c2 = add(encode(message, 100), shared_key_Alice)
+    return c1, c2
+
+def elgamal_decrypt(ciphertext, private_key_Bob):
+    """
+    Decrypts a message using ElGamal decryption.
+
+    :param ciphertext: The ciphertext (c1, c2) to be decrypted.
+    :param private_key_Bob: Bob's private key.
+    :return: The decrypted message.
+    """
+    c1, c2 = ciphertext
+    shared_key_Bob = times(private_key_Bob, c1)
+    plaintext = subtract(c2, shared_key_Bob)
+    decrypted_message = decode(plaintext, 100)
+    return decrypted_message
+
+def main():
+    """
+    ElGamal encryption and decryption demonstration using elliptic curve cryptography.
+    """
+    # Set parameters for the P-256 curve
+    set_p256_param()
+
+    # Define the base point for the curve
+    p = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+    x = 48439561293906451759052585252797914202762949526041747995844080717082404635286
+    y = 36134250956749795798585127919587881956611106672985015071877198253568414405109
+    g = (x, y)
+
+    # Generate private keys for Alice and Bob
+    private_key_Alice = random.randrange(1, p)
+    private_key_Bob = random.randrange(1, p)
+
+    # Generate public keys for Alice and Bob
+    public_key_Alice = times(private_key_Alice, g)
+    public_key_Bob = times(private_key_Bob, g)
+
+    # Alice's message to be encrypted
+    message = 32454324564335645345643
+
+    # Alice encrypts the message
+    ciphertext = elgamal_encrypt(message, public_key_Bob, private_key_Alice, g)
+
+    # Bob decrypts the message
+    decrypted_message = elgamal_decrypt(ciphertext, private_key_Bob)
+
+    # Print the decrypted message
+    print("Decrypted message:", decrypted_message)
+
+if __name__ == "__main__":
+    main()

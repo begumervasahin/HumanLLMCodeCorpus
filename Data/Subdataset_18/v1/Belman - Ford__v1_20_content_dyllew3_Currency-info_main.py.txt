@@ -1,0 +1,46 @@
+from currency import CurrencyThread, make_threads, CURRENCIES
+from test import num_threads
+from math import log
+from BellmanFord import BellmanFord
+
+def set_edges(rates, currencies=CURRENCIES):
+    """
+    Create a dictionary of edges with weights based on currency exchange rates.
+
+    :param rates: List of currency rate dictionaries.
+    :param currencies: List of currency codes.
+    :return: Dictionary of edges with weights.
+    """
+    edges = {currency: {} for currency in currencies}
+    
+    for rate in rates:
+        u, v = rate["id"][:3], rate["id"][3:]
+        print(f"{u} {v} {rate['Rate']}")
+        weight = log(round(float(rate["Rate"]) ** -1, 4))
+        edges[u][v] = weight
+    
+    return edges
+
+def main():
+    """
+    Main function to set up and run the Bellman-Ford algorithm on currency exchange rates.
+    """
+    threads_len = num_threads()
+    threads = make_threads(threads_len)
+    CurrencyThread.run_all_threads(threads)
+    
+    currency_rates = []
+    vertices = CURRENCIES
+    
+    for thread in threads:
+        currency_rates.extend(thread.data)
+    
+    edges = set_edges(currency_rates)
+    
+    for u in edges:
+        print(edges[u])
+    
+    bellman_ford = BellmanFord(vertices, edges, vertices[0])
+
+if __name__ == "__main__":
+    main()

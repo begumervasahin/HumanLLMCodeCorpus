@@ -1,0 +1,46 @@
+
+tab = [0] * 9
+player = 1
+WINNING_COMBOS = [
+    (0, 1, 2), (3, 4, 5), (6, 7, 8),
+    (0, 3, 6), (1, 4, 7), (2, 5, 8),
+    (0, 4, 8), (2, 4, 6)
+]
+def game_state(board):
+    for combo in WINNING_COMBOS:
+        if board[combo[0]] == board[combo[1]] == board[combo[2]] == 1:
+            return 1
+        if board[combo[0]] == board[combo[1]] == board[combo[2]] == -1:
+            return -1
+    if 0 in board:
+        return -2
+    return 0
+def search(board, player, depth):
+    state = game_state(board)
+    if state != -2:
+        return (state * player, -1)
+    best_moves = [-2]
+    for cell in range(len(board)):
+        if board[cell] == 0:
+            board[cell] = player
+            val = -search(board, -player, depth + 1)[0]
+            if val > best_moves[0]:
+                best_moves = [val, cell]
+            elif val == best_moves[0]:
+                best_moves.append(cell)
+            board[cell] = 0
+    return best_moves
+def main():
+    print(f"Player {player} starts.")
+    result = search(tab, player, 0)
+    winner = result[0] * player
+    if winner == 0:
+        print("It's a draw!")
+    else:
+        winner_number = int(winner * -0.5 + 1.5)
+        print(f"Player {winner_number} wins!")
+    if winner != -player:
+        possible_moves = ", ".join(str(move + 1) for move in result[1:])
+        print(f"You can play {possible_moves}")
+if __name__ == "__main__":
+    main()

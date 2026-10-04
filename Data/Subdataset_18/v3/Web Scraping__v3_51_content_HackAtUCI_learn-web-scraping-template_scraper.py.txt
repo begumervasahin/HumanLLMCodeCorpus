@@ -1,0 +1,111 @@
+import re
+import time
+import csv
+import sys
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
+
+def get_html(driver, path):
+    """
+    Fetches and returns the HTML content of a given path using a Selenium webdriver.
+    
+    Parameters:
+    driver (webdriver): The Selenium WebDriver instance.
+    path (str): The relative URL path to fetch.
+    
+    Returns:
+    str: The HTML content of the page.
+    """
+    driver.get(f"https://www.hackuci.com{path}")
+    time.sleep(2)
+    return driver.find_element(By.TAG_NAME, "html").get_attribute("innerHTML")
+
+def initialize_csv(file_name, fieldnames):
+    """
+    Initializes a CSV file with the given fieldnames and returns a CSV writer object.
+    
+    Parameters:
+    file_name (str): The name of the CSV file to be created.
+    fieldnames (list): A list of field names for the CSV file.
+    
+    Returns:
+    writer: A CSV DictWriter object.
+    """
+    file = open(file_name, "w", newline="")
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    writer.writeheader()
+    return writer
+
+def get_qualifications(job):
+    """
+    Extracts and returns a list of qualifications from a job posting.
+    
+    Parameters:
+    job (BeautifulSoup): A BeautifulSoup object representing a job posting.
+    
+    Returns:
+    list: A list of qualification strings.
+    """
+    return [item.text.replace("\n", "") for item in job.find_all("div", class_="item")]
+
+def get_prompt(job):
+    """
+    Extracts and returns a list of prompts from a job posting.
+    
+    Parameters:
+    job (BeautifulSoup): A BeautifulSoup object representing a job posting.
+    
+    Returns:
+    list: A list of prompt URLs.
+    """
+    return [prompt["href"] for prompt in job.find_all("a")]
+
+def main():
+    # Determine the correct chromedriver based on the operating system
+    chromedriver_filename = {
+        "win32": "./webdrivers/chromedriver_windows.exe",
+        "darwin": "./webdrivers/chromedriver_mac",
+        "linux": "./webdrivers/chromedriver_linux"
+    }.get(sys.platform, "./webdrivers/chromedriver_linux")
+
+    # Initialize the Selenium WebDriver
+    service = Service(chromedriver_filename)
+    driver = webdriver.Chrome(service=service)
+
+    try:
+        # Fetch the main recruitment page HTML
+        recruit_html = get_html(driver, "/recruit")
+        soup = BeautifulSoup(recruit_html, "html.parser")
+
+        # Find all job posting links
+        navbar_menu = soup.find("div", class_="navbar-menu")
+        positions_re = re.compile("/recruit/[a-z]+")
+        relative_path_tags = navbar_menu.find_all(lambda tag: tag.has_attr("href") and positions_re.match(tag["href"]))
+        
+        relative_paths = [tag["href"] for tag in relative_path_tags]
+        print(*relative_paths, sep="\n")  # Print all relative paths for debugging
+
+        # Define the CSV field names and initialize the CSV writer
+        fieldnames = ["ROLE", "DESCRIPTION", "QUALIFICATIONS", "PROMPT"]
+        writer = initialize_csv("role.csv", fieldnames)
+        
+        # Process each job posting page and write the job data to the CSV file
+        for relative_path in relative_paths:
+            positions_html = get_html(driver, relative_path)
+            soup = BeautifulSoup(positions_html, "html.parser")
+            for job in soup.find_all("div", class_="job"):
+                job_data = {
+                    "ROLE": job.find("div", class_="job-title").text.replace("\n", ""),
+                    "DESCRIPTION": job.find("span").text.replace("\n", ""),
+                    "QUALIFICATIONS": get_qualifications(job),
+                    "PROMPT": get_prompt(job),
+                }
+                writer.writerow(job_data)
+    finally:
+        # Close the Selenium WebDriver
+        driver.quit()
+
+if __name__ == "__main__":
+    main()

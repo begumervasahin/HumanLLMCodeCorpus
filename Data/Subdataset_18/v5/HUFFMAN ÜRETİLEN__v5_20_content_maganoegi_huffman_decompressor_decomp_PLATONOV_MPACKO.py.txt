@@ -1,0 +1,56 @@
+import os
+import time
+from tqdm import tqdm
+from decomp_lib import *
+
+def clear_console():
+    """Clear the console screen."""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def process_task(task_name, task_function, pbar):
+    """
+    Execute a task and update the progress bar.
+
+    Args:
+        task_name (str): The description of the task.
+        task_function (function): The function to execute for the task.
+        pbar (tqdm): The progress bar object to update.
+    """
+    pbar.set_description(task_name)
+    result = task_function()
+    pbar.update(1)
+    return result
+
+def main():
+    # Clear the console and print the initial message
+    clear_console()
+    hepia_print()
+    print("\n")
+    
+    # Progress bar configuration
+    bar_format = '{l_bar}{bar}| {n_fmt}/{total_fmt}'
+    tasks = [
+        ('Open File  ', read_user_input),
+        ('File->Array', lambda: bytes_2_array(filenames[0])),
+        ('Json Read  ', lambda: json_2_dict(filenames[1])),
+        ('Strip Zeros', lambda: strip_zeros(byte_array)),
+        ('Retranslate', lambda: retranslate(byte_string_no_zeros, dictionary)),
+        ('Done       ', lambda: write_2_binary(retranslated_byte_array, filenames[2]))
+    ]
+    
+    # Execute the tasks with progress tracking
+    with tqdm(total=len(tasks), ncols=80, bar_format=bar_format) as pbar:
+        filenames = process_task(tasks[0][0], tasks[0][1], pbar)
+        byte_array = process_task(tasks[1][0], tasks[1][1], pbar)
+        dictionary = process_task(tasks[2][0], tasks[2][1], pbar)
+        byte_string_no_zeros = process_task(tasks[3][0], tasks[3][1], pbar)
+        retranslated_byte_array = process_task(tasks[4][0], tasks[4][1], pbar)
+        process_task(tasks[5][0], tasks[5][1], pbar)
+        
+        time.sleep(0.1)
+    
+    # Display the decompressor output
+    decompressor_display(filenames[2])
+
+if __name__ == "__main__":
+    main()

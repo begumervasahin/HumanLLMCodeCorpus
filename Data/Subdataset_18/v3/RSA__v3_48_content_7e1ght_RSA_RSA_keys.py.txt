@@ -1,0 +1,78 @@
+from random import randint
+from math import gcd
+
+class KeyGenerator:
+    def __init__(self, bit_size):
+        self.bit_size = bit_size
+
+    def is_prime(self, n):
+        """Check if a number is a prime."""
+        if n <= 1:
+            return False
+        if n <= 3:
+            return True
+        if n % 2 == 0 or n % 3 == 0:
+            return False
+        i = 5
+        while i * i <= n:
+            if n % i == 0 or n % (i + 2) == 0:
+                return False
+            i += 6
+        return True
+
+    def generate_random_number(self):
+        """Generate a random number with the specified bit size."""
+        return randint(2**(self.bit_size - 1) + 1, 2**self.bit_size - 1)
+
+    def generate_prime(self):
+        """Generate a prime number."""
+        num = self.generate_random_number()
+        while not self.is_prime(num):
+            num = self.generate_random_number()
+        return num
+
+    def find_relative_prime(self, phi):
+        """Find a number that is relatively prime to phi."""
+        for i in range(3, phi):
+            if gcd(i, phi) == 1:
+                return i
+        raise Exception("Failed to find a relative prime number.")
+
+    def extended_gcd(self, a, b):
+        """Extended Euclidean Algorithm."""
+        if b == 0:
+            return a, 1, 0
+        d, x1, y1 = self.extended_gcd(b, a % b)
+        x = y1
+        y = x1 - (a // b) * y1
+        return d, x, y
+
+    def test_keys(self, public_key, private_key):
+        """Test the generated keys to ensure they work correctly."""
+        test_message = 2
+        encrypted = pow(test_message, public_key[0], public_key[1])
+        decrypted = pow(encrypted, private_key[0], private_key[1])
+        return test_message == decrypted
+
+    def generate_keys(self):
+        """Generate a pair of RSA keys."""
+        while True:
+            p = self.generate_prime()
+            q = self.generate_prime()
+            n = p * q
+            phi = (p - 1) * (q - 1)
+            e = self.find_relative_prime(phi)
+            _, d, _ = self.extended_gcd(e, phi)
+            if d < 0:
+                d += phi
+            public_key = (e, n)
+            private_key = (d, n)
+            if self.test_keys(public_key, private_key):
+                return public_key, private_key
+
+# Usage example
+if __name__ == "__main__":
+    key_generator = KeyGenerator(16)  # Example with 16 bits
+    public_key, private_key = key_generator.generate_keys()
+    print("Public Key:", public_key)
+    print("Private Key:", private_key)

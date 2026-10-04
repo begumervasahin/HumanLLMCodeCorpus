@@ -1,0 +1,88 @@
+import tkinter as tk
+from tkinter import simpledialog
+
+def quick_sort(vector):
+    """Performs quicksort on a list in-place."""
+    
+    def sort(vector, low, high):
+        """Recursive function to apply quicksort."""
+        if low < high:
+            pivot_index = partition(vector, low, high)
+            sort(vector, low, pivot_index - 1)
+            sort(vector, pivot_index + 1, high)
+    
+    def partition(vector, low, high):
+        """Partitions the list and returns the index of the pivot."""
+        pivot = vector[low]
+        left = low + 1
+        right = high
+
+        while True:
+            # Move left index to the right until an element larger than the pivot is found
+            while left <= right and vector[left] <= pivot:
+                left += 1
+            # Move right index to the left until an element smaller than the pivot is found
+            while right >= left and vector[right] >= pivot:
+                right -= 1
+            # If pointers have crossed, break the loop
+            if right < left:
+                break
+            else:
+                vector[left], vector[right] = vector[right], vector[left]
+
+        # Swap the pivot element with the element at the right index
+        vector[low], vector[right] = vector[right], vector[low]
+        return right
+    
+    sort(vector, 0, len(vector) - 1)
+
+def handle_sorting():
+    """Handles user interaction and sorts the entered numbers."""
+    try:
+        num_elements = int(entry_numbers.get())
+    except ValueError:
+        label_info.config(text="Please enter a valid integer.")
+        return
+
+    numbers = []
+    for i in range(num_elements):
+        number = simpledialog.askinteger("Input", f"Enter number {i + 1}:")
+        if number is not None:
+            numbers.append(number)
+        else:
+            label_info.config(text="Operation canceled.")
+            return
+    
+    label_unsorted.config(text=f"Unsorted: {numbers}")
+    
+    quick_sort(numbers)
+    
+    label_sorted.config(text=f"Sorted: {numbers}")
+
+# Setup the main application window
+app = tk.Tk()
+app.title("Quick Sort")
+app.geometry('300x200')
+app.configure(bg='SkyBlue2')
+
+# Create and place widgets in the application
+label_prompt = tk.Label(app, text="How many numbers will you enter?", font='Helvetica 12', bg='SkyBlue2')
+label_prompt.pack()
+
+entry_numbers = tk.Entry(app, width=10)
+entry_numbers.pack(pady=5)
+
+button_sort = tk.Button(app, text="Sort", command=handle_sorting)
+button_sort.pack(pady=10)
+
+label_info = tk.Label(app, text="", bg='SkyBlue2')
+label_info.pack()
+
+label_unsorted = tk.Label(app, text="", bg='SkyBlue2')
+label_unsorted.pack(pady=5)
+
+label_sorted = tk.Label(app, text="", bg='SkyBlue2')
+label_sorted.pack(pady=5)
+
+# Start the Tkinter event loop
+app.mainloop()

@@ -1,0 +1,66 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+
+# Load the dataset
+df = pd.read_csv('iris-data.csv', sep=',', names=['sepal_len', 'sepal_wid', 'petal_len', 'petal_wid', 'class'])
+
+# Extract features
+featuresDf = df.loc[:, ['sepal_len', 'sepal_wid', 'petal_len', 'petal_wid']]
+
+# Standardize the features
+featuresDf = StandardScaler().fit_transform(featuresDf)
+
+# Compute the mean values
+meanVals = np.mean(featuresDf, axis=0)
+
+# Compute the covariance matrix
+covarianceMatrix = (featuresDf - meanVals).T.dot((featuresDf - meanVals)) / (featuresDf.shape[0] - 1)
+
+# Compute the eigenvalues and eigenvectors
+eValues, eVec = np.linalg.eig(covarianceMatrix)
+
+# Create a list of (eigenvalue, eigenvector) tuples
+eigenPairs = [(np.abs(eValues[i]), eVec[:, i]) for i in range(len(eValues))]
+
+# Sort the eigenpairs by eigenvalue in descending order
+eigenPairs.sort()
+eigenPairs.reverse()
+
+# Create a matrix with the top 2 eigenvectors
+top2Matrix = np.hstack((eigenPairs[0][1].reshape(4,1), eigenPairs[1][1].reshape(4,1)))
+
+# Project the standardized features onto the top 2 eigenvectors
+principalComp = featuresDf.dot(top2Matrix)
+
+# Create a DataFrame with the principal components
+pcaDF = pd.DataFrame(data = principalComp, columns = ['pca1', 'pca2'])
+
+# Concatenate the class labels
+newDf = pd.concat([pcaDF, df[['class']]], axis = 1)
+
+# Plot the PCA results
+fig = plt.figure(figsize=(7,7))
+axis = fig.add_subplot(111, facecolor='white')
+axis.set_xlabel('PCA 1', fontsize=12)
+axis.set_ylabel('PCA 2', fontsize=12)
+axis.set_title('PCA on Iris dataset', fontsize=15)
+
+# Define class names and colors
+classes = ['Iris-setosa', 'Iris-versicolor', 'Iris-virginica']
+colors = ['y', 'b', 'r']
+
+# Plot each class
+for classVal, color in zip(classes, colors):
+    indexVals = newDf['class'] == classVal
+    axis.scatter(newDf.loc[indexVals, 'pca1'], newDf.loc[indexVals, 'pca2'], c=color, s=50)
+
+# Add legend and grid
+axis.legend(classes, loc="upper right")
+axis.grid(linewidth=0.5)
+
+# Save the figure
+fig.savefig('PCA_fig.png', dpi=200)
+
+plt.show()

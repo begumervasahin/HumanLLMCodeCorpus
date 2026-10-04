@@ -1,0 +1,68 @@
+import string
+import unittest
+from aes import AES
+
+def pad_hex(s, length):
+    """Pads the hexadecimal string with leading zeros to ensure it has a specified length."""
+    return s[2:].zfill(length)
+
+def format_hex_with_spaces(s):
+    """Formats the hexadecimal string by adding spaces after every two characters."""
+    return ' '.join(s[i:i+2] for i in range(0, len(s), 2)).upper()
+
+def read_file_lines(filename):
+    """Opens a file and reads its lines."""
+    with open(filename, 'r') as file:
+        return file.readlines()
+
+def convert_lines_to_hex(lines):
+    """Converts lines from a file to a single hexadecimal integer."""
+    hex_string = ''.join(word.strip(string.whitespace) for line in lines for word in line.split())
+    return int('0x' + hex_string, 16)
+
+class AESTest(unittest.TestCase):
+    def setUp(self):
+        """Set up the AES instance with the key read from the key file."""
+        lines = read_file_lines('key.txt')
+        self.aes = AES(convert_lines_to_hex(lines))
+
+    def test_encryption(self):
+        """Test the encryption process and print the ciphertext."""
+        print("(for encryption)")
+        plaintext_lines = read_file_lines('en_input.txt')
+        ctr_lines = read_file_lines('ctr.txt')
+
+        ctr_value = convert_lines_to_hex(ctr_lines)
+        plaintext_value = convert_lines_to_hex(plaintext_lines)
+
+        # First block encryption
+        encrypted_value = self.aes.encrypt(ctr_value)
+        ciphertext_block1 = encrypted_value ^ (plaintext_value >> 64)
+        print(format_hex_with_spaces(pad_hex(hex(ciphertext_block1), 16)))
+
+        # Second block encryption
+        encrypted_value = self.aes.encrypt(ctr_value + 1)  # Increment counter for next block
+        ciphertext_block2 = encrypted_value ^ (plaintext_value & ((1 << 64) - 1))
+        print(format_hex_with_spaces(pad_hex(hex(ciphertext_block2), 16)))
+
+    def test_decryption(self):
+        """Test the decryption process and print the plaintext."""
+        print("(for decryption)")
+        ciphertext_lines = read_file_lines('de_input.txt')
+        ctr_lines = read_file_lines('ctr.txt')
+
+        ctr_value = convert_lines_to_hex(ctr_lines)
+        ciphertext_value = convert_lines_to_hex(ciphertext_lines)
+
+        # First block decryption
+        decrypted_value = self.aes.encrypt(ctr_value)
+        plaintext_block1 = decrypted_value ^ (ciphertext_value >> 64)
+        print(format_hex_with_spaces(pad_hex(hex(plaintext_block1), 16)))
+
+        # Second block decryption
+        decrypted_value = self.aes.encrypt(ctr_value + 1)  # Increment counter for next block
+        plaintext_block2 = decrypted_value ^ (ciphertext_value & ((1 << 64) - 1))
+        print(format_hex_with_spaces(pad_hex(hex(plaintext_block2), 16)))
+
+if __name__ == '__main__':
+    unittest.main()

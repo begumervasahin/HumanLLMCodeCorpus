@@ -1,0 +1,54 @@
+from secrets import token_bytes
+from typing import Tuple
+
+def encrypt(original: str) -> Tuple[int, int]:
+    """
+    Encrypts a string using a one-time pad encryption method.
+
+    Args:
+        original (str): The original string to encrypt.
+
+    Returns:
+        Tuple[int, int]: A tuple containing the dummy key and the encrypted message.
+    """
+    original_bytes: bytes = original.encode()
+    dummy: int = generate_random_key(len(original_bytes))
+    original_key: int = int.from_bytes(original_bytes, "big")
+    encrypted: int = original_key ^ dummy
+    return dummy, encrypted
+
+def generate_random_key(length: int) -> int:
+    """
+    Generates a random key of specified byte length.
+
+    Args:
+        length (int): The length of the random key in bytes.
+
+    Returns:
+        int: The generated random key as an integer.
+    """
+    random_bytes: bytes = token_bytes(length)
+    return int.from_bytes(random_bytes, "big")
+
+def decrypt(dummy_key: int, encrypted_message: int) -> str:
+    """
+    Decrypts a message using the provided dummy key.
+
+    Args:
+        dummy_key (int): The dummy key used for encryption.
+        encrypted_message (int): The encrypted message to decrypt.
+
+    Returns:
+        str: The decrypted original message.
+    """
+    decrypted: int = dummy_key ^ encrypted_message
+    decrypted_bytes: bytes = decrypted.to_bytes((decrypted.bit_length() + 7) // 8, "big")
+    return decrypted_bytes.decode()
+
+if __name__ == "__main__":
+    dummy_key, encrypted_message = encrypt("One Time Pad!")
+    print(f"Dummy Key: {dummy_key}")
+    print(f"Encrypted Message: {encrypted_message}")
+    
+    decrypted_message: str = decrypt(dummy_key, encrypted_message)
+    print(f"Decrypted Message: {decrypted_message}")

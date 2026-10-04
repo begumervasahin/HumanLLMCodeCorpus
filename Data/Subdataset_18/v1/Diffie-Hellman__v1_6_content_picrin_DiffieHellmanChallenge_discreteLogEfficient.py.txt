@@ -1,0 +1,61 @@
+import sys
+import random
+
+def read_prime_from_file(filename):
+    """Read the prime number from the specified file."""
+    with open(filename, "r") as f:
+        p = int(f.readline().strip())
+    return p
+
+def extended_euclidean_algorithm(a, b):
+    """
+    Perform the Extended Euclidean Algorithm to find the GCD and coefficients.
+    
+    Returns:
+    gcd (int): The greatest common divisor of a and b.
+    x (int): The coefficient such that gcd = a * x + b * y.
+    y (int): The coefficient such that gcd = a * x + b * y.
+    """
+    reconstruct = {a: [1, 0], b: [0, 1]}
+    current_left = a
+    current_right = b
+    remainder = -1
+
+    while remainder != 0:
+        remainder = current_left % current_right
+        multiplicity = current_left // current_right
+        reconstruct_left = reconstruct[current_left]
+        reconstruct_right = reconstruct[current_right]
+        i = multiplicity * reconstruct_right[0]
+        j = multiplicity * reconstruct_right[1]
+        reconstruct[remainder] = [reconstruct_left[0] - i, reconstruct_left[1] - j]
+        current_left = current_right
+        current_right = remainder
+
+    gcd = current_left
+    x, y = reconstruct[gcd]
+    return gcd, x, y
+
+def multiplicative_inverse(a, p):
+    """Calculate the multiplicative inverse of a modulo p."""
+    g = random.randint(1, p-1)
+    gcd, x, _ = extended_euclidean_algorithm(p, g)
+    if gcd != 1:
+        raise ValueError("No multiplicative inverse exists for the given inputs.")
+    return (x + p) % p
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <filename_with_prime> <a>")
+        sys.exit(1)
+
+    filename_with_prime = sys.argv[1]
+    a = int(sys.argv[2])
+
+    p = read_prime_from_file(filename_with_prime)
+    inverse = multiplicative_inverse(a, p)
+
+    print(f"The multiplicative inverse of {a} modulo {p} is {inverse}")
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,77 @@
+import numpy as np
+import csv
+
+# Constants for the size of data and output file details
+TEST_SIZE = 7000
+STEP = 1
+OUTPUT_FILENAME = 'distributions.csv'
+CSV_FIELDS = ['uniform', 'binomial', 'poisson', 'normal']
+
+def generate_random_distributions(size):
+    """
+    Generate a set of random distributions: uniform, binomial, poisson, and normal.
+    
+    Parameters:
+    size (int): The number of samples for each distribution.
+    
+    Returns:
+    tuple: A tuple containing four numpy arrays representing the distributions.
+    """
+    uniform_dist = np.random.uniform(-1, 1, size)
+    binomial_dist = np.random.binomial(1000, 0.5, size)
+    poisson_dist = np.random.poisson(1000, size)
+    normal_dist = np.random.normal(0, 0.1, size)
+    
+    return uniform_dist, binomial_dist, poisson_dist, normal_dist
+
+def organize_data_for_csv(uniform, binomial, poisson, normal, step):
+    """
+    Organize distribution data into a list of dictionaries for CSV writing.
+    
+    Parameters:
+    uniform, binomial, poisson, normal (array-like): Arrays containing distribution data.
+    step (int): The step size for iterating through the data arrays.
+    
+    Returns:
+    list: A list of dictionaries, each representing a row in the CSV file.
+    """
+    data_records = []
+    for i in range(0, len(uniform) - 1, step):
+        record = {
+            'uniform': uniform[i],
+            'binomial': binomial[i],
+            'poisson': poisson[i],
+            'normal': normal[i]
+        }
+        data_records.append(record)
+    
+    return data_records
+
+def write_data_to_csv(data, filename, fieldnames):
+    """
+    Write the distribution data to a CSV file.
+    
+    Parameters:
+    data (list): The list of dictionaries to write to the CSV.
+    filename (str): The name of the output CSV file.
+    fieldnames (list): The list of fieldnames (columns) for the CSV.
+    """
+    print('Writing data to CSV...')
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+
+def main():
+    """Main function to execute the generation, organization, and writing of distribution data."""
+    # Generate the random distributions
+    uniform, binomial, poisson, normal = generate_random_distributions(TEST_SIZE)
+
+    # Organize the data into a suitable format for CSV writing
+    data_for_csv = organize_data_for_csv(uniform, binomial, poisson, normal, STEP)
+
+    # Write the organized data to a CSV file
+    write_data_to_csv(data_for_csv, OUTPUT_FILENAME, CSV_FIELDS)
+
+if __name__ == "__main__":
+    main()

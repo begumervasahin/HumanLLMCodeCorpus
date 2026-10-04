@@ -1,0 +1,115 @@
+import random
+import time
+import sys
+
+def insertion_sort(arr):
+    """Sorts an array using the insertion sort algorithm."""
+    for i in range(len(arr)):
+        current_value = arr[i]
+        position = i
+
+        while position > 0 and arr[position - 1] > current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+
+        arr[position] = current_value
+
+    return arr
+
+def insertion_sort_reverse(arr):
+    """Sorts an array in descending order using the insertion sort algorithm."""
+    for i in range(len(arr)):
+        current_value = arr[i]
+        position = i
+
+        while position > 0 and arr[position - 1] < current_value:
+            arr[position] = arr[position - 1]
+            position -= 1
+
+        arr[position] = current_value
+
+    return arr
+
+def quicksort(arr, low, high, pivot_type="standard"):
+    """Sorts an array using the quicksort algorithm with a specified pivot type."""
+    if low < high:
+        if pivot_type == "random":
+            pi = random_partition(arr, low, high)
+        else:
+            pi = partition(arr, low, high)
+        
+        quicksort(arr, low, pi - 1, pivot_type)
+        quicksort(arr, pi + 1, high, pivot_type)
+
+def partition(arr, low, high):
+    """Partition the array using the last element as the pivot."""
+    pivot = arr[high]
+    i = low - 1
+
+    for j in range(low, high):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+
+def random_partition(arr, low, high):
+    """Partition the array using a random element as the pivot."""
+    random_index = random.randint(low, high)
+    arr[random_index], arr[high] = arr[high], arr[random_index]
+    return partition(arr, low, high)
+
+def run_algorithm_comparison():
+    print("Hi, Question 1 - Assignment 2 Algorithm has started.")
+    print("Plotting of graph to compare sorting algorithms will be done.")
+
+    while True:
+        print("There are 4 modules listed as [A, B, C, D] for Question 1.")
+        print("Only one module can be run at a time. Press 'E' to exit.")
+        
+        response = input("Please enter which part of Question 1 you want to run (Example: A): ").lower().strip()
+        if response == 'e':
+            break
+
+        try:
+            value = int(input("Enter size of array N: ").strip())
+        except ValueError:
+            print("Invalid input. Please enter a valid integer.")
+            continue
+
+        test_sample = random.sample(range(value), value)
+        
+        if response == 'a':
+            compare_algorithms(value, test_sample, insertion_sort, quicksort, "standard")
+        elif response == 'b':
+            compare_algorithms(value, test_sample, quicksort, quicksort, "random")
+        elif response == 'c':
+            test_sample = list(range(value))
+            compare_algorithms(value, test_sample, insertion_sort, quicksort, "standard")
+        elif response == 'd':
+            test_sample = insertion_sort_reverse(list(range(value)))
+            compare_algorithms(value, test_sample, insertion_sort, quicksort, "standard")
+        else:
+            print("Wrong Input. Please try again or press 'E' to exit.")
+        print("\n" * 3)
+
+def compare_algorithms(value, test_sample, algo1, algo2, pivot_type="standard"):
+    """Runs the two algorithms and prints the results."""
+    sample1, sample2 = test_sample[:], test_sample[:]
+    
+    algo1_time = time_algorithm(algo1, sample1)
+    algo2_time = time_algorithm(algo2, sample2, 0, len(sample2) - 1, pivot_type=pivot_type)
+
+    print("\nTest Sample Size:", [value])
+    print(f"{algo1.__name__.replace('_', ' ').title()}: {algo1_time}")
+    print(f"{algo2.__name__.replace('_', ' ').title()} ({pivot_type.title()} Pivot): {algo2_time}")
+
+def time_algorithm(algo, *args, **kwargs):
+    """Times the execution of an algorithm."""
+    start_time = time.time()
+    algo(*args, **kwargs)
+    return abs(time.time() - start_time)
+
+if __name__ == "__main__":
+    run_algorithm_comparison()

@@ -1,0 +1,43 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, to_datetime
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+def parser(x):
+    return to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+def mean_absolute_percentage_error(y_true, y_pred):
+    return sum(abs(y_pred[i] - y_true[i]) / y_true[i] for i in range(len(y_true))) / len(y_true)
+file_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+series = read_csv(file_path, usecols=[2, 3], header=0, parse_dates=[0], index_col=0, date_parser=parser)
+data = series.values.astype('float32')
+start_idx = 2000
+train_size = 1100
+test_size = 500
+plot_window_size = 10
+plot_start_idx = 300 + plot_window_size - 1
+train_data = data[start_idx:start_idx + train_size]
+test_data = data[start_idx + train_size:start_idx + train_size + test_size]
+history = list(train_data)
+predictions = []
+for t in range(len(test_data)):
+    model = ARIMA(history, order=(4, 1, 0))
+    model_fit = model.fit()
+    forecast = model_fit.forecast()[0]
+    predictions.append(forecast)
+    actual = test_data[t]
+    history.append(actual)
+    print(f'predicted={forecast:.6f}, expected={actual:.6f}')
+mse = mean_squared_error(test_data, predictions)
+mae = mean_absolute_error(test_data, predictions)
+mape = mean_absolute_percentage_error(test_data, predictions)
+rmse = math.sqrt(mse)
+print(f'ARIMA Test MAE: {mae:.3f} MSE: {mse:.3f} RMSE: {rmse:.3f} MAPE: {mape:.3f}')
+plt.figure(figsize=(12, 6))
+plt.plot(test_data[plot_start_idx:], '-', label="Real Flow")
+plt.plot(predictions[plot_start_idx:], '--', color='red', label="ARIMA")
+plt.legend(loc='upper right')
+plt.xlabel("Period (15-minute intervals)")
+plt.ylabel("Volume (vehicle/period)")
+plt.ylim(0, 800)
+plt.title("ARIMA Model Predictions vs Real Data")
+plt.show()

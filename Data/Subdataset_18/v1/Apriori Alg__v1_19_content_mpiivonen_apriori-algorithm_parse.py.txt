@@ -1,0 +1,60 @@
+import pandas as pd
+
+def parse_csv(file_path):
+    data = []
+
+    with open(file_path, 'r') as f:
+        for index, line in enumerate(f):
+            splitLine = line.split(' ')
+            no_courses = (len(splitLine) - 1) // 5
+            for item in range(no_courses):
+                newDict = {
+                    'student_id': index,
+                    'registration_year': splitLine[0].strip(),
+                    'course_year_and_month': splitLine[(item * 5) + 1].strip(),
+                    'course_code': splitLine[(item * 5) + 2].strip(),
+                    'course_name': splitLine[(item * 5) + 3].strip().strip('"'),
+                    'credits': float(splitLine[(item * 5) + 4].strip()),
+                    'final_grade': int(splitLine[(item * 5) + 5].strip())
+                }
+                data.append(newDict)
+
+    return data
+
+def main():
+    file_path = 'data-2016.csv'
+    data = parse_csv(file_path)
+
+    df = pd.DataFrame(data)
+
+    # Unique courses
+    course_codes_list = pd.unique(df.course_code)
+    unique_len = len(course_codes_list)
+    print("Unique courses:", unique_len)
+
+    # Unique two-course combinations
+    two_combinations = (unique_len * (unique_len - 1)) // 2
+    print("Unique two-course combinations:", two_combinations)
+
+    # Unique three-course combinations
+    three_combinations = (unique_len * (unique_len - 1) * (unique_len - 2)) // 6
+    print("Unique three-course combinations:", three_combinations)
+
+    # Generate two-course combinations
+    two_courses = [[(j, i) for i in course_codes_list if i != j] for j in course_codes_list]
+
+    # Print the length of unique student list
+    student_list = pd.unique(df.student_id)
+    print("Number of students:", len(student_list))
+
+    # Example filtering for specific course codes (582103 and 582104)
+    course_1 = '582103'
+    course_2 = '582104'
+    test2 = [df[(df.student_id == student) & ((df.course_code == course_1) | (df.course_code == course_2))] for student in student_list]
+
+    for t in test2:
+        if not t.empty:
+            print(t)
+
+if __name__ == "__main__":
+    main()

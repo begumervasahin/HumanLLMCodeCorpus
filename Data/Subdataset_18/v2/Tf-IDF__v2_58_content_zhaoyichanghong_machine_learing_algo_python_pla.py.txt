@@ -1,0 +1,61 @@
+import numpy as np
+from sklearn.metrics import accuracy_score
+
+class PLA:
+    def fit(self, X, y):
+        """
+        Train the Perceptron Learning Algorithm on the provided data.
+
+        Parameters
+        ----------
+        X : numpy.ndarray of shape (n_samples, n_features)
+            The training data.
+        y : numpy.ndarray of shape (n_samples,)
+            The target values, which should be either 1 or -1.
+        """
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)  # Initialize weights to zero
+        self.bias = 0  # Initialize bias to zero
+
+        while True:
+            no_errors = True  # Assume no errors initially
+            for i in range(n_samples):
+                prediction = self.predict(X[i])
+                if y[i] * prediction <= 0:  # Misclassification check
+                    self.weights += y[i] * X[i]  # Update weights
+                    self.bias += y[i]  # Update bias
+                    no_errors = False  # There was at least one misclassification
+
+            if no_errors:
+                break  # Stop if there were no errors in the current iteration
+
+    def predict(self, X):
+        """
+        Predict class labels for the given data.
+
+        Parameters
+        ----------
+        X : numpy.ndarray of shape (n_samples, n_features) or (n_features,)
+            The input data to predict.
+
+        Returns
+        -------
+        y : numpy.ndarray or int
+            The predicted class label(s), which will be 1 or -1.
+        """
+        return np.sign(np.dot(X, self.weights) + self.bias)
+
+# Example usage
+if __name__ == "__main__":
+    # Sample data
+    X = np.array([[1, 2], [2, 3], [3, 4], [4, 5]])
+    y = np.array([1, -1, 1, -1])
+
+    # Create and train the Perceptron
+    pla = PLA()
+    pla.fit(X, y)
+
+    # Make predictions
+    predictions = pla.predict(X)
+    print("Predictions:", predictions)
+    print("Accuracy:", accuracy_score(y, predictions))

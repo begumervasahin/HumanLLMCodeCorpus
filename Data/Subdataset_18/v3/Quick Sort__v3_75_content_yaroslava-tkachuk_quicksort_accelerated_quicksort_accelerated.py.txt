@@ -1,0 +1,116 @@
+import random
+
+def insert_sort(lst):
+    """
+    Perform an insertion sort on the given list.
+
+    Args:
+    lst (list): The list to be sorted.
+
+    Returns:
+    list: The sorted list.
+    """
+    if not isinstance(lst, list):
+        raise TypeError('The function argument must be a list containing numbers.')
+
+    n = len(lst)
+    if n < 2:
+        return lst
+
+    for i in range(1, n):
+        key = lst[i]
+        j = i - 1
+        while j >= 0 and lst[j] > key:
+            lst[j + 1] = lst[j]
+            j -= 1
+        lst[j + 1] = key
+
+    return lst
+
+def choose_pivot(lst, low, high, pivot_type):
+    """
+    Choose a pivot element based on the specified strategy and move it to the end of the list.
+
+    Args:
+    lst (list): The list.
+    low (int): The lower index.
+    high (int): The higher index.
+    pivot_type (str): The pivot selection strategy ('first', 'last', 'middle', 'random').
+
+    Returns:
+    tuple: The pivot element and the modified list.
+    """
+    pivot_indices = {
+        'first': low,
+        'last': high,
+        'middle': (low + high) // 2,
+        'random': random.randint(low, high)
+    }
+    
+    if pivot_type not in pivot_indices:
+        raise ValueError('Pivot options: first, last, middle, random.')
+
+    pivot_index = pivot_indices[pivot_type]
+    lst[pivot_index], lst[high] = lst[high], lst[pivot_index]
+    return lst[high], lst
+
+def partition(lst, low, high, pivot_type):
+    """
+    Partition the list around the pivot element.
+
+    Args:
+    lst (list): The list to be partitioned.
+    low (int): The lower index.
+    high (int): The higher index.
+    pivot_type (str): The pivot selection strategy.
+
+    Returns:
+    int: The index of the pivot element after partitioning.
+    """
+    pivot, lst = choose_pivot(lst, low, high, pivot_type)
+    i = low - 1
+
+    for j in range(low, high):
+        if lst[j] <= pivot:
+            i += 1
+            lst[i], lst[j] = lst[j], lst[i]
+
+    lst[i + 1], lst[high] = lst[high], lst[i + 1]
+    return i + 1
+
+def quick_sort_rec(lst, low, high, pivot_type, modified=False, threshold=10):
+    """
+    Perform a recursive quicksort on the list.
+
+    Args:
+    lst (list): The list to be sorted.
+    low (int): The lower index.
+    high (int): The higher index.
+    pivot_type (str): The pivot selection strategy.
+    modified (bool): Whether to switch to insertion sort for small partitions.
+    threshold (int): The size below which to use insertion sort.
+
+    Returns:
+    list: The sorted list.
+    """
+    if not isinstance(lst, list):
+        raise TypeError('The function argument must be a list containing numbers.')
+
+    if len(lst) < 2:
+        return lst
+
+    if low < high:
+        if modified and (high - low) < threshold:
+            lst[low:high + 1] = insert_sort(lst[low:high + 1])
+        else:
+            pivot_index = partition(lst, low, high, pivot_type)
+            quick_sort_rec(lst, low, pivot_index - 1, pivot_type, modified, threshold)
+            quick_sort_rec(lst, pivot_index + 1, high, pivot_type, modified, threshold)
+
+    return lst
+
+# Example usage
+if __name__ == "__main__":
+    sample_list = [3, 6, 8, 10, 1, 2, 1]
+    sorted_list = quick_sort_rec(sample_list, 0, len(sample_list) - 1, 'middle', modified=True, threshold=10)
+    print(sorted_list)

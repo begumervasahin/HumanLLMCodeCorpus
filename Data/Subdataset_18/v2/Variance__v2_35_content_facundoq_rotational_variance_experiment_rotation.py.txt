@@ -1,0 +1,82 @@
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+import logging
+import torch
+from pytorch import dataset as datasets, models
+from pytorch.experiment import model_loading, rotation
+import pytorch.experiment.utils as utils
+
+# Set logging level to DEBUG for detailed output
+logging.getLogger().setLevel(logging.DEBUG)
+
+# Check if CUDA (GPU support) is available
+use_cuda = torch.cuda.is_available()
+
+def main():
+    """
+    Main function to parse model and dataset names,
+    and run the experiment.
+    """
+    # Parse model and dataset names from command-line or default
+    model_name, dataset_name = utils.parse_model_and_dataset(
+        "Experiment: accuracy of model for rotated vs unrotated dataset."
+    )
+    run_experiment(model_name, dataset_name, verbose=False)
+
+def run_experiment(model_name, dataset_name, verbose=False):
+    """
+    Function to set up and run the experiment with given model and dataset.
+    """
+    # Load the dataset
+    dataset = datasets.get_dataset(dataset_name)
+    
+    if verbose:
+        print(f"Experimenting with dataset: {dataset_name}")
+        print(dataset.summary())
+    
+    # Load the model and optimizer
+    model, optimizer, rotated_model, rotated_optimizer = model_loading.get_model(
+        model_name, dataset, use_cuda
+    )
+    
+    if verbose:
+        print(f"Training with model: {model_name}")
+        print(model)
+        print(rotated_model)
+    
+    # Define training configuration
+    pre_rotated_epochs = 0
+    batch_size = 256
+    epochs, rotated_epochs = model_loading.get_epochs(dataset.name, model_name)
+    config = rotation.TrainRotatedConfig(
+        batch_size=batch_size,
+        epochs=epochs,
+        rotated_epochs=rotated_epochs,
+        pre_rotated_epochs=pre_rotated_epochs,
+        optimizer=optimizer,
+        rotated_optimizer=rotated_optimizer,
+        use_cuda=use_cuda
+    )
+    
+    # Run the rotation training and obtain scores
+    scores = rotation.run(
+        config, model, rotated_model, dataset, plot_accuracy=True, save_plots=True
+    )
+    
+    # Print the obtained scores
+    rotation.print_scores(scores)
+    
+    # Save the trained models if required
+    save_model = True
+    if save_model:
+        rotation.save_models(dataset, model, rotated_model, scores, config)
+
+# Entry point for the script
+if __name__ == "__main__":
+    main()
+else:
+    # Default dataset and model names if the script is imported
+    dataset_name = "cifar10"
+    model_name = models.AllConvolutional.__name__
+    run_experiment(model_name, dataset_name, verbose=False)

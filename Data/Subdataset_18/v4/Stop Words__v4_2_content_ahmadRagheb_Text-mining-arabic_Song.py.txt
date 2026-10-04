@@ -1,0 +1,93 @@
+import nltk
+from nltk.tokenize import word_tokenize
+from stop_words import get_stop_words
+from nltk.stem.isri import ISRIStemmer
+from nltk.tag import StanfordPOSTagger
+import os
+
+class Song:
+    def __init__(self, lyrics):
+        self.lyrics = lyrics
+
+    def read_from_list(self):
+        tokenized_sents = [word_tokenize(sentence) for sentence in self.lyrics]
+        return u", ".join(tokenized_sents[0])
+
+    def tokenizer(self):
+        tokenized_sents = [word_tokenize(sentence) for sentence in self.lyrics]
+        return tokenized_sents[0]
+
+    def stop_words_remove(self):
+        doc_a = self.lyrics[0]
+        sw = get_stop_words('ar')
+        tokens = word_tokenize(doc_a)
+        stopped_tokens = [token for token in tokens if token not in sw]
+        return ' '.join(stopped_tokens)
+
+    def stemming(self):
+        st = ISRIStemmer()
+        tokens = self.tokenizer()
+        stemmed_tokens = [st.stem(token) for token in tokens]
+        return ' '.join(stemmed_tokens)
+
+    def part_of_speech(self):
+        os.environ["JAVA_HOME"] = "/usr/bin/java"
+        jar = '/path/to/stanford-postagger.jar'
+        model = '/path/to/arabic.tagger'
+        tagger = StanfordPOSTagger(model, jar)
+        tagger.java_options = '-mx4096m'
+        tagged_text = tagger.tag(word_tokenize(self.lyrics[0]))
+        return ' / '.join([f"{word} {tag}" for word, tag in tagged_text])
+
+# Write test data to file
+with open("testfile.txt", "w", encoding='utf-8') as file:
+    file.write("ليس العيب في أن نسقط و لكن العيب أن لا تستطيع النهوض ")
+    file.write("من احب الله ، رأى كل شي جميلا. ")
+    file.write("الفاشلون يقولون: ان النجاح هو مجرد حظ ")
+    file.write("لا تبصق في البئر ، فقد تشرب منه يوما. ")
+    file.write("يسرنا إعلامكم بإنضمام فروعنا التالية لخدمة عملائنا الكرام ")
+    file.write("رسمياً : ريال مدريد سيواجه بايرن ميونخ في دور الربع النهائي لدوري أبطال أوروبا ")
+
+# Read test data from file
+with open("testfile.txt", "r", encoding='utf-8') as file:
+    raw_song = file.read()
+
+my_song = Song([raw_song])
+
+print('|IIIIIIIIIIIIII| First Stage |IIIIIIIIIIIIII|\n\n')
+
+print('\n------- tokenizer ------------\n')
+print(my_song.tokenizer())
+
+print('\n------- read ------------\n')
+print(my_song.read_from_list())
+
+print('\n------- stop words ------------\n')
+print(my_song.stop_words_remove())
+
+print('\n------- stemming ------------\n')
+print(my_song.stemming())
+
+print('\n------- part of speech ------------\n')
+print(my_song.part_of_speech())
+
+print('\n\n|IIIIIIIIIIIIII| Second Stage |IIIIIIIIIIIIII|\n\n')
+
+print('\n------- tokenizer ------------\n')
+print(my_song.tokenizer())
+
+print('\n--------- read ------------\n')
+print(my_song.read_from_list())
+
+print('\n--------- stop words ------------\n')
+song_stop_word_removed = [my_song.stop_words_remove()]
+my2 = Song(song_stop_word_removed)
+print(my2.stop_words_remove())
+
+print('\n--------- stemming ------------\n')
+stemming_result = [my2.stemming()]
+my3 = Song(stemming_result)
+print(my3.stemming())
+
+print('\n-------- part of speech ------------\n')
+print(my_song.part_of_speech())

@@ -1,0 +1,57 @@
+import random
+from typing import Tuple
+from modules import algorithms
+
+# Alphabet list with None placeholder for zero index
+ALPHABET = [None] + list('abcdefghijklmnopqrstuvwxyz')
+
+def encrypt(plaintext: str) -> Tuple[str, str]:
+    """
+    Encrypts the given plaintext using a randomly generated one-time pad.
+    
+    Args:
+        plaintext (str): The plaintext to encrypt.
+    
+    Returns:
+        Tuple[str, str]: A tuple containing the generated pad and the ciphertext.
+    """
+    # Generate a random one-time pad
+    pad = [random.choice(ALPHABET[1:]) for _ in range(len(plaintext))]  # Exclude None
+    plaintext_num = algorithms.alph_pos(plaintext)
+    pad_num = algorithms.alph_pos(pad)
+    
+    # Encrypt the plaintext using the one-time pad
+    ciphertext_num = [(plaintext_num[i] + pad_num[i]) % 26 for i in range(len(plaintext_num))]
+    
+    # Convert numeric values back to characters
+    ciphertext = ''.join(ALPHABET[num] for num in ciphertext_num)
+    pad_str = ''.join(pad)
+    
+    return pad_str, ciphertext
+
+def validate_plaintext(plaintext: str) -> bool:
+    """
+    Validates that the plaintext contains only valid alphabetic characters.
+    
+    Args:
+        plaintext (str): The plaintext to validate.
+    
+    Returns:
+        bool: True if valid, False otherwise.
+    """
+    return all(char in ALPHABET[1:] for char in plaintext)
+
+def main():
+    """
+    Main function to handle user input and perform encryption.
+    """
+    plaintext = input("Enter plaintext data: ").lower()
+    
+    if not validate_plaintext(plaintext):
+        print("Error: Plaintext contains invalid characters. Only alphabetic characters are allowed.")
+    else:
+        pad, ciphertext = encrypt(plaintext)
+        print(f"Your ciphertext encrypted with the pad: {pad} is: {ciphertext}")
+
+if __name__ == "__main__":
+    main()

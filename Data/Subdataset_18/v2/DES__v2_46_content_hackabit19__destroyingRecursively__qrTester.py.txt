@@ -1,0 +1,51 @@
+
+from qr import QR
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+from time import sleep
+
+def initialize_camera():
+    """
+    Initialize the PiCamera.
+    
+    :return: An initialized PiCamera object.
+    """
+    camera = PiCamera()
+    return camera
+
+def capture_image(camera):
+    """
+    Capture an image using the PiCamera.
+    
+    :param camera: The PiCamera object.
+    :return: The captured image array.
+    """
+    raw_capture = PiRGBArray(camera)
+    camera.capture(raw_capture, format="bgr")
+    return raw_capture.array
+
+def scan_qr_codes(image, qr_scanner):
+    """
+    Scan the image for QR codes and return the detected data.
+    
+    :param image: The image to scan for QR codes.
+    :param qr_scanner: The QR scanner object.
+    :return: A list of detected QR codes with their coordinates and data.
+    """
+    return qr_scanner.scan(image)
+
+def main():
+    """
+    Main function to initialize the camera, capture images, and scan for QR codes.
+    """
+    camera = initialize_camera()
+    qr_scanner = QR()
+
+    while True:
+        sleep(0.5)
+        image = capture_image(camera)
+        for f_x, f_y, data in scan_qr_codes(image, qr_scanner):
+            print(f"Coordinates: ({f_x}, {f_y}), Data: {data}")
+
+if __name__ == "__main__":
+    main()

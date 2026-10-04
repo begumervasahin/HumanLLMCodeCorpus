@@ -1,0 +1,64 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, to_datetime
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+def parse_datetime(x):
+    return to_datetime(x, format='%Y-%m-%d %H:%M:%S')
+def mean_absolute_percentage_error(y_true, y_pred):
+    return sum(abs(pred - true) / true for true, pred in zip(y_true, y_pred)) / len(y_true)
+def load_dataset(filepath):
+    return read_csv(
+        filepath,
+        usecols=[2, 3],
+        header=0,
+        parse_dates=[0],
+        index_col=0,
+        squeeze=True,
+        date_parser=parse_datetime
+    ).values.astype('float32')
+def split_dataset(data, start_index, train_size, test_size):
+    train_data = data[start_index:start_index + train_size]
+    test_data = data[start_index + train_size:start_index + train_size + test_size]
+    return train_data, test_data
+def arima_forecast(train_data, test_data, arima_order):
+    history = list(train_data)
+    predictions = []
+    for t in range(len(test_data)):
+        model = ARIMA(history, order=arima_order)
+        model_fit = model.fit(disp=0)
+        yhat = model_fit.forecast()[0]
+        predictions.append(yhat)
+        obs = test_data[t]
+        history.append(obs)
+        print(f'Predicted: {yhat}, Expected: {obs}')
+    return predictions
+def evaluate_forecast(test_data, predictions):
+    mse = mean_squared_error(test_data, predictions)
+    mae = mean_absolute_error(test_data, predictions)
+    mape = mean_absolute_percentage_error(test_data, predictions)
+    print(f'ARIMA Test - MAE: {mae:.3f}, MSE: {mse:.3f}, RMSE: {math.sqrt(mse):.3f}, MAPE: {mape:.3f}')
+def plot_forecast(test_data, predictions, test_start):
+    plt.figure(figsize=(12, 6))
+    plt.plot(test_data[test_start:], '-', label="Real Flow")
+    plt.plot(predictions[test_start:], '--', color='red', label="ARIMA Predictions")
+    plt.legend(loc='upper right')
+    plt.xlabel("Period (15-minute intervals)")
+    plt.ylabel("Volume (Vehicle/Period)")
+    plt.ylim(0, 800)
+    plt.title("ARIMA Model Predictions vs Real Flow")
+    plt.show()
+DATASET_PATH = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+START_INDEX = 2000
+TRAIN_SIZE = 1100
+TEST_SIZE = 500
+LINE_TEST_SIZE = 300
+WINDOW_SIZE = 10
+TEST_START = LINE_TEST_SIZE + WINDOW_SIZE - 1
+ARIMA_ORDER = (4, 1, 0)
+if __name__ == "__main__":
+    dataset = load_dataset(DATASET_PATH)
+    train_data, test_data = split_dataset(dataset, START_INDEX, TRAIN_SIZE, TEST_SIZE)
+    predictions = arima_forecast(train_data, test_data, ARIMA_ORDER)
+    evaluate_forecast(test_data, predictions)
+    plot_forecast(test_data, predictions, TEST_START)

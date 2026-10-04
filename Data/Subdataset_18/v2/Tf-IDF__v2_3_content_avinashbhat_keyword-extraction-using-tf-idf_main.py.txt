@@ -1,0 +1,50 @@
+from scraper import linkify, getLinks, getWords
+from algorithms import tf, getDocLinkStrength, idf, tfidf
+
+def main():
+    # Prompt the user for input
+    name = input("Enter the Name of the Personality: ")
+
+    # Generate the link for the given name
+    pageLink = linkify(name)
+    
+    # Extract words and links from the page
+    wordList = getWords(pageLink)
+    linkList = getLinks(pageLink)
+    
+    # Calculate term frequency (TF) for the word list
+    tfDict = tf(wordList)
+    
+    # Determine document link strengths based on TF
+    docLinks = getDocLinkStrength(linkList, tfDict)
+    
+    # Prepare a list of unique links for TF-IDF calculation
+    links_for_tf_idf = list({each[0] for each in docLinks})
+    
+    # Fetch words from the first 10 links for IDF calculation
+    dump = []
+    for each in links_for_tf_idf[:10]:
+        tempLink = linkify(each)
+        dump.append(getWords(tempLink))
+    
+    # Calculate Inverse Document Frequency (IDF)
+    idfDict = idf(tfDict, dump)
+    
+    # Calculate TF-IDF
+    tfidfDict = tfidf(tfDict, idfDict)
+    
+    # Sort the TF-IDF values in descending order
+    tfidfList = sorted(tfidfDict.items(), key=lambda x: x[1], reverse=True)
+    
+    # Extract keywords using document link strength with TF-IDF values
+    keywords = getDocLinkStrength(linkList, tfidfDict)
+    
+    # Prepare a final list of unique keywords
+    finalKeywordList = list({each[0] for each in keywords})
+    
+    # Print the final list of keywords
+    for keyword in finalKeywordList:
+        print(keyword)
+
+if __name__ == "__main__":
+    main()

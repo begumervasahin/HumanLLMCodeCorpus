@@ -1,0 +1,83 @@
+import time
+import logging
+import threading
+from queue import Queue
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Create an event and a queue
+event = threading.Event()
+task_queue = Queue()
+
+# Define a background worker function
+def background_worker(stop_event):
+    while not stop_event.is_set():
+        logging.debug('Background worker running')
+        time.sleep(2.1)
+
+# Define a queued worker function
+def queued_worker(stop_event, task_queue):
+    while not stop_event.is_set():
+        task = task_queue.get()
+        if task is None:
+            break
+        logging.debug(f'Queued worker running, task: {task}')
+
+# Define an event worker function
+def event_worker(stop_event, event):
+    while not stop_event.is_set():
+        event.wait()
+        logging.debug('Event worker running')
+        time.sleep(1)
+
+# Create stop events for each worker
+background_worker_stop_event = threading.Event()
+queued_worker_stop_event = threading.Event()
+event_worker_stop_event = threading.Event()
+
+# Start the background workers
+background_worker_thread = threading.Thread(target=background_worker, args=(background_worker_stop_event,))
+queued_worker_thread = threading.Thread(target=queued_worker, args=(queued_worker_stop_event, task_queue))
+event_worker_thread = threading.Thread(target=event_worker, args=(event_worker_stop_event, event))
+
+background_worker_thread.start()
+queued_worker_thread.start()
+event_worker_thread.start()
+
+def test_function():
+    logging.debug('Test function running')
+
+# Simulate adding tasks to the queue and setting the event
+task_queue.put('task1')
+event.set()
+task_queue.put('task2')
+task_queue.put('task3')
+task_queue.put('task4')
+
+logging.debug('ALL SET')
+
+# Simulate a background task
+test_thread = threading.Thread(target=test_function)
+test_thread.start()
+test_thread.join()
+
+logging.debug('Job test started')
+
+# Run for some time then stop the workers
+time.sleep(5)
+
+# Stop the workers
+background_worker_stop_event.set()
+queued_worker_stop_event.set()
+event_worker_stop_event.set()
+
+# Ensure all tasks in the queue are processed
+task_queue.put(None)  # Sentinel to stop the queued worker
+
+# Wait for threads to finish
+background_worker_thread.join()
+queued_worker_thread.join()
+event_worker_thread.join()
+
+logging.debug('All workers stopped')

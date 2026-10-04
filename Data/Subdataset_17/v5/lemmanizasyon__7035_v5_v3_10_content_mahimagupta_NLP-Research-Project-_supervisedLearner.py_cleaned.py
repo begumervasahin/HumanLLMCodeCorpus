@@ -1,0 +1,31 @@
+
+HINDI_DIC_FILE = './datasets/hi_hdtb-ud-dev.conllu'
+HINDI_OUT_FILE = './outputs/train_data.txt'
+def is_lemma_present(lemmas, lemma):
+    return any(all(existing_lemma[key] == lemma[key] for key in ("root", "tag1", "tag2")) for existing_lemma in lemmas)
+def format_lemma(lemma):
+    return '[{}, {}, {}]'.format(lemma["root"], lemma["tag1"], lemma["tag2"])
+def read_training_data(input_file, output_file=None):
+    dataset = {}
+    with open(input_file, 'r', encoding='utf-8') as file:
+        for line in file:
+            if len(line) < 5 or line.startswith('
+                continue
+            parts = line.split("\t")
+            word, root, tag1, tag2 = parts[1], parts[2], parts[3], parts[4]
+            if word not in dataset:
+                dataset[word] = []
+            lemma = {"root": root, "tag1": tag1, "tag2": tag2}
+            if not is_lemma_present(dataset[word], lemma):
+                dataset[word].append(lemma)
+    if output_file is not None:
+        with open(output_file, 'w', encoding='utf-8') as file:
+            for word, lemmas in dataset.items():
+                formatted_lemmas = ', '.join([format_lemma(l) for l in lemmas])
+                file.write(f'{word}: {formatted_lemmas}\n')
+    return dataset
+def supervised_learn():
+    training_data = read_training_data(HINDI_DIC_FILE, HINDI_OUT_FILE)
+    for word, lemmas in training_data.items():
+        print(f'Processing word: {word} with {len(lemmas)} lemmas')
+supervised_learn()

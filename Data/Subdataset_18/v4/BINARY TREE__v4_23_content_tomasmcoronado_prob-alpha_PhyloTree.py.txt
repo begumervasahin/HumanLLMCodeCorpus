@@ -1,0 +1,114 @@
+from Shape import *
+import newick
+
+class PhyloTree(Shape):
+    """
+    The `PhyloTree` class extends `Shape` and accounts for the distinguishability of leaves.
+    """
+
+    def __init__(self, leaf, children):
+        """
+        Initialize a new `PhyloTree` object.
+
+        :param leaf: If the node is a leaf, its label; otherwise, `None`.
+        :param children: If the node is not a leaf, the `PhyloTree` objects which are its descendants; otherwise, `None`.
+        """
+        super().__init__(children)
+        self.leaf = leaf
+        assert not self.is_leaf or (leaf is not None), "Leaf nodes must have a label."
+
+    def shape(self):
+        """
+        Return the `Shape` associated with this `PhyloTree`, "forgetting" the labels of the leaves.
+
+        :return: `Shape` instance.
+        """
+        if self.is_leaf:
+            return Shape(None)
+        else:
+            return Shape([child.shape() for child in self.children])
+
+    def to_newick_tuple(self):
+        """
+        Return a tuple representing the simplified Newick code of this `PhyloTree`.
+
+        :return: Tuple instance.
+        """
+        if self.is_leaf:
+            return self.leaf
+        else:
+            return tuple(child.to_newick_tuple() for child in self.children)
+
+    def leaves(self):
+        """
+        Yield the labels of the leaves of this `PhyloTree`.
+
+        :return: Generator yielding leaf labels.
+        """
+        if self.is_leaf:
+            yield self.leaf
+        else:
+            for child in self.children:
+                yield from child.leaves()
+
+    def labels(self):
+        """
+        Return a list of labels that appear in this `PhyloTree`, sorted lexicographically.
+
+        :return: List of labels.
+        """
+        return sorted(list(self.leaves()))
+
+    def is_phylo(self):
+        """
+        Check if this `PhyloTree` is phylogenetic (i.e., has no repeated leaves).
+
+        :return: `True` if phylogenetic, `False` otherwise.
+        """
+        labels = self.labels()
+        for i in range(1, len(labels)):
+            if labels[i] == labels[i - 1]:
+                return False
+        return True
+
+def from_newick(newick_str):
+    """
+    Create a `PhyloTree` object from a Newick code entered as a string.
+
+    :param newick_str: A string representing a Newick code.
+    :return: `PhyloTree` instance.
+    """
+    return newick_node_to_tree(newick.loads(newick_str)[0])
+
+def from_newick_list(newick_str):
+    """
+    Create a list of `PhyloTree` objects from a string containing multiple Newick codes.
+
+    :param newick_str: A string representing a list of Newick codes.
+    :return: List of `PhyloTree` instances.
+    """
+    return [newick_node_to_tree(node) for node in newick.loads(newick_str)]
+
+def newick_node_to_tree(newick_node):
+    """
+    Create a `PhyloTree` object from a `Node` object.
+
+    :param newick_node: A `Node` object from the `newick` module.
+    :return: `PhyloTree` instance.
+    """
+    if not newick_node.descendants:
+        return PhyloTree(newick_node.name, None)
+    return PhyloTree(None, sorted([newick_node_to_tree(child) for child in newick_node.descendants]))
+
+def trees_from_file(filename, encoding='utf8', strip_comments=False, **kwargs):
+    """
+    Load a list of trees from a Newick-formatted file.
+
+    :param filename: Path to the file containing Newick codes.
+    :param encoding: File encoding (default is 'utf8').
+    :param strip_comments: Flag to strip comments enclosed in square brackets (default is `False`).
+    :param kwargs: Additional keyword arguments passed to `newick.read`.
+    :return: List of `PhyloTree` instances.
+    """
+    newick_trees = newick.read(filename, encoding, strip_comments, **kwargs)
+    return [newick_node_to_tree(tree) for tree in newick_trees]

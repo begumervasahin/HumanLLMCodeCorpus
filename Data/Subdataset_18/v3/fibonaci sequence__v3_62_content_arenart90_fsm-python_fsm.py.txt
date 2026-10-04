@@ -1,0 +1,57 @@
+import time
+from enum import Enum, auto
+
+class States(Enum):
+    INIT = auto()
+    FIB = auto()
+    OFF = auto()
+
+class FibonacciFSM:
+    def __init__(self):
+        """Initialize the FSM with the first two Fibonacci numbers."""
+        self.a = 1
+        self.b = 1
+
+    def init_state(self):
+        """Initialize the Fibonacci sequence and transition to the FIB state."""
+        self.a = 1
+        self.b = 1
+        print(self.a)
+        print(self.b)
+        return States.FIB
+
+    def fib_state(self):
+        """Calculate the next Fibonacci number, print it, and decide the next state."""
+        c = self.a + self.b
+        print(c)
+        self.a, self.b = self.b, c
+        time.sleep(0.1)
+        return States.FIB if self.a + self.b < 620 else States.OFF
+
+    def off_state(self):
+        """Terminate the FSM."""
+        print("FSM is now OFF.")
+
+    def run_state(self, state):
+        """Call the appropriate state method based on the current state."""
+        state_methods = {
+            States.INIT: self.init_state,
+            States.FIB: self.fib_state,
+            States.OFF: self.off_state
+        }
+        return state_methods[state]()
+
+    def run(self, initial_state):
+        """Run the FSM starting from the initial state."""
+        state = initial_state
+        while state != States.OFF:
+            state = self.run_state(state)
+        self.run_state(state)  # Ensure the OFF state method is called
+
+def main():
+    """Main function to run the FibonacciFSM."""
+    fsm = FibonacciFSM()
+    fsm.run(States.INIT)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,47 @@
+import string
+import pandas as pd
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
+
+class Preprocess:
+    def __init__(self):
+        # Initialize the stemmer and stop word remover
+        self.stemmer = StemmerFactory().create_stemmer()
+        self.remover = StopWordRemoverFactory().create_stop_word_remover()
+
+    def preprocess(self, text):
+        """
+        Preprocess the given text by stemming, removing stopwords, converting to lowercase,
+        and removing punctuation.
+
+        Args:
+            text (str): The text to preprocess.
+
+        Returns:
+            list: The preprocessed text as a list of words.
+        """
+        # Step 1: Stem the text
+        text_stem = self.stemmer.stem(text)
+        # Step 2: Remove stopwords
+        text_clean = self.remover.remove(text_stem)
+        # Step 3: Convert to lowercase
+        lowercase_text = text_clean.lower()
+        # Step 4: Remove punctuation and split into words
+        preprocessed_text = lowercase_text.translate(str.maketrans('', '', string.punctuation)).split()
+        return preprocessed_text
+
+def main():
+    # Create an instance of the Preprocess class
+    preprocess = Preprocess()
+    
+    # Load the dataset
+    data = pd.read_csv('Coba.csv', sep=',')
+    
+    # Preprocess the 'TOPIK' column
+    data['preprocessed'] = data['TOPIK'].apply(lambda x: ' '.join(preprocess.preprocess(x)))
+    
+    # Save the updated dataframe to a new CSV file
+    data.to_csv('Coba_preprocessed.csv', index=False)
+
+if __name__ == '__main__':
+    main()

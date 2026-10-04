@@ -1,0 +1,91 @@
+import logging
+import os
+import pandas as pd
+import re
+import scrapy
+from scrapy.crawler import CrawlerProcess
+from scrapy.linkextractors.lxmlhtml import LxmlLinkExtractor
+from googlesearch import search
+
+logging.getLogger('scrapy').propagate = False
+
+def get_urls(tag, n, language):
+    """Retrieve a list of URLs from Google search results."""
+    urls = [url for url in search(tag, stop=n, lang=language)][:n]
+    return urls
+
+class MailSpider(scrapy.Spider):
+    name = 'email'
+
+    def __init__(self, start_urls, path, reject):
+        self.start_urls = start_urls
+        self.path = path
+        self.reject = reject
+
+    def parse(self, response):
+        """Extract links from the response and process each one."""
+        links = LxmlLinkExtractor(allow=()).extract_links(response)
+        links = [str(link.url) for link in links]
+        links.append(str(response.url))
+
+        for link in links:
+            yield scrapy.Request(url=link, callback=self.parse_link)
+
+    def parse_link(self, response):
+        """Extract emails from the response and save them."""
+        for word in self.reject:
+            if word in str(response.url):
+                return
+
+        html_text = str(response.text)
+        mail_list = re.findall(r'\w+@\w+\.\w+', html_text)
+
+        if mail_list:
+            df = pd.DataFrame({'email': mail_list, 'link': [response.url] * len(mail_list)})
+            df.to_csv(self.path, mode='a', header=False, index=False)
+
+def ask_user(question):
+    """Prompt the user with a yes/no question and return the response."""
+    response = input(question + ' y/n\n')
+    return response.lower() == 'y'
+
+def create_file(path):
+    """Create or overwrite a file if it already exists."""
+    if os.path.exists(path):
+        if not ask_user('File already exists, replace?'):
+            return
+
+    with open(path, 'w') as file:
+        pass
+
+def get_info(tag, n, language, path, reject=[]):
+    """Collect email information from websites found via Google search."""
+    create_file(path)
+
+    # Initialize the CSV file with headers
+    df = pd.DataFrame(columns=['email', 'link'])
+    df.to_csv(path, mode='w', header=True, index=False)
+
+    # Collect Google URLs
+    print('Collecting Google URLs...')
+    google_urls = get_urls(tag, n, language)
+
+    # Start the Scrapy process
+    print('Searching for emails...')
+    process = CrawlerProcess({'USER_AGENT': 'Mozilla/5.0'})
+    process.crawl(MailSpider, start_urls=google_urls, path=path, reject=reject)
+    process.start()
+
+    # Clean the collected emails
+    print('Cleaning emails...')
+    df = pd.read_csv(path)
+    df = df.drop_duplicates(subset='email').reset_index(drop=True)
+    df.to_csv(path, mode='w', header=True, index=False)
+
+    return df
+
+if __name__ == "__main__":
+    # Usage example
+    bad_words = ['facebook', 'instagram', 'youtube', 'twitter', 'wiki']
+    df = get_info('mastering studio london', 300, 'pt', 'studios.csv', reject=bad_words)
+    print(df.head())

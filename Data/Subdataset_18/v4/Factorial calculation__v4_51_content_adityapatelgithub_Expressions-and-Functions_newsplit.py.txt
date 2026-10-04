@@ -1,0 +1,51 @@
+def new_split_iter(expr):
+    """
+    Tokenizes a character string into individual tokens. Tokens include operators, numbers, and identifiers.
+    Tokens may not be separated by spaces but can be.
+
+    :param expr: The expression to be tokenized.
+    :yield: Tokens extracted from the expression.
+    """
+    operators = {'+', '-', '*', '/', '%', '(', ')', '=', '<', '>', '!', '?', ':', ';', ','}
+    expr = expr + ";"  # Append a semicolon to handle the end of the expression
+    pos = 0
+
+    while pos < len(expr) and expr[pos] != ";":
+        char = expr[pos]
+
+        if char.isspace():
+            # Skip whitespace
+            pos += 1
+        elif char.isalpha():
+            # Tokenize identifiers
+            start = pos
+            while pos < len(expr) and (expr[pos].isalnum() or expr[pos] == '_'):
+                pos += 1
+            yield expr[start:pos]
+        elif char.isdigit():
+            # Tokenize numbers
+            start = pos
+            while pos < len(expr) and expr[pos].isdigit():
+                pos += 1
+            yield expr[start:pos]
+        elif char in {'=', '!', '<', '>'} and pos + 1 < len(expr) and expr[pos + 1] == '=':
+            # Tokenize two-character operators
+            yield expr[pos] + expr[pos + 1]
+            pos += 2
+        elif char in operators:
+            # Tokenize single-character operators
+            yield char
+            pos += 1
+        else:
+            # Handle any unexpected characters
+            raise ValueError(f"Unexpected character '{char}' in expression")
+
+    # Yield the end-of-expression token
+    yield ";"
+
+# Example usage
+if __name__ == "__main__":
+    expr = "a = 10 + b * (c - d) >= 5;"
+    tokens = list(new_split_iter(expr))
+    print("Tokens:", tokens)
+    # Expected output: Tokens: ['a', '=', '10', '+', 'b', '*', '(', 'c', '-', 'd', ')', '>=', '5', ';']

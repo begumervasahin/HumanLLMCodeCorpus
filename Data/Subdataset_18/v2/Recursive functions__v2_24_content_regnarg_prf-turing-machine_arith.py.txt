@@ -1,0 +1,43 @@
+from prf import *
+
+# Identity function (returns the input value)
+identity = Proj(1, 0)
+
+# Function that returns 1 (constant function)
+one = C(S, zero)
+
+# Successor function for three arguments (returns the first argument incremented by 1)
+S3 = C(S, Proj(3, 0))
+
+# Addition function using primitive recursion
+add = PR(identity, S3)
+add = accel(add, lambda x, y: x + y, 2)
+
+# Predecessor function (returns the input value decremented by 1, but not less than 0)
+pred = C(PR(identity, Proj(3, 1)), Proj(1, 0), Proj(1, 0))
+pred = accel(pred, lambda x: x - 1 if x > 0 else 0, 1)
+
+# Predecessor function for three arguments (applies predecessor to the first argument)
+pred3 = C(pred, Proj(3, 0))
+
+# Recursive subtraction (x - y if x >= y, otherwise 0)
+rsub = PR(identity, pred3)
+sub = C(rsub, Proj(2, 1), Proj(2, 0))
+sub = accel(sub, lambda x, y: x - y if x >= y else 0, 2)
+
+# Multiplication function using primitive recursion
+mul_step = C(add, Proj(3, 0), Proj(3, 2))
+mul = PR(zero, mul_step)
+mul = accel(mul, lambda x, y: x * y, 2)
+
+# Exponentiation function using primitive recursion
+pow_step = C(mul, Proj(3, 0), Proj(3, 2))
+rpow = PR(one, pow_step)
+pow = C(rpow, Proj(2, 1), Proj(2, 0))
+pow = accel(pow, lambda x, y: x ** y, 2)
+
+# Testing the functions
+print(f"Addition of 5 and 3: {add(5, 3)}")
+print(f"Subtraction of 5 from 8: {sub(8, 5)}")
+print(f"Multiplication of 5 and 3: {mul(5, 3)}")
+print(f"Exponentiation of 2 to the power 3: {pow(2, 3)}")

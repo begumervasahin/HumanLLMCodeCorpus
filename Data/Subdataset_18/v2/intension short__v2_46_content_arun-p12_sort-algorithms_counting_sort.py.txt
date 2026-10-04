@@ -1,0 +1,59 @@
+def counting_sort(arr, verbose=0, desc=False):
+    """
+    Perform counting sort on the given list of integers.
+
+    Parameters:
+    arr (list): List of integers to sort.
+    verbose (int): Verbosity level for debugging (0: no output, 1: basic, 2: detailed).
+    desc (bool): If True, sorts in descending order.
+
+    Returns:
+    list: Sorted list of integers.
+    """
+    if not arr:
+        return []
+
+    # Find the largest and smallest elements in the array
+    smallest, largest = min(arr), max(arr)
+    
+    # Normalize the data by shifting the smallest number to 0
+    if smallest < 0:
+        arr = [x - smallest for x in arr]
+    
+    if verbose:
+        print("Normalized array:", arr)
+    
+    # Create and populate the count array
+    range_of_elements = largest - smallest + 1
+    count = [0] * range_of_elements
+    for number in arr:
+        count[number] += 1
+    
+    # Update the count array to hold the cumulative count
+    for i in range(1, len(count)):
+        count[i] += count[i - 1]
+        if verbose == 2:
+            print(f"Count array at index {i}: {count}")
+    
+    # Build the output array by placing elements in the correct position
+    output = [0] * len(arr)
+    for i in range(len(arr) - 1, -1, -1):
+        current_number = arr[i]
+        count[current_number] -= 1
+        output[count[current_number]] = current_number
+    
+    # Shift numbers back if they were normalized
+    if smallest < 0:
+        output = [x + smallest for x in output]
+    
+    # Reverse the output array if descending order is requested
+    if desc:
+        output.reverse()
+    
+    return output
+
+# Example usage
+if __name__ == "__main__":
+    A = [4, 2, 2, 8, 3, 3, 1]
+    sorted_A = counting_sort(A, verbose=1)
+    print("Sorted array:", sorted_A)

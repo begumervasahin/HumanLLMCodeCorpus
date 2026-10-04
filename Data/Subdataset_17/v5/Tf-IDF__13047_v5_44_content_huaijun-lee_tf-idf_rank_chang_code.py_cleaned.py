@@ -1,0 +1,33 @@
+import os
+from os import path
+__author__ = 'huaijun'
+def load_txt(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
+def ensure_directory_exists(directory):
+    if not path.isdir(directory):
+        os.mkdir(directory)
+def process_files_in_directory(source_dir, dest_dir, log_file):
+    for file_name in os.listdir(source_dir):
+        source_file_path = path.join(source_dir, file_name)
+        dest_file_path = path.join(dest_dir, file_name)
+        try:
+            text = load_txt(source_file_path)
+            with open(dest_file_path, 'w', encoding='utf-8') as output_file:
+                output_file.write(text)
+        except (IOError, UnicodeDecodeError, FileNotFoundError) as e:
+            log_file.write(f'Error with file {source_file_path}: {str(e)}\n')
+def main():
+    root_dir = os.getcwd()
+    file_dirs = [ele for ele in os.listdir(root_dir) if ele.startswith('C0')]
+    sample_dir = path.join(root_dir, 'sample')
+    ensure_directory_exists(sample_dir)
+    log_file_path = path.join(root_dir, 'wrong_code.txt')
+    with open(log_file_path, 'a+', encoding='utf-8') as log_file:
+        for dir_name in file_dirs:
+            source_dir = path.join(root_dir, dir_name)
+            dest_dir = path.join(sample_dir, dir_name)
+            ensure_directory_exists(dest_dir)
+            process_files_in_directory(source_dir, dest_dir, log_file)
+if __name__ == "__main__":
+    main()

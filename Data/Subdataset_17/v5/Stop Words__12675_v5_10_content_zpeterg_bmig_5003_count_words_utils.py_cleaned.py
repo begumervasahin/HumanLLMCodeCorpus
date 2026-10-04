@@ -1,0 +1,95 @@
+class DealArgs:
+    def __init__(self, args):
+        self.start = ''
+        self.stop = ''
+        self.finish = ''
+        self.format = False
+        self.output = ''
+        self.stats = False
+        self.csv = False
+        self.file = ''
+        self._parse_args(args)
+        self._validate_file()
+    def _parse_args(self, args):
+        for arg in args:
+            if '=' in arg:
+                key, value = arg.split('=')
+                self._set_arg(key, value)
+            else:
+                self._set_flag(arg)
+    def _set_arg(self, key, value):
+        if key == '--input':
+            self.file = value
+        elif key == '--start':
+            self.start = value
+        elif key == '--stop':
+            self.stop = value
+        elif key == '--finish':
+            self.finish = value
+        elif key == '--output':
+            self.output = value
+    def _set_flag(self, flag):
+        if flag == '-s':
+            self.stats = True
+        elif flag == '-f':
+            self.format = True
+        elif flag == '-c':
+            self.csv = True
+    def _validate_file(self):
+        if not self.file:
+            raise ValueError('You must supply a file with --input')
+    @property
+    def file(self):
+        return self.__file
+    @file.setter
+    def file(self, file):
+        if not file:
+            raise ValueError('You must supply a file')
+        self.__file = file
+    @property
+    def output(self):
+        if self.csv and self.__output and not self.__output.endswith('.csv'):
+            return self.__output + '.csv'
+        if not self.csv and self.__output and not self.__output.endswith('.json'):
+            return self.__output + '.json'
+        return self.__output
+    @output.setter
+    def output(self, output):
+        self.__output = output
+    @property
+    def stats(self):
+        return self.__stats
+    @stats.setter
+    def stats(self, stats):
+        self.__stats = bool(stats)
+        if self.__stats:
+            self.__format = False
+    @property
+    def format(self):
+        return self.__format
+    @format.setter
+    def format(self, format):
+        self.__format = bool(format)
+        if self.__format:
+            self.__stats = False
+    @property
+    def csv(self):
+        return self.__csv
+    @csv.setter
+    def csv(self, csv):
+        self.__csv = bool(csv)
+        if self.__csv:
+            self.__format = False
+    def to_object(self):
+        return {
+            "file": self.file,
+            "start": self.start,
+            "stop": self.stop,
+            "finish": self.finish,
+            "format": self.format,
+            "output": self.output,
+            "stats": self.stats,
+            "csv": self.csv,
+        }
+def clean_word(word):
+    return word.lower().replace('\n', '').strip("~`!@

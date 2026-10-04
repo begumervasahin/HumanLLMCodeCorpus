@@ -1,0 +1,66 @@
+import redis
+import json
+
+class Fibonacci:
+    def __init__(self, host, db):
+        """Initialize the Redis connection and set the first two Fibonacci numbers if not already set."""
+        self.redis = redis.StrictRedis(host=host, db=db)
+        if not self._get(1):
+            self.redis.set(1, 1)
+            self.redis.set(2, 1)
+            self._save()
+
+    def _get(self, k):
+        """Retrieve a Fibonacci number from Redis."""
+        value = self.redis.get(k)
+        return int(value) if value else None
+
+    def _set(self, k):
+        """Calculate and store the k-th Fibonacci number in Redis."""
+        n1 = self._get(k - 1)
+        n2 = self._get(k - 2)
+        self.redis.set(k, n1 + n2)
+
+    def _save(self):
+        """Save the current state of Redis."""
+        self.redis.bgsave()
+
+    def _find_nearest_left(self, n):
+        """Find the nearest left Fibonacci number stored in Redis."""
+        if not self._get(n):
+            return self._find_nearest_left(n - 1)
+        return n
+
+    def _calculate(self, start, end):
+        """Calculate Fibonacci numbers between start and end."""
+        for n in range(start, end):
+            if not self._get(n):
+                self._set(n)
+
+    def ensure_numbers(self, start, end):
+        """Ensure all Fibonacci numbers between start and end are calculated."""
+        if not self._get(start):
+            nearest_left = self._find_nearest_left(start)
+            self.ensure_numbers(nearest_left, end)
+        self._calculate(start + 1, end)
+
+    def control(self, start, end):
+        """Return a list of formatted strings showing Fibonacci numbers between start and end."""
+        return [f'<div>[{k}] == {self._get(k)}</div>' for k in range(start, end)]
+
+def main():
+    """Main function to execute Fibonacci operations based on config settings."""
+    with open('config.json') as file:
+        conf = json.load(file)
+
+    fib = Fibonacci(conf['redis_host'], conf['redis_db'])
+    print('\n'.join(fib.control(1, 50)))
+    fib.ensure_numbers(5, 7)
+    fib.ensure_numbers(30, 40)
+    fib.ensure_numbers(25, 35)
+    fib.ensure_numbers(49, 50)
+    print('\n'.join(fib.control(1, 50)))
+    print('\n'.join(fib.control(9, 13)))
+
+if __name__ == '__main__':
+    main()

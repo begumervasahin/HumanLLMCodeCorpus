@@ -1,0 +1,71 @@
+import asyncio
+import math
+import sys
+
+async def produce_factorials(queue: asyncio.Queue, start: int = 0, finish: int = None):
+    """
+    Asynchronously produces factorial values starting from `start` up to `finish` (exclusive) 
+    and places them into the provided queue. Produces indefinitely if `finish` is None.
+
+    :param queue: asyncio.Queue to put factorial values into.
+    :param start: Starting number for factorial calculations.
+    :param finish: Ending number for factorial calculations. If None, continues indefinitely.
+    """
+    async def calculate_factorial(n: int):
+        """
+        Calculate the factorial of `n` and put the result into the queue.
+
+        :param n: Number for which to calculate the factorial.
+        """
+        result = await asyncio.get_event_loop().run_in_executor(None, math.factorial, n)
+        await queue.put(result)
+
+    try:
+        current = abs(int(start))
+    except ValueError as e:
+        raise ValueError(f"Invalid start value: {e}")
+
+    if finish is None:
+        # Produce factorials indefinitely
+        while True:
+            await calculate_factorial(current)
+            current += 1
+    else:
+        try:
+            end = abs(int(finish))
+        except ValueError as e:
+            raise ValueError(f"Invalid finish value: {e}")
+
+        # Produce factorials up to the specified finish value
+        while current < end:
+            await calculate_factorial(current)
+            current += 1
+
+    # Signal that production is complete
+    await queue.put(None)
+
+async def consume_factorials(queue: asyncio.Queue):
+    """
+    Asynchronously consumes factorial values from the queue and prints them.
+
+    :param queue: asyncio.Queue from which factorial values are retrieved.
+    """
+    while True:
+        item = await queue.get()
+        if item is None:
+            break
+        sys.stdout.write(f"Current value: {item}\n")
+        await asyncio.sleep(0.2)
+
+async def main():
+    """
+    Entry point for the asyncio program, setting up the producer and consumer tasks.
+    """
+    queue = asyncio.Queue(maxsize=1)
+    producer = produce_factorials(queue, start=0, finish=10)  # Adjust start and finish as needed
+    consumer = consume_factorials(queue)
+    
+    await asyncio.gather(producer, consumer)
+
+if __name__ == "__main__":
+    asyncio.run(main())

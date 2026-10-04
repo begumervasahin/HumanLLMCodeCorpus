@@ -1,0 +1,98 @@
+import nltk
+from nltk.corpus import wordnet as wn
+
+def get_hyponyms(noun):
+    """
+    Get hyponyms (more specific terms) for a given noun.
+
+    Args:
+        noun (str): The noun for which to find hyponyms.
+
+    Returns:
+        list: A list of lists containing hyponyms for each synset of the noun.
+    """
+    # Retrieve synsets containing the noun
+    synsets = wn.synsets(noun)
+
+    # Filter synsets to include only those that contain the noun as a lemma
+    filtered_synsets = [synset for synset in synsets if noun in synset.lemma_names()]
+
+    # Get hyponyms for each filtered synset
+    hyponyms_list = [list(synset.closure(lambda s: s.hyponyms(), depth=1)) for synset in filtered_synsets]
+
+    return hyponyms_list
+
+def get_hypernyms(noun):
+    """
+    Get hypernyms (more general terms) for a given noun.
+
+    Args:
+        noun (str): The noun for which to find hypernyms.
+
+    Returns:
+        tuple: A tuple containing a list of synset strings and a list of lists containing hypernyms for each synset.
+    """
+    # Retrieve synsets containing the noun
+    synsets = wn.synsets(noun)
+
+    # Filter synsets to include only those that contain the noun as a lemma
+    filtered_synsets = [str(synset) for synset in synsets if noun in synset.lemma_names()]
+
+    # Get hypernyms for each filtered synset
+    hypernyms_list = [list(wn.synset(synset_str).closure(lambda s: s.hypernyms(), depth=8)) for synset_str in filtered_synsets]
+
+    return filtered_synsets, hypernyms_list
+
+def convert_pos_tag(tag):
+    """
+    Convert universal POS tags to WordNet POS tags.
+
+    Args:
+        tag (str): Universal POS tag.
+
+    Returns:
+        str: Corresponding WordNet POS tag.
+    """
+    pos_tag_map = {
+        "NOUN": "n",
+        "VERB": "v",
+        "ADJ": "a",
+        "ADV": "r"
+    }
+    return pos_tag_map.get(tag, None)
+
+def lemmatize(word, pos_tag):
+    """
+    Lemmatize a word based on its POS tag.
+
+    Args:
+        word (str): The word to lemmatize.
+        pos_tag (str): The POS tag of the word.
+
+    Returns:
+        tuple: A tuple containing the lemmatized word and its original POS tag.
+    """
+    wn_pos = convert_pos_tag(pos_tag)
+    lemma = wn.morphy(word, wn_pos) if wn_pos else word
+    return lemma if lemma else word, pos_tag
+
+def lemmatize_corpus(corpus):
+    """
+    Lemmatize each word in the corpus.
+
+    Args:
+        corpus (list): A list of lists containing tuples of words and their POS tags.
+
+    Returns:
+        list: A list of lists containing tuples of lemmatized words and their POS tags.
+    """
+    return [[lemmatize(word, pos_tag) for word, pos_tag in sentence] for sentence in corpus]
+
+if __name__ == "__main__":
+    # Example usage
+    noun = "dog"
+    print(f"Hyponyms of '{noun}': {get_hyponyms(noun)}")
+    print(f"Hypernyms of '{noun}': {get_hypernyms(noun)}")
+
+    sample_corpus = [[('running', 'VERB'), ('quickly', 'ADV')], [('dogs', 'NOUN'), ('barking', 'VERB')]]
+    print(f"Lemmatized text: {lemmatize_corpus(sample_corpus)}")

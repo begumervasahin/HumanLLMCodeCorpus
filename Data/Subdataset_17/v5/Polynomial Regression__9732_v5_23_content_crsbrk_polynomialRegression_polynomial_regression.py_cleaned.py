@@ -1,0 +1,34 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+dataset = pd.read_csv('~/Desktop/Position_Salaries.csv')
+X = dataset.iloc[:, 1:2].values
+y = dataset.iloc[:, 2].values
+lin_reg = LinearRegression()
+lin_reg.fit(X, y)
+poly_reg = PolynomialFeatures(degree=4)
+X_poly = poly_reg.fit_transform(X)
+poly_lin_reg = LinearRegression()
+poly_lin_reg.fit(X_poly, y)
+def plot_results(X, y, model, title):
+    plt.scatter(X, y, color='red')
+    plt.plot(X, model.predict(X), color='blue')
+    plt.title(title)
+    plt.xlabel('Position level')
+    plt.ylabel('Salary')
+    plt.show()
+plot_results(X, y, lin_reg, 'Truth or Bluff (Linear Regression)')
+plot_results(X, y, poly_lin_reg, 'Truth or Bluff (Polynomial Regression)')
+X_grid = np.arange(min(X), max(X), 0.1).reshape(-1, 1)
+plt.scatter(X, y, color='red')
+plt.plot(X_grid, poly_lin_reg.predict(poly_reg.transform(X_grid)), color='blue')
+plt.title('Truth or Bluff (Polynomial Regression - High Resolution)')
+plt.xlabel('Position level')
+plt.ylabel('Salary')
+plt.show()
+linear_pred = lin_reg.predict([[6.5]])
+print(f"Linear Regression prediction for 6.5: {linear_pred[0]}")
+poly_pred = poly_lin_reg.predict(poly_reg.transform([[6.5]]))
+print(f"Polynomial Regression prediction for 6.5: {poly_pred[0]}")

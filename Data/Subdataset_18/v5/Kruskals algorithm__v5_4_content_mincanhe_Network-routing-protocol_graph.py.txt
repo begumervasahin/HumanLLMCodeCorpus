@@ -1,0 +1,73 @@
+import random
+
+class Vertex:
+    def __init__(self, vertex_id):
+        self.vertex_id = vertex_id
+        self.connections = []
+
+    def insert_connection(self, target_vertex, weight):
+        """Insert a connection to another vertex with a specified weight."""
+        self.connections.append((target_vertex, weight))
+
+    def remove_connection(self, target_vertex):
+        """Remove a connection to another vertex."""
+        self.connections = [
+            connection for connection in self.connections
+            if connection[0] != target_vertex
+        ]
+
+    def exists_connection(self, target_vertex):
+        """Check if a connection to the target vertex exists."""
+        return any(connection[0] == target_vertex for connection in self.connections)
+
+def defined_degree_graph(num_vertices, degree):
+    """
+    Create a graph with a specified number of vertices and degree, and save the edges to a file.
+    
+    Args:
+        num_vertices (int): Number of vertices in the graph.
+        degree (int): Desired degree for each vertex.
+    
+    Returns:
+        list of Vertex: The vertices of the graph.
+    """
+    vertices = [Vertex(i) for i in range(num_vertices)]
+    edges = []
+    vertex_ids = list(range(num_vertices))
+    random.shuffle(vertex_ids)
+    
+    for i in range(num_vertices):
+        current_vertex = vertex_ids[i]
+        
+        for k in range(1, degree // 2 + 1):
+            # Connect to the right neighbor
+            right_index = (i + k) % num_vertices
+            right_vertex = vertex_ids[right_index]
+            _add_edge(vertices, current_vertex, right_vertex, edges)
+            
+            # Connect to the left neighbor
+            left_index = (i - k) % num_vertices
+            left_vertex = vertex_ids[left_index]
+            _add_edge(vertices, current_vertex, left_vertex, edges)
+
+    # Write edges to file
+    _write_edges_to_file('edges.txt', edges)
+    
+    return vertices
+
+def _add_edge(vertices, vertex_a, vertex_b, edges):
+    """Add an edge between two vertices with a random weight and update the edge list."""
+    weight = random.randint(0, 100)
+    vertices[vertex_a].insert_connection(vertex_b, weight)
+    vertices[vertex_b].insert_connection(vertex_a, weight)
+    edges.append(sorted([vertex_a, vertex_b]) + [weight])
+
+def _write_edges_to_file(filename, edges):
+    """Write the list of edges to a file."""
+    with open(filename, 'a') as file:
+        for edge in edges:
+            file.write(f"{edge[0]} {edge[1]} {edge[2]}\n")
+
+# Example usage
+defined_degree_graph(5000, 6)
+defined_degree_graph(5000, 1000)

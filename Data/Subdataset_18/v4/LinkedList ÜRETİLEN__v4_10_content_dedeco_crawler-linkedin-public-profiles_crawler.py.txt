@@ -1,0 +1,136 @@
+"""Main file for crawling and processing URLs"""
+import os
+import pickle
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from config import (
+    timeout, dir_path, crawl_urls, credentials,
+    cookie_file, screenshot_dir, domain, SEED
+)
+from database import Recomendation, SESSION
+from bs4 import BeautifulSoup
+from joblib import Parallel, delayed
+from slugify import slugify
+
+chrome_driver_path = os.path.join(dir_path, 'chromedriver')
+BROWSER_options = webdriver.ChromeOptions()
+BROWSER_options.add_argument('--incognito')
+
+
+def init_browser():
+    """Initialize the Chrome browser with specified options."""
+    browser = webdriver.Chrome(
+        executable_path=chrome_driver_path,
+        options=BROWSER_options
+    )
+    return browser
+
+
+def save_html(html_str, filename):
+    """Save the HTML content to a file."""
+    with open(filename, "w") as html_file:
+        html_file.write(html_str)
+    return True
+
+
+def save_record(session, source_html, url, parent_id=None, visited=0):
+    """Save the crawled record into the database."""
+    record = Recomendation()
+    record.parent_id = parent_id
+    record.url = url
+    file_path = './pages/' + slugify(url.split('/')[4]) + '.html'
+    record.file = file_path
+    record.visited = visited
+    if save_html(source_html, file_path):
+        session.add(record)
+        session.commit()
+    return record
+
+
+def visit_page(url):
+    """Visit a page and return its source HTML."""
+    print('Obtaining profile:', url)
+    browser = init_browser()
+    browser.get(url)
+    cookies = pickle.load(open(cookie_file, "rb"))
+    for cookie in cookies:
+        browser.add_cookie(cookie)
+    browser.refresh()
+    browser.get(url)
+    WebDriverWait(browser, timeout).until(
+        EC.visibility_of_element_located((By.CLASS_NAME, 'pv-deferred-area__content'))
+    )
+    page_source = browser.page_source
+    browser.quit()
+    return page_source
+
+
+def process_url(url_seed, parent_id):
+    """Process a seed URL and save its contents and linked profiles."""
+    existing_record = SESSION.query(Recomendation).filter_by(url=url_seed).first()
+    if not existing_record or existing_record.visited == 0:
+        print('Obtaining seed profile:', url_seed)
+        page_source = visit_page(url_seed)
+        record = save_record(SESSION, page_source, url_seed, parent_id=parent_id, visited=1)
+        soup = BeautifulSoup(page_source, 'html.parser')
+        ul = soup.find('ul', class_='pv-profile-section__section-info section-info browsemap mt4')
+        links = [domain + a['href'] for a in ul.find_all('a', class_='pv-browsemap-section__member ember-view') if len(a['href']) < 255]
+
+        visited_records = []
+        sources = Parallel(n_jobs=-1)(delayed(visit_page)(link) for link in links)
+        for page_source, link in zip(sources, links):
+            child_record = save_record(SESSION, page_source, link, parent_id=record.id)
+            visited_records.append(child_record)
+
+        for record in visited_records:
+            record.visited = 1
+            SESSION.commit()
+
+
+def crawler():
+    """Main crawling function."""
+    try:
+        browser = init_browser()
+        if not os.path.isfile(cookie_file):
+            print('--- Login ---')
+            browser.get(crawl_urls['login'])
+            WebDriverWait(browser, timeout).until(
+                EC.visibility_of_element_located((By.ID, 'login-submit'))
+            )
+            browser.find_element(By.ID, 'login-email').send_keys(credentials['email'])
+            browser.find_element(By.ID, 'login-password').send_keys(credentials['password'])
+            browser.find_element(By.ID, 'login-submit').click()
+            WebDriverWait(browser, timeout).until(
+                EC.visibility_of_element_located((By.CLASS_NAME, 'core-rail'))
+            )
+            pickle.dump(browser.get_cookies(), open(cookie_file, "wb"))
+            browser.save_screenshot(os.path.join(screenshot_dir, 'homepage_from_auth.png'))
+        else:
+            print('--- From cookie ---')
+            browser.get(crawl_urls['home'])
+            cookies = pickle.load(open(cookie_file, "rb"))
+            for cookie in cookies:
+                browser.add_cookie(cookie)
+            browser.refresh()
+            WebDriverWait(browser, timeout).until(
+                EC.visibility_of_element_located((By.CLASS_NAME, 'core-rail'))
+            )
+
+        process_url(SEED, None)
+        for _ in range(100):
+            not_visited = SESSION.query(Recomendation).filter_by(visited=0).all()
+            for record in not_visited:
+                process_url(record.url, record.id)
+
+        browser.quit()
+    except TimeoutException:
+        print('Timed out waiting for page to load')
+        browser.save_screenshot(os.path.join(screenshot_dir, 'timeout_exception.png'))
+        browser.quit()
+
+
+if __name__ == "__main__":
+    crawler()

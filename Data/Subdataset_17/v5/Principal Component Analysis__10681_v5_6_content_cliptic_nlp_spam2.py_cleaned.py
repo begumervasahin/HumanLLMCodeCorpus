@@ -1,0 +1,47 @@
+from __future__ import print_function, division
+from builtins import range
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from wordcloud import WordCloud
+def load_and_preprocess_data(file_path):
+    df = pd.read_csv(file_path, encoding='ISO-8859-1')
+    df = df.drop(["Unnamed: 2", "Unnamed: 3", "Unnamed: 4"], axis=1)
+    df.columns = ['labels', 'data']
+    df['b_labels'] = df['labels'].map({'ham': 0, 'spam': 1})
+    return df
+def visualize_word_cloud(df, label):
+    words = ' '.join(df[df['labels'] == label]['data'].str.lower())
+    wordcloud = WordCloud(width=600, height=400).generate(words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title(f"Word Cloud for {label} messages")
+    plt.show()
+def print_misclassified_messages(df, label, correct_label):
+    misclassified_messages = df[(df['predictions'] == label) & (df['b_labels'] == correct_label)]['data']
+    for msg in misclassified_messages:
+        print(msg)
+def main():
+    df = load_and_preprocess_data('large_files/spam.csv')
+    Y = df['b_labels'].values
+    df_train, df_test, Ytrain, Ytest = train_test_split(df['data'], Y, test_size=0.33, random_state=42)
+    tfidf = TfidfVectorizer(decode_error='ignore')
+    Xtrain = tfidf.fit_transform(df_train)
+    Xtest = tfidf.transform(df_test)
+    model = MultinomialNB()
+    model.fit(Xtrain, Ytrain)
+    print("Train score:", model.score(Xtrain, Ytrain))
+    print("Test score:", model.score(Xtest, Ytest))
+    visualize_word_cloud(df, 'spam')
+    visualize_word_cloud(df, 'ham')
+    X = tfidf.transform(df['data'])
+    df['predictions'] = model.predict(X)
+    print("\nSneaky Spam Messages:")
+    print_misclassified_messages(df, label=0, correct_label=1)
+    print("\nNot Actually Spam Messages:")
+    print_misclassified_messages(df, label=1, correct_label=0)
+if __name__ == "__main__":
+    main()

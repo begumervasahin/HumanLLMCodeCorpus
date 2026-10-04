@@ -1,0 +1,90 @@
+import re
+from nltk.stem import PorterStemmer
+
+def extract_data(filepath, stop_word_list):
+    """
+    Extracts and processes text data from a given file.
+
+    Args:
+    filepath (str): Path to the file to be processed.
+    stop_word_list (list): List of stop words to be removed.
+
+    Returns:
+    tuple: A tuple containing the final list of stemmed words and document numbers.
+    """
+    ps = PorterStemmer()
+    total_doc = ""
+    final_word_list = []
+    doc_num_list = []
+
+    # Read and process the file
+    with open(filepath, 'r') as file:
+        for line in file:
+            striped_string = line.strip() + " "
+            total_doc += striped_string
+            if "<DOCNO>" in striped_string:
+                doc_num = re.search(r'<DOCNO>(.*?)</DOCNO>', striped_string).group(1)
+                doc_num_list.append(doc_num)
+
+    # Extract and clean text content
+    total_texts = re.findall(r'<TEXT>(.*?)</TEXT>', total_doc)
+    for text in total_texts:
+        cleaned_text = clean_text(text)
+        word_list = remove_stopwords(cleaned_text, stop_word_list)
+        stemmed_list = stem_words(word_list, ps)
+        final_word_list.extend(stemmed_list)
+
+    return final_word_list, doc_num_list
+
+def clean_text(text):
+    """
+    Cleans the text by removing unwanted characters and numbers.
+
+    Args:
+    text (str): The text to be cleaned.
+
+    Returns:
+    str: The cleaned and lowercased text.
+    """
+    text = text.strip()
+    text = re.sub(r"\w*-*\d+-*\w*", " ", text)
+    text = re.sub(r"\d+", " ", text)
+    text = re.sub(r"\W+", " ", text)
+    return text.lower()
+
+def remove_stopwords(text, stop_word_list):
+    """
+    Removes stop words from the text.
+
+    Args:
+    text (str): The text from which stop words are to be removed.
+    stop_word_list (list): The list of stop words to be removed.
+
+    Returns:
+    list: A list of words with stop words removed.
+    """
+    word_list = re.split(r'\s+', text)
+    return [word for word in word_list if word not in stop_word_list]
+
+def stem_words(word_list, stemmer):
+    """
+    Stems the words in the list.
+
+    Args:
+    word_list (list): List of words to be stemmed.
+    stemmer (object): The stemmer to be used.
+
+    Returns:
+    list: A list of stemmed words.
+    """
+    return [stemmer.stem(word) for word in word_list if word]
+
+def main():
+    filepath = 'path_to_your_file'
+    stop_word_list = ['your', 'stop', 'words', 'here']
+    final_word_list, doc_num_list = extract_data(filepath, stop_word_list)
+    print(f"Final Word List: {final_word_list}")
+    print(f"Document Numbers: {doc_num_list}")
+
+if __name__ == "__main__":
+    main()

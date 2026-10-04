@@ -1,0 +1,42 @@
+from ecc.ecc import EllipticCurve
+from ecc.galois_field.galois_field import GaloisField
+from ecc.galois_field.generic import is_prime
+
+def find_top_k_prime_orders(k=10, field_size=103):
+    """
+    Finds the top k elliptic curves with prime orders over a given finite field.
+
+    Args:
+        k (int): Number of top orders to find.
+        field_size (int): Size of the finite field.
+
+    Returns:
+        list: Top k points with their prime orders.
+    """
+    points_with_prime_orders = []
+
+    gf = GaloisField(field_size)
+
+    # Iterate over all possible values of a and b in the finite field
+    for a in range(gf.p):
+        for b in range(gf.p):
+            elliptic_curve = EllipticCurve(a, b, field_size)
+            order = elliptic_curve.order_of_curve()
+            if is_prime(order):
+                points_with_prime_orders.append(((a, b), order))
+
+    # Sort points by their order in descending order and get the top k
+    points_with_prime_orders.sort(key=lambda x: x[1], reverse=True)
+    top_k_points_with_orders = points_with_prime_orders[:k]
+
+    return top_k_points_with_orders
+
+# Example usage
+if __name__ == "__main__":
+    top_k = 10  # Number of top points to find
+    field_size = 103  # Size of the finite field
+
+    top_k_prime_orders = find_top_k_prime_orders(top_k, field_size)
+
+    for point, order in top_k_prime_orders:
+        print(f"{point} : {order}")

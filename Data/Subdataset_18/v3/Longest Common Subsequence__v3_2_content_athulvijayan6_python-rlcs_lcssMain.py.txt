@@ -1,0 +1,80 @@
+from __future__ import division
+import numpy as np
+import matplotlib.pyplot as plt
+from lcs import rlcs as rlcs
+
+# Set plot style
+plt.style.use('ggplot')
+plot_dir = './'
+
+def load_data():
+    """Load data from .npy files."""
+    X = np.load('sample-data/X.npy')
+    Y = np.load('sample-data/Y.npy')
+    return X, Y
+
+def compute_rlcs(X, Y, tau_dist, delta):
+    """Compute RLCS between X and Y."""
+    score, diag, cost = rlcs.rlcs(X, Y, tau_dist=tau_dist, delta=delta)
+    segment = rlcs.backtrack(X, Y, score, diag, cost)
+    return score, diag, cost, segment
+
+def extract_segments(segment, X, Y, score_thres, len_thres):
+    """Extract soft segments from the optimal segment."""
+    xSegs, ySegs = rlcs.getSoftSegments(segment, X, Y, score_thres=score_thres, len_thres=len_thres)
+    return xSegs, ySegs
+
+def plot_matched_signals(xSegs, ySegs, tau_dist):
+    """Plot the matched signals."""
+    fig, ax = plt.subplots()
+    
+    # Find the longest segment
+    lens = [segment.shape[0] for segment in xSegs]
+    idx = lens.index(max(lens))
+    xseg, yseg = xSegs[idx], ySegs[idx]
+    
+    # Plot the longest segments
+    ax.plot(range(xseg.size), xseg, label='X Segment')
+    ax.plot(range(yseg.size), yseg, label='Y Segment')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Amplitude')
+    ax.set_title(f'Matched signals for RLCS with distance threshold {tau_dist}')
+    ax.legend()
+    
+    fig.savefig(plot_dir + 'rlcsMain_getSegs.eps')
+
+def plot_lcs(segment, X, Y, tau_dist):
+    """Plot the LCS (Longest Common Subsequence)."""
+    fig, ax = rlcs.plotLCS(segment, X, Y)
+    ax.set_xlabel('Query Index')
+    ax.set_ylabel('Reference Index')
+    ax.set_title(f'Match of signals after backtrack with distance threshold {tau_dist}')
+    fig.savefig(plot_dir + 'rlcsMain_backtrack.eps')
+
+def main():
+    # Parameters for RLCS computation
+    tau_dist = 0.005
+    delta = 0.5
+    score_thres = 1e-4
+    len_thres = 10
+    
+    # Load data
+    X, Y = load_data()
+    
+    # Compute RLCS
+    score, diag, cost, segment = compute_rlcs(X, Y, tau_dist, delta)
+    
+    # Extract soft segments
+    xSegs, ySegs = extract_segments(segment, X, Y, score_thres, len_thres)
+    
+    # Plot matched signals
+    plot_matched_signals(xSegs, ySegs, tau_dist)
+    
+    # Plot LCS
+    plot_lcs(segment, X, Y, tau_dist)
+    
+    # Show the plots
+    plt.show()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,66 @@
+"""
+This script reads the Sample_output text files and extracts specific numbers for further analysis.
+"""
+
+import matplotlib.pyplot as plt
+
+def parse_file(file_path):
+    """
+    Parses the file to extract event times and lengths.
+
+    Parameters:
+    file_path (str): The path to the input file.
+
+    Returns:
+    tuple: Four lists containing arrival times, boarding times, bus departure times, boarded group lengths, and to-board queue lengths.
+    """
+    with open(file_path, mode='r') as file:
+        arrival_times = []
+        boarding_times = []
+        bus_departure_times = []
+        boarded_group_lengths = []
+        to_board_queue_lengths = []
+
+        for line in file.readlines():
+            segments = line.split()
+            if line.startswith('PASSENGER ARRIVAL EVENT'):
+                arrival_time = float(segments[-1])
+                arrival_times.append(arrival_time)
+            elif line.startswith('PASSENGER BOARDING EVENT'):
+                boarding_time = float(segments[-1])
+                boarding_times.append(boarding_time)
+            elif line.startswith('BUS DEPARTURE EVENT'):
+                departure_time = float(segments[-1])
+                bus_departure_times.append(departure_time)
+            elif line.startswith('Len of boarded group'):
+                group_length = int(segments[-1])
+                boarded_group_lengths.append(group_length)
+            elif line.startswith('Len of ToBoard_Que'):
+                queue_length = int(segments[-1])
+                to_board_queue_lengths.append(queue_length)
+    
+    return arrival_times, boarding_times, bus_departure_times, boarded_group_lengths, to_board_queue_lengths
+
+def plot_queue_lengths(queue_lengths):
+    """
+    Plots the lengths of the to-board queue.
+
+    Parameters:
+    queue_lengths (list): A list of to-board queue lengths.
+    """
+    plt.plot(range(len(queue_lengths)), queue_lengths, 'o', label='To-board queue length')
+    plt.legend()
+    plt.xlabel('Event Index')
+    plt.ylabel('Queue Length')
+    plt.title('To-Board Queue Length Over Time')
+    plt.show()
+
+if __name__ == '__main__':
+    # Path to the input file
+    input_file_path = "Sample_output-5.txt"
+    
+    # Parse the file to get the required data
+    arrival_times, boarding_times, bus_departure_times, boarded_group_lengths, to_board_queue_lengths = parse_file(input_file_path)
+    
+    # Plot the to-board queue lengths
+    plot_queue_lengths(to_board_queue_lengths)

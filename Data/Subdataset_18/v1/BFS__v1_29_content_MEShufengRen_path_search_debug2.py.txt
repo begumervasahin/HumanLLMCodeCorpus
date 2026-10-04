@@ -1,0 +1,73 @@
+import matplotlib.pyplot as plt
+from graphSearch import astar_search, dijkstra_search, dfs_search, bfs_search, greedy_search, reconstruct_path
+from build_world import Map, plot_init_map, plot_init_map_noclick, plot_search_result
+
+# Define the map scenes
+def create_map(scene):
+    if scene == '1':
+        graph = Map(100, 100)
+        graph.walls = [[20, 5, 10, 90], [50, 0, 30, 70], [50, 80, 40, 20]]
+    elif scene == '2':
+        graph = Map(50, 50)
+        graph.walls = [[15, 0, 25, 10], [30, 10, 10, 25], [15, 15, 10, 25], [15, 40, 25, 10]]
+    elif scene == '3':
+        graph = Map(100, 100)
+        graph.walls = [[25, 10, 50, 80], [70, 20, 20, 50], [10, 70, 60, 20]]
+    else:
+        raise ValueError("Invalid scene selection")
+    return graph
+
+# Switch search method dictionary
+switch_search_method = {
+    'A-star': astar_search,
+    'Dijkstra': dijkstra_search,
+    'DFS': dfs_search,
+    'BFS': bfs_search,
+    'Greedy': greedy_search
+}
+
+def main():
+    # User input for scene selection
+    scene = input('Please choose one scene from 1~3:\n')
+    try:
+        graph = create_map(scene)
+    except ValueError as e:
+        print(e)
+        return
+
+    # User input for search method
+    method = input('Please choose one path search method from following:\nA-star, Dijkstra, DFS, BFS, Greedy\nPress \'q\' to quit progress\n')
+    if method == 'q':
+        return
+    elif method not in switch_search_method:
+        print('Invalid method. Check the word spell.')
+        return
+
+    # User input for animation option
+    animation_input = input('If open animation? y/n\n')
+    animation = animation_input.lower() == 'y'
+
+    # User input for manual start and goal selection
+    click_input = input('If select start and goal position by hand? y/n\n')
+    click = click_input.lower() == 'y'
+
+    # Initialize the map based on user input
+    if click:
+        print('Please choose start and goal position on the map! Showing \'x cross\' means choose successfully\n')
+        start, goal, ax, ann_iterate, ann_path = plot_init_map(graph, method)
+    else:
+        start, goal = (2, 2), (45, 30)
+        ax, ann_iterate, ann_path = plot_init_map_noclick(graph, method, start, goal)
+
+    # Perform the search
+    flag, graph_result, update_ax = switch_search_method[method](graph, start, goal, ax, ann_iterate, animation)
+    
+    # If search was successful, reconstruct and plot the path
+    if flag == 'Successful':
+        path, path_length = reconstruct_path(graph_result, start, goal)
+        plot_search_result(path, path_length, update_ax, ann_path)
+        plt.ion()
+        plt.show()
+
+if __name__ == '__main__':
+    main()

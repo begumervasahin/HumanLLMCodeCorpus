@@ -1,0 +1,65 @@
+import asyncio
+import math
+import sys
+
+async def produce_factorial(queue: asyncio.Queue, start: int = 0, finish: int = None):
+    """
+    Produces factorial values and puts them into the queue.
+
+    :param queue: asyncio.Queue to put factorial values into.
+    :param start: Starting number for factorial calculation.
+    :param finish: Ending number for factorial calculation. If None, produces indefinitely.
+    """
+    _loop = asyncio.get_event_loop()
+
+    async def __factorio(n):
+        """
+        Calculate the factorial of `n` in a blocking way and put it into the queue.
+
+        :param n: Number to calculate the factorial of.
+        """
+        item = await _loop.run_in_executor(None, math.factorial, n)
+        await queue.put(item)
+
+    try:
+        n = abs(int(start))
+    except ValueError as e:
+        raise RuntimeError(f"Invalid start value: {e}")
+
+    if finish is None:
+        # Produce factorials indefinitely
+        while True:
+            await __factorio(n)
+            n += 1
+    else:
+        # Produce factorials from start to finish (exclusive)
+        finish = abs(int(finish))
+        while n < finish:
+            await __factorio(n)
+            n += 1
+
+    # Signal the consumer that production is done
+    await queue.put(None)
+
+async def consume_factorial(queue: asyncio.Queue):
+    """
+    Consumes factorial values from the queue and prints them.
+
+    :param queue: asyncio.Queue to get factorial values from.
+    """
+    while True:
+        item = await queue.get()
+        if item is None:
+            break
+        sys.stdout.write(f"Current value: {item}\n")
+        await asyncio.sleep(0.2)
+
+async def main():
+    queue = asyncio.Queue(maxsize=1)
+    producer = produce_factorial(queue, start=0, finish=10)  # Adjust start and finish as needed
+    consumer = consume_factorial(queue)
+    
+    await asyncio.gather(producer, consumer)
+
+if __name__ == "__main__":
+    asyncio.run(main())

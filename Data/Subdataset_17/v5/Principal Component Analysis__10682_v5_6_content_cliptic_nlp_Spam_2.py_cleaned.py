@@ -1,0 +1,59 @@
+from __future__ import print_function, division
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from wordcloud import WordCloud
+def load_data(filepath):
+    df = pd.read_csv(filepath, encoding='ISO-8859-1')
+    df = df.drop(["Unnamed: 2", "Unnamed: 3", "Unnamed: 4"], axis=1)
+    df.columns = ['labels', 'data']
+    df['b_labels'] = df['labels'].map({'ham': 0, 'spam': 1})
+    return df
+def split_data(df):
+    X = df['data'].values
+    Y = df['b_labels'].values
+    return train_test_split(X, Y, test_size=0.33)
+def vectorize_data(X_train, X_test):
+    vectorizer = CountVectorizer(decode_error='ignore')
+    X_train_vect = vectorizer.fit_transform(X_train)
+    X_test_vect = vectorizer.transform(X_test)
+    return X_train_vect, X_test_vect, vectorizer
+def train_model(X_train, Y_train):
+    model = MultinomialNB()
+    model.fit(X_train, Y_train)
+    return model
+def print_scores(model, X_train, Y_train, X_test, Y_test):
+    print("Train score:", model.score(X_train, Y_train))
+    print("Test score:", model.score(X_test, Y_test))
+def visualize_wordcloud(df, label):
+    words = ' '.join(df[df['labels'] == label]['data'].str.lower())
+    wordcloud = WordCloud(width=600, height=400).generate(words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title(f"Word Cloud for {label} messages")
+    plt.show()
+def print_misclassified_messages(df):
+    sneaky_spam = df[(df['predictions'] == 0) & (df['b_labels'] == 1)]['data']
+    print("THESE ARE THE SNEAKY SPAM MESSAGES:\n")
+    for msg in sneaky_spam:
+        print(msg)
+    not_actually_spam = df[(df['predictions'] == 1) & (df['b_labels'] == 0)]['data']
+    print("THESE ARE THE NOT SPAM BUT CLASSIFIED AS THEY WERE:\n")
+    for msg in not_actually_spam:
+        print(msg)
+def main(filepath):
+    df = load_data(filepath)
+    X_train, X_test, Y_train, Y_test = split_data(df)
+    X_train_vect, X_test_vect, vectorizer = vectorize_data(X_train, X_test)
+    model = train_model(X_train_vect, Y_train)
+    print_scores(model, X_train_vect, Y_train, X_test_vect, Y_test)
+    visualize_wordcloud(df, 'spam')
+    visualize_wordcloud(df, 'ham')
+    X_all_vect = vectorizer.transform(df['data'].values)
+    df['predictions'] = model.predict(X_all_vect)
+    print_misclassified_messages(df)
+if __name__ == "__main__":
+    main('large_files/spam.csv')

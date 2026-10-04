@@ -1,0 +1,81 @@
+import random
+
+class Node:
+    def __init__(self, data):
+        '''Initialize Node with data.'''
+        self.data = data
+        self.left = None
+        self.right = None
+        self.priority = random.random()
+
+    def __str__(self):
+        '''Return string representation of data.'''
+        return str(self.data)
+
+class TreapSet:
+    def __init__(self):
+        self.root = None
+        self.count = 0
+
+    def leftRot(self, node):
+        '''Rotates the subtree to the left.'''
+        newParent = node.right
+        node.right = newParent.left
+        newParent.left = node
+        return newParent
+
+    def rightRot(self, node):
+        '''Rotates the subtree to the right.'''
+        newParent = node.left
+        node.left = newParent.right
+        newParent.right = node
+        return newParent
+
+    def add(self, e):
+        '''Inserts element into the tree'''
+        self.count += 1
+        if self.root is None:
+            self.root = Node(e)
+        else:
+            self.root = self.__add(e, self.root)
+
+    def __add(self, e, refNode):
+        if refNode is None:
+            return Node(e)
+        elif e < refNode.data:
+            refNode.left = self.__add(e, refNode.left)
+            if refNode.left.priority > refNode.priority:
+                refNode = self.rightRot(refNode)
+        else:
+            refNode.right = self.__add(e, refNode.right)
+            if refNode.right.priority > refNode.priority:
+                refNode = self.leftRot(refNode)
+        return refNode
+
+    def __contains__(self, element):
+        '''Checks if the element is in the tree'''
+        return self.__contains_internal(self.root, element)
+
+    def __contains_internal(self, refNode, element):
+        if refNode is None:
+            return False
+        elif refNode.data == element:
+            return True
+        elif element < refNode.data:
+            return self.__contains_internal(refNode.left, element)
+        else:
+            return self.__contains_internal(refNode.right, element)
+
+    def height(self):
+        '''Used for determining the height of the tree'''
+        return self.__height(self.root)
+
+    def __height(self, node):
+        if node is None:
+            return 0
+        else:
+            return 1 + max(self.__height(node.left), self.__height(node.right))
+
+    def __len__(self):
+        '''Returns the number of items in tree'''
+        return self.count

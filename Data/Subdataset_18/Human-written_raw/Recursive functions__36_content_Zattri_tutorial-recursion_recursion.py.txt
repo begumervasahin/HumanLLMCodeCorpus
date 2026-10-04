@@ -1,0 +1,65 @@
+import binary
+def countdown(x):
+    print(x)
+    if x > 0:
+        countdown(x-1)
+def factorial(x):
+    if x == 0:
+        return 1
+    else:
+        return x * factorial(x - 1)
+def tailFactorial(x, acc=1):
+    if x == 0:
+        return acc
+    else:
+        return tailFactorial(x-1, acc * x)
+rootNode = binary.Node(0)
+node1 = binary.Node(1)
+node2 = binary.Node(2)
+node3 = binary.Node(3)
+node4 = binary.Node(4)
+node5 = binary.Node(5)
+rootNode.addLeft(node1)
+rootNode.addRight(node2)
+node1.addLeft(node3)
+node2.addLeft(node4)
+node2.addRight(node5)
+def treeTraverse(root):
+    print(root.v)
+    if (root.l or root.r):
+        if root.l:
+            print("Left")
+            treeTraverse(root.l)
+        if root.r:
+            print("Right")
+            treeTraverse(root.r)
+    else:
+        print("Up")
+def treeSearch(root, val):
+    if (root.v == val):
+        print("Found")
+    else:
+        if (root.l or root.r):
+            if root.l:
+                treeSearch(root.l, val)
+            if root.r:
+                treeSearch(root.r, val)
+def msort3(x):
+    result = []
+    if len(x) < 2:
+        return x
+    mid = int(len(x) / 2)
+    y = msort3(x[:mid])
+    z = msort3(x[mid:])
+    i = 0
+    j = 0
+    while i < len(y) and j < len(z):
+        if y[i] > z[j]:
+            result.append(z[j])
+            j += 1
+        else:
+            result.append(y[i])
+            i += 1
+    result += y[i:]
+    result += z[j:]
+    return result

@@ -1,0 +1,137 @@
+import random
+import sys
+import pickle
+import ABR
+import RB
+
+# Increase the recursion limit for deep recursion, necessary for large trees
+sys.setrecursionlimit(4400)
+
+def load_test_parameters(filename):
+    """Load test parameters from a file."""
+    with open(filename, "rb") as f:
+        return pickle.load(f)
+
+def save_results(filename, data):
+    """Save results to a file."""
+    with open(filename, "wb") as f:
+        pickle.dump(data, f)
+
+def test_heights():
+    """Load test parameters, run height tests on BST and RBT, and save the results."""
+    
+    # Load the test parameters
+    test_heights_start = load_test_parameters("tests.p")
+
+    # Run height tests on both Binary Search Trees (BST) and Red-Black Trees (RBT)
+    bst_results = test_height_ABR(test_heights_start)
+    rbt_random_results, rbt_ordered_results = test_height_RB(test_heights_start)
+
+    # Save the results
+    save_results("resultHeightABR.p", bst_results)
+    save_results("resultHeightRB_random.p", rbt_random_results)
+    save_results("resultHeightRB_ordered.p", rbt_ordered_results)
+
+def test_height_ABR(test_params):
+    """Test the height of Binary Search Trees (BST) with random elements."""
+    elements, range_elements = test_params
+    random_heights = []
+
+    print("\n" + "=" * 100)
+    print("Average heights of Binary Search Trees for random elements. 3 executions per test.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Rows: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for num_elements in elements:
+        avg_heights_for_ranges = []
+
+        for max_val in range_elements:
+            heights = []
+
+            for _ in range(3):  # Run 3 trials for each test
+                bst = ABR.BinarySearchTree()
+
+                # Insert random elements into the BST
+                for _ in range(num_elements):
+                    bst.insert(random.randint(0, max_val))
+
+                # Record the height of the BST
+                heights.append(bst.getHeight(bst.root))
+
+            # Calculate the average height for the current range
+            avg_heights_for_ranges.append(sum(heights) / len(heights))
+
+        random_heights.append(avg_heights_for_ranges)
+        print(avg_heights_for_ranges)
+    
+    return random_heights
+
+def test_height_RB(test_params):
+    """Test the height of Red-Black Trees (RBT) with both random and ordered elements."""
+    elements, range_elements = test_params
+    random_heights = []
+    ordered_heights = []
+
+    # Test with random elements
+    print("\n" + "=" * 100)
+    print("Average heights of Red-Black Trees for random elements. 10 executions per test.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Rows: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for num_elements in elements:
+        avg_heights_for_ranges = []
+
+        for max_val in range_elements:
+            heights = []
+
+            for _ in range(10):  # Run 10 trials for each test
+                rbt = RB.RedBlackTree()
+
+                # Insert random elements into the RBT
+                for _ in range(num_elements):
+                    rbt.insert(random.randint(0, max_val))
+
+                # Record the height of the RBT
+                heights.append(rbt.getHeight(rbt.root))
+
+            # Calculate the average height for the current range
+            avg_heights_for_ranges.append(sum(heights) / len(heights))
+
+        random_heights.append(avg_heights_for_ranges)
+        print(avg_heights_for_ranges)
+
+    # Test with ordered elements
+    print("\n" + "=" * 100)
+    print("Average heights of Red-Black Trees for ordered elements. 5 executions per test.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Rows: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for num_elements in elements:
+        avg_heights_for_ranges = []
+
+        for _ in range(len(range_elements)):
+            heights = []
+
+            for _ in range(5):  # Run 5 trials for each test
+                rbt = RB.RedBlackTree()
+
+                # Insert ordered elements into the RBT
+                for k in range(num_elements):
+                    rbt.insert(k)
+
+                # Record the height of the RBT
+                heights.append(rbt.getHeight(rbt.root))
+
+            # Calculate the average height for the current range
+            avg_heights_for_ranges.append(sum(heights) / len(heights))
+
+        ordered_heights.append(avg_heights_for_ranges)
+        print(avg_heights_for_ranges)
+    
+    return random_heights, ordered_heights
+
+if __name__ == "__main__":
+    test_heights()

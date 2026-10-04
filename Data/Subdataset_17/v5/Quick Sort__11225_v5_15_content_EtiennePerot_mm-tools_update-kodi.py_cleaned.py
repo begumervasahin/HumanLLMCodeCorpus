@@ -1,0 +1,92 @@
+import os
+import sys
+import sqlite3
+import xml.etree.ElementTree as ET
+import data
+VIEW_MODE_LOWLIST = 66037
+VIEW_MODE_POSTERS = 458808
+VIEW_MODE_MAPPING = {
+    data.Context.KIND_SERIES: VIEW_MODE_POSTERS,
+    data.Context.KIND_SEASON: VIEW_MODE_LOWLIST,
+    data.Context.KIND_MOVIE: VIEW_MODE_LOWLIST,
+    data.Context.KIND_OVA: VIEW_MODE_LOWLIST,
+}
+WINDOW = 10025
+SORT_METHOD = 4
+SORT_ORDER = 1
+SORT_ATTRIBUTES = 0
+SKIN = 'skin.aeon.nox.5'
+QUERY_SELECT = 'SELECT idView, window, viewMode, sortMethod, sortOrder, sortAttributes, skin FROM view WHERE path = ?'
+QUERY_INSERT = (
+    f'INSERT INTO view (window, path, viewMode, sortMethod, sortOrder, sortAttributes, skin) '
+    f'VALUES ({WINDOW}, ?, ?, {SORT_METHOD}, {SORT_ORDER}, {SORT_ATTRIBUTES}, "{SKIN}")'
+)
+QUERY_UPDATE = (
+    f'UPDATE view SET viewMode = ?, sortMethod = {SORT_METHOD}, sortOrder = {SORT_ORDER}, '
+    f'sortAttributes = {SORT_ATTRIBUTES} WHERE idView = ?'
+)
+BACKGROUND_KEYS = (
+    'skin.aeon.nox.5.System.Fallback',
+    'skin.aeon.nox.5.Movies.Fallback',
+    'skin.aeon.nox.5.TVShows.Fallback',
+    'skin.aeon.nox.5.Videos.Fallback',
+)
+def run_query(cursor, query, parameters):
+    print(f'Running query: {query} with parameters {parameters}')
+    cursor.execute(query, parameters)
+def update_database(context, cursor):
+    mode = VIEW_MODE_MAPPING.get(context.kind)
+    if not mode:
+        return
+    reflected_path = context.reflected_path
+    if not reflected_path.endswith(os.sep):
+        reflected_path += os.sep
+    row = cursor.execute(QUERY_SELECT, (reflected_path,)).fetchone()
+    if row:
+        idView, window, viewMode, sortMethod, sortOrder, sortAttributes, skin = row
+        if (window, viewMode, sortMethod, sortOrder, sortAttributes, skin) != (WINDOW, mode, SORT_METHOD, SORT_ORDER, SORT_ATTRIBUTES, SKIN):
+            run_query(cursor, QUERY_UPDATE, (mode, idView))
+    else:
+        run_query(cursor, QUERY_INSERT, (reflected_path, mode))
+def update_kodi_profile(library, profile):
+    guisettings_path = os.path.join(profile, 'userdata/guisettings.xml')
+    tree = ET.parse(guisettings_path)
+    changed = False
+    for setting in tree.getroot().findall('.
+        if setting.get('name') in BACKGROUND_KEYS and setting.text != library.background:
+            changed = True
+            setting.text = library.background
+    if changed:
+        tree.write(guisettings_path)
+def main():
+    libraries = {}
+    databases = {}
+    try:
+        for path in sys.argv[1:]:
+            for context in data.Traverse(path):
+                print(f'Updating database entry for: {context}')
+                library = context.library
+                if library.path not in libraries:
+                    libraries[library.path] = library
+                    for profile in library.kodi_profiles:
+                        if profile in databases:
+                            continue
+                        database_path = os.path.join(profile, 'userdata/Database/ViewModes6.db')
+                        if not os.path.isfile(database_path):
+                            raise RuntimeError(f'Database file {database_path} does not exist.')
+                        conn = sqlite3.connect(database_path)
+                        cursor = conn.cursor()
+                        databases[profile] = (conn, cursor)
+                for profile in library.kodi_profiles:
+                    update_database(context, databases[profile][1])
+    finally:
+        for conn, _ in databases.values():
+            conn.commit()
+            conn.close()
+    for library in libraries.values():
+        print(f'Updating library settings for: {library}')
+        for profile in library.kodi_profiles:
+            print(f'Updating Kodi profile for {library} at {profile}')
+            update_kodi_profile(library, profile)
+if __name__ == '__main__':
+    main()

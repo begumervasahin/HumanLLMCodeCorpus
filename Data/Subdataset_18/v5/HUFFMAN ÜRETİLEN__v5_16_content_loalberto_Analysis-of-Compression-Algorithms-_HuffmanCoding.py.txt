@@ -1,0 +1,130 @@
+import random
+import string
+import time
+from collections import defaultdict
+from heapq import heappush, heappop, heapify
+
+def huffman_encode(symbols_weights):
+    """
+    Perform Huffman encoding on the given dictionary of symbols and their corresponding weights.
+
+    Args:
+        symbols_weights (dict): A dictionary where keys are symbols and values are their corresponding weights.
+
+    Returns:
+        list: A sorted list of [symbol, huffman_code] pairs, sorted by the length of the huffman_code.
+        int: The number of operations performed during the encoding process.
+    """
+    heap = []
+    operation_count = 0
+
+    # Build the initial heap
+    for symbol, weight in symbols_weights.items():
+        operation_count += 1
+        heap.append([weight, [symbol, ""]])
+    heapify(heap)
+
+    # Build the Huffman Tree
+    while len(heap) > 1:
+        operation_count += 1
+        low = heappop(heap)
+        high = heappop(heap)
+
+        for pair in low[1:]:
+            pair[1] = '0' + pair[1]
+        for pair in high[1:]:
+            pair[1] = '1' + pair[1]
+
+        heappush(heap, [low[0] + high[0]] + low[1:] + high[1:])
+
+    # Sort the resulting Huffman tree by code length and symbol
+    huffman_tree = sorted(heappop(heap)[1:], key=lambda pair: (len(pair[1]), pair[0]))
+    return huffman_tree, operation_count
+
+def generate_random_string(length):
+    """
+    Generate a random string of lowercase letters with the specified length.
+
+    Args:
+        length (int): The length of the string to generate.
+
+    Returns:
+        str: A random string of lowercase letters.
+    """
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
+
+def measure_huffman_performance(iterations=10):
+    """
+    Measure the performance of Huffman encoding across multiple iterations with varying string lengths.
+
+    Args:
+        iterations (int): The number of iterations to run.
+
+    Returns:
+        dict: A dictionary containing the operation counts for each iteration.
+        dict: A dictionary containing the time measurements (in nanoseconds) for each iteration.
+    """
+    op_matrix = {f'Iteration {i + 1}': [] for i in range(iterations)}
+    time_matrix = {f'Iteration {i + 1}': [] for i in range(iterations)}
+
+    for iteration in range(1, iterations + 1):
+        string_length = 10
+
+        while string_length <= 100000:
+            random_string = generate_random_string(string_length)
+            frequency = defaultdict(int)
+
+            # Calculate frequency of each character
+            for ch in random_string:
+                frequency[ch] += 1
+
+            start_time = time.time()
+            _, encoding_operations = huffman_encode(frequency)
+            end_time = time.time()
+
+            total_time_ns = (end_time - start_time) * 1e9  # Convert seconds to nanoseconds
+            total_operations = encoding_operations + len(random_string)
+
+            op_matrix[f'Iteration {iteration}'].append(total_operations)
+            time_matrix[f'Iteration {iteration}'].append(total_time_ns)
+
+            string_length *= 10
+
+    # Calculate averages
+    op_matrix['Average'] = calculate_averages(op_matrix)
+    time_matrix['Average'] = calculate_averages(time_matrix)
+
+    return op_matrix, time_matrix
+
+def calculate_averages(matrix):
+    """
+    Calculate the average values for each index across all iterations.
+
+    Args:
+        matrix (dict): A dictionary where each key corresponds to an iteration and contains a list of values.
+
+    Returns:
+        list: A list of average values for each index across all iterations.
+    """
+    averages = []
+    num_iterations = len(matrix) - 1  # Exclude 'Average' key
+
+    for i in range(len(matrix['Iteration 1'])):
+        avg = sum(matrix[f'Iteration {j + 1}'][i] for j in range(num_iterations)) / num_iterations
+        averages.append(avg)
+
+    return averages
+
+def main():
+    op_matrix, time_matrix = measure_huffman_performance()
+
+    print('\n\n------------ Operation Measurement ------------\n\n')
+    for key, values in op_matrix.items():
+        print(f'{key}: {values}')
+
+    print('\n\n------------ Time Measurement (ns) ------------\n\n')
+    for key, values in time_matrix.items():
+        print(f'{key}: {values}')
+
+if __name__ == "__main__":
+    main()

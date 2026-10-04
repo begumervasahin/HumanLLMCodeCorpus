@@ -1,0 +1,88 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.cluster.hierarchy as sch
+from sklearn.cluster import AgglomerativeClustering
+
+def load_dataset(file_path):
+    """
+    Load the dataset and extract relevant columns (Annual Income and Spending Score).
+
+    Parameters:
+    file_path (str): Path to the CSV file.
+
+    Returns:
+    np.ndarray: Extracted data.
+    """
+    dataset = pd.read_csv(file_path)
+    return dataset.iloc[:, [3, 4]].values
+
+def plot_dendrogram(data):
+    """
+    Plot the dendrogram to determine the optimal number of clusters.
+
+    Parameters:
+    data (np.ndarray): The data to cluster.
+    """
+    plt.figure(figsize=(10, 7))
+    sch.dendrogram(sch.linkage(data, method='ward'))
+    plt.title("Dendrogram")
+    plt.xlabel("Customers")
+    plt.ylabel("Euclidean Distances")
+    plt.show()
+
+def apply_clustering(data, n_clusters):
+    """
+    Apply Agglomerative Hierarchical Clustering to the data.
+
+    Parameters:
+    data (np.ndarray): The data to cluster.
+    n_clusters (int): The number of clusters to form.
+
+    Returns:
+    np.ndarray: Cluster labels for each data point.
+    """
+    clustering_model = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')
+    return clustering_model.fit_predict(data)
+
+def plot_clusters(data, labels, n_clusters):
+    """
+    Visualize the clusters with different colors and labels.
+
+    Parameters:
+    data (np.ndarray): The data to cluster.
+    labels (np.ndarray): The cluster labels.
+    n_clusters (int): The number of clusters.
+    """
+    plt.figure(figsize=(10, 7))
+    colors = ['red', 'blue', 'green', 'cyan', 'magenta']
+    cluster_names = ['Careful', 'Standard', 'Target', 'Careless', 'Sensible']
+    
+    for i in range(n_clusters):
+        plt.scatter(data[labels == i, 0], data[labels == i, 1], s=100, c=colors[i], label=cluster_names[i])
+    
+    plt.title('Clusters of Clients')
+    plt.xlabel('Annual Income (k$)')
+    plt.ylabel('Spending Score (1-100)')
+    plt.legend()
+    plt.show()
+
+def main():
+    """
+    Main function to execute the clustering and visualization workflow.
+    """
+    file_path = 'Mall_Customers.csv'
+    data = load_dataset(file_path)
+    
+    # Plot dendrogram to determine the optimal number of clusters
+    plot_dendrogram(data)
+    
+    # Apply hierarchical clustering
+    n_clusters = 5
+    cluster_labels = apply_clustering(data, n_clusters)
+    
+    # Visualize the clusters
+    plot_clusters(data, cluster_labels, n_clusters)
+
+if __name__ == "__main__":
+    main()

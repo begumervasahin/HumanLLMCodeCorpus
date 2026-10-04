@@ -1,0 +1,72 @@
+# Apriori Algorithm for Market Basket Analysis
+
+# Importing the necessary libraries
+import numpy as np
+import pandas as pd
+from apyori import apriori
+
+def load_data(filename):
+    """
+    Load transaction data from a CSV file.
+
+    Args:
+        filename (str): The path to the CSV file containing the transaction data.
+
+    Returns:
+        list: A list of transactions, where each transaction is a list of items.
+    """
+    dataset = pd.read_csv(filename, header=None)
+    transactions = []
+    for i in range(dataset.shape[0]):
+        transaction = [str(dataset.values[i, j]) for j in range(dataset.shape[1]) if pd.notna(dataset.values[i, j])]
+        transactions.append(transaction)
+    return transactions
+
+def train_apriori(transactions, min_support, min_confidence, min_lift, min_length):
+    """
+    Train the Apriori algorithm on the transaction data.
+
+    Args:
+        transactions (list): A list of transactions, where each transaction is a list of items.
+        min_support (float): The minimum support threshold.
+        min_confidence (float): The minimum confidence threshold.
+        min_lift (float): The minimum lift threshold.
+        min_length (int): The minimum length of the itemsets.
+
+    Returns:
+        list: A list of association rules found by the Apriori algorithm.
+    """
+    rules = apriori(transactions, min_support=min_support, min_confidence=min_confidence, min_lift=min_lift, min_length=min_length)
+    return list(rules)
+
+def visualize_rules(rules):
+    """
+    Visualize the association rules found by the Apriori algorithm.
+
+    Args:
+        rules (list): A list of association rules.
+    """
+    for rule in rules:
+        items = list(rule.items)
+        print(f"Rule: {items}")
+        print(f"Support: {rule.support}")
+        print(f"Confidence: {rule.ordered_statistics[0].confidence}")
+        print(f"Lift: {rule.ordered_statistics[0].lift}")
+        print("=====================================")
+
+if __name__ == "__main__":
+    # Load the data
+    filename = 'Market_Basket_Optimisation.csv'
+    transactions = load_data(filename)
+
+    # Define Apriori parameters
+    min_support = 0.003
+    min_confidence = 0.2
+    min_lift = 3
+    min_length = 2
+
+    # Train Apriori on the dataset
+    rules = train_apriori(transactions, min_support, min_confidence, min_lift, min_length)
+
+    # Visualize the results
+    visualize_rules(rules)

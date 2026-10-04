@@ -1,0 +1,76 @@
+from Grafo import Grafo
+
+class AlgoritmoKruskal:
+    def aplicar_kruskal(self, grafo):
+        """
+        Applies Kruskal's algorithm to find the Minimum Spanning Tree (MST) of the given graph.
+
+        Parameters:
+        grafo (Grafo): The graph on which Kruskal's algorithm is applied.
+
+        Returns:
+        Grafo: The Minimum Spanning Tree (MST) of the graph.
+        """
+        arbol = Grafo()  # Create an empty graph to hold the MST
+        nodos = grafo.getNombres()  # Get the list of node names from the graph
+
+        # Add each node to the MST
+        for nodo in nodos:
+            arbol.ingresarNodo(nodo)
+
+        aristas = grafo.getAristas()  # Get the list of edges (aristas) from the graph
+
+        # Process each edge in the graph
+        while aristas:
+            arco_actual = aristas.pop(0)  # Get the first edge (arco)
+            
+            # Check if adding this edge creates a cycle
+            if not self.hay_ciclo(
+                arbol,
+                arco_actual,
+                arbol.getNodo(arco_actual.getTerminal()),
+                arco_actual.getTerminal()
+            ):
+                # If no cycle is formed, add the edge to the MST
+                arbol.adicionarEnlace(arco_actual.getInicial(), arco_actual.getTerminal(), arco_actual.getPeso())
+
+        return arbol
+
+    def hay_ciclo(self, grafo, arco_verificar, terminal, origen):
+        """
+        Checks if adding an edge to the graph will create a cycle.
+
+        Parameters:
+        grafo (Grafo): The graph to check for cycles.
+        arco_verificar: The edge to verify.
+        terminal: The current node being checked.
+        origen: The original node from which the check started.
+
+        Returns:
+        bool: True if adding the edge creates a cycle, False otherwise.
+        """
+        enlaces = terminal.getEnlaces()  # Get the list of edges connected to the terminal node
+
+        # If the terminal node has no edges, there's no cycle
+        if not enlaces:
+            return False
+
+        # If there's a direct link back to the starting node, there's a cycle
+        if terminal.existeEnlace(arco_verificar.getInicial()) != -1:
+            return True
+
+        # Recursively check each connected node
+        for enlace in enlaces:
+            nodo_destino = enlace.getDestino()
+
+            # Avoid checking the node we came from
+            if nodo_destino != origen:
+                if self.hay_ciclo(
+                    grafo,
+                    arco_verificar,
+                    grafo.getNodo(nodo_destino),
+                    terminal.getNombre()
+                ):
+                    return True
+
+        return False

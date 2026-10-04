@@ -1,0 +1,145 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def URLGen(country, job, location, salary):
+    """
+    Generates a URL for job search based on country, job title, location, and salary.
+
+    Args:
+        country (str): Country code ('US' or 'CA').
+        job (str): Job title.
+        location (str): Desired location.
+        salary (float): Desired salary.
+
+    Returns:
+        str: Generated URL.
+    """
+    URLJob = "+".join(job.split())
+    URLLoc = "+".join(location.split())
+    sal = float(salary) / 1000
+    URLSal = "24" + str(sal)
+    
+    if country == 'US':
+        URL = f"https://www.indeed.com/jobs?q={URLJob}+24{URLSal}%2C000&l={URLLoc}"
+    elif country == 'CA':
+        URL = f"https://ca.indeed.com/jobs?q={URLJob}+24{URLSal}%2C000&l={URLLoc}"
+    else:
+        print("Invalid country option.")
+        URL = ''
+    
+    return URL
+
+def extract_job_title_from_result(soup):
+    """
+    Extracts job titles from the BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): BeautifulSoup object containing the page content.
+
+    Returns:
+        list: List of job titles.
+    """
+    jobs = []
+    for div in soup.find_all(name="div", attrs={"class": "row"}):
+        for a in div.find_all(name="a", attrs={"data-tn-element": "jobTitle"}):
+            jobs.append(a["title"])
+    return jobs
+
+def extract_location_from_result(soup):
+    """
+    Extracts locations from the BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): BeautifulSoup object containing the page content.
+
+    Returns:
+        list: List of job locations.
+    """
+    locations = [span.text for span in soup.find_all("span", attrs={"class": "location"})]
+    return locations
+
+def extract_salary_from_result(soup):
+    """
+    Extracts salaries from the BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): BeautifulSoup object containing the page content.
+
+    Returns:
+        list: List of salaries.
+    """
+    salaries = []
+    for div in soup.find_all(name="div", attrs={"class": "row"}):
+        try:
+            salaries.append(div.find("nobr").text)
+        except:
+            try:
+                div_two = div.find(name="div", attrs={"class": "sjcl"})
+                div_three = div_two.find("div")
+                salaries.append(div_three.strip())
+            except:
+                salaries.append("Nothing found")
+    return salaries
+
+def extract_summary_from_result(soup):
+    """
+    Extracts job summaries from the BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): BeautifulSoup object containing the page content.
+
+    Returns:
+        list: List of job summaries.
+    """
+    summaries = [span.text.strip() for span in soup.find_all("span", attrs={"class": "summary"})]
+    return summaries
+
+def findJobs(URL):
+    """
+    Finds and prints job details from the given URL.
+
+    Args:
+        URL (str): URL to fetch job details from.
+    """
+    if URL:
+        page = requests.get(URL)
+        soup = BeautifulSoup(page.text, "html.parser")
+        jobs = extract_job_title_from_result(soup)
+        locations = extract_location_from_result(soup)
+        salaries = extract_salary_from_result(soup)
+        
+        fmt = '%-10s%-60s%-70s%s'
+        for i, (job, location, salary) in enumerate(zip(jobs, locations, salaries)):       
+            print(fmt % (i, job, location, salary))
+
+def PageGen(URL):
+    """
+    Generates paginated URLs for job search.
+
+    Args:
+        URL (str): Base URL for job search.
+
+    Returns:
+        list: List of paginated URLs.
+    """
+    return [URL + "&start=" + str(x) for x in range(10, 40, 10)]
+
+# Input from user
+country = input("Which country are you looking to work in (CA/US)?: ")
+job = input("Type of job you're looking for: ")
+location = input("Desired location: ")
+salary = input("Desired salary: ")
+
+# Generate URL and paginated URLs
+URL = URLGen(country, job, location, salary)
+pageUrls = PageGen(URL)
+
+# Print job details
+x = 1
+fmt = '%-10s%-60s%-70s%s'
+print(fmt % ('', 'Job Title', 'Location', 'Salary'))
+for page in pageUrls:
+    print("Page " + str(x))
+    findJobs(page)
+    x += 1

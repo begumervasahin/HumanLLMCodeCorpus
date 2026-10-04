@@ -1,0 +1,66 @@
+import requests
+import json
+import warnings
+
+# Suppress warnings about unverified HTTPS requests
+warnings.filterwarnings('ignore')
+
+# Define constants
+URL = "https://172.27.26.163:9999/des"
+HEADERS = {
+    'Content-type': 'application/json',
+    'Origin': 'https://172.27.26.163:9999',
+    'Referer': 'https://172.27.26.163:9999/game/caves.swf'
+}
+DATA_TEMPLATE = {
+    "password": "555acfd4d3c1b7a398d71e4c1538ad4d",
+    "teamname": "Amalgam",
+    "plaintext": ""
+}
+
+def encrypt_plaintext(plaintext):
+    """
+    Encrypt the given plaintext by making a POST request to the specified URL.
+
+    :param plaintext: The plaintext string to be encrypted.
+    :return: The ciphertext if encryption is successful, otherwise None.
+    """
+    DATA_TEMPLATE["plaintext"] = plaintext
+    response = requests.post(URL, json=DATA_TEMPLATE, headers=HEADERS, verify=False)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        return response_json.get("ciphertext")
+    else:
+        print(f"Request failed with status code {response.status_code}")
+        return None
+
+def process_lines(input_file, output_file):
+    """
+    Read lines from the input file, make POST requests to encrypt the plaintext,
+    and write the received ciphertexts to the output file.
+
+    :param input_file: The path to the input file containing plaintexts.
+    :param output_file: The path to the output file to write ciphertexts.
+    """
+    with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
+        for count, line in enumerate(infile, start=1):
+            plaintext = line.strip().split(',')[0]
+            ciphertext = encrypt_plaintext(plaintext)
+
+            if ciphertext:
+                print(f"Processed line {count}")
+                outfile.write(f"{ciphertext}\n")
+            else:
+                print(f"No ciphertext found for line {count}")
+
+def main():
+    """
+    Main function to process the input file and write the ciphertexts to the output file.
+    """
+    input_file = 'input.txt'
+    output_file = 'response.txt'
+    process_lines(input_file, output_file)
+
+if __name__ == "__main__":
+    main()

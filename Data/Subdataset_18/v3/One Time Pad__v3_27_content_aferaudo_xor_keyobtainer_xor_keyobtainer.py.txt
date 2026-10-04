@@ -1,0 +1,85 @@
+import base64
+import sys
+import re
+
+def xor(data, key):
+    """
+    Performs XOR operation between data and key.
+    
+    Args:
+    data (bytes): The data to be XORed.
+    key (bytes): The key to XOR with.
+    
+    Returns:
+    bytearray: The result of the XOR operation.
+    """
+    return bytearray(a ^ b for a, b in zip(*map(bytearray, [data, key])))
+
+def print_help():
+    """
+    Prints usage information.
+    """
+    print("Usage: python3 cipher.py [plain_text] [hide_text_base64]")
+
+def decode_base64(data):
+    """
+    Decodes a base64 encoded string.
+    
+    Args:
+    data (str): The base64 encoded string.
+    
+    Returns:
+    bytes: The decoded bytes.
+    """
+    return base64.b64decode(data)
+
+def find_repeating_key(key_repeated):
+    """
+    Finds the smallest repeating sequence in the key.
+    
+    Args:
+    key_repeated (bytes): The key with repetition.
+    
+    Returns:
+    str: The smallest repeating key.
+    """
+    pattern = re.compile(r"(.+?)\1+")
+    return min(pattern.findall(key_repeated.decode(errors='ignore')) or [""], key=len)
+
+def main(argv):
+    """
+    Main function to handle command-line arguments and perform XOR decryption.
+    
+    Args:
+    argv (list): List of command-line arguments.
+    """
+    if len(argv) < 3:
+        print_help()
+        exit(0)
+        
+    plain_text = argv[1]
+    hide_text_base64 = argv[2]
+    
+    # Convert plain text to bytes
+    plain_text_bytes = plain_text.encode()
+    
+    # Decode the base64 encoded hidden text
+    base64_decoded = decode_base64(hide_text_base64)
+    
+    # Perform XOR operation to find the repeated key
+    key_repeated = xor(base64_decoded, plain_text_bytes)
+    
+    # Use regex to find the smallest repeating sequence in the key
+    key = find_repeating_key(key_repeated)
+    
+    print(f"Plain text received: {plain_text}")
+    print(f"Base64 received: {hide_text_base64}")
+    print(f"Plain text binary: {plain_text_bytes}")
+    print(f"Decoded base64: {base64_decoded}")
+    print(f"Key with repetition: {key_repeated}")
+    print(f"Key without repetition: {key}")
+    
+    print("\nNow you can use this key to make your own hide text\n")
+
+if __name__ == '__main__':
+    main(sys.argv)

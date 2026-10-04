@@ -1,0 +1,80 @@
+from collections import defaultdict
+from heapq import heappush, heappop
+
+def dijkstra(edges, start, target):
+    """
+    Implements Dijkstra's algorithm to find the shortest path from the start node to the target node.
+    
+    Parameters:
+        edges: List of tuples representing the edges in the graph. Each tuple is (from_node, to_node, cost).
+        start: The starting node for the path.
+        target: The target node for the path.
+    
+    Returns:
+        A tuple containing the total cost of the shortest path and the path itself as a tuple.
+        If no path exists, returns infinity for the cost and an empty path.
+    """
+    # Build the graph from the edge list
+    graph = defaultdict(list)
+    for from_node, to_node, cost in edges:
+        graph[from_node].append((cost, to_node))
+
+    # Priority queue: (accumulated cost, current vertex, path taken)
+    priority_queue = [(0, start, ())]
+    visited = set()
+
+    while priority_queue:
+        current_cost, current_vertex, path = heappop(priority_queue)
+
+        if current_vertex not in visited:
+            visited.add(current_vertex)
+            path = (current_vertex, path)
+
+            # If we reach the target, return the cost and path
+            if current_vertex == target:
+                return current_cost, path
+
+            # Explore neighbors
+            for neighbor_cost, neighbor in graph[current_vertex]:
+                if neighbor not in visited:
+                    heappush(priority_queue, (current_cost + neighbor_cost, neighbor, path))
+
+    return float("inf"), ()  # Return infinity and an empty path if no path exists
+
+def extract_path(path_tuple):
+    """
+    Extracts the path from the tuple format returned by Dijkstra's algorithm.
+    
+    Parameters:
+        path_tuple: The nested tuple structure representing the path.
+    
+    Returns:
+        A list of nodes representing the path from start to target.
+    """
+    path = []
+    while path_tuple:
+        path.append(path_tuple[0])
+        path_tuple = path_tuple[1]
+    return path[::-1]
+
+if __name__ == "__main__":
+    # Example graph edges
+    edges = [
+        ('A', 'B', 1),
+        ('A', 'C', 4),
+        ('B', 'C', 2),
+        ('B', 'D', 5),
+        ('C', 'D', 1),
+        ('D', 'E', 3),
+    ]
+
+    start_node = 'A'
+    target_node = 'E'
+    
+    # Find the shortest path and its cost
+    cost, path = dijkstra(edges, start_node, target_node)
+
+    # Print the results
+    print(f"Shortest path from {start_node} to {target_node}:")
+    print(f"Cost: {cost}")
+    print(f"Path: {extract_path(path)}")

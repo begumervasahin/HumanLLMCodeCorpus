@@ -1,0 +1,64 @@
+import ipfsapi
+from roster import roster as roster
+
+# Connect to the IPFS API
+api = ipfsapi.connect('127.0.0.1', 5001)
+
+DEBUG = 0
+point = 0
+
+def debug_print(message, *args):
+    """Print debug messages if DEBUG mode is enabled."""
+    if DEBUG == 1:
+        print(message, *args)
+
+def encrypt(string, key):
+    """Encrypt a string using a key with XOR operation."""
+    return "".join(chr(ord(i) ^ ord(j)) for i, j in zip(string, key))
+
+def decrypt(ciphertext, key):
+    """Decrypt a ciphertext using a key with XOR operation."""
+    return encrypt(ciphertext, key)
+
+# Read the random key file
+with open('TEST_RANDOM_DO_NOT_USE_IN_REAL_CONVERSATION.txt', 'r') as f:
+    all_random = f.read()
+
+print('Chat:')
+
+# Initialize data1 and data2 lists
+data1 = [None for _ in roster]
+data2 = [None for _ in roster]
+
+while True:
+    try:
+        for number in range(len(roster)):
+            debug_print('number', number)
+            debug_print('IPNS key', roster[number][0])
+
+            # Retrieve data from IPFS
+            data = api.get_pyobj('/ipns/' + roster[number][0])
+            debug_print('data from IPFS', data)
+
+            point = data[1]
+            debug_print('point', point)
+
+            end = data[2]
+            debug_print('end', end)
+
+            key = all_random[point:end]
+            debug_print('key', key)
+
+            # Decrypt the data
+            decrypted_message = decrypt(data[0], key)
+            debug_print('decrypted message', decrypted_message)
+
+            data2[number] = data
+            debug_print('data2', data2)
+
+            # Check if the decrypted message is different from the last one
+            if decrypted_message != data1[number]:
+                print(f"{roster[number][1]}: {decrypted_message}")
+                data1[number] = decrypted_message
+    except Exception as e:
+        debug_print('Exception', e)

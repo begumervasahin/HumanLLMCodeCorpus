@@ -1,0 +1,32 @@
+import os
+import sys
+from euclidean import *
+from numberPrime import *
+from modular_arithmetic import *
+class RSA(object):
+	n =0
+	d =0
+	e =0
+	def __init__(self):
+		self.n, self.d, self.e = GenParms(n_bits=100, DEBUG=True)
+	def encryption(self, msg):
+		res = []
+		for i in msg:
+			res.append(modExp(i,self.e,self.n))
+		print(' \n')
+		print('Mensagem criptografada:', res)
+		return res
+	def decryption(self, msg):
+		res = []
+		for i in msg:
+			res.append(modExp(i,self.d,self.n))
+		print('Mensagem Decriptografada :',res)
+		return res
+	def publicKey(self):
+		return(self.n,self.e)
+	def privateKey(self):
+		return(self.n,self.d)
+if __name__ == '__main__':
+	print("Rotina de testes:")
+	rsa = RSA()
+	print('')

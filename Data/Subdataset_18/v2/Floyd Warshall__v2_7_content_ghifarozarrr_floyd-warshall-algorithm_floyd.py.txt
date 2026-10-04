@@ -1,0 +1,81 @@
+import numpy as np
+
+def floyd_warshall(dist_matrix, num_nodes, next_node):
+    """
+    Implements the Floyd-Warshall algorithm to find the shortest paths between all pairs of nodes.
+
+    Parameters:
+    dist_matrix (numpy.ndarray): The distance matrix representing the graph.
+    num_nodes (int): The number of nodes in the graph.
+    next_node (numpy.ndarray): The matrix used to reconstruct the path.
+
+    Returns:
+    numpy.ndarray: The updated distance matrix with shortest path distances.
+    """
+    for k in range(num_nodes):
+        for i in range(num_nodes):
+            for j in range(num_nodes):
+                if dist_matrix[i][j] > dist_matrix[i][k] + dist_matrix[k][j]:
+                    dist_matrix[i][j] = dist_matrix[i][k] + dist_matrix[k][j]
+                    next_node[i][j] = next_node[i][k]
+    return dist_matrix
+
+def reconstruct_path(next_node, source, destination):
+    """
+    Reconstructs the path from the source to the destination using the next_node matrix.
+
+    Parameters:
+    next_node (numpy.ndarray): The matrix used to reconstruct the path.
+    source (int): The starting node.
+    destination (int): The ending node.
+
+    Returns:
+    list: The list of nodes representing the path from source to destination.
+    """
+    path = [source]
+    while source != destination:
+        source = next_node[source][destination]
+        path.append(source)
+    return path
+
+def main():
+    """
+    Main function to run the Floyd-Warshall algorithm and display the shortest paths between nodes.
+    """
+    # Get the number of nodes from the user
+    num_nodes = int(input("Enter the number of nodes: "))
+    
+    # Initialize distance and next node matrices
+    dist_matrix = np.zeros((num_nodes, num_nodes), dtype=int)
+    next_node = np.zeros((num_nodes, num_nodes), dtype=int)
+    
+    # Populate the distance and next node matrices
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            distance = input(f"Distance from node {i} to node {j} (use '-' for infinity): ")
+            if i == j:
+                distance = 0
+            elif distance == "-":
+                distance = 9999  # Represents infinity
+            else:
+                distance = int(distance)
+            
+            dist_matrix[i][j] = distance
+            next_node[i][j] = j
+    
+    print("\nInitial Distance Matrix (Iteration 0):\n", dist_matrix)
+    
+    # Apply the Floyd-Warshall algorithm
+    updated_dist_matrix = floyd_warshall(dist_matrix, num_nodes, next_node)
+    
+    # Display the shortest paths and distances
+    print("\nShortest paths and distances:\n")
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            if i != j:
+                path = reconstruct_path(next_node, i, j)
+                distance = updated_dist_matrix[i][j]
+                print(f"Path from node {i} to node {j}: {path}, Total distance: {distance}")
+
+if __name__ == '__main__':
+    main()

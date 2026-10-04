@@ -1,0 +1,58 @@
+class Solution:
+    def search(self, A, B):
+        # Helper function to find the break point (minimum element index) in a rotated sorted array
+        def find_break_point(start, end, A):
+            if len(A) < 3:
+                return start
+            
+            mid = start + (end - start) // 2
+            
+            # Check if mid is the break point
+            if A[mid] < A[mid - 1] and A[mid] < A[mid + 1]:
+                return mid
+            elif A[mid] > A[mid - 1] and A[mid] > A[mid + 1]:
+                return mid
+            
+            # Decide which side of the array to search next
+            if A[mid] > A[end]:
+                return find_break_point(mid, end, A)
+            elif A[mid] < A[start]:
+                return find_break_point(start, mid, A)
+            else:
+                return -1
+
+        # Helper function to perform binary search on a subarray
+        def binary_search(start, end, target, A):
+            if start > end:
+                return -1
+
+            mid = start + (end - start) // 2
+            
+            # Check if the target is found
+            if target == A[mid]:
+                return mid
+            
+            # Decide which side to search next
+            if target > A[mid]:
+                return binary_search(mid + 1, end, target, A)
+            else:
+                return binary_search(start, mid - 1, target, A)
+        
+        # Target element to search
+        target = B
+        
+        # Find the break point in the rotated sorted array
+        break_point = find_break_point(0, len(A) - 1, A)
+        
+        # If no break point is found, perform binary search on the entire array
+        if break_point == -1:
+            return binary_search(0, len(A) - 1, target, A)
+        
+        # Search in the left half of the array
+        index = binary_search(0, break_point - 1, target, A)
+        
+        # If the target is not found in the left half, search in the right half
+        if index == -1:
+            return binary_search(break_point, len(A) - 1, target, A)
+        
+        return index

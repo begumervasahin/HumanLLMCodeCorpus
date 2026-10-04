@@ -1,0 +1,128 @@
+import os
+import sys
+import json
+
+class HuffmanDecoder:
+    class TreeNode:
+        """
+        A class representing a node in the Huffman tree.
+        
+        Attributes
+        ----------
+        char : str or None
+            The character stored in the node (None for internal nodes).
+        left : TreeNode or None
+            The left child node.
+        right : TreeNode or None
+            The right child node.
+        """
+        def __init__(self, char=None):
+            self.char = char
+            self.left = None
+            self.right = None
+
+    def __init__(self, source, target):
+        """
+        Initialize the HuffmanDecoder with the source file and target file paths.
+        
+        Parameters
+        ----------
+        source : str
+            The path to the encoded file.
+        target : str
+            The path where the decoded file will be saved.
+        """
+        self.source = source
+        self.target = target
+
+        # Verify the source file exists
+        if not (os.path.exists(source) and os.path.isfile(source)):
+            self._error_and_exit(f"Error: {source} does not exist.")
+        
+        self.HuffmanTreeRoot = self.TreeNode()
+        self.code_map = {}
+        self.encoded_text = ""
+        self.padding_len = 0
+
+    def parse_encoded_file(self):
+        """
+        Parse the encoded file to extract the code map, encoded text, and padding length.
+        """
+        try:
+            with open(self.source, 'r') as encoded_file:
+                serialized_map, self.encoded_text, self.padding_len = encoded_file.read().split('\n')
+                self.code_map = json.loads(serialized_map)
+                self.padding_len = int(self.padding_len)
+        except Exception as e:
+            self._error_and_exit(f"Error reading or parsing the encoded file: {e}")
+
+    def build_huffman_tree(self):
+        """
+        Rebuild the Huffman tree from the code map.
+        """
+        for char, code in self.code_map.items():
+            current_node = self.HuffmanTreeRoot
+            for bit in code:
+                if bit == '0':
+                    if current_node.left is None:
+                        current_node.left = self.TreeNode()
+                    current_node = current_node.left
+                else:
+                    if current_node.right is None:
+                        current_node.right = self.TreeNode()
+                    current_node = current_node.right
+            current_node.char = char
+
+    def decode_text(self):
+        """
+        Traverse the Huffman tree to decode the encoded text and save it to the target file.
+        """
+        # Convert the encoded text to a binary stream and remove padding
+        byte_stream = ''.join(f"{ord(char):08b}" for char in self.encoded_text)
+        byte_stream = byte_stream[:-self.padding_len]  # Remove padding bits
+
+        decoded_text = []
+        current_node = self.HuffmanTreeRoot
+
+        # Traverse the Huffman tree based on the binary stream
+        for bit in byte_stream:
+            current_node = current_node.left if bit == '0' else current_node.right
+            if current_node.char is not None:  # Leaf node reached
+                decoded_text.append(current_node.char)
+                current_node = self.HuffmanTreeRoot
+        
+        # Write the decoded text to the target file
+        try:
+            with open(self.target, 'w') as decoded_file:
+                decoded_file.write(''.join(decoded_text))
+            print('Huffman decoding completed successfully.')
+        except Exception as e:
+            self._error_and_exit(f"Error writing the decoded file: {e}")
+
+    def _error_and_exit(self, message):
+        """Print an error message and exit the program."""
+        print(message)
+        sys.exit(1)
+
+def decode_huffman_file(source, target):
+    """
+    Perform the Huffman decoding process on the given source file.
+    
+    Parameters
+    ----------
+    source : str
+        The path to the encoded file.
+    target : str
+        The path where the decoded file will be saved.
+    """
+    decoder = HuffmanDecoder(source, target)
+    decoder.parse_encoded_file()
+    decoder.build_huffman_tree()
+    decoder.decode_text()
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print(f"Usage: python {sys.argv[0]} [encoded text path] [decoded text path]")
+        sys.exit(1)
+
+    decode_huffman_file(source=sys.argv[1], target=sys.argv[2])

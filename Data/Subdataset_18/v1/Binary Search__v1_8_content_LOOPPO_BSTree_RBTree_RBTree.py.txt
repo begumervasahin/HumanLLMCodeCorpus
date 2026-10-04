@@ -1,0 +1,186 @@
+class NodeRB:
+    def __init__(self, key):
+        """Initialize a Red-Black Tree node."""
+        self.key = key
+        self.left = None
+        self.right = None
+        self.p = None  # Parent node
+        self.color = "Red"  # New nodes are always red initially
+
+    def get(self):
+        """Return the key of the node."""
+        return self.key
+
+    def set(self, key):
+        """Set the key of the node."""
+        self.key = key
+
+    def setColor(self, color):
+        """Set the color of the node."""
+        self.color = color
+
+    def getChildren(self):
+        """Return the children of the node."""
+        children = []
+        if self.left is not None:
+            children.append(self.left)
+        if self.right is not None:
+            children.append(self.right)
+        return children
+
+    def getColor(self):
+        """Return the color of the node."""
+        return self.color
+
+
+class RBT:
+    def __init__(self):
+        """Initialize an empty Red-Black Tree with a sentinel nil node."""
+        self.nil = NodeRB(None)
+        self.nil.setColor("Black")
+        self.root = self.nil
+
+    def setRoot(self, key):
+        """Set the root of the tree with the given key."""
+        self.root = NodeRB(key)
+        self.root.setColor("Black")
+        self.root.p = self.nil
+        self.root.left = self.nil
+        self.root.right = self.nil
+
+    def leftRotate(self, x):
+        """Left-rotate the subtree rooted at node x."""
+        y = x.right
+        x.right = y.left
+        if y.left != self.nil:
+            y.left.p = x
+        y.p = x.p
+        if x.p == self.nil:
+            self.root = y
+        elif x == x.p.left:
+            x.p.left = y
+        else:
+            x.p.right = y
+        y.left = x
+        x.p = y
+
+    def rightRotate(self, x):
+        """Right-rotate the subtree rooted at node x."""
+        y = x.left
+        x.left = y.right
+        if y.right != self.nil:
+            y.right.p = x
+        y.p = x.p
+        if x.p == self.nil:
+            self.root = y
+        elif x == x.p.left:
+            x.p.left = y
+        else:
+            x.p.right = y
+        y.right = x
+        x.p = y
+
+    def insert(self, key):
+        """Insert a key into the Red-Black Tree."""
+        if self.root is self.nil:
+            self.setRoot(key)
+        else:
+            self.insertNode(NodeRB(key))
+
+    def insertNode(self, z):
+        """Insert a node z into the Red-Black Tree."""
+        y = self.nil
+        currentNode = self.root
+        while currentNode != self.nil:
+            y = currentNode
+            if z.key < currentNode.key:
+                currentNode = currentNode.left
+            else:
+                currentNode = currentNode.right
+        z.p = y
+        if z.key < y.key:
+            y.left = z
+        else:
+            y.right = z
+        z.left = self.nil
+        z.right = self.nil
+        return self.insertFixup(z)
+
+    def insertFixup(self, z):
+        """Fix the Red-Black Tree properties after insertion."""
+        while z.p.color == "Red":
+            if z.p == z.p.p.left:
+                y = z.p.p.right
+                if y.color == "Red":
+                    z.p.color = "Black"
+                    y.color = "Black"
+                    z.p.p.color = "Red"
+                    z = z.p.p
+                else:
+                    if z == z.p.right:
+                        z = z.p
+                        self.leftRotate(z)
+                    z.p.color = "Black"
+                    z.p.p.color = "Red"
+                    self.rightRotate(z.p.p)
+            else:
+                y = z.p.p.left
+                if y.color == "Red":
+                    z.p.color = "Black"
+                    y.color = "Black"
+                    z.p.p.color = "Red"
+                    z = z.p.p
+                else:
+                    if z == z.p.left:
+                        z = z.p
+                        self.rightRotate(z)
+                    z.p.color = "Black"
+                    z.p.p.color = "Red"
+                    self.leftRotate(z.p.p)
+        self.root.color = "Black"
+
+    def find(self, key):
+        """Search for a key in the Red-Black Tree."""
+        return self.findNode(self.root, key)
+
+    def findNode(self, currentNode, key):
+        """Recursively search for a key starting from a given node."""
+        if currentNode is self.nil:
+            return False
+        elif key == currentNode.key:
+            return True
+        elif key < currentNode.key:
+            return self.findNode(currentNode.left, key)
+        else:
+            return self.findNode(currentNode.right, key)
+
+    def inorder(self):
+        """Perform in-order traversal of the Red-Black Tree."""
+        def _inorder(v):
+            if v is self.nil:
+                return
+            if v.left is not self.nil:
+                _inorder(v.left)
+            print(f"{v.key} {v.color}")
+            if v.right is not self.nil:
+                _inorder(v.right)
+
+        _inorder(self.root)
+
+
+# Example usage of the Red-Black Tree
+if __name__ == "__main__":
+    rbt = RBT()
+    rbt.insert(10)
+    rbt.insert(20)
+    rbt.insert(30)
+    rbt.insert(15)
+
+    print("In-order traversal of the Red-Black Tree:")
+    rbt.inorder()
+
+    print("\nFinding 15 in the tree:")
+    print("Found!" if rbt.find(15) else "Not found!")
+
+    print("\nFinding 25 in the tree:")
+    print("Found!" if rbt.find(25) else "Not found!")

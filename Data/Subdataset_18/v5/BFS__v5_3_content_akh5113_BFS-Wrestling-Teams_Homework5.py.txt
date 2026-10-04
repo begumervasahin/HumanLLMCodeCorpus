@@ -1,0 +1,101 @@
+# Anne Harris
+# CS 325 - 400
+# Homework 5
+# May 13, 2018
+
+import collections
+
+def read_input_file(file_name):
+    """
+    Read the input file and build the adjacency list.
+
+    Args:
+        file_name (str): The name of the input file.
+
+    Returns:
+        tuple: (dict, int, int) The adjacency list, number of players, and number of rivalries.
+    """
+    adj_list = {}
+
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        num_players = int(lines[0])  # Number of players
+        num_rivals = int(lines[num_players + 1])  # Number of rivalries
+
+        for count, line in enumerate(lines):
+            if count > num_players + 2 and count <= num_players + 2 + num_rivals:
+                wrestler1, wrestler2 = line.strip().split()
+                adj_list.setdefault(wrestler1, []).append(wrestler2)
+                adj_list.setdefault(wrestler2, []).append(wrestler1)
+
+    return adj_list, num_players, num_rivals
+
+def bfs(graph, source, baby_faces, heels):
+    """
+    Perform a Breadth-First Search (BFS) on the graph starting from the source.
+
+    Args:
+        graph (dict): The adjacency list of the graph.
+        source (str): The starting vertex.
+        baby_faces (list): The list of baby faces.
+        heels (list): The list of heels.
+
+    Returns:
+        list: List of vertices that have been checked.
+    """
+    done_checking = []
+    queue = collections.deque([source])
+    depth = {source: 0}
+    visited = {source}
+
+    while queue:
+        vertex = queue.popleft()
+        done_checking.append(vertex)
+
+        # Assign team based on depth
+        if depth[vertex] % 2 == 0:
+            baby_faces.append(vertex)
+        else:
+            heels.append(vertex)
+
+        for neighbor in graph[vertex]:
+            if neighbor not in visited:
+                queue.append(neighbor)
+                visited.add(neighbor)
+                depth[neighbor] = depth[vertex] + 1
+
+    return done_checking
+
+def main(file_name):
+    # Read the input file and build the adjacency list
+    adj_list, num_players, num_rivals = read_input_file(file_name)
+
+    # Define teams
+    baby_faces = []
+    heels = []
+
+    # Start BFS from the first key in the adjacency list
+    first_key = list(adj_list.keys())[0]
+    checked = bfs(adj_list, first_key, baby_faces, heels)
+
+    # Check for any unvisited vertices and run BFS on them
+    for key in adj_list:
+        if key not in checked:
+            checked += bfs(adj_list, key, baby_faces, heels)
+
+    # Determine the number of players in each group
+    num_baby_faces = len(baby_faces)
+    num_heels = len(heels)
+
+    # Print the results
+    if num_baby_faces == num_heels:
+        print("Yes, possible")
+        print("Baby Faces:", baby_faces)
+        print("Heels:", heels)
+    else:
+        print("Not possible")
+
+if __name__ == "__main__":
+    # File name to change as needed
+    file_name = "wrestler2.txt"
+    main(file_name)

@@ -1,0 +1,64 @@
+import sys
+import json
+from getFile import getFile
+from filter import Filter
+from format import formatToLines
+from utils import dealArgs
+from writeFile import writeFile, writeCSV
+from getStats import getStats
+
+def get_and_filter(options):
+    """Filter the words from the file based on the provided options."""
+    word_filter = Filter(options)
+    filtered_words = getFile(options['file'], word_filter.filter)
+    return filtered_words
+
+def process_words(words, options):
+    """Process the words based on the given options."""
+    stats = None
+    if options.get('stats'):
+        stats = getStats(words)
+    elif options.get('format'):
+        words = formatToLines(words)
+    return words, stats
+
+def write_output(data, options, stats=False):
+    """Write the output to a file or print to console based on options."""
+    if options.get('output'):
+        if options.get('csv'):
+            columns = ['Name'] if not stats else ['Name', 'Count']
+            writeCSV(data, options['output'], columns)
+        else:
+            output_data = json.dumps(data, indent=4)
+            writeFile(output_data, options['output'])
+        print(f"\nThe requested data has been written to file {options['output']}.")
+    else:
+        print_output(data, stats)
+
+def print_output(data, stats=False):
+    """Print the output to the console."""
+    if stats:
+        if len(data) <= 1:
+            print("\nNo stats to print.")
+        else:
+            print("\nSTATS:")
+            for stat, value in data.items():
+                print(f"{stat}: {value}")
+    else:
+        if len(data) <= 1:
+            print("\nNo words to print.")
+        else:
+            print("\nWORDS:")
+            for word in data:
+                print(word)
+
+def run(args):
+    """Main function to run the script."""
+    options = dealArgs(args).to_object()
+    words = get_and_filter(options)
+    words, stats = process_words(words, options)
+    data = stats if stats else words
+    write_output(data, options, stats=bool(stats))
+
+if __name__ == '__main__':
+    run(sys.argv)

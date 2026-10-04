@@ -1,0 +1,56 @@
+import tweepy
+import json
+
+# Twitter API credentials
+CONSUMER_KEY = 'No3XJW8ccIOtCRsF4LXGENziy'
+CONSUMER_SECRET = 'LMN57iFjDOVC165rZY0bqwZDLyWqXU0dlmp2eo34jCccbMzgYq'
+ACCESS_TOKEN = '838112658-iwEy6pxUEWNXjfCsolJhgHx02uOhUOzKCfskt4tI'
+ACCESS_TOKEN_SECRET = 'lOCyySzJwipR8mV1IwpZ6WvbQDoAMeZVQBR6LhpWrB5i8'
+
+# Open file to write tweets
+with open('tweets.txt', 'a') as file:
+
+    class PrintListener(tweepy.StreamListener):
+        """Custom StreamListener for printing and writing tweets to a file."""
+        
+        def on_data(self, data):
+            try:
+                # Load tweet data
+                tweet = json.loads(data)
+
+                # Extract tweet text and filter out retweets
+                tweet_text = tweet.get('text', '').encode('ascii', 'ignore').decode('utf-8')
+                if not tweet_text.startswith('RT'):
+                    print(tweet_text)
+
+                    # Write tweet text to file
+                    file.write(tweet_text + '\n')
+
+            except Exception as e:
+                print(f"Error: {e}")
+
+        def on_error(self, status):
+            print(f"Error: {status}")
+
+    def main():
+        """Main function to set up and start the Twitter stream."""
+        try:
+            # Authenticate with Twitter
+            auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+            auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+
+            # Create stream listener
+            listener = PrintListener()
+
+            # Create and start the stream
+            stream = tweepy.Stream(auth=auth, listener=listener)
+            print('Listening for tweets containing "padmavati"...')
+            stream.filter(track=['padmavati'])
+
+        except KeyboardInterrupt:
+            # Gracefully close the stream on interruption
+            stream.disconnect()
+            print("Stream stopped.")
+
+    if __name__ == '__main__':
+        main()

@@ -1,0 +1,75 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras import optimizers
+import matplotlib.pyplot as plt
+
+# Reading training data
+print('Reading training data')
+data = np.loadtxt('training_data.txt', skiprows=1)
+y_train = data[:, 0]
+x_train = data[:, 1:]
+
+# Reading testing data
+print('Reading testing data')
+test_data = np.loadtxt('test_data.txt', skiprows=1)
+
+# Splitting data into training and testing sets
+x_test = x_train[-1000:]
+y_test = y_train[-1000:]
+x_train = x_train[:-1000]
+y_train = y_train[:-1000]
+
+val_err = []
+train_err = []
+drop = []
+
+# Loop over different dropout rates
+for i in np.arange(0, 1, 0.1):
+    model = Sequential()
+    model.add(Dense(1000, activation='relu', input_dim=x_train.shape[1]))
+    model.add(Dropout(i))
+    model.add(Dense(800, activation='relu'))
+    model.add(Dropout(i))
+    model.add(Dense(200, activation='relu'))
+    model.add(Dropout(i))
+    model.add(Dense(1, activation='sigmoid'))
+
+    sgd = optimizers.SGD(learning_rate=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+
+    # Training the model
+    model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=20, batch_size=128)
+
+    # Evaluating the model
+    score = model.evaluate(x_test, y_test, batch_size=128)
+    score_train = model.evaluate(x_train, y_train, batch_size=128)
+    
+    print('Val accuracy:', score[1])
+    
+    val_err.append(score[1])
+    train_err.append(score_train[1])
+    drop.append(i)
+
+# Plotting the results
+plt.plot(drop, val_err, label='Testing Error')
+plt.plot(drop, train_err, label='Training Error')
+plt.xlabel('Dropout percentage')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.savefig('neural_net_dropout.png')
+
+# Printing the results
+print('Test accuracy = %g maximized at dropout percentage = %g' % (val_err[np.argmax(val_err)], drop[np.argmax(val_err)]))
+
+# Predicting on the test data
+preds = model.predict_classes(test_data)
+
+# Writing predictions to file
+print('Writing predictions')
+with open('neural_net_pred.txt', 'w') as f:
+    f.write('Id,Prediction\n')
+    for it, pred in enumerate(preds, 1):
+        f.write('%d,%d\n' % (it, int(pred[0])))

@@ -1,0 +1,129 @@
+import time
+from timeit import Timer
+
+def merge_and_count(left, right):
+    """
+    Merge two sorted lists and count the number of inversions.
+    
+    Args:
+    left (list): The left half of the list.
+    right (list): The right half of the list.
+    
+    Returns:
+    tuple: A tuple containing the merged list and the inversion count.
+    """
+    merged = []
+    count_merge = 0
+    i, j = 0, 0
+    
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i])
+            i += 1
+        else:
+            merged.append(right[j])
+            count_merge += len(left) - i
+            j += 1
+    
+    # Append remaining elements
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    
+    return merged, count_merge
+
+def count_inversion_merge_sort(numbers):
+    """
+    Count inversions in the list using merge sort.
+    
+    Args:
+    numbers (list): The list of numbers to sort and count inversions.
+    
+    Returns:
+    tuple: A tuple containing the sorted list and the total inversion count.
+    """
+    if len(numbers) <= 1:
+        return numbers, 0
+    
+    mid = len(numbers) // 2
+    left_sorted, left_count = count_inversion_merge_sort(numbers[:mid])
+    right_sorted, right_count = count_inversion_merge_sort(numbers[mid:])
+    sorted_list, merge_count = merge_and_count(left_sorted, right_sorted)
+    
+    return sorted_list, left_count + right_count + merge_count
+
+def partition(numbers):
+    """
+    Partition the list around the first element (pivot) and count inversions.
+    
+    Args:
+    numbers (list): The list of numbers to partition.
+    
+    Returns:
+    tuple: A tuple containing the left partition, right partition, and the count of inversions.
+    """
+    pivot = numbers[0]
+    left, right = [], []
+    count = 0
+    
+    for num in numbers[1:]:
+        if num < pivot:
+            left.append(num)
+        else:
+            right.append(num)
+            count += len(left)
+    
+    return left, right, count
+
+def count_inversion_quick_sort(numbers):
+    """
+    Count inversions in the list using quick sort.
+    
+    Args:
+    numbers (list): The list of numbers to sort and count inversions.
+    
+    Returns:
+    tuple: A tuple containing the sorted list and the total inversion count.
+    """
+    if len(numbers) <= 1:
+        return numbers, 0
+    
+    left, right, count_partition = partition(numbers)
+    left_sorted, left_count = count_inversion_quick_sort(left)
+    right_sorted, right_count = count_inversion_quick_sort(right)
+    
+    return left_sorted + [numbers[0]] + right_sorted, left_count + right_count + count_partition
+
+def run_count_inversion_merge_sort():
+    """
+    Run the count inversion using merge sort and print the result.
+    """
+    with open('Q8.txt', 'r') as file:
+        numbers = [int(line.strip()) for line in file.readlines()[:100000]]
+    _, inversion_count = count_inversion_merge_sort(numbers)
+    print('Number of Inversions (Merge Sort):', inversion_count)
+
+def run_count_inversion_quick_sort():
+    """
+    Run the count inversion using quick sort and print the result.
+    """
+    with open('Q8.txt', 'r') as file:
+        numbers = [int(line.strip()) for line in file.readlines()[:100000]]
+    _, inversion_count = count_inversion_quick_sort(numbers)
+    print('Number of Inversions (Quick Sort):', inversion_count)
+
+if __name__ == '__main__':
+    # Timing the merge sort inversion count
+    t1 = Timer("run_count_inversion_merge_sort()", "from __main__ import run_count_inversion_merge_sort")
+    
+    # Timing the quick sort inversion count
+    t2 = Timer("run_count_inversion_quick_sort()", "from __main__ import run_count_inversion_quick_sort")
+    
+    turns = 1
+    
+    # Print timing results for merge sort
+    print('Time taken by Merge Sort (run %d time(s)):' % turns)
+    print(t1.timeit(turns) / turns)
+    
+    # Print timing results for quick sort
+    print('Time taken by Quick Sort (run %d time(s)):' % turns)
+    print(t2.timeit(turns) / turns)

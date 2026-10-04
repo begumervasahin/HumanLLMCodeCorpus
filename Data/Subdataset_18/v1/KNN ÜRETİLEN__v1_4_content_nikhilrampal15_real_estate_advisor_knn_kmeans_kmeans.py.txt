@@ -1,0 +1,68 @@
+"""
+K-Means Algorithm Implementation
+"""
+import pandas as pd
+import numpy as np
+import random
+import math
+from read_csvfile import read_csvfile
+
+"""
+Data-Set Information
+"""
+city = "san-francisco-ca"
+filename = f"data/propertyInfo/{city}.csv"
+data = read_csvfile(filename)
+data["cluster"] = -1
+
+"""
+Generating Centroids
+"""
+def centroids(house_data, k, column_name):
+    return [random.randint(1, house_data[column_name].max()) for _ in range(k)]
+
+list_of_centroids = centroids(data, 5, 'zestimate')
+
+"""
+Use list of centroids to create clusters of homes
+"""
+def cluster(centroids, house_data, column_name):
+    shortest_distance = []
+    sum_of_centroid = []
+    houses = house_data[column_name].values
+    
+    for x, centroid in enumerate(centroids):
+        distance_to_centroids = []
+        
+        for idx, home in enumerate(houses):
+            homee = int(home)
+            distance = math.sqrt(abs(homee - centroid)**2)
+            distance_to_centroids.append(distance)
+            house_data.loc[idx, 'cluster'] = centroid
+        
+        sum_of_centroid.append(sum(distance_to_centroids))
+    
+    avg_of_centroid = [e / len(sum_of_centroid) for e in sum_of_centroid]
+    return avg_of_centroid
+
+clustering_function = cluster(list_of_centroids, data, 'zestimate')
+
+"""
+    Here we create the convergence method
+"""
+def convergence(param1, param2):
+    func_1 = list(map(int, param1))
+    func_2 = list(map(int, param2))
+    
+    for old, new in zip(func_1, func_2):
+        if abs(old - new) > 1:
+            new_centroids = centroids(data, 5, 'zestimate')
+            return cluster(new_centroids, data, 'zestimate')
+    return param2
+
+"""
+Formatting
+"""
+pd.set_option('display.max_rows', None)
+pd.set_option('display.float_format', lambda x: '%.0f' % x)
+print(convergence(clustering_function, list_of_centroids))

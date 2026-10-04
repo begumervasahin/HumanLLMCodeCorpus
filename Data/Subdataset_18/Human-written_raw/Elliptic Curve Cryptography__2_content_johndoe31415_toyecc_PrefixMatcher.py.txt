@@ -1,0 +1,17 @@
+class PrefixMatcher(object):
+	def __init__(self, options):
+		self._opts = options
+	def matchunique(self, value):
+		result = self.match(value)
+		if len(result) != 1:
+			if len(result) == 0:
+				raise Exception("'%s' did not match any options." % (value))
+			else:
+				raise Exception("'%s' is ambiguous. Please clarify further. Available: %s" % (value, ", ".join(sorted(list(result)))))
+		return result[0]
+	def match(self, value):
+		return [ option for option in self._opts if option.startswith(value) ]
+if __name__ == "__main__":
+	pm = PrefixMatcher([ "import", "install", "foo" ])
+	print(pm.match("i"))
+	print(pm.matchunique("i"))

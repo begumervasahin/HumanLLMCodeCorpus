@@ -1,0 +1,94 @@
+class Files:
+    def loadFile(self, name):
+        """
+        Loads the content of a file and returns it as a string.
+        
+        :param name: Name of the file to load.
+        :return: The content of the file as a string.
+        """
+        with open(name, 'r') as file:
+            text = file.read()
+        return text
+
+    def saveTable(self, text, name):
+        """
+        Saves a string (Huffman code table) to a file.
+        
+        :param text: The text to save (Huffman code table).
+        :param name: The name of the file to save the table.
+        """
+        with open(name, 'w') as file:
+            file.write(text)
+
+    def saveFile(self, name, text, codes):
+        """
+        Saves the encoded text to a file using Huffman codes.
+        
+        :param name: The name of the file to save.
+        :param text: The original text to encode.
+        :param codes: A dictionary mapping characters to their Huffman codes.
+        """
+        b = ''.join(codes[char] for char in text)
+        
+        filetext = ""
+        for i in range(0, len(b) - 8, 8):
+            filetext += chr(int(b[i:i+8], 2))
+        
+        if len(b) % 8 != 0:
+            filetext += "~~~" + b[-(len(b) % 8):]
+        
+        with open(name, 'w') as file:
+            file.write(filetext)
+
+    def loadTable(self, name):
+        """
+        Loads a Huffman code table from a file and returns it as a dictionary.
+        
+        :param name: The name of the file to load the table from.
+        :return: A dictionary mapping Huffman codes to their respective characters.
+        """
+        with open(name, "r") as file:
+            text = file.read()
+        
+        codes = {}
+        pairs = text.split(",")
+        index = 0
+        
+        # Handle cases where the comma is part of the key
+        while index < len(pairs):
+            if pairs[index] == "":
+                pairs[index + 1] = "," + pairs[index + 1]
+                del pairs[index]
+            else:
+                index += 1
+
+        for pair in pairs:
+            char, code = pair.split("-")
+            codes[code] = char
+        
+        return codes
+
+# Example usage:
+if __name__ == "__main__":
+    files = Files()
+    
+    # Load text from a file
+    original_text = files.loadFile("example.txt")
+    
+    # Huffman code table (example)
+    huffman_codes = {
+        'a': '101',
+        'b': '111',
+        'c': '000',
+        # Add more mappings...
+    }
+    
+    # Save the Huffman table
+    files.saveTable("a-101,b-111,c-000", "huffman_table.txt")
+    
+    # Save the encoded file
+    files.saveFile("encoded_file.txt", original_text, huffman_codes)
+    
+    # Load the Huffman table
+    loaded_codes = files.loadTable("huffman_table.txt")
+    print(loaded_codes)

@@ -1,0 +1,39 @@
+import cv2
+import cv2.aruco as aruco
+def main():
+    video_capture = initialize_video_capture()
+    while True:
+        ret, frame = capture_frame(video_capture)
+        if not ret:
+            print("Failed to capture image")
+            break
+        gray_frame = convert_to_grayscale(frame)
+        corners, ids, rejected_image_points = detect_aruco_markers(gray_frame)
+        frame_with_markers = draw_markers(frame, corners, ids)
+        show_frame(frame_with_markers)
+        if check_key_press('q'):
+            break
+    cleanup(video_capture)
+def initialize_video_capture():
+    video_capture = cv2.VideoCapture(1)
+    return video_capture
+def capture_frame(video_capture):
+    return video_capture.read()
+def convert_to_grayscale(frame):
+    return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+def detect_aruco_markers(frame):
+    aruco_dictionary = aruco.Dictionary_get(aruco.DICT_6X6_250)
+    detection_parameters = aruco.DetectorParameters_create()
+    corners, ids, rejected_image_points = aruco.detectMarkers(frame, aruco_dictionary, parameters=detection_parameters)
+    return corners, ids, rejected_image_points
+def draw_markers(frame, corners, ids):
+    return aruco.drawDetectedMarkers(frame, corners, ids)
+def show_frame(frame):
+    cv2.imshow('Frame with ArUco Markers', frame)
+def check_key_press(key):
+    return cv2.waitKey(1) & 0xFF == ord(key)
+def cleanup(video_capture):
+    video_capture.release()
+    cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()

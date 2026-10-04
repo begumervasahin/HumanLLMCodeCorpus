@@ -1,0 +1,38 @@
+import os
+import numpy as np
+import requests
+from flask import Flask, render_template, request
+
+app = Flask(__name__, template_folder='web', static_folder='static')
+
+x = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28]
+
+def predict(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
+    y = [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10]
+    f = np.polyfit(x, y, 2)
+    m = np.poly1d(f)
+    p = round(m(1), 2)
+    return p
+
+@app.route('/', methods=["GET", "POST"])
+def index():
+    city = request.values.get('test', 'London')  # Default city as London if none provided
+    url1 = "http://api.openweathermap.org/data/2.5/forecast?q="
+    url2 = "&appid=8da365f65510cd3b548ab105287b6f28"
+    url = url1 + city + url2
+    json_data = requests.get(url).json()
+
+    # Extract and convert temperatures
+    temp_data = [round(((json_data['list'][i]['main']['temp']) - 273.15), 1) for i in range(0, 30, 3)]
+
+    if len(temp_data) < 10:
+        return "Not enough data to make predictions"
+
+    p = predict(*temp_data[:10])
+    w = json_data['list'][0]['weather'][0]['description']
+    weather = w.capitalize()
+    return render_template('index.html', t=temp_data[0], w=weather, n=p)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
