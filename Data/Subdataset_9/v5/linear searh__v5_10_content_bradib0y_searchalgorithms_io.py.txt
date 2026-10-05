@@ -1,0 +1,86 @@
+import re
+
+# Open the file containing names
+def read_file(filename):
+    with open(filename, encoding="utf-8") as file:
+        return file.read()
+
+def match_string_start(pattern, data):
+    # Check if a string starts with a given pattern
+    return re.match(pattern, data)
+
+def search_string(pattern, data):
+    # Search for a pattern in the data
+    return re.search(pattern, data)
+
+def find_phone_numbers(data):
+    # Find all phone numbers in the data
+    return re.findall(r'\(?\d{3}\)?-?\s?\d{3}-?\s?\d{4}', data)
+
+def find_names_and_titles(data):
+    # Find all names and titles in the data
+    return re.findall(r'\w*, \w*', data)
+
+def find_words_of_length(length, string):
+    # Find words of a specific character length in a string
+    pattern = r'\b\w{' + str(length) + r'}\b'
+    return re.findall(pattern, string)
+
+def find_emails(data):
+    # Find all emails in the data
+    return re.findall(r'[\w\d\-\+\.]+@[\w\d\-\+\.]+', data)
+
+def find_emails_without_gov(data):
+    # Find emails without a '.gov' ending
+    return [email for email in find_emails(data) if not email.endswith('.gov')]
+
+def extract_structured_data(data):
+    # Extract structured data (name, email, phone, etc.) using regex
+    return re.findall(r'''
+    ([-\w ]+,\s[-\w ]+)\t    # Name
+    ([-\w\d.+]+@[-\w\d.]+)\t  # Email
+    (\(?\d{3}\)?-?\s?\d{3}-\d{4})\t  # Phone
+    ([\w\s]+,\s[\w\s]+)\t    # Title
+    (@[\w\d]+)              # Twitter Handle
+    ''', data, re.X)
+
+def remember(thing):
+    # Function to remember and store something in a database
+    with open("database.txt", "a") as file:
+        file.write(thing + "\n")
+
+# Main code execution starts here
+if __name__ == "__main__":
+    # Read data from file
+    data = read_file("names.txt")
+    
+    # Check if a string starts with 'Love'
+    print(match_string_start(r'Love', data))
+
+    # Search for 'Chalkley' in the data
+    print(search_string(r'Chalkley', data))
+
+    # Find and print the count of phone numbers
+    phones = find_phone_numbers(data)
+    print("There are this many phone numbers:", len(phones))
+
+    # Find and print the count of names and titles
+    names_and_titles = find_names_and_titles(data)
+    print("There are this many names and titles:", len(names_and_titles))
+
+    # Find and print words of specific length
+    print(find_words_of_length(12, data))
+
+    # Find and print the count of emails
+    emails = find_emails(data)
+    print("There are this many emails:", len(emails))
+
+    # Find and print the count of emails without '.gov' ending
+    emails_without_gov = find_emails_without_gov(data)
+    print("There are this many emails without .gov ending:", len(emails_without_gov))
+
+    # Extract structured data and print
+    print(extract_structured_data(data))
+
+    # Prompt the user for input to remember something and store in a database
+    remember(input("What should I remember?"))

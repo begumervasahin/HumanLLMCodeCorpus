@@ -1,0 +1,54 @@
+import os
+from dotenv import load_dotenv
+import psycopg2
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Initialize variables
+conn = None
+df = None
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Function to create database connection variables from environment variables
+def create_variables():
+    global hostname, port, database, username, password
+    hostname = os.getenv('hostname')
+    port = os.getenv('port')
+    database = os.getenv('database')
+    username = os.getenv('username')
+    password = os.getenv('password')
+
+# Function to establish database connection and compute results
+def compute_results():
+    print('Computing results...')
+    # Establish database connection
+    conn = psycopg2.connect(host=hostname, database=database, user=username, password=password)
+    # Execute SQL query and read results into a DataFrame
+    df = pd.read_sql('SELECT name FROM studies RIGHT JOIN sponsors ON studies.nct_id = sponsors.nct_id', con=conn)
+    print('Done.')
+    return df
+
+# Function to extract unique sponsor names from DataFrame
+def get_unique_sponsor_names(df):
+    unique_names = set(df['name'].tolist())
+    return list(unique_names)
+
+# Function to write list of names to a file
+def write_list_to_file(names_list):
+    with open('unique_sponsor_names.txt', 'w') as f:
+        for name in names_list:
+            f.write(f"{name}\n")
+    print("New list created.")
+
+if __name__ == '__main__':
+    create_variables()  # Create database connection variables
+    df = compute_results()  # Compute results from the database
+    
+    # Find sponsor names containing "Merck" or "MSD"
+    merck_names = {name: df['name'].tolist().count(name) for name in df['name'].tolist() if "Merck" in name or "MSD" in name}
+    
+    # Plot a pie chart of Merck-related sponsor names
+    plt.pie(merck_names.values(), labels=merck_names.keys())
+    plt.show()

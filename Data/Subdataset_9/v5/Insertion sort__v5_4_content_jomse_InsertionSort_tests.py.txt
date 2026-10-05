@@ -1,0 +1,50 @@
+import unittest
+import sortit
+import tempfile
+
+class TestSortIt(unittest.TestCase):
+    # Test cases for reading lines with integers
+    def test_read_lines_int(self):
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            tmp.write('34\n2\n333\n10\n8\n')
+            tmp.seek(0)
+            result = sortit.read_lines(tmp.name)
+            self.assertEqual(result, ['34', '2', '333', '10', '8'])
+
+    # Test cases for reading lines with strings
+    def test_read_lines_str(self):
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            tmp.write('dfdf\na\ngg\n\n\n\nhty\ncccccc\nzz\n')
+            tmp.seek(0)
+            result = sortit.read_lines(tmp.name)
+            self.assertEqual(result, ['dfdf', 'a', 'gg', '', '', '', 'hty', 'cccccc', 'zz'])
+
+    # Test case for writing to a file
+    def test_file_writer(self):
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            sortit.write_file(True, False, tmp.name, [34, 2, 333, 10, 8])
+            tmp.seek(0)
+            self.assertEqual(tmp.read().splitlines(), ['34', '2', '333', '10', '8'])    
+
+    # Test case for handling file read error
+    def test_raises_read_lines(self):
+        with self.assertRaises(sortit.FileReadError):
+            sortit.read_lines('input_gg.txt')
+
+    # Test case for handling file write error
+    def test_raises_file_writer(self):
+        with self.assertRaises(sortit.FileReadError):
+            sortit.write_file(True, True, 'output.txt', ['zz', 'hty', 'gg', 'dfdf', 'cccccc', 'a', '', '', ''])
+
+    # Test case for handling conversion error to integers
+    def test_raises_convert_lines_to_ints_int(self):
+        with self.assertRaises(sortit.NotIntError):
+            sortit.convert_lines_to_ints(True, ['34', 'z', '333', '10', '8'])
+
+    # Test case for handling conversion error from strings to integers
+    def test_raises_convert_lines_to_ints_str(self):
+        with self.assertRaises(sortit.NotIntError):
+            sortit.convert_lines_to_ints(True, ['dfdf', 'a', 'gg', '', '', '', 'hty', 'cccccc', 'zz'])
+
+if __name__ == '__main__':
+    unittest.main()

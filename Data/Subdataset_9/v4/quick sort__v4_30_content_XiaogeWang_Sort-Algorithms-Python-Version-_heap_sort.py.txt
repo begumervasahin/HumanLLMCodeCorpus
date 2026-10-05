@@ -1,0 +1,61 @@
+from collections import deque
+
+class Heap:
+    def __init__(self):
+        self.lst = deque()
+
+    def push(self, n):
+        """
+        Add a new element to the heap and maintain heap property by moving it up if necessary.
+        """
+        self.lst.append(n)
+        self._up()
+
+    def pop(self):
+        """
+        Remove and return the smallest element from the heap, and maintain heap property by moving the last element down.
+        """
+        res = self.lst.popleft()
+        if self.lst:
+            self.lst.appendleft(self.lst[-1])
+            del self.lst[-1]
+            self._down()
+        return res
+
+    def _up(self):
+        """
+        Move the last element up in the heap until the heap property is satisfied.
+        """
+        curr = len(self.lst) - 1
+        while curr // 2 >= 0 and self.lst[curr] < self.lst[curr // 2]:
+            self.lst[curr], self.lst[curr // 2] = self.lst[curr // 2], self.lst[curr]
+            curr //= 2
+
+    def _down(self):
+        """
+        Move the first element down in the heap until the heap property is satisfied.
+        """
+        curr = 0
+        while 2 * curr + 1 < len(self.lst):
+            left = 2 * curr + 1
+            right = 2 * curr + 2 if 2 * curr + 2 < len(self.lst) else left
+            if self.lst[curr] <= min(self.lst[left], self.lst[right]):
+                break
+            if self.lst[left] < self.lst[right]:
+                self.lst[curr], self.lst[left] = self.lst[left], self.lst[curr]
+                curr = left
+            else:
+                self.lst[curr], self.lst[right] = self.lst[right], self.lst[curr]
+                curr = right
+
+# Example usage
+a = [8, 1, 3, 4, 2, 5, 0, 9, 6, 7]
+b = Heap()
+for i in a:
+    b.push(i)
+
+sorted_a = []
+for i in range(len(a)):
+    sorted_a.append(b.pop())
+
+print(sorted_a)

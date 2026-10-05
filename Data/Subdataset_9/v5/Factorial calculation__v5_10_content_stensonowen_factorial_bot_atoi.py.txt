@@ -1,0 +1,46 @@
+import re
+import text2num
+
+# Define translations for specific words or phrases
+translations = {
+    'a': 'one',
+    'dozen': 'twelve',
+    'and': '',
+}
+
+# Define valid tokens including numbers up to 'hundred'
+valid_tokens = {"hundred"}
+
+# Add keys from text2num.Small, text2num.Magnitude, and translations to valid_tokens
+valid_tokens.update(text2num.Small.keys())
+valid_tokens.update(text2num.Magnitude.keys())
+valid_tokens.update(translations.keys())
+
+# Function to prepare text by removing non-alphanumeric characters
+def prepare_text(text):
+    text = re.sub("[\W_]", ' ', text)  # Replace non-alphanumeric characters with spaces
+    tokens = []  # Initialize an empty list to store processed tokens
+    for token in text.split():  # Split the text into tokens
+        translated_token = translations.get(token)  # Check if the token is in the translations dictionary
+        if translated_token is not None and translated_token != '':  # If translation exists and is not empty
+            tokens.append(translated_token)  # Append the translated token
+        elif translated_token is None:  # If no translation exists
+            tokens.append(token)  # Append the token as it is
+    return tokens  # Return the list of processed tokens
+
+# Function to extract numerical value from text
+def extract_number(text):
+    tokens = prepare_text(text)  # Prepare the text and get the list of tokens
+    first_valid_token_index = len(tokens)  # Initialize with the total number of tokens
+    for i in range(len(tokens) - 1, -1, -1):  # Iterate through tokens in reverse order
+        if tokens[i] in valid_tokens:  # If the token is in the valid_tokens set
+            first_valid_token_index = i  # Update the index of the first valid token found
+        else:
+            break  # Stop iteration if a non-valid token is encountered
+    return text2num.text2num(tokens[first_valid_token_index:])  # Convert tokens after 'first_valid_token_index' to a numerical value
+
+# Function to convert text to integer
+def text_to_integer(text):
+    tokens = prepare_text(text)  # Prepare the text and get the list of tokens
+    result = text2num.text2num(tokens)  # Convert tokens to numerical value using text2num library
+    return result  # Return the numerical result

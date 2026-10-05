@@ -1,0 +1,73 @@
+import psycopg2
+import pandas as pd
+import datetime
+
+def process_anomalies(from_id, to_id):
+    # Establish connections to the database for reading and writing
+    read_conn = psycopg2.connect(database="postgres", user="postgres", password="swapnil", host="35.190.146.57", port="5432")
+    write_conn = psycopg2.connect(database="postgres", user="postgres", password="swapnil", host="35.190.146.57", port="5432")
+
+    # Create cursors for reading and writing
+    read_cursor = read_conn.cursor()
+    write_cursor = write_conn.cursor()
+
+    # Retrieve domain security data
+    read_cursor.execute('SELECT * FROM domain_security')
+    security_df = pd.DataFrame(read_cursor.fetchall(), columns=[desc[0] for desc in read_cursor.description])
+
+    # Retrieve anomalies data within the specified range of IDs
+    read_cursor.execute(f"SELECT tickdate, security, id, anamoly_score FROM tick_anomalies WHERE id BETWEEN {from_id} AND {to_id} ORDER BY id;")
+    
+    count = 0
+
+    # Process each row of anomalies data
+    while True:
+        row = read_cursor.fetchone()
+        if not row:
+            break
+        
+        anodate, security, anom_id, anoscore = row
+        security_id = int(security_df.loc[security_df['security'] == security, 'security_id'])
+
+        # Build SQL statement to retrieve relevant tick data
+        sql_stmt = f"SELECT tickdate, field, value FROM import_raw_ticks WHERE security=E'{security}' AND field IN (E'PX_LAST', E'VOLUME') AND " \
+                   f"tickdate BETWEEN to_timestamp(E'{str(anodate.date())}','YYYY-MM-DD') - interval '30 day' AND " \
+                   f"to_timestamp(E'{str(anodate.date())}','YYYY-MM-DD') + interval '+10 day' ORDER BY field, tickdate;"
+
+        read_cursor.execute(sql_stmt)
+        result_df = pd.DataFrame(read_cursor.fetchall(), columns=[desc[0] for desc in read_cursor.description])
+        price_df = result_df.loc[result_df['field'] == 'PX_LAST']
+
+        ffidx = price_df.index[price_df['tickdate'] == anodate]
+        fidx = ffidx[0] if ffidx.shape[0] > 0 else 0
+
+        # Process tick data if conditions are met
+        if 10 < fidx < price_df.shape[0]-2:
+            label = +1 if price_df['value'][fidx+1] > price_df['value'][fidx] else -1
+            vol_df = result_df.loc[result_df['field'] == 'VOLUME']
+            vvidx = vol_df.index[vol_df['tickdate'] == anodate]
+            vidx = vvidx[0] if vvidx.shape[0] > 0 else 0
+
+            if vidx > 10:
+                # Build SQL statement to insert data into train_tick_data table
+                sql_insert = f"INSERT INTO train_tick_data VALUES ({anom_id}, '{anodate}', {anoscore}, '{security}', {security_id}, {label}, " \
+                             f"{', '.join(map(str, price_df['value'].loc[fidx-9:fidx].tolist() + vol_df['value'].loc[vidx-9:vidx].tolist()))});"
+                write_cursor.execute(sql_insert)
+
+        count += 1
+
+        # Commit changes and print progress
+        if count % 1000 == 0:
+            write_conn.commit()
+            print(f"{datetime.datetime.now().time()} Count: {count}")
+
+    # Finalize transactions and close connections
+    read_conn.commit()
+    read_conn.close()
+    write_conn.commit()
+    write_conn.close()
+
+    print("DONE..........")
+
+# Example usage
+process_anomalies(400001, 450000)

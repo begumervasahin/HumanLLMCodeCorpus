@@ -1,0 +1,56 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import pandas as pd
+import numpy as np
+import multiprocessing as mp
+from time import sleep
+from warnings import warn
+
+# Reading data from an Excel file
+df1 = pd.read_excel('eunew1.xlsx')
+
+# Function to fetch data from a URL
+def fetch_data(url):
+    tries = 3
+    for i in range(tries):
+        try:
+            response = requests.get(url, verify=False)
+            break
+        except requests.ConnectionError as e:
+            if i < tries - 1:
+                sleep(2)
+                continue
+            else:
+                raise
+
+    if response.status_code != 200:
+        warn('Request: {}; Status code: {}'.format(requests, response.status_code))
+
+    # Parsing HTML content
+    page_html = BeautifulSoup(response.text, 'html.parser')
+    # Extracting data from specific HTML elements
+    result = [str(td.text).splitlines() for td in page_html.find_all("td", "third", limit=8)]
+    return result
+
+# Using multiprocessing for concurrent URL fetching
+pool = mp.Pool(mp.cpu_count())
+
+# Getting URLs from the dataframe
+urls = df1.url.tolist()
+
+# Fetching data from multiple URLs concurrently
+results = pool.map(fetch_data, urls)
+
+# Closing the pool of workers
+pool.close()
+pool.join()
+
+# Creating a dataframe from the fetched results
+df2 = pd.DataFrame(np.array(results), columns=['all'])
+
+# Merging the fetched data with the original dataframe
+df2 = df1.merge(df2, how='outer', left_index=True, right_index=True)
+
+# Saving the results to an Excel file
+df2.to_excel('results_oct.xlsx')

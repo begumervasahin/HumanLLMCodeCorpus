@@ -1,0 +1,89 @@
+import sys
+import numpy as np
+
+# Global variable to count the number of recursive calls
+num_recursive_calls = 0
+
+def memoization(x, y):
+    """
+    Computes the length of the longest common sub-sequence between two string sequences x and y using memoization.
+
+    Args:
+    - x: string sequence
+    - y: string sequence
+
+    Returns:
+    - Length of the longest common sub-sequence between x and y
+    """
+    m = len(x)
+    n = len(y)
+    
+    # Initialize a 2D array to store intermediate results
+    c = np.ones(shape=(m, n), dtype='int64') * -1
+    
+    # Call the memoized LCS function
+    return memoized_LCS(x, y, c)
+
+def memoized_LCS(x, y, c):
+    """
+    Helper function for memoization. Computes the length of the longest common sub-sequence between two string sequences x and y.
+
+    Args:
+    - x: string sequence
+    - y: string sequence
+    - c: a 2D numpy array of size (len(x), len(y)) initialized to -1.
+
+    Returns:
+    - Length of the longest common sub-sequence between x and y
+    """
+    global num_recursive_calls
+    num_recursive_calls += 1
+    
+    # Base case: if either sequence is empty, return 0
+    if len(x) == 0 or len(y) == 0:
+        return 0
+    
+    i = len(x) - 1
+    j = len(y) - 1
+    
+    # If result for current indices is already computed, return it
+    if c[i, j] > -1:
+        return c[i, j]
+    else:
+        # If the last characters of both sequences match
+        if x[-1] == y[-1]:
+            q = 1 + memoized_LCS(x[:-1], y[:-1], c)
+        else:
+            # If the last characters don't match, take the maximum of LCS by excluding the last character from either sequence
+            q = max(memoized_LCS(x, y[:-1], c), memoized_LCS(x[:-1], y, c))
+        
+        # Store the computed result in the array
+        c[i, j] = q
+        return q
+
+def test(x, y):
+    """
+    Runs a simple test to compute the size of the longest common sub-sequence of two string patterns x and y.
+
+    Args:
+    - x: string pattern
+    - y: string pattern
+
+    Returns:
+    - Size of the longest common sub-sequence of x and y
+    """
+    return memoization(x, y)
+
+if __name__ == "__main__":
+    # Check if the correct number of command line arguments is provided
+    if len(sys.argv) < 2:
+        print("Usage: python3 memoization.py acgt/bits")
+        print("acgt - generate sequences of acgt")
+        print("bits - generate sequences of binary digits")
+    else:
+        file = sys.argv[1] + ".txt"
+        with open(file, 'r') as f:
+            x = f.readline().strip()
+            y = f.readline().strip()
+            print("LCS length: " + str(test(x, y)))
+            print("Number of recursive calls: " + str(num_recursive_calls)))

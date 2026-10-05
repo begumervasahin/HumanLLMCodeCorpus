@@ -1,0 +1,52 @@
+import tensorflow as tf
+import tensorflow_hub as hub
+import scipy.spatial.distance as distance
+from patterns import *
+import logging
+import sys
+
+class ElmoContext(EmbeddingContext):
+    def __init__(self, spec='http://files.deeppavlov.ai/deeppavlov_data/elmo_ru-twitter_2013-01_2018-04_600k_steps.tar.gz'):
+        self.elmo = hub.Module(spec, trainable=False)
+
+    def get_embedding_tensor(self, text):
+        return self.__get_embedding_tensor([text])[0]
+
+    def get_embedding_tensors(self, texts):
+        return self.__get_embedding_tensor(texts)
+
+    def get_compare_func(self):
+        def cosine_similarity(x, y):
+            return SimpleWeight(1 - distance.cosine(x, y))
+        return cosine_similarity
+
+    def __get_embedding_tensor(self, texts, type="elmo", signature="default"):
+        embedding_tensor = self.elmo(texts, signature=signature, as_dict=True)[type]
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            embedding = sess.run(embedding_tensor)
+        return embedding
+
+if __name__ == '__main__':
+    # Configure logging
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+    # Initialize ElmoContext
+    elmo_context = ElmoContext()
+
+    # Define pattern and sentence
+    pattern_text = 'Правительство Республики Судан и Правительство Республики Южный Судан далее называемые Cтороны принимают настоящее Соглашение'
+    pattern = Pattern(pattern_text, 8, 11, embedding_context=elmo_context)
+    sentence = 'Государства участники настоящей Декларации именуемые в дальнейшем Cтороны будут продолжать развивать и укреплять сотрудничество ' \
+               'в области развития железнодорожного транспорта на евроазиатском пространстве далее называемые Cтороны принимают настоящее Соглашение'
+
+    # Get matcher for the pattern in the sentence
+    matcher = pattern.get_matcher_str(sentence)
+
+    # Find matches in the sentence
+    while True:
+        word, span = matcher.find()
+        if span is None:
+            break
+        print('span: {} word: {}'.format(span, word))
+        print(get_string_from_span(span, sentence.split(), delimiter=' '))

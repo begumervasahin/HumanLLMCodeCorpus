@@ -1,0 +1,94 @@
+import heapq
+import global_vars as glb
+
+def read_graph(file_path, delimiter):
+    """
+    Reads graph data from a file and populates global variables EDGES and VERTICES.
+    
+    Parameters:
+        file_path (str): The path to the file containing graph data.
+        delimiter (str): The delimiter used in the file to separate data fields.
+        
+    Returns:
+        list: The list of edges (tuples) in the graph.
+    """
+    with open(file_path) as file:
+        for line in file:
+            v1, v2, weight = [x.strip() for x in line.split(delimiter)]
+            
+            # Avoid duplicate edges
+            if (int(weight), v2, v1) in glb.EDGES:
+                continue
+            
+            # Add edge to EDGES heap
+            heapq.heappush(glb.EDGES, (int(weight), v1, v2))
+            
+            # Add vertices to VERTICES set
+            glb.VERTICES.add(v1)
+            glb.VERTICES.add(v2)
+            
+    return glb.EDGES
+
+def make_set(vertex):
+    """
+    Creates a set with a single element containing the given vertex.
+    
+    Parameters:
+        vertex: The vertex to be added to the set.
+    """
+    glb.PARENT[vertex] = vertex
+    glb.RANK[vertex] = 0
+
+def find(vertex):
+    """
+    Finds the representative of the set that contains the given vertex.
+    
+    Parameters:
+        vertex: The vertex whose representative needs to be found.
+        
+    Returns:
+        The representative of the set containing the vertex.
+    """
+    if glb.PARENT[vertex] != vertex:
+        glb.PARENT[vertex] = find(glb.PARENT[vertex])
+    return glb.PARENT[vertex]
+
+def union(vertex1, vertex2):
+    """
+    Combines the sets that contain the given vertices.
+    
+    Parameters:
+        vertex1: The first vertex.
+        vertex2: The second vertex.
+    """
+    root1 = find(vertex1)
+    root2 = find(vertex2)
+    if root1 != root2:
+        if glb.RANK[root1] > glb.RANK[root2]:
+            glb.PARENT[root2] = root1
+        else:
+            glb.PARENT[root1] = root2
+            glb.RANK[root2] += 1
+
+def kruskals():
+    """
+    Applies Kruskal's algorithm to find the minimum spanning tree of the graph.
+    
+    Returns:
+        tuple: A tuple containing the minimum spanning tree (MST) and its total weight.
+    """
+    total_weight = 0
+    
+    # Initialize sets for each vertex
+    for vertex in glb.VERTICES:
+        make_set(vertex)
+    
+    # Process edges in increasing order of weight
+    while glb.EDGES:
+        weight, v1, v2 = heapq.heappop(glb.EDGES)
+        if find(v1) != find(v2):
+            union(v1, v2)
+            total_weight += weight
+            glb.MST.append((v1, v2, str(weight), str(total_weight)))
+    
+    return (glb.MST, total_weight)

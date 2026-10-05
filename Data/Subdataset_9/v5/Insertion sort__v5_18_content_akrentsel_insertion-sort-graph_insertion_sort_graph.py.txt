@@ -1,0 +1,89 @@
+import matplotlib.pyplot as plt
+import matplotlib.animation as anim
+import random
+
+def plot_sort_animation(sort_generator):
+    """
+    Plot an animation to visualize the process of sorting using the given generator.
+
+    Args:
+        sort_generator (generator): A generator that yields the state of the list being sorted.
+
+    Returns:
+        None
+    """
+    # Get initial values
+    initial_values, red_index = next(sort_generator)
+    max_frames = len(initial_values) ** 2  # Set maximum number of frames
+
+    # Create the plot
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    def update_frame(i):
+        """
+        Update the animation frame.
+
+        Args:
+            i (int): Frame number.
+
+        Returns:
+            None
+        """
+        # Get next values
+        values, red_index = next(sort_generator)
+        red_bar = [0] * len(values)
+        red_bar[red_index] = values[red_index]
+        x = range(len(values))
+
+        # Clear the axis and plot bars
+        ax.clear()
+        ax.bar(x, values, width=1)
+        ax.bar(x, red_bar, width=1, color="red")
+        print('Iteration:', i)
+
+    # Create the animation
+    animation = anim.FuncAnimation(fig, update_frame, frames=max_frames, repeat=False)
+    plt.show()
+
+def insertion_sort_step_generator(lst):
+    """
+    Generate steps of the insertion sort algorithm.
+
+    Args:
+        lst (list): The list to be sorted.
+
+    Yields:
+        tuple: A tuple containing the current state of the list and the index of the currently considered element.
+    """
+    # Ensure list length is valid
+    assert len(lst) > 1, "Length of list must be greater than 1 to sort"
+
+    current_index = 1
+
+    # Swap function
+    def swap(pos1, pos2):
+        nonlocal lst
+        lst[pos1], lst[pos2] = lst[pos2], lst[pos1]
+
+    # Sorting algorithm
+    while current_index < len(lst):
+        temp = current_index
+        while current_index > 0 and lst[current_index] < lst[current_index - 1]:
+            swap(current_index, current_index - 1)
+            current_index -= 1
+            yield lst, current_index  # Yield current state
+        if current_index != temp:
+            current_index = temp + 1
+        else:
+            current_index += 1
+            yield lst, current_index  # Yield current state
+
+    yield lst, len(lst) - 1  # Final state
+
+# Generate a random list for sorting
+number_of_elements = 25
+random_list = [random.randrange(1, 200) for _ in range(number_of_elements)]
+
+# Plot the animation for insertion sort
+plot_sort_animation(insertion_sort_step_generator(random_list))

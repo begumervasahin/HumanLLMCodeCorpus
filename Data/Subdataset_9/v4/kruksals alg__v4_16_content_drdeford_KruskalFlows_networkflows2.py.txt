@@ -1,0 +1,229 @@
+import numpy as np
+import scipy as sp
+import matplotlib.pyplot as plt
+import math
+import itertools
+import time
+from operator import itemgetter
+
+# Function to calculate the Minimum Spanning Tree (MST) and visualize the results
+def MST2(adjacency_matrix):
+    counter = 0
+    var = 0
+    graph_plot2(adjacency_matrix)
+    kruskal_time, kruskal_cost = kruskal2(adjacency_matrix)
+    prim_time, prim_cost = prim2(adjacency_matrix, var)
+    sollin_time, sollin_cost = sollin2(adjacency_matrix, var)
+    print('Kruskal Time:', kruskal_time, '\nKruskal Cost:', kruskal_cost,
+          '\nPrim Time:', prim_time, '\nPrim Cost:', prim_cost,
+          '\nSollin Time:', sollin_time, '\nSollin Cost:', sollin_cost)
+    plt.show()
+
+# Function to plot the original graph
+def graph_plot2(adjacency_matrix):
+    size = len(adjacency_matrix)
+    x = []
+    y = []
+    theta = 2 * math.pi / size
+    plt.figure(1)
+    plt.title('Original Graph')
+    for i in range(size):
+        x.append(size * math.cos(i * theta))
+        y.append(size * math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for i in range(size):
+        for j in range(i, size):
+            if adjacency_matrix[i][j] != 0:
+                plt.plot([x[i], x[j]], [y[i], y[j]], 'b-', linewidth=3)
+                plt.text((x[i] + x[j]) / 2, (y[i] + y[j]) / 2, adjacency_matrix[i][j], fontsize=15, color='red')
+    plt.scatter(x, y, s=50)
+
+# Function to perform Kruskal's algorithm
+def kruskal2(adjacency_matrix):
+    t = time.time()
+    arc_list = []
+    parent_list = []
+    spanning_tree = []
+    forest = [[i] for i in range(len(adjacency_matrix))]
+    
+    # Generating list of arcs
+    for i in range(len(adjacency_matrix)):
+        for j in range(i, len(adjacency_matrix)):
+            arc_list.append([i, j, adjacency_matrix[i][j]])
+    
+    # Sorting arc list by weight
+    arc_list = sorted(arc_list, key=itemgetter(-1))
+    
+    # Creating parent list
+    for k in arc_list:
+        if k[2] != 0:
+            parent_list.append(k)
+    
+    # Constructing minimum spanning tree
+    for l in parent_list:
+        spanning_tree.append(l)
+        counter = 0
+        for m in forest:
+            if l[0] in m and l[1] in m:
+                counter += 1
+        if counter != 0:
+            spanning_tree.pop()
+        if counter == 0:
+            t1 = 0
+            t2 = 0
+            for n in range(len(forest)):
+                if l[0] in forest[n]:
+                    t1 = n
+                if l[1] in forest[n]:
+                    t2 = n
+            forest[t1] = list(set(forest[t1] + forest[t2]))
+            forest.pop(t2)
+    
+    # Plotting Kruskal tree
+    x = []
+    y = []
+    cost = 0
+    theta = 2 * math.pi / len(adjacency_matrix)
+    plt.figure(2)
+    plt.title('Kruskal Tree')
+    for i in range(len(adjacency_matrix)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in spanning_tree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        cost += k[2]
+    plt.scatter(x, y, s=50)
+    s = time.time() - t
+    return s, cost
+
+# Function to perform Prim's algorithm
+def prim2(adjacency_matrix, var):
+    p_time = time.time()
+    arc_list = []
+    var = 0
+    parent_list = []
+    in_node = [0]
+    spanning_tree = []
+    
+    # Generating list of arcs
+    for i in range(len(adjacency_matrix)):
+        for j in range(i, len(adjacency_matrix)):
+            arc_list.append([i, j, adjacency_matrix[i][j]])
+    
+    # Creating parent list
+    for k in arc_list:
+        if k[2] != 0:
+            parent_list.append(k)
+    
+    # Constructing minimum spanning tree using Prim's algorithm
+    for m in range(len(adjacency_matrix) - 1):
+        temp_list = []
+        for n in parent_list:
+            if (n[0] in in_node and n[1] not in in_node) or (n[1] in in_node and n[0] not in in_node):
+                temp_list.append(n)
+        temp_list = sorted(temp_list, key=itemgetter(-1))
+        spanning_tree.append(temp_list[0])
+        in_node.append(temp_list[0][0])
+        in_node.append(temp_list[0][1])
+        in_node = list(set(in_node))
+    
+    # Plotting Prim's tree
+    x = []
+    y = []
+    p_cost = 0
+    theta = 2 * math.pi / len(adjacency_matrix)
+    plt.figure(3)
+    plt.title('Prim Tree')
+    for i in range(len(adjacency_matrix)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in spanning_tree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        p_cost += k[2]
+    plt.scatter(x, y, s=50)
+    p_time = time.time() - p_time
+    return p_time, p_cost
+
+# Function to perform Sollin's algorithm
+def sollin2(adjacency_matrix, var):
+    s_time = time.time()
+    arc_list = []
+    parent_list = []
+    in_node = [0]
+    spanning_tree = []
+    forest = [[i] for i in range(len(adjacency_matrix))]
+    
+    # Generating list of arcs
+    for i in range(len(adjacency_matrix)):
+        for j in range(i, len(adjacency_matrix)):
+            arc_list.append([i, j, adjacency_matrix[i][j]])
+    
+    # Creating parent list
+    for k in arc_list:
+        if k[2] != 0:
+            parent_list.append(k)
+    
+    # Constructing minimum spanning tree using Sollin's algorithm
+    temp_list = []
+    while len(spanning_tree) < len(adjacency_matrix) - 1:
+        temp_forest = forest[:]
+        for l in range(len(temp_forest)):
+            for n in parent_list:
+                if (n[0] in temp_forest[l] and n[1] not in temp_forest[l]) or (n[1] in temp_forest[l] and n[0] not in temp_forest[l]):
+                    temp_list.append(n)
+            temp_list = sorted(temp_list, key=itemgetter(-1))
+            if temp_list[0] not in spanning_tree:
+                spanning_tree.append(temp_list[0])
+                t1 = 'a'
+                t2 = 'a'
+                for m in range(len(forest)):
+                    if temp_list[0][0] in forest[m]:
+                        t1 = m
+                    if temp_list[0][1] in forest[m]:
+                        t2 = m
+                forest[t1] = list(set(forest[t1] + forest[t2]))
+                forest.pop(t2)
+            temp_list = []
+    
+    # Plotting Sollin's tree
+    x = []
+    y = []
+    s_cost = 0
+    theta = 2 * math.pi / len(adjacency_matrix)
+    plt.figure(4)
+    plt.title('Sollin Tree')
+    for i in range(len(adjacency_matrix)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in spanning_tree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        s_cost += k[2]
+    plt.scatter(x, y, s=50)
+    s_time = time.time() - s_time
+    return s_time, s_cost
+
+# Function to convert adjacency list to adjacency matrix
+def adj_convert2(n, adjacency_list):
+    matrix = []
+    counter = 0
+    for i in range(n):
+        matrix.append([])
+    for i in range(n):
+        for j in range(n):
+            matrix[i].append(0)
+    for k in adjacency_list:
+        matrix[k[0]][k[1]] = k[2]
+        matrix[k[1]][k[0]] = k[2]
+    for i in matrix[0]:
+        counter += i
+    if counter == 0:
+        matrix.pop(0)
+        for i in range(len(matrix)):
+            matrix[i].pop(0)
+    return matrix

@@ -1,0 +1,73 @@
+# Import necessary modules and packages
+import unittest
+import os
+import warnings
+import re
+from monitor import Email_Client, Chrome_Driver, Change_Monitor, get_dependency_name, get_credentials
+from PIL import Image
+from email.mime.multipart import MIMEMultipart
+
+# Define a test class inheriting from unittest.TestCase
+class Test_Monitor(unittest.TestCase):
+
+    # Set up test environment before each test method runs
+    def setUp(self):
+        # Ignore warnings during setup
+        warnings.simplefilter("ignore")
+
+        # Get email credentials
+        email, password = get_credentials()
+
+        # Get directory of the current script
+        directory_this_script = os.path.dirname(os.path.realpath(__file__))
+
+        # Get Chrome driver name and location
+        chrome_driver_name = get_dependency_name()
+        chrome_driver_location = os.path.join(directory_this_script, "bin", chrome_driver_name)
+
+        # Initialize Chrome driver, email client, and change monitor
+        self.driver = Chrome_Driver(chrome_driver_location)
+        self.email_client = Email_Client(email, password)
+        self.monitor = Change_Monitor(self.driver, self.email_client)
+
+    # Test method to check hash calculation function
+    def test_calculate_hash(self):
+        # Open hash file
+        file = open("testing/monorail_cat_hash.txt", "r")
+        cat_hash = file.read()
+        file.close()
+
+        # Open test image
+        test_image = Image.open("testing/monorail_cat_test.jpg")
+
+        # Compare calculated hash with expected hash
+        self.assertEqual(cat_hash, str(self.monitor.calculate_hash(test_image)))
+
+    # Test method to check message preparation function
+    def test_prepare_message(self):
+        # Define URL and open test images
+        url = "https://www.google.com"
+        test_image_1 = Image.open("testing/flying_cat.jpg")
+        test_image_2 = Image.open("testing/monorail_cat_test.jpg")
+
+        # Prepare message with test images and URL
+        prepared_message = self.monitor.prepare_message(MIMEMultipart(), test_image_1, test_image_2, url)
+
+        # Define pattern for expected message format
+        pattern = re.compile(
+            r"Content-Type: multipart/mixed; boundary=\"===============[0-9]*==\"\n"
+            r"MIME-Version: 1.0\nSubject: .*\nFrom: \".*\"\nTo: \".*\"\n\n"
+            r"--===============[0-9]*==\nContent-Type: text/plain; charset=\"us-ascii\"\n"
+            r"MIME-Version: 1.0\nContent-Transfer-Encoding: 7bit\n\n.*\n"
+            r"--===============[0-9]*==\nContent-Type: application/octet-stream\n"
+            r"MIME-Version: 1.0\nContent-Transfer-Encoding: base64\nContent-Disposition: attachment; filename=new_screenshot.png.*"
+            r"--===============[0-9]*==--",
+            re.IGNORECASE | re.DOTALL
+        )
+
+        # Check if prepared message matches the expected pattern
+        self.assertTrue(pattern.match(prepared_message))
+
+# Run the test suite if the script is executed directly
+if __name__ == '__main__':
+    unittest.main()

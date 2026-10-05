@@ -1,0 +1,55 @@
+import zlib
+import base64
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+
+def encrypt_blob(blob, public_key):
+    # Import the RSA public key
+    rsa_key = RSA.importKey(public_key)
+    # Create a cipher object using PKCS1_OAEP padding
+    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+
+    # Compress the blob using zlib
+    compressed_blob = zlib.compress(blob)
+
+    # Define chunk size for encryption
+    chunk_size = 470
+    encrypted_chunks = []
+
+    # Encrypt data in chunks
+    for i in range(0, len(compressed_blob), chunk_size):
+        chunk = compressed_blob[i:i+chunk_size]
+        encrypted_chunk = cipher_rsa.encrypt(chunk)
+        encrypted_chunks.append(encrypted_chunk)
+
+    # Concatenate encrypted chunks
+    encrypted_data = b''.join(encrypted_chunks)
+
+    # Encode the encrypted data in base64
+    encoded_encrypted = base64.b64encode(encrypted_data)
+    return encoded_encrypted
+
+def read_file(file_path):
+    with open(file_path, "rb") as file:
+        return file.read()
+
+def write_file(file_path, data):
+    with open(file_path, "wb") as file:
+        file.write(data)
+        print(f"Stored data to '{file_path}'")
+
+def main():
+    # Read the public key from file
+    public_key = read_file("TA_public_key.pem")
+
+    # Read the unencrypted image blob from file
+    unencrypted_blob = read_file("rootbeer.jpg")
+
+    # Encrypt the image blob using the public key
+    encrypted_blob = encrypt_blob(unencrypted_blob, public_key)
+
+    # Write the encrypted image to file
+    write_file("encrypted_img.jpg", encrypted_blob)
+
+if __name__ == "__main__":
+    main()

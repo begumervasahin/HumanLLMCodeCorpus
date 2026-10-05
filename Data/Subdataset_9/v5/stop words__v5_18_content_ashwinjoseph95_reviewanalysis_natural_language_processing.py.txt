@@ -1,0 +1,50 @@
+# Importing necessary libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import confusion_matrix
+
+# Downloading NLTK resources
+nltk.download('stopwords')
+
+def preprocess_review(review):
+    # Remove non-alphabetic characters and convert to lowercase
+    review = re.sub('[^a-zA-Z]', ' ', review).lower()
+    # Split review into words
+    review = review.split()
+    # Initialize Porter Stemmer for stemming
+    ps = PorterStemmer()
+    # Remove stopwords and perform stemming
+    review = [ps.stem(word) for word in review if word not in set(stopwords.words('english'))]
+    # Join the words back into a single string
+    return ' '.join(review)
+
+# Reading the dataset
+dataset = pd.read_csv('Restaurant_Reviews.tsv', delimiter='\t', quoting=3)
+
+# Preprocess reviews
+dataset['Review'] = dataset['Review'].apply(preprocess_review)
+
+# Extract features and labels
+X = CountVectorizer(max_features=1500).fit_transform(dataset['Review']).toarray()
+y = dataset['Liked'].values
+
+# Splitting the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0)
+
+# Initializing Gaussian Naive Bayes classifier
+classifier = GaussianNB()
+# Training the classifier
+classifier.fit(X_train, y_train)
+# Making predictions
+y_pred = classifier.predict(X_test)
+
+# Calculating confusion matrix
+cm = confusion_matrix(y_test, y_pred)

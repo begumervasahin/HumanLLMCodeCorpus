@@ -1,0 +1,117 @@
+import pyfiglet
+from functions import *
+from subprocess import call, STDOUT
+import os
+
+def clear_screen():
+    """
+    Clears the terminal screen.
+    """
+    call(["clear"])
+
+def encrypt_menu():
+    """
+    Handles the encryption process.
+    """
+    clear_screen()
+    print(title_fig.renderText("Encrypt"))
+    print("----------------------------------------")
+
+    # Input video file name
+    video_file_name = input("(1) Video file name in the data folder? : ")
+
+    # Input Caesar cipher shift value
+    try:
+        caesar_shift = int(input("(2) Caesar cipher shift value? : ")) 
+    except ValueError:
+        print("-----------------------")
+        print("(!) Shift value is not an integer ")
+        exit()
+
+    # Check if the video file exists
+    try:
+        open("data/" + video_file_name)
+    except IOError:
+        print("-----------------------")
+        print("(!) File not found ")
+        exit()
+
+    print("-----------------------")
+    print("(-) Extracting Frame(s)")
+    frame_extract(video_file_name)
+
+    print("(-) Extracting audio")
+    call(["ffmpeg", "-i", f"data/{video_file_name}", "-q:a", "0", "-map", "a", "temp/audio.mp3", "-y"],
+         stdout=open(os.devnull, "w"), stderr=STDOUT)
+
+    print("(-) Reading text-to-hide.txt")
+    print("(-) Encrypting & appending string into frame(s) ")
+    encode_frame("temp", "data/text-to-hide.txt", caesar_shift)
+
+    print("(-) Merging frame(s) ")
+    call(["ffmpeg", "-i", "temp/%d.png", "-vcodec", "png", "temp/video.mov", "-y"],
+         stdout=open(os.devnull, "w"), stderr=STDOUT)
+
+    print("(-) Optimizing encode & Merging audio ")
+    call(["ffmpeg", "-i", "temp/video.mov", "-i", "temp/audio.mp3", "-codec", "copy",
+          f"data/enc-{video_file_name}.mov", "-y"], stdout=open(os.devnull, "w"), stderr=STDOUT)
+
+    print("(!) Success, output: enc-" + video_file_name + ".mov")
+
+def decrypt_menu():
+    """
+    Handles the decryption process.
+    """
+    clear_screen()
+    print(title_fig.renderText("Decrypt"))
+    print("----------------------------------------")
+
+    # Input encrypted video file name
+    video_file_name = input("(1) Encrypted video file name in the data folder? : ")
+
+    # Input Caesar cipher shift value
+    try:
+        caesar_shift = int(input("(2) Caesar cipher shift value? : ")) 
+    except ValueError:
+        print("-----------------------")
+        print("(!) Shift value is not an integer ")
+        exit()
+
+    # Check if the video file exists
+    try:
+        open(f"data/{video_file_name}")
+    except IOError:
+        print("-----------------------")
+        print("(!) File not found ")
+        exit()
+
+    print("-----------------------")
+    print("(-) Extracting Frame(s)")
+    frame_extract(video_file_name)
+
+    print("(-) Decrypting Frame(s)")
+    decode_frame("temp", caesar_shift)
+
+    print("(-) Writing to recovered-text.txt")
+    print("(!) Success")
+
+if __name__ == '__main__':
+    # ASCII art title
+    title_fig = pyfiglet.Figlet(font='slant')
+    print(title_fig.renderText("CCVS KI UAS"))
+    print("CaesarCipherVideoSteganography")
+    print("")
+    print("Menu :")
+    print("")
+    print("(a) Encrypt & Merge into Video")
+    print("(b) Decrypt & Get the plain text")
+    print("-----------------------")
+
+    choice = input("(!) Choose option : ")
+
+    if choice == "a":
+        encrypt_menu()
+    elif choice == "b":
+        decrypt_menu()
+    else:
+        exit()

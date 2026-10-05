@@ -1,0 +1,52 @@
+import re
+import pandas as pd
+
+def get_experience_years(file_path):
+    years_list = []
+    
+    with open(file_path, encoding='utf-8') as file:
+        content = file.read()
+        pattern = re.compile(r'\d+ years')
+        matches = pattern.findall(content)
+        
+        for match in matches:
+            years = int(re.sub("\D", "", match))
+            if years <= 10:
+                years_list.append(years)
+                
+        print("Years of experience:", years_list)
+        return years_list
+
+def count_degrees(content):
+    # Count occurrences of each degree type
+    diploma_count = len(re.findall(r'diploma', content, flags=re.IGNORECASE))
+    bachelor_degree_count = len(re.findall(r'bachelor.{0,5}degree', content, flags=re.IGNORECASE))
+    master_degree_count = len(re.findall(r'master.{0,5}degree', content, flags=re.IGNORECASE))
+    phd_count = len(re.findall(r'phd', content, flags=re.IGNORECASE))
+    
+    return diploma_count, bachelor_degree_count, master_degree_count, phd_count
+
+def get_degree(file_path):
+    with open(file_path, encoding='utf-8') as file:
+        content = file.read()
+        diploma_count, bachelor_degree_count, master_degree_count, phd_count = count_degrees(content)
+        
+    print("Number of diplomas:", diploma_count)
+    print("Number of bachelor's degrees:", bachelor_degree_count)
+    print("Number of master's degrees:", master_degree_count)
+    print("Number of PhDs:", phd_count)
+
+def save_to_csv(data_list):
+    df = pd.DataFrame(data={"Years of Experience": data_list})
+    df.to_csv("experience_years.csv", sep=',', index=False)
+    print("Data saved to experience_years.csv")
+
+def main():
+    file_path = input("Enter the path of the JSON file you want to parse: ")
+    experience_years = get_experience_years(file_path)
+    degrees_info = get_degree(file_path)
+    
+    save_to_csv(experience_years)
+
+if __name__ == '__main__':
+    main()

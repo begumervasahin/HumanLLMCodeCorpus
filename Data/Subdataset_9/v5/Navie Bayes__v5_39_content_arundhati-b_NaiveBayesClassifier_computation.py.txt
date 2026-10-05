@@ -1,0 +1,61 @@
+import pandas as pd
+from naive_bayes import loocv, et
+
+def perform_loocv(dataset_name, data, features_column_start, target_column, set_of_labels):
+    x_data = data.iloc[:, features_column_start:].values.tolist()
+    y_data = data.iloc[:, target_column].values.tolist()
+    accuracy = loocv(x_data, y_data, set_of_labels, len(data))
+    print(f"{dataset_name}: {accuracy}")
+    return accuracy
+
+def perform_evaluation(dataset_name, train_data, test_data, features_column_start, target_column, set_of_labels):
+    x_train = train_data.iloc[:, features_column_start:].values.tolist()
+    x_test = test_data.iloc[:, features_column_start:].values.tolist()
+    y_train = train_data.iloc[:, target_column].values.tolist()
+    y_test = test_data.iloc[:, target_column].values.tolist()
+    accuracy = et(x_train, x_test, y_train, y_test, set_of_labels)
+    print(f"{dataset_name}: {accuracy}")
+    return accuracy
+
+def save_results_to_csv(results_df, filename="Data.csv"):
+    results_df.to_csv(filename)
+
+def main():
+    fin = pd.DataFrame(columns=['Dataset', 'Accuracy(%)'])
+
+    data_tic_tac_toe = pd.read_csv("tic-tac-toe.data", header=None)
+    accuracy_tic_tac_toe = perform_loocv("Tic-tac-toe Endgame", data_tic_tac_toe, 0, -1, set(data_tic_tac_toe.iloc[:, -1]))
+    fin.loc[0] = ['Tic-tac-toe Endgame', accuracy_tic_tac_toe]
+
+    training_spect = pd.read_csv("SPECT.train", header=None)
+    test_spect = pd.read_csv("SPECT.test", header=None)
+    accuracy_spect = perform_evaluation("SPECT heart Dataset", training_spect, test_spect, 1, 0, set(training_spect.iloc[:, 0]))
+    fin.loc[1] = ['SPECT heart Dataset', accuracy_spect]
+
+    data_soybean = pd.read_csv("soybean-small.data")
+    accuracy_soybean = perform_loocv("Soybean (small)", data_soybean, 0, -1, set(data_soybean.iloc[:, -1]))
+    fin.loc[2] = ['Soybean (small)', accuracy_soybean]
+
+    data_shuttle = pd.read_csv("shuttle-landing-control.data")
+    accuracy_shuttle = perform_loocv("Shuttle landing control", data_shuttle, 1, 0, set(data_shuttle.iloc[:, 0]))
+    fin.loc[3] = ['Shuttle landing control', accuracy_shuttle]
+
+    training_monks_1 = pd.read_csv("monks-1.train", header=None)
+    test_monks_1 = pd.read_csv("monks-1.test", header=None)
+    accuracy_monks_1 = perform_evaluation("Monks-1", training_monks_1, test_monks_1, 1, 0, set(training_monks_1.iloc[:, 1]))
+    fin.loc[4] = ['Monks-1', accuracy_monks_1]
+
+    training_monks_2 = pd.read_csv("monks-2.train", header=None)
+    test_monks_2 = pd.read_csv("monks-2.test", header=None)
+    accuracy_monks_2 = perform_evaluation("Monks-2", training_monks_2, test_monks_2, 1, 0, set(training_monks_2.iloc[:, 1]))
+    fin.loc[5] = ['Monks-2', accuracy_monks_2]
+
+    training_monks_3 = pd.read_csv("monks-3.train", header=None)
+    test_monks_3 = pd.read_csv("monks-3.test", header=None)
+    accuracy_monks_3 = perform_evaluation("Monks-3", training_monks_3, test_monks_3, 1, 0, set(training_monks_3.iloc[:, 1]))
+    fin.loc[6] = ['Monks-3', accuracy_monks_3]
+
+    save_results_to_csv(fin)
+
+if __name__ == "__main__":
+    main()

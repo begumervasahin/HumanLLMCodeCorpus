@@ -1,0 +1,39 @@
+from disjoint_sets import DisjointSets
+from heap_priority_queue import HeapPriorityQueue
+
+def compute_mst_kruskal(graph):
+    """
+    Computes a minimum spanning tree of a graph using Kruskal's algorithm.
+
+    Returns:
+    - A list of edges that comprise the MST.
+    - A set of vertices with their associated edges.
+    - The total weight of the MST.
+
+    Assumes that the elements of the graph's edges are weights.
+    """
+    mst_edges = []
+    priority_queue = HeapPriorityQueue()
+    disjoint_sets = DisjointSets()
+    vertex_positions = {}
+
+    # Create groups for each vertex in the disjoint sets
+    for vertex in graph.vertices():
+        vertex_positions[vertex] = disjoint_sets.make_group(vertex)
+
+    # Insert all edges into the priority queue
+    for edge in graph.edges():
+        priority_queue.insert(edge)
+
+    # Main Kruskal's algorithm loop
+    num_vertices = graph.vertex_count()
+    while len(mst_edges) != num_vertices - 1 and not priority_queue.is_empty():
+        edge = priority_queue.delete_min()
+        u, v = edge.endpoints()
+        a = disjoint_sets.find(vertex_positions[u])
+        b = disjoint_sets.find(vertex_positions[v])
+        if a != b:
+            mst_edges.append(edge)
+            disjoint_sets.union_sets(a, b)
+
+    return mst_edges

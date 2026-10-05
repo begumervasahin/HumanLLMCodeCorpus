@@ -1,0 +1,29 @@
+from prf import *
+
+# Define basic combinators
+identity = Proj(1, 0)
+zero = C(S, zero)
+successor = C(S, Proj(3, 0))
+
+# Define addition function
+addition = PR(identity, successor)
+addition = accel(addition, lambda x, y: x + y, 2)
+
+# Define predecessor function
+predecessor = C(PR(identity, Proj(3, 1)), Proj(1, 0), Proj(1, 0))
+predecessor = accel(predecessor, lambda x: x - 1 if x > 0 else 0, 1)
+
+# Define subtraction function
+subtract_step = C(predecessor, Proj(3, 0))
+subtract = PR(identity, subtract_step)
+subtract = accel(subtract, lambda x, y: x - y if x >= y else 0, 2)
+
+# Define multiplication function
+multiply_step = C(addition, Proj(3, 0), Proj(3, 2))
+multiply = PR(zero, multiply_step)
+multiply = accel(multiply, lambda x, y: x * y, 2)
+
+# Define power function
+power_step = C(multiply, Proj(3, 0), Proj(3, 2))
+power = PR(one, power_step)
+power = accel(power, lambda x, y: x ** y, 2)

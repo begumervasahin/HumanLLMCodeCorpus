@@ -1,0 +1,72 @@
+import os
+import csv
+import pickle
+import numpy as np
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from keras.preprocessing import sequence, text
+from keras.models import load_model
+
+# Constants
+MODELS_DIR = "models"
+DATA_DIR = "data"
+TRUMP_TWEETS_PATH = os.path.join(DATA_DIR, "trumptweets.csv")
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+MAX_POST_LENGTH = 40
+
+# Initialize variables
+final_personality = ""
+x_test = []
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words("english"))
+
+# Load Trump tweets data
+with open(TRUMP_TWEETS_PATH, "r", encoding="ISO-8859-1") as file:
+    reader = csv.reader(file)
+    x_test = [row for row in reader]
+
+# Personality types
+types = ["INFJ", "ENTP", "INTP", "INTJ", "ENTJ", "ENFJ", "INFP", "ENFP",
+         "ISFP", "ISTP", "ISFJ", "ISTJ", "ESTP", "ESFP", "ESTJ", "ESFJ"]
+types = [personality.lower() for personality in types]
+
+# Function to lemmatize text
+def lemmatize_text(text):
+    lemmatized = []
+    for post in text:
+        temp = post.lower()
+        # Remove personality types from text
+        for personality_type in types:
+            temp = temp.replace(" " + personality_type, "")
+        # Lemmatize and remove stopwords
+        temp = " ".join([lemmatizer.lemmatize(word) for word in temp.split() if word not in stop_words])
+        lemmatized.append(temp)
+    return np.array(lemmatized)
+
+# Load models and preprocess text
+for dimension in DIMENSIONS:
+    # Load model
+    model = load_model(os.path.join(MODELS_DIR, f"rnn_model_{dimension}.h5"))
+    # Load tokenizer
+    with open(os.path.join(MODELS_DIR, f"rnn_tokenizer_{dimension}.pkl"), "rb") as file:
+        tokenizer = pickle.load(file)
+    
+    # Preprocess text
+    def preprocess_text(text):
+        lemmatized_text = lemmatize_text(text)
+        tokenized_text = tokenizer.texts_to_sequences(lemmatized_text)
+        return sequence.pad_sequences(tokenized_text, maxlen=MAX_POST_LENGTH)
+
+    # Make predictions
+    predictions = model.predict(preprocess_text(x_test))
+    prediction_avg = float(sum(predictions) / len(predictions))
+    print(f"{dimension}:")
+    print(prediction_avg)
+    
+    # Determine personality type based on prediction
+    final_personality += dimension[1] if prediction_avg >= 0.5 else dimension[0]
+
+# Final personality prediction
+print("")
+print("Final prediction:", final_personality)

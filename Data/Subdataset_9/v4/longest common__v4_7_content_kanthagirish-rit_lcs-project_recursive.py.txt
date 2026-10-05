@@ -1,0 +1,83 @@
+# File: recursive.py
+# Python Version: 3.5
+# Authors: Kantha Girish, Akshay Karki
+# Description: This file contains a recursive algorithm to compute the Longest Common Sub-sequence of two string sequences.
+
+import sys
+
+# Global variable to keep track of the number of recursive calls
+num_recursive_calls = 0
+
+def recursive_lcs(x, y, reconstruct=False):
+    """
+    Compute the length of the longest common sub-sequence between strings x and y recursively.
+    
+    Args:
+    - x: string sequence
+    - y: string sequence
+    - reconstruct: Boolean to indicate whether to reconstruct a string or not. Default False
+    
+    Returns:
+    - Length of longest common sub-sequence between x and y
+    """
+    global num_recursive_calls
+    num_recursive_calls += 1
+    
+    # Base case: if either string is empty, return 0 or an empty string depending on the reconstruction flag
+    if len(x) == 0 or len(y) == 0:
+        if reconstruct:
+            return ""
+        else:
+            return 0
+    
+    # If the last characters of both strings are the same
+    if x[-1] == y[-1]:
+        if reconstruct:
+            # Append the last character to the LCS and recurse on the remaining substrings
+            return recursive_lcs(x[:-1], y[:-1], reconstruct) + x[-1]
+        else:
+            # Increment the length of LCS and recurse on the remaining substrings
+            return 1 + recursive_lcs(x[:-1], y[:-1], reconstruct)
+    else:
+        if reconstruct:
+            # Recurse by considering all possibilities and return the one with the maximum length
+            return max(recursive_lcs(x, y[:-1], reconstruct), recursive_lcs(x[:-1], y, reconstruct), key=len)
+        else:
+            # Recurse by considering all possibilities and return the maximum length
+            return max(recursive_lcs(x, y[:-1], reconstruct), recursive_lcs(x[:-1], y, reconstruct))
+
+def test(x, y, reconstruct):
+    """
+    Run a simple test by computing the LCS of two strings x and y.
+    
+    Args:
+    - x: string sequence
+    - y: string sequence
+    - reconstruct: Boolean to indicate whether to reconstruct a string or not
+    
+    Returns:
+    - Size of LCS
+    """
+    return recursive_lcs(x, y, reconstruct)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 1:
+        print("Usage: python3 " + __file__ + " acgt/bits")
+        print("acgt - generate sequences of acgt")
+        print("bits- generate sequences of binary digits")
+        print("0 - without reconstruction, 1 - with reconstruction")
+    else:
+        file = sys.argv[1] + ".txt"
+        with open(file, 'r') as f:
+            x = f.readline().strip()
+            y = f.readline().strip()
+            reconstruct = False
+            if len(sys.argv) == 3:
+                reconstruct = int(sys.argv[2]) == 1
+            if reconstruct:
+                lcs = test(x, y, reconstruct)
+                print("LCS: " + lcs)
+                print("LCS length: " + str(len(lcs)))
+            else:
+                print("LCS length: " + str(test(x, y, reconstruct)))
+            print("Number of recursive calls: " + str(num_recursive_calls))

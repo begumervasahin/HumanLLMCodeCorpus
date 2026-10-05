@@ -1,0 +1,56 @@
+import socket
+import sys
+import threading
+
+HOST = '127.0.0.1'
+PORT = 50007
+client_count = 0
+
+# Create a TCP/IP socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    # Bind the socket to the address and port
+    server_socket.bind((HOST, PORT))
+except socket.error as e:
+    print("Error:", e)
+    sys.exit()
+
+print('Server is running on {}:{}'.format(HOST, PORT))
+print("Server is ready to accept connections...")
+
+# Listen for incoming connections
+server_socket.listen(2)
+
+# List to store client connections
+clients = []
+
+# Accept connections from clients
+while client_count < 2:
+    client_conn, client_addr = server_socket.accept()
+    client_count += 1
+    print("New client connected - IP: {}, Port: {}".format(client_addr[0], client_addr[1]))
+    clients.append((client_conn, client_addr))
+
+# Define a class for handling client communication in separate threads
+class ClientHandler(threading.Thread):
+    def __init__(self, sender, receiver):
+        threading.Thread.__init__(self)
+        self.sender_conn = sender[0]
+        self.sender_addr = sender[1]
+        self.receiver_conn = receiver[0]
+        self.receiver_addr = receiver[1]
+
+    def run(self):
+        while True:
+            # Receive messages from one client and send them to the other
+            message = self.sender_conn.recv(5000).decode("utf-8")
+            self.receiver_conn.send(message.encode("utf-8"))
+
+# Create worker threads for bidirectional communication between clients
+client1_to_client2 = ClientHandler(clients[0], clients[1])
+client2_to_client1 = ClientHandler(clients[1], clients[0])
+
+# Start the worker threads
+client1_to_client2.start()
+client2_to_client1.start()

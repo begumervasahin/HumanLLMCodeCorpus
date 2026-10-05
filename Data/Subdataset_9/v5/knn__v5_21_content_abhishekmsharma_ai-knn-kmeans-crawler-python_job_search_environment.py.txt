@@ -1,0 +1,152 @@
+from job_search_agent import Agent
+from random import randint
+from operator import itemgetter
+import webbrowser
+
+class Environment:
+    all_jobs = []
+
+    def __init__(self):
+        pass
+
+    def env_first_run(self, keyword_input, k):
+        agent = Agent()
+        self.all_jobs = agent.search_jobs(keyword_input, k)
+        self.print_menu(keyword_input, k)
+
+    def print_menu(self, keyword_input, k):
+        print("\n--------------------\nType the corresponding number and press enter")
+        print("1. Start a new search")
+        print("2. Run previous search again - Keywords:", keyword_input, ", Value of k:", k)
+        print("3. Cluster previous search - Keywords:", keyword_input, ", Value of k:", k)
+        print("4. Quit")
+        option = input("Enter the number: ")
+        try:
+            option = int(option)
+            if option == 1:
+                self.start_new_search()
+            elif option == 2:
+                self.run_previous_search(keyword_input, k)
+            elif option == 3:
+                self.cluster_previous_search(k)
+            elif option == 4:
+                self.quit_program()
+            else:
+                print("Invalid option selected.\nTry again")
+                self.print_menu(keyword_input, k)
+        except ValueError:
+            print("Invalid option selected.\nTry again")
+            self.print_menu(keyword_input, k)
+
+    def start_new_search(self):
+        keyword_input = input("\n---------------\nEnter search keywords: ")
+        k = input("Enter the value of k: ")
+        if k.isdigit():
+            agent = Agent()
+            self.all_jobs = agent.search_jobs(keyword_input, k)
+            self.print_menu(keyword_input, k)
+        else:
+            print("Invalid value of k, try again")
+            self.print_menu(keyword_input, k)
+
+    def run_previous_search(self, keyword_input, k):
+        agent = Agent()
+        self.all_jobs = agent.search_jobs(keyword_input, k)
+        self.print_menu(keyword_input, k)
+
+    def cluster_previous_search(self, k):
+        centroid_jobs = self.select_centroid_jobs(k)
+        self.update_all_jobs_with_clusters(centroid_jobs)
+        self.print_html_table(self.all_jobs, centroid_jobs, k)
+
+    def select_centroid_jobs(self, k):
+        centroid_jobs = []
+        for i in range(0, int(k)):
+            r = randint(0, len(self.all_jobs) - 1)
+            centroid_jobs.append(self.all_jobs[r])
+            self.all_jobs.pop(r)
+        return centroid_jobs
+
+    def update_all_jobs_with_clusters(self, centroid_jobs):
+        for row in self.all_jobs:
+            job_words = (row[0] + " " + row[1] + " " + row[2] + " " + row[3]).lower().split(" ")
+            row.append(self.get_closest_centroid(centroid_jobs, job_words))
+
+    def get_closest_centroid(self, centroid_jobs, jobs_words):
+        jaccard_distances = [self.jaccard_distance(jobs_words, (item[0] + " " + item[1] + " " + item[2] + " " + item[3]).lower().split(" ")) for item in centroid_jobs]
+        return min(enumerate(jaccard_distances), key=itemgetter(1))[0]
+
+    def jaccard_distance(self, keywords, job_details):
+        keywords = [kw.lower() for kw in keywords]
+        job_details = [jd.lower() for jd in job_details]
+        intersection = len(set(keywords).intersection(job_details))
+        union = len(set(keywords).union(job_details))
+        return 1 - intersection / float(union)
+
+    def print_html_table(self, all_jobs, centroid_jobs, k):
+        table_1 = """<html>
+        <head>
+        <title>Cluster Results</title>
+        <style>
+        table.GeneratedTable {
+          width: 100%;
+          background-color:
+          border-collapse: collapse;
+          border-width: 2px;
+          border-color:
+          border-style: solid;
+          color:
+        }
+        table.GeneratedTable td, table.GeneratedTable th {
+          border-width: 2px;
+          border-color:
+          border-style: solid;
+          padding: 3px;
+        }
+        table.GeneratedTable thead {
+          background-color:
+        }
+        </style>
+        </head>
+        <body>
+        <h3>Lloyd's Clustering</h3>
+        <h4>K: """ + str(k) + "</h4>"
+        f = open("cluster.html", "w")
+        f.write(table_1)
+        for i in range(0, len(centroid_jobs)):
+            table_text = """<table class="GeneratedTable">
+                                          <thead>
+                                            <tr>
+                                              <th>Company Name</th>
+                                              <th>Position</th>
+                                              <th>Location</th>
+                                              <th>Description</th>
+                                              <th>Link</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>"""
+            f.write(table_text)
+            cluster_jobs = [centroid_jobs[i]] + [item for item in all_jobs if item[7] == i]
+            for item in cluster_jobs:
+                f.write("<tr>")
+                for j in range(0, 5):
+                    f.write("<td>")
+                    if j == 4:
+                        f.write('<a target="_blank" href="')
+                        f.write(item[j])
+                        f.write('">')
+                        f.write(item[j])
+                        f.write("</a>")
+                    else:
+                        f.write(item[j])
+                    f.write("</td>")
+                f.write("</tr>")
+            f.write("</tbody></table><br>")
+        f.write("</body></html>")
+        f.close()
+        webbrowser.open("cluster.html")
+        print("Cluster result opened as webpage in browser")
+
+    def quit_program(self):
+        print("Quitting program")
+        exit(0)

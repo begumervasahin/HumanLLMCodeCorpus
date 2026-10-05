@@ -1,0 +1,45 @@
+import sys
+import math
+
+# Function to calculate TF-IDF
+def calculate_tfidf(word_count, word_per_doc, total_docs):
+    tf = word_count / word_per_doc  # Term Frequency
+    idf = math.log(total_docs / float(1))  # Inverse Document Frequency, assuming each word appears in at least one document
+    return tf * idf
+
+# Initialize variables
+previous_word = None
+previous_doc_id = None
+previous_word_count = None
+previous_word_per_doc = None
+total_documents = 1
+
+# Process input line by line
+for line in sys.stdin:
+    line = line.strip()
+    word, rest = line.split("\t")
+    doc_id, word_count, word_per_doc = rest.split(",")
+    word_count = int(word_count)
+    word_per_doc = int(word_per_doc)
+
+    # Check if the word is the same as the previous one
+    if previous_word == word:
+        total_documents = 2  # Assuming there are only two documents for simplicity
+        tfidf = calculate_tfidf(previous_word_count, previous_word_per_doc, total_documents)
+        print("(%s,%s)\t%s" % (previous_word, previous_doc_id, tfidf))
+    else:
+        # Print the TF-IDF for the previous word
+        if previous_word is not None:
+            tfidf = calculate_tfidf(previous_word_count, previous_word_per_doc, total_documents)
+            print("(%s,%s)\t%s" % (previous_word, previous_doc_id, tfidf))
+    
+    # Update variables for the next iteration
+    previous_word = word
+    previous_doc_id = doc_id
+    previous_word_count = word_count
+    previous_word_per_doc = word_per_doc
+    total_documents = 1  # Reset total documents count for the next word
+
+# Print TF-IDF for the last word
+tfidf = calculate_tfidf(previous_word_count, previous_word_per_doc, total_documents)
+print("(%s,%s)\t%s" % (previous_word, previous_doc_id, tfidf))

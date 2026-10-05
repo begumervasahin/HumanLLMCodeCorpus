@@ -1,0 +1,58 @@
+import csv
+import os
+import re
+import numpy as np
+import pandas as pd
+import time
+from auxiliaryfunctions import lcss_trigger, plot_traj_red
+
+# Function to read trajectories from CSV
+def read_trajectories_from_csv(file_path):
+    with open(file_path, 'r') as file:
+        data_reader = csv.reader(file, delimiter=',')
+        next(data_reader)  # Skip header
+        trajectories = []
+        for row in data_reader:
+            trajectory = []
+            for j in range(0, len(row), 3):
+                point = [
+                    float(re.sub('[\[\]]', '', row[j])),
+                    float(row[j + 1]),
+                    float(re.sub('[\[\]]', '', row[j + 2]))
+                ]
+                trajectory.append(point)
+            trajectories.append(trajectory)
+    return trajectories
+
+# Load the preprocessed DataFrame
+df = pd.read_pickle('./final_cleaned.df')
+
+# Read trajectories from CSV
+trajectories_read = read_trajectories_from_csv('test_set_a2.csv')
+print("Dataset read successfully.")
+
+# Create a directory to store results
+os.mkdir("LCSSresults")
+
+# Process each trajectory
+for k, traj in enumerate(trajectories_read, start=1):
+    start_time = time.time()
+    
+    # Find matching trajectories
+    matching_points = lcss_trigger(traj, df, min_length=1, min_points=0)
+    distances_np = np.array(matching_points)
+    sorted_indices = np.argsort(-distances_np)
+    
+    # Process top 5 nearest trajectories
+    for m, elem in enumerate(sorted_indices[:5], start=1):
+        nearest_journey = df['JourneyPatternId'].iloc[elem]
+        print(f"Nearest trajectory {nearest_journey} Matching points: {distances_np[elem]}.")
+        
+        # Find common points and plot
+        common_points = lcss_trigger(traj, df, min_length=2, reference_index=elem)
+        output_path = f"./LCSSresults/trajectory{k}_matchingpointsneighb_{m}"
+        plot_traj_red(common_points, df['timestamp_longitude_latitude'].iloc[elem], output_path)
+    
+    # Measure time taken for processing
+    end_time = time.time()
+    duration_minutes = (end_

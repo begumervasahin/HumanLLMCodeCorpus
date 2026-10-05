@@ -1,0 +1,75 @@
+import re
+
+def scrape_newegg_laptops(page_soup):
+    # Open a CSV file to write data
+    with open('data/newegg-laptops.csv', 'w') as file:
+        file.write('Brand,Name,Price-was,Current-Price,Discount(%),RAM(GB),Storage(GB/TB),Refurbished(0/1),URL\n')
+        
+        # Find all laptop containers
+        containers = page_soup.find_all('div', class_='item-container')
+        
+        for container in containers:
+            # Extract brand from the container
+            brand = container.find('div', class_='item-info').div.a.img.get('title', 'NaN')
+            
+            # Extract title and check if it's refurbished
+            title = container.find('a', class_='item-title').text
+            refurbished = '1' if any(keyword in title.lower() for keyword in ['refurbished', 'renewed']) else '0'
+            link = container.find('a', class_='item-title').get('href', '')
+            
+            # Extract RAM and storage from title using regex
+            ram, storage = extract_ram_and_storage(title)
+            
+            # Extract previous price and discount
+            previous_price, discount = extract_previous_price_and_discount(container)
+            
+            # Extract current price
+            current_price = extract_current_price(container)
+            
+            # Write data to the CSV file
+            file.write(f'{brand},{title.replace(",", " ")},{previous_price},{current_price},{discount},{ram},{storage},{refurbished},{link}\n')
+    
+    print('Scraped Newegg\'s page')
+
+def extract_ram_and_storage(title):
+    features = title.replace(' ', '')
+    match = re.search('.*(?:\)|\w|-)(\d+)GB.*(?:y|\+|-|M)(\d+)', features)
+    if match:
+        ram, storage = match.groups()
+    else:
+        ram, storage = 'NaN', 'NaN'
+    return ram, storage
+
+def extract_previous_price_and_discount(container):
+    try:
+        previous_price = container.find('div', class_='item-info').find('div', class_='item-action').ul.li.span.text
+        discount = container.find('div', class_='item-info').find('div', class_='item-action').ul.find('li', class_='price-save').find('span', class_='price-save-percent').text[:-1]
+    except:
+        previous_price = 'NaN'
+        discount = '0'
+    return previous_price, discount
+
+def extract_current_price(container):
+    try:
+        current_price = container.find('div', class_='item-info').find('div', class_='item-action').ul.find('li', class_='price-current').text
+        current_price = current_price.replace(',', '')
+        current_price = re.search('.+\s([0-9]+).+', current_price).group(1)
+    except:
+        current_price = 'NaN'
+    return current_price
+
+def generate_newegg_urls(page_soup, base_url):
+    '''
+    Generate a list of URLs for Newegg's laptop pages, up to the last page number
+    '''
+    last_page = extract_last_page_number(page_soup)
+    urls = [f'{base_url}/Page-{i}?Tid=1297918' for i in range(2, last_page + 1)]
+    return urls
+
+def extract_last_page_number(page_soup):
+    '''
+    Extract the last page number from the page
+    '''
+    navigation_bar = page_soup.find_all('div', class_='page_NavigationBar')[1]
+    last_page = navigation_bar.select_one('div:nth-of-type(10)').text.strip()
+    return int(last_page)

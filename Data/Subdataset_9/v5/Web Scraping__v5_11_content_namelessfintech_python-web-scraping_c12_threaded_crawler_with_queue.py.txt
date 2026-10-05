@@ -1,0 +1,128 @@
+import multiprocessing
+import re
+import socket
+import threading
+import time
+from urllib import robotparser
+from urllib.parse import urljoin, urlparse
+from chp3.downloader import Downloader
+from chp4.redis_queue import RedisQueue
+
+# Constants
+SLEEP_TIME = 1
+socket.setdefaulttimeout(60)
+
+# Function to parse robots.txt
+def get_robots_parser(robots_url):
+    try:
+        rp = robotparser.RobotFileParser()
+        rp.set_url(robots_url)
+        rp.read()
+        return rp
+    except Exception as e:
+        print('Error finding robots_url:', robots_url, e)
+
+# Function to clean links
+def clean_link(url, domain, link):
+    if link.startswith('//'):
+        link = '{}:{}'.format(urlparse(url).scheme, link)
+    elif link.startswith('://'):
+        link = '{}{}'.format(urlparse(url).scheme, link)
+    else:
+        link = urljoin(domain, link)
+    return link
+
+# Function to extract links from HTML
+def get_links(html, link_regex):
+    webpage_regex = re.compile("""<a[^>]+href=["'](.*?)["']""", re.IGNORECASE)
+    links = webpage_regex.findall(html)
+    links = (link for link in links if re.match(link_regex, link))
+    return links
+
+# Function for threaded crawling
+def threaded_crawler_rq(start_url, link_regex, user_agent='wswp', proxies=None,
+                        delay=3, max_depth=4, num_retries=2, cache={}, max_threads=10, scraper_callback=None):
+    crawl_queue = RedisQueue()
+    crawl_queue.push(start_url)
+    robots = {}
+    downloader = Downloader(delay=delay, user_agent=user_agent, proxies=proxies, cache=cache)
+
+    # Function to process the crawl queue
+    def process_queue():
+        while len(crawl_queue):
+            url = crawl_queue.pop()
+            if not url or 'http' not in url:
+                continue
+            domain = '{}://{}'.format(urlparse(url).scheme, urlparse(url).netloc)
+            rp = robots.get(domain)
+            if not rp and domain not in robots:
+                robots_url = '{}/robots.txt'.format(domain)
+                rp = get_robots_parser(robots_url)
+                robots[domain] = rp
+            elif domain in robots:
+                rp = robots[domain]
+            if rp is None or rp.can_fetch(user_agent, url):
+                depth = crawl_queue.get_depth(url)
+                if depth == max_depth:
+                    print('Skipping %s due to depth' % url)
+                    continue
+                html = downloader(url, num_retries=num_retries)
+                if not html:
+                    continue
+                if scraper_callback:
+                    links = scraper_callback(url, html) or []
+                else:
+                    links = []
+                for link in get_links(html, link_regex) + links:
+                    if 'http' not in link:
+                        link = clean_link(url, domain, link)
+                    crawl_queue.push(link)
+                    crawl_queue.set_depth(link, depth + 1)
+            else:
+                print('Blocked by robots.txt:', url)
+
+    threads = []
+    while threads or len(crawl_queue):
+        for thread in threads:
+            if not thread.is_alive():
+                threads.remove(thread)
+        while len(threads) < max_threads and crawl_queue:
+            thread = threading.Thread(target=process_queue)
+            thread.setDaemon(True)
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+        time.sleep(SLEEP_TIME)
+
+# Function for multiprocessing threaded crawling
+def mp_threaded_crawler(*args, **kwargs):
+    processes = []
+    num_procs = kwargs.pop('num_procs')
+    if not num_procs:
+        num_procs = multiprocessing.cpu_count()
+    for _ in range(num_procs):
+        proc = multiprocessing.Process(target=threaded_crawler_rq,
+                                       args=args, kwargs=kwargs)
+        proc.start()
+        processes.append(proc)
+    for proc in processes:
+        proc.join()
+
+if __name__ == '__main__':
+    from chp4.alexa_callback import AlexaCallback
+    from chp3.rediscache import RedisCache
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Multiprocessing threaded link crawler')
+    parser.add_argument('max_threads', type=int, help='maximum number of threads', nargs='?', default=5)
+    parser.add_argument('num_procs', type=int, help='number of processes', nargs='?', default=None)
+    parser.add_argument('url_pattern', type=str, help='regex pattern for url matching', nargs='?', default='$^')
+    par_args = parser.parse_args()
+
+    AC = AlexaCallback()
+    AC()
+
+    start_time = time.time()
+    mp_threaded_crawler(AC.urls, par_args.url_pattern, cache=RedisCache(), num_procs=par_args.num_procs, max_threads=par_args.max_threads)
+    print('Total time: %ss' % (time.time() - start_time))

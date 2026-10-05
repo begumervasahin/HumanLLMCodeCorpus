@@ -1,0 +1,79 @@
+from PIL import Image, ImageStat
+import glob
+import numpy as np
+import math
+
+# Path where the images are stored
+path = 'C:\\folder'
+
+# Getting a list of all PNG files in the specified path
+files = glob.glob(path + '/*.png')
+
+# Dimensions of the images
+imagewidth = 256
+imageheight = 256
+
+# Function to calculate luminance of an image
+def get_luminance(im):
+    stat = ImageStat.Stat(im)
+    r, g, b = stat.mean
+    # Using luminance formula to calculate luminance
+    lum = math.sqrt(0.241 * (r ** 2) + 0.691 * (g ** 2) + 0.068 * (b ** 2))
+    return lum
+
+# Function to calculate distance between two luminance values
+def distance(avg, image):
+    return abs(avg - get_luminance(image))
+
+# Main function
+def main():
+    # Array to store luminance values of each image
+    lums = np.empty(len(files))
+    
+    # Loop through each image file
+    for i, filename in enumerate(files):
+        # Open the image file
+        im = Image.open(filename)
+        # Calculate and store luminance value
+        lums[i] = get_luminance(im)
+    
+    # Calculate the average luminance of all images
+    average_lum = np.mean(lums)
+    print('Starting average luminance of ', average_lum, '(stdev', np.std(lums), ')') 
+    
+    # Array to store new luminance values after adjustment
+    new_lums = np.empty(len(files))
+    
+    # Loop through each image file again for adjustment
+    for i, filename in enumerate(files):
+        # Open the image file
+        im = Image.open(filename)
+        # Get pixel data
+        pixels = im.load()
+        
+        # Determine modifier based on whether the current image's luminance is above or below average
+        if get_luminance(im) > average_lum:
+            modifier = -1
+        else:
+            modifier = 1
+        
+        # Adjust pixel values until the distance from the average luminance is less than 1
+        while distance(average_lum, im) > 1:
+            for k in range(imagewidth):
+                for l in range(imageheight):
+                    # Check if the pixel is not close to white
+                    if not all(i > 245 for i in pixels[k, l]):
+                        # Adjust pixel value based on modifier
+                        pixels[k, l] = tuple(x + modifier for x in pixels[k, l])     
+        # Save the modified image
+        im.save(filename)
+        # Store the new luminance value
+        new_lums[i] = get_luminance(im)
+        print(i, 'done')
+    
+    # Print the final average luminance after adjustment
+    print('Finishing average luminance of ', np.mean(new_lums), '(stdev', np.std(new_lums), ')')
+
+# Execute the main function if the script is run directly
+if __name__ == '__main__':
+    main()

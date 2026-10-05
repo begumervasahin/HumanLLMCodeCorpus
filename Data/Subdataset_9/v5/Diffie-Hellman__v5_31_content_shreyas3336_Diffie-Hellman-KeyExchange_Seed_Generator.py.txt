@@ -1,0 +1,33 @@
+import Seeded_Random_Generator
+
+def extract_key_value(private_key):
+    return int(str(private_key).replace("<cryptography.hazmat.backends.openssl.dh._DHPrivateKey object at 0x", "").replace(">", ""), 16)
+
+def extract_public_key(peer_public_key):
+    return int(str(peer_public_key).replace("<cryptography.hazmat.backends.openssl.dh._DHPublicKey object at 0x", "").replace(">", ""), 16)
+
+def calculate_intermediate_values(a_private_key, b_private_key, a_peer_public_key, b_peer_public_key):
+    a_pkey = extract_key_value(a_private_key)
+    b_pkey = extract_key_value(b_private_key)
+    a_public_key = extract_public_key(a_peer_public_key)
+    b_public_key = extract_public_key(b_peer_public_key)
+
+    x1 = (a_public_key ^ a_pkey) % b_public_key
+    x2 = (a_public_key ^ b_pkey) % b_public_key
+    k1 = (x2 ^ a_pkey) % b_public_key
+    k2 = (x1 ^ b_pkey) % b_public_key
+
+    return k1, k2
+
+def generate_seed(a_private_key, b_private_key, a_peer_public_key, b_peer_public_key):
+    k1, k2 = calculate_intermediate_values(a_private_key, b_private_key, a_peer_public_key, b_peer_public_key)
+
+    if k1 == k2:
+        seed = k1 % 1111
+        reduced_seed = Seeded_Random_Generator.reduce(seed)    
+        print("Seed:", seed)
+        print("Reduced Seed:", reduced_seed)
+        Seeded_Random_Generator.random_generator(reduced_seed)
+
+# Test the function with sample keys
+generate_seed(a_private_key, b_private_key, a_peer_public_key, b_peer_public_key)

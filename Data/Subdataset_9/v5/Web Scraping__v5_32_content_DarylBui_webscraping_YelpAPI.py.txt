@@ -1,0 +1,43 @@
+import json
+import requests
+from requests_oauthlib import OAuth1
+
+# API credentials
+API_KEY = "C7_OKghI_G9J3povKfvydoc0vibVrp_7jsUuyfzWGw0YtyNNwmIHhQBLF2WoutFlaJS10qGz9c2qMt_XHKgVawLozhOPxV8iLirJGzMy57Q7fGBPgJoOYA0CdtuW3Yx"
+CONSUMER_SECRET = 'JtcAesDkKuNltcKdwR7NEaUkgm8'
+TOKEN = 'TCipoxU_lYo55-F3rS10XdnN6f-3-KQI'
+TOKEN_SECRET = '5gAZ99Arn2x_LIOVM25AWy8H84c'
+
+def perform_yelp_search(term='Food', location='San Francisco'):
+    base_url = 'https://api.yelp.com/v2/search'
+    term = term.replace(' ', '+')
+    location = location.replace(' ', '+')
+    url = f"{base_url}?term={term}&location={location}"
+    
+    auth = OAuth1(API_KEY, CONSUMER_SECRET, TOKEN, TOKEN_SECRET)
+    response = requests.get(url, auth=auth)
+    
+    json_data = response.json()
+    text_data = response.text
+    
+    return json_data, text_data
+
+def print_business_details(business):
+    print("Name:", business["name"])
+    print("Phone:", business["phone"])
+    print("Address:", " ".join(business["location"]["display_address"]))
+    print("City:", business["location"]["city"])
+    print()  # Add an empty line for readability between businesses
+
+# Perform a Yelp search
+json_data, text_data = perform_yelp_search()
+
+# Parse JSON data into Python dictionary
+python_data = json.loads(text_data)
+
+# Print JSON data in a readable format
+print(json.dumps(json_data, indent=4, sort_keys=True))
+
+# Extract and print specific information from businesses
+for business in json_data['businesses']:
+    print_business_details(business)

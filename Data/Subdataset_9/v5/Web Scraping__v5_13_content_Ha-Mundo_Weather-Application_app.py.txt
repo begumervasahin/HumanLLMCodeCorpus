@@ -1,0 +1,65 @@
+from requests_html import HTMLSession
+
+session = HTMLSession()
+city_id = "e1bbaf5ba44a74170e3bb9f892416301c36b3b17f37e1a666c6e1213de0f5668"
+
+def fetch_weather_data(forcast, city_id):
+    url = f"https://weather.com/en-IN/weather/{forcast}/l/{city_id}"
+    response = session.get(url)
+    response.html.render()
+    weather_data = {}
+
+    if response.html.find('div.today_nowcard', first=True):
+        weather_info = response.html.find('div.today_nowcard', first=True).text.split('\n')
+        weather_data['location'] = weather_info[0]
+        weather_data['time'] = weather_info[1]
+        weather_data['temperature'] = weather_info[2]
+        weather_data['status'] = weather_info[3]
+        weather_data['feels_like'] = weather_info[4]
+        weather_data['high-low'] = weather_info[5]
+        weather_data['wind'] = weather_info[9]
+        weather_data['humidity'] = weather_info[11]
+        weather_data['dew_point'] = weather_info[13]
+        weather_data['pressure'] = weather_info[15]
+        weather_data['visibility'] = weather_info[17]
+    else:
+        print("No data available for the specified forecast.")
+
+    return weather_data
+
+def fetch_hourly_weather(forcast, city_id):
+    url = f"https://weather.com/en-IN/weather/{forcast}/l/{city_id}"
+    response = session.get(url)
+    hourly_weather = {}
+
+    if response.html.find('region', first=True):
+        hourly_weather_table = response.html.find('region', first=True).find('table.twc-table', first=True)
+        if hourly_weather_table:
+            for row in hourly_weather_table.find('tr')[1:]:
+                data = row.text.split("\n")
+                hourly_weather[data[0] + ' ' + data[1]] = {
+                    "Description": data[2],
+                    "Temp": data[3],
+                    "Feels": data[4],
+                    "Precip": data[5],
+                    "Humidity": data[6],
+                    "Wind": data[7]
+                }
+    else:
+        print("No hourly weather data available.")
+
+    return hourly_weather
+
+# Similarly, define other functions for different forecasts
+
+forecast_type = input("Enter the forecast type (today/hourbyhour/5day/tenday/monthly): ").lower()
+
+if forecast_type == 'today':
+    result_for_today = fetch_weather_data(forecast_type, city_id)
+    print(result_for_today)
+elif forecast_type == 'hourbyhour':
+    result_for_hr = fetch_hourly_weather(forecast_type, city_id)
+    print(result_for_hr)
+# Add conditions for other forecast types
+else:
+    print("Enter a valid forecast type.")

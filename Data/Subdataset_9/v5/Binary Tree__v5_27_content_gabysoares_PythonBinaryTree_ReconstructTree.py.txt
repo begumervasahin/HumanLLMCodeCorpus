@@ -1,0 +1,94 @@
+class ListBinaryTree:
+    """
+    A binary tree class with nodes represented as lists.
+    """
+    DATA = 0
+    LEFT = 1
+    RIGHT = 2
+
+    def __init__(self, root_value, left=None, right=None):
+        """
+        Create a binary tree with a given root value.
+        left: the left subtree.
+        right: the right subtree.
+        """
+        self.node = [root_value, left, right]
+
+    @classmethod
+    def create_tree(cls, a_list):
+        """Create a binary tree from a list."""
+        return cls(a_list[0], a_list[1], a_list[2])
+
+    def insert_value_left(self, value):
+        """Insert a value to the left of this node."""
+        self.node[self.LEFT] = ListBinaryTree(value, self.node[self.LEFT], None)
+
+    def insert_value_right(self, value):
+        """Insert a value to the right of this node."""
+        self.node[self.RIGHT] = ListBinaryTree(value, None, self.node[self.RIGHT])
+
+    def insert_tree_left(self, tree):
+        """Insert a new left subtree of the current node."""
+        self.node[self.LEFT] = tree
+
+    def insert_tree_right(self, tree):
+        """Insert a new right subtree of the current node."""
+        self.node[self.RIGHT] = tree
+
+    def set_value(self, new_value):
+        """Set the value of the node."""
+        self.node[self.DATA] = new_value
+
+    def get_value(self):
+        """Get the value of the node."""
+        return self.node[self.DATA]
+
+    def get_left_subtree(self):
+        """Get the left subtree of the node."""
+        return self.node[self.LEFT]
+
+    def get_right_subtree(self):
+        """Get the right subtree of the node."""
+        return self.node[self.RIGHT]
+
+    def __str__(self):
+        """String representation of the node."""
+        return f"[{self.node[self.DATA]}, {self.node[self.LEFT]}, {self.node[self.RIGHT]}]"
+
+def construct_tree(inorder, preorder, start, end):
+    """
+    Reconstructs a binary tree using inorder and preorder traversals.
+    """
+    if start > end:
+        return None
+
+    # Create a node with the current preorder element
+    tree = ListBinaryTree(preorder[construct_tree.preIndex])
+    construct_tree.preIndex += 1
+
+    # If there's only one element in the subtree, return the node
+    if start == end:
+        return tree
+
+    # Find the index of the current node in the inorder traversal
+    inorder_node_index = inorder.index(tree.get_value())
+
+    # Recursively construct left and right subtrees
+    tree.insert_tree_left(construct_tree(inorder, preorder, start, inorder_node_index - 1))
+    tree.insert_tree_right(construct_tree(inorder, preorder, inorder_node_index + 1, end))
+
+    return tree
+
+def main():
+    """
+    Main function to reconstruct a binary tree.
+    """
+    print("Binary Tree reconstructed by gsoa420:")
+    inorder = input("Please enter the inorder sequence: ").split()
+    preorder = input("Please enter the preorder sequence: ").split()
+    construct_tree.preIndex = 0  # Initialize preIndex
+    tree = construct_tree(inorder, preorder, 0, len(preorder) - 1)
+    print(tree)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,51 @@
+from collections import defaultdict
+from math import inf
+from indexedheap import IndexedHeap
+
+class Graph:
+    """A non-negative weighted, directed multigraph."""
+    
+    def __init__(self):
+        self.vertices = set()
+        self.edges = defaultdict(list)
+        
+    def add_edge(self, source, destination, weight):
+        """Add a weighted edge from source to destination."""
+        if weight < 0:
+            raise ValueError("Edge weights cannot be negative.")
+        self.vertices |= {destination, source}
+        self.edges[source].append((destination, weight))
+        
+    def distance_and_shortest_path(self, source, destination):
+        """Find the lightest-weighted path from source to destination."""
+        if not {source, destination} <= self.vertices:
+            return inf, None
+        
+        distance = {v: inf for v in self.vertices}
+        distance[source] = 0
+        predecessor = {}
+        h = IndexedHeap((distance[v], v) for v in self.vertices)
+        
+        while h.peek() != destination:
+            v = h.pop()
+            v_dist = distance[v]
+            for neighbor, edge_weight in self.edges[v]:
+                alt_dist = v_dist + edge_weight
+                if alt_dist < distance[neighbor]:
+                    distance[neighbor] = alt_dist
+                    predecessor[neighbor] = v
+                    h.change_weight(neighbor, alt_dist)
+        
+        if distance[destination] == inf:
+            return inf, None
+        
+        path = [destination]
+        while path[-1] != source:
+            path.append(predecessor[path[-1]])
+        path.reverse()
+        
+        return distance[destination], path
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

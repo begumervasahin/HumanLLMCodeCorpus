@@ -1,0 +1,62 @@
+import threading
+from queue import Queue
+from workfiles.createdir import create_project_directory, get_domain_name
+from workfiles.linkgetter import file_to_set
+from workfiles.crawler import Crawler
+
+# Project details
+proj_name = 'CimaClub'
+base_url = 'http://cimaclub.com/'
+
+# Determine domain name
+domain_name = get_domain_name(base_url)
+
+# File paths
+queue_file = f'{proj_name}/getURL.txt'
+scraped_file = f'{proj_name}/setURL.tex'
+
+# Number of threads
+num_threads = 8
+
+# Initialize queue
+url_queue = Queue()
+
+# Create project directory if it doesn't exist
+create_project_directory(proj_name)
+
+# Initialize crawler
+crawler = Crawler(proj_name, base_url, domain_name)
+
+def crawl():
+    # Retrieve queued links and start crawling
+    queued_links = file_to_set(queue_file)
+    if queued_links:
+        print(f"{len(queued_links)} links in the queue")
+        create_jobs()
+
+def create_jobs():
+    # Put links into the queue and start crawling
+    for link in file_to_set(queue_file):
+        url_queue.put(link)
+        url_queue.join()  # Wait for queue to be empty
+        crawl()
+
+def create_crawlers():
+    # Create threads for crawling
+    for _ in range(num_threads):
+        thread = threading.Thread(target=work)
+        thread.daemon = True  # Mark thread as daemon
+        thread.start()
+
+def work():
+    # Execute crawling work
+    while True:
+        url = url_queue.get()
+        Crawler.crawl_page(threading.current_thread().name, url)
+        url_queue.task_done()
+
+# Create crawler threads
+create_crawlers()
+
+# Start crawling
+crawl()

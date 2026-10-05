@@ -1,0 +1,106 @@
+from HopfClass import *
+
+
+class VectorSpaceElement:
+    def __init__(self, vector, space):
+        if not isinstance(vector, str):
+            self.vector = vector
+        elif vector == '0':
+            self.vector = np.zeros((space.dim))
+        else:
+            self.vector = np.zeros((space.dim), dtype=complex)
+            temp = vector.split('+')
+            for item in temp:
+                element = item.split('*')
+                for i in range(space.dim):
+                    if element[1] == space.element_names[i]:
+                        self.vector[i] = complex(element[0])
+                        break
+        self.space = space
+        self.name = 'Currently unnamed.'
+
+    def tensor(self, other):
+        out_type = ''
+        if self.space.type == 'HopfAlgebra' and other.space.type == 'HopfAlgebra':
+            out_type = 'HopfAlgebra'
+        elif self.space.type == 'Algebra' or other.space.type:
+            out_type = 'Algebra'
+        elif (self.space.type == 'ModuleAlgebra' or self.space.type == 'HopfAlgebra') and (
+                other.space.type == 'HopfAlgebra' or other.space.type == 'ModuleAlgebra'):
+            out_type = 'ModuleAlgebra'
+        else:
+            out_type = 'VectorSpace'
+        out = np.zeros((self.space.dim * other.space.dim), dtype=complex)
+        for i in range(self.space.dim):
+            for j in range(other.space.dim):
+                out[i * other.space.dim + j] = self.vector[i] * other.vector[j]
+        return eval(out_type + 'Element(out, AlgebraList[\'' + self.space.name + '(T)' + other.space.name + '\'])')
+
+    def __add__(self, other):
+        return eval(self.space.type + 'Element(self.vector + other.vector, self.space)')
+
+    def __sub__(self, other):
+        return eval(self.space.type + 'Element(self.vector - other.vector, self.space)')
+
+    def name(self):
+        if self.name == 'Currently unnamed.':
+            self.name = ''
+            for i in range(self.space.dim):
+                if self.vector[i] != 0:
+                    self.name = self.name + '+' + str(self.vector[i]) + '*' + self.space.element_names[i]
+            if self.name == '':
+                self.name = '0'
+            return self.name
+        else:
+            return self.name
+
+
+class AlgebraElement(VectorSpaceElement):
+    def __mul__(self, other):
+        if isinstance(other, (complex, int, float, np.complex128)):
+            return eval(self.space.type + 'Element(other * self.vector, self.space)')
+        elif self.space == other.space:
+            return eval(self.space.type + 'Element(self.space.Mult(self.vector, other.vector), self.space)')
+        elif other.space.type == 'Module':
+            return ModuleAlgebraElement(other.space.Action(self.vector, other.vector), other.space)
+        elif other.space.type == 'ModuleAlgebra':
+            return ModuleAlgebraElement(other.space.Action(self.vector, other.vector), other.space)
+
+    def __pow__(self, other):
+        out = self
+        if other == 0:
+            temp = np.zeros(self.vector.shape[0])
+            temp[0] = 1
+            out = eval(self.space.type + 'Element(temp, self.space)')
+        else:
+            for _ in range(other - 1):
+                out = out * self
+        return out
+
+
+class CoAlgebraElement(VectorSpaceElement):
+    def comult(self):
+        if self.space.type == 'CoAlgebra':
+            return CoAlgebraElement(self.space.CoMult(self.vector), AlgebraList[self.space.name + '(T)' + self.space.name])
+        if self.space.type == 'HopfAlgebra':
+            return HopfAlgebraElement(self.space.CoMult(self.vector), AlgebraList[self.space.name + '(T)' + self.space.name])
+
+    def counit(self):
+        return self.space.CoUnit(self.vector)
+
+
+class HopfAlgebraElement(AlgebraElement, CoAlgebraElement):
+    def antipode(self):
+        return HopfAlgebraElement(self.space.Antipode(self.vector), self.space)
+
+
+class ModuleElement(VectorSpaceElement):
+    def act(self, ring_element):
+        vector = self.space.Action(ring_element.vector, self.vector)
+        return eval(self.space.type + 'Element(vector, self.space)')
+
+
+class ModuleAlgebraElement(ModuleElement, AlgebraElement):
+    def smash(self, other):
+        vector = ProdVectorToTensorVector(self.vector, other.vector)
+        return ModuleAlgebraElement(vector, AlgebraList[self.space.name])

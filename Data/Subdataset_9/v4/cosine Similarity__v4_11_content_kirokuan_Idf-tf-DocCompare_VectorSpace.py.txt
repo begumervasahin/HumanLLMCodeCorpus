@@ -1,0 +1,60 @@
+from pprint import pprint
+from Parser import Parser
+import util
+
+class VectorSpace:
+    def __init__(self, documents=None):
+        self.document_vectors = []
+        self.vector_keyword_index = {}
+        self.parser = Parser()
+        if documents:
+            self.build(documents)
+
+    def build(self, documents):
+        self.vector_keyword_index = self._get_vector_keyword_index(documents)
+        self.document_vectors = [self._make_vector(document) for document in documents]
+
+    def _get_vector_keyword_index(self, document_list):
+        vocabulary_string = " ".join(document_list)
+        vocabulary_list = self.parser.tokenise(vocabulary_string)
+        vocabulary_list = self.parser.remove_stop_words(vocabulary_list)
+        unique_vocabulary_list = util.remove_duplicates(vocabulary_list)
+        vector_index = {}
+        offset = 0
+        for word in unique_vocabulary_list:
+            vector_index[word] = offset
+            offset += 1
+        return vector_index
+
+    def _make_vector(self, word_string):
+        vector = [0] * len(self.vector_keyword_index)
+        word_list = self.parser.tokenise(word_string)
+        word_list = self.parser.remove_stop_words(word_list)
+        for word in word_list:
+            if word in self.vector_keyword_index:
+                vector[self.vector_keyword_index[word]] += 1
+        return vector
+
+    def build_query_vector(self, term_list):
+        query = self._make_vector(" ".join(term_list))
+        return query
+
+    def related(self, document_id):
+        ratings = [util.cosine(self.document_vectors[document_id], doc_vector) for doc_vector in self.document_vectors]
+        return ratings
+
+    def search(self, search_list):
+        query_vector = self.build_query_vector(search_list)
+        ratings = [util.cosine(query_vector, doc_vector) for doc_vector in self.document_vectors]
+        return ratings
+
+if __name__ == '__main__':
+    documents = [
+        "The cat in the hat disabled",
+        "A cat is a fine pet ponies.",
+        "Dogs and cats make good pets.",
+        "I haven't got a hat."
+    ]
+    vector_space = VectorSpace(documents)
+    pprint(vector_space.related(1))
+    pprint(vector_space.search(["cat"]))

@@ -1,0 +1,100 @@
+import os
+import sys
+import modules.gio_logger as utils
+
+class TreeNode:
+    def __init__(self, data):
+        self.left = None
+        self.right = None
+        self.data = data
+
+def create_tree1():
+    tree = TreeNode(2)
+    log.debug('TREE: %s' % tree.data)
+    tree.left = TreeNode(8)
+    log.debug('TREE.LEFT: %s' % tree.left.data)
+    tree.left.left = TreeNode(1)
+    log.debug('TREE.LEFT.LEFT: %s' % tree.left.left.data)
+    tree.left.right = TreeNode(3)
+    log.debug('TREE.LEFT.RIGHT: %s' % tree.left.right.data)
+    tree.right = TreeNode(9)
+    log.debug('TREE.RIGHT: %s' %  tree.right.data)
+    tree.right.left = TreeNode(4)
+    log.debug('TREE.RIGHT.LEFT: %s' % tree.right.left.data)
+    tree.right.right = TreeNode(5)
+    log.debug('TREE.RIGHT.RIGHT: %s' % tree.right.right.data)
+    return tree
+
+def create_tree2():
+    tree = TreeNode(1)
+    log.debug('TREE: %s' % tree.data)
+    tree.left = TreeNode(8)
+    log.debug('TREE.LEFT: %s' % tree.left.data)
+    tree.left.right = TreeNode(3)
+    log.debug('TREE.LEFT.RIGHT: %s' % tree.left.right.data)
+    tree.right = TreeNode(4)
+    log.debug('TREE.RIGHT: %s' % tree.right.data)
+    tree.right.right = TreeNode(5)
+    log.debug('TREE.RIGHT.RIGHT: %s' % tree.right.right.data)
+    tree.right.right.right = TreeNode(7)
+    log.debug('TREE.RIGHT.RIGHT.RIGHT: %s' % tree.right.right.right.data)
+    return tree
+
+def max_depth(node):
+    if node is None:
+        return 0
+    else:
+        left_depth = max_depth(node.left)
+        right_depth = max_depth(node.right)
+        return max(left_depth, right_depth) + 1
+
+def get_node_depth(node, level=0, result=[]):
+    if node is None:
+        return
+    else:
+        get_node_depth(node.left, level + 1, result)
+        get_node_depth(node.right, level + 1, result)
+        result.append([level, node.data])
+        return result
+
+def sort_by_level(node):
+    result = []
+    depth = max_depth(node)
+    tuples = get_node_depth(node, result=[])
+    for d in range(depth):
+        for r in range(len(tuples)):
+            if tuples[r][0] == d:
+                result.append(tuples[r][1])
+    return result
+
+def main():
+    log_level = os.environ.get('GIO_LOG_LEVEL', 'warning')
+    if log_level == 'debug':
+        log.warning("Set OS Variable GIO_LOG_LEVEL to 'debug' for more information.")
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Creating tree1")
+    tree1 = create_tree1()
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 2 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Creating tree2")
+    tree2 = create_tree2()
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 3 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Max depth of Tree1 is %d" % max_depth(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 4 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("Max depth of Tree2 is %d" % max_depth(tree2))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 5 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List of Tuple Value,Level for Tree1 = %s" % get_node_depth(tree1, result=[]))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 6 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List of Tuple Value,Level for Tree2 = %s" % get_node_depth(tree1, result=[]))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 7 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List with elements of Tree1 sorted by level = %s" % sort_by_level(tree1))
+    log.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 8 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("List with elements of Tree2 sorted by level = %s" % sort_by_level(tree2))
+
+if __name__ == "__main__":
+    log = utils.get_top_level_logger(name=__file__, log_target='terminal')
+    try:
+        main()
+    except Exception as e:
+        msg = '%s failed to finish executing successfully.' % __file__
+        log.exception(msg)
+        sys.exit(1)

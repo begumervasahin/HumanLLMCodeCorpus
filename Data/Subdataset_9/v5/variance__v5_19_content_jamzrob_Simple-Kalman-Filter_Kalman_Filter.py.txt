@@ -1,0 +1,87 @@
+import math
+
+def get_input(prompt, cast_type=float):
+    """Utility function to handle user input."""
+    return cast_type(input(prompt))
+
+def predict_mean(A_t, u_t_prior, B_t, u_t):
+    """Calculate and return the predicted mean."""
+    return A_t * u_t_prior + B_t * u_t
+
+def predict_covariance(A_t, E_t_prior, A_T_t, Q_t):
+    """Calculate and return the predicted covariance."""
+    return A_t * E_t_prior * A_T_t + Q_t
+
+def calculate_kalman_gain(predicted_covariance, C_T_t, C_t, R_t):
+    """Calculate and return the Kalman Gain."""
+    denominator = (C_t * predicted_covariance * C_T_t + R_t)
+    if denominator == 0:
+        return 0  # Avoid division by zero
+    return predicted_covariance * C_T_t / denominator
+
+def update_mean(predicted_mean, kalman_gain, z_t, C_t):
+    """Calculate and return the updated mean."""
+    return predicted_mean + kalman_gain * (z_t - C_t * predicted_mean)
+
+def update_covariance(predicted_covariance, kalman_gain, C_t):
+    """Calculate and return the updated covariance."""
+    return predicted_covariance - kalman_gain * C_t * predicted_covariance
+
+def main():
+    print("\nPrediction Steps")
+    print("----------------------------------------")
+    
+    # Prediction phase
+    A_t = get_input("A: ")
+    B_t = get_input("B: ")
+    u_t_prior = get_input("Enter Prior Mean: ")
+    u_t = get_input("Enter Current Mean: ")
+    
+    predicted_mean = predict_mean(A_t, u_t_prior, B_t, u_t)
+    print("Predicted Mean: ", predicted_mean)
+    
+    E_t_prior = get_input("\nE(t-1): ")
+    A_T_t = get_input("A(T/t): ")
+    Q_t = get_input("Q(t): ")
+    
+    predicted_covariance = predict_covariance(A_t, E_t_prior, A_T_t, Q_t)
+    print("Predicted Covariance: ", predicted_covariance)
+    
+    # Update phase
+    while True:
+        print("\nUpdate Steps")
+        print("----------------------------------------")
+        
+        C_T_t = get_input("C(T/t): ")
+        C_t = get_input("C/(t): ")
+        R_t = get_input("Measurement Covariance: ")
+        
+        kalman_gain = calculate_kalman_gain(predicted_covariance, C_T_t, C_t, R_t)
+        print("Kalman Gain: ", kalman_gain)
+        
+        z_t = get_input("\nActual Measurement: ")
+        
+        updated_mean = update_mean(predicted_mean, kalman_gain, z_t, C_t)
+        print("Updated Mean: ", updated_mean)
+        
+        updated_covariance = update_covariance(predicted_covariance, kalman_gain, C_t)
+        print("\nUpdated Covariance: ", updated_covariance)
+        
+        # Prepare for next iteration
+        print("\nPrediction Steps")
+        print("----------------------------------------")
+        A_t = get_input("A: ")
+        B_t = get_input("B: ")
+        u_t = get_input("Enter Current Mean: ")
+        
+        predicted_mean = predict_mean(A_t, updated_mean, B_t, u_t)
+        print("Predicted Mean: ", predicted_mean)
+        
+        A_T_t = get_input("\nA(T/t): ")
+        Q_t = get_input("Q(t): ")
+        
+        predicted_covariance = predict_covariance(A_t, updated_covariance, A_T_t, Q_t)
+        print("Predicted Covariance: ", predicted_covariance)
+
+if __name__ == "__main__":
+    main()

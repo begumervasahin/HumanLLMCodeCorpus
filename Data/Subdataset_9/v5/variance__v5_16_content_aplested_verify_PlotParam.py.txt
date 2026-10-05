@@ -1,0 +1,63 @@
+import sys
+
+# Conditional imports for compatibility with Python 2 and 3
+if sys.version_info[0] < 3:
+    from Tkinter import Tk, Label, Entry, END, CENTER
+    import tkSimpleDialog as simpledialog
+else:
+    from tkinter import Tk, Label, Entry, END, CENTER
+    from tkinter import simpledialog
+
+# Metadata for the script
+__author__ = "remis"
+__date__ = "27-May-2009"
+
+class PlotParameterDialog(simpledialog.Dialog):
+    """
+    A dialog for entering plot parameters such as Min X, Max X, Bin width, and Max Y.
+    """
+
+    def __init__(self, master):
+        # Initialize the dialog with a title
+        super().__init__(master, title='Enter New Plot Parameters')
+
+    def body(self, master):
+        """
+        Create dialog body. Setup labels and entry widgets for user input.
+        """
+        # Define labels and default values for each parameter
+        parameters = [('Min X:', '0'), ('Max X:', '10'), ('Bin width:', '1'), ('Max Y:', '1000')]
+        self.entries = {}
+
+        for idx, (label, default) in enumerate(parameters):
+            Label(master, text=label).grid(row=idx, sticky=W)
+            entry_widget = Entry(master, justify=CENTER)
+            entry_widget.grid(row=idx, column=1)
+            entry_widget.insert(END, default)
+            self.entries[label] = entry_widget
+
+        # Focus on the first entry field
+        return self.entries['Min X:']
+
+    def apply(self):
+        """
+        Process and store the entered parameters upon dialog closure.
+        """
+        try:
+            self.parameters = {
+                'xmin': int(self.entries['Min X:'].get()),
+                'xmax': int(self.entries['Max X:'].get()),
+                'dx': int(self.entries['Bin width:'].get()),
+                'ymax': int(self.entries['Max Y:'].get())
+            }
+        except ValueError:
+            # Handle the case where one or more entries are not valid integers
+            print("Please enter valid integer values.")
+            return
+
+# Example usage
+if __name__ == "__main__":
+    root = Tk()
+    root.withdraw()  # Hide the main window
+    dialog = PlotParameterDialog(root)
+    print(dialog.parameters)  # Parameters are accessible after the dialog is closed

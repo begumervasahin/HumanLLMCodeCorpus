@@ -1,0 +1,80 @@
+import asyncio
+import asyncpg
+import json
+import logging
+from nats.aio.client import Client as NATS
+
+# Constants
+NATS_HOST = 'localhost'
+NATS_PORT = 4222
+CHANNEL = 'fixtures.parameters'
+
+async def connect_to_postgres(loop):
+    """
+    Connects to the PostgreSQL database and adds a listener for a specific channel.
+
+    Args:
+        loop (asyncio.AbstractEventLoop): The event loop to use for asynchronous operations.
+    """
+    pgconn = await asyncpg.connect(
+        user='postgres', password='password', database='postgres', host='127.0.0.1', loop=loop
+    )
+    print("Connected to PostgreSQL")
+
+    await pgconn.add_listener(CHANNEL, publish_update)
+    print("Listener added to PostgreSQL")
+
+async def publish_update(_con, _pid, _channel, payload):
+    """
+    Publishes an update to NATS when received from PostgreSQL.
+
+    Args:
+        _con: The PostgreSQL connection object.
+        _pid: The process ID of the PostgreSQL server process.
+        _channel: The name of the channel that received the notification.
+        payload: The payload received from PostgreSQL.
+    """
+    await nc.publish(CHANNEL, json.dumps(payload).encode('utf-8'))
+    logger.info(f"Update received: {payload}")
+
+async def bridge(loop):
+    """
+    Connects to PostgreSQL database and NATS server, adds a listener to PostgreSQL for a specific channel,
+    and publishes messages to NATS when updates are received.
+
+    Args:
+        loop (asyncio.AbstractEventLoop): The event loop to use for asynchronous operations.
+    """
+    await nc.connect(f"{NATS_HOST}:{NATS_PORT}", loop=loop)
+    print("Connected to NATS")
+
+    await connect_to_postgres(loop)
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s, %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+if __name__ == '__main__':
+    try:
+        # Initialize NATS client
+        nc = NATS()
+
+        # Get the event loop
+        event_loop = asyncio.get_event_loop()
+
+        # Run the bridge coroutine
+        event_loop.run_until_complete(bridge(event_loop))
+
+        # Run the event loop forever
+        print('Run forever')
+        event_loop.run_forever()
+
+    except KeyboardInterrupt:
+        print('KeyboardInterrupt received. Closing...')
+    finally:
+        # Close NATS connection
+        print('Closing NATS connection...')
+        event_loop.run_until_complete(nc.close())
+
+        # Close event loop
+        event_loop.close()

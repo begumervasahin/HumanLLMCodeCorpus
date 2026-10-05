@@ -1,0 +1,92 @@
+import LRHelper as helper
+import Mail as m
+import os
+import math
+import sys
+
+class LogisticRegression:
+    def __init__(self, learning_rate, penalty):
+        self.training_set_info = {}
+        self.test_set_info = {}
+        self.vocab_set = set()
+        self.learning_rate = float(learning_rate)
+        self.penalty = float(penalty)
+        self.weight_vector = {}
+
+    def retrieve_vocab_set(self):
+        for mail_file_key, mail_file_value in self.training_set_info.items():
+            self.vocab_set.update(mail_file_value.words)
+
+    def set_initial_weights(self):
+        self.weight_vector = {word: 0.0 for word in self.vocab_set}
+
+    def run_gradient_ascent(self, iteration_threshold):
+        for _ in range(int(iteration_threshold)):
+            for weight_word in self.weight_vector:
+                sum_gradient = 0.0
+                for mail in self.training_set_info.values():
+                    y_label = 1 if mail.true_class == 1 else 0
+                    if weight_word in mail.words:
+                        sum_gradient += mail.word_freq_dict[weight_word] * (y_label - self.cond_prob(1, mail))
+                self.weight_vector[weight_word] += (self.learning_rate * sum_gradient) - (self.learning_rate * self.penalty * self.weight_vector[weight_word])
+
+    def cond_prob(self, class_num, mail):
+        sum_weighted = sum(self.weight_vector.get(key, 0.0) * value for key, value in mail.word_freq_dict.items())
+        if class_num == 1:
+            return math.exp(sum_weighted) / (1 + math.exp(sum_weighted))
+        elif class_num == 0:
+            return 1 / (1 + math.exp(sum_weighted))
+
+    def get_class(self, mail):
+        score = {0: self.cond_prob(0, mail), 1: self.cond_prob(1, mail)}
+        return max(score, key=score.get)
+
+    def build_mail_info(self, directory_path, given_class, is_training=True):
+        mail_info = self.training_set_info if is_training else self.test_set_info
+        for file in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, file)
+            with open(file_path, encoding='utf-8', errors="ignore") as mail_file: 
+                words = helper.get_words(mail_file.read())
+                word_freq_dict = helper.get_word_freq(words)
+                mail_info[file] = m.Mail(words, word_freq_dict, given_class)
+
+    def apply_lr(self):
+        correct = sum(1 for mail_value in self.test_set_info.values() if self.get_class(mail_value) == mail_value.true_class)
+        accuracy = (correct / len(self.test_set_info)) * 100
+        print("Accuracy:", accuracy)
+
+def main():
+    if len(sys.argv) < 9:
+        print("Insufficient arguments.")
+        return
+
+    lr_handle = LogisticRegression(sys.argv[5], sys.argv[6])
+    spam_training_path, ham_training_path, spam_test_path, ham_test_path = sys.argv[1:5]
+
+    lr_handle.build_mail_info(spam_training_path, 0)
+    lr_handle.build_mail_info(ham_training_path, 1)
+    lr_handle.build_mail_info(spam_test_path, 0, False)
+    lr_handle.build_mail_info(ham_test_path, 1, False)
+
+    lr_handle.retrieve_vocab_set()
+    lr_handle.set_initial_weights()
+    lr_handle.run_gradient_ascent(sys.argv[7])
+
+    print("Accuracy without removing stopwords:")
+    lr_handle.apply_lr()
+
+    lr_handle2 = LogisticRegression(sys.argv[5], sys.argv[6])
+    lr_handle2.build_mail_info(sys.argv[8], 0, True)
+    lr_handle2.build_mail_info(sys.argv[8], 1, True)
+    lr_handle2.build_mail_info(sys.argv[8], 0, False)
+    lr_handle2.build_mail_info(sys.argv[8], 1, False)
+
+    lr_handle2.retrieve_vocab_set()
+    lr_handle2.set_initial_weights()
+    lr_handle2.run_gradient_ascent(sys.argv[7])
+
+    print("Accuracy after removing stopwords:")
+    lr_handle2.apply_lr()
+
+if __name__ == "__main__":
+    main()

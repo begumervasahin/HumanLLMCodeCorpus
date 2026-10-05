@@ -1,0 +1,51 @@
+from sage.all import *
+
+# Constants
+PRIME_MODULUS = 29579385439865947694694684968492467204765870577
+CURVE_PARAMETERS = [32934893483948394, 593439483948394349]
+DATA_PATH = '/home/landondare/EllipticCurveProject/data.txt'
+RUN_BLOCK = 2000000000
+WRITE_BLOCK = 100000000
+
+# Read input values from file
+with open(DATA_PATH, 'r') as file:
+    lines = file.readlines()
+input_values = lines[-1].split(' ')
+e, x1, lowest_x2, lowest_y2, lowest_e = map(int, input_values)
+
+# Initialize elliptic curve and starting point
+field = GF(PRIME_MODULUS)
+curve = EllipticCurve(GF(PRIME_MODULUS), CURVE_PARAMETERS)
+start_point = curve.lift_x(x1)
+
+# Compute the test point
+test_point = e * start_point
+
+# Print input values
+print("Input values:")
+print(f"\te = {e}")
+print(f"\tx1 = {x1}")
+print(f"\tlowest_x2 = {lowest_x2}")
+print(f"\tlowest_y2 = {lowest_y2}")
+print(f"\tlowest_e = {lowest_e}")
+
+# Main loop to search for the lowest y2
+while e < RUN_BLOCK:
+    if test_point[1] < lowest_y2:
+        lowest_x2 = test_point[0]
+        lowest_y2 = test_point[1]
+        lowest_e = e
+        print("New lowest y2 found:")
+        print(test_point)
+        print(e)
+        # Write new lowest values to the file
+        with open(DATA_PATH, "a") as data_file:
+            data_file.write("\n\nNew lowest found: " + str(e) + "\n")
+            data_file.write(f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}")
+    if e % WRITE_BLOCK == 0:
+        # Write intermediate block information to the file
+        with open(DATA_PATH, "a") as data_file:
+            data_file.write(f"\n\nBlock {e}\n")
+            data_file.write(f"{e} {x1} {lowest_x2} {lowest_y2} {lowest_e}")
+    e += 1
+    test_point += start_point

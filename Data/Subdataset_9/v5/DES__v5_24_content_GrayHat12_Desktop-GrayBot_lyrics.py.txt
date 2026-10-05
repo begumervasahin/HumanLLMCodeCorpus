@@ -1,0 +1,99 @@
+import lyricsgenius
+import colorama
+
+# Initialize Genius API with your API key
+genius = lyricsgenius.Genius("---YOUR GENIUS API KEY HERE---")
+genius.verbose = False
+genius.remove_section_headers = True
+genius.skip_non_songs = False
+genius.excluded_terms = ["(Remix)", "(Live)"]
+
+# Initialize colorama for colored terminal output
+colorama.init(autoreset=True)
+
+def search_by_artist():
+    """Searches for songs by a specified artist."""
+    artist_name = input('Enter Artist Name: ')
+    max_songs = int(input('Max Songs to Search (based on popularity): '))
+    print(f'Searching for songs by {artist_name}...\n')
+
+    # Search for artist
+    artist = genius.search_artist(artist_name, max_songs=max_songs, sort='popularity')  
+
+    if artist:
+        print('Search Completed!\n')
+        display_artist_songs(artist)
+        prompt_song_selection(artist.songs)
+
+def display_artist_songs(artist):
+    """Displays songs by the artist and prompts for song selection."""
+    i, j = 0, 5
+    while True:
+        print('\n\n\n')
+        for a in range(i, j):
+            print(colorama.Fore.RED + colorama.Back.CYAN + f'{a} : {artist.songs[a]}\n')
+        print('n : for more\nb : to move back\nsong number to get lyrics\ne : to quit') 
+        inp = input('..> ')
+        if inp == 'n':
+            i += 5
+            j += 5
+        elif inp == 'b':
+            i -= 5
+            j -= 5
+        elif inp == 'e':
+            break
+        else:
+            try:
+                num = int(inp)
+                if i <= num < j:
+                    show_lyrics(artist.songs[num])
+                    break
+                else:
+                    print('Invalid Song number')
+            except ValueError:
+                print('Invalid input. Please enter a valid song number.')
+
+def prompt_song_selection(songs):
+    """Prompts for song selection and displays lyrics."""
+    song_number = input('Song Number: ')
+    if song_number.isdigit():
+        num = int(song_number)
+        if 0 <= num < len(songs):
+            show_lyrics(songs[num])
+        else:
+            print('Invalid song number. Please try again.')
+    else:
+        print('Invalid input. Please enter a valid song number.')
+
+def show_lyrics(song):
+    """Displays lyrics of a specified song."""
+    print(colorama.Back.GREEN + colorama.Fore.BLUE + song.lyrics)
+    print('By:', song.artist)
+
+def search_by_song():
+    """Searches for lyrics by song name and artist."""
+    song_name = input('Enter Song Name: ')
+    artist_name = input('Enter Artist Name (Optional): ')
+
+    # Search for song
+    song = genius.search_song(title=song_name, artist=artist_name)
+
+    if song:
+        print(colorama.Back.GREEN + colorama.Fore.BLUE + f'\nLyrics for {song_name}:')  
+        print(song.lyrics)
+        print('By:', song.artist)
+    else:
+        print('Song not found. Please try again.')
+
+# Main program flow
+print('Select an option:')
+print('a : Search by artist name')
+print('b : Search by song name')
+option = input('Option: ')
+
+if option == 'a':
+    search_by_artist()
+elif option == 'b':
+    search_by_song()
+else:
+    print('Invalid option. Please try again.')

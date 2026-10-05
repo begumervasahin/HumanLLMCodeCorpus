@@ -1,0 +1,46 @@
+import json
+import jieba.posseg as pseg
+from pyspark import SparkContext
+
+# Initialize Spark context
+sc = SparkContext(appName='CutDocument')
+
+# Function to tokenize and filter words based on part-of-speech tags
+def tokenize_and_filter(text):
+    # Tokenize the text using Jieba with part-of-speech tagging
+    segmented_words = list(pseg.cut(text))
+    
+    # Define the list of allowed part-of-speech tags
+    allowed_tags = ["n", "nr", "nr1", "nr2", "nrj", "nrf", "ns", "nsf", "nt", "nz", "nl", "ng", "s", "f", 
+                    "v", "vd", "vn", "vf", "vx", "vi", "vl", "vga", "ad", "an", "ag", "al"]
+    
+    # Filter out words based on their part-of-speech tag
+    filtered_words = [word for word, flag in segmented_words if flag in allowed_tags]
+    
+    # Encode the filtered words to utf-8
+    encoded_words = [word.encode("utf-8") for word in filtered_words]
+    
+    return encoded_words
+
+# Function to write the tokenized words to a file
+def write_to_file(items):
+    filename = "/vagrant/vocabulary/mominal.txt"
+    joined_items = " ".join(items)
+    with open(filename, "a+") as file:
+        file.write(joined_items + "\n")
+
+# Function to filter out stop words
+def filter_stopwords(words):
+    return [word for word in words if word not in stop_words]
+
+# Input file containing text data
+src_file = '/vagrant/data/data.txt'
+
+# Load text data from file and extract content
+text_rdd = sc.textFile(src_file).map(lambda x: json.loads(x)['content'])
+
+# Load stop words from file
+stop_words = set(sc.textFile("stop_words.txt").map(lambda x: x.strip().encode("utf-8")).collect())
+
+# Tokenize, filter, and write tokenized words to file
+result = text_rdd.map(tokenize_and_filter).map(filter_stopwords).foreach(write_to_file)

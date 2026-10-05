@@ -1,0 +1,72 @@
+import pandas as pd
+import os
+import nltk.data
+import logging
+import numpy as np
+import gensim
+from KaggleWord2VecUtility import KaggleWord2VecUtility
+from sklearn.metrics.pairwise import cosine_similarity
+
+def make_feature_vector(words, model, num_features):
+    """Generate a feature vector for a list of words."""
+    feature_vector = np.zeros((num_features,), dtype="float32")
+    n_words = 0
+
+    # Check which words in the list are present in the model vocabulary
+    for word in words:
+        if word in model.wv.index2word:
+            n_words += 1
+            feature_vector += model[word]
+
+    # Normalize the feature vector by the number of words
+    if n_words != 0:
+        feature_vector /= n_words
+    return feature_vector
+
+def get_avg_feature_vectors(skucollection, model, num_features):
+    """Calculate the average feature vectors for a collection of SKUs."""
+    review_feature_vectors = np.zeros((len(skucollection), num_features), dtype="float32")
+    for i, sku in enumerate(skucollection):
+        if i % 1000 == 0:
+            print(f"Processing SKU {i} of {len(skucollection)}")
+        review_feature_vectors[i] = make_feature_vector(sku, model, num_features)       
+    return review_feature_vectors
+
+def get_clean_skucollection(skucollection, column_name):
+    """Clean SKUs by converting them to word lists."""
+    clean_skucollection = [KaggleWord2VecUtility.sku_to_wordlist(sku, remove_stopwords=False) 
+                           for sku in skucollection[column_name]]
+    return clean_skucollection
+
+if __name__ == '__main__':
+    # Read the train and test data
+    train = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data_crowflower', 'train.csv'), 
+                        header=0, delimiter=",", quoting=6)
+    test = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data_crowflower', 'test.csv'), 
+                       header=0, delimiter=",", quoting=6)
+
+    # Display the number of labeled train and test SKUs
+    print(f"Read {len(train)} labeled train SKUs, {len(test)} labeled test SKUs")       
+
+    # Load the tokenizer and set up logging
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+    # Set the number of features and load the Word2Vec model
+    num_features = 300
+    model = gensim.models.Word2Vec.load('300features_40minwords_10_SKU')
+
+    # Create average feature vectors for train SKUs
+    print("Creating average feature vectors for training SKUs")
+    train_data_vectors = get_avg_feature_vectors(get_clean_skucollection(train, "product_title"), model, num_features)
+
+    # Create average feature vectors for test SKUs
+    print("Creating average feature vectors for test SKUs")
+    test_data_vectors = get_avg_feature_vectors(get_clean_skucollection(test, "query"), model, num_features)
+
+    # Compute cosine similarity between test and train SKUs
+    print("Query ID, SKU ID, Cosine")
+    for query, test_vector in enumerate(test_data_vectors):
+        for isku, train_vector in enumerate(train_data_vectors):
+            cos_similarity = cosine_similarity(test_vector.reshape(1, -1), train_vector.reshape(1, -1))
+            print(f"{query}, {isku}, {cos_similarity}")

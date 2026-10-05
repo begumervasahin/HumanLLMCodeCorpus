@@ -1,0 +1,49 @@
+from ECDHE_RSA import ECDHE_RSA
+
+# Create ECDHE_RSA instances for 'matin' and 'mohamad'
+matin = ECDHE_RSA("matin")
+mohamad = ECDHE_RSA("mohamad")
+
+# Generate RSA key pairs for 'matin' and 'mohamad'
+matin_rsa_private, matin_rsa_public, matin_rsa_n = matin.rsakeygenarate()
+mohamad_rsa_private, mohamad_rsa_public, mohamad_rsa_n = mohamad.rsakeygenarate()
+
+# Generate EC key pairs for 'matin' and 'mohamad'
+matin_ec_private, matin_ec_public = matin.gen_ECkeypair()
+mohamad_ec_private, mohamad_ec_public = mohamad.gen_ECkeypair()
+
+# Display generated private EC keys
+print("\n\nmatin private EC key:")
+print(matin_ec_private, matin_ec_public)
+print("\nmohamad private EC key:")
+print(mohamad_ec_private, mohamad_ec_public)
+
+# Hash and sign the public keys for 'matin' and 'mohamad'
+matin_ec_pub_hash = matin.hash_info(str(matin_ec_public[0]), str(matin_ec_public[1]))
+matin_ec_pub_signature = matin.ras_sign(matin_ec_pub_hash, matin_rsa_private, matin_rsa_n)
+
+mohamad_ec_pub_hash = mohamad.hash_info(str(mohamad_ec_public[0]), str(mohamad_ec_public[1]))
+mohamad_ec_pub_signature = mohamad.ras_sign(mohamad_ec_pub_hash, mohamad_rsa_private, mohamad_rsa_n)
+
+# Verify the signatures
+mohamad_ec_pub_hash_receive = matin.hash_info(str(mohamad_ec_public[0]), str(mohamad_ec_public[1]))
+matin_sign_verification = matin.rsa_verification(mohamad_ec_pub_signature, mohamad_rsa_public, mohamad_rsa_n, mohamad_ec_pub_hash_receive)
+print("\n\nmatin verify rsa_sign:")
+print(matin_sign_verification)
+
+matin_ec_pub_hash_receive = mohamad.hash_info(str(matin_ec_public[0]), str(matin_ec_public[1]))
+mohamad_sign_verification = mohamad.rsa_verification(matin_ec_pub_signature, matin_rsa_public, matin_rsa_n, matin_ec_pub_hash_receive)
+print("\nmohamad verify rsa_sign:")
+print(mohamad_sign_verification)
+
+# Generate shared keys for 'matin' and 'mohamad'
+matin_shared_key = matin.gen_ECkeyAg(mohamad_ec_public, matin_ec_private)
+mohamad_shared_key = mohamad.gen_ECkeyAg(matin_ec_public, mohamad_ec_private)
+print("\n\nmatin share key:")
+print(matin_shared_key)
+print("\nmohamad share key:")
+print(mohamad_shared_key)
+
+# Check if shared keys are on the curve for 'matin'
+print("\n\ncheck point in curve ?")
+print(matin.in_Curve(matin_shared_key[0], matin_shared_key[1]))

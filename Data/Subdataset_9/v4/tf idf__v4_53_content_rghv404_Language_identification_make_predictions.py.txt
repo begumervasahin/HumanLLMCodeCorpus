@@ -1,0 +1,51 @@
+import re
+import json
+import time
+from string import punctuation
+from joblib import load
+
+# Start tracking time
+start_time = time.time()
+
+# Initialize list to store cleaned test data
+cleaned_test_data = []
+
+# Open and read the test data file
+with open(r'..\test_X_languages_homework.json.txt') as file:
+    # Read each line (JSON object) in the file
+    for json_obj in file.readlines():
+        # Load JSON object and extract the 'text' feature
+        feature = json.loads(json_obj, encoding='utf-8')
+        text = feature['text']
+        
+        # Clean the text data
+        clean_text = re.sub(r"[-()\"]", "", text)  # Remove specified characters
+        clean_text = re.sub(r"\s+", " ", clean_text)  # Replace multiple spaces with single space
+        clean_text = clean_text.strip()  # Remove leading and trailing whitespaces
+        
+        # Remove punctuation except specific characters
+        punc = list(punctuation)
+        temp = filter(lambda char: char not in punc + [',', "’", '!', ':', "–"], clean_text)
+        clean_text = "".join(char for char in list(temp))
+        
+        # Convert cleaned text to lowercase and append to the list
+        cleaned_test_data.append(clean_text.lower())
+
+# Load the pre-trained model
+model = load(r'model.bin', 'r')
+
+# Predict the classes for the cleaned test data
+predicted_classes = model.predict(cleaned_test_data)
+
+# Write predictions to a file
+with open(r'predictions.txt', 'w+', encoding='utf-8') as file:
+    # Write each prediction to the file
+    for prediction in predicted_classes:
+        # Create a dictionary to store the prediction
+        prediction_dict = {'classification': prediction}
+        # Convert the dictionary to JSON format and write to file
+        json_obj = json.dumps(prediction_dict)
+        file.write(json_obj + "\n")
+
+# Calculate and print the execution time
+print(time.time() - start_time, 'seconds')

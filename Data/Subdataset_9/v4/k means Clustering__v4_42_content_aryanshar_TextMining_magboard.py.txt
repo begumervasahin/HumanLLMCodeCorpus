@@ -1,0 +1,47 @@
+import tweepy
+import json
+
+# Twitter API credentials
+consumer_key = 'No3XJW8ccIOtCRsF4LXGENziy'
+consumer_secret = 'LMN57iFjDOVC165rZY0bqwZDLyWqXU0dlmp2eo34jCccbMzgYq'
+access_token = '838112658-iwEy6pxUEWNXjfCsolJhgHx02uOhUOzKCfskt4tI'
+access_token_secret = 'lOCyySzJwipR8mV1IwpZ6WvbQDoAMeZVQBR6LhpWrB5i8'
+
+# Open file to store tweets
+file = open('tweets.txt', 'a')
+
+# Custom listener class to handle streaming tweets
+class PrintListener(tweepy.StreamListener):
+    def on_data(self, data):
+        tweet = json.loads(data)
+        tweet_text = tweet['text']
+        
+        # Remove 'RT' (retweet) from tweet text
+        tweet_text = tweet_text.replace("RT", '')
+
+        # Append tweet text to list_array
+        list_array.append(tweet_text)
+
+        # Print the length of list_array
+        print(len(list_array))
+
+        # Write tweet text to file
+        file.write(tweet_text + '\n')
+
+    def on_error(self, status):
+        print(status)
+
+if __name__ == '__main__':
+    # Initialize listener
+    listener = PrintListener()
+
+    # Print message indicating tweet tracking
+    print('I will now print Tweets containing "Padmavati"! ==>')  
+
+    # Authenticate with Twitter API
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)     
+    auth.set_access_token(access_token, access_token_secret)      
+
+    # Start streaming tweets
+    stream = tweepy.Stream(auth, listener)
+    stream.filter(track=['padmavati'])

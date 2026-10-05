@@ -1,0 +1,39 @@
+# Function to perform exponentiation modulo n using Montgomery exponentiation
+def exp_mode(base, exponent, n):
+    # Convert exponent to binary and reverse it
+    binary_exponent = bin(exponent)[2:][::-1]
+    # Calculate the length of the binary exponent
+    r = len(binary_exponent)
+    
+    # Array to store powers of base modulo n
+    base_powers = []
+    # Initialize with the base itself
+    previous_base = base
+    base_powers.append(previous_base)
+    
+    # Calculate powers of base modulo n up to exponent length
+    for _ in range(r - 1):
+        next_base = (previous_base * previous_base) % n
+        base_powers.append(next_base)
+        previous_base = next_base
+    
+    # Perform Montgomery multiplication to compute a^b mod n
+    result = __montgomery_multiply(base_powers, binary_exponent, n)
+    return result % n
+
+# Function to perform Montgomery multiplication
+def __montgomery_multiply(array, binary_exponent, n):
+    result = 1
+    # Iterate over the array of base powers and corresponding binary exponent digits
+    for index in range(len(array)):
+        base_power = array[index]
+        # If the binary exponent digit is 0, skip multiplication
+        if int(binary_exponent[index]) == 0:
+            continue
+        # Perform Montgomery multiplication
+        result *= base_power
+        result = result % n
+    return result
+
+# Example usage
+print(exp_mode(2, 6, 10000000))

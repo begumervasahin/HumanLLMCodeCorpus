@@ -1,0 +1,73 @@
+from prims_queue import PrimsQueue
+
+class PrimsAlgorithm:
+    """ 
+    Used to create a minimum spanning tree of a graph using Prim's algorithm.
+    """
+
+    FROM_NODE = 0
+    TO_NODE = 1
+    VALUE = 2
+
+    def __init__(self, graph):
+        """
+        Initializes the Prim's Algorithm object with a graph.
+        :param graph: The graph for which to find the minimum spanning tree.
+        """
+        self.graph = graph
+
+    def min_span_tree_generator(self):
+        """ 
+        Generator that runs the steps in Prim's algorithm and yields the edges of the minimum spanning tree.
+        :yield: Eventually yields a list of all edges that make up the minimum spanning tree.
+        """
+        graph = self.graph
+
+        # Get the nodes of the graph
+        nodes_raw = graph.nodes(data='name')
+        nodes = [node[0] for node in nodes_raw]
+
+        # Initialize the minimum spanning tree with the first node.
+        min_tree = {nodes[0]: True}
+        tree_edges = []
+
+        # Initialize the queue for selecting edges.
+        queue = PrimsQueue()
+
+        # Keep track of nodes already included in the tree and their neighbors.
+        tree_neighbors = {}
+
+        # Start with the first node.
+        node = nodes[0]
+
+        # Iterate through all nodes except the first one.
+        for counter in range(len(nodes)-1):
+            # Explore neighbors of the current node.
+            for neighbor in graph.neighbors(node):
+                if neighbor in min_tree:
+                    # Skip if the neighbor is already in the minimum spanning tree.
+                    continue
+
+                # Get the weight of the edge between the current node and its neighbor.
+                weight = graph.get_edge_data(node, neighbor)['weight']
+
+                # Add the neighbor to the queue and mark it as visited.
+                if neighbor in tree_neighbors:
+                    queue.update(node, neighbor, weight)
+                else:
+                    queue.push(node, neighbor, weight)
+                    tree_neighbors[neighbor] = True
+
+            # Get the edge with the minimum weight from the queue.
+            from_node, to_node, value = queue.front()
+            queue.pop()
+
+            # Add the selected edge to the minimum spanning tree.
+            min_tree[to_node] = True
+            tree_edges.append((from_node, to_node, value))
+
+            # Move to the next node in the tree.
+            node = to_node
+
+            # Yield the current state of the minimum spanning tree.
+            yield tree_edges

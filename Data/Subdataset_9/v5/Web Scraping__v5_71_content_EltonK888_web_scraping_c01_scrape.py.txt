@@ -1,0 +1,64 @@
+import urllib.request
+from fpdf import FPDF
+import requests
+from bs4 import BeautifulSoup
+
+# URL of the webpage containing lecture materials
+LECTURE_URL = 'https://thierrysans.me/CSCC01/lectures/'
+
+def fetch_webpage(url):
+    """
+    Fetches the webpage source for the given URL.
+    """
+    response = requests.get(url)
+    return response.text
+
+def download_file(url, file_name):
+    """
+    Downloads a file from the given URL and saves it with the specified file name.
+    """
+    urllib.request.urlretrieve(url, file_name)
+    print("Successfully downloaded:", url, "and saved as:", file_name)
+
+def main():
+    '''
+    Scrapes lecture materials from the webpage and saves them locally.
+    Writes all reading links to a PDF file named 'c01_urls.pdf'.
+    '''
+    # Get the webpage source
+    source = fetch_webpage(LECTURE_URL)
+
+    # Initialize a PDF object
+    pdf = FPDF(format='letter')
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    # Parse the webpage source using BeautifulSoup
+    soup = BeautifulSoup(source, 'lxml')
+
+    # Find all sections containing lecture notes and reading links
+    lecture_notes = soup.find_all('div', class_='notes')
+    reading_links = soup.find_all('div', class_='readings')
+
+    # Iterate through each section
+    for notes_section, links_section in zip(lecture_notes, reading_links):
+        # Find all links within the current section
+        note_links = notes_section.find_all('a')
+        url_links = links_section.find_all('a')
+
+        # Download lecture notes
+        for note_link in note_links:
+            note_url = note_link['href']
+            file_name = note_url.split('/')[-1]
+            download_file(LECTURE_URL + note_url, file_name)
+
+        # Write reading links to PDF
+        for url_link in url_links:
+            pdf.write(5, url_link['href'] + '\n')
+            print('Wrote', url_link['href'], 'to the PDF file')
+
+    # Output the PDF file containing reading links
+    pdf.output('c01_urls.pdf')
+
+if __name__ == "__main__":
+    main()

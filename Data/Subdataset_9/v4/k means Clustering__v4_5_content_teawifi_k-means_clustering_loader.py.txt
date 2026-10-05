@@ -1,0 +1,55 @@
+import os
+import pandas as pd
+import re
+from settings import ENCODING
+
+def load_data(path_to_dir):
+    """
+    Loads data from text files in a directory.
+    
+    :param path_to_dir: Path to the directory containing text files.
+    :return: A list of strings extracted from the files.
+    """
+    data = []
+    # Get all files with .txt extension in the directory
+    files = [file for file in os.listdir(path_to_dir)
+             if os.path.isfile(os.path.join(path_to_dir, file)) and file.endswith(".txt")]
+    
+    # Read content from each file and append to data list
+    for file in files:
+        with open(os.path.join(path_to_dir, file), "r", encoding=ENCODING) as f:
+            content = f.read().split('\n')
+            data.extend(content)
+    
+    # Filter and process the data
+    filtered_data = []
+    for item in data:
+        filtered_data.append(filter_data(item))
+    
+    return filtered_data
+
+def filter_data(data):
+    """
+    Filters data based on a regex pattern.
+    
+    :param data: Input data string.
+    :return: A list of the first three floating point numbers found in the string.
+    """
+    pattern = "[0-9]+"
+    strings = re.findall(pattern, data)
+    numbers = [float(i) for i in strings]
+    return numbers[:3]
+
+def save_to_csv(data, file_path):
+    """
+    Saves data to a CSV file.
+    
+    :param data: Data to be saved.
+    :param file_path: Path to save the CSV file.
+    """
+    df = pd.DataFrame(data)
+    df.to_csv(file_path, index=False, encoding=ENCODING, header=['x', 'y', 'z'])
+
+# Example usage:
+# data = load_data("path_to_directory")
+# save_to_csv(data, "output_file.csv")

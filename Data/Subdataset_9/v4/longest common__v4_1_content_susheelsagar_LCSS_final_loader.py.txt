@@ -1,0 +1,67 @@
+import numpy as np
+
+# Open the full distance matrix file
+with open("distance_matrix_full.csv", "r+") as file:
+    lst_users = []
+    distance = np.zeros((8357, 8357))
+    i = 0
+
+    # Iterate through each line in the file
+    for line in iter(file):
+        # Split the line into elements
+        elements = line.split(",")
+        lst_users.append(elements[0])
+
+        # Initialize indices for columns and elements
+        j = 0
+        k = 1
+
+        # Fill the distance matrix
+        while k < len(elements):
+            distance[i][j] = float(elements[k])
+            distance[j][i] = distance[i][j]
+            j += 1
+            k += 1
+
+        i += 1
+
+# Open the additional distance values file
+with open("distance_matrix_1698.csv", "r+") as file:
+    # Continue filling the distance matrix
+    for line in iter(file):
+        elements = line.split(",")
+        lst_users.append(elements[0])
+
+        # Initialize indices for columns and elements
+        j = i
+        k = 1
+
+        # Fill the remaining part of the distance matrix
+        while k < len(elements):
+            distance[i][j] = float(elements[k])
+            distance[j][i] = distance[i][j]
+            j += 1
+            k += 1
+
+        i += 1
+
+# Write the final distance matrix to files
+with open("distance_matrix_final.csv", "r+") as file_with_id, open("distance_matrix_final_withoutid.csv", "r+") as file_without_id:
+    # Iterate over rows
+    for i in range(8357):
+        # Write user ID
+        file_with_id.write(str(lst_users[i]) + ",")
+        file_without_id.write(str(lst_users[i]) + ",")
+
+        # Write distance values
+        for j in range(8357):
+            file_with_id.write(str(distance[i][j]))
+            file_without_id.write(str(distance[i][j]))
+
+            # Add comma if not the last element
+            if j != 8356:
+                file_with_id.write(",")
+                file_without_id.write(",")
+
+        file_with_id.write("\n")
+        file_without_id.write("\n")

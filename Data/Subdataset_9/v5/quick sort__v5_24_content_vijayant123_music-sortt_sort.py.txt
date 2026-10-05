@@ -1,0 +1,84 @@
+import os
+import sys
+from os import listdir
+from os.path import isfile, join
+from pygame import mixer
+
+# Define paths for songs, save directory, and alternate directory
+SONGS_DIR = "/home/error-404/Desktop/songs"
+SAVE_DIR = "/home/error-404/Desktop/dance"
+ALT_DIR = "/home/error-404/Desktop/others"
+
+def get_song_files(directory):
+    """
+    Get a list of files in the given directory.
+
+    Args:
+        directory (str): The directory path.
+
+    Returns:
+        list: List of files in the directory.
+    """
+    return [f for f in listdir(directory) if isfile(join(directory, f))]
+
+def move_file(src, dest):
+    """
+    Move a file from source directory to destination directory.
+
+    Args:
+        src (str): Source file path.
+        dest (str): Destination directory path.
+    """
+    os.rename(src, join(dest, os.path.basename(src)))
+
+def main():
+    """
+    Main function to control music playback and file management.
+    """
+    # Get list of song files
+    song_files = get_song_files(SONGS_DIR)
+
+    # Initialize pygame mixer
+    mixer.init()
+
+    # Main control loop for each song
+    for song_file in song_files:
+        print(song_file)
+        mixer.music.load(join(SONGS_DIR, song_file))
+        mixer.music.play(0, 40)
+
+        # Loop for user input and control
+        while True:
+            user_input = input()
+
+            # Quit if 'q' is pressed
+            if user_input == 'q':
+                sys.exit(0)
+
+            # Rewind and play from specified position if input is a number
+            elif user_input.isdigit():
+                mixer.music.rewind()
+                mixer.music.play(0, int(user_input) * 10)
+
+            # Stop and move the file to the alternate directory if input is empty
+            elif not user_input:
+                mixer.music.stop()
+                move_file(join(SONGS_DIR, song_file), ALT_DIR)
+                break
+
+            # Stop and move the file to the save directory if input is '/'
+            elif user_input == '/':
+                mixer.music.stop()
+                move_file(join(SONGS_DIR, song_file), SAVE_DIR)
+                break
+
+            # Pause or unpause the music if input is 'p'
+            elif user_input == 'p':
+                if mixer.music.get_busy():
+                    if mixer.music.get_pos() > 0:
+                        mixer.music.pause()
+                    else:
+                        mixer.music.unpause()
+
+if __name__ == "__main__":
+    main()

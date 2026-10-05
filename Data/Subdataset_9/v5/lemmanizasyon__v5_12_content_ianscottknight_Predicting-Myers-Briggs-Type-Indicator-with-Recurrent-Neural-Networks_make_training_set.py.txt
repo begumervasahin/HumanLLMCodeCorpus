@@ -1,0 +1,70 @@
+import os
+import collections
+import pandas as pd
+import csv
+import re
+
+# Set the data directory and file paths
+DATA_DIR = "data"
+MBTI_UNCLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_unclean.csv")
+
+# Define MBTI personality dimensions
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+# Read the uncleaned MBTI dataset into a pandas DataFrame 
+df = pd.read_csv(MBTI_UNCLEAN_CSV_PATH)
+
+# Initialize a dictionary to store counts for each personality dimension
+counts = collections.defaultdict(int)
+
+# Function to check post conditions and update counts
+def update_counts(mbti, letter_1, letter_2, post):
+    if "http" in post or post == "" or post is None or not re.search("[a-zA-Z]", post):
+        return
+    if letter_1 in mbti:
+        counts[letter_1] += 1
+    if letter_2 in mbti:
+        counts[letter_2] += 1
+
+# Iterate through each personality dimension to update counts
+for dimension in DIMENSIONS:
+    letter_1, letter_2 = dimension
+
+    # Iterate through each row in the DataFrame
+    for _, row in df.iterrows():
+        mbti = row["type"]
+        hundred_posts = row["posts"].split("|||")
+
+        # Check each post for certain conditions and update counts
+        for post in hundred_posts:
+            update_counts(mbti, letter_1, letter_2, post)
+
+# Iterate through each personality dimension again to create training CSV files
+for dimension in DIMENSIONS:
+    letter_1, letter_2 = dimension
+
+    # Determine the limit for the number of posts based on the dimension with fewer counts
+    limit = min(counts[letter_1], counts[letter_2])       
+
+    # Initialize a list to store posts for each personality type
+    posts = []
+
+    # Iterate through each row in the DataFrame again     
+    for _, row in df.iterrows():
+        # Check if the current row corresponds to the personality type in the current dimension
+        if letter_1 in row["type"] or letter_2 in row["type"]:
+            hundred_posts = row["posts"].split("|||")     
+
+            # Iterate through each post and add it to the list until reaching the limit
+            for post in hundred_posts:
+                if len(posts) == limit:
+                    break
+                update_counts(row["type"], letter_1, letter_2, post)
+                posts.append(post)
+
+    # Create a training CSV file for each personality type
+    train_csv_path = os.path.join(DATA_DIR, f"train_{letter_1}.csv")
+    with open(train_csv_path, "w") as f:
+        writer = csv.writer(f)
+        for post in posts:
+            writer.writerow([post])

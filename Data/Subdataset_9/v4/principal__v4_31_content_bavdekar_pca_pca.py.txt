@@ -1,0 +1,40 @@
+import numpy as np
+import scipy as sp
+
+# Principal Component Analysis using Linear PCA
+def linear_pca(data, cv=None, normalize=False):
+    if normalize:
+        mean = np.mean(data, axis=0)
+        variance = np.var(data, axis=0, ddof=1)
+        data_normalized = (data - np.matmul(np.ones((data.shape[0], data.shape[1])), np.diag(mean))) / variance.T
+    else:
+        data_normalized = data
+    
+    U, S, Vt = np.linalg.svd(data_normalized)
+    cumulative_variance_explained = np.cumsum(100 * S / np.sum(S))
+    
+    if cv is None:
+        cv = 95
+    
+    num_components = np.argmax(cumulative_variance_explained >= cv)
+    return Vt[0:num_components, :]
+
+# Principal Component Analysis using Sparse PCA
+def sparse_pca(data, cv=None, normalize=False):
+    if normalize:
+        normalize = False
+    
+    # Construct similarity matrix using exponential of the correlation matrix
+    similarity_matrix = sp.linalg.exp(np.corrcoef(data, rowvar=False) / 0.1)
+    diagonal_matrix = np.diag(np.sum(similarity_matrix, axis=0))
+    scaled_data = np.matmul(sp.linalg.inv(sp.linalg.sqrtm(diagonal_matrix)),
+                            np.matmul(similarity_matrix, sp.linalg.inv(sp.linalg.sqrtm(diagonal_matrix))))
+    
+    U, S, Vt = np.linalg.svd(scaled_data)
+    cumulative_variance_explained = np.cumsum(100 * S / np.sum(S))
+    
+    if cv is None:
+        cv = 95
+    
+    num_components = np.argmax(cumulative_variance_explained >= cv)
+    return np.matmul(sp.linalg.inv(sp.linalg.sqrtm(diagonal_matrix)), Vt.T)[:, 0:num_components].T

@@ -1,0 +1,48 @@
+import os
+import subprocess
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.externals.joblib import Parallel, delayed
+from open3d import read_point_cloud
+
+# Set the working directory
+working_directory = 'N:/PATH/TO/WORKING/DIR'
+os.chdir(working_directory)
+
+# Set the number of parallel jobs
+num_jobs = 8
+
+def compute_log_variances(points):
+    # Compute logarithm of variances using PCA
+    pca = PCA()
+    pca.fit(points)
+    variances_diff = pca.explained_variance_[:-1] - pca.explained_variance_[1:]
+    return np.log2(variances_diff)
+
+def export_pca_results(ply_file, knn_file, output_file):
+    # Read point cloud data and load precomputed nearest neighbor indices
+    points = np.array(read_point_cloud(ply_file).points)
+    knn_indices = np.load(knn_file)
+    
+    # Compute PCA asynchronously in parallel for each set of neighbors
+    Parallel(n_jobs=num_jobs, verbose=1)(
+        delayed(save_pca)(points[neighbor_indices], output_file.format(i))
+        for i, neighbor_indices in enumerate(knn_indices)
+    )
+
+def save_pca(points, output_file):
+    # Compute PCA and save results
+    pca_results = compute_log_variances(points)
+    np.save(output_file, pca_results)
+
+# Perform PCA computation and export for different input files
+export_pca_results('vox1.ply', '128_1.npy', 'pca_{}.npy')  
+export_pca_results('vox2.ply', '128_2.npy', 'pca_{}.npy')  
+export_pca_results('vox4.ply', '128_4.npy', 'pca_{}.npy')  
+
+# Execute various Python scripts
+subprocess.run([executable, 'concat.py'])  
+subprocess.run([executable, 'propagate.py'])  
+subprocess.run([executable, 'test.py'])  
+subprocess.run([executable, 'vis.py'])  
+subprocess.run([executable, 'treetop.py'])  

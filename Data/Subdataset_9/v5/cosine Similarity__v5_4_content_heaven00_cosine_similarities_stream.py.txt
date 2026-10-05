@@ -1,0 +1,42 @@
+import json
+from TwitterAPI import TwitterAPI
+from config import SETTINGS
+
+# Twitter API settings
+API_SETTINGS = {
+    "consumer_key": SETTINGS["consumer_key"],
+    "consumer_secret": SETTINGS["consumer_secret"],
+    "access_token_key": SETTINGS["access_token_key"],
+    "access_token_secret": SETTINGS["access_token_secret"]
+}
+
+# File to save tweets
+FILE_NAME = "tweets.json"
+
+def get_search_results(query, api):
+    """Get the results of a search query."""
+    search_data = api.request('search/tweets', {'q': query})
+    return search_data
+
+def get_user_tweets(username, api):
+    """Get tweets from a user's timeline."""
+    user_tweets_data = api.request('statuses/user_timeline', {'screen_name': username, 'count': 200})
+    return user_tweets_data
+
+def save_user_tweets_to_file(username, twitter_api):
+    """Save tweets from a user's timeline to a file."""
+    api_connection = TwitterAPI(
+        API_SETTINGS["consumer_key"],
+        API_SETTINGS["consumer_secret"],
+        API_SETTINGS["access_token_key"],
+        API_SETTINGS["access_token_secret"]
+    )
+
+    with open(FILE_NAME, 'a+') as tweet_file:
+        for tweet in get_user_tweets(username, api_connection).get_iterator():
+            json.dump(tweet, tweet_file, separators=(',', ':'))
+            tweet_file.write('\n')
+            tweet_file.flush()
+
+if __name__ == "__main__":
+    save_user_tweets_to_file("hasgeek", TwitterAPI)

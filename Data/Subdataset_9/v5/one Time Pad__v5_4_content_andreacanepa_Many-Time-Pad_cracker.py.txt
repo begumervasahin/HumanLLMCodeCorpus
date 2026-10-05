@@ -1,0 +1,60 @@
+import binascii
+import argparse
+
+SPACE = ord(' ')
+
+def read_ciphertexts(filename):
+    try:
+        with open(filename) as f:
+            return [binascii.unhexlify(line.rstrip()) for line in f]
+    except Exception as e:
+        print(f"Error reading ciphertexts from {filename}: {e}")
+        raise SystemExit(-1)
+
+def rearrange_into_columns(ciphertexts):
+    columns = [[] for _ in range(max(len(c) for c in ciphertexts))]
+    for ciphertext in ciphertexts:
+        for index, char in enumerate(ciphertext):
+            columns[index].append(char)
+    return columns
+
+def perform_frequency_analysis(columns):
+    potential_spaces = []
+    for column in columns:
+        frequency_count = {}
+        for char1 in column:
+            for char2 in column:
+                result = char1 ^ char2
+                if result >= 65:  # ASCII value for 'A'
+                    frequency_count[char1] = frequency_count.get(char1, 0) + 1
+                    frequency_count[char2] = frequency_count.get(char2, 0) + 1
+        potential_spaces.append(max(frequency_count, key=frequency_count.get))
+    return potential_spaces
+
+def compute_pad(spaces):
+    return [space ^ SPACE for space in spaces]
+
+def decrypt_ciphertexts(ciphertexts, pad):
+    cleartexts = [bytearray(b'?' * len(c)) for c in ciphertexts]
+    for index_row, row in enumerate(ciphertexts):
+        for index_column, column in enumerate(row):
+            cleartexts[index_row][index_column] = row[index_column] ^ pad[index_column]
+    return cleartexts
+
+def main():
+    parser = argparse.ArgumentParser(description="Many-time Pad Cracker")
+    parser.add_argument("--filename", type=str, default="ciphertexts.txt",
+                        help="Name of the file containing the ciphertexts (default: ciphertexts.txt)")
+    args = parser.parse_args()
+
+    ciphertexts = read_ciphertexts(args.filename)
+    columns = rearrange_into_columns(ciphertexts)
+    potential_spaces = perform_frequency_analysis(columns)
+    pad = compute_pad(potential_spaces)
+    cleartexts = decrypt_ciphertexts(ciphertexts, pad)
+
+    for cleartext in cleartexts:
+        print(cleartext.decode('ascii'))
+
+if __name__ == "__main__":
+    main()

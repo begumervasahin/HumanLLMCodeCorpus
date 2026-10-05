@@ -1,0 +1,82 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import sys
+
+def display_graph(MST_list, vert_list):
+    G = nx.Graph()
+    for u, v, weight in MST_list:
+        G.add_edge(vert_list[u], vert_list[v], weight=weight)
+
+    pos = nx.spring_layout(G)
+    labels = {(u, v): str(d['weight']) for u, v, d in G.edges(data=True)}
+    nx.draw(G, pos, with_labels=True, labels={node: node for node in G.nodes()}, font_size=9)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+    plt.axis('off')
+    plt.show()
+
+def sort_edges(edges):
+    return sorted(edges, key=lambda x: x[2])
+
+def find(root, parent):
+    while root != parent[root]:
+        root = parent[root]
+    return root
+
+def union(parent, size, rootv, rootu):
+    if size[rootv] > size[rootu]:
+        parent[rootu] = rootv
+    elif size[rootv] < size[rootu]:
+        parent[rootv] = rootu
+    else:
+        parent[rootu] = rootv
+        size[rootv] += 1
+
+def kruskal(wc_graph, vert_count):
+    MST_list = []
+    wc_graph = sort_edges(wc_graph)
+    parent = list(range(vert_count))
+    size = [0] * vert_count
+    encounter = 0
+
+    for u, v, weight in wc_graph:
+        rootu = find(u, parent)
+        rootv = find(v, parent)
+        if rootv != rootu:
+            encounter += 1
+            MST_list.append([u, v, weight])
+            union(parent, size, rootv, rootu)
+        if encounter == vert_count - 1:
+            break
+
+    return MST_list
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python prim.py <input_file>")
+        return
+
+    file_name = sys.argv[1]
+    vert_set = set()
+    wc_graph = []
+
+    with open(file_name) as f:
+        for line in f:
+            columns = line.strip().split(' ')
+            vert_set.update(columns[:2])
+            wc_graph.append([int(columns[0]), int(columns[1]), int(columns[2])])
+
+    vert_list = sorted(vert_set)
+    vert_count = len(vert_list)
+
+    MST_list = kruskal(wc_graph, vert_count)
+    total = sum(weight for _, _, weight in MST_list)
+
+    print("The minimum spanning tree is as follows:")
+    for u, v, weight in MST_list:
+        print(f"{vert_list[u]} to {vert_list[v]} = {weight} miles")
+    
+    print("Total weight:", total, "miles.")
+    display_graph(MST_list, vert_list)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,50 @@
+import utils
+import json
+
+# Initialize variables
+doc_tfidfs = {}
+data = {}
+
+# Load data from CSV file
+with open("data.csv", "r") as file:
+    for line in file:
+        parts = line.split(",")
+        data[parts[0].strip("'")] = parts[1].strip("'")
+
+# Extract questions from data
+questions = list(data.keys())
+
+# Load TF-IDFs from JSON file
+with open("stack-tfidf.json", "r") as file:
+    doc_tfidfs = json.load(file)
+
+# Start the interaction loop
+while True:
+    # Prompt user to enter a question
+    query = input("Please enter a question: ")
+    print("\n")
+
+    # Initialize variables for finding the best match
+    max_similarity = -1
+    best_question = ""
+
+    print("-----------------------")
+    print("Calculating TF-IDF for the query with all questions as reference ...")
+
+    # Calculate TF-IDF for the query
+    query_tfidf = utils.getTFIDF(query, questions)
+
+    print("Calling cosine similarity between all the questions to find the best match ...")
+
+    # Iterate through all questions to find the best match
+    for question in questions:
+        similarity = utils.cosineSimilarity(query_tfidf, doc_tfidfs[question])
+        if similarity > max_similarity:
+            print(similarity)
+            max_similarity = similarity
+            best_question = question
+
+    # Print the best match and its details
+    print("Best question match:", best_question)
+    print("Max similarity score:", max_similarity)
+    print("Best answer:", data[best_question])

@@ -1,0 +1,53 @@
+# Import necessary functions from scraper and algorithms modules
+from scraper import linkify, getLinks, getWords
+from algorithms import tf, getDocLinkStrength, idf, tfidf
+
+# Prompt the user to enter the name of the personality
+name = input("Enter the Name of Personality\n")
+
+# Generate the link for the Wikipedia page of the entered personality
+pageLink = linkify(name)
+
+# Extract the words from the Wikipedia page
+wordList = getWords(pageLink)
+
+# Extract the links from the Wikipedia page
+linkList = getLinks(pageLink)
+
+# Calculate term frequency (tf) for the words on the page
+tfDict = tf(wordList)
+
+# Calculate the link strength for each document
+docLinks = getDocLinkStrength(linkList, tfDict)
+
+# Retrieve unique links for tf-idf calculation
+links_for_tf_idf = []
+for link, _ in docLinks:
+    if link not in links_for_tf_idf:
+        links_for_tf_idf.append(link)
+
+# Extract words from the top 10 documents for tf-idf calculation
+dump = []
+for link in links_for_tf_idf[:10]:
+    tempLink = linkify(link)
+    dump.append(getWords(tempLink))
+
+# Calculate inverse document frequency (idf) for the words
+idfDict = idf(tfDict, dump)
+
+# Calculate tf-idf for the words on the page
+tfidfDict = tfidf(tfDict, idfDict)
+
+# Sort tf-idf dictionary by value in descending order
+tfidfList = sorted(tfidfDict.items(), key=lambda x: x[1], reverse=True)
+
+# Extract keywords based on tf-idf scores
+keywords = getDocLinkStrength(linkList, tfidfDict)
+finalKeywordList = []
+for link, _ in keywords:
+    if link not in finalKeywordList:
+        finalKeywordList.append(link)
+
+# Print the final list of keywords
+for keyword in finalKeywordList:
+    print(keyword)

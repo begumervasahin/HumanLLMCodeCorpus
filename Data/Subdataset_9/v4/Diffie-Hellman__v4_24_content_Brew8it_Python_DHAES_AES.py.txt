@@ -1,0 +1,51 @@
+from base64 import b64decode, b64encode
+from Crypto import Random
+from Crypto.Cipher import AES
+
+BLOCK_SIZE = 16
+
+def pad(s):
+    """
+    Pad the input string to make its length a multiple of the block size.
+    """
+    pad_length = BLOCK_SIZE - len(s) % BLOCK_SIZE
+    return s + pad_length * chr(pad_length)
+
+def unpad(s):
+    """
+    Unpad the input string by removing the padding.
+    """
+    return s[:-ord(s[len(s) - 1:])]
+
+class AESCipher:
+    """
+    AESCipher class for encryption and decryption using AES CBC mode.
+
+    Usage:
+        cipher = AESCipher('password')
+        encrypted = cipher.encrypt('message')
+        decrypted = cipher.decrypt(encrypted)
+    """
+    def __init__(self, key):
+        """
+        Initialize AESCipher object with the provided key.
+        """
+        self.key = key
+
+    def encrypt(self, raw):
+        """
+        Encrypt the input string using AES CBC mode.
+        """
+        raw = pad(raw)
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        return b64encode(iv + cipher.encrypt(raw))
+
+    def decrypt(self, enc):
+        """
+        Decrypt the input string using AES CBC mode.
+        """
+        enc = b64decode(enc)
+        iv = enc[:AES.block_size]
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        return unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')

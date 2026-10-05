@@ -1,0 +1,107 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.stattools import acf
+import pmdarima as pm
+
+# Load data
+df = pd.read_csv('wwwusage.csv', names=['value'], header=0)
+
+# Check stationarity using Augmented Dickey-Fuller test
+result = adfuller(df.value.dropna())
+print('ADF Statistic: %f' % result[0])
+print('p-value: %f' % result[1])
+
+# Plot original series and autocorrelation function
+fig, axes = plt.subplots(3, 2, sharex=True)
+axes[0, 0].plot(df.value)
+axes[0, 0].set_title('Original Series')
+plot_acf(df.value, ax=axes[0, 1])
+axes[1, 0].plot(df.value.diff())
+axes[1, 0].set_title('1st Order Differencing')
+plot_acf(df.value.diff().dropna(), ax=axes[1, 1])
+axes[2, 0].plot(df.value.diff().diff())
+axes[2, 0].set_title('2nd Order Differencing')
+plot_acf(df.value.diff().diff().dropna(), ax=axes[2, 1])
+plt.show()
+
+# Determine the order of differencing
+y = df.value
+print("ADF Test Differencing:", ndiffs(y, test='adf'))
+print("KPSS Test Differencing:", ndiffs(y, test='kpss'))
+print("PP Test Differencing:", ndiffs(y, test='pp'))
+
+# Plot partial autocorrelation function after differencing
+fig, axes = plt.subplots(1, 2, sharex=True)
+axes[0].plot(df.value.diff())
+axes[0].set_title('1st Differencing')
+axes[1].set(ylim=(0, 5))
+plot_pacf(df.value.diff().dropna(), ax=axes[1])
+plt.show()
+
+# Fit ARIMA models
+model = ARIMA(df.value, order=(1, 1, 2))
+model_fit = model.fit(disp=0)
+print(model_fit.summary())
+
+# Plot residuals
+residuals = pd.DataFrame(model_fit.resid)
+fig, ax = plt.subplots(1, 2)
+residuals.plot(title="Residuals", ax=ax[0])
+residuals.plot(kind='kde', title='Density', ax=ax[1])
+plt.show()
+
+# Plot forecast
+model_fit.plot_predict(dynamic=False)
+plt.show()
+
+# Split data into train and test sets
+train = df.value[:85]
+test = df.value[85:]
+
+# Forecast using ARIMA model
+model = ARIMA(train, order=(1, 1, 1))
+fitted = model.fit(disp=-1)
+fc, se, conf = fitted.forecast(15, alpha=0.05)
+
+# Plot forecast vs actuals
+fc_series = pd.Series(fc, index=test.index)
+lower_series = pd.Series(conf[:, 0], index=test.index)
+upper_series = pd.Series(conf[:, 1], index=test.index)
+plt.figure(figsize=(12, 5), dpi=100)
+plt.plot(train, label='training')
+plt.plot(test, label='actual')
+plt.plot(fc_series, label='forecast')
+plt.fill_between(lower_series.index, lower_series, upper_series, color='k', alpha=.15)
+plt.title('Forecast vs Actuals')
+plt.legend(loc='upper left', fontsize=8)
+plt.show()
+
+# Evaluate forecast accuracy
+print(forecast_accuracy(fc, test.values))
+
+# Automatically select ARIMA model
+model = pm.auto_arima(df.value, start_p=1, start_q=1, test='adf', max_p=3, max_q=3,
+                      m=1, d=None, seasonal=False, start_P=0, D=0, trace=True,
+                      error_action='ignore', suppress_warnings=True, stepwise=True)
+print(model.summary())
+
+# Plot model diagnostics
+model.plot_diagnostics(figsize=(7, 5))
+plt.show()
+
+# Forecast using selected ARIMA model
+n_periods = 24
+fc, confint = model.predict(n_periods=n_periods, return_conf_int=True)
+index_of_fc = np.arange(len(df.value), len(df.value) + n_periods)
+fc_series = pd.Series(fc, index=index_of_fc)
+lower_series = pd.Series(confint[:, 0], index=index_of_fc)
+upper_series = pd.Series(confint[:, 1], index=index_of_fc)
+plt.plot(df.value)
+plt.plot(fc_series, color='darkgreen')
+plt.fill_between(lower_series.index, lower_series, upper_series, color='k', alpha=.15)
+plt.title("Final Forecast of WWW Usage")
+plt.show()

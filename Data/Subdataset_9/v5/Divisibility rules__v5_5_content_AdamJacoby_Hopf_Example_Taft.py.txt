@@ -1,0 +1,78 @@
+from HopfClass import HopfAlgebra
+import numpy as np
+import scipy.sparse as sps
+from itertools import product
+
+def generate_taft_element_names(n, g, x):
+    """Generate element names for the Taft algebra."""
+    elements = [f"{g}^{j}{x}^{i}" for i in range(n) for j in range(n)]
+    return elements
+
+def generate_taft_mult_matrix(n):
+    """Generate the multiplication matrix for the Taft algebra."""
+    poly = [0] * (n + 1)
+    poly[0] = 1
+    poly[n] = -1
+    omega = np.roots(poly)
+
+    mult_matrix = np.zeros((n ** 2, n ** 4), dtype=complex)
+    for i, j, k in product(range(n), repeat=3):
+        for l in range(n - j):
+            mult_matrix[((i + k) % n) + n * (j + l), i + n * j + (k + n * l) * n ** 2] = omega[(n - 1) - (-j * k) % n]
+
+    return sps.csr_matrix(mult_matrix)
+
+def generate_taft_comult_matrix(n, mult_matrix):
+    """Generate the comultiplication matrix for the Taft algebra."""
+    dim = n ** 2
+    comult_matrix = np.zeros((dim ** 2, dim), dtype=complex)
+    x_plus_g = np.zeros(dim)
+    x_plus_g[1] = 1
+    x_plus_g[n] = 1
+
+    temp = np.zeros(dim)
+    temp[0] = 1
+    products = [temp]
+
+    for i in range(1, n):
+        temp2 = np.kron(temp, x_plus_g)
+        temp = mult_matrix.dot(temp2)
+        products.append(temp)
+
+    for i, j in product(range(1, n), repeat=2):
+        for l in range(j + 1):
+            comult_matrix[((i + l) % n) + (j - l) * n + (i + n * l) * dim, i + j * n] = products[j][l + (j - l) * n]
+
+    return comult_matrix
+
+def generate_taft_counit_vector(n):
+    """Generate the counit vector for the Taft algebra."""
+    return np.ones(n, dtype=complex)
+
+def generate_taft_antipode_matrix(n):
+    """Generate the antipode matrix for the Taft algebra."""
+    dim = n ** 2
+    poly = [0] * (n + 1)
+    poly[0] = 1
+    poly[n] = -1
+    omega = np.roots(poly)
+
+    antipode_matrix = np.zeros((dim, dim), dtype=complex)
+    for i, j in product(range(n), repeat=2):
+        antipode_matrix[((-i) % n) + j * n, i + j * n] = (-1) ** j * omega[(i * j) % n]
+
+    return sps.csr_matrix(antipode_matrix)
+
+# Example usage
+n = 3
+g = 'g'
+x = 'x'
+
+element_names = generate_taft_element_names(n, g, x)
+mult_matrix = generate_taft_mult_matrix(n)
+comult_matrix = generate_taft_comult_matrix(n, mult_matrix)
+counit_vector = generate_taft_counit_vector(n)
+antipode_matrix = generate_taft_antipode_matrix(n)
+
+# Create Hopf algebra
+taft_algebra = HopfAlgebra("TaftAlgebra", element_names, mult_matrix, comult_matrix, counit_vector, antipode_matrix)

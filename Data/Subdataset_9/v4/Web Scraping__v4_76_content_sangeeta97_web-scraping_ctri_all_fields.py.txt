@@ -1,0 +1,65 @@
+import pandas as pd
+import numpy as np
+import requests
+from bs4 import BeautifulSoup
+import re
+import time
+import random
+import multiprocessing as mp
+from multiprocessing.dummy import Pool as ThreadPool
+
+# Define index and URLs
+index = list(range(1, 34000, 1))
+url = [f"http://ctri.nic.in/Clinicaltrials/pmaindet2.php?trialid={i}&EncHid=&userName=CTRI" for i in index]
+
+# Create DataFrame
+data = {'number': index, 'url': url}
+df = pd.DataFrame(data)
+
+# Compile regex pattern
+lk = re.compile(r'\\[nrt]')
+
+# Function to extract text from URLs
+def extract_text(url):
+    text_list = []
+    try:
+        # Request webpage
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        table = soup.find('table')
+
+        # Extract required information using regex
+        aa = re.findall(r'(?sm)(?<=CTRI Number)[^A-Za-z]*(\w+\W+.*)(?=Last Modified On:)', table.text)
+        aa = lk.sub(' ', str(aa))
+        # Extract other information in a similar manner...
+
+        # Append extracted information
+        text_list.append('%;'.join([str(aa), str(bb), str(cc), str(dd), str(ee), str(ff), str(gg), str(hh), str(ii), str(jj), 
+                                    str(kk), str(ll), str(mm), str(nn), str(oo), str(pp), str(qq), str(rr), str(ss), str(tt), 
+                                    str(uu), str(vv), str(ww), str(xx), str(yy), str(zz), str(ab), str(ac), str(ad), str(ae), 
+                                    str(af), str(ag), str(ah), str(ai), str(aj), str(ak), str(al)]))
+        time.sleep(2)  # Delay for politeness
+    except:
+        text_list.append('no_value')
+    finally:
+        return text_list
+
+# Create a ThreadPool for parallel processing
+pool = ThreadPool(mp.cpu_count())
+
+# Extract text from URLs using parallel processing
+io = df.url.tolist()
+results = pool.map(extract_text, io)
+
+# Close and join ThreadPool
+pool.close()
+pool.join()
+
+# Create DataFrame from results
+df2 = pd.DataFrame(np.array(results), columns=['all'])
+
+# Merge DataFrame with original DataFrame
+df2 = df.merge(df2, how='outer', left_index=True, right_index=True)
+
+# Save DataFrame to Excel
+df2.to_excel('results_29May.xlsx')

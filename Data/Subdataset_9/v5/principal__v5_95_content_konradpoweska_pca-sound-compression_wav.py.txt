@@ -1,0 +1,53 @@
+import numpy as np
+import wave
+import struct
+
+# Define a dictionary to map sample widths to struct format characters
+SAMPLE_WIDTH_FORMAT = {
+    1: 'b',  # 1 byte
+    2: 'h'   # 2 bytes
+}
+
+# Function to open a WAV file and read its contents
+def open_wav(filename):
+    with wave.open(filename, 'r') as wav_file:
+        nchannels = wav_file.getnchannels()
+        sampwidth = wav_file.getsampwidth()
+        framerate = wav_file.getframerate()
+        nframes = wav_file.getnframes()
+        
+        # Store the headers as a tuple
+        headers = (nchannels, sampwidth, framerate, nframes)
+        
+        # Define the struct format string based on the sample width
+        struct_format = f"<{nframes}{SAMPLE_WIDTH_FORMAT[sampwidth]}"
+        
+        # Read frames from the WAV file
+        frames = wav_file.readframes(nframes)
+        
+        # Unpack the frames into samples using the struct format
+        samples = np.array(struct.unpack(struct_format, frames))
+        
+    return headers, samples
+
+# Function to save data as a WAV file
+def save_wav(filename, headers, samples):
+    nchannels, sampwidth, framerate, nframes = headers
+    
+    # Clip the samples to fit within the specified sample width
+    samples = np.clip(samples[:nframes], -2**(sampwidth*8-1), 2**(sampwidth*8-1)-1)
+    
+    # Define the struct format string based on the sample width
+    struct_format = f"<{nframes}{SAMPLE_WIDTH_FORMAT[sampwidth]}"
+    
+    # Pack the samples into frames using the struct format
+    frames = struct.pack(struct_format, *samples)
+    
+    with wave.open(filename, 'w') as wav_file:
+        wav_file.setnchannels(nchannels)
+        wav_file.setsampwidth(sampwidth)
+        wav_file.setframerate(framerate)
+        wav_file.setnframes(nframes)
+        
+        # Write the frames to the WAV file
+        wav_file.writeframes(frames)

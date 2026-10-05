@@ -1,0 +1,62 @@
+import os
+import json
+import codecs
+
+def get_relevant_sentences(relevant_docs, entities, wiki_split_docs_dir):
+    """
+    Retrieve relevant sentences from JSON files.
+
+    Args:
+        relevant_docs (list): List of relevant document IDs.
+        entities: Entities information (not used in the provided code).
+        wiki_split_docs_dir (str): Directory containing split JSON files.
+
+    Returns:
+        list: List of relevant sentences with document ID, line number, and content.
+    """
+    relevant_sentences = []
+
+    # Iterate through relevant documents
+    for relevant_doc in relevant_docs:
+        # Open JSON file
+        with codecs.open(os.path.join(wiki_split_docs_dir, f"{relevant_doc}.json"), "r", "utf-8") as file:
+            data = json.load(file)
+            full_lines = data["lines"]
+            
+            # Extract relevant lines
+            lines = [line['content'] for line in full_lines if line['content'].strip()]
+            
+            # Process each line
+            for line_num, line_content in enumerate(lines):
+                line_content = line_content.strip()
+                line_content = line_content.replace("-LRB-", " ( ")
+                line_content = line_content.replace("-RRB-", " ) ")
+                
+                # Store relevant information
+                sentence_info = {
+                    'id': relevant_doc,
+                    'line_num': line_num,
+                    'sentence': line_content
+                }
+                relevant_sentences.append(sentence_info)
+
+    return relevant_sentences
+
+
+def get_sentence(wiki_doc_dir, doc_filename, sentence_id):
+    """
+    Retrieve a specific sentence from a document file.
+
+    Args:
+        wiki_doc_dir (str): Directory containing document files.
+        doc_filename (str): Name of the document file.
+        sentence_id (int): Index of the sentence to retrieve.
+
+    Returns:
+        str: The requested sentence.
+    """
+    # Open document file
+    with codecs.open(os.path.join(wiki_doc_dir, f"{doc_filename}.txt"), "r", "utf-8") as doc_file:
+        doc_lines = doc_file.readlines()
+        # Extract and return the requested sentence
+        return doc_lines[sentence_id].split("\t")[1]

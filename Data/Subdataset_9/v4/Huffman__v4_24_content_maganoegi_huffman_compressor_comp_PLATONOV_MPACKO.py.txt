@@ -1,0 +1,64 @@
+# Import required modules
+from huffman_module import *
+from comp_lib import *
+from tqdm import tqdm
+import os
+import time
+
+# Clear the console screen
+os.system('cls' if os.name == 'nt' else 'clear')
+
+# Display header
+hepia_print()
+print("\n")
+
+# Configure progress bar format
+bar_format = '{l_bar}{bar}| {n_fmt}/{total_fmt}'
+
+# Initialize progress bar with a total of 9 steps
+with tqdm(total=9, ncols=80, bar_format=bar_format) as pbar:
+    
+    # Read user input for input and output filenames
+    filenames = read_user_input()
+
+    # Step 1: Open File
+    update_bar(pbar, 'Open File  ')
+    file_2_read = filenames[0]
+    file_2_write = filenames[1]
+
+    # Step 2: Convert File to Array
+    byte_array = bytes_2_array(file_2_read)
+    update_bar(pbar, 'File->Array')
+
+    # Step 3: Hash Original File
+    HashVal = hashOriginal(file_2_read)
+    update_bar(pbar, 'Hashing    ')
+
+    # Step 4: Determine Frequencies
+    freq_dict = determine_frequencies(byte_array)
+    update_bar(pbar, 'Frequencies')
+
+    # Step 5: Huffman Compression
+    compressed_list = huffman(freq_dict)
+    update_bar(pbar, 'Huffman    ')
+
+    # Step 6: Translate Bytes Using Huffman Codes
+    byte_string = translate(byte_array, compressed_list)
+    update_bar(pbar, 'Translation')
+
+    # Step 7: Finalize Byte String
+    final_byte_array = finalize(byte_string)
+    update_bar(pbar, 'Array->File')
+
+    # Step 8: Write Huffman Codes to JSON
+    write_2_json(compressed_list, "dict.json")
+    update_bar(pbar, 'dict.json  ')
+
+    # Step 9: Write Compressed Data to Binary File
+    write_2_binary(final_byte_array, file_2_write)
+    update_bar(pbar, 'Done       ')
+
+    # Display compression details and statistics
+    time.sleep(0.1)
+    pbar.close()
+    compressor_display(freq_dict, compressed_list, file_2_read, file_2_write, byte_array, HashVal)

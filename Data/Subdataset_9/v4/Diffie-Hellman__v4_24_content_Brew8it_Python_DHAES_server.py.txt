@@ -1,0 +1,63 @@
+import socket
+from binascii import hexlify
+from DiffieHellman import DiffieHellman
+import nacl.secret
+import nacl.utils
+
+while True:
+    # Initialize Diffie-Hellman server
+    server = DiffieHellman()
+
+    # Define echo string
+    echo_string = "I have received | "
+
+    # Create a socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Server address
+    server_address = ('localhost', 5555)
+
+    # Bind the socket to the server address
+    sock.bind(server_address)
+
+    # Listen for incoming connections
+    sock.listen(1)
+
+    try:
+        # Accept incoming connection
+        connection, client_address = sock.accept()
+        print('Connection from IP:', client_address)
+
+        # Receive client's public key
+        client_pubkey = connection.recv(9000)
+
+        # Send server's public key to the client
+        connection.sendall(str(server.pubKey))
+
+        # Generate shared secret key
+        server.genKey(int(client_pubkey))
+        print("Secret key:", hexlify(server.getKey()))
+
+        # Create a secret box for encryption/decryption
+        box = nacl.secret.SecretBox(server.getKey())
+
+        while True:
+            # Receive message from client
+            msg = connection.recv(9000)
+            if msg:
+                # Decrypt the message
+                msg = box.decrypt(msg)
+                print("Received \"{}\", echoing back to client.".format(msg))
+
+                # Append echo string to the message
+                msg = echo_string + msg
+
+                # Encrypt and send the message back to the client
+                connection.sendall(box.encrypt(msg))
+            else:
+                break
+
+    finally:
+        # Close the connection
+        print('Closing socket.')
+        connection.close()

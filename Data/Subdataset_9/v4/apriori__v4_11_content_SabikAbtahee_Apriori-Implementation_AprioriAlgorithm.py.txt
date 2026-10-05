@@ -1,0 +1,117 @@
+import sys
+
+# Redirect standard input and output to files
+def file():
+    sys.stdin = open('apriori.txt', 'r')
+    sys.stdout = open('output.txt', 'w')
+
+# Generate combinations of items
+def combinations(iterable, r):
+    pool = tuple(iterable)
+    n = len(pool)
+    if r > n:
+        return
+    indices = list(range(r))
+
+    yield tuple(pool[i] for i in indices)
+
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != i + n - r:
+                break
+        else:
+            return
+        indices[i] += 1
+        for j in range(i + 1, r):
+            indices[j] = indices[j - 1] + 1
+        yield tuple(pool[i] for i in indices)
+
+# Check if an item is present in a transaction
+def check(i, x):
+    if i in x:
+        return True
+    else:
+        return False
+
+# Calculate counts of itemsets in transactions
+def calculation(items, transactions):
+    counts = {}
+    dict_key = ""
+    for i in range(1, len(items) + 1):
+        com = combinations(items, i)
+        for c in com:
+            for j in range(0, len(transactions), 1):
+                x = transactions[j].split()
+                for i in c:
+                    ans = check(i, x)
+                    if ans == False:
+                        break
+                if ans == True:
+                    dict_key = ""
+                    for i in c:
+                        dict_key += i + ","
+                    if dict_key in counts:
+                        counts[dict_key] += 1
+                    else:
+                        counts[dict_key] = 1
+    return counts
+
+# Filter counts based on minimum support
+def statistics(countsAll, minimumSupport):
+    newDictionary = {}
+    highestLength = 0
+
+    for i, k in countsAll.items():
+        i = str(i).replace(',', "")
+        newDictionary[i] = k
+        if newDictionary[i] < minimumSupport:
+            del newDictionary[i]
+
+    for i, k in newDictionary.items():
+        if len(i) > highestLength:
+            highestLength = len(i)
+
+    last = highestLength
+
+    while highestLength != 2:
+        for i, k in newDictionary.items():
+            first = 0
+            last = highestLength - 2
+            if len(i) > highestLength - 2:
+                x = len(i)
+                while x >= highestLength - 2:
+                    cal = newDictionary[i] / newDictionary[i[first:last]]
+                    print(i[first:last], "=>", i, cal)
+                    first += highestLength - 2
+                    last += highestLength - 2
+                    x -= highestLength - 2
+        highestLength -= 2
+
+# Read input, perform calculations, and print results
+def run():
+    content = sys.stdin.readlines()
+    transactionCount = int(content[0])
+    minimumSupport = int(content[-1])
+    transactions = []
+    items = []
+
+    for i in range(1, transactionCount + 1, 1):
+        transactions.append(content[i])
+
+    for i in range(1, transactionCount + 1, 1):
+        for line in content[i].split():
+            if line not in items:
+                items.append(line)
+        items.sort()
+
+    ans = calculation(items, transactions)
+    statistics(ans, minimumSupport)
+
+# Main function
+def main():
+    file()
+    run()
+
+# Run the main function if the script is executed
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,65 @@
+# Author: Clyde D'Cruz
+# License: GPL
+
+# Import necessary libraries
+from nltk.stem import WordNetLemmatizer
+import sys
+import json
+
+# Define English stopwords
+ENGLISH_STOPWORDS = set(["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"])
+
+# Function to remove stopwords from a wordlist
+def removeStopwords(wordlist):
+    return [set(wordlist) - ENGLISH_STOPWORDS]
+
+# Path to index file
+INDEX_FILE = "INDEX_FILE.INDEX"
+
+# Open and load index file
+index = open(INDEX_FILE)
+indexDictionary = json.loads(index.read())
+
+# Initialize WordNet Lemmatizer
+lemmatizer = WordNetLemmatizer()
+
+# Function to find intersection of sets in a list
+def set_list_intersection(set_list):
+    if not set_list:
+        return set()
+    result = set_list[0]
+    for s in set_list[1:]:
+        result &= s
+    return result
+
+# Get query terms from command line arguments
+query_terms = sys.argv[1:]
+
+# Initialize lists
+normalized_query = []
+result_sets = []
+
+# Print query result section separator
+print('_'*50 + "\nQuery Result\n" + '_'*50)
+
+# Process each query term
+for w in query_terms:
+    # Skip stopwords
+    if w in ENGLISH_STOPWORDS:
+        continue
+    # Lemmatize the word
+    lem_word = lemmatizer.lemmatize(w)
+    try:
+        # Add the set of document IDs for the current term to the list
+        result_sets.append(set(indexDictionary[lem_word]['postings']))
+    except:
+        # If the term is not found in the index, print message and exit
+        print("No documents found matching query: " + ' '.join(query_terms))
+        break
+
+# Find intersection of sets to get final query result
+query_result = set_list_intersection(result_sets)
+
+# If query result is not empty, print the document IDs
+if len(query_result) > 0:
+    print('\n'.join(list(query_result)))

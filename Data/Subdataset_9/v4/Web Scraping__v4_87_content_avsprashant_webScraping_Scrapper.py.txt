@@ -1,0 +1,74 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.support.select import Select
+
+# Path to the Chrome driver
+chromedriver = "C:\\Users\\raghu\\Desktop\\Chromedriver\\chromedriver.exe"
+
+# URL of the website to scrape
+url = "http://court.mah.nic.in/courtweb/index_eng.php"
+
+# Initializing Chrome WebDriver
+driver = webdriver.Chrome(chromedriver)
+driver.get(url)
+driver.maximize_window()
+
+# Selecting a district
+district_selector = Select(driver.find_element_by_class_name("selectdistrict"))
+district_selector.select_by_value("25")
+
+# Clicking on links to navigate to the desired page
+driver.find_element_by_xpath("//*[@id='fourlinks']/ul/li[2]/div[1]/a").click()
+time.sleep(3)
+driver.find_element_by_xpath("//*[@id='fourlinks']/ul/li[2]/div[2]/ul/li[4]/a").click()
+time.sleep(5)
+
+# Switching to the iframe with data
+driver.switch_to.frame('data')
+
+# Selecting court complex
+driver.find_element_by_xpath("//*[@id='radCourtComplex']").click()
+court_complex_selector = Select(driver.find_element_by_xpath("//*[@id='court_complex_code']"))
+court_complex_selector.select_by_visible_text("District and Sessions Court, Shivajinagar, Pune - 411 005")
+
+# Selecting date range
+driver.find_element_by_xpath("//*[@id='from_date']").click()
+time.sleep(2)
+month_year_selector = Select(driver.find_element_by_class_name("datepick-month-year"))
+month_year_selector.select_by_value("1/2019")
+driver.find_element_by_xpath("/html/body/div[2]/div/div[2]/div/table/tbody/tr[1]/td[3]/a").click()
+time.sleep(2)
+driver.find_element_by_xpath("//*[@id='to_date']").click()
+time.sleep(2)
+driver.find_element_by_xpath("/html/body/div[2]/div/div[2]/div/div/select[1]/option[1]").click()
+time.sleep(2)
+driver.find_element_by_xpath("/html/body/div[2]/div/div[2]/div/table/tbody/tr[1]/td[4]/a").click()
+
+# Prompt for entering CAPTCHA and wait
+print(" ENTER CAPTCHA AND WAIT for 10sec \n")
+time.sleep(20)
+
+# Clicking on the button to get the case details
+driver.find_element_by_xpath("//*[@id='caseNoDet']/div[7]/span[3]/input[1]").click()
+time.sleep(10)
+
+# Scraping data and saving to text files
+start_row = 2
+for i in [3, 4, 5, 6]:
+    xpath_prefix = '//*[@id="showList2"]/div['
+    xpath_suffix = ']/a'
+    a = driver.find_element_by_xpath(xpath_prefix + str(i) + xpath_suffix).text
+    filename = a.split(':')[0]
+    rows = int(a.split(':')[1][1:])
+    with open(filename + ".txt", "w") as f:
+        headers = "(Sr No, Case Type/Case Number/Case Year, Order Date, Order No.)\n"
+        f.write(headers)
+        for start_row in range(start_row, rows + start_row):
+            for k in [1, 2, 3, 4]:
+                x = '//*[@id="showList1"]/tr['
+                y = ']/td['
+                z = ']'
+                data = driver.find_element_by_xpath(x + str(start_row) + y + str(k) + z).text
+                f.write(data + '\t')
+            f.write('\n')
+        start_row += 2

@@ -1,0 +1,63 @@
+class LRDecay:
+    def __init__(self, optimizers, hidden_dim, base_learning_rate, warmup, initial_step=0):
+        """
+        Initialize the Learning Rate Decay object.
+
+        Args:
+            optimizers (list): List of optimizers.
+            hidden_dim (int): Hidden dimension.
+            base_learning_rate (float): Base learning rate.
+            warmup (int): Number of warmup steps.
+            initial_step (int, optional): Initial step. Defaults to 0.
+        """
+        self.optimizers = optimizers
+        self.hidden_dim = hidden_dim
+        self.base_learning_rate = base_learning_rate
+        self.warmup = warmup
+        self.step = initial_step
+
+    def __call__(self):
+        """
+        Calculate the learning rate based on the current step and update the optimizers.
+
+        Returns:
+            float: The calculated learning rate.
+        """
+        self.step += 1
+
+        if self.step < self.warmup:
+            learning_rate = self._warmup_lr()
+        else:
+            learning_rate = self._decay_lr()
+
+        self._update_optimizer_lr(learning_rate)
+        return learning_rate
+
+    def _warmup_lr(self):
+        """
+        Calculate the learning rate during warmup phase.
+
+        Returns:
+            float: The calculated learning rate during warmup.
+        """
+        return self.hidden_dim ** (-0.5) * self.step * self.warmup ** (-1.5) * self.base_learning_rate
+
+    def _decay_lr(self):
+        """
+        Calculate the learning rate after the warmup phase.
+
+        Returns:
+            float: The calculated learning rate after warmup.
+        """
+        return 0.5 * self.hidden_dim ** (-0.5) * self.step ** (-0.5) * self.base_learning_rate
+
+    def _update_optimizer_lr(self, learning_rate):
+        """
+        Update learning rate for each optimizer.
+
+        Args:
+            learning_rate (float): The learning rate to be set for optimizers.
+        """
+        for optimizer in self.optimizers:
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = learning_rate

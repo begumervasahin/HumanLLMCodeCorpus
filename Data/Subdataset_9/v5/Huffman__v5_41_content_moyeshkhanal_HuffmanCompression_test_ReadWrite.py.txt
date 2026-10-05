@@ -1,0 +1,44 @@
+import sys
+import unittest
+import os
+
+# Importing classes from the respective modules
+from WriteBitFile import WriteBitFile
+from ReadBitFile import ReadBitFile
+
+class ReadWriteTest(unittest.TestCase):
+    def test_mixed_data(self):
+        # Writing test data to a binary file
+        with WriteBitFile("data.bin") as w:
+            w.write_bits([1, 0, 1, 1])
+            w.write_uint(10000042)
+            w.write_bits([1, 0])
+            w.write_ushort(50000)
+            w.write_ubyte(42)
+
+        # Reading and verifying the written data from the binary file
+        with ReadBitFile("data.bin") as r:
+            self.assertEqual(r.read_bits(4), [1, 0, 1, 1])
+            self.assertEqual(r.read_uint(), 10000042)
+            self.assertEqual(r.read_bits(2), [1, 0])
+            self.assertEqual(r.read_ushort(), 50000)
+            self.assertEqual(r.read_ubyte(), 42)
+
+        # Removing the created binary file after testing
+        os.remove("data.bin")
+
+    def test_single_bit_write(self):
+        # Writing a simple test case to another binary file
+        with WriteBitFile("data2.bin") as w:
+            for _ in range(4):
+                w.write_bits([1, 0])
+
+def main(argv):
+    try:
+        unittest.main()
+    except SystemExit as inst:
+        if inst.args[0] is True:
+            raise
+
+if __name__ == '__main__':
+    main(sys.argv)

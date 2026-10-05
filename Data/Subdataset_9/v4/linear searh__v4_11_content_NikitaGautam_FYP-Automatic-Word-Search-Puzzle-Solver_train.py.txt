@@ -1,0 +1,109 @@
+from __future__ import division  # Compatibility import for division
+import numpy  # Library for numerical operations
+import scipy.special  # Library for special functions
+import random  # Library for generating random numbers
+import dill  # Library for serialization
+
+class neuralNetwork:
+    # Constructor to initialize the neural network
+    def __init__(self, input_nodes, hidden_nodes, output_nodes, learning_rate):
+        self.input_nodes = input_nodes
+        self.hidden_nodes = hidden_nodes
+        self.output_nodes = output_nodes
+        self.lr = learning_rate
+        # Initialize weights randomly between -0.5 and 0.5
+        self.weight_input_hidden = (numpy.random.rand(self.hidden_nodes, self.input_nodes) - 0.5)
+        self.weight_hidden_output = (numpy.random.rand(self.output_nodes, self.hidden_nodes) - 0.5)
+        # Define activation function using sigmoid function
+        self.activation_function = lambda x: scipy.special.expit(x)
+
+    # Method to train the neural network
+    def train(self, inputs_list, targets_list):
+        inputs = numpy.array(inputs_list, ndmin=2).T  # Convert inputs list to a numpy array and transpose
+        targets = numpy.array(targets_list, ndmin=2).T  # Convert targets list to a numpy array and transpose
+
+        # Calculate signals into hidden layer
+        hidden_inputs = numpy.dot(self.weight_input_hidden, inputs)
+        # Calculate the signals emerging from the hidden layer
+        hidden_outputs = self.activation_function(hidden_inputs)
+
+        # Calculate signals into final output layer
+        final_inputs = numpy.dot(self.weight_hidden_output, hidden_outputs)
+        # Calculate the signals emerging from final output layer
+        final_outputs = self.activation_function(final_inputs)
+
+        # Output layer error is the (target - actual)
+        output_errors = targets - final_outputs
+        # Hidden layer error is the output_errors, split by weights, recombined at hidden nodes
+        hidden_errors = numpy.dot(self.weight_hidden_output.T, output_errors)
+
+        # Update the weights for the links between the hidden and output layers
+        self.weight_hidden_output += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)),
+                                                         numpy.transpose(hidden_outputs))
+        # Update the weights for the links between the input and hidden layers
+        self.weight_input_hidden += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)),
+                                                        numpy.transpose(inputs))
+
+    # Method to predict the output based on inputs
+    def predict(self, inputs_list):
+        inputs = numpy.array(inputs_list, ndmin=2).T  # Convert inputs list to a numpy array and transpose
+
+        # Calculate signals into hidden layer
+        hidden_inputs = numpy.dot(self.weight_input_hidden, inputs)
+        # Calculate the signals emerging from hidden layer
+        hidden_outputs = self.activation_function(hidden_inputs)
+
+        # Calculate signals into final output layer
+        final_inputs = numpy.dot(self.weight_hidden_output, hidden_outputs)
+        # Calculate the signals emerging from final output layer
+        final_outputs = self.activation_function(final_inputs)
+
+        return final_outputs  # Return the final outputs
+
+# Function to train the neural network
+def trainNeuralNet():
+    input_nodes = 784
+    hidden_nodes = 1500
+    output_nodes = 26
+    learning_rate = 0.005
+
+    # Initialize neural network
+    neural = neuralNetwork(input_nodes, hidden_nodes, output_nodes, learning_rate)
+
+    # Open training data file
+    training_data = open("/Users/Nikita/PycharmProjects/FYPPuzzle/static/trainFinal.csv", 'r')
+    full_training = training_data.readlines()
+    random.shuffle(full_training)
+
+    # Split training and testing data
+    test_list = full_training[0:8000]
+    training_list = full_training[0:]
+
+    training_data.close()
+
+    # Training loop
+    for epoch in range(50):
+        for record in training_list:
+            all_values = record.split(',')
+            linew = record.split(",")[0]
+            joined = int(linew.split("e0")[1]) - 10
+            all_values[0] = joined
+
+            # Normalize inputs
+            inputs = (numpy.asfarray(all_values[1:]) / 255 * 0.99) + 0.01
+
+            # Initialize target array
+            targets = numpy.zeros(output_nodes) + 0.01
+            targets[joined - 1] = 0.99
+
+            # Train the neural network
+            neural.train(inputs, targets)
+
+    print("trained")
+
+    # Save trained neural network
+    with open('/Users/Nikita/PycharmProjects/FYPPuzzle/static/nn.dill', 'wb') as f:
+        dill.dump(neural, f)
+
+# Call the training function
+trainNeuralNet()

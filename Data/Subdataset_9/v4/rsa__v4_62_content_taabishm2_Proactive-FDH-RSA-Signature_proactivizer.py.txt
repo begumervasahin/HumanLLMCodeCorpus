@@ -1,0 +1,40 @@
+import file_operations as file_op
+import additive_shares
+import threshold_shares
+import time
+
+def refresh_shares():
+    '''Refreshes all shares in the list old_shares, share field size is f'''
+    additive_shares = file_op.read_list("FadditiveShares")
+    modulus = file_op.read_list("FmodulusRSA")[0]
+    old_shares = additive_shares
+    share_count = len(old_shares)
+    new_shares = [0] * share_count
+    
+    for share in old_shares:
+        share_div = additive_shares.additive_sharing(share, share_count)
+        new_shares = [(a + b) for a, b in zip(new_shares, share_div)]
+    
+    file_op.write_list("FadditiveShares", new_shares)
+    print("Running")
+    threshold_shares.threshold_additive_shares()
+    print("Done")
+
+def proactive_timer():
+    '''f is field size for shares == n = p.q'''
+    global modulus
+    global additive_shares
+    
+    while True:
+        refresh_shares()
+        additive_signature()
+        print("Original:", additive_shares)
+        time.sleep(15)
+        add_sig_ver = signature_verify()
+        
+        if not add_sig_ver:
+            additive_signature_verify()
+            invoke_backup()
+
+if __name__ == '__main__':
+    refresh_shares()

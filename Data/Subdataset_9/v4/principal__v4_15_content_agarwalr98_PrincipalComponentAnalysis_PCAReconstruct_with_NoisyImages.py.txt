@@ -1,0 +1,89 @@
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+import glob
+from numpy import linalg as LA
+
+# Setting parameters
+image_no = 101
+Total_components = 784
+number_of_components = 784
+
+# Loading MNIST data
+files = glob.glob("./data/processed/images/train/0_*")
+OriginalData = np.array([np.array(Image.open(fname)) for fname in files])
+
+# Displaying original image
+plt.imshow(OriginalData[image_no], cmap='gray')
+plt.title('Original Image ({} eigenVectors)'.format(Total_components))
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.savefig("./Results/PCAReconstruct_with_NoisyImages/OriginalImage.jpg")
+
+# Adding noise to the original data
+gauss = np.random.normal(0, .04, OriginalData.shape)
+NoisyData = gauss + OriginalData / 255.0
+
+# Displaying noisy image
+plt.imshow(NoisyData[image_no], cmap='gray')
+plt.title('Noisy Image ({} eigenVectors)'.format(Total_components))
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.savefig("./Results/PCAReconstruct_with_NoisyImages/NoisyImage.jpg")
+
+# Flattening the noisy data
+flat_arr = NoisyData.reshape(NoisyData.shape[0], -1)
+
+# Calculating mean vector
+mean_vector = np.mean(flat_arr, axis=0)
+
+# Subtracting mean from data
+X = flat_arr - mean_vector
+
+# Calculating covariance matrix
+cov_mat = np.matmul(X.T, X)
+
+# Finding eigenvalues and eigenvectors
+eigenValues, eigenVectors = LA.eigh(cov_mat)
+eigenVectors = eigenVectors[:, ::-1]
+
+# Reconstructing data using all eigenvectors
+projected_data = np.matmul(X, eigenVectors)
+reconstruct_data = np.matmul(projected_data, eigenVectors.T)
+reconstruct_data = reconstruct_data + mean_vector
+reconstruct_data = reconstruct_data.reshape(OriginalData.shape)
+
+# Displaying reconstructed image using all eigenvectors
+plt.imshow(reconstruct_data[image_no], cmap='gray')
+plt.title('Reconstructed Image ({} eigenVectors)'.format(number_of_components))
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.savefig("./Results/PCAReconstruct_with_NoisyImages/ReconstructImage_all_EVs.jpg")
+
+# Calculating total energy and effective number of components
+Total_Energy = np.sum(np.square(eigenValues))
+Effective_numberOfComponents = np.argmax(np.cumsum(eigenValues) / Total_Energy >= 0.99) + 1
+
+# Plotting energy graph
+plt.close()
+plt.title("Energy Graph")
+plt.xlabel('Number of components (K)')
+plt.ylabel('Ratio of Energy at K components to All components')
+plt.plot(np.arange(1, Total_components), np.cumsum(eigenValues) / Total_Energy, label='number of components')
+plt.legend()
+plt.savefig('./Results/PCAReconstruct_with_NoisyImages/EnergyPlot.jpg')
+plt.show()
+
+# Reconstructing data using effective number of components
+projected_data = np.matmul(X, eigenVectors[:, :Effective_numberOfComponents])
+reconstruct_data = np.matmul(projected_data, eigenVectors[:, :Effective_numberOfComponents].T)
+reconstruct_data = reconstruct_data + mean_vector
+reconstruct_data = reconstruct_data.reshape(OriginalData.shape)
+
+# Displaying reconstructed image using effective number of components
+plt.imshow(reconstruct_data[image_no], cmap='gray')
+plt.title('Reconstructed Image ({} eigenVectors)'.format(Effective_numberOfComponents))
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.savefig("./Results/PCAReconstruct_with_NoisyImages/ReconstructImage_Effective_EVs.jpg")

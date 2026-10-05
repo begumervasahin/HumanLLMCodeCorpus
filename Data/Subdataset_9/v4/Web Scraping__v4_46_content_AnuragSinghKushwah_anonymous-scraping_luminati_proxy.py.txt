@@ -1,0 +1,55 @@
+# Importing necessary modules
+from selenium import webdriver
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from common import get_public_ip  # Assuming get_public_ip is defined in a separate module
+import random
+
+# Printing the current public IP address
+print("Current IP Address: ", get_public_ip())
+
+# Defining username, password, and port for the proxy
+username = 'Your User Name'
+password = 'Your Password'
+port = 22225
+
+# Generating a session ID
+session_id = random.random()
+
+# Constructing the super proxy URL with the provided credentials
+super_proxy_url = 'http://%s-session-%s:%s@zproxy.luminati.io:%d' % (username, session_id, password, port)
+print("Super Proxy URL: ", super_proxy_url)
+
+# Configuring the proxy settings
+proxy = Proxy({
+    'proxyType': ProxyType.MANUAL,
+    'httpProxy': super_proxy_url,
+    'ftpProxy': super_proxy_url,
+    'sslProxy': super_proxy_url,
+    'noProxy': ''
+})
+
+# Asking user to input their preferred browser
+browser = input("Please enter your browser name (e.g., Chrome/Firefox): ")
+
+# Initializing the driver based on the selected browser
+driver = None
+if browser == "Chrome":
+    # Configuring Chrome options with the proxy
+    options = webdriver.ChromeOptions()
+    options.add_argument('--proxy-server=%s' % super_proxy_url)
+    # Initializing Chrome driver
+    driver = webdriver.Chrome(
+        executable_path='Your Chromedriver Executable Path',
+        chrome_options=options)
+elif browser == "Firefox":
+    # Initializing Firefox driver with the proxy
+    driver = webdriver.Firefox(executable_path="Your Geckodriver Executable path",
+                               proxy=proxy)
+
+# Opening a webpage to check the IP address
+driver.get('https://www.whatismyip.org/')
+# Printing the IP address displayed on the webpage
+print("New IP Address: ", driver.find_element_by_xpath('//*[@id="collapse-menu"]/h3/a').text)
+
+# Quitting the driver
+driver.quit()

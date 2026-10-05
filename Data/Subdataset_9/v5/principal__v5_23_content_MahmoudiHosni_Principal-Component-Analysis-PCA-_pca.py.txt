@@ -1,0 +1,41 @@
+import os
+from PIL import Image
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+
+# Load image data from directory
+image_data = []
+directory = "/home/hosni/Downloads/faces/"
+for filename in os.listdir(directory):
+    if '.pgm' not in filename:
+        image = Image.open(os.path.join(directory, filename))
+        data = np.array(image).flatten()  # Flatten image data
+        image_data.append(data)
+
+# Generate labels
+labels = []
+for person_id in range(15):
+    labels.extend([person_id] * 11)
+
+# Apply Principal Component Analysis (PCA) for dimensionality reduction
+pca = PCA(n_components=165)
+reduced_image_data = pca.fit_transform(image_data)
+
+# Split data into training and testing sets
+x_train, x_test, y_train, y_test = train_test_split(reduced_image_data, labels, test_size=0.33)
+
+# Initialize Support Vector Classifier
+clf = SVC(kernel='linear', C=1, decision_function_shape='ovr')
+
+# Train the classifier
+clf.fit(x_train, y_train)
+
+# Make predictions
+predicted_labels = clf.predict(x_test)
+
+# Calculate accuracy
+accuracy = accuracy_score(y_test, predicted_labels)
+print("Accuracy:", accuracy)

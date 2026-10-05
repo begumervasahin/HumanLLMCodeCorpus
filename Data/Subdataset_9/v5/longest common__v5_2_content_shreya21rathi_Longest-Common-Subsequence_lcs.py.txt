@@ -1,0 +1,74 @@
+def initialize_lcs_matrix(a, b):
+    matrix = []
+    max_length = 0
+    
+    # Initialize the matrix
+    for i in range(len(a) + 1):
+        row = []
+        for j in range(len(b) + 1):
+            if i == 0 or j == 0:
+                # Initialize the first row and column with '0H'
+                row.append('0H')
+            else:
+                # Initialize non-boundary cells with appropriate values
+                if a[i - 1] != b[j - 1]:
+                    top = matrix[i - 1][j]
+                    left = row[j - 1]
+                    if int(top[:-1]) >= int(left[:-1]):
+                        row.append('{0}U'.format(top[:-1]))  # 'U' represents 'up'
+                    else:
+                        row.append('{0}S'.format(left[:-1]))  # 'S' represents 'side'
+                else:
+                    diagonal = matrix[i - 1][j - 1]
+                    length = int(diagonal[:-1]) + 1
+                    row.append('{0}D'.format(str(length)))  # 'D' represents 'diagonal'
+                    if max_length < length:
+                        max_length = length
+        matrix.append(row)
+    
+    return matrix, max_length
+
+def print_longest_common_subsequence(a, lcs_matrix, i, j, lcs_sequence):
+    if i == 0 or j == 0:
+        # Base case: reached the end of one of the strings, print the LCS sequence in reverse order
+        print("".join(lcs_sequence[::-1]))
+        return
+    
+    direction = lcs_matrix[i][j][-1]
+    if direction == 'D':
+        lcs_sequence.append(a[i - 1])
+        print_longest_common_subsequence(a, lcs_matrix, i - 1, j - 1, lcs_sequence)
+    elif direction == 'U':
+        print_longest_common_subsequence(a, lcs_matrix, i - 1, j, lcs_sequence)
+    else:
+        print_longest_common_subsequence(a, lcs_matrix, i, j - 1, lcs_sequence)
+
+def main():
+    a = input("Enter 1st string:")
+    b = input("Enter 2nd string:")
+
+    lcs_matrix, length = initialize_lcs_matrix(a, b)
+
+    # Print the LCS matrix
+    for i in range(len(a) + 1):
+        for j in range(len(b) + 1):
+            print(lcs_matrix[i][j] + " ", end="")
+        print()
+
+    print("Length of the longest common subsequence is:", length)
+
+    # Print the LCS sequence
+    lcs_sequence = []
+    print_longest_common_subsequence(a, lcs_matrix, len(a), len(b), lcs_sequence)
+
+    max_length = max(len(a), len(b))
+    percent_difference = ((max_length - length) / max_length) * 100
+    print("Percent difference is: %.2f%%" % percent_difference)
+
+    if percent_difference > 7:
+        print("Signature mismatch")
+    else:
+        print("Signature matched")
+
+if __name__ == "__main__":
+    main()

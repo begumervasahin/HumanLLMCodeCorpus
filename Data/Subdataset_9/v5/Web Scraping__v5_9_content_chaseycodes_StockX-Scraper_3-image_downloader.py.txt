@@ -1,0 +1,47 @@
+import os
+import json
+import urllib.request
+import time
+import random
+
+# Path configurations
+IMAGE_DIRECTORY = 'path_to_images'
+PLACEHOLDER_IMAGE_PATH = 'path_to_placeholder_image'
+
+# List of brands
+BRANDS = ['nike', 'jordan', 'adidas', 'other']
+
+def download_images():
+    for brand in BRANDS:
+        # Open JSON file for the current brand
+        with open('{}.json'.format(brand)) as file:
+            data = json.load(file)
+            # Iterate over each item in the JSON data
+            for item_name, item_data in data.items():
+                # Process item name
+                item_name_cleaned = item_name.replace('/', '-').replace('?', '').strip()
+                # Get image link
+                img_link = item_data.get('image')
+                # Check if image already exists in the directory
+                if f'{item_name_cleaned}.jpg' in os.listdir(IMAGE_DIRECTORY):
+                    print(f'Image already saved: {item_name_cleaned}')
+                    continue
+                else:
+                    # Download and save the image
+                    if 'Placeholder' in img_link.split('-'):
+                        # Use placeholder image
+                        with open(PLACEHOLDER_IMAGE_PATH, 'rb') as placeholder:
+                            with open(f'static/{item_name_cleaned}.jpg', 'wb') as f:
+                                f.write(placeholder.read())
+                        print(f'Placeholder used for: {item_name_cleaned}')
+                    else:
+                        # Download image from URL
+                        with open(f'static/{item_name_cleaned}.jpg', 'wb') as f:
+                            f.write(urllib.request.urlopen(img_link).read())
+                        print(f'Downloaded: {item_name_cleaned}')
+                    # Introduce a random delay to simulate human-like behavior
+                    time.sleep(1 / (random.randint(1, 100) * 10000))
+
+
+if __name__ == "__main__":
+    download_images()

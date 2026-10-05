@@ -1,0 +1,52 @@
+import sys
+import re
+import nltk
+import string
+import operator
+import random
+import numpy as np
+import cPickle as pickle
+from sklearn import svm
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer, HashingVectorizer
+from sklearn.model_selection import cross_val_score, ShuffleSplit
+from sklearn.metrics import accuracy_score
+from sklearn.naive_bayes import BernoulliNB, MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer, SnowballStemmer
+from sklearn.externals import joblib
+
+# Load NLTK resources
+nltk.download('stopwords')
+
+# Load stop words
+stop_words = set(stopwords.words('english'))
+
+# Initialize stemmer
+stemmer = SnowballStemmer('english')
+
+# Load vectorizer
+with open('model/vector/vector.pkl', 'rb') as v:
+    vectorizer = pickle.load(v)
+
+# Open input and output files
+input_file = open(str(sys.argv[1]) + '_twt')
+output_file = open(str(sys.argv[2]), 'w')
+
+# Transform input data
+x = vectorizer.transform(input_file)
+input_file.close()
+
+# Load SVM model
+with open('model/binary_lin.pkl', 'rb') as model_file:
+    svm_train = pickle.load(model_file)
+
+# Predict using SVM model
+predictions = svm_train.predict(x)
+
+# Write predictions to output file
+for prediction in predictions:
+    output_file.write(str(prediction) + '\n')
+
+output_file.close()

@@ -1,0 +1,46 @@
+# Importing necessary libraries
+import os
+import pandas as pd
+import csv
+import re
+
+# Defining constants
+DATA_DIR = "data"
+MBTI_CLEAN_CSV_PATH = os.path.join(DATA_DIR, "mbti_clean.csv")
+DIMENSIONS = ("IE", "NS", "TF", "PJ")
+
+# Reading the CSV file into a pandas DataFrame
+df = pd.read_csv(MBTI_CLEAN_CSV_PATH)
+
+# Process each dimension
+for dimension in DIMENSIONS:
+    # Extract the individual letters representing the dimension
+    letter_1, letter_2 = dimension
+
+    # Process each letter in the dimension
+    for letter in [letter_1, letter_2]:
+        posts = []  # Initialize a list to store valid posts
+
+        # Iterate over each row in the DataFrame
+        for index, row in df.iterrows():
+            # Check if the letter is present in the MBTI type
+            if letter in row["type"]:
+                # Split the posts and iterate over each post
+                hundred_posts = row["posts"].split("|||")
+                for post in hundred_posts:
+                    # Filter out posts containing URLs, empty strings, or non-alphabetic characters
+                    if (
+                        ("http" in post)
+                        or (post == "")
+                        or (post == None)
+                        or (not re.search("[a-zA-Z]", post))
+                    ):
+                        continue
+                    posts.append(post)  # Append valid posts to the list
+
+        # Create a CSV file for the current letter
+        test_csv_path = os.path.join(DATA_DIR, f"test_{letter}.csv")
+        with open(test_csv_path, "w") as f:
+            writer = csv.writer(f)
+            for post in posts:
+                writer.writerow([post])  # Write each post to the CSV file

@@ -1,0 +1,111 @@
+from curve import Curve
+from random import randint
+import math
+from point import Point
+from public_key import Public_Key
+
+# Function to encode a string into a point on the elliptic curve
+def ECencode(s, curve):
+    a = curve.a
+    b = curve.b
+    p = curve.p
+    s = str(s)
+    x0 = 0
+    for i in range(len(s)):
+        x0 += ord(s[i]) * 256 ** i
+    for i in range(1000):
+        x = 1000 * x0 + i % p
+        t = (x ** 3 + a * x + b) % p
+        res = prime_mod_sqrt(t, p)
+        if len(res) != 0:
+            return Point.make_point(x, res[0], 1, p)
+
+# Function to encode a string into points on the elliptic curve
+def encode_string(s, curve, length):
+    arr = []
+    l = list(chunkstring(s, length))
+    for i in range(len(l)):
+        arr.append(ECencode(l[i], curve))
+    return arr
+
+# Function to encrypt a string using elliptic curve cryptography
+def encrypt(s, key):
+    curve = key.curve
+    p = curve.p
+    return encrypt_long(encode_string(s, curve, int(math.log(p // (1000 - 1), 256))), key)
+
+# Function to decrypt a string using elliptic curve cryptography
+def decrypt(arr, key, k):
+    return decode_string(decrypt_long(arr, key, k))
+
+# Function to generate a random prime number using Miller-Rabin test
+def random_prime(low, high):
+    result = 0
+    while True:
+        result = randint(low, high)
+        if miller_rabin(result, 45):
+            break
+    return result
+
+# Other helper functions
+def chunkstring(string, length):
+    return (string[i:i+length] for i in range(0, len(string), length))
+
+def decode_string(arr):
+    v = []
+    for i in range(len(arr)):
+        v.append(ECdecode(arr[i]))
+    return ''.join(v)
+
+def ECdecode(P):
+    n = (P.x - P.x % 1000) // 1000
+    v = []
+    while n != 0:
+        v.append(chr(n % 256))
+        n //= 256
+    return ''.join(v)
+
+def encrypt_long(arr, key):
+    curve = key.curve
+    p = curve.p
+    P = key.P
+    Q = key.Q
+    l = randint(1, p - 1)
+    res = [curve.multiply(l, P)]
+    lQ = curve.multiply(l, Q)
+    for i in range(len(arr)):
+        res.append(curve.add_points(lQ, arr[i]))
+    return res
+
+def decrypt_long(arr, key, k):
+    res = []
+    curve = key.curve
+    neg_kC1 = curve.multiply(k, arr[0]).negate()
+    for i in range(1, len(arr)):
+        ans = curve.add_points(arr[i], neg_kC1)
+        res.append(ans)
+    return res
+
+def miller_rabin(n, k):
+    if n == 2 or n == 3:
+        return True
+    if n % 2 == 0:
+        return False
+
+    r, s = 0, n - 1
+    while s % 2 == 0:
+        r += 1
+        s //= 2
+
+    for _ in range(k):
+        a = randint(2, n - 1)
+        x = pow(a, s, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True

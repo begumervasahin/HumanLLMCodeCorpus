@@ -1,0 +1,51 @@
+import datetime
+import time
+import pandas as pd
+import requests
+from lxml import html
+from random import uniform
+
+def fetch_yahoo_realtime_data(ticker, finish_time, delta):
+    # URL for Yahoo Finance
+    url = f'https://it.finance.yahoo.com/quote/{ticker}?p={ticker}'
+
+    # Headers for the request
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36'
+    }
+
+    # Lists to store scraped data
+    values = []
+    time_now = []
+    yahoo_time = []
+
+    # Continuously fetch data until finish_time is reached
+    while datetime.datetime.now() < finish_time:
+        # Make request to the Yahoo Finance page
+        page = requests.get(url, headers=headers)
+
+        # Random delay to simulate human-like behavior
+        time.sleep(uniform(2, 3))
+
+        # Parse the HTML content of the page
+        parser = html.fromstring(page.content)
+
+        # Extract the stock value
+        value = parser.xpath('//span[@class="Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)"]//text()')[0]
+
+        # Extract the time from Yahoo Finance
+        yahoo_time_value = parser.xpath('//span[@data-reactid="37"]//text()')[0]
+
+        # Append fetched data to respective lists
+        values.append(value)
+        time_now.append(datetime.datetime.now())
+        yahoo_time.append(yahoo_time_value)
+
+        # Delay before fetching data again
+        time.sleep(delta * 60)
+
+    # Create a DataFrame to store the scraped data
+    df = pd.DataFrame({'scraperTime': time_now, 'quotes': values, 'YahooPriceTime': yahoo_time})
+
+    # Return the DataFrame
+    return df

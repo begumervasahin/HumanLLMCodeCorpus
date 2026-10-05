@@ -1,0 +1,50 @@
+import sys
+
+class VariancePlugin:
+    def input(self, filename):
+        # Store the filename
+        self.filename = filename
+    
+    def run(self):
+        # Open the file for reading
+        with open(self.filename, 'r') as file:
+            # Read the first line to get the bacteria names
+            self.bacteria = file.readline().strip().split(',')
+            # Remove any empty string elements if present
+            self.bacteria = [bacterium for bacterium in self.bacteria if bacterium != '""']
+            # Calculate the number of bacteria
+            self.n = len(self.bacteria)
+            # Initialize an empty list to store adjacency matrix
+            self.ADJ = [[] for _ in range(self.n)]
+            # Read the rest of the lines to populate the adjacency matrix
+            for line in file:
+                # Split each line by comma
+                contents = line.strip().split(',')
+                # Iterate over the values (excluding the first one which is the bacteria name)
+                for j, content in enumerate(contents[1:]):
+                    # Convert the value to float and append to the appropriate list in the adjacency matrix
+                    value = float(content)
+                    self.ADJ[j].append(value)
+    
+    def output(self, filename):
+        # Calculate variances for each bacteria
+        variances = []
+        for i in range(self.n):
+            sum_values = sum(self.ADJ[i])
+            # If there are values present
+            if self.ADJ[i]:
+                # Calculate the average
+                average = sum_values / len(self.ADJ[i])
+                # Calculate the variance
+                variance = sum((average - value) ** 2 for value in self.ADJ[i]) / len(self.ADJ[i])
+                # Append the variance along with the bacteria name to the list
+                variances.append((variance, self.bacteria[i]))
+        
+        # Sort the variances in descending order
+        variances.sort(reverse=True)
+        
+        # Write the variances to the output file
+        with open(filename, 'w') as output_file:
+            output_file.write("Element\tVariance\n\n")
+            for bacterium, variance in variances:
+                output_file.write(f"{bacterium}\t{variance}\n")

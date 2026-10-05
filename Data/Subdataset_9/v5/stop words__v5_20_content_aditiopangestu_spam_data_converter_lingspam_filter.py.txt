@@ -1,0 +1,78 @@
+from collections import Counter
+import os
+import numpy as np
+
+# Constants
+NUM_WORDS_IN_DICT = 3000
+TRAIN_DIR = 'train-mails'
+TEST_DIR = 'test-mails'
+
+def make_dictionary(train_dir):
+    emails = [os.path.join(train_dir, f) for f in os.listdir(train_dir)]
+    all_words = []
+
+    # Extract words from emails
+    for mail in emails:
+        with open(mail) as m:
+            for i, line in enumerate(m):
+                if i == 2:
+                    words = line.split()
+                    all_words += words
+
+    # Count occurrences of words and filter out non-alphabetic and single character words
+    dictionary = Counter(all_words)
+    dictionary = {word: count for word, count in dictionary.items() if word.isalpha() and len(word) > 1}
+    dictionary = Counter(dictionary).most_common(NUM_WORDS_IN_DICT)
+    return dictionary
+
+def extract_features(mail_dir, dictionary):
+    files = [os.path.join(mail_dir, fi) for fi in os.listdir(mail_dir)]
+    features_matrix = np.zeros((len(files), NUM_WORDS_IN_DICT))
+    
+    # Generate feature matrix
+    for docID, fil in enumerate(files):
+        with open(fil) as fi:
+            for i, line in enumerate(fi):
+                if i == 2:
+                    words = line.split()
+                    for word in words:
+                        wordID = 0
+                        for i, d in enumerate(dictionary):
+                            if d[0] == word:
+                                wordID = i
+                                features_matrix[docID, wordID] = words.count(word)
+        docID += 1
+    return features_matrix
+
+def get_all_filenames(mail_dir):
+    emails = [os.path.splitext(os.path.basename(os.path.join(mail_dir, fi)))[0] for fi in os.listdir(mail_dir)]
+    return emails
+
+# Generate dictionary from training emails
+dictionary = make_dictionary(TRAIN_DIR)
+
+# Extract features from training and test emails
+train_matrix = extract_features(TRAIN_DIR, dictionary)
+test_matrix = extract_features(TEST_DIR, dictionary)
+
+# Write training feature matrix to ARFF file
+with open('./training_matrix.arff', 'a') as filetraining:
+    filetraining.write("% 1. Title: Spam Dataset training\n%\n% 2. Sources: Hasil Feature Matrix\n%\n@RELATION spam\n")
+    for i, (word, _) in enumerate(dictionary):
+        attribute_name = "@ATTRIBUTE class_" if word == "class" else f"@ATTRIBUTE {word}"
+        filetraining.write(attribute_name + " NUMERIC\n")
+    filetraining.write("@ATTRIBUTE class {spam, not-spam}\n@DATA\n")
+    filename_list = get_all_filenames(TRAIN_DIR)
+    for i, row in enumerate(train_matrix):
+        filetraining.write(",".join(map(str, row)) + (",spam\n" if filename_list[i].startswith('s') else ",not-spam\n"))
+
+# Write test feature matrix to ARFF file
+with open('./test_matrix.arff', 'a') as filetest:
+    filetest.write("% 1. Title: Spam Dataset test\n%\n% 2. Sources: Hasil Feature Matrix\n%\n@RELATION spam\n")
+    for i, (word, _) in enumerate(dictionary):
+        attribute_name = "@ATTRIBUTE class_" if word == "class" else f"@ATTRIBUTE {word}"
+        filetest.write(attribute_name + " NUMERIC\n")
+    filetest.write("@ATTRIBUTE class {spam, not-spam}\n@DATA\n")
+    filename_list = get_all_filenames(TEST_DIR)
+    for i, row in enumerate(test_matrix):
+        filetest.write(",".join(map(str, row)) + (",spam\n" if filename_list[i].startswith('s') else ",not-spam\n"))

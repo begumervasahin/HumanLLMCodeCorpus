@@ -1,0 +1,60 @@
+import os
+import time
+import pandas as pd
+import psycopg2
+from dotenv import load_dotenv
+
+# Global variables
+conn = None
+df = None
+df_keywords = None
+df_nct = None
+
+# Function to load environment variables
+def create_env_vars():
+    global hostname, database, username, password
+    hostname = os.getenv('hostname')
+    port = os.getenv('port')
+    database = os.getenv('database')
+    username = os.getenv('username')
+    password = os.getenv('password')
+
+# Function to get studies from the database
+def get_studies():
+    return pd.read_sql('select * from ctgov.studies', con=conn)
+
+# Function to get keywords from the database
+def get_keywords():
+    return pd.read_sql('select * from ctgov.keywords', con=conn)
+
+# Function to get sponsors from the database
+def get_sponsors():
+    return pd.read_sql('select * from ctgov.sponsors', con=conn)
+
+# Function to join two tables in the database
+def join_tables(first_table_name, second_table_name):
+    query = f"""
+        select * from {first_table_name} RIGHT JOIN {second_table_name}
+        ON {first_table_name}.nct_id = {second_table_name}.nct_id
+    """
+    return pd.read_sql(query, con=conn)
+
+if __name__ == '__main__':
+    # Load environment variables
+    load_dotenv()
+    create_env_vars()
+    
+    # Connect to the database
+    conn = psycopg2.connect(host=hostname, database=database, user=username, password=password)
+    
+    # Measure time for joining tables
+    start_time = time.time()
+    results = join_tables('ctgov.studies', 'ctgov.keywords')
+    end_time = time.time()
+    print("Time taken for joining tables:", end_time - start_time)
+    
+    # Measure time for another query
+    start_time = time.time()
+    pd.read_sql('select * from ctgov.studies RIGHT JOIN ctgov.keywords ON ctgov.studies.nct_id = ctgov.keywords.nct_id', con=conn)
+    end_time = time.time()
+    print("Time taken for another query:", end_time - start_time)

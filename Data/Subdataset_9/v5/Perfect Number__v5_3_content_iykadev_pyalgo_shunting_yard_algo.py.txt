@@ -1,0 +1,96 @@
+from collections import namedtuple
+
+# Define a named tuple to store operator information
+OpInfo = namedtuple('OpInfo', ['precedence', 'associativity'])
+
+# Constants for associativity
+LEFT_ASSOCIATIVE = 'Left'
+RIGHT_ASSOCIATIVE = 'Right'
+
+# Dictionary to store operators and their information
+operators = {
+    '^': OpInfo(precedence=4, associativity=RIGHT_ASSOCIATIVE),
+    '*': OpInfo(precedence=3, associativity=LEFT_ASSOCIATIVE),
+    '/': OpInfo(precedence=3, associativity=LEFT_ASSOCIATIVE),
+    '+': OpInfo(precedence=2, associativity=LEFT_ASSOCIATIVE),
+    '-': OpInfo(precedence=2, associativity=LEFT_ASSOCIATIVE),
+    '(': OpInfo(precedence=9, associativity=LEFT_ASSOCIATIVE),
+    ')': OpInfo(precedence=0, associativity=LEFT_ASSOCIATIVE),
+}
+
+# Constants for token types
+NUMBER, LEFT_PAREN, RIGHT_PAREN = 'NUMBER ( )'.split()
+
+# Function to convert infix expression to tokens
+def tokenize_expression(expression):
+    tokens = expression.strip().split()
+    token_values = []
+    for token in tokens:
+        if token in operators:
+            token_values.append((token, operators[token]))
+        else:
+            token_values.append((NUMBER, token))
+    return token_values
+
+# Function to convert infix expression to Reverse Polish Notation (RPN)
+def infix_to_rpn(tokens):
+    output_queue, operator_stack = [], []
+    result_table = [['TOKEN', 'ACTION', 'RPN OUTPUT', 'OP STACK', 'NOTES']]
+    
+    for token, op_info in tokens:
+        if token == NUMBER:
+            output_queue.append(op_info)
+            result_table.append((op_info, 'Add number to output', ' '.join(map(str, output_queue)),
+                                 ' '.join(op[0] for op in operator_stack), ''))
+        elif token in operators:
+            current_token, (current_prec, current_assoc) = token, op_info
+            while operator_stack:
+                top_token, (top_prec, top_assoc) = operator_stack[-1]
+                if (current_assoc == LEFT_ASSOCIATIVE and current_prec <= top_prec) or \
+                   (current_assoc == RIGHT_ASSOCIATIVE and current_prec < top_prec):
+                    if current_token != RIGHT_PAREN:
+                        if top_token != LEFT_PAREN:
+                            operator_stack.pop()
+                            output_queue.append(top_token)
+                            result_table.append((current_token, 'Pop op', ' '.join(map(str, output_queue)),
+                                                 ' '.join(op[0] for op in operator_stack), ''))
+                        else:
+                            break
+                    else:
+                        if top_token != LEFT_PAREN:
+                            operator_stack.pop()
+                            output_queue.append(top_token)
+                            result_table.append((current_token, 'Pop op', ' '.join(map(str, output_queue)),
+                                                 ' '.join(op[0] for op in operator_stack), ''))
+                        else:
+                            operator_stack.pop()
+                            result_table.append((current_token, 'Pop & discard "("', ' '.join(map(str, output_queue)),
+                                                 ' '.join(op[0] for op in operator_stack), ''))
+                            break
+                else:
+                    break
+            if current_token != RIGHT_PAREN:
+                operator_stack.append((token, op_info))
+                result_table.append((current_token, 'Push op token to stack', ' '.join(map(str, output_queue)),
+                                     ' '.join(op[0] for op in operator_stack), ''))
+            else:
+                result_table.append((current_token, 'Discard ")"', ' '.join(map(str, output_queue)),
+                                     ' '.join(op[0] for op in operator_stack), ''))
+    while operator_stack:
+        top_token, _ = operator_stack.pop()
+        output_queue.append(top_token)
+        result_table.append(('', '(Pop op)', ' '.join(map(str, output_queue)), ' '.join(op[0] for op in operator_stack), ''))
+    return result_table
+
+if __name__ == '__main__':
+    infix_expr = '3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3'
+    print('For infix expression: %r\n' % infix_expr)
+    tokenized_input = tokenize_expression(infix_expr)
+    rpn_output = infix_to_rpn(tokenized_input)
+    
+    max_col_widths = [max(len(str(cell)) for cell in col) for col in zip(*rpn_output)]
+    
+    for row in rpn_output:
+        print(' '.join(f'{cell:<{width}}' for cell, width in zip(row, max_col_widths)))
+    
+    print('\nThe final output RPN is:', rpn_output[-1][2])

@@ -1,0 +1,123 @@
+import sys
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.cluster.vq import kmeans2
+
+def read_csv(file_name):
+    records = []
+    with open(file_name) as data:
+        header = data.readline().strip().split(',')
+        for line in data.readlines():
+            values = [int(val.strip()) for val in line.split(',')]
+            records.append(values)
+    return records, header
+
+def compute_covariance(records):
+    attributes = np.array([rec[1:] for rec in records]).T
+    return np.cov(attributes)
+
+def compute_eigenv(C):
+    eigenvalues, eigenvectors = np.linalg.eig(C)
+    return eigenvalues, eigenvectors
+
+def normalize_eigenvalues(eigenvalues):
+    return eigenvalues / np.sum(eigenvalues)
+
+def plot_eigenvalues(eigenvalues):
+    cumulative_sum = np.cumsum(np.insert(eigenvalues, 0, 0))
+    plt.plot(range(len(eigenvalues) + 1), cumulative_sum, 'bo', range(len(eigenvalues) + 1), cumulative_sum, 'k')
+    plt.xlabel('Eigenvalue ID (decreasing magnitude)')
+    plt.ylabel('Variance captured')
+    plt.title('Eigenvalues And Their Captured Variance')
+    plt.show()
+
+def two_best_vectors(eigenvalues, eigenvectors):
+    indices = np.argsort(eigenvalues)[::-1][:2]
+    return eigenvectors[:, indices[0]], eigenvectors[:, indices[1]]
+
+def subtract_means(data):
+    means = np.mean(data, axis=0)[1:]
+    return means, data[:, 1:] - means
+
+def project_with_two_vectors(data, vec1, vec2):
+    x = np.dot(data, vec1)
+    y = np.dot(data, vec2)
+    plt.plot(x, y, 'bo')
+    plt.xlabel('AMOUNT OF PRINCIPAL COMPONENT')
+    plt.ylabel('AMOUNT OF PRINCIPAL COMPONENT')
+    plt.title('HW AG DATA PROJECTED ONTO 2D PCA SPACE USING THE KLT TRANSFORMATION')
+    plt.show()
+    return np.column_stack((x, y))
+
+def round_vectors(vectors):
+    return np.round(vectors, 2)
+
+def reproject_centroids(centroids, vec1, vec2, means):
+    projections = centroids.dot(np.array([vec1, vec2]).T) + means
+    rounded_projections = round_vectors(projections)
+    for centroid in rounded_projections:
+        print('Centroid:')
+        print(centroid)
+
+def usage():
+    print('USAGE: python3 pca_two_vectors.py <filename>.csv')
+    quit()
+
+def main():
+    if len(sys.argv) != 2:
+        usage()
+    try:
+        open(sys.argv[1], 'r')
+    except IOError:
+        print('Invalid filename')
+        usage()
+
+    print('\nPart one: reading in csv ...')
+    records, fields = read_csv(sys.argv[1])
+
+    print('\nPart two: Covariance Matrix C =\n')
+    C = compute_covariance(records)
+    print(C)
+
+    print('\nPart three: Proper vectors for C\n')
+    eigenvalues, eigenvectors = compute_eigenv(C)
+    eigenvectors = eigenvectors.T
+    print('Values: \n', eigenvalues)
+    print('Vectors:\n', eigenvectors)
+
+    print('\nPart four: sorting eigenvalues:\n')
+    sorted_eigenvalues = -np.sort(-eigenvalues)
+    print(sorted_eigenvalues)
+
+    print('\nPart five: normalize eigenvalues:\n')
+    normalized_eigenvalues = normalize_eigenvalues(sorted_eigenvalues)
+    print(normalized_eigenvalues)
+    plot_eigenvalues(normalized_eigenvalues)
+
+    print('\nPart six: show eigenvectors associated with the 2 largest eigenvalues\n')
+    v1, v2 = two_best_vectors(sorted_eigenvalues, eigenvectors)
+    rounded_vectors = round_vectors(np.array([v1, v2]))
+    v1 = rounded_vectors[0]
+    v2 = rounded_vectors[1]
+    print('Best:\n', v1)
+    print('Second:\n', v2)
+    v1 = -v1
+    v2 = -v2
+
+    print('\nPart seven: project data with the 2 largest eigenvalues\n')
+    means, sub_means = subtract_means(np.array(records))
+    new_points = project_with_two_vectors(sub_means, v1, v2)
+
+    print('\nPart eight: perform k-Means clustering with Euclidean distance and k = 3 ...\n')
+    centroids, labels = kmeans2(new_points, 3, iter=20, minit='random')
+
+    print('\nPart nine: print centroids found from clustering in PCA space\n')
+    print('Centroids:\n')
+    print(centroids)
+
+    print('\nPart ten: multiply centroids by the \'best\' eigenvectors\n')
+    reproject_centroids(centroids, v1, v2, means)
+
+if __name__ == "__main__":
+    main()

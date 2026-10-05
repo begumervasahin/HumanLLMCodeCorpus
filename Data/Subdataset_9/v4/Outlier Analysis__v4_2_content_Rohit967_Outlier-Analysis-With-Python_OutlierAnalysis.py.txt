@@ -1,0 +1,120 @@
+# Importing necessary libraries
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn import svm, metrics
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+import matplotlib.pyplot as plt
+
+# Reading data and setting column names
+data_names = pd.read_csv('kddcup.names', skiprows=1, header=None, sep=':')
+data_names = dict(data_names[0])
+data_names[41] = 'label'
+dictlist = list(data_names.values())
+data = pd.read_csv('kddcup.data_10_percent', low_memory=False, header=None, names=dictlist)
+
+# Filtering data
+data = data[data['service'] == "http"]
+data = data[data["logged_in"] == 1]
+
+# Visualizing label distribution
+data.label.value_counts().plot(kind='bar')
+
+# Selecting relevant features
+relevant_features = ["duration", "src_bytes", "dst_bytes", "label"]
+data = data[relevant_features]
+
+# Mapping labels to binary values
+data.loc[data['label'] == "normal.", "attack"] = 1
+data.loc[data['label'] != "normal.", "attack"] = -1
+
+# Separating target from features
+target = data['attack']
+
+# Counting outliers and calculating outlier fraction
+outliers = target[target == -1]
+print("outliers.shape", outliers.shape)
+print("outlier fraction", outliers.shape[0] / target.shape[0])
+
+# Removing unnecessary columns
+data.drop(["label", "attack"], axis=1, inplace=True)
+
+# Splitting data into train and test sets
+train_data, test_data, train_target, test_target = train_test_split(data, target, train_size=0.8)
+
+# One Class SVM
+nu = outliers.shape[0] / target.shape[0]
+print("nu", nu)
+print("One Class SVM")
+model = svm.OneClassSVM(nu=nu, kernel='rbf', gamma=0.00005)
+model.fit(train_data)
+preds = model.predict(train_data)
+targs = train_target
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy: ", metrics.accuracy_score(targs, preds))
+print("precision: ", metrics.precision_score(targs, preds))
+print("recall: ", metrics.recall_score(targs, preds))
+print("f1: ", metrics.f1_score(targs, preds))
+preds = model.predict(test_data)
+targs = test_target
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy: ", metrics.accuracy_score(targs, preds))
+print("precision: ", metrics.precision_score(targs, preds))
+print("recall: ", metrics.recall_score(targs, preds))
+print("f1: ", metrics.f1_score(targs, preds))
+
+# Isolation Forest
+print("Isolation Forest")
+model1 = IsolationForest(contamination=nu, random_state=42)
+model1.fit(train_data)
+preds1 = model1.predict(train_data)
+targs = train_target
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy: ", metrics.accuracy_score(targs, preds1))
+print("precision: ", metrics.precision_score(targs, preds1))
+print("recall: ", metrics.recall_score(targs, preds1))
+print("f1: ", metrics.f1_score(targs, preds1))
+preds1 = model1.predict(test_data)
+targs = test_target
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy: ", metrics.accuracy_score(targs, preds1))
+print("precision: ", metrics.precision_score(targs, preds1))
+print("recall: ", metrics.recall_score(targs, preds1))
+print("f1: ", metrics.f1_score(targs, preds1))
+
+# Local Outlier Factor
+print("Local Outlier Factor")
+lof = LocalOutlierFactor(n_neighbors=35, contamination=nu)
+preds2 = lof.fit_predict(train_data)
+targs = train_target
+print("===================")
+print("For Training Data: ")
+print("===================")
+print("accuracy: ", metrics.accuracy_score(targs, preds2))
+print("precision: ", metrics.precision_score(targs, preds2))
+print("recall: ", metrics.recall_score(targs, preds2))
+print("f1: ", metrics.f1_score(targs, preds2))
+preds2 = lof.fit_predict(test_data)
+targs = test_target
+print("===============")
+print("For Test Data: ")
+print("===============")
+print("accuracy: ", metrics.accuracy_score(targs, preds2))
+print("precision: ", metrics.precision_score(targs, preds2))
+print("recall: ", metrics.recall_score(targs, preds2))
+print("f1: ", metrics.f1_score(targs, preds2))
+
+# Scatter plot
+plt.figure()
+colors = np.array([''])
+plt.scatter(data['dst_bytes'], data['src_bytes'], s=10, color=colors)
+plt.show()

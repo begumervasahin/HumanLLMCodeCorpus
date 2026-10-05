@@ -1,0 +1,91 @@
+from __future__ import print_function
+import json
+from jsonrpc import ServerProxy, JsonRpc20, TransportTcpIp
+import sys
+import itertools
+
+# Importing libraries for better readability
+from pprint import pprint
+from collections import OrderedDict
+
+# Class for interacting with Stanford CoreNLP server
+class StanfordNLP:
+    def __init__(self):
+        # Initializing server connection
+        self.server = ServerProxy(JsonRpc20(), TransportTcpIp(addr=("127.0.0.1", 8080)))
+    
+    # Method to parse text using CoreNLP server
+    def parse(self, text):
+        return json.loads(self.server.parse(text))
+
+# Function to flatten arguments into a single list
+def chain(*args):
+    if len(args) == 1:
+        l = itertools.chain.from_iterable(*args)
+    else:
+        l = itertools.chain(*args)
+    return list(l)
+
+# Function to adjust dependency suffix index
+def sub_one(w):
+    def f(w):
+        return chain([w, [str(int(w[-1]) - 1)]])
+    rel, w1, w2 = w
+    w1 = f(w1.split('-'))
+    w2 = f(w2.split('-'))
+    return [rel, w1, w2]
+
+# Function to extract sentences from example data
+def get_article(example):
+    before = [sent['string'] for sent in example['before']]
+    match = example['match']['sentence']['string']
+    candidates = before + [match]
+    return candidates[-2:]
+
+if __name__ == '__main__':
+    # Initializing StanfordNLP instance
+    nlp = StanfordNLP()
+    
+    # Path to annotation data file
+    anno_path = sys.argv[1]
+    anno_data = {}
+    
+    # Reading and processing annotation data
+    with open(anno_path, 'r') as in_:
+        for example in in_:
+            dict_ = json.loads(example)
+            try:
+                # Generating sluice ID
+                sluice_id = "{0[file]}_{0[line]}_{0[treeNode]}".format(dict_['metadata'])
+                # Extracting article sentences
+                article = get_article(dict_)
+            except:
+                continue
+            anno_data[sluice_id] = article
+    
+    # Writing processed data to output file
+    with open('dep_lemma.jsons', 'w') as out_:
+        for sluice_id, article in anno_data.items():
+            for sent in article:
+                try:
+                    # Parsing sentence using CoreNLP
+                    result = nlp.parse(sent)
+                except:
+                    print('error in parsing', file=sys.stderr)
+                    print(sluice_id, file=sys.stderr)
+                    continue
+                if len(result['sentences']) != 1:
+                    print('multiple sentences', file=sys.stderr)
+                    print(sluice_id, file=sys.stderr)
+                    continue
+                # Extracting lemmas from parsed result
+                lemmas = [word[-1]['Lemma'] for word in result['sentences'][-1]['words']]
+                try:
+                    # Constructing dictionary for output
+                    dict_ = {'sluiceId': sluice_id, 'deps': list(map(sub_one, result['sentences'][-1]['dependencies'])), 'string': sent, 'lemmas': lemmas}
+                except:
+                    print('error in dict', file=sys.stderr)
+                    print(sluice_id, file=sys.stderr)
+                    continue
+                # Writing output to file
+                print(json.dumps(dict_), file=out_)

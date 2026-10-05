@@ -1,0 +1,98 @@
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Change directory
+data_dir = '/Users/santanupaul/Documents/Personal/Masters in Analytics/UConn/Study Related/Python/Project/fer2013'
+os.chdir(data_dir)
+
+# Read data
+df = pd.read_csv('fer2013.csv')
+
+# Filter emotions (happy and sad)
+df_filtered = df[df['emotion'].isin([3, 4])]
+
+# Compute emotion distribution
+emotion_counts = df_filtered['emotion'].value_counts()
+happy_percentage = emotion_counts[3] / emotion_counts.sum()
+sad_percentage = emotion_counts[4] / emotion_counts.sum()
+print('Happy Percentage:', happy_percentage)
+print('Sad Percentage:', sad_percentage)
+
+# Group by usage
+usage_counts = df_filtered['Usage'].value_counts()
+print("Training set:\n", df_filtered[df_filtered['Usage'] == 'Training']['emotion'].value_counts())
+print("Public Test set:\n", df_filtered[df_filtered['Usage'] == 'PublicTest']['emotion'].value_counts())
+print("Private Test set:\n", df_filtered[df_filtered['Usage'] == 'PrivateTest']['emotion'].value_counts())
+
+# Preprocess data
+pixels = df_filtered['pixels'].str.split(" ", expand=True).astype(int)
+X = pixels.values
+Y = df_filtered['emotion'].values
+X_std = StandardScaler().fit_transform(X)
+
+# Compute covariance matrix
+cov_mat = np.cov(X_std.T)
+
+# Compute eigenvectors and eigenvalues
+eig_vals, eig_vecs = np.linalg.eig(cov_mat)
+
+# Sort eigenvectors by eigenvalues
+eig_pairs = sorted([(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(len(eig_vals))], reverse=True, key=lambda x: x[0])
+
+# Compute explained variance
+var_exp = [(i / sum(eig_vals)) * 100 for i in sorted(eig_vals, reverse=True)]
+cum_var_exp = np.cumsum(var_exp)
+
+# Plot explained variance
+plt.figure(figsize=(10, 6))
+plt.plot(cum_var_exp, label='Cumulative Explained Variance', color='goldenrod')
+plt.plot(var_exp, label='Individual Explained Variance', color='black')
+plt.xlabel('Feature Columns')
+plt.ylabel('Explained Variance (%)')
+plt.title('Explained Variance Plots - Full and Zoomed-in')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Select number of components
+n_components = 107
+selected_eig_vecs = np.array([pair[1] for pair in eig_pairs[:n_components]])
+
+# Project data onto selected components
+X_projected = X_std.dot(selected_eig_vecs)
+
+# Plot PCA
+plt.figure(figsize=(8, 6))
+plt.scatter(X_projected[:, 0], X_projected[:, 1], c=Y, cmap='jet', alpha=0.8)
+plt.title('Principal Component Analysis (PCA)')
+plt.xlabel('First Principal Component')
+plt.ylabel('Second Principal Component')
+plt.colorbar(label='Emotion')
+plt.grid(True)
+plt.show()
+
+# Reconstruct images
+X_reconstructed = X_projected.dot(selected_eig_vecs.T)
+X_reconstructed = X_reconstructed * X.std(0) + X.mean(0)
+
+# Display reconstructed image
+img_index = 628
+img_data = X_reconstructed[img_index].reshape(48, 48).astype(np.uint8)
+img = Image.fromarray(img_data)
+img.show()
+
+# Train SVM
+X_train, X_test, Y_train, Y_test = train_test_split(X_projected, Y, test_size=0.2, random_state=42)
+svm_classifier = SVC()
+svm_classifier.fit(X_train, Y_train)
+train_score = svm_classifier.score(X_train, Y_train)
+test_score = svm_classifier.score(X_test, Y_test)
+print('Train Score:', train_score)
+print('Test Score:', test_score)

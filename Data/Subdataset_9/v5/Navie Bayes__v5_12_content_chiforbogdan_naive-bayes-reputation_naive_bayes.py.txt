@@ -1,0 +1,51 @@
+from feature_type import FeatureType
+
+class NaiveBayes:
+    def __init__(self, sensor_name, feature_weights, satisfaction_threshold):
+        self.sensor_name = sensor_name
+        self.feature_weights = feature_weights
+        self.satisfaction_threshold = satisfaction_threshold
+        self.satisfactions = []
+        self.cpt = {}
+        self.total_interactions = 0
+        self.success_interactions = 0
+        self.reputation_history = {}
+        self.simulation_steps = 0
+
+    def add_satisfaction(self, satisfaction):
+        feature_type = satisfaction.get_feature_type()
+        self.satisfactions.append(satisfaction)
+        self.cpt[feature_type] = 0
+        self.reputation_history[feature_type] = []
+
+    def compute(self, data):
+        self.total_interactions += 1
+        satisfaction_score = sum(self.feature_weights[s.get_feature_type()] * s.get_satisfaction(data) for s in self.satisfactions)
+        if satisfaction_score >= self.satisfaction_threshold:
+            self.success_interactions += 1
+            for satisfaction in self.satisfactions:
+                satisfaction_threshold = self.feature_weights[satisfaction.get_feature_type()] * self.satisfaction_threshold
+                if satisfaction.get_satisfaction(data) >= satisfaction_threshold:
+                    self.cpt[satisfaction.get_feature_type()] += 1
+
+    def get_feature_reputation(self, feature):
+        if self.total_interactions == 0 or self.success_interactions == 0:
+            return (0, 0)
+        trust_probability = self.success_interactions / self.total_interactions
+        feature_probability = self.cpt[feature] / self.total_interactions
+        return (feature_probability / trust_probability, trust_probability)
+
+    def save_reputation(self):
+        for feature in self.cpt.keys():
+            self.reputation_history[feature].append(self.get_feature_reputation(feature))
+        self.simulation_steps += 1
+
+    def get_reputation_history(self, features):
+        reputation_history = []
+        for i in range(self.simulation_steps):
+            reputation_score = 1
+            for feature in features:
+                feature_reputation, trust_probability = self.reputation_history[feature][i]
+                reputation_score *= feature_reputation * trust_probability
+            reputation_history.append(reputation_score)
+        return reputation_history

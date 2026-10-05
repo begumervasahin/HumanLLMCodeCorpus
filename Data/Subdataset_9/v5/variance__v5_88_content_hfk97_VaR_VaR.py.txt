@@ -1,0 +1,90 @@
+import subprocess
+import importlib
+import sys
+
+def install_and_import(package):
+    """
+    Attempts to import a package. If the package is not installed, it installs the package first.
+    
+    Parameters:
+        package (str): The name of the package to import.
+        
+    Returns:
+        module: The imported module.
+    """
+    try:
+        return importlib.import_module(package)
+    except ImportError:
+        subprocess.call([sys.executable, "-m", "pip", "install", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return importlib.import_module(package)
+
+# Import necessary libraries with installation if needed
+numpy = install_and_import("numpy")
+from scipy.stats import norm  # Assuming scipy is already installed as part of numpy installation
+
+def calculate_historical_var(returns, confidence_level, time_period):
+    """
+    Calculates the historical Value at Risk (VaR) for a set of returns.
+    
+    Parameters:
+        returns (array-like): The historical returns.
+        confidence_level (float): The confidence level as a percentage.
+        time_period (int): The time period over which to calculate the VaR.
+        
+    Returns:
+        float: The calculated historical VaR.
+    """
+    alpha = 1 - (confidence_level / 100)
+    var = -numpy.quantile(returns, alpha) * numpy.sqrt(time_period)
+    return var
+
+def calculate_var_covar(returns, confidence_level, time_period):
+    """
+    Calculates the Value at Risk (VaR) using the variance-covariance method.
+    
+    Parameters:
+        returns (array-like): The historical returns.
+        confidence_level (float): The confidence level as a percentage.
+        time_period (int): The time period over which to calculate the VaR.
+        
+    Returns:
+        float: The calculated VaR using the variance-covariance method.
+    """
+    alpha = 1 - (confidence_level / 100)
+    std_dev = returns.std()
+    mean = returns.mean()
+    var = (norm.ppf(1 - alpha) * std_dev - mean) * numpy.sqrt(time_period)
+    return var
+
+def calculate_conditional_var_hist(returns, historical_var, time_period):
+    """
+    Calculates the Conditional Value at Risk (CVaR) using the historical method.
+    
+    Parameters:
+        returns (array-like): The historical returns.
+        historical_var (float): The pre-calculated historical VaR.
+        time_period (int): The time period over which to calculate the CVaR.
+        
+    Returns:
+        float: The calculated CVaR using the historical method.
+    """
+    cvar = -returns[returns < -historical_var / numpy.sqrt(time_period)].mean() * numpy.sqrt(time_period)
+    return cvar
+
+def calculate_conditional_var_covar(returns, confidence_level, time_period):
+    """
+    Calculates the Conditional Value at Risk (CVaR) using the variance-covariance method.
+    
+    Parameters:
+        returns (array-like): The historical returns.
+        confidence_level (float): The confidence level as a percentage.
+        time_period (int): The time period over which to calculate the CVaR.
+        
+    Returns:
+        float: The calculated CVaR using the variance-covariance method.
+    """
+    alpha = 1 - (confidence_level / 100)
+    std_dev = returns.std()
+    mean = returns.mean()
+    cvar = (alpha**-1 * norm.pdf(norm.ppf(alpha)) * std_dev - mean) * numpy.sqrt(time_period)
+    return cvar

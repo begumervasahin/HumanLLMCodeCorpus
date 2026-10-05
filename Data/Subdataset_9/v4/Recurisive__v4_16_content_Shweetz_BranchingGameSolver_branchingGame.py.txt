@@ -1,0 +1,73 @@
+import copy
+
+# Initial game table
+tab1 = [[[2,3],[1,4]],[[4,5],[6,0]]]
+
+# Player's strategies
+tryToMax1 = True
+tryToMax2 = False
+
+# Depth of the search tree
+depth = 3
+
+# Initial turn
+turn = 1
+
+# List to store paths and results
+pathList = []
+
+# Function to initialize the path string
+def init():
+    path = ""
+    for i in range(depth):
+        path += " "
+    return path
+
+# Function to perform depth-first search
+def search(tab, tryToMax, turn, path):
+    for i in range(len(tab)):
+        if isinstance(tab[i], int) is False:
+            path = path[:turn - 1] + str(i + 1) + path[turn:]
+            print("turn " + str(turn) + ", path: " + str(path) + ", computing " + str(tab[i]))
+            tab[i] = search(tab[i], not tryToMax, turn + 1, path)
+    if tryToMax:
+        res = max(tab)
+        action = "max"
+    else:
+        res = min(tab)
+        action = "min"
+    path = path[:turn - 1] + str(tab.index(res) + 1) + path[turn:]
+    t = (path, res)
+    pathList.append(t)
+    print("turn " + str(turn) + ", path: " + path + ", " + action + " of " + str(tab) + " is " + str(res))
+    return res
+
+# Function to find the path that leads to the result
+def findPath(pathList, res, str, i):
+    if i < depth - 1:
+        x = [x for x, y in pathList if res == y and " " != x[i] and " " == x[i + 1]]
+    else:
+        x = [x for x, y in pathList if res == y and " " != x[i]]
+    str += x[0][i]
+    if len(str) == depth:
+        return str
+    else:
+        return findPath(pathList, res, str, i + 1)
+    return "error"
+
+# Main script
+print("Game table: " + str(tab1) + "\n")
+
+# First player wants to maximize
+print("1st player wants to maximize")
+path = init()
+res = search(tab1, tryToMax1, turn, path)
+path = findPath(pathList, res, "", 0)
+print("Score: " + str(res) + " (if the 1st player wants to maximize), path: " + path + "\n")
+
+# First player wants to minimize
+print("1st player wants to minimize")
+path = init()
+res = search(copy.deepcopy(tab1), tryToMax2, turn, path)
+path = findPath(pathList, res, "", 0)
+print("Score: " + str(res) + " (if the 1st player wants to minimize), path: " + path)

@@ -1,0 +1,104 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import math
+
+# Read the data
+df = pd.read_csv("kmeans.csv")
+
+# Get the number of rows and columns in the dataset
+rows, cols = df.shape
+
+# Initialize variables
+points = []
+N = 1000
+scores = []
+
+# Get user input for the number of centroids
+N = int(input("Please enter the number of centroids you would like to use (1-7): "))
+
+# Validate user input
+if N <= 0 or N >= 8:
+    raise ValueError('Please enter a number between 1 and 7.')
+
+# Initialize centroids
+centroids = []
+for i in range(N):
+    a = round(random.uniform(0, df.mean()[0]), 1)
+    b = round(random.uniform(0, df.mean()[1]), 1)
+    centroid = [a, b]
+    centroids.append(centroid)
+
+# Function to calculate distance between two points
+def distance(x, y, centroid=[]):
+    a = centroid[0]
+    b = centroid[1]
+    i = abs(b - y)
+    j = abs(a - x)
+    k = math.sqrt(i ** 2 + j ** 2)
+    return k
+
+# Function to label a point based on its nearest centroid
+def label_point(x, y, centroids=[]):
+    minimum_distance = 100000
+    label = 1
+    counter = 1
+    for i in centroids:
+        d = distance(x, y, i)
+        if d < minimum_distance:
+            label = counter
+            minimum_distance = d
+        counter += 1
+    return label
+
+# Function to get labels of all points
+def get_labels(points=[]):
+    labels = []
+    for i in points:
+        labels.append(i[2])
+    return labels
+
+# Assign labels to points based on nearest centroids
+for i in range(rows):
+    point = df.iloc[i, :]
+    x = point[0]
+    y = point[1]
+    label = label_point(x, y, centroids)
+    point = [x, y, label]
+    points.append(point)
+
+# Update centroids iteratively
+for i in range(N):
+    for j in range(len(centroids)):
+        centroid = centroids[j]
+        x_avg = 0
+        y_avg = 0
+        count = 0
+        for k in points:
+            if k[2] == j + 1:
+                x_avg += k[0]
+                y_avg += k[1]
+                count += 1
+        if count == 0:
+            count = 2
+        x_avg = x_avg / count
+        y_avg = y_avg / count
+        centroids[j][0] = x_avg
+        centroids[j][1] = y_avg
+    for i in range(len(points)):
+        point = points[i]
+        x = point[0]
+        y = point[1]
+        label = label_point(x, y, centroids)
+        points[i][2] = label
+
+# Plotting
+x = df.iloc[:, 0]
+y = df.iloc[:, 1]
+label = get_labels(points)
+colors = ['red', 'green', 'blue', 'purple', 'cyan', 'magenta', 'yellow', 'pink']
+plt.scatter(x, y, c=label, cmap=plt.cm.tab10)
+for i in centroids:
+    plt.scatter(i[0], i[1], color='black', marker='x', s=100)
+plt.show()

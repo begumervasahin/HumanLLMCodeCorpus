@@ -1,0 +1,128 @@
+from random import randint
+
+# Constants
+CHARS_PER_BLOCK = 2
+BITS_PER_CHAR = 8
+BLOCK_SIZE = CHARS_PER_BLOCK * BITS_PER_CHAR
+
+# Function to generate a super-increasing knapsack
+def generate_superincreasing_knapsack():
+    knapsack = [0] * BLOCK_SIZE
+    for i in range(BLOCK_SIZE):
+        knapsack[i] = sum(knapsack[:i]) + randint(1, 5)
+    return knapsack
+
+# Predefined knapsack and other values
+SUPERINCREASING_KNAPSACK = [1, 4, 6, 12, 25, 50, 103, 205, 409, 820, 1639, 3276, 6554, 13106, 26212, 52425]  
+MODULUS_M, MODULUS_N = 89, 104848
+MULTIPLICATIVE_INVERSE = 87177
+
+# Function to find the greatest common divisor of two numbers
+def find_gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+# Function to check if two numbers are coprime
+def are_coprime(a, b):
+    return find_gcd(a, b) == 1
+
+# Function to choose random values for m and n
+def choose_m_and_n():
+    sum_knapsack = sum(SUPERINCREASING_KNAPSACK)
+    m = randint(41, 100)
+    n = 0
+    while n < sum_knapsack:
+        if are_coprime(m, sum_knapsack + 1):
+            n = sum_knapsack + 1
+    return m, n
+
+# Function to generate the general knapsack
+def generate_general_knapsack(m, n, knapsack):
+    general_knapsack = []
+    for ai in knapsack:
+        general_knapsack.append((ai * m) % n)
+    return general_knapsack
+
+# Function to find the modulo multiplicative inverse
+def find_multiplicative_inverse(A, M):
+    gcd, x, y = extended_euclid_gcd(A, M)
+    if x < 0:
+        x += M
+    return x
+
+# Function to find the extended Euclidean GCD
+def extended_euclid_gcd(a, b):
+    s, old_s = 0, 1
+    t, old_t = 1, 0
+    r, old_r = b, a
+    while r != 0:
+        quotient = old_r // r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    return old_r, old_s, old_t
+
+# Function to convert character to ASCII binary
+def char_to_binary(character):
+    ascii_code = ord(character)
+    binary = "{0:b}".format(ascii_code)
+    if len(binary) <= BITS_PER_CHAR - 1:
+        binary = '0' * (BITS_PER_CHAR - len(binary)) + binary
+    return binary
+
+# Function to encrypt a single character
+def encrypt_character(character):
+    binary_chars = ""
+    for char in character:
+        binary_chars = char_to_binary(char)[::-1] + binary_chars
+    return sum([int(x) * y for x, y in zip(list(binary_chars), GENERAL_KNAPSACK)])
+
+# Function to decrypt a single character
+def decrypt_character(number):
+    result = ""
+    remaining = (number * MULTIPLICATIVE_INVERSE) % MODULUS_N
+    for value in SUPERINCREASING_KNAPSACK[::-1]:
+        if remaining >= value:
+            result = "1" + result
+            remaining -= value
+        else:
+            result = "0" + result
+    result = result[::-1]
+    char1 = chr(binary_to_int(result[:BITS_PER_CHAR]))
+    char2 = chr(binary_to_int(result[BITS_PER_CHAR:]))
+    return char1 + char2
+
+# Function to convert binary to integer
+def binary_to_int(bitstring):
+    output = 0
+    for bit in list(bitstring):
+        output = (output << 1) | int(bit)
+    return output
+
+# Function to encrypt a message
+def encrypt_message(message):
+    encrypted_message = []
+    if len(message) % CHARS_PER_BLOCK != 0:
+        message += " " * (CHARS_PER_BLOCK - len(message) % CHARS_PER_BLOCK)
+    for i in range(0, len(message), CHARS_PER_BLOCK):
+        encrypted_message.append(encrypt_character(message[i:i + CHARS_PER_BLOCK]))
+    return encrypted_message
+
+# Function to decrypt a message
+def decrypt_message(crypto_list):
+    decrypted_message = ""
+    for num in crypto_list:
+        decrypted_message += decrypt_character(num)
+    return decrypted_message
+
+# Example usage
+print(decrypt_message(encrypt_message("ciao, io mi chiamo francesco ")))
+
+# Reading from file
+with open("encrypted", "r") as encrypted_file:
+    encrypted_lines = encrypted_file.readlines()
+    decrypted_text = ""
+    for line in encrypted_lines:
+        decrypted_text += decrypt_message([int(line, 16)])
+    print(decrypted_text)

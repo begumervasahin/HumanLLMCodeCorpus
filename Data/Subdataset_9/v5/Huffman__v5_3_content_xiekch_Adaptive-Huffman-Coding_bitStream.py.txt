@@ -1,0 +1,65 @@
+class BitStream:
+    def __init__(self, file_name, mode):
+        self.file = open(file_name, mode)
+        self.byte = 0
+        self.position = -1 if mode[0] == 'r' else 7
+        self.mode = mode
+
+    def read(self, size):
+        bits_read = ''
+        for _ in range(size):
+            if self.position == -1:
+                self.byte = self.file.read(1)
+                if self.byte == b'':
+                    return ''
+                else:
+                    self.byte = ord(self.byte)
+                    self.position = 7
+            bits_read += '1' if self.byte & (1 << self.position) else '0'
+            self.position -= 1
+        return bits_read
+
+    def write(self, string):
+        for char in string:
+            if char == '0':
+                self.byte <<= 1
+            elif char == '1':
+                self.byte <<= 1
+                self.byte += 1
+            else:
+                continue
+            self.position -= 1
+            if self.position == -1:
+                self.flush()
+
+    def close(self):
+        if self.mode[0] == 'w':
+            self.flush()
+        self.file.close()
+
+    def flush(self):
+        if self.position != 7:
+            while self.position > -1:
+                self.byte <<= 1
+                self.position -= 1
+            self.file.write(self.byte.to_bytes(1, byteorder='little'))
+        self.byte = 0
+        self.position = 7
+
+if __name__ == '__main__':
+    input_stream = BitStream('./test.txt', 'rb')
+    output_stream = BitStream('./temp.txt', 'wb')
+
+    character = input_stream.read(1)
+    count = 0
+
+    while character:
+        print(character, end='')
+        count += 1
+        if count % 8 == 0:
+            print()
+        output_stream.write(character)
+        character = input_stream.read(1)
+
+    input_stream.close()
+    output_stream.close()

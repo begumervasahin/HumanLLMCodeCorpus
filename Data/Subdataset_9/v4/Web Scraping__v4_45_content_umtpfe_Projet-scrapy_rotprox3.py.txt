@@ -1,0 +1,62 @@
+import urllib.request
+from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
+import random
+
+# Creating a UserAgent object
+ua = UserAgent()
+
+# Initializing an empty list to store proxies
+proxies = []
+
+def main():
+    # Requesting the webpage containing proxies
+    proxies_req = urllib.request.Request('https://www.sslproxies.org/')
+    proxies_req.add_header('User-Agent', ua.random)
+    proxies_doc = urllib.request.urlopen(proxies_req).read().decode('utf8')
+    
+    # Parsing the webpage content using BeautifulSoup
+    soup = BeautifulSoup(proxies_doc, 'html.parser')
+    
+    # Finding the table containing proxy information
+    proxies_table = soup.find(id='proxylisttable')
+    
+    # Iterating through each row in the table to extract proxy details
+    for row in proxies_table.tbody.find_all('tr'):
+        proxies.append({
+            'ip':   row.find_all('td')[0].string,
+            'port': row.find_all('td')[1].string
+        })
+    
+    # Selecting a random proxy
+    proxy_index = random_proxy()
+    proxy = proxies[proxy_index]
+    
+    # Looping through a certain number of requests
+    for n in range(1, 100):
+        req = urllib.request.Request('https://www.google.com/')
+        req.set_proxy(proxy['ip'] + ':' + proxy['port'], 'http')
+        
+        # Switching proxy after every 10 requests
+        if n % 10 == 0:
+            proxy_index = random_proxy()
+            proxy = proxies[proxy_index]
+        
+        try:
+            # Sending request and printing the response
+            my_ip = urllib.request.urlopen(req).read().decode('utf8')
+            print('My IP:', my_ip)
+        except:
+            # Removing the proxy if it fails to respond
+            del proxies[proxy_index]
+            print('Proxy ' + proxy['ip'] + ':' + proxy['port'] + ' deleted.')
+            proxy_index = random_proxy()
+            proxy = proxies[proxy_index]
+
+# Function to select a random proxy
+def random_proxy():
+    return random.randint(0, len(proxies) - 1)
+
+# Main function entry point
+if __name__ == '__main__':
+    main()

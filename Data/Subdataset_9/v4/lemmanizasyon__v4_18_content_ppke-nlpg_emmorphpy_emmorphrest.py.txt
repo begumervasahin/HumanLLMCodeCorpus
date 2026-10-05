@@ -1,0 +1,62 @@
+# Import necessary functions from the xtsv module
+from xtsv import pipeline_rest_api, singleton_store_factory
+
+# Define tasks for stemming, analyzing, and dstemming using EmMorphPy
+em_morph_stem = (
+    'emmorphpy.emmorphpy',  # Module path
+    'EmMorphPy',             # Class name
+    'stem',                  # Method name
+    (),                      # Arguments tuple (empty here)
+    {
+        'task': 'stem',               # Task type
+        'source_fields': {'form'},    # Source field(s)
+        'target_fields': ['anas']     # Target field(s)
+    }
+)
+
+em_morph_analyze = (
+    'emmorphpy.emmorphpy',
+    'EmMorphPy',
+    'analyze',
+    (),
+    {
+        'task': 'analyze',
+        'source_fields': {'form'},
+        'target_fields': ['anas']
+    }
+)
+
+em_morph_dstem = (
+    'emmorphpy.emmorphpy',
+    'EmMorphPy',
+    'dstem',
+    (),
+    {
+        'task': 'dstem',
+        'source_fields': {'form'},
+        'target_fields': ['anas']
+    }
+)
+
+# Create a list of tools with their corresponding task names
+tools = [
+    (em_morph_stem, ('stem',)),
+    (em_morph_analyze, ('analyze',)),
+    (em_morph_dstem, ('dstem',)),
+]
+
+# Set up the REST API for the pipeline
+app = pipeline_rest_api(
+    'emMorph',               # API name
+    tools,                   # List of tools
+    {},                      # Additional configurations (empty here)
+    conll_comments=False,    # Boolean flag for CoNLL comments
+    singleton_store=singleton_store_factory(),  # Singleton store
+    form_title='emMorph demo',  # Title for the form
+    form_type='radio',           # Form type (radio buttons)
+    doc_link='https://github.com/ppke-nlpg/emmorphpy'  # Documentation link
+)
+
+# Run the application if this script is executed directly
+if __name__ == '__main__':
+    app.run(debug=False)  # Run the app (debug mode is set to False)

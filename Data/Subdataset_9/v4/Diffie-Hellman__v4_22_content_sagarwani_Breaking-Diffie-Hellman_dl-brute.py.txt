@@ -1,0 +1,35 @@
+# Function to compute modular exponentiation
+def modular_exponentiation(base, exponent, modulus):
+    result = 1
+    # Convert exponent to binary for efficient calculation
+    binary_exponent = "{0:b}".format(exponent)
+    for bit in binary_exponent:
+        result = (result * result) % modulus
+        if bit == '1':
+            result = (result * base) % modulus
+    return result
+
+# Function to perform the attack to find the exponent
+def attack(prime_modulus, base, result):
+    for potential_exponent in range(prime_modulus):
+        if modular_exponentiation(base, potential_exponent, prime_modulus) == result:
+            return potential_exponent
+    return 0
+
+if __name__ == '__main__':
+    # Read input from a file specified as a command-line argument
+    input_file_path = sys.argv[1]
+    with open(input_file_path, 'r') as input_file:
+        content = input_file.readline().strip().split(',')
+        p = int(re.findall('\d+', content[0])[0])  # Extract prime modulus
+        g = int(re.findall('\d+', content[1])[0])  # Extract base
+        ga = int(re.findall('\d+', content[2])[0])  # Extract result of exponentiation
+
+    # Perform the attack to find the exponent
+    exponent = attack(p, g, ga)
+
+    # Print the result or a message if the exponent is not found
+    if exponent:
+        print("Found exponent:", exponent)
+    else:
+        print("Exponent not found.")

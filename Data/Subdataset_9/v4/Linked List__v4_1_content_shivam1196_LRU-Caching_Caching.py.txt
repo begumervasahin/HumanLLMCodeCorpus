@@ -1,0 +1,88 @@
+from caching.doublylinkedlist.DoublyLinkedList import DoublyLinkedList
+from caching.node.HashNode import HashNode
+
+class Caching:
+    def __init__(self, capacity):
+        """
+        Initializes a caching system with a specified capacity.
+
+        Args:
+            capacity (int): The maximum number of entries the cache can hold.
+        """
+        self.cache_array = {}  # Hash map to store key-value pairs
+        self.array_size = capacity  # Maximum capacity of the cache
+        self.total_entries = 0  # Current number of entries in the cache
+        self.doubly_linked_list = DoublyLinkedList()  # Doubly linked list for managing cache entries
+
+    def get(self, key):
+        """
+        Retrieves the value associated with the given key from the cache.
+
+        Args:
+            key: The key to search for in the cache.
+        """
+        if key in self.cache_array:
+            # If key exists in the cache, access the corresponding node in the doubly linked list
+            self.doubly_linked_list.access_a_node(self.cache_array[key])
+        else:
+            # If key does not exist, print -1 (indicating key not found)
+            print(-1)
+
+    def set(self, key, value):
+        """
+        Inserts or updates a key-value pair in the cache.
+
+        Args:
+            key: The key to be inserted or updated.
+            value: The value associated with the key.
+        """
+        if self.total_entries < self.array_size:
+            # If cache is not full, insert the key-value pair and corresponding node in the doubly linked list
+            self.cache_array[key] = self.doubly_linked_list.enter_value(key, value)
+            self.total_entries += 1
+        else:
+            # If cache is full, replace the least recently used node with the new key-value pair
+            node = self.doubly_linked_list.get_head_node()
+            del self.cache_array[node.key]  # Remove the least recently used key from the hash map
+            self.cache_array[key] = self.doubly_linked_list.replace_a_node(key, value)
+
+    def hash_of_set(self, key):
+        """
+        Computes the hash index for a given key.
+
+        Args:
+            key: The key for which to compute the hash index.
+
+        Returns:
+            int: The hash index.
+        """
+        index_number = key % self.array_size
+        return index_number
+
+    def get_total_entries(self):
+        """
+        Returns the total number of entries in the cache.
+
+        Returns:
+            int: Total number of entries in the cache.
+        """
+        return self.total_entries
+
+    def print_all_entries(self):
+        """
+        Prints all entries (key-value pairs) in the cache.
+        """
+        self.doubly_linked_list.print_doubly_linked_list()
+
+if __name__ == "__main__":
+    caching = Caching(5)
+    caching.set(1, 1)
+    caching.set(2, 2)
+    caching.set(3, 3)
+    caching.set(4, 4)
+    caching.set(5, 5)
+    caching.get(1)
+    caching.set(6, 6)
+    caching.set(7, 7)
+    caching.get(11)
+    caching.print_all_entries()

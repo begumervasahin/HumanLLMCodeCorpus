@@ -1,0 +1,69 @@
+# Import necessary libraries
+import json
+import flask
+from flask import request
+import predict_using_mlp
+
+# Define the port number for the Flask application
+PORT_NO = 8080
+
+# Initialize the Flask app
+app = flask.Flask(__name__)
+
+# Route for the home page
+@app.route('/', methods=['GET'])
+def index():
+    # Open and read the index.html file
+    with open("index.html", "rb") as f:
+        return f.read()
+
+# Route for the API endpoint
+@app.route('/api', methods=['GET'])
+def api():
+    # Get the value of the 'q' parameter from the query string
+    q = request.args.get('q', '')
+    
+    # Check if the 'q' parameter is empty
+    if q == '':
+        # Return a JSON response indicating that the text is empty
+        return '{"label": "テキストが空です", "percent":0}'
+    
+    # Print the received text
+    print("q=", q)
+    
+    # Predict the genre label and percentage using the MLP model
+    label, percent, _ = predict_using_mlp.predict_genre(q)
+    
+    # Round the percentage to two decimal places
+    percent = round(percent * 100, 2)
+    
+    # Return a JSON response with the predicted label and percentage
+    return json.dumps({
+        "label": label,
+        "percent": percent
+    })
+
+# Route for handling POST requests
+@app.route('/', methods=['POST'])
+def api_2():
+    # Check if the content type is JSON
+    if request.headers['Content-Type'] != 'application/json':
+        # If not JSON, return an error response
+        print('Content-Type:', request.headers['Content-Type'])
+        return flask.jsonify(res='error'), 400
+    else:
+        # If JSON, get the JSON data from the request
+        data = request.get_json()
+        
+        # Print the received text
+        print(data['text'])
+        
+        # Predict the genre label using the MLP model
+        label, _, _ = predict_using_mlp.predict_genre(data['text'])
+        
+        # Return a JSON response with the predicted label
+        return json.dumps({"label": label})
+
+# Start the Flask application
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=PORT_NO, threaded=False)

@@ -1,0 +1,51 @@
+import numpy as np
+from matplotlib import pyplot as plt
+from collections import Counter
+import warnings
+
+# Function to calculate Euclidean distance between two points
+def euclidean_distance(point1, point2):
+    return np.linalg.norm(np.array(point1) - np.array(point2))
+
+# Function to calculate k-nearest neighbors
+def k_nearest_neighbors(data, predict, k=3):
+    # Warn if k is smaller than the number of data points
+    if len(data) >= k:
+        warnings.warn("k is too small")
+    
+    # Calculate distances between data points and the prediction point
+    distances = [(group, euclidean_distance(features, predict)) 
+                 for group, features_list in data.items() 
+                 for features in features_list]
+    
+    # Sort distances and get the top k nearest groups
+    sorted_distances = sorted(distances, key=lambda x: x[1])
+    top_nearest = [group for group, _ in sorted_distances[:k]]
+    
+    # Determine the most common group among the top k nearest neighbors
+    group_res = Counter(top_nearest).most_common(1)[0][0]
+    
+    # Calculate confidence level based on the frequency of the most common group
+    confidence = Counter(top_nearest).most_common(1)[0][1] * 1.0 / k
+    
+    return group_res, confidence
+
+if __name__ == '__main__':
+    # Sample dataset with groups and corresponding features
+    dataset = {'black': [[1, 2], [2, 3], [3, 1]], 'red': [[6, 5], [7, 7], [8, 6]]}    
+    
+    # New features to predict
+    new_features = [3.5, 5.2]
+    
+    # Plotting existing data points
+    for group, features_list in dataset.items():
+        for features in features_list:
+            plt.scatter(features[0], features[1], s=50, color=group)
+    
+    # Finding the group for the new features using k-nearest neighbors
+    which_group, confidence = k_nearest_neighbors(dataset, new_features, k=3)      
+    print(f"Predicted group: {which_group}, Confidence: {confidence}")
+    
+    # Plotting the new features with the predicted group
+    plt.scatter(new_features[0], new_features[1], s=300, color=which_group)    
+    plt.show()

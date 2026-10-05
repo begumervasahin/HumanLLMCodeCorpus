@@ -1,0 +1,47 @@
+# Importing necessary libraries
+from pyspark import SparkConf, SparkContext
+from pyspark.ml.feature import HashingTF, IDF, NGram
+from pyspark.sql import SparkSession
+import re
+
+# Function to process each file and extract words
+def process_file(file_content):
+    file_path, text = file_content
+    # Extracting file name from the file path
+    file_name = file_path.split("/")[-1]
+    # Normalizing text by converting to lowercase and removing non-alphanumeric characters
+    words = re.sub('[^a-z0-9]+', ' ', text.lower()).split()
+    return (file_name, words)
+
+# Setting up Spark configuration
+conf = SparkConf()
+conf.setAppName("Part 2 - Unigram")
+conf.set("spark.executor.memory", "2g")
+sc = SparkContext(conf=conf)
+
+# Reading files from the specified directory
+files_rdd = sc.wholeTextFiles("/cosc6339_s17/books-longlist/")
+
+# Creating a SparkSession
+spark = SparkSession(sc)
+
+# Checking if toDF method exists for RDD
+if hasattr(files_rdd, "toDF"):
+    # Mapping each file content to its processed form (filename, words)
+    processed_files_df = files_rdd.map(process_file).toDF(["bookname", "words"])
+
+    # Creating unigrams from words
+    unigram = NGram(n=1, inputCol="words", outputCol="unigrams")
+    unigram_df = unigram.transform(processed_files_df)
+
+    # Calculating Term Frequency (TF) using HashingTF
+    hashingTF = HashingTF(inputCol="unigrams", outputCol="unigram-tf")
+    tf_df = hashingTF.transform(unigram_df)
+
+    # Calculating Inverse Document Frequency (IDF)
+    idf = IDF(inputCol="unigram-tf", outputCol="unigram-tf-idf")
+    idf_model = idf.fit(tf_df)
+    tfidf_df = idf_model.transform(tf_df)
+
+    # Saving TF-IDF results to a text file
+    tfidf_df.rdd.saveAsTextFile("/bigd12/output2_1")

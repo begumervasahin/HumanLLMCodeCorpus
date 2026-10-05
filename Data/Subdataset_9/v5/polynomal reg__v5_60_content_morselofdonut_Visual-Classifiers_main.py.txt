@@ -1,0 +1,35 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load data from CSV file
+x, y = np.loadtxt('dataset.csv', delimiter=',', unpack=True)
+
+# Fit a 15th-degree polynomial to the data
+coefficients = np.polyfit(x, y, 15)
+polynomial = np.poly1d(coefficients)
+
+# Calculate distances between actual data points and polynomial fit
+distances = np.abs(y - polynomial(x))
+
+# Calculate average distances for each unique x-value
+unique_x = np.unique(x)
+average_distances = np.array([[value, np.mean(distances[x == value])] for value in unique_x])
+
+# Create a figure and subplots
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(18, 9))
+
+# Scatter plot with value classifier
+colors_val = np.where(y > polynomial(x), 'r', 'b')
+ax1.scatter(x, y, s=2, marker='o', c=colors_val)
+ax1.plot(x, polynomial(x), 'k', linewidth=1)
+ax1.set_title("Value Classifier")
+
+# Scatter plot with average distance classifier
+colors_dist = np.where(distances > average_distances[:, 1][np.searchsorted(unique_x, x)], 'r', 'b')
+ax2.scatter(x, y, s=2, marker='o', c=colors_dist)
+ax2.plot(x, polynomial(x), 'k', linewidth=1)
+ax2.set_title("Average Distance Classifier")
+
+# Display the plots
+plt.tight_layout()
+plt.show()

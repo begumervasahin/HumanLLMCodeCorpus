@@ -1,0 +1,64 @@
+import heapq
+import global_variables as glb  # assuming 'global_variables' module contains necessary global variables
+
+# Function to read the graph from a file
+def read_graph(file_path, delimiter):
+    with open(file_path) as file:
+        for line in file:
+            # Splitting the line based on the delimiter
+            vertex1, vertex2, weight = [x.strip() for x in line.split(delimiter)]
+            
+            # Checking if the edge already exists, if so, skip
+            if (int(weight), vertex2, vertex1) in glb.EDGES:
+                continue
+            
+            # Adding the edge to the global list of edges
+            heapq.heappush(glb.EDGES, (int(weight), vertex1, vertex2))
+            
+            # Adding vertices to the global set of vertices
+            glb.VERTICES.add(vertex1)
+            glb.VERTICES.add(vertex2)
+    
+    return glb.EDGES
+
+# Function to create a set for a vertex
+def make_set(vertex):
+    glb.PARENT[vertex] = vertex
+    glb.RANK[vertex] = 0
+
+# Function to find the representative of a set (using path compression)
+def find(vertex):
+    if glb.PARENT[vertex] != vertex:
+        glb.PARENT[vertex] = find(glb.PARENT[vertex])
+    return glb.PARENT[vertex]
+
+# Function to perform union of two sets (using union by rank)
+def union(vertex1, vertex2):
+    root1 = find(vertex1)
+    root2 = find(vertex2)
+    if root1 != root2:
+        if glb.RANK[root1] > glb.RANK[root2]:
+            glb.PARENT[root2] = root1
+        else:
+            glb.PARENT[root1] = root2
+            glb.RANK[root2] += 1
+
+# Function to perform Kruskal's algorithm
+def kruskals():
+    total_weight = 0
+    # Creating sets for each vertex
+    for vertex in glb.VERTICES:
+        make_set(vertex)
+    
+    # Processing edges in ascending order of weights
+    while glb.EDGES:
+        weight, vertex1, vertex2 = heapq.heappop(glb.EDGES)
+        # Checking for cycle using disjoint set union
+        if find(vertex1) != find(vertex2):
+            # Merging sets and updating total weight
+            union(vertex1, vertex2)
+            total_weight += weight
+            # Adding edge to the minimum spanning tree
+            glb.MST.append((vertex1, vertex2, str(weight), str(total_weight)))
+    
+    return (glb.MST, total_weight)

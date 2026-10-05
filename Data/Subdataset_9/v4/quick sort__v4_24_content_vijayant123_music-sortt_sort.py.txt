@@ -1,0 +1,61 @@
+import subprocess
+import os
+import sys
+from os import listdir
+from os.path import isfile, join
+from pygame import mixer
+
+# Paths for songs, save directory, and alternate directory
+mypath = "/home/error-404/Desktop/songs"
+savepath = "/home/error-404/Desktop/dance"
+altpath = "/home/error-404/Desktop/others"
+
+# Get list of files in the songs directory
+onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+
+# Initialize pygame mixer
+mixer.init()
+
+# Flag for pause/unpause control
+flag = 0
+
+# Loop through each file in the songs directory
+for f in onlyfiles:
+    print(f)
+    mixer.music.load(join(mypath, f))
+    mixer.music.play(0, 40)
+    
+    # Main control loop
+    while True:
+        # User input
+        a = input()
+        
+        # Quit if 'q' is pressed
+        if a == 'q':
+            sys.exit(0)
+        
+        # Rewind and play from specified position
+        elif a.isdigit():
+            mixer.music.rewind()
+            mixer.music.play(0, int(a) * 10)
+        
+        # Stop and move the file to the alternate directory
+        elif a == '':
+            mixer.music.stop()
+            os.rename(join(mypath, f), join(altpath, f))
+            break
+        
+        # Stop and move the file to the save directory
+        elif a == '/':
+            mixer.music.stop()
+            os.rename(join(mypath, f), join(savepath, f))
+            break
+        
+        # Pause or unpause the music
+        elif a == 'p':
+            if flag == 0:
+                mixer.music.pause()
+                flag = 1
+            else:
+                mixer.music.unpause()
+                flag = 0

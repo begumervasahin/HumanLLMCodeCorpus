@@ -1,0 +1,47 @@
+import hashlib
+import re
+
+def main():
+    inputfile = 'data/test/ftb1/ftb1u.tsv'
+    outputfile = 'data/test/ftb1/ftb1u_sample.tsv'
+
+    # Reading the input file and splitting it into sentences
+    with open(inputfile) as file:
+        lines = file.readlines()
+        sentences = list(split_sentences(lines))
+
+    # Selecting sentences with a SHA256 digest starting with '0'
+    selected = []
+    for sentence in sentences:
+        digest = hashlib.sha256(sentence.encode('utf-8')).hexdigest()
+        if digest.startswith('0'):
+            selected.append(sentence)
+
+    # Printing the number of sampled sentences
+    print(f'Sampled {len(selected)} out of {len(sentences)} sentences')
+
+    # Writing selected sentences to the output file
+    with open(outputfile, 'w') as file:
+        file.write('\n'.join(selected))
+
+    # Informing about the completion
+    print(f'Wrote samples to {outputfile}')
+
+def split_sentences(lines):
+    # Regular expression to match the start of a sentence
+    start_re = re.compile(r'^')
+
+    sentence = []
+    for line in lines:
+        if start_re.match(line):
+            if sentence:
+                yield ''.join(sentence)
+                sentence = []
+        if line.strip():
+            sentence.append(line)
+
+    if sentence:
+        yield ''.join(sentence)
+
+if __name__ == '__main__':
+    main()

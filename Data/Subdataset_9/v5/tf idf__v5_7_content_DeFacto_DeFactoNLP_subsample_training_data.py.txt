@@ -1,0 +1,69 @@
+import os
+import jsonlines
+from random import shuffle
+
+def load_jsonl(file_path):
+    """Load data from a JSONL file."""
+    with jsonlines.open(file_path) as file:
+        return [line for line in file]
+
+def write_jsonl(data, file_path):
+    """Write data to a JSONL file."""
+    with jsonlines.open(file_path, mode='w') as writer:
+        for item in data:
+            writer.write(item)
+
+def subsample_data(data, num_samples):
+    """Subsample data randomly."""
+    shuffle(data)
+    return data[:num_samples]
+
+def categorize_data(data):
+    """Categorize data into different label groups."""
+    support = []
+    refute = []
+    not_enough_info = []
+
+    for line in data:
+        label = line['label']
+        if label == "SUPPORTS":
+            support.append(line)
+        elif label == "REFUTES":
+            refute.append(line)
+        elif label == "NOT ENOUGH INFO":
+            not_enough_info.append(line)
+
+    return support, refute, not_enough_info
+
+# Define file paths
+train_file_path = "data/train.jsonl"
+subsampled_file_path = "data/subsample_train.jsonl"
+
+# Load training data
+train_set = load_jsonl(train_file_path)
+
+# Define the number of samples required for each label
+num_required_support = 3000
+num_required_refute = 3000
+num_required_not_enough_info = 4000
+
+# Categorize data based on labels
+support, refute, not_enough_info = categorize_data(train_set)
+
+# Subsample data
+subsampled_support = subsample_data(support, num_required_support)
+subsampled_refute = subsample_data(refute, num_required_refute)
+subsampled_not_enough_info = subsample_data(not_enough_info, num_required_not_enough_info)
+
+# Combine subsampled lists
+subsampled = subsampled_support + subsampled_refute + subsampled_not_enough_info
+
+# Shuffle the combined subsampled list
+shuffle(subsampled)
+
+# Print the lengths of the original and subsampled datasets
+print("Original dataset length:", len(train_set))
+print("Subsampled dataset length:", len(subsampled))
+
+# Write the subsampled data to a new file
+write_jsonl(subsampled, subsampled_file_path)

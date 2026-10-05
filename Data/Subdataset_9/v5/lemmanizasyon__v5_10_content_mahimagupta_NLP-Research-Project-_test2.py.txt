@@ -1,0 +1,110 @@
+import re
+import string
+from nltk.tag import tnt
+from nltk.corpus import indian
+import nltk
+
+# Open files for reading and writing
+input_file = open("tech_text_final.txt", "r")
+output_file = open("output.txt", "w")
+lemma_file = open("lemma.txt", "w+")
+tag_file = open("tags.txt", "w")
+word_dict = {}
+
+# Function to preprocess text
+def preprocess_text(text):
+    text = re.sub(r'(\d+)', r' ', text)
+    text = text.translate(str.maketrans(string.punctuation, ' ' * len(string.punctuation)))
+    return text
+
+# Function to process the POS tagging model
+def process_model():
+    # Training data for POS tagging
+    train_data = indian.tagged_sents('hindi.pos')
+    tnt_pos_tagger = tnt.TnT()
+    tnt_pos_tagger.train(train_data)
+    
+    # Read input text and split into sentences
+    text = input_file.read()
+    sentences = text.split("।")
+    
+    # Process each sentence
+    for sentence in sentences:
+        sentence = preprocess_text(sentence)
+        words = nltk.word_tokenize(sentence)
+
+        # Tag each word and write to output files
+        for word in words:
+            if word.strip() != "":
+                tagged_word = tnt_pos_tagger.tag([word])
+                output_file.write(word.rstrip() + "\n")
+                tag_file.write(word.rstrip() + " : " + tagged_word[0][1] + "\n")
+
+    # Close output files
+    tag_file.close()
+    output_file.close()
+
+# Function to perform lemmatization
+def lemmatize():
+    # Open tag file for reading
+    with open("tags.txt", "r") as tag_data:
+        data = tag_data.read().split("\n")
+    
+    # Process each tagged token
+    for token in data:
+        if token == '':
+            continue
+        line = token.split(":")
+        if line[1].strip().startswith(("NN", "PR", "VAUX")):
+            word_dict[line[0].strip()] = [line[0].strip()]
+        else:
+            generate_stem_words(line[0].strip())
+
+# Function to generate stem words
+def generate_stem_words(word):
+    suffixes = {
+        1: ["ो", "े", "ू", "ु", "ी", "ि", "ा"],
+        2: ["कर", "ाओ", "िए", "ाई", "ाए", "ने", "नी", "ना", "ते", "ीं", "ती", "ता", "ाँ", "ां", "ों", "ें"],
+        3: ["ाकर", "ाइए", "ाईं", "ाया", "ेगी", "ेगा", "ोगी", "ोगे", "ाने", "ाना", "ाते", "ाती", "ाता", "तीं", "ाओं", "ाएं", "ुओं", "ुएं", "ुआं"],
+        4: ["ाएगी", "ाएगा", "ाओगी", "ाओगे", "एंगी", "ेंगी", "एंगे", "ेंगे", "ूंगी", "ूंगा", "ातीं", "नाओं", "नाएं", "ताओं", "ताएं", "ियाँ", "ियों", "ियां"],
+        5: ["ाएंगी", "ाएंगे", "ाऊंगी", "ाऊंगा", "ाइयाँ", "ाइयों", "ाइयां"],
+    }
+    rules = [suffixes[4][17], suffixes[4][16], suffixes[1][1], suffixes[1][6], suffixes[1][4], suffixes[5][4], suffixes[5][5], suffixes[5][6]]
+
+    for rule in rules:
+        if word.endswith(rule):
+            if rule == suffixes[4][17] or rule == suffixes[4][16] or rule == suffixes[1][4]:
+                new_suffix = suffixes[1][4]
+            elif rule == suffixes[1][1] or rule == suffixes[1][6]:
+                new_suffix = suffixes[1][6]
+            elif rule == suffixes[5][4] or rule == suffixes[5][5] or rule == suffixes[5][6]:
+                new_suffix = suffixes[3][2]
+
+            word_dict[word] = [word[:word.rindex(rule)] + new_suffix]
+            return
+
+    # No match found, consider empty list
+    if word not in word_dict:
+        word_dict[word] = []
+
+# Function to print the lemmatized dictionary to file
+def print_dict():
+    with open("lemma.txt", "w+") as lemma_file:
+        for k, v in word_dict.items():
+            if not v:
+                lemma_file.write(k + ": " + k)
+            else:
+                lemma_file.write(k + ": ")
+                for element in set(v):
+                    lemma_file.write(element + " ")
+            lemma_file.write("\n")
+
+# Main function
+def main():
+    process_model()
+    lemmatize()
+    print_dict()
+
+# Execute main function
+if __name__ == "__main__":
+    main()

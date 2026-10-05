@@ -1,0 +1,66 @@
+import numpy as np
+
+# Function to load mobility data from file
+def load_mobility_data(file_path):
+    traj1 = []
+    traj2 = []
+    lst_users = []
+
+    with open(file_path) as f:
+        next(f)  # Skip header line
+
+        for line in f:
+            data = line.strip().split(",")
+            user_id = int(data[0])
+
+            if user_id == traj2[-1][0] if traj2 else None:
+                traj2.append([user_id, str(data[1]), data[2]])
+            else:
+                if traj2:
+                    traj1.append(traj2)
+                traj2 = [[user_id, str(data[1]), data[2]]]
+                lst_users.append(user_id)
+
+        traj1.append(traj2)
+
+    print("Mobility data loaded successfully.")
+    return traj1, lst_users
+
+# Function to load distance matrix from file
+def load_distance_matrix(file_path, lst_users):
+    distance_matrix = np.zeros((len(lst_users), len(lst_users)))
+
+    with open(file_path) as f:
+        for idx, line in enumerate(f):
+            data = line.strip().split(",")
+
+            if lst_users[idx] != int(data[0]):
+                print('Error: Mismatch in user IDs at index', idx)
+
+            for j, dist in enumerate(data[1:]):
+                dist = float(dist)
+                if dist == 0 and idx != j:
+                    print("Error: Zero distance found at index", idx, j)
+                distance_matrix[idx][j] = dist
+
+    print("Distance matrix loaded successfully.")
+    return distance_matrix
+
+# Check symmetry of the distance matrix
+def check_symmetry(matrix):
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if matrix[i][j] != matrix[j][i]:
+                print("Error: Asymmetric distance found at indices", i, j)
+
+# Main function
+def main():
+    mobility_file_path = '/home/s/Dropbox/Thesis/Telenor/fwdtelenordata/v01_anonymized_mobility.csv'
+    distance_matrix_file_path = 'distance_matrix_final.csv'
+
+    traj1, lst_users = load_mobility_data(mobility_file_path)
+    distance_matrix = load_distance_matrix(distance_matrix_file_path, lst_users)
+    check_symmetry(distance_matrix)
+
+if __name__ == "__main__":
+    main()

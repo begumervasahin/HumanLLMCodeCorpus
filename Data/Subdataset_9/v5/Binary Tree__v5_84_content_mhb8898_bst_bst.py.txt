@@ -1,0 +1,129 @@
+import urllib.request
+import re
+from collections import OrderedDict
+import itertools as IT
+import networkx as nx
+import matplotlib.pyplot as plt
+from bs4 import BeautifulSoup
+from networkx.drawing.nx_agraph import graphviz_layout
+
+class Node:
+    def __init__(self, value, left=None, right=None, parent=None, count=1):
+        self.value = value
+        self.left = left
+        self.right = right
+        self.parent = parent
+        self.count = count
+
+    def __len__(self):
+        return self.count
+
+    def __iter__(self):
+        if self:
+            if self.left:
+                yield from self.left
+            yield (self.value, self.count)
+            if self.right:
+                yield from self.right
+
+    def replace(self, value, left_child, right_child):
+        self.value = value
+        self.left = left_child
+        self.right = right_child
+        if self.left:
+            self.left.parent = self
+        if self.right:
+            self.right.parent = self
+
+    # Other methods omitted for brevity
+
+class BST:
+    def __init__(self, url=None, file=None):
+        self.root = None
+        self.size = 0
+        self.count_dict = dict()
+        if url:
+            self.process_url(url)
+        if file:
+            self.process_file(file)
+
+    def __len__(self):
+        return self.size
+
+    def __iter__(self):
+        return self.root.__iter__()
+
+    # Other methods omitted for brevity
+
+    def sorted_by_count(self):
+        l = [None] * self.size
+        count_dict = OrderedDict(self.count_dict)
+        d = OrderedDict()
+        s = -1
+        for i in count_dict:
+            d[i] = count_dict[i] + s
+            s += count_dict[i]
+        for i, j in self:
+            l[d[j]] = (i, j)
+            d[j] -= 1
+        return l[::-1]
+
+    def plot(self):
+        labels = {}
+        for i, j in self.root.edge_list():
+            labels[i] = i
+            labels[j] = j
+        G = nx.Graph(self.root.edge_list())
+        pos = graphviz_layout(G, prog='dot')
+        nx.draw(G, pos)
+        nx.draw_networkx_labels(G, pos, labels)
+        plt.show()
+
+    def process_url(self, url):
+        text = urllib.request.urlopen(url).read()
+        soup = BeautifulSoup(text, 'html.parser')
+        [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
+        visible_text = soup.getText()
+        word_list = re.sub("[^\w]", " ", visible_text).split()
+        for i in word_list:
+            self.put(i)
+
+    def process_file(self, file):
+        with open(file, "r") as f:
+            data = f.read()
+            word_list = re.sub("[^\w]", " ", data).split()
+            for i in word_list:
+                self.put(i)
+
+    def put(self, value):
+        node = self.get(value)
+        if node:
+            if self.count_dict[node.count] == 1:
+                self.count_dict.pop(node.count)
+            else:
+                self.count_dict[node.count] -= 1
+            node.count += 1
+            self.count_dict[node.count] = self.count_dict.get(node.count, 0) + 1
+        else:
+            if self.root:
+                self._put(value, self.root)
+            else:
+                self.root = Node(value)
+                self.count_dict[self.root.count] = self.count_dict.get(self.root.count, 0) + 1
+            self.size += 1
+
+    def _put(self, value, current_node):
+        if value < current_node.value:
+            if current_node.left:
+                self._put(value, current_node.left)
+            else:
+                current_node.left = Node(value, parent=current_node)
+                self.count_dict[current_node.left.count] = self.count_dict.get(current_node.left.count, 0) + 1
+        else:
+            if current_node.right:
+                self._put(value, current_node.right)
+            else:
+                current_node.right = Node(value, parent=current_node)
+                self.count_dict[current_node.right.count] = self.count_dict.get(current_node.right.count, 0) + 1
+
+    # Other methods omitted for brevity
