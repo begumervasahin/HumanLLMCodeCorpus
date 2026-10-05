@@ -1,0 +1,88 @@
+import socket as mysoc
+import sys
+def read_host_file(file_name):
+    host_info = {}
+    try:
+        with open(file_name, "r") as file:
+            for line in file:
+                tokens = line.split()
+                if len(tokens) >= 3:
+                    host_info[tokens[0].strip()] = {'ip': tokens[1].strip(), 'flag': tokens[2].strip()}
+    except IOError as e:
+        print('File Open Error:', e)
+        print("Please ensure the desired file to reverse exists in the source folder")
+        exit()
+    return host_info
+def main():
+    if len(sys.argv) < 4:
+        print("Usage: python script.py <com_server> <edu_server> <file_name>")
+        exit()
+    com_host = sys.argv[1]
+    edu_host = sys.argv[2]
+    file_name = sys.argv[3]
+    try:
+        rssd = mysoc.socket(mysoc.AF_INET, mysoc.SOCK_STREAM)
+    except mysoc.error as err:
+        print('Socket open error:', err)
+        exit()
+    RS_table = read_host_file(file_name)
+    if not edu_host:
+        print("Warning: no TS.edu server to redirect miss")
+    if not com_host:
+        print("Warning: no TS.com server to redirect miss")
+    server_binding = ('', 50008)
+    rssd.bind(server_binding)
+    rssd.listen(1)
+    host = mysoc.gethostname()
+    print("Server host name is:", host)
+    localhost_ip = (mysoc.gethostbyname(host))
+    print("Attempting to connect to the client.")
+    print("Server IP address is", localhost_ip)
+    crsd, addr = rssd.accept()
+    print("Got a connection request from a client at", addr)
+    edu_socket, com_socket = None, None
+    while True:
+        data = crsd.recv(100)
+        hnstring = data.decode('utf-8')
+        if not hnstring:
+            break
+        entry = ""
+        if hnstring in RS_table:
+            entry = f"{hnstring} {RS_table[hnstring]['ip']} {RS_table[hnstring]['flag']}"
+        else:
+            if ".edu" in hnstring:
+                if edu_host:
+                    edu_socket = handle_request(hnstring, edu_host, RS_table, edu_socket)
+                    entry = receive_data(edu_socket)
+                else:
+                    entry = f"{hnstring} - Error: HOST NOT FOUND"
+            elif ".com" in hnstring:
+                if com_host:
+                    com_socket = handle_request(hnstring, com_host, RS_table, com_socket)
+                    entry = receive_data(com_socket)
+                else:
+                    entry = f"{hnstring} - Error: HOST NOT FOUND"
+            else:
+                entry = f"{hnstring} - Error: HOST NOT FOUND"
+        crsd.send(entry.encode('utf-8'))
+    rssd.close()
+def handle_request(host_name, server_host, RS_table, sock):
+    if sock is None:
+        sock = mysoc.socket(mysoc.AF_INET, mysoc.SOCK_STREAM)
+        try:
+            server_ip = RS_table[server_host]['ip']
+            port = 5677 if server_host == 'edu' else 5678
+            server_binding = (server_ip, port)
+            sock.connect(server_binding)
+        except mysoc.error as err:
+            print(f'{server_host.upper()} connect error:', err)
+            exit()
+    sock.send(host_name.strip().encode('utf-8'))
+    return sock
+def receive_data(sock):
+    data = sock.recv(100).decode('utf-8')
+    if not data:
+        return ""
+    return data
+if __name__ == '__main__':
+    main()

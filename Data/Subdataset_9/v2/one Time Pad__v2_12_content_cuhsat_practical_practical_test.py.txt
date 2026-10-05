@@ -1,0 +1,63 @@
+import re
+import sys
+import pytest
+from practical import Practical
+
+class TestPractical:
+    """
+    The Practical Cipher unit tests.
+    """
+
+    def __init__(self):
+        self.VECTORS = [
+            ("AAAAAA", "999999", "999999"),
+            ("999999", "999999", "AAAAAA"),
+            ("A9A9A9", "A9A9A9", "AAAAAA"),
+            ("9A9A9A", "9A9A9A", "AAAAAA"),
+            ("A9A9A9", "999999", "9A9A9A"),
+            ("ABCDEF", "AHOV29", "AGMSY4"),
+            ("GHIJKL", "HOV29A", "BHNTZ5"),
+            ("MNOPQR", "OV29AH", "CIOU06"),
+            ("STUVWX", "V29AHO", "DJPV17"),
+            ("YZ0123", "29AHOV", "EKQW28"),
+            ("456789", "9AHOV2", "FLRX39"),
+            ("AHOV29", "FR3FR3", "FKPUZ4"),
+            ("ABCDEF", "468468", "456789"),
+            ("456789", "468468", "ABCDEF"),
+            ("HELLOX", "YV225E", "XXXXXX")
+        ]
+
+    def test_encrypt(self):
+        """
+        Encryption test.
+        """
+        for source, expect, key in self.VECTORS:
+            assert Practical().encrypt(source, key) == expect
+
+    def test_decrypt(self):
+        """
+        Decryption test.
+        """
+        for expect, source, key in self.VECTORS:
+            assert Practical().decrypt(source, key) == expect
+
+    def test_key(self):
+        """
+        Key generation test.
+        """
+        assert re.match("^([A-Z0-9]|\s)+$", Practical().key())
+
+    def test_fuzzy(self):
+        """
+        Fuzzy data test.
+        """
+        practical = Practical()
+        for length in range(1000):
+            text = practical.key(length, 1, 1)
+            key = practical.key(length, 1, 1)
+            ct = practical.encrypt(text, key)
+            pt = practical.decrypt(ct, key)
+            assert pt == text
+
+if __name__ == "__main__":
+    sys.exit(pytest.main(list(sys.argv)))

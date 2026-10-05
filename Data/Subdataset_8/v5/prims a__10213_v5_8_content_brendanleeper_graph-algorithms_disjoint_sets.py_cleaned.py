@@ -1,0 +1,53 @@
+class UndirectedConnectedWeightedGraph:
+    '''
+    This class represents an undirected connected weighted graph.
+    It uses a disjoint set implementation to build the graph.
+    '''
+    def __init__(self, num_vertices, num_edges):
+        '''
+        Initializes the graph with the given number of vertices and edges.
+        '''
+        print("Initializing graph")
+        self.weights = {}
+        self.parents = {}
+        self.rep_members = {}
+    def make_set(self, vertex):
+        '''
+        Creates a new set with the given vertex.
+        '''
+        self.weights[vertex] = 0
+        self.parents[vertex] = vertex
+        self.rep_members[vertex] = {vertex}
+    def find(self, node):
+        '''
+        Finds the representative of the specified vertex.
+        Implements path compression to optimize future find operations.
+        '''
+        if self.parents[node] == node:
+            return node
+        else:
+            self.parents[node] = self.find(self.parents[node])
+            return self.parents[node]
+    def union(self, x, y):
+        '''
+        Merges the sets containing vertices x and y.
+        Implements weighted union by attaching the smaller tree to the larger one.
+        '''
+        x_root = self.find(x)
+        y_root = self.find(y)
+        if x_root != y_root:
+            if len(self.rep_members[x_root]) > len(self.rep_members[y_root]):
+                self.parents[y_root] = x_root
+                self.weights[x_root] += 1
+                self.rep_members[x_root] |= self.rep_members[y_root]
+                del self.rep_members[y_root]
+            else:
+                self.parents[x_root] = y_root
+                self.weights[y_root] += 1
+                self.rep_members[y_root] |= self.rep_members[x_root]
+                del self.rep_members[x_root]
+    def done(self):
+        '''
+        Returns the representative members of all sets.
+        '''
+        return self.rep_members

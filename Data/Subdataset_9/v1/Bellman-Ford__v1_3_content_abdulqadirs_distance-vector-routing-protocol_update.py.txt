@@ -1,0 +1,57 @@
+import socket
+import pickle
+
+# Function to send updated cost information to routers
+def client(routers, new_cost):
+    server_name = "127.0.0.1"
+    port1 = ports[routers[0]]
+    port2 = ports[routers[1]]
+
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except socket.error as e:
+        print("Socket cannot be bound:", e)
+
+    i = 0
+    while i < 2:
+        if i == 0:
+            message = {'updated': {routers[i]: new_cost}}
+            print(message)
+            client_socket.sendto(pickle.dumps(message), (server_name, int(port2)))
+        else:
+            message = {'updated': {routers[i]: new_cost}}
+            client_socket.sendto(pickle.dumps(message), (server_name, int(port1)))
+            print(message)
+        i += 1
+
+# Read router configurations and store port information
+def read_routers_from_file(filename):
+    with open(filename, 'r') as file:
+        num_routers = int(file.readline())
+        ports_info = {}
+        for _ in range(num_routers):
+            router_line = file.readline()
+            router_data = router_line.split()
+            router_data[1] = float(router_data[1])
+            ports_info[router_data[0]] = int(router_data[2])
+        return ports_info
+
+# Load router configurations from files
+files = ['topology/configA.txt', 'topology/configB.txt', 'topology/configC.txt',
+         'topology/configD.txt', 'topology/configE.txt', 'topology/configF.txt']
+
+ports = {}
+for file_path in files:
+    ports.update(read_routers_from_file(file_path))
+
+print("Enter routers to edit their connection")
+print("Router1 Router2 NewCost")
+print()
+
+while True:
+    routers_input = input(">")
+    routers = routers_input.split()
+    if len(routers) != 3:
+        print("Invalid input format. Please enter Router1 Router2 NewCost.")
+        continue
+    client(routers[:2], float(routers[2]))

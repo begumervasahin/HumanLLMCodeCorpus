@@ -1,0 +1,45 @@
+import requests
+from bs4 import BeautifulSoup
+import regex
+import time
+def get_valid_links(paragraph, excluded_classes, excluded_ids):
+    valid_links = []
+    for element in paragraph.find_all(class_=excluded_classes):
+        element.extract()
+    for element in paragraph.find_all(id=excluded_ids):
+        element.extract()
+    paragraph = BeautifulSoup(regex.sub(r'(?<!_)(?<rec>\((?:[^()]++|(?&rec))*\))', '', str(paragraph)), features="lxml")
+    for italic in paragraph.find_all('i'):
+        italic.extract()
+    for link in paragraph.find_all('a', href=True):
+        if link.get('href').startswith('/wiki/'):
+            valid_links.append(link.get('href'))
+    return valid_links
+def get_to_philosophy(url, cache=[]):
+    cache.append(url)
+    excluded_classes = ["new", "extiw", 'nowrap', 'IPA', 'reference', 'mw-selflink selflink']
+    excluded_ids = ["coordinates"]
+    time.sleep(0.5)
+    response = requests.get(url)
+    html_text = response.text
+    soup = BeautifulSoup(html_text, 'lxml')
+    for paragraph in soup.find(class_='mw-parser-output').find_all('p', recursive=False):
+        valid_links = get_valid_links(paragraph, excluded_classes, excluded_ids)
+        if valid_links:
+            break
+    if not valid_links:
+        print("No outgoing wikilinks in the article:", url[30:])
+        return url
+    link_suffix = valid_links[0]
+    link = "https:
+    print(link)
+    if link == "https:
+        print("Wikosopher found it, Just as expected !")
+        return link
+    elif link in cache:
+        print("Stuck in a loop !")
+        return link
+    else:
+        return get_to_philosophy(link, cache)
+random_url = "https:
+get_to_philosophy(random_url)

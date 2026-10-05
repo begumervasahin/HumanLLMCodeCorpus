@@ -1,0 +1,135 @@
+import pandas as pd
+import sqlite3
+import nltk
+from nltk.corpus import stopwords
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc, mean_squared_error
+from sklearn.utils import shuffle
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
+stops = set(stopwords.words("english"))
+vectorizer = TfidfVectorizer(max_features=None, ngram_range=(1, 2))
+def word_lemmatize(word_lemma):
+    input_lemma = []
+    for word in word_lemma:
+        word = nltk.WordNetLemmatizer().lemmatize(word)
+        input_lemma.append(word)
+    return input_lemma
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+    print(cm)
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j], horizontalalignment="center", color="grey" if cm[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+connection = sqlite3.connect('database.sqlite')
+dataset1 = pd.read_sql_query(, connection)
+dataset2 = pd.read_sql_query(, connection)
+r2, c2 = dataset2.shape
+dataset3 = dataset2.head(math.ceil(r2/4))
+data = [dataset1, dataset3]
+dataset = pd.concat(data)
+dataset = shuffle(dataset)
+score_data = dataset['Score']
+summary_data = dataset['Summary']
+text_data = dataset['Text']
+text = text_data.str.replace('[^a-zA-Z]'," ")
+summary = summary_data.str.replace('[^a-zA-Z]'," ")
+result = []
+for score in score_data:
+    if score < 3:
+        output = 'negative'
+    else:
+        output = 'positive'
+    result.append(output)
+corpus = []
+for word in text:
+    word = word.lower()
+    word = nltk.word_tokenize(word)
+    word = word_lemmatize(word)
+    corpus.append(' '.join(word))
+prediction = dict()
+test = dict()
+rms = dict()
+k_fold = KFold(n=len(corpus), n_folds=2)
+for k in [500000]:
+    for train_indices, test_indices in k_fold:
+        x_train = [corpus[i] for i in train_indices]
+        y_train = [result[i] for i in train_indices]
+        x_test = [corpus[j] for j in test_indices]
+        y_test = [result[j] for j in test_indices]
+        X_train_tfidf = vectorizer.fit_transform(x_train)
+        X_test_tfidf = vectorizer.transform(x_test)
+        ch2 = SelectKBest(chi2, k=k)
+        X_train_tfidf = ch2.fit_transform(X_train_tfidf, y_train)
+        X_test_tfidf = ch2.transform(X_test_tfidf)
+        model = LogisticRegression(C=1e5).fit(X_train_tfidf, y_train)
+        prediction['LR'] = model.predict(X_test_tfidf)
+        print("Logistic Regression:")
+        print(classification_report(y_test, prediction['LR'], target_names=["positive", "negative"]))
+        model = MultinomialNB().fit(X_train_tfidf, y_train)
+        prediction['Multinomial'] = model.predict(X_test_tfidf)
+        print("Multinomial Naive Bayes:")
+        print(classification_report(y_test, prediction['Multinomial'], target_names=["positive", "negative"]))
+        nb_cnf_matrix = confusion_matrix(y_test, prediction['Multinomial'])
+        test['Multinomial'] = test.get('Multinomial', np.zeros((2, 2))) + nb_cnf_matrix
+        rms['LR'] = rms.get('LR', 0) + mean_squared_error(format(list(y_test)), format(prediction['LR']))
+plt.figure()
+plot_confusion_matrix(test['Multinomial'], classes=['positive', 'negative'], title='Multinomial Naive Bayes Confusion Matrix (Without Normalization)')
+plt.show()
+print("Accuracy of Logistic Regression:", (test['LR'].item((0, 0)) + test['LR'].item((1, 1))) / np.sum(test['LR']))
+print("Root Mean Square Error of Logistic Regression:", rms['LR'] / np.sum(test['LR']))
+x_train, x_test, y_train, y_test = train_test_split(corpus, result, test_size=0.3, random_state=43)
+vectorizer = TfidfVectorizer(max_features=None, ngram_range=(1, 2))
+X_train_tfidf = vectorizer.fit_transform(x_train)
+X_test_tfidf = vectorizer.transform(x_test)
+ch2 = SelectKBest(chi2, k=2000)
+X_train_tfidf = ch2.fit_transform(X_train_tfidf, y_train)
+X_test_tfidf = ch2.transform(X_test_tfidf)
+prediction = dict()
+model = MultinomialNB().fit(X_train_tfidf, y_train)
+prediction['Multinomial'] = model.predict(X_test_tfidf)
+model = LogisticRegression(C=1e5).fit(X_train_tfidf, y_train)
+prediction['LR'] = model.predict(X_test_tfidf)
+model = LinearSVC().fit(X_train_tfidf, y_train)
+prediction['SVM'] = model.predict(X_test_tfidf)
+model = ensemble.ExtraTreesClassifier().fit(X_train_tfidf, y_train)
+prediction['Extra Trees Classifier'] = model.predict(X_test_tfidf)
+model = ensemble.RandomForestClassifier().fit(X_train_tfidf, y_train)
+prediction['Random Forest Classifier'] = model.predict(X_test_tfidf)
+y_test_mapping = [0 if score == 'negative' else 1 for score in y_test]
+cmp = 0
+colors = ['b', 'g', 'y', 'm', 'k']
+for model, predicted in prediction.items():
+    false_positive_rate, true_positive_rate, thresholds = roc_curve(np.array(y_test_mapping), np.array(format(predicted)))
+    roc_auc = auc(false_positive_rate, true_positive_rate)
+    plt.plot(false_positive_rate, true_positive_rate, colors[cmp], label='%s: AUC %0.2f'% (model, roc_auc))
+    cmp += 1
+plt.title('Classifiers Comparison with ROC')
+plt.legend(loc='lower right')
+plt.plot([0,1],[0,1],'r--')
+plt.xlim([-0.1,1.2])
+plt.ylim([-0.1,1.2])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.show()

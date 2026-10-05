@@ -1,0 +1,10 @@
+import pandas.io.sql as psql
+import psycopg2 as pg
+connection_params = {
+    "dbname": "datahub",
+    "user": "CONTACT SLOVAKIA.DIGITAL",
+    "host": "sql.ekosystem.slovensko.digital",
+    "port": 5432,
+    "password": "CONTACT SLOVENSKO.DIGITAL"
+}
+conn_1 = pg.connect(**connection_params)

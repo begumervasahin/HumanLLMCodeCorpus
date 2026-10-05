@@ -1,0 +1,193 @@
+from __future__ import print_function
+import numpy as np
+import random
+import math
+import time
+from statsmodels.tsa.arima.model import ARIMA
+
+# Constants
+VM_RANGE = 15
+PM_NUMBER = 20
+NVM_NUMBER = 150
+U_MEAN = 0.06111
+SLICE_NUMBER = 20
+RAND_RANGE = 0.6
+RACK_NUMBER = 16
+P = 3
+Q = 1
+
+# Open file for writing results
+output_file = open("CAVMP_result_4_4_8.txt", "w")
+
+# Function to predict VM usage using ARIMA
+def arima_predict(usage_data):
+    p = P
+    q = Q
+    log_data = np.log(usage_data)
+    predict_data = [-1]
+    model_found = False
+    
+    for i in range(p, -1, -1):
+        if model_found:
+            break
+        for j in range(q, -1, -1):
+            try:
+                model = ARIMA(log_data, order=(i, 0, j))
+                results = model.fit(disp=-1)
+                predict_data = results.predict(len(usage_data), len(usage_data), dynamic=True)
+                predict_data = np.exp(predict_data)
+                
+                if math.isnan(predict_data[0]):
+                    continue
+                
+                model_found = True
+                break
+            except:
+                continue
+    
+    if predict_data[0] == -1:
+        print('Prediction failed!')
+    
+    return predict_data[0] + 0.008
+
+# Function to generate VM usage
+def generate_usage():
+    base = random.randrange(0, 6)
+    usage = [(math.sin(base + t) + 1 + RAND_RANGE * random.random()) * U_MEAN for t in range(SLICE_NUMBER)]
+    return usage
+
+# Class representing a Virtual Machine (VM)
+class VirtualMachine:
+    def __init__(self):
+        self.usage = generate_usage()
+        self.length = len(self.usage)
+
+    def predict_usage(self):
+        return arima_predict(self.usage)
+
+    def add_usage(self, value):
+        self.usage.append(value)
+        self.length += 1
+
+# Class representing a Physical Machine (PM)
+class PhysicalMachine:
+    def __init__(self, rack_index):
+        self.num_vms = random.randrange(VM_RANGE - 5, VM_RANGE)
+        self.vms = [VirtualMachine() for _ in range(self.num_vms)]
+        self.rack_index = rack_index
+        self.load = -1
+
+    def calculate_load(self):
+        total_usage = sum(vm.predict_usage() for vm in self.vms)
+        self.load = min(total_usage, 1.0)
+
+# Class representing a Rack
+class Rack:
+    def __init__(self, index):
+        self.index = index
+        self.pms = [PhysicalMachine(index) for _ in range(PM_NUMBER)]
+
+# Class representing a Networked Virtual Machine (NVM)
+class NetworkedVirtualMachine:
+    def __init__(self):
+        self.usage = 0.07 + 0.06 * random.random()
+        self.destinations = []
+        self.assigned_pm = -1
+
+# Generate racks
+racks = [Rack(i) for i in range(RACK_NUMBER)]
+
+# Randomly connect racks
+connected_racks = set()
+for i in range(RACK_NUMBER):
+    rack1 = i
+    while True:
+        rack2 = random.randrange(RACK_NUMBER)
+        if rack2 != rack1 and rack2 not in connected_racks:
+            connected_racks.add(rack2)
+            connected_racks.add(rack1)
+            break
+
+# Connect racks
+rack_connections = np.zeros((RACK_NUMBER, RACK_NUMBER))
+for rack1, rack2 in zip(connected_racks, connected_racks):
+    rack_connections[rack1][rack2] = 1
+    rack_connections[rack2][rack1] = 1
+
+# Create NVMs
+nvms = [NetworkedVirtualMachine() for _ in range(NVM_NUMBER)]
+
+# Assign NVMs to PMs
+for nvm in nvms:
+    group_size = random.randrange(min(3, NVM_NUMBER - len(nvm.destinations)), min(14, NVM_NUMBER - len(nvm.destinations)) + 1)
+    group = random.sample(range(NVM_NUMBER), group_size)
+    for dest_index in group:
+        nvm.destinations.append(dest_index)
+
+# Calculate load for each PM
+for rack in racks:
+    for pm in rack.pms:
+        pm.calculate_load()
+
+# Sort PMs based on load
+all_pms = [pm for rack in racks for pm in rack.pms]
+all_pms.sort(key=lambda x: x.load)
+
+# Assign PM numbers
+for i, pm in enumerate(all_pms):
+    pm.num = i
+
+# Check if PMs are connected
+def is_connected(pm_index1, pm_index2):
+    rack_index1 = all_pms[pm_index1].rack_index
+    rack_index2 = all_pms[pm_index2].rack_index
+    return rack_connections[rack_index1][rack_index2] == 1
+
+# Check if NVM can change its assigned PM
+def can_change_destination(nvm_index, pm_index):
+    nvm = nvms[nvm_index]
+    for dest_index in nvm.destinations:
+        if all_pms[dest_index].num != -1 and not is_connected(dest_index, pm_index):
+            return False
+    return True
+
+# Assign NVMs to PMs
+change_count = 0
+for nvm in nvms:
+    for pm_index, pm in enumerate(all_pms):
+        if pm.load + nvm.usage < 1:
+            if can_change_destination(nvm_index, pm_index):
+                nvm.assigned_pm = pm_index
+                pm.load += nvm.usage
+                all_pms.sort(key=lambda x: x.load)
+                break
+    else:
+        change_count += 2
+        print("Connect state changed")
+        for pm_index, pm in enumerate(all_pms):
+            if pm.load + nvm.usage < 1:
+                pm.load += nvm.usage
+                break
+
+# Sort PMs based on load again
+all_pms.sort(key=lambda x: x.load)
+
+# Calculate statistics
+lowest_load = all_pms[0].load
+highest_load = all_pms[-1].load
+average_load = sum(pm.load for pm in all_pms) / len(all_pms)
+
+# Write results to file
+output_file.write(f"{change_count}\t{lowest_load}\t{average_load}\t{highest_load}\n")
+print(f"Change count: {change_count}")
+print(f"Lowest load: {lowest_load}")
+print(f"Average load: {average_load}")
+print(f"Highest load: {highest_load}")
+
+# Close output file
+output_file.close()
+
+# Calculate and print run time
+end_time = time.time()
+run_time = end_time - start_time
+print("Run time:", run_time)

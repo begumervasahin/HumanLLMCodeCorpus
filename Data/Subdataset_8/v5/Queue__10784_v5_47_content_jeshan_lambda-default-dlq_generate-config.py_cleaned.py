@@ -1,0 +1,51 @@
+import os
+import sys
+from os import mkdir
+from os.path import exists
+from mako.template import Template
+AWS_REGIONS = [
+    'us-east-1', 'us-east-2', 'eu-west-1', 'us-west-1', 'us-west-2', 'ap-south-1',
+    'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1',
+    'eu-west-2', 'eu-west-3', 'sa-east-1', 'ap-northeast-1', 'ap-northeast-2'
+]
+def create_directory(path):
+    try:
+        mkdir(path)
+    except FileExistsError:
+        pass
+def save_template_file(path, data, directory=None):
+    basename = os.path.basename(path)
+    if directory:
+        path = os.path.join(directory, basename)
+    with open(path, 'w') as f:
+        template_path = f"{os.path.splitext(path)[0]}.template{os.path.splitext(path)[1]}"
+        f.write(Template(filename=template_path).render(**data))
+def generate_configurations(env):
+    project_name = os.getenv('PROJECT_NAME', 'lambda-default-dlq')
+    public_bucket = os.getenv('PUBLIC_BUCKET', 'jeshan-oss-public-files')
+    private_bucket = os.getenv('PRIVATE_BUCKET', 'jeshan-oss-private-files')
+    save_template_file('configure-aws-cli.py', {'PROJECT_NAME': project_name})
+    save_template_file('upload-private-config.sh', {'PROJECT_NAME': project_name, 'PRIVATE_BUCKET': private_bucket})
+    save_template_file('upload-public-templates.sh',
+                       {'PROJECT_NAME': project_name, 'PRIVATE_BUCKET': private_bucket, 'PUBLIC_BUCKET': public_bucket})
+    save_template_file('deployment-pipeline.yaml', {'PROJECT_NAME': project_name}, 'templates/')
+    create_directory('config/app/deployment')
+    create_directory('config/app/')
+    create_directory('config/app/deployment')
+    create_directory(f'config/app/{env}')
+    config_path = f'config/app/{env}'
+    if not exists(f'{config_path}/config.yaml'):
+        with open(f'{config_path}/config.yaml', 'w') as f:
+            f.write(f"profile: {env}\n")
+    with open('config/config.yaml', 'w') as f:
+        f.write(f"project_code: {project_name}\nregion: us-east-1\ndlq_name: lambda-default-dlq\nevents_topic_name: cloudformation-stack-events\ninterval_hours: 24\n")
+    with open('config/app/deployment/pipeline.yaml', 'w') as f:
+        f.write(f"template_path: deployment-pipeline.yaml\nparameters:\n  ProjectName: {project_name}\n  PrivateBucket: {private_bucket}\n  PublicBucket: {public_bucket}\n")
+    with open(f'{config_path}/base.yaml', 'w') as f:
+        f.write(f"template_path: deployment-target-account.yaml\nparameters:\n  DeploymentAccount: !environment_variable ACCOUNT_ID\n  DlqName: {{{{stack_group_config.dlq_name}}}}\n  EventsTopicName: {{{{stack_group_config.events_topic_name}}}}\n  ProjectName: {project_name}\n")
+    for region in AWS_REGIONS:
+        with open(f'{config_path}/{region}.yaml', 'w') as f:
+            f.write(f"template_path: template.yaml\nregion: {region}\nparameters:\n  TopicName: {{{{stack_group_config.dlq_name}}}}\n  Role: !stack_output app/{env}/base.yaml::FnRole\n")
+if __name__ == '__main__':
+    env_name = sys.argv[1] if len(sys.argv) > 1 else 'dev'
+    generate_configurations(env_name)

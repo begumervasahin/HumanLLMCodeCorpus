@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial import distance
+def initialize_centroids(data, k):
+    num_features = data.shape[1]
+    centroids = np.zeros((k, num_features))
+    for feature in range(num_features):
+        feature_min, feature_max = np.min(data[:, feature]), np.max(data[:, feature])
+        centroids[:, feature] = np.random.uniform(feature_min, feature_max, size=k)
+    return centroids
+def assign_clusters(data, centroids):
+    distances = distance.cdist(data, centroids, 'euclidean')
+    return np.argmin(distances, axis=1), np.min(distances, axis=1) ** 2
+def update_centroids(data, assignments, k):
+    new_centroids = np.array([data[assignments == k].mean(axis=0) for k in range(k)])
+    return new_centroids
+def k_means(data, k, tol=1e-4, max_iter=300):
+    centroids = initialize_centroids(data, k)
+    for iteration in range(max_iter):
+        assignments, _ = assign_clusters(data, centroids)
+        new_centroids = update_centroids(data, assignments, k)
+        if np.allclose(centroids, new_centroids, atol=tol):
+            break
+        centroids = new_centroids
+    return centroids, assignments, iteration + 1
+def plot_clusters(data, assignments, centroids):
+    plt.scatter(data[:, 0], data[:, 1], c=assignments, cmap='viridis', alpha=0.5)
+    plt.scatter(centroids[:, 0], centroids[:, 1], c='red', s=100, marker='x')
+    plt.title('Clustered Dataset')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
+def main():
+    print('k Means Clustering Algorithm in Python')
+    filename = 'kmeans_data.csv'
+    data = np.genfromtxt(filename, delimiter=',')
+    plt.scatter(data[:, 0], data[:, 1])
+    plt.title('Input Dataset')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
+    k = int(input("Number of Centroids: "))
+    centroids, assignments, num_iterations = k_means(data, k)
+    print(f'Number of iterations: {num_iterations}')
+    print(f'\nFinal centroids:\n{centroids}')
+    plot_clusters(data, assignments, centroids)
+if __name__ == "__main__":
+    main()

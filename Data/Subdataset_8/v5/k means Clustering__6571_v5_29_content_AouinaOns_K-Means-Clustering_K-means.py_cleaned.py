@@ -1,0 +1,30 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.datasets import make_blobs
+def generate_synthetic_data():
+    np.random.seed(0)
+    X, _ = make_blobs(n_samples=5000, centers=[[4,4], [-2, -1], [2, -3], [1, 1]], cluster_std=0.9)
+    return X
+def plot_clusters(X, k_means_labels, k_means_cluster_centers):
+    plt.figure(figsize=(6, 4))
+    ax = plt.gca()
+    colors = plt.cm.Spectral(np.linspace(0, 1, len(set(k_means_labels))))
+    for k, col in zip(range(len(k_means_cluster_centers)), colors):
+        my_members = (k_means_labels == k)
+        cluster_center = k_means_cluster_centers[k]
+        ax.plot(X[my_members, 0], X[my_members, 1], 'w', markerfacecolor=col, marker='.')
+        ax.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=col, markeredgecolor='k', markersize=6)
+    ax.set_title('KMeans')
+    ax.set_xticks(())
+    ax.set_yticks(())
+    plt.show()
+def main():
+    X = generate_synthetic_data()
+    k_means = KMeans(init="k-means++", n_clusters=4, n_init=12)
+    k_means.fit(X)
+    k_means_labels = k_means.labels_
+    k_means_cluster_centers = k_means.cluster_centers_
+    plot_clusters(X, k_means_labels, k_means_cluster_centers)
+if __name__ == "__main__":
+    main()

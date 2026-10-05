@@ -1,0 +1,30 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.metrics import r2_score
+dataset = pd.read_csv('3-Products-Multiple.csv')
+features = dataset.drop(columns=['Location', 'Product_1', 'Product_2', 'Product_3'])
+target = dataset['Product_1']
+encoder = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [0])], remainder='passthrough')
+features_encoded = encoder.fit_transform(features)
+X_train, X_test, y_train, y_test = train_test_split(features_encoded, target, test_size=0.2, random_state=0)
+regressor = LinearRegression()
+regressor.fit(X_train, y_train)
+print('Coefficients:')
+print(regressor.coef_)
+print('Variance score:', r2_score(y_test, regressor.predict(X_test)))
+predictions = regressor.predict(X_test)
+print('Predictions:')
+print(predictions)
+plt.scatter(regressor.predict(X_train), regressor.predict(X_train) - y_train, color="green", s=10, label='Train data')
+plt.scatter(predictions, predictions - y_test, color="blue", s=10, label='Test data')
+plt.hlines(y=0, xmin=-1000, xmax=200000, linewidth=2)
+plt.legend(loc='upper right')
+plt.title("Residual errors")
+plt.xlabel('Predicted values')
+plt.ylabel('Residuals')
+plt.show()

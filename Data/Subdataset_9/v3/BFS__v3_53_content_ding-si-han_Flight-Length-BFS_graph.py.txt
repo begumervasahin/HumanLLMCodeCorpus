@@ -1,0 +1,98 @@
+import random
+from collections import deque
+
+class Graph:
+    def __init__(self):
+        self.graph_dict = {}
+
+    def add_edge(self, node, neighbour):
+        """
+        Add an edge between two nodes in the graph.
+
+        Args:
+            node (str): The starting node.
+            neighbour (str): The neighboring node.
+        """
+        if node not in self.graph_dict:
+            self.graph_dict[node] = [neighbour]
+        else:
+            if neighbour not in self.graph_dict[node] and neighbour != node:
+                self.graph_dict[node].append(neighbour)
+
+    def show_edges(self):
+        """
+        Print all edges in the graph.
+        """
+        for node in self.graph_dict:
+            for neighbour in self.graph_dict[node]:
+                print("(", node, ", ", neighbour, ")")
+
+    def bfs(self, start, destination):
+        """
+        Perform Breadth-First Search (BFS) on the graph to find the shortest path from start to destination.
+
+        Args:
+            start (str): The starting node.
+            destination (str): The destination node.
+        """
+        visited = set()
+        parent_dict = {}
+        queue = deque([start])
+        visited.add(start)
+        while queue:
+            current_node = queue.popleft()
+            for neighbour in self.graph_dict.get(current_node, []):
+                if neighbour not in visited:
+                    parent_dict[neighbour] = current_node
+                    if neighbour == destination:
+                        self.print_route(parent_dict, start, destination)
+                        return
+                    visited.add(neighbour)
+                    queue.append(neighbour)
+        print("NO FLIGHT PATH AVAILABLE")
+
+    def print_route(self, parent_dict, start, destination):
+        """
+        Print the optimal route from start to destination using the parent dictionary.
+
+        Args:
+            parent_dict (dict): A dictionary mapping each node to its parent in the BFS traversal.
+            start (str): The starting node.
+            destination (str): The destination node.
+        """
+        print("OPTIMAL ROUTE:", end=" ")
+        current = parent_dict[destination]
+        print(destination, end=" ")
+        while start != current:
+            print("-", current, end=" ")
+            current = parent_dict[current]
+        print('-', start)
+
+    def generate_graph(self, max_cities, connectivity_percentage):
+        """
+        Generate a random graph with specified connectivity.
+
+        Args:
+            max_cities (int): The maximum number of cities.
+            connectivity_percentage (float): The percentage of connectivity between cities.
+        """
+        for i in range(max_cities):
+            random_range = range(0, i) + range(i + 1, max_cities)
+            random_neighbours = random.sample(random_range, round(max_cities * connectivity_percentage))
+            for neighbour in random_neighbours:
+                self.add_edge(str(i + 1), str(neighbour + 1))
+                self.add_edge(str(neighbour + 1), str(i + 1))
+
+# Example usage
+if __name__ == "__main__":
+    # Creating a Graph object
+    graph = Graph()
+
+    # Generating a graph with random edges
+    graph.generate_graph(10, 0.3)  # 10 cities, 30% connectivity
+
+    # Example BFS
+    start_city = '1'
+    destination_city = '10'
+    print("Finding optimal route from", start_city, "to", destination_city)
+    graph.bfs(start_city, destination_city)

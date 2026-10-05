@@ -1,0 +1,34 @@
+import pickle
+import sys
+class CipherStructure:
+    def __init__(self, ciphered_text, key, initialization_vector, tag_sentence, signature):
+        self.ciphered_text = ciphered_text
+        self.key = key
+        self.initialization_vector = initialization_vector
+        self.tag_sentence = tag_sentence
+        self.signature = signature
+    def get_ciphered_text(self):
+        return self.ciphered_text
+    def get_key(self):
+        return self.key
+    def get_initialization_vector(self):
+        return self.initialization_vector
+    def get_tag_sentence(self):
+        return self.tag_sentence
+    def get_signature(self):
+        return self.signature
+    def dump_to_file(self, output_file):
+        with open(output_file, 'wb') as file:
+            pickle.dump(self, file)
+    @staticmethod
+    def load_from_file(input_file):
+        try:
+            with open(input_file, 'rb') as file:
+                loaded_data = pickle.load(file)
+                if isinstance(loaded_data, CipherStructure):
+                    return loaded_data
+        except FileNotFoundError:
+            print(">> ERROR: File not found")
+        except pickle.UnpicklingError:
+            print(">> ERROR: Unable to unpickle the file")
+        sys.exit()

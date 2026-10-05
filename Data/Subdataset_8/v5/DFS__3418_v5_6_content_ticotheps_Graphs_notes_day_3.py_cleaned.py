@@ -1,0 +1,55 @@
+class Stack:
+    def __init__(self):
+        self.stack = []
+    def push(self, value):
+        self.stack.append(value)
+    def pop(self):
+        if self.is_empty():
+            return None
+        return self.stack.pop()
+    def is_empty(self):
+        return len(self.stack) == 0
+def get_neighbors(v, matrix):
+    col, row = v
+    neighbors = []
+    if row > 0 and matrix[row - 1][col] == 1:
+        neighbors.append((col, row - 1))
+    if row < len(matrix) - 1 and matrix[row + 1][col] == 1:
+        neighbors.append((col, row + 1))
+    if col < len(matrix[0]) - 1 and matrix[row][col + 1] == 1:
+        neighbors.append((col + 1, row))
+    if col > 0 and matrix[row][col - 1] == 1:
+        neighbors.append((col - 1, row))
+    return neighbors
+def island_counter(matrix):
+    visited = [[False] * len(matrix[0]) for _ in range(len(matrix))]
+    island_count = 0
+    for col in range(len(matrix[0])):
+        for row in range(len(matrix)):
+            if not visited[row][col] and matrix[row][col] == 1:
+                visited = depth_first_traversal(col, row, matrix, visited)
+                island_count += 1
+    return island_count
+def depth_first_traversal(col, row, matrix, visited):
+    stack = Stack()
+    stack.push((col, row))
+    while not stack.is_empty():
+        col, row = stack.pop()
+        if not visited[row][col]:
+            visited[row][col] = True
+            for neighbor in get_neighbors((col, row), matrix):
+                stack.push(neighbor)
+    return visited
+islands = [
+    [1, 0, 0, 1, 1, 0, 1, 1, 0, 1],
+    [0, 0, 1, 1, 0, 1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0, 1, 0, 1],
+    [0, 0, 1, 0, 0, 1, 0, 0, 1, 1],
+    [0, 0, 1, 1, 0, 1, 0, 1, 1, 0],
+    [0, 1, 0, 1, 1, 1, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0, 1, 1, 0, 0, 0],
+    [1, 0, 1, 1, 0, 0, 0, 1, 1, 0],
+    [0, 1, 1, 0, 0, 0, 1, 1, 0, 0],
+    [0, 0, 1, 1, 0, 1, 0, 0, 1, 0]
+]
+print(island_counter(islands))

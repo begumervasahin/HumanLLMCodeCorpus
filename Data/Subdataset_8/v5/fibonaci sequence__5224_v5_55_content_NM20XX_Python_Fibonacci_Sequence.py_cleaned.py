@@ -1,0 +1,22 @@
+def generate_fibonacci_sequence(n):
+    x, y = 0, 1
+    for _ in range(n):
+        yield x
+        x, y = y, x + y
+def get_positive_integer(prompt):
+    while True:
+        try:
+            term = int(input(prompt))
+            if term <= 0:
+                print("Please enter a positive value.")
+            else:
+                return term
+        except ValueError:
+            print("Invalid input. Please enter an integer value.")
+def main():
+    term = get_positive_integer("Enter the number of Fibonacci numbers to generate: ")
+    print("Fibonacci sequence up to term", term, ":")
+    for n in generate_fibonacci_sequence(term):
+        print(n)
+if __name__ == "__main__":
+    main()

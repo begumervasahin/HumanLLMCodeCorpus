@@ -1,0 +1,27 @@
+import nltk
+import pandas as pd
+import math
+import numpy as np
+dec_texts = {
+    "text_1": open('W:/Diwas/Python_projects/NLP_Codes/tf_idf_data/text1.txt', "rU").read(),
+    "text_2": open('W:/Diwas/Python_projects/NLP_Codes/tf_idf_data/text2.txt', "rU").read(),
+}
+from nltk.tokenize import word_tokenize
+def term_frequency(doc, text):
+    word_tokens = word_tokenize(doc[text])
+    words_freq = nltk.FreqDist(word_tokens)
+    return words_freq
+def inverse_document_frquency(doc, word):
+    word_cnt = [word in doc[file] for file in doc]
+    idf = math.log(len(word_cnt) / sum(word_cnt))
+    return idf
+def tf_idf(doc, text):
+    tfidf_scores = {}
+    tf = term_frequency(doc, text)
+    for term in tf:
+        if term.isalpha():
+            idf = inverse_document_frquency(doc, term)
+            tf_term = term_frequency(doc, text)[term]
+            tf_idf = idf * tf_term
+            tfidf_scores[term] = round(tf_idf, 3)
+    return tfidf_scores

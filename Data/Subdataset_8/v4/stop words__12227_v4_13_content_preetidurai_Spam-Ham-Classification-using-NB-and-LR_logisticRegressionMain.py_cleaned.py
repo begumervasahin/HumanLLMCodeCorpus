@@ -1,0 +1,96 @@
+import LRHelper as helper
+import Mail as m
+import os
+import math
+import sys
+class LogisticRegression:
+    def __init__(self, learning_rate, penalty):
+        self.training_set_info = {}
+        self.test_set_info = {}
+        self.vocab_set = set()
+        self.learning_rate = float(learning_rate)
+        self.penalty = float(penalty)
+        self.weight_vector = {}
+    def retrieve_vocab_set(self):
+        for mail_file_key, mail_file_value in self.training_set_info.items():
+            for word in mail_file_value.words:
+                self.vocab_set.add(word)
+    def set_initial_weights(self):
+        for word in self.vocab_set:
+            self.weight_vector[word] = 0.0
+    def run_gradient_ascent(self, iteration_threshold):
+        for _ in range(int(iteration_threshold)):
+            for weight_word in self.weight_vector:
+                sum_gradient = 0.0
+                for mail in self.training_set_info.values():
+                    y_label = 1 if mail.true_class == 1 else 0
+                    if weight_word in mail.words:
+                        sum_gradient += mail.word_freq_dict[weight_word] * (y_label - self.cond_prob(1, mail))
+                self.weight_vector[weight_word] += (self.learning_rate * sum_gradient) - (self.learning_rate * self.penalty * self.weight_vector[weight_word])
+    def cond_prob(self, class_num, mail):
+        sum_weighted = 0.0
+        for key, value in mail.word_freq_dict.items():
+            if key not in self.weight_vector:
+                self.weight_vector[key] = 0.0
+            sum_weighted += self.weight_vector[key] * value
+        if class_num == 1:
+            return math.exp(sum_weighted) / (1 + math.exp(sum_weighted))
+        elif class_num == 0:
+            return 1 / (1 + math.exp(sum_weighted))
+    def get_class(self, mail):
+        score = {}
+        score[0] = self.cond_prob(0, mail)
+        score[1] = self.cond_prob(1, mail)
+        return 0 if score[0] > score[1] else 1
+    def build_test_info(self, directory_path, given_class):
+        for file in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, file)
+            with open(file_path, encoding='utf-8', errors="ignore") as mail_file:
+                words = helper.get_words(mail_file.read())
+                word_freq_dict = helper.get_word_freq(words)
+                self.test_set_info[file] = m.Mail(words, word_freq_dict, given_class)
+    def apply_lr(self):
+        correct = 0
+        for mail_value in self.test_set_info.values():
+            class_val = self.get_class(mail_value)
+            if class_val == mail_value.true_class:
+                correct += 1
+        accuracy = (correct / len(self.test_set_info)) * 100
+        print("Accuracy:", accuracy)
+    def build_training_info(self, directory_path, given_class):
+        for file in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, file)
+            with open(file_path, encoding='utf-8', errors="ignore") as mail_file:
+                words = helper.get_words(mail_file.read())
+                word_freq_dict = helper.get_word_freq(words)
+                self.training_set_info[file] = m.Mail(words, word_freq_dict, given_class)
+def main():
+    if len(sys.argv) < 9:
+        print("Insufficient arguments.")
+        return
+    lr_handle = LogisticRegression(sys.argv[5], sys.argv[6])
+    spam_training_path = sys.argv[1]
+    ham_training_path = sys.argv[2]
+    spam_test_path = sys.argv[3]
+    ham_test_path = sys.argv[4]
+    lr_handle.build_training_info(spam_training_path, 0)
+    lr_handle.build_training_info(ham_training_path, 1)
+    lr_handle.build_test_info(spam_test_path, 0)
+    lr_handle.build_test_info(ham_test_path, 1)
+    lr_handle.retrieve_vocab_set()
+    lr_handle.set_initial_weights()
+    lr_handle.run_gradient_ascent(sys.argv[7])
+    print("Accuracy without removing stopwords:")
+    lr_handle.apply_lr()
+    lr_handle2 = LogisticRegression(sys.argv[5], sys.argv[6])
+    lr_handle2.build_training_info_wo_stopwords(spam_training_path, 0, sys.argv[8])
+    lr_handle2.build_training_info_wo_stopwords(ham_training_path, 1, sys.argv[8])
+    lr_handle2.build_test_info_wo_stopwords(spam_test_path, 0, sys.argv[8])
+    lr_handle2.build_test_info_wo_stopwords(ham_test_path, 1, sys.argv[8])
+    lr_handle2.retrieve_vocab_set()
+    lr_handle2.set_initial_weights()
+    lr_handle2.run_gradient_ascent(sys.argv[7])
+    print("Accuracy after removing stopwords:")
+    lr_handle2.apply_lr()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,123 @@
+import sympy as sp
+import numpy as np
+import scipy.sparse as sps
+import scipy.sparse.linalg as sps_linalg
+from HopfConstructions_Functions import Tensor_Mult, Left_Action_Matrix
+from math import floor
+from Frobenius_Tools import *
+from Algebra_Tools import Center
+def compute_central_matrix(A):
+    M = np.array(Compute_M(A).toarray())
+    U, UI, center_dim = Center(A)
+    M = UI.dot(M.dot(U))
+    M = M[:center_dim, :center_dim]
+    print("Central matrix shape:", M.shape)
+    return M
+def check_Frobenius_property(A):
+    dim = A.dim
+    if A.casimir_flag == 'no':
+        A.GetCasimir()
+    mult = A.mult
+    casimir = A.casimir
+    tensor_mult = Tensor_Mult(A, A)
+    C = mult.dot(tensor_mult.dot(np.kron(A.casimir, A.casimir)))
+    C = AlgebraElement(C, A)
+    temp = C ** 2 - ((dim ** 2) / 1) * C
+    for d in divisors[1:]:
+        temp = temp * C ** 2 - ((dim ** 2) / d) * C
+    zeros = np.zeros(dim)
+    if temp.vector == zeros:
+        print('Yes FD')
+    else:
+        print('No FD')
+def degree_of_irreps_char(A):
+    dim = A.dim
+    sizes_of_irreps = []
+    number_of_irreps = []
+    M = Compute_M(A)
+    poly = CharPoly(M)
+    Der = [poly]
+    d = dim
+    bound = floor(dim ** 0.5)
+    i = 1
+    while i <= bound:
+        root_to_test = dim ** 2 / i ** 2
+        if poly.eval(root_to_test) == 0:
+            sizes_of_irreps.append(i)
+            temp = Multiplicity(poly, root_to_test, Der)
+            number_of_irreps.append(temp[0] / i ** 2)
+            d -= temp[0]
+            Der = temp[1]
+            bound = floor(d ** 0.5)
+        i += 1
+    return [sizes_of_irreps, number_of_irreps]
+def degree_of_irreps_higchar(A):
+    mult = A.mult
+    dim = A.dim
+    sizes_of_irreps = []
+    number_of_irreps = []
+    M = Compute_M(C)
+    higman_trace = HigmanTrace(A) / dim
+    M = M.dot(higman_trace)
+    poly = CharPoly(M)
+    poly = Remove_Zeros_At_Zero(poly)
+    print(poly)
+    Der = [poly]
+    d = dim
+    bound = floor(dim ** 0.5)
+    i = 1
+    while i <= bound:
+        root_to_test = dim ** 2 / i ** 2
+        if poly.eval(root_to_test) == 0:
+            sizes_of_irreps.append(i)
+            temp = Multiplicity(poly, root_to_test, Der)
+            number_of_irreps.append(temp[0])
+            d -= temp[0]
+            Der = temp[1]
+            bound = floor(d ** 0.5)
+        i += 1
+    return [sizes_of_irreps, number_of_irreps]
+def degree_of_irreps_det(A):
+    dim = A.dim
+    sizes_of_irreps = []
+    M = Compute_M(A)
+    M = np.array(M.toarray())
+    d = dim
+    float_dim = float(dim)
+    bound = floor(dim ** 0.5)
+    root_dim = bound
+    i = 1
+    while i <= bound:
+        n = float(i)
+        value_to_test = float_dim ** 2 / n ** 2
+        if i == root_dim:
+            error = ((float_dim ** 2 * (2 * n - 1) / (n ** 2 * (n - 1) ** 2)) ** float_dim) / 2
+        else:
+            error = ((float_dim ** 2 * (2 * n + 1) / (n ** 2 * (n + 1) ** 2)) ** float_dim) / 2
+        if np.linalg.det(M - value_to_test * np.identity(dim)) < error:
+            sizes_of_irreps.append(i)
+            d -= i ** 2
+            bound = floor(d ** 0.5)
+        i += 1
+    return sizes_of_irreps
+def degree_of_irreps_eig(A):
+    dim = A.dim
+    M = Compute_M(A)
+    M = np.array(M.toarray())
+    temp = np.round(np.sqrt(dim ** 2 / np.real(np.linalg.eigvals(M)))).tolist()
+    Eigen_Vals = sorted(list(set(temp)))
+    Multiplicities = []
+    for Val in Eigen_Vals:
+        Multiplicities.append(temp.count(Val) / Val ** 2)
+    print('The dimensions of the irreps:', Eigen_Vals)
+    print('With Corresponding Multiplicities:', Multiplicities)
+def degree_of_irreps_center(A):
+    dim = A.dim
+    M = compute_central_matrix(A)
+    temp = np.round(np.sqrt(dim ** 2 / np.real(np.linalg.eigvals(M)))).tolist()
+    Eigen_Vals = sorted(list(set(temp)))
+    Multiplicities = []
+    for Val in Eigen_Vals:
+        Multiplicities.append(temp.count(Val))
+    print('The dimensions of the irreps:', Eigen_Vals)
+    print('With Corresponding Multiplicities:', Multiplicities)

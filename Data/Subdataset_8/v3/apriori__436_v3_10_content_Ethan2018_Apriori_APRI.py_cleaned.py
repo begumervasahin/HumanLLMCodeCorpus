@@ -1,0 +1,54 @@
+import itertools
+from collections import defaultdict, Counter
+def preprocess_data(filename, min_support):
+    baskets = defaultdict(set)
+    all_items = set()
+    frequent_items = set()
+    total_items = []
+    num_baskets = 0
+    with open(filename, "r") as file:
+        for line in file:
+            num_baskets += 1
+            basket_items = set(line.split())
+            total_items += basket_items
+            baskets[num_baskets] = basket_items
+            all_items |= basket_items
+    item_counts = Counter(total_items)
+    for item, count in item_counts.items():
+        if count / num_baskets > min_support:
+            frequent_items.add(item)
+    return baskets, frequent_items
+def generate_candidates(frequent_items, size):
+    candidates = set()
+    if size == 2:
+        candidates = {(x, y) for x in frequent_items for y in frequent_items if x != y}
+    else:
+        for x in frequent_items:
+            for y in frequent_items:
+                if len(set(x).union(y)) == size:
+                    candidates.add(tuple(set(x).union(y)))
+        candidates = [c for c in candidates if all(subset in frequent_items for subset in get_subsets(c))]
+    return candidates
+def get_subsets(candidate):
+    return list(itertools.combinations(candidate, len(candidate) - 1))
+def generate_frequent_itemsets(candidates, baskets, min_support):
+    frequent_itemsets = set()
+    with open('pres.txt', 'a') as file:
+        for candidate in candidates:
+            count = sum(1 for basket in baskets.values() if set(candidate).issubset(basket))
+            support = count / len(baskets)
+            if support > min_support:
+                frequent_itemsets.add(candidate)
+                print(candidate)
+                file.write(str(candidate))
+    return frequent_itemsets
+def main():
+    min_support = 0.08
+    filename = "browsing.txt"
+    baskets, frequent_itemsets = preprocess_data(filename, min_support)
+    for size in range(2, 5):
+        candidates = generate_candidates(frequent_itemsets, size)
+        frequent_itemsets = generate_frequent_itemsets(candidates, baskets, min_support)
+    return frequent_itemsets
+if __name__ == '__main__':
+    main()

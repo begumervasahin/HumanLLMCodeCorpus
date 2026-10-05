@@ -1,0 +1,67 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import math
+from scipy.integrate import quad
+
+# Function to calculate the value of E(z) given cosmological parameters
+def xE(z, omegaM, omegaK, omegaL):
+    return (omegaM * (1 + z) ** 3 + omegaK * (1 + z) ** 2 + omegaL) ** 0.5
+
+# Function to calculate the inverse of E(z)
+def inverseE(z, omegaM, omegaK, omegaL):
+    return 1 / xE(z, omegaM, omegaK, omegaL)
+
+# Function to calculate the comoving volume element
+def dV(z, omegaM, omegaK, omegaL):
+    # Number of entries for integration
+    entries = np.rint(z * 100 + 1).astype(int)
+    k = entries - 1
+    
+    # Calculate E(z)
+    E = xE(z, omegaM, omegaK, omegaL)
+    
+    # Integrate to get the comoving distance
+    answerAndError = [quad(inverseE, 0, c, args=(omegaM, omegaK, omegaL)) for c in np.arange(0, z + 0.01, 0.01)]
+    dC = [answerAndError[i][0] for i in range(0, entries)]
+    dC[0] = 0
+    
+    # Calculate comoving distance depending on curvature
+    if omegaK > 0:
+        dM = math.sinh((omegaK ** 0.5) * dC[k]) / (omegaK ** 0.5)
+    elif omegaK < 0:
+        dM = math.sin((abs(omegaK) ** 0.5) * dC[k]) / (abs(omegaK) ** 0.5)
+    else:
+        dM = dC[k]
+    
+    # Calculate angular diameter distance
+    dA = dM / (1 + z)
+    
+    # Calculate comoving volume element
+    dVc = (((1 + z) ** 2) * (dA ** 2)) / E
+    return dVc
+
+# Generate values of redshift from 0 to 5
+x = np.arange(0, 5.02, 0.01)
+
+# Define different sets of cosmological parameters
+omega_values = [
+    (1, 0, 0),       # Flat universe
+    (0.05, 0.95, 0), # Open universe
+    (0.2, 0, 0.8)    # Closed universe
+]
+
+# Create a figure for plotting
+plt.figure()
+
+# Plot comoving volume for each set of cosmological parameters
+for i, (omegaM, omegaK, omegaL) in enumerate(omega_values):
+    y = [dV(a, omegaM, omegaK, omegaL) for a in x]
+    plt.plot(x, y, label=f'Omega values {i+1}')
+
+# Set axis limits and add legend
+plt.axis([0, 5, 0, 1.2])
+plt.legend()
+
+# Save the plot as an image file and display it
+plt.savefig('comovingvolume.png', dpi=80)
+plt.show()

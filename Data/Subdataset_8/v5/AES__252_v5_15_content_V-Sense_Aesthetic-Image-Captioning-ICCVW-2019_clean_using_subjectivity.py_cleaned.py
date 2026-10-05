@@ -1,0 +1,56 @@
+from __future__ import print_function
+import json
+import re
+import io
+from random import shuffle
+from nltk.tokenize import RegexpTokenizer
+from string import digits, punctuation
+from nltk.corpus import stopwords
+from langdetect import detect, DetectorFactory
+from nltk import pos_tag, ngrams
+from collections import Counter
+import numpy as np
+from nltk.corpus import wordnet
+from nltk.stem.wordnet import WordNetLemmatizer
+from tqdm import tqdm
+DetectorFactory.seed = 0
+class CommentProcessor:
+    def __init__(self, input_json, output_dir='Logs'):
+        self.input_json = input_json
+        self.output_dir = output_dir
+        self.initialize_resources()
+    def initialize_resources(self):
+        self.exclude_chars = set(punctuation + digits) - {'!', '?', '.', '\'', ','}
+        self.tokenizer = RegexpTokenizer(r'\w+\S*\w*')
+        self.stopwords = set(stopwords.words('english'))
+        self.lemmatizer = WordNetLemmatizer()
+        self.lame_words = set(['challenge', 'congrats', 'congratulation', 'title',
+                               'ribbon', 'score', 'comment', 'favorite', 'thanks',
+                               'thank', 'vote', 'entry', 'dpc', 'award', 'critique',
+                               'luck', 'theme'])
+        self.subjectivity_threshold = 120
+        self.objectivity_threshold = 20
+        self.unigram_dictionary = {}
+        self.bigram_dictionary = {}
+    def load_data(self):
+        with io.open(self.input_json, encoding='utf-8') as f:
+            return json.load(f)
+    def process_comments(self, data):
+        imgs = data['images'][::4]
+        for img in tqdm(imgs, position=0, leave=True, unit='images'):
+            comments = img['sentences']
+            new_comments = filter(self.check_language, comments)
+            reduced_tokenized_comments = filter(self.perform_all_steps, new_comments)
+            img['sentences'] = list(reduced_tokenized_comments)
+    def check_language(self, comment):
+        return True
+    def perform_all_steps(self, comment):
+        return True
+    def save_results(self, data):
+def main():
+    processor = CommentProcessor("CLEAN_AVA_FULL_COMMENTS.json")
+    data = processor.load_data()
+    processor.process_comments(data)
+    processor.save_results(data)
+if __name__ == "__main__":
+    main()

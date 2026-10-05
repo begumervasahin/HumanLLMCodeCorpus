@@ -1,0 +1,32 @@
+import random
+computer_stuff = [
+    "Desktop", "Laptop", "Mouse", "Keyboard", "Printer",
+    "HDMI", "SSD", "HDD", "Monitor", "Processor"
+]
+candies = [
+    "AlmondJoy", "KitKat", "HeathBar", "BabyRuth", "Twix",
+    "Snickers", "Cotton Candy", "MilkyWay", "Hershey", "Cadbury"
+]
+mobile_stuff = [
+    "HeadPhones", "Charger", "Splitter", "Lenses", "Battery",
+    "Processor", "HomeButton", "Speakers", "Camera", "Screen"
+]
+food = [
+    "Bread", "Milk", "Eggs", "Tea", "Coffee",
+    "Cream", "Bagel", "Sugar", "CreamCheese", "Cheese"
+]
+automobile = [
+    "SideLight", "HeadLight", "Engine", "SteeringWheel",
+    "WindShield", "Oil", "BreakPad", "Wheels", "Tires", "Car"
+]
+def generate_data(filename, items):
+    with open(filename, 'a') as file:
+        file.truncate()
+        for _ in range(25):
+            selected_items = random.sample(items, 10)
+            file.write(','.join(selected_items) + '\n')
+generate_data('computerStuff.txt', computer_stuff)
+generate_data('candies.txt', candies)
+generate_data('mobileStuff.txt', mobile_stuff)
+generate_data('food.txt', food)
+generate_data('automobile.txt', automobile)

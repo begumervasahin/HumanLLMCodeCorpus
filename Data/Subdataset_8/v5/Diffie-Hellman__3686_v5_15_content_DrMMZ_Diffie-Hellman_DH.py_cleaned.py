@@ -1,0 +1,41 @@
+import getpass
+import re
+def find_generators(p):
+    generators = set()
+    for x in range(1, p):
+        residues = set()
+        for i in range(1, p):
+            y = (x ** i) % p
+            residues.add(y)
+        print("Residues for <", x, ">:", residues)
+        if len(residues) == p - 1:
+            generators.add(x)
+    print("\nGenerators of Z mod", p, "are", generators)
+print()
+print("------------------------------------------------------------")
+print("     The Diffie-Hellman public key exchange protocol        ")
+print("------------------------------------------------------------")
+print()
+p = int(input("Choose a prime number: "))
+print()
+find_generators(p)
+print()
+g = int(input("Choose a generator: "))
+print()
+q = p - 1
+while True:
+    print("Choose an integer in [1, {}]".format(q))
+    a = getpass.getpass(prompt="Enter your integer: ")
+    if re.findall("[a-zA-Z]", a) or int(a) <= 0 or int(a) > q:
+        print("Invalid format or value!")
+    else:
+        a = int(a)
+        break
+print()
+s = (g ** a) % p
+print("Send:", s)
+r = int(input("Receive: "))
+print()
+k = (r ** a) % p
+print("The shared secret key:", k)
+print()

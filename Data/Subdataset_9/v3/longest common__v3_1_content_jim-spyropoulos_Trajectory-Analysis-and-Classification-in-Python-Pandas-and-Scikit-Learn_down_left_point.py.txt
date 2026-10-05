@@ -1,0 +1,33 @@
+import pandas as pd
+
+# Load the DataFrame from a pickle file
+df = pd.read_pickle('final_cleaned.df')
+
+# Create empty DataFrames to store minimum longitude and latitude values
+min_lon_df = pd.DataFrame(columns=['min_lon'])
+min_lat_df = pd.DataFrame(columns=['min_lat'])
+
+# Iterate through each row of the DataFrame
+for index, row in df.iterrows():
+    trajectory = df['timestamp_longitude_latitude'].iloc[index]
+    
+    # Initialize variables to store minimum longitude and latitude
+    min_lon = min(point[1] for point in trajectory)
+    min_lat = min(point[2] for point in trajectory)
+    
+    # Append the minimum longitude and latitude to the respective DataFrames
+    min_lon_df = min_lon_df.append({'min_lon': min_lon}, ignore_index=True)
+    min_lat_df = min_lat_df.append({'min_lat': min_lat}, ignore_index=True)
+
+print("Found the minimum longitude and latitude for each trajectory.")
+
+# Sort the longitude and latitude DataFrames
+sorted_min_lon_df = min_lon_df.sort_values(by=['min_lon'], ascending=False)
+sorted_min_lat_df = min_lat_df.sort_values(by=['min_lat'])
+
+# Get the lowest longitude and latitude values
+lowest_lon = sorted_min_lon_df['min_lon'].iloc[0]
+lowest_lat = sorted_min_lat_df['min_lat'].iloc[0]
+
+print("Lowest Longitude:", lowest_lon)
+print("Lowest Latitude:", lowest_lat)

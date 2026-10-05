@@ -1,0 +1,104 @@
+import torch
+import torch.nn as nn
+from torchvision import datasets
+import matplotlib.pyplot as plt
+def pca(X, k=30):
+    X_normalized = X / torch.max(X)
+    X_centered = X_normalized - torch.mean(X_normalized, dim=0)
+    U, S, Vt = torch.svd(X_centered)
+    X_pca = torch.mm(U[:, :k], torch.diag(S[:k]))
+    return X_pca
+def estimate_gaussian_kernel_variance(variance, X, perp, search_range, tolerance=0.01):
+    n_samples = X.shape[0]
+    for i in range(n_samples):
+        var_range = search_range.clone()
+        searching = True
+        while searching:
+            H = torch.exp(-torch.pow(torch.norm(X[i, :] - X, dim=1), 2) / (2 * variance[i]))
+            H[i] = 0
+            H = H / torch.sum(H)
+            log_H = torch.log2(H)
+            log_H[i] = 0
+            H = torch.pow(2, -torch.sum(H * log_H))
+            if H > perp + (tolerance * perp):
+                var_range[1] = variance[i]
+                variance[i] = ((var_range[1] - var_range[0]) / 2) + var_range[0]
+            elif H < perp - (tolerance * perp):
+                var_range[0] = variance[i]
+                variance[i] = ((var_range[1] - var_range[0]) / 2) + var_range[0]
+            else:
+                searching = False
+def compute_pairwise_affinities(X, variance):
+    n_samples = X.shape[0]
+    P = torch.exp(-torch.pow(torch.norm(X[:, None] - X[None, :], dim=2), 2) / (2 * variance))
+    torch.diagonal(P)[:] = 0
+    P = P / torch.sum(P, dim=1).unsqueeze(1)
+    p = (P + torch.triu(P).T + torch.tril(P).T) / (2 * n_samples)
+    torch.diagonal(p)[:] = float('nan')
+    return p
+def compute_low_dimensional_affinities(Y, degrees_of_freedom):
+    q = torch.pow(1 + torch.pow(torch.norm(Y[:, None] - Y[None, :], dim=2), 2), -(degrees_of_freedom + 1) / 2)
+    torch.diagonal(q)[:] = 0
+    q = q / torch.sum(q)
+    torch.diagonal(q)[:] = float('nan')
+    return q
+def t_sne(X, perplexity=40, total_iterations=1000, learning_rate=100, momentum=(0.5, 0.8),
+          pca_components=30, target_dimensions=2, t_distribution_degrees=1, verbose=True):
+    n_samples = X.shape[0]
+    X_pca = pca(X, pca_components)
+    Y = 10e-4 * torch.randn(n_samples, target_dimensions)
+    variance_range = torch.tensor([0, 50]).float()
+    variance = (variance_range[1] - variance_range[0]) / 2 * torch.ones(n_samples, 1)
+    if torch.cuda.is_available():
+        X_pca = X_pca.cuda()
+        Y = Y.cuda()
+        variance = variance.cuda()
+    Y.requires_grad = True
+    loss_function = nn.KLDivLoss(reduction='sum')
+    optimizer = torch.optim.SGD([Y], lr=learning_rate, momentum=momentum[0])
+    estimate_gaussian_kernel_variance(variance, X_pca, perplexity, variance_range, tolerance=0.01)
+    if verbose:
+        print('Gaussian kernel variance (mean):', torch.mean(variance).detach().cpu().numpy())
+        print('Gaussian kernel variance (min):', torch.min(variance).detach().cpu().numpy())
+        print('Gaussian kernel variance (max):', torch.max(variance).detach().cpu().numpy())
+    p_affinities = compute_pairwise_affinities(X_pca, variance)
+    for t in range(total_iterations + 1):
+        if t >= 250:
+            optimizer = torch.optim.SGD([Y], lr=learning_rate, momentum=momentum[1])
+        optimizer.zero_grad()
+        q_affinities = compute_low_dimensional_affinities(Y, t_distribution_degrees)
+        if t <= 50:
+            loss = loss_function(torch.log(q_affinities), 4 * p_affinities)
+        else:
+            loss = loss_function(torch.log(q_affinities), p_affinities)
+        loss.backward()
+        optimizer.step()
+        if verbose and (t % 20) == 0:
+            if t <= 50:
+                print('Iteration:', t, '| KL Loss (exaggerated):', loss.detach().cpu().numpy(),
+                      '| Gradient Norm (exaggerated):', torch.norm(Y.grad).detach().cpu().numpy())
+            else:
+                print('Iteration:', t, '| KL Loss:', loss.detach().cpu().numpy(),
+                      '| Gradient Norm:', torch.norm(Y.grad).detach().cpu().numpy())
+    return Y
+torch.manual_seed(1)
+perplexity = 40
+total_iterations = 1000
+learning_rate = 100
+momentum = [0.5, 0.8]
+pca_components = 30
+n_samples = 6000
+target_dimensions = 2
+t_distribution_degrees = 1
+verbose = True
+mnist = datasets.MNIST('../data', train=False, download=True)
+X = mnist.data.view(mnist.data.shape[0], -1).float()
+index = torch.randint(mnist.data.shape[0], (n_samples, 1))
+X_subset = X[index[:, 0], :]
+Y_embedded = t_sne(X_subset, perplexity, total_iterations, learning_rate, momentum,
+                    pca_components, target_dimensions, t_distribution_degrees, verbose)
+fig, ax = plt.subplots()
+for i0 in range(torch.max(targets).detach().cpu().numpy()):
+    ax.plot(Y_embedded[targets == i0, 0].detach().cpu().numpy(),
+            Y_embedded[targets == i0, 1].detach().cpu().numpy(), '.')
+plt.show()

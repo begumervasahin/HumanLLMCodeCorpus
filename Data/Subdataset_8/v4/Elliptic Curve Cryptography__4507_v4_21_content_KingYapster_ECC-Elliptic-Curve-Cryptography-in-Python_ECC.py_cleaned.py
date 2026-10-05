@@ -1,0 +1,26 @@
+from ecies.utils import generate_key
+from ecies import encrypt, decrypt
+from tkinter import filedialog
+import base64
+import os
+key_pair = generate_key()
+private_key_hex = key_pair.to_hex()
+public_key_hex = key_pair.public_key.format(True).hex()
+file_path = filedialog.askopenfilename()
+file_directory, file_name = os.path.split(file_path)
+encrypted_file_path = os.path.join(file_directory, 'encrypted_' + file_name)
+decrypted_file_path = os.path.join(file_directory, 'decrypted_' + file_name)
+with open(file_path, "rb") as file:
+    file_data = base64.b64encode(file.read())
+print("Private key:", private_key_hex)
+print("Public key:", public_key_hex)
+print("Type of private key:", type(private_key_hex))
+print("Binary content of the file:", file_data)
+encrypted_data = encrypt(public_key_hex, file_data)
+print("Encrypted binary data:", encrypted_data)
+with open(encrypted_file_path, "wb") as encrypted_file:
+    encrypted_file.write(base64.b64decode(encrypted_data))
+decrypted_data = decrypt(private_key_hex, encrypted_data)
+print("\nDecrypted data:", decrypted_data)
+with open(decrypted_file_path, "wb") as decrypted_file:
+    decrypted_file.write(base64.b64decode(decrypted_data))

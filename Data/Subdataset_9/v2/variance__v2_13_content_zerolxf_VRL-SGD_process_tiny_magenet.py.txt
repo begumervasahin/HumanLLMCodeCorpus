@@ -1,0 +1,61 @@
+import os
+import torchvision.models as models
+import torch
+import torch.nn as nn
+from torchvision import datasets, transforms
+import numpy as np
+
+# Define constants
+DATA_PATH = "train/"
+BATCH_SIZE = 64
+
+# Define transformations for input images
+image_transform = transforms.Compose([
+    transforms.Resize(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# Load test data
+test_data = datasets.ImageFolder(root=DATA_PATH, transform=image_transform)
+
+# Create data loader
+data_loader = torch.utils.data.DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True)
+
+# Load pre-trained Inception V3 model
+model_pre = models.inception_v3(pretrained=True).cuda()
+
+# Modify the fully connected layer of the model
+model_pre.fc = nn.Sequential()
+
+# Freeze parameters so we don't backprop through them
+for param in model_pre.parameters():
+    param.requires_grad = False
+
+# Set the model to evaluation mode
+model_pre.eval()
+
+# Initialize lists to store extracted features and labels
+features = []
+labels = []
+
+# Extract features and labels
+for images, targets in data_loader:
+    # Forward pass through the model
+    with torch.no_grad():  # No need to track gradients during inference
+        images = images.cuda()  # Move images to GPU if available
+        outputs = model_pre(images)
+        features.extend(outputs.cpu())  # Append extracted features to the list
+        labels.extend(targets.tolist())  # Append labels to the list
+
+# Convert lists to numpy arrays
+features_array = np.array([feature.numpy() for feature in features])
+labels_array = np.array(labels)
+
+# Print shape of the data
+print("Shape of extracted features:", features_array.shape)
+print("Shape of labels:", labels_array.shape)
+
+# Save the data as numpy arrays
+np.save("tiny_imagenet_train_x", features_array)
+np.save("tiny_imagenet_train_y", labels_array)

@@ -1,0 +1,97 @@
+import cryptodata
+import cryptofolio
+from cryptoscreener import screenUniverse
+import pandas as pd
+import datetime
+import matplotlib.pyplot as plt
+from math import log
+import csv
+import time
+
+# Load coin data
+coindata = pd.read_csv('input/clean_coindata.csv')
+coindata['Date'] = pd.to_datetime(coindata['Date'], infer_datetime_format=True)
+coindata.set_index('Date', inplace=True)
+
+# Read parameters from CSV
+with open('parameters.csv', 'r') as file:
+    reader = csv.reader(file)
+    parameters = dict(reader)
+
+# Convert parameter values to appropriate types
+backtestmode = parameters.get('Backtest Mode', 'False').lower() == 'true'
+minMarketCap = float(parameters.get('Minimum Market Cap', 0))
+minimumListingPeriod = float(parameters.get('Minimum Listing Period', 0)) + float(parameters.get('Offset', 0))
+circulatingPct = float(parameters.get('Circulating Percentage', 0))
+minExchanges = float(parameters.get('Minimum Exchange Listing', 0))
+weightingScheme = parameters.get('Weighting Scheme', '')
+minWeight = float(parameters.get('Minimum Weight', 0))
+maxWeight = float(parameters.get('Maximum Weight', 0))
+returnFreq = int(parameters.get('Offset', 0))
+periodicity = parameters.get('Periodicity', '')
+lookback = int(parameters.get('Lookback Window', 0))
+
+# Initialize portfolio
+portfolio = cryptofolio.Portfolio({}, 0.0)
+
+# Initialize lists to store index levels
+indexLevel = []
+indexLevel_log = []
+
+# Set initial investment
+initialInvestment = 1.0
+
+# Get unique dates
+dates = pd.to_datetime(coindata.index.unique())
+
+# Perform backtest or optimization
+if backtestmode:
+    startBacktest = pd.to_datetime(parameters.get('Start Date'))
+    dates = dates[dates >= startBacktest]
+    for date in dates:
+        latestPrices = coindata.loc[date, 'Close'].to_dict()
+        if len(indexLevel) == 0:
+            universe = list(latestPrices.keys())
+            for coin in universe:
+                weight = 1.0 / len(universe)
+                quantity = (initialInvestment * weight) / latestPrices[coin]
+                portfolio.buy(coin, quantity)
+        if isRebalanceDate(date, 'monthly') and len(indexLevel) > 0:
+            universe = screenUniverse(date - pd.DateOffset(days=1), minMarketCap, minimumListingPeriod, circulatingPct, minExchanges)
+            if parameters.get('Coins To Omit', ''):
+                coinstoremove = parameters['Coins To Omit'].split(';')
+                print('Removing ' + ','.join(coinstoremove) + ' in the optimization...')
+                universe = [coin for coin in universe if coin not in coinstoremove]
+            if len(universe) < 2:
+                weights = {'bitcoin': 1.0}
+            else:
+                weights = portfolio.getMVOptimizedWeights(date - pd.DateOffset(days=1), universe, minWeight, maxWeight, returnFreq, periodicity, lookback)
+            for coin in universe:
+                weight = weights.get(coin, 1.0 / len(portfolio.getPositions().keys()))
+                quantity = portfolio.getValue(latestPrices) * weight / latestPrices[coin]
+                if coin in portfolio.getPositions():
+                    portfolio.sell(coin, portfolio.getPositions()[coin])
+                portfolio.buy(coin, quantity)
+        indexLevel.append(portfolio.getValue(latestPrices))
+    indexLevel_log = [log(price, 10) for price in indexLevel]
+    results = pd.DataFrame({'Dates': dates, 'Index Level': indexLevel, 'Log Index Level': indexLevel_log})
+    results.to_csv('results/backtestResults_' + str(time.time()) + '.csv', index=False)
+    plt.plot_date(dates, indexLevel_log, '-')
+    plt.title('Backtest Result')
+    plt.gcf().autofmt_xdate()
+    plt.show()
+else:
+    print('Performing optimization for ' + parameters['Start Date'] + '....')
+    universeSelectionDate = pd.to_datetime(parameters['Start Date'])
+    universe = screenUniverse(universeSelectionDate, minMarketCap, minimumListingPeriod, circulatingPct, minExchanges)
+    if parameters.get('Coins To Omit', ''):
+        coinstoremove = parameters['Coins To Omit'].split(';')
+        print('Removing ' + ','.join(coinstoremove) + ' in the optimization...')
+        universe = [coin for coin in universe if coin not in coinstoremove]
+    print('Final weights:')
+    weights = portfolio.getMVOptimizedWeights(universeSelectionDate, universe, minWeight, maxWeight, returnFreq, periodicity, lookback)
+    print('Optimization successful! Writing results to final_weights.csv')
+    with open('results/final_weights.csv', 'w') as f:
+        w = csv.writer(f)
+        w.writerow(weights.keys())
+        w.writerow(weights.values())

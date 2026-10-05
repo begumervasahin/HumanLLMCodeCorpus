@@ -1,0 +1,46 @@
+import argparse
+import cv2
+import imutils
+import numpy as np
+from keras.models import load_model
+from keras.preprocessing.image import img_to_array
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Detect whether an image is aesthetic or not.")
+    parser.add_argument("-m", "--model", required=True, help="Path to the trained model")
+    parser.add_argument("-i", "--image", required=True, help="Path to the input image")
+    return parser.parse_args()
+
+def preprocess_image(image):
+    resized_image = cv2.resize(image, (28, 28))
+    normalized_image = resized_image.astype("float") / 255.0        
+    processed_image = img_to_array(normalized_image)
+    return np.expand_dims(processed_image, axis=0)
+
+def load_trained_model(model_path):
+    print("[INFO] Loading the network model...")
+    return load_model(model_path)
+
+def predict_aesthetic(image, model):
+    not_aesthetic, aesthetic = model.predict(image)[0]
+    label = "Aesthetic" if aesthetic > not_aesthetic else "Not Aesthetic"
+    proba = aesthetic if aesthetic > not_aesthetic else not_aesthetic
+    return label, proba
+
+def add_label_to_image(image, label, proba):
+    output = imutils.resize(image, width=400)
+    cv2.putText(output, "{}: {:.2f}%".format(label, proba * 100), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    return output
+
+def main():
+    args = parse_arguments()
+    image = cv2.imread(args.image)
+    processed_image = preprocess_image(image)
+    model = load_trained_model(args.model)
+    label, proba = predict_aesthetic(processed_image, model)        
+    output_image = add_label_to_image(image, label, proba)
+    cv2.imshow("Output", output_image)
+    cv2.waitKey(0)
+
+if __name__ == "__main__":
+    main()

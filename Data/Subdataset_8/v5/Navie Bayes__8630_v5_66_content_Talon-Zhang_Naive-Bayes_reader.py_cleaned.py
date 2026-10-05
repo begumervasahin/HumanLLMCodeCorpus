@@ -1,0 +1,28 @@
+
+from os import listdir
+import numpy as np
+from nltk.stem.porter import PorterStemmer
+porter_stemmer = PorterStemmer()
+bad_words = {'aed', 'oed', 'eed'}
+def load_directory(directory_name, stemming):
+    text_list = []
+    for file_name in listdir(directory_name):
+        full_name = directory_name + file_name
+        text = []
+        with open(full_name, 'rb') as file:
+            for line in file:
+                text += line.decode(errors='ignore').split(' ')
+        if stemming:
+            text = [porter_stemmer.stem(word) if word not in bad_words else word for word in text]
+        text_list.append(text)
+    return text_list
+def load_dataset(train_dir, dev_dir, stemming):
+    X_train_ham = load_directory(train_dir + '/ham/', stemming)
+    X_train_spam = load_directory(train_dir + '/spam/', stemming)
+    X_train = X_train_ham + X_train_spam
+    Y_train = np.array([0] * len(X_train_ham) + [1] * len(X_train_spam))
+    X_test_ham = load_directory(dev_dir + '/ham/', stemming)
+    X_test_spam = load_directory(dev_dir + '/spam/', stemming)
+    X_test = X_test_ham + X_test_spam
+    Y_test = np.array([0] * len(X_test_ham) + [1] * len(X_test_spam))
+    return X_train, Y_train, X_test, Y_test

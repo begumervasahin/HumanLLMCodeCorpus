@@ -1,0 +1,45 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+from sklearn.decomposition import PCA
+from gensim.models import Word2Vec
+
+# Load Word2Vec model
+bin_fname = 'word2vec/word2vec_wx'
+model = Word2Vec.load(bin_fname)
+model = model.wv
+
+# Load image embeddings
+img_embedding = np.load('img2vec.npy')
+
+# Function to display matrix as image
+def show(matrix):
+    a = np.reshape(matrix, (16, 16))
+    plt.imshow(a)
+
+# Function to convert image to matrix
+def ImageToMatrix(filename):
+    im = Image.open(filename)
+    width, height = im.size
+    im = im.convert("L")
+    data = im.getdata()
+    data = np.matrix(data, dtype='float') / 255.0
+    new_data = np.reshape(data, (height, width))
+    return new_data
+
+# Load images and convert them to matrices
+img = []
+for i in range(8984):
+    img.append(ImageToMatrix('G:\\Yeah!!!\\img2vec/img/{}.jpg'.format(i + 1)))    
+img = np.array(img)
+img = np.reshape(img, (8984, -1))
+
+# Perform PCA with 10 components
+pca_model = PCA(10)
+y = pca_model.fit_transform(img)
+
+# Set precision for printing
+np.set_printoptions(precision=9)
+
+# Print PCA transformation of a specific image (index 178)
+print(y[178])

@@ -1,0 +1,195 @@
+# mirror-enc: A GPG Frontend for AES & RSA Encryption
+# Author: Mario Saso
+# License: GPLv3
+
+__version__ = '1.0.0'
+__license__ = 'GPLv3'
+__author__ = 'Mario Saso'
+__email__ = 'mariosaso@protonmail.com'
+__url__ = 'https://github.com/M4R1OS4S0/mirror-enc'
+
+import sys
+import subprocess
+
+# ASCII Art and Menus
+BANNER = """
+     ___________ @ @
+    /  v1.0.0  @\\   @                       _
+    \\___________/  _@              ___ __ _(_)__ _ __ _  ___ __ _
+              @  _/@ \\_____       / _ ' _` | |__` |__` |/ _ \\__` |
+               @/ \\__/-=-=^`     | | | | | | |  | |  | | (_) | | |
+                \\_ /             |_| |_| |_|_|  |_|  |_|\___/  |_|-enc
+                 <|
+                 <|               .:   <github.com/M4R1OS4S0>    :.
+                 <|               .: <mariosaso@protonmail.com>  :.
+                                  .: <https://www.mariosaso.com> :.
+            A GPG Frontend that uses AES & RSA algorithms.   
+"""
+
+MENU = """
+                  .:: Symmetric Encryption ::.
+This module uses Advanced Encryption Standard (AES) to encrypt and
+decrypt files. The key used to encrypt should be the same as the key 
+used for decryption.
+1. AES-256 File Encryption       2. AES-256 File Decryption
+
+                  .:: Asymmetric Encryption ::.
+This module uses Rivest Shamir Adleman (RSA) to generate keypairs and
+encrypt and decrypt files. Public key is used to encrypt and private 
+key is used to decrypt.
+3. Generate Keypair              4. Generate Default Keypair 
+5. Import Local Key              6. Export Local Key
+7. Show Public Keys              8. Show Private Keys        
+9. Delete Public Key            10. Delete Private Key       
+11. Encrypt File (PublicKey)    12. Decrypt File (PrivateKey)
+
+                      .:: Fingerprint ::.
+This module uses MD5, SHA-1, SHA-224 and SHA-256 algorithms to
+generate hashes. Hashing creates unpredictable, irreversible output.
+13. MD5 Hash                    14. SHA-1 Hash
+15. SHA-224 Hash                16. SHA-256 Hash
+
+                         .:: Other ::.
+0. Menu mirror-enc              00. Exit mirror-enc
+"""
+
+# Utility Functions
+def clear_screen():
+    """Clears the terminal screen."""
+    subprocess.run(['clear'])
+
+def normalize_path(file_path):
+    """Normalizes file path to handle drag & drop quirks."""
+    if file_path.startswith(('\'', '\"')):
+        return file_path[1:-1]
+    return file_path
+
+def execute_command(command):
+    """Executes a subprocess command and handles output."""
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode == 0:
+        print("\n[+] Operation completed successfully")
+        print(result.stdout.decode('utf-8'))
+    else:
+        print("\n[-] An error occurred")
+        print(result.stderr.decode('utf-8'))
+
+# Encryption & Decryption Functions
+def aes_encrypt(file_path):
+    """Encrypts a file using AES-256."""
+    execute_command(["gpg", "-a", "-o", f"{file_path}.aes", "--symmetric", "--cipher-algo", "AES256", file_path])
+
+def aes_decrypt(file_path):
+    """Decrypts an AES-256 encrypted file."""
+    execute_command(["gpg", "-o", file_path[:-4], "-d", file_path])
+
+def rsa_generate_keypair(full=False):
+    """Generates an RSA keypair."""
+    command = ["gpg", "--full-generate-key"] if full else ["gpg", "--gen-key"]
+    execute_command(command)
+
+def rsa_import_key(file_path):
+    """Imports an RSA key."""
+    execute_command(["gpg", "--import", file_path])
+
+def rsa_export_key(uid):
+    """Exports an RSA key."""
+    execute_command(["gpg", "--export", uid])
+
+def rsa_list_keys(secret=False):
+    """Lists RSA keys."""
+    command = ["gpg", "--list-secret-keys"] if secret else ["gpg", "--list-keys"]
+    execute_command(command)
+
+def rsa_delete_key(uid, secret=False):
+    """Deletes an RSA key."""
+    command = ["gpg", "--delete-secret-key", uid] if secret else ["gpg", "--delete-key", uid]
+    execute_command(command)
+
+def rsa_encrypt(file_path, recipient_uid):
+    """Encrypts a file with a public RSA key."""
+    execute_command(["gpg", "-o", f"{file_path}.rsa", "-r", recipient_uid, "--armor", "--encrypt", file_path])
+
+def rsa_decrypt(file_path, uid):
+    """Decrypts a file with a private RSA key."""
+    execute_command(["gpg", "-o", file_path[:-4], "-u", uid, "-d", file_path])
+
+# Hashing Functions
+def calculate_hash(file_path, algorithm):
+    """Calculates the hash of a file using the specified algorithm."""
+    execute_command([f"{algorithm}sum", file_path])
+
+# Main Program Logic
+def get_user_option(options):
+    """Prompts the user for a menu option and validates input."""
+    option = input('Choose a number > ')
+    while option not in options:
+        option = input('Choose a number > ')
+    print()
+    return option
+
+def main():
+    clear_screen()
+    print(BANNER)
+    print(MENU)
+    options = [str(i) for i in range(17)] + ['00']
+
+    while True:
+        try:
+            option = get_user_option(options)
+            file_path = ''
+            uid = ''
+
+            if option in ['1', '2', '5', '11', '12', '13', '14', '15', '16']:
+                file_path = normalize_path(input('Enter the file path: '))
+            
+            if option in ['6', '9', '10', '12']:
+                uid = input('Enter the UID: ')
+
+            if option == '1':
+                aes_encrypt(file_path)
+            elif option == '2':
+                aes_decrypt(file_path)
+            elif option == '3':
+                rsa_generate_keypair()
+            elif option == '4':
+                rsa_generate_keypair(full=True)
+            elif option == '5':
+                rsa_import_key(file_path)
+            elif option == '6':
+                rsa_export_key(uid)
+            elif option == '7':
+                rsa_list_keys()
+            elif option == '8':
+                rsa_list_keys(secret=True)
+            elif option == '9':
+                rsa_delete_key(uid)
+            elif option == '10':
+                rsa_delete_key(uid, secret=True)
+            elif option == '11':
+                recipient_uid = input('Enter the recipient UID: ')
+                rsa_encrypt(file_path, recipient_uid)
+            elif option == '12':
+                rsa_decrypt(file_path, uid)
+            elif option == '13':
+                calculate_hash(file_path, 'md5')
+            elif option == '14':
+                calculate_hash(file_path, 'sha1')
+            elif option == '15':
+                calculate_hash(file_path, 'sha224')
+            elif option == '16':
+                calculate_hash(file_path, 'sha256')
+            elif option == '0':
+                clear_screen()
+                print(BANNER)
+                print(MENU)
+            elif option == '00':
+                print('Exiting mirror-enc...')
+                break
+
+        except KeyboardInterrupt:
+            print("\n\nOperation canceled by the user.")
+            sys.exit(0)
+
+if __name__ == "__main__":
+    main()

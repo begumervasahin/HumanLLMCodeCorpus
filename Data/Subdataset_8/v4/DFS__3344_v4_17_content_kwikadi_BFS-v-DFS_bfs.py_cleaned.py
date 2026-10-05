@@ -1,0 +1,35 @@
+from collections import defaultdict
+class Graph:
+    def __init__(self, num_vertices):
+        self.adjacency_lists = defaultdict(list)
+        self.num_vertices = num_vertices
+    def add_edge(self, u, v):
+        self.adjacency_lists[u].append(v)
+    def bfs(self, start_vertex, goal_vertex):
+        visited = [False] * self.num_vertices
+        queue = []
+        queue.append(start_vertex)
+        visited[start_vertex] = True
+        while queue:
+            current_vertex = queue.pop(0)
+            print(current_vertex, end=" ")
+            if current_vertex == goal_vertex:
+                print("Goal found.")
+                return
+            for neighbor in self.adjacency_lists[current_vertex]:
+                if not visited[neighbor]:
+                    queue.append(neighbor)
+                    visited[neighbor] = True
+        print("Search failed.")
+def main():
+    with open('input.txt', 'r') as input_file:
+        num_vertices = int(input_file.readline())
+        start_vertex = int(input_file.readline())
+        goal_vertex = int(input_file.readline())
+        graph = Graph(num_vertices)
+        for line in input_file:
+            u, v = map(int, line.split())
+            graph.add_edge(u, v)
+    graph.bfs(start_vertex, goal_vertex)
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,63 @@
+import numpy as np
+
+class PCA:
+    def __init__(self, num_components=None):
+        self.num_components = num_components
+        
+    def fit(self, data):
+        if self.num_components is None or self.num_components > data.shape[0]:
+            self.num_components = data.shape[0]
+        
+        # Compute the mean of the data
+        data_mean = np.mean(data, axis=0)
+        self.data_mean = data_mean
+        
+        # Center the data
+        centered_data = data - data_mean
+        
+        # Compute the covariance matrix
+        covariance_matrix = np.matmul(centered_data.transpose(), centered_data) / (centered_data.shape[0] - 1)
+        
+        # Compute eigenvectors and eigenvalues of the covariance matrix
+        eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)
+        
+        # Sort eigenvectors and eigenvalues in descending order
+        eigenvectors = eigenvectors[:, eigenvalues.argsort()[::-1]]
+        eigenvalues.sort()
+        eigenvalues = eigenvalues[::-1]
+        
+        self.eigenvalues = np.real(eigenvalues)
+        self.eigenvectors = np.real(eigenvectors)
+        
+        # Compute the proportion of variance explained (PVE)
+        self.pve_list = []
+        total_variance = np.sum(self.eigenvalues)
+        cumulative_variance = 0
+        
+        for i in range(self.eigenvalues.shape[0]):
+            cumulative_variance += self.eigenvalues[i]
+            self.pve_list.append(cumulative_variance / total_variance)
+    
+    def transform(self, data):
+        # Center the data
+        centered_data = data - self.data_mean
+        
+        # Project data onto the principal components
+        projected_data = np.matmul(centered_data, self.eigenvectors)[:, :self.num_components]
+        
+        return projected_data
+
+# Example usage:
+if __name__ == "__main__":
+    # Generate sample data
+    np.random.seed(0)
+    data = np.random.rand(10, 5)
+    
+    # Perform PCA
+    pca = PCA(num_components=2)
+    pca.fit(data)
+    transformed_data = pca.transform(data)
+    
+    # Print shapes of original and transformed data
+    print("Original data shape:", data.shape)
+    print("Transformed data shape:", transformed_data.shape)

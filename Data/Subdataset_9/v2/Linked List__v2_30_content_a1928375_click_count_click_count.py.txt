@@ -1,0 +1,109 @@
+def record_user_click(index, keyword, url):
+    # Look up the URLs associated with the keyword in the index
+    urls = lookup(index, keyword)
+    if urls:
+        # Iterate through the URLs to find the matching one
+        for entry in urls:
+            if entry[0] == url:
+                # Increment the click count for the matching URL
+                entry[1] += 1
+
+def lookup(index, keyword):
+    # Search for the keyword in the index and return its associated URLs
+    for entry in index:
+        if entry[0] == keyword:
+            return entry[1]
+    return None
+
+def add_to_index(index, keyword, url):
+    # Add a URL to the index associated with a keyword
+    for entry in index:
+        if entry[0] == keyword:
+            # If the keyword is already in the index, check if the URL is already present
+            for urls in entry[1]:
+                if urls[0] == url:
+                    return
+            # If the URL is not present, add it with a click count of 0
+            entry[1].append([url, 0])
+            return
+    # If the keyword is not in the index, add it along with the URL
+    index.append([keyword, [[url, 0]]])
+
+def get_page(url):
+    # Retrieve the content of a webpage given its URL
+    try:
+        if url == "http://www.udacity.com/cs101x/index.html":
+            return '''<html> <body> This is a test page for learning to crawl!
+<p> It is a good idea to
+<a href="http://www.udacity.com/cs101x/crawling.html">
+learn to crawl</a> before you try to
+<a href="http://www.udacity.com/cs101x/walking.html">walk</a> or
+<a href="http://www.udacity.com/cs101x/flying.html">fly</a>.</p></body></html>'''
+        elif url == "http://www.udacity.com/cs101x/crawling.html":
+            return '''<html> <body> I have not learned to crawl yet, but I am
+quite good at  <a href="http://www.udacity.com/cs101x/kicking.html">kicking</a>.
+</body> </html>'''
+        elif url == "http://www.udacity.com/cs101x/walking.html":
+            return '''<html> <body> I cant get enough
+<a href="http://www.udacity.com/cs101x/index.html">crawling</a>!</body></html>'''
+        elif url == "http://www.udacity.com/cs101x/flying.html":
+            return '<html><body>The magic words are Squeamish Ossifrage!</body></html>'
+    except:
+        return ""
+    return ""
+
+def union(a, b):
+    # Combine two lists removing duplicates from the first list
+    for e in b:
+        if e not in a:
+            a.append(e)
+
+def get_next_target(page):
+    # Extract the URL from a hyperlink in the page content
+    start_link = page.find('<a href=')
+    if start_link == -1:
+        return None, 0
+    start_quote = page.find('"', start_link)
+    end_quote = page.find('"', start_quote + 1)
+    url = page[start_quote + 1:end_quote]
+    return url, end_quote
+
+def get_all_links(page):
+    # Retrieve all the URLs from hyperlinks in the page content
+    links = []
+    while True:
+        url, endpos = get_next_target(page)
+        if url:
+            links.append(url)
+            page = page[endpos:]
+        else:
+            break
+    return links
+
+def crawl_web(seed):
+    # Crawl the web starting from a seed URL
+    tocrawl = [seed]
+    crawled = []
+    index = []
+    while tocrawl:
+        page = tocrawl.pop()
+        if page not in crawled:
+            content = get_page(page)
+            add_page_to_index(index, page, content)
+            union(tocrawl, get_all_links(content))
+            crawled.append(page)
+    return index
+
+def add_page_to_index(index, url, content):
+    # Add the words from the webpage content to the index
+    words = content.split()
+    for word in words:
+        add_to_index(index, word, url)
+
+# Example usage and testing
+index = crawl_web('http://www.udacity.com/cs101x/index.html')
+print(lookup(index, 'good'))
+record_user_click(index, 'good', 'http://www.udacity.com/cs101x/crawling.html')
+print(lookup(index, 'good'))
+record_user_click(index, 'good', 'http://www.udacity.com/cs101x/crawling.html')
+print(lookup(index, 'good'))

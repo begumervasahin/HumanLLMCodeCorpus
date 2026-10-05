@@ -1,0 +1,22 @@
+def generate_fibonacci_list(limit):
+    fib_sequence = [1, 1]
+    for _ in range(limit - 2):
+        next_fib = fib_sequence[-1] + fib_sequence[-2]
+        fib_sequence.append(next_fib)
+    return fib_sequence
+def print_fibonacci_sequence(fib_sequence):
+    for i, fib_num in enumerate(fib_sequence):
+        if i == 0:
+            print(f"{fib_num} + 0 = {fib_num}")
+        elif i == 1:
+            print(f"0 + {fib_num} = {fib_num}")
+        else:
+            prev_fib = fib_sequence[i - 1]
+            prev_prev_fib = fib_sequence[i - 2]
+            print(f"{prev_prev_fib} + {prev_fib} = {fib_num}")
+def main():
+    limit = 100
+    fibonacci_sequence = generate_fibonacci_list(limit)
+    print_fibonacci_sequence(fibonacci_sequence)
+if __name__ == "__main__":
+    main()

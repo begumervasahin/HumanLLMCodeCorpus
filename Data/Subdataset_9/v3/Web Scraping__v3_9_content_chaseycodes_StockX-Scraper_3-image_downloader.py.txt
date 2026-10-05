@@ -1,0 +1,65 @@
+import os
+import json
+import urllib.request
+import time
+import random
+
+# Define paths and constants
+PATH = 'path_to_images'
+BRANDS = ['nike', 'jordan', 'adidas', 'other']
+PLACEHOLDER_PATH = 'path_to_placeholder_image'
+
+
+def download_images():
+    for brand in BRANDS:
+        process_brand_data(brand)
+
+
+def process_brand_data(brand):
+    with open('{}.json'.format(brand)) as file:
+        brand_data = json.load(file)
+        for item_name, item_details in brand_data.items():
+            name = format_name(item_name)
+            img_link = item_details['image']
+            if not is_image_saved(name):
+                save_image(img_link, name)
+                print_image_status(item_name)
+                mimic_human_behavior()
+
+
+def format_name(name):
+    return name.replace('/', '-').replace('?', '').strip()
+
+
+def is_image_saved(name):
+    return name + '.jpg' in os.listdir(PATH)
+
+
+def save_image(img_link, name):
+    if 'Placeholder' in img_link.split('-'):
+        save_placeholder_image(name)
+    else:
+        download_image(img_link, name)
+
+
+def save_placeholder_image(name):
+    with open(PLACEHOLDER_PATH, 'rb') as placeholder:
+        with open('static/{}.jpg'.format(name), 'wb') as f:
+            f.write(placeholder.read())
+
+
+def download_image(img_link, name):
+    with open('static/{}.jpg'.format(name), 'wb') as f:
+        f.write(urllib.request.urlopen(img_link).read())
+
+
+def print_image_status(item_name):
+    print('Already Saved: ' + item_name)
+
+
+def mimic_human_behavior():
+    time.sleep(1 / (random.randint(1, 100) * 10000))
+
+
+if __name__ == "__main__":
+    download_images()

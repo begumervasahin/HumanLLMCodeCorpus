@@ -1,0 +1,37 @@
+import random
+def gcd(a, b):
+    if b == 0:
+        return a
+    else:
+        return gcd(b, a % b)
+def extended_gcd(a, b):
+    if b == 0:
+        return (1, 0)
+    else:
+        q, r = divmod(a, b)
+        s, t = extended_gcd(b, r)
+        return (t, s - q * t)
+def multiplicative_inverse(a, n):
+    x, y = extended_gcd(a, n)
+    return x % n
+def random_exponent(phi):
+    new_e = random.randint(2, phi)
+    while gcd(new_e, phi) != 1:
+        new_e = random.randint(2, phi)
+    return new_e
+def generate_keys(p, q):
+    if (p, q) == (2, 3) or (p, q) == (3, 2):
+        return "Choose a different value for 'p' and 'q'"
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    e = random_exponent(phi)
+    d = multiplicative_inverse(e, phi)
+    return ((e, d), n)
+def encrypt_bytes(byte_str, p, q):
+    (keys, modulus) = generate_keys(p, q)
+    print("Private key:", keys[0])
+    print("Public key:", keys[1])
+    print("Public modulus:", modulus, '\n')
+    return [hex(pow(byte_val, keys[0], modulus)).split('x')[1] for byte_val in byte_str]
+def decrypt_bytes(byte_arr, exponent, modulus):
+    return bytes([pow(int(byte_val, 16), exponent, modulus) for byte_val in byte_arr])

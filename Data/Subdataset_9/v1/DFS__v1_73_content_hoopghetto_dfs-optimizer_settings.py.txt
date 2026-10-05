@@ -1,0 +1,113 @@
+class Player:
+    def __init__(self, fppg, injury_indicator, injury_details, gametime, played, position, probable_pitcher, batting_order):
+        self.fppg = fppg
+        self.injury_indicator = injury_indicator
+        self.injury_details = injury_details
+        self.gametime = gametime
+        self.played = played
+        self.position = position
+        self.probable_pitcher = probable_pitcher
+        self.batting_order = batting_order
+
+def filter_nfl(p, gametime=None, relax=True):
+    if p.fppg < 3 or p.injury_indicator + p.injury_details != '':
+        return False
+    if gametime is not None and gametime not in p.gametime:
+        return False
+    return True
+
+def filter_nhl(p, gametime=None, relax=True):
+    if p.fppg < 1.0 or p.injury_indicator + p.injury_details != '':
+        return False
+    if p.played < 2:
+        return False
+    if gametime is not None and gametime not in p.gametime:
+        return False
+    return True
+
+def filter_mlb(p, gametime=None, relax=True):
+    if p.fppg < 1 or p.injury_indicator + p.injury_details != '':
+        return False
+    if p.position in ['SP', 'RP', 'P'] and p.probable_pitcher != 'Yes':
+        return False
+    if p.position == ['SP', 'RP', 'P'] and not relax and p.played < 10:
+        return False
+    if p.position != ['SP', 'RP', 'P'] and not relax and (p.played < 35 or p.batting_order in ['', 0]):
+        return False
+    if gametime is not None and gametime not in p.gametime:
+        return False
+    return True
+
+def create_team(config, site, sport):
+    salary = config[site][sport]['salary']
+    composition = config[site][sport]['composition']
+    filter_func = config[site][sport]['filter']
+    
+    # Get players based on filter function
+    players = [p for p in all_players if filter_func(p)]
+    
+    # Select players for each position
+    team = {}
+    remaining_salary = salary
+    for pos, num_players in composition.items():
+        pos_players = [p for p in players if p.position == pos]
+        pos_players.sort(key=lambda x: x.fppg, reverse=True)
+        selected_players = pos_players[:num_players]
+        team[pos] = selected_players
+        remaining_salary -= sum(p.fppg for p in selected_players)
+    return team
+
+# Example usage:
+# Define player data
+all_players = [
+    Player(5, '', '', ['Sunday'], 10, 'QB', '', ''),
+    Player(4, '', '', ['Sunday'], 12, 'RB', '', ''),
+    Player(6, '', '', ['Sunday'], 9, 'RB', '', ''),
+    # Add more player instances as needed
+]
+
+# Define configuration
+config = {
+    'FanDuel': {
+        'NFL': {
+            'salary': 60000,
+            'composition': {'QB': 1, 'RB': 2, 'WR': 3, 'TE': 1, 'K': 1, 'D': 1},
+            'filter': filter_nfl
+        },
+        'NHL': {
+            'salary': 55000,
+            'composition': {'LW': 2, 'RW': 2, 'C': 2, 'D': 2, 'G': 1},
+            'filter': filter_nhl
+        },
+        'MLB': {
+            'salary': 35000,
+            'composition': {'P': 1, 'C': 1, '1B': 1, '2B': 1, '3B': 1, 'SS': 1, 'OF': 3},
+            'filter': filter_mlb
+        }
+    },
+    'DraftKings': {
+        'NFL': {
+            'salary': 60000,
+            'composition': {'QB': 1, 'RB': 2, 'WR': 3, 'TE': 1, 'K': 1, 'D': 1},
+            'filter': filter_nfl
+        },
+        'NHL': {
+            'salary': 55000,
+            'composition': {'LW': 2, 'RW': 2, 'C': 2, 'D': 2, 'G': 1},
+            'filter': filter_nhl
+        },
+        'MLB': {
+            'salary': 50000,
+            'composition': {'SP': 2, 'C': 1, '1B': 1, '2B': 1, '3B': 1, 'SS': 1, 'OF': 3},
+            'filter': filter_mlb
+        }
+    }
+}
+
+# Create team for FanDuel NFL
+team_fanduel_nfl = create_team(config, 'FanDuel', 'NFL')
+
+# Create team for DraftKings MLB
+team_draftkings_mlb = create_team(config, 'DraftKings', 'MLB')
+
+# Add more create_team calls as needed for different sites and sports

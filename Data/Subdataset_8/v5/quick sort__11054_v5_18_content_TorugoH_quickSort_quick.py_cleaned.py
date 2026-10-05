@@ -1,0 +1,30 @@
+def partition(arr, start, end):
+    pivot = arr[start]
+    left = start + 1
+    right = end
+    while True:
+        while left <= right and arr[left] <= pivot:
+            left += 1
+        while left <= right and arr[right] > pivot:
+            right -= 1
+        if left > right:
+            break
+        arr[left], arr[right] = arr[right], arr[left]
+    arr[start], arr[right] = arr[right], pivot
+    return right
+def quick_sort(arr, start, end):
+    if start < end:
+        pivot_index = partition(arr, start, end)
+        quick_sort(arr, start, pivot_index - 1)
+        quick_sort(arr, pivot_index + 1, end)
+if __name__ == "__main__":
+    size = int(input("Enter the size of your array: "))
+    array = []
+    print(f"Enter your {size} elements:")
+    for i in range(size):
+        number = int(input())
+        array.append(number)
+    print("Your sorted list:")
+    quick_sort(array, 0, len(array) - 1)
+    for element in array:
+        print(element)

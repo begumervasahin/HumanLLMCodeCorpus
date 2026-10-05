@@ -1,0 +1,66 @@
+import sys
+import LRwithStopWords
+import LRwithoutStopWords
+import NBwithStopWords
+import NBwithoutStopWords
+def parse_arguments():
+    if len(sys.argv) < 6:
+        print("Insufficient arguments provided.")
+        print("Usage: [training ham path] [training spam path] [test ham path] [test spam path] [stopwords (y/n)]\n")
+        sys.exit(1)
+    training_ham_path = sys.argv[1]
+    training_spam_path = sys.argv[2]
+    test_ham_path = sys.argv[3]
+    test_spam_path = sys.argv[4]
+    stopwords = sys.argv[5].lower() in ("y", "yes")
+    return training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords
+def run_naive_bayes_with_condition(training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords):
+    if stopwords:
+        print("------------------------------------------------")
+        print("Running Naive Bayes with stop words removed")
+        model = NBwithStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    else:
+        print("------------------------------------------------")
+        print("Running Naive Bayes without removing stop words")
+        model = NBwithoutStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    model.run()
+    model.train()
+    model.test()
+def main():
+    training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords = parse_arguments()
+    run_naive_bayes_with_condition(training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords)
+if __name__ == "__main__":
+    main()
+import sys
+import LRwithStopWords
+import LRwithoutStopWords
+import NBwithStopWords
+import NBwithoutStopWords
+def parse_arguments():
+    if len(sys.argv) < 6:
+        print("Insufficient arguments provided.")
+        print("Usage: [training ham path] [training spam path] [test ham path] [test spam path] [stopwords (y/n)]\n")
+        sys.exit(1)
+    training_ham_path = sys.argv[1]
+    training_spam_path = sys.argv[2]
+    test_ham_path = sys.argv[3]
+    test_spam_path = sys.argv[4]
+    stopwords = sys.argv[5].lower() in ("y", "yes")
+    return training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords
+def run_naive_bayes_with_condition(training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords):
+    if stopwords:
+        print("------------------------------------------------")
+        print("Running Naive Bayes with stop words removed")
+        model = NBwithStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    else:
+        print("------------------------------------------------")
+        print("Running Naive Bayes without removing stop words")
+        model = NBwithoutStopWords.NaiveBayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    model.run()
+    model.train()
+    model.test()
+def main():
+    training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords = parse_arguments()
+    run_naive_bayes_with_condition(training_ham_path, training_spam_path, test_ham_path, test_spam_path, stopwords)
+if __name__ == "__main__":
+    main()

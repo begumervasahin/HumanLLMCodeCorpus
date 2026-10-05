@@ -1,0 +1,80 @@
+import datetime
+import logging
+import numpy as np
+import data_helpers
+import model_all_stacked
+logging.basicConfig(filename='all_results.log',
+                    format='[%(asctime)s] [%(levelname)s] %(message)s',
+                    level=logging.DEBUG)
+logger = logging.getLogger("Morphological_RNN")
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+np.random.seed(123)
+subset = None
+save = False
+model_name_path = 'params/model.json'
+model_weights_path = 'params/model_weights.h5'
+latent_dimension = 125
+max_sequence_length = 25
+batch_size = 80
+test_batch_size = 20
+num_epochs = 10
+logger.info('Loading data...')
+(training_inputs, training_labels), (testing_inputs, testing_labels) = data_helpers.load_relations()
+vocab, reverse_vocab, vocab_size, check = data_helpers.create_vocab_set()
+logger.info('Building the model...')
+model = model_all_stacked.construct_model(max_sequence_length, vocab_size * 3, vocab_size, latent_dimension)
+logger.info('Training the model...')
+initial_time = datetime.datetime.now()
+for epoch in range(num_epochs):
+    training_inputs_epoch, training_labels_epoch = training_inputs, training_labels
+    testing_inputs_epoch, testing_labels_epoch = testing_inputs, testing_labels
+    if subset:
+        train_batches = data_helpers.mini_batch_generator(training_inputs_epoch[:subset], training_labels_epoch[:subset],
+                                                          vocab, vocab_size, check, max_sequence_length,
+                                                          batch_size=batch_size)
+    else:
+        train_batches = data_helpers.mini_batch_generator(training_inputs_epoch, training_labels_epoch,
+                                                          vocab, vocab_size, check, max_sequence_length,
+                                                          batch_size=batch_size)
+    test_batches = data_helpers.mini_batch_generator(testing_inputs_epoch, testing_labels_epoch, vocab,
+                                                     vocab_size, check, max_sequence_length,
+                                                     batch_size=test_batch_size)
+    total_loss = 0.0
+    total_steps = 1
+    start_time = datetime.datetime.now()
+    logger.info('-------- Epoch {} --------'.format(epoch))
+    for train_input, train_label, train_input_text, train_label_text in train_batches:
+        loss = model.train_on_batch(train_input, train_label)
+        total_loss += loss
+        avg_loss = total_loss / total_steps
+        if total_steps % 10 == 0:
+            logger.info('- TRAINING Step {}\tLoss: {}'.format(total_steps, avg_loss))
+        total_steps += 1
+    test_loss = 0.0
+    test_steps = 1
+    logger.info(" -- TESTING -- ")
+    for test_input_batch, test_label_batch, test_input_text, test_label_text in test_batches:
+        test_loss_value = model.test_on_batch(test_input_batch, test_label_batch)
+        test_loss += test_loss_value
+        avg_test_loss = test_loss / test_steps
+        test_steps += 1
+        logger.info('- TESTING Step {}\tLoss: {}'.format(test_steps, avg_test_loss))
+        predicted_sequence = model.predict(np.array([test_input_batch[0]]))
+        logger.info(
+            'Shapes: Input {} Label {} Predicted {}'.format(
+                test_input_batch[0].shape,
+                test_label_batch[0].shape,
+                predicted_sequence[0].shape))
+        logger.info(u'Input:       \t[' + "|".join(map(lambda x: x[:max_sequence_length], list(test_input_text[0]))) + "] -> ? ")
+        logger.info(u'Expected:    \t[' + test_label_text[0] + "]")
+        logger.info(u'Predicted: \t[' + data_helpers.decode_data(predicted_sequence, reverse_vocab) + "]")
+        logger.info('----------------------------------------------------------------')
+    end_time = datetime.datetime.now()
+    epoch_elapsed_time = end_time - start_time
+    total_elapsed_time = end_time - initial_time
+    logger.info('Epoch {}. Test Loss: {}\nEpoch time: {}. Total time: {}\n'.format(epoch, test_loss, epoch_elapsed_time, total_elapsed_time))

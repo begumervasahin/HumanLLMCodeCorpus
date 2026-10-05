@@ -1,0 +1,65 @@
+import math
+class Content:
+    def __init__(self, key, value):
+        self.values = [value]
+        self.key = key
+class HashTable:
+    def __init__(self, size, key_length_limit, hash_method="division", collision_method='linear'):
+        self.array = [None] * size
+        self.size = size
+        self.key_length_limit = key_length_limit
+        self.count = 0
+        self.keys = []
+        self.hash_func = self.get_value_multiplication if hash_method == 'multiplication' else self.get_value_division
+        self.collision_func = self.get_quadratic_value if collision_method == 'quadratic' else self.get_linear_value
+    def get_array(self):
+        return self.array
+    def get_keys(self):
+        return self.keys
+    def insert_value(self, key, value):
+        if len(key) < self.key_length_limit:
+            return False
+        count = 0
+        numeric_key = self.hash_func(key)
+        if key not in self.keys:
+            self.keys.append(key)
+        while True:
+            obj = Content(key, value)
+            if self.array[numeric_key] is not None:
+                if self.array[numeric_key].key != key:
+                    numeric_key = self.collision_func(numeric_key, count)
+                    count += 1
+                else:
+                    self.array[numeric_key].values.append(value)
+                    break
+            else:
+                self.array[numeric_key] = obj
+                self.count += 1
+                break
+        return True
+    def get_value(self, key):
+        if len(key) < self.key_length_limit:
+            return None
+        count = 0
+        numeric_key = self.hash_func(key)
+        while True:
+            if self.array[numeric_key] is None:
+                return None
+            if self.array[numeric_key].key == key:
+                return self.array[numeric_key].values
+            else:
+                numeric_key = self.collision_func(numeric_key, count)
+                count = (count + 1) % self.size
+    def get_value_division(self, key):
+        numeric_key = sum(ord(char) for char in key) % self.size
+        return numeric_key
+    def get_value_multiplication(self, key):
+        a = (math.sqrt(5) - 1) / 2
+        numeric_key = sum(ord(char) for char in key)
+        numeric_key = math.floor(self.size * ((a * numeric_key) % 1))
+        return numeric_key
+    def get_quadratic_value(self, key, count):
+        index = (key + count * count) % self.size
+        return index
+    def get_linear_value(self, key, adictionator):
+        return (key + adictionator) % self.size

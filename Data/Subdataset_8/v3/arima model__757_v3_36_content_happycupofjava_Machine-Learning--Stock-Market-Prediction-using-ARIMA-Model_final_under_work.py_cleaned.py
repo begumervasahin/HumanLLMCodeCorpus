@@ -1,0 +1,140 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.arima.model import ARIMA
+def load_and_edit_data():
+    print('Welcome! Please choose a company from the following options:')
+    print('1: Google')
+    print('2: Facebook')
+    print('3: Quit')
+    choice = int(input('Enter your choice: '))
+    data = None
+    if choice == 1:
+        data = pd.read_csv('WIKI-GOOGL.csv', parse_dates=['Date'], index_col='Date')
+    elif choice == 2:
+        data = pd.read_csv('facebook.csv', parse_dates=['Date'], index_col='Date')
+    else:
+        print('Invalid choice. Exiting.')
+        exit()
+    print(data.head())
+    print('\nFeatures and their Data Types:')
+    print(data.dtypes)
+    return data
+def plot_timeseries(timeseries):
+    plt.plot(timeseries)
+    plt.title('Adjusted Close Prices Over Time')
+    plt.show()
+def test_stationarity(timeseries):
+    rolling_mean = timeseries.rolling(window=20).mean()
+    rolling_std = timeseries.rolling(window=20).std()
+    plt.plot(timeseries, color='blue', label='Original')
+    plt.plot(rolling_mean, color='red', label='Rolling Mean')
+    plt.plot(rolling_std, color='black', label='Rolling Std')
+    plt.legend(loc='best')
+    plt.title('Rolling Mean & Standard Deviation')
+    plt.show()
+    print('Results of Dickey-Fuller Test:')
+    dftest = adfuller(timeseries, autolag='AIC')
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)' % key] = value
+    print(dfoutput)
+def convert_to_stationary(timeseries):
+    timeseries_log = np.log(timeseries)
+    plt.plot(timeseries_log)
+    plt.title('Log Transformed Series')
+    plt.show()
+    return timeseries_log
+def smooth_data(timeseries_log):
+    moving_avg = timeseries_log.rolling(10, min_periods=1).mean()
+    plt.plot(timeseries_log, color='blue', label='Original')
+    plt.plot(moving_avg, color='red', label='Moving Average')
+    plt.legend()
+    plt.title('Smoothed Data')
+    plt.show()
+    timeseries_log_moving_avg_diff = timeseries_log - moving_avg
+    timeseries_log_moving_avg_diff.dropna(inplace=True)
+    test_stationarity(timeseries_log_moving_avg_diff)
+    return moving_avg
+def plot_components(timeseries_log):
+    decomposition = seasonal_decompose(timeseries_log, freq=52)
+    trend = decomposition.trend
+    seasonal = decomposition.seasonal
+    residual = decomposition.resid
+    plt.plot(timeseries_log, label='Original')
+    plt.legend(loc='best')
+    plt.title('Original Series')
+    plt.show()
+    plt.plot(trend, label='Trend')
+    plt.legend(loc='best')
+    plt.title('Trend Component')
+    plt.show()
+    plt.plot(seasonal, label='Seasonality')
+    plt.legend(loc='best')
+    plt.title('Seasonal Component')
+    plt.show()
+    plt.plot(residual, label='Residuals')
+    plt.legend(loc='best')
+    plt.title('Residuals')
+    plt.show()
+def plot_acf_pacf(timeseries_log_diff):
+    lag_acf = acf(timeseries_log_diff, nlags=20)
+    lag_pacf = pacf(timeseries_log_diff, nlags=20, method='ols')
+    plt.plot(lag_acf)
+    plt.axhline(y=0, linestyle='--', color='gray')
+    plt.title('Autocorrelation Function (ACF)')
+    plt.show()
+    plt.plot(lag_pacf)
+    plt.axhline(y=0, linestyle='--', color='gray')
+    plt.title('Partial Autocorrelation Function (PACF)')
+    plt.show()
+def fit_ar_model(timeseries_log, timeseries_log_diff):
+    model = ARIMA(timeseries_log, order=(2, 1, 0))
+    results_AR = model.fit()
+    plt.plot(timeseries_log_diff)
+    plt.plot(results_AR.fittedvalues, color='red')
+    plt.title('AR Model: Residual Sum of Squares (RSS): %.4f' % sum((results_AR.fittedvalues - timeseries_log_diff) ** 2))
+    plt.show()
+def fit_ma_model(timeseries_log, timeseries_log_diff):
+    model = ARIMA(timeseries_log, order=(0, 1, 2))
+    results_MA = model.fit()
+    plt.plot(timeseries_log_diff)
+    plt.plot(results_MA.fittedvalues, color='red')
+    plt.title('MA Model: Residual Sum of Squares (RSS): %.4f' % sum((results_MA.fittedvalues - timeseries_log_diff) ** 2))
+    plt.show()
+def fit_arima_model(timeseries_log, timeseries_log_diff):
+    model = ARIMA(timeseries_log, order=(2, 1, 2))
+    results_ARIMA = model.fit()
+    plt.plot(timeseries_log_diff)
+    plt.plot(results_ARIMA.fittedvalues, color='red')
+    plt.title('ARIMA Model: RSS (Root Squared Sum): %.4f' % sum((results_ARIMA.fittedvalues - timeseries_log_diff) ** 2))
+    plt.show()
+    return results_ARIMA
+def plot_results(timeseries, predictions_ARIMA_log):
+    predictions_ARIMA = np.exp(predictions_ARIMA_log)
+    accuracy = []
+    for i in range(len(timeseries)):
+        print("Actual:", timeseries[i], "Predicted:", predictions_ARIMA[len(timeseries) - i - 1])
+        accuracy.append(100 - (abs(timeseries[i] - predictions_ARIMA[len(timeseries) - i - 1]) / timeseries[i]) * 100)
+    print("Average Accuracy:", sum(accuracy) / len(timeseries))
+    plt.plot(timeseries, label='Original')
+    plt.plot(predictions_ARIMA, label='Predicted', color='red')
+    plt.legend()
+    plt.title('RMSE and Predictions')
+    plt.show()
+def main():
+    stock_data = load_and_edit_data()
+    timeseries = convert_to_timeseries(stock_data)
+    plot_timeseries(timeseries)
+    test_stationarity(timeseries)
+    timeseries_log = convert_to_stationary(timeseries)
+    moving_avg = smooth_data(timeseries_log)
+    timeseries_log_diff = timeseries_log - timeseries_log.shift()
+    timeseries_log_diff.dropna(inplace=True)
+    test_stationarity(timeseries_log_diff)
+    plot_components(timeseries_log)
+    plot_acf_pacf(timeseries_log_diff)
+    fit_ar_model(timeseries_log, timeseries_log_diff)
+    fit_ma_model(timeseries_log, timeseries_log_diff

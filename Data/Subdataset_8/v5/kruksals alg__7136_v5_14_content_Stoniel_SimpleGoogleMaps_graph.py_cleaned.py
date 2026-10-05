@@ -1,0 +1,82 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+def display_graph(G):
+    pos = nx.spring_layout(G)
+    node_colors = [color for node, color in G.nodes(data='color')]
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors)
+    nx.draw_networkx_labels(G, pos)
+    edge_colors = [color for edge, color in G.edges(data='color')]
+    weights = [(u, v, d['weight']) for u, v, d in G.edges(data=True)]
+    nx.draw_networkx_edges(G, pos, edge_color=edge_colors)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels={(u, v): w for (u, v, w) in weights})
+    plt.show()
+def recolor_edges(mst):
+    for (u, v) in G.edges():
+        G[u][v]['color'] = 'r'
+        G.node[u]['color'] = 'r'
+        G.node[v]['color'] = 'r'
+    for (u, v, d) in G.edges(data='weight'):
+        if (u, v, d) in mst:
+            G[u][v]['color'] = 'b'
+            G.node[u]['color'] = 'b'
+            G.node[v]['color'] = 'b'
+def kruskals_algorithm(G):
+    edge_index = 0
+    mst_index = 0
+    sorted_edges = sorted(G.edges(data='weight'), key=lambda x: x[2])
+    result = []
+    for (node, pi) in G.nodes(data='pi'):
+        G.node[node]['pi'] = node
+    while mst_index < len(G.nodes()) - 1:
+        u, v, weight = sorted_edges[edge_index]
+        edge_index += 1
+        parent_u = find(u)
+        parent_v = find(v)
+        if parent_u != parent_v:
+            mst_index += 1
+            result.append((u, v, weight))
+            union(parent_u, parent_v)
+    return result
+def update_mst(min_tree, edge1, edge2, change):
+    if (edge1, edge2) in min_tree and change > 0:
+        print('Edge already present in the MST.')
+    elif not ((edge1, edge2) in min_tree) and change < 0:
+        min_tree.append((edge1, edge2, G[edge1][edge2]['weight']))
+        print(min_tree)
+        del min_tree[-1]
+        recolor_edges(min_tree)
+    else:
+        print('No changes need to be made.')
+def find(node):
+    if G.node[node]['pi'] == node:
+        return node
+    return find(G.node[node]['pi'])
+def union(node, node1):
+    root = find(node)
+    root1 = find(node1)
+    rank_root = G.node[root]['rank']
+    rank_root1 = G.node[root1]['rank']
+    if rank_root < rank_root1:
+        G.node[root]['pi'] = root1
+    elif rank_root > rank_root1:
+        G.node[root1]['pi'] = root
+    else:
+        G.node[root1]['pi'] = root
+        G.node[root]['rank'] += 1
+G = nx.Graph()
+nodes = ['a', 'b', 'c', 'd', 'e']
+edges = [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'e'), ('c', 'd')]
+edge_weights = {'a': {'b': 4, 'c': 3, 'd': 2}, 'b': {'c': 2, 'e': 9}, 'c': {'d': 5}}
+for node in nodes:
+    G.add_node(node, rank=0, pi=None, color='r')
+for edge in edges:
+    G.add_edge(edge[0], edge[1], weight=edge_weights[edge[0]][edge[1]], color='r')
+MST = kruskals_algorithm(G)
+print(MST)
+recolor_edges(MST)
+display_graph(G)
+new_weight = 1
+diff = new_weight - G['a']['b']['weight']
+G['a']['b']['weight'] = new_weight
+update_mst(MST, 'a', 'b', diff)
+display_graph(G)

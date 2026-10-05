@@ -1,0 +1,44 @@
+from queue import Queue
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+def display_tree(root, full_depth):
+    if root is None:
+        return
+    if full_depth == 0:
+        print(root.data, end=' ')
+    display_tree(root.left, full_depth - 1)
+    display_tree(root.right, full_depth - 1)
+def display_level_order(root):
+    if root is None:
+        return
+    nodes = Queue()
+    nodes.put(root)
+    while not nodes.empty():
+        nodeLevels = nodes.qsize()
+        while nodeLevels > 0:
+            node = nodes.get()
+            print(node.data, end=' ')
+            if node.left is not None:
+                nodes.put(node.left)
+            if node.right is not None:
+                nodes.put(node.right)
+            nodeLevels -= 1
+        print()
+root = Node(1)
+root.left = Node(4)
+root.right = Node(5)
+root.left.left = Node(2)
+root.left.right = Node(8)
+root.right.left = Node(3)
+root.right.right = Node(7)
+root.left.left.left = Node(0)
+root.left.left.right = Node(1)
+root.left.right.left = Node(3)
+root.left.right.right = Node(9)
+root.right.right.left = Node(1)
+root.right.right.right = Node(10)
+print("Displaying tree using level order traversal:")
+display_level_order(root)

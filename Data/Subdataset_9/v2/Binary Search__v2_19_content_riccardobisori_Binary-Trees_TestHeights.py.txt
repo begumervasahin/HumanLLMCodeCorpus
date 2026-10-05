@@ -1,0 +1,101 @@
+import random
+import ABR
+import RB
+import sys
+import pickle
+
+# Increase the recursion limit to avoid stack overflow
+sys.setrecursionlimit(4400)
+
+def test_heights():
+    # Load test data
+    test_data = pickle.load(open("tests.p", "rb"))
+    
+    # Test heights for ABR and RB trees
+    result_abr = test_height_abr(test_data)
+    result_rb = test_height_rb(test_data)
+    
+    # Save results to files
+    pickle.dump(result_abr, open("result_height_abr.p", "wb"))
+    pickle.dump(result_rb, open("result_height_rb.p", "wb"))
+
+def test_height_abr(test_data):
+    elements = test_data[0]
+    range_elements = test_data[1]
+    
+    result_random_height_abr = []
+
+    print("\n" + "=" * 100)
+    print("Average heights of Binary Search Trees for random elements. 3 executions.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Lines: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for p in elements:
+        average_heights = []
+        for i in range_elements:
+            heights = []
+            for _ in range(3):
+                abr_tree = ABR.BinarySearchTree()
+                for _ in range(p):
+                    abr_tree.insert(random.randint(0, i))
+                height_abr = abr_tree.get_height(abr_tree.root)
+                heights.append(height_abr)
+            average_height = sum(heights) / len(heights)
+            average_heights.append(average_height)
+        result_random_height_abr.append(average_heights)
+        print(average_heights)
+
+    return result_random_height_abr
+
+def test_height_rb(test_data):
+    elements = test_data[0]
+    range_elements = test_data[1]
+    
+    result_random_height_rb = []
+    result_ordered_height_rb = []
+
+    print("\n" + "=" * 100)
+    print("Average heights of Red-Black Trees for random elements. 10 executions.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Lines: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for p in elements:
+        random_heights = []
+        ordered_heights = []
+        for i in range_elements:
+            random_heights = []
+            for _ in range(10):
+                rb_tree = RB.RedBlackTree()
+                for _ in range(p):
+                    rb_tree.insert(random.randint(0, i))
+                height_rb = rb_tree.get_height(rb_tree.root)
+                random_heights.append(height_rb)
+            random_average_height = sum(random_heights) / len(random_heights)
+            result_random_height_rb.append(random_average_height)
+        print(result_random_height_rb)
+
+    print("\n" + "=" * 100)
+    print("Average heights of Red-Black Trees for ordered elements. 5 executions.")
+    print("Columns: ranges [20, 200, 1000, 10000000].")
+    print("Lines: elements [10, 50, 500, 1000, 10000, 50000]")
+    print("=" * 100 + "\n")
+
+    for p in elements:
+        for _ in range(len(range_elements)):
+            ordered_heights = []
+            for _ in range(5):
+                rb_tree = RB.RedBlackTree()
+                for k in range(p):
+                    rb_tree.insert(k)
+                height_rb = rb_tree.get_height(rb_tree.root)
+                ordered_heights.append(height_rb)
+            ordered_average_height = sum(ordered_heights) / len(ordered_heights)
+            result_ordered_height_rb.append(ordered_average_height)
+        print(result_ordered_height_rb)
+
+    return result_random_height_rb, result_ordered_height_rb
+
+if __name__ == "__main__":
+    test_heights()

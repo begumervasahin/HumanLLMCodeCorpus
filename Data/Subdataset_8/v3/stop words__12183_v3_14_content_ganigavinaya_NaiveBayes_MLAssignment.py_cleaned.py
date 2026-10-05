@@ -1,0 +1,63 @@
+import sys
+class NaiveBayes:
+    def __init__(self, training_ham_path, training_spam_path, test_ham_path, test_spam_path):
+        pass
+    def run(self):
+        print("Setting up Naive Bayes...")
+    def train(self):
+        print("Training Naive Bayes...")
+    def test(self):
+        print("Testing Naive Bayes...")
+class LogisticRegression:
+    def __init__(self, training_ham_path, training_spam_path, test_ham_path, test_spam_path):
+        pass
+    def run(self):
+        print("Setting up Logistic Regression...")
+    def train(self):
+        print("Training Logistic Regression...")
+    def test(self):
+        print("Testing Logistic Regression...")
+class ModelFactory:
+    @staticmethod
+    def create_naive_bayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path, remove_stopwords):
+        if remove_stopwords:
+            print("------------------------------------------------")
+            print("Naive Bayes removing stop words")
+            return NaiveBayesWithStopWords(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+        else:
+            print("------------------------------------------------")
+            print("Naive Bayes without removing stop words")
+            return NaiveBayesWithoutStopWords(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+    @staticmethod
+    def create_logistic_regression(training_ham_path, training_spam_path, test_ham_path, test_spam_path, remove_stopwords):
+        if remove_stopwords:
+            print("------------------------------------------------")
+            print("Logistic Regression removing stop words")
+            return LRWithStopWords(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+        else:
+            print("------------------------------------------------")
+            print("Logistic Regression without removing stop words")
+            return LRWithoutStopWords(training_ham_path, training_spam_path, test_ham_path, test_spam_path)
+def main():
+    if len(sys.argv) < 6:
+        print("Please input command line arguments: ")
+        print("[training ham path] [training spam path] [test ham path] [test spam path] [stopwords]\n")
+        return
+    else:
+        training_ham_path = sys.argv[1]
+        training_spam_path = sys.argv[2]
+        test_ham_path = sys.argv[3]
+        test_spam_path = sys.argv[4]
+        remove_stopwords = sys.argv[5].lower() in ["y", "yes"]
+        nb_model = ModelFactory.create_naive_bayes(training_ham_path, training_spam_path, test_ham_path, test_spam_path, remove_stopwords)
+        nb_model.run()
+        nb_model.train()
+        nb_model.test()
+        '''
+        lr_model = ModelFactory.create_logistic_regression(training_ham_path, training_spam_path, test_ham_path, test_spam_path, remove_stopwords)
+        lr_model.run()
+        lr_model.train()
+        lr_model.test()
+        '''
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,89 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy.linalg as linalg
+import theano
+import theano.tensor as T
+import theano.tensor.nnet.neighbours as nbs
+from PIL import Image
+import cv2
+import copy
+IMG_SIZE = 256
+CWD = os.getcwd()
+def reconstructed_image(D, c, num_coeffs, X_mean, n_blocks, im_num):
+    c_im = c[:num_coeffs, n_blocks * n_blocks * im_num:n_blocks * n_blocks * (im_num + 1)]
+    D_im = D[:, :num_coeffs]
+    M_coef = np.dot(D_im.T, X_mean.T)
+    tmp1 = c_im - np.repeat(M_coef.reshape(-1, 1), n_blocks ** 2, 1)
+    X_blocks = np.dot(D_im, tmp1) + np.repeat(X_mean.reshape(-1, 1), n_blocks ** 2, 1)
+    X_blocks = X_blocks.T
+    slide_window = int(X_mean.size ** 0.5)
+    image = T.tensor4('image')
+    neibs = nbs.images2neibs(image, neib_shape=(slide_window, slide_window))
+    transToImage = nbs.neibs2images(neibs, neib_shape=(slide_window, slide_window), original_shape=(1, 1, IMG_SIZE, IMG_SIZE))
+    trans_func = theano.function([neibs], transToImage)
+    X_recon_img = trans_func(X_blocks)
+    return X_recon_img[0, 0]
+def plot_reconstructions(D, c, num_coeff_array, X_mean, n_blocks, im_num):
+    f, axarr = plt.subplots(3, 3)
+    for i in range(3):
+        for j in range(3):
+            plt.axes(axarr[i, j])
+            plt.imshow(reconstructed_image(D, c, num_coeff_array[i * 3 + j], X_mean, n_blocks, im_num), cmap='gray')
+    os.chdir(CWD)
+    f.savefig('output/hw1a_{0}_im{1}.png'.format(n_blocks, im_num))
+    plt.close(f)
+def plot_top_16(D, sz, imname):
+    image = T.tensor4('image')
+    neibs = nbs.images2neibs(image, neib_shape=(sz, sz))
+    transToImage = nbs.neibs2images(neibs, neib_shape=(sz, sz), original_shape=(1, 1, sz, sz))
+    trans_func = theano.function([neibs], transToImage)
+    f, axarr = plt.subplots(4, 4)
+    for i in range(4):
+        for j in range(4):
+            plt.axes(axarr[i, j])
+            plt.imshow(trans_func(D[:, [i * 4 + j]].T)[0, 0], cmap='gray')
+    os.chdir(CWD)
+    f.savefig(imname)
+    plt.close(f)
+def get_images_from_file():
+    os.chdir(CWD + '/Fei_256')
+    length = len([name for name in os.listdir('.') if os.path.isfile(name)])
+    X = np.ndarray(shape=(length - 1, IMG_SIZE, IMG_SIZE))
+    i = 0
+    for dirPath, dirNames, fileNames in os.walk(CWD + "/Fei_256"):
+        for f in fileNames:
+            if f.endswith('.jpg'):
+                tmp = mpimg.imread(f, 0)
+                X[i, :, :] = tmp
+                i = i + 1
+    return X
+def get_image_patch(X, window):
+    n = X.shape[0]
+    image = T.tensor4('Image')
+    neibs = nbs.images2neibs(image, neib_shape=(window, window))
+    window_function = theano.function([image], neibs)
+    X_blocks = None
+    X_tmp = copy.copy(X)
+    X_tmp.shape = (1, X_tmp.shape[0], X_tmp.shape[1], X_tmp.shape[2])
+    X_blocks = window_function(X_tmp)
+    return X_blocks
+def main():
+    images = get_images_from_file()
+    szs = [8, 32, 64]
+    num_coeffs = [range(1, 10, 1), range(3, 30, 3), range(5, 50, 5)]
+    for sz, nc in zip(szs, num_coeffs):
+        X = get_image_patch(images, sz)
+        X_mean = np.mean(X, 0)
+        X = X - np.repeat(X_mean.reshape(1, -1), X.shape[0], 0)
+        S = np.dot(X.T, X) / X.shape[0]
+        v, D_ = linalg.eigh(S)
+        D = D_[:, ::-1]
+        c = np.dot(D.T, X.T)
+        os.chdir(CWD)
+        for i in range(0, 200, 10):
+            plot_reconstructions(D=D, c=c, num_coeff_array=nc, X_mean=X_mean, n_blocks=int(IMG_SIZE / sz), im_num=i)
+        plot_top_16(D, sz, imname='output/hw1a_top16_{0}.png'.format(sz))
+if __name__ == '__main__':
+    main()

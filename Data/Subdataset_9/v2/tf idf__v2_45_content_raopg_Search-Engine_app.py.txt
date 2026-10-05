@@ -1,0 +1,38 @@
+from flask import Flask, render_template, redirect, url_for, request
+import scripts
+import index
+
+# Create a Flask web application instance
+app = Flask(__name__)
+
+# Route for the landing page of the search engine web application
+@app.route('/', methods=['GET', 'POST'])
+def index_page():
+    if request.method == 'GET':
+        # If the request method is GET, render the index.html template
+        return render_template('index.html')
+    else:
+        # If the request method is POST, redirect to the query page with the query parameter
+        return redirect(url_for('query_page', query=request.form['query']))
+
+# Route for displaying search results
+@app.route('/results', methods=['POST'])
+def query_page():
+    # Handle the user's query and display the search results
+    query = request.form['query']
+    message = None
+
+    # Assuming scripts.database.make_connection and index.handle_query are properly defined
+    # scripts.database.make_connection('cs121project3', 'localhost', port=27017)
+    search_results = []
+    try:
+        search_results = index.handle_query(query.lower())
+    except KeyError:
+        message = "No search results found! Given search term is a stopword"
+
+    # Render the results.html template with the query, search results, and error message
+    return render_template('results.html', query_str=query, results=search_results, error_message=message)  
+
+# Run the Flask application
+if __name__ == "__main__":
+    app.run(debug=True)

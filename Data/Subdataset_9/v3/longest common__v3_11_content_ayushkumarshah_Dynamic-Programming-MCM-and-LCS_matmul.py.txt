@@ -1,0 +1,82 @@
+import sys
+from time import time
+
+def initialize_matrices(size):
+    return [[0] * size for _ in range(size)]
+
+def matrix_chain_order(p):
+    num_matrices = len(p) - 1
+    cost_matrix = initialize_matrices(num_matrices)
+    split_matrix = initialize_matrices(num_matrices)
+    
+    # Initialize diagonal elements of the cost matrix
+    for i in range(1, num_matrices):
+        cost_matrix[i][i] = 0
+    
+    # Loop through chain lengths
+    for chain_length in range(2, num_matrices + 1):
+        for start_matrix in range(1, num_matrices - chain_length + 2):
+            end_matrix = start_matrix + chain_length - 1
+            cost_matrix[start_matrix][end_matrix] = sys.maxsize
+            # Find the minimum cost
+            for k in range(start_matrix, end_matrix):
+                cost = cost_matrix[start_matrix][k] + cost_matrix[k + 1][end_matrix] + p[start_matrix - 1] * p[k] * p[end_matrix]
+                if cost < cost_matrix[start_matrix][end_matrix]:
+                    cost_matrix[start_matrix][end_matrix] = cost
+                    split_matrix[start_matrix][end_matrix] = k
+    
+    return cost_matrix, split_matrix
+
+def print_optimal_parens(split_matrix, start, end):
+    if start == end:
+        print("A%d" % start, end="")
+    else:
+        print("(", end="")
+        print_optimal_parens(split_matrix, start, split_matrix[start][end])
+        print_optimal_parens(split_matrix, split_matrix[start][end] + 1, end)
+        print(")", end="")
+
+# Different matrix chain dimensions
+matrix_dimensions = [
+    [2, 3],
+    [3, 4, 6],
+    [1, 3, 6, 7],
+    [5, 4, 6, 2, 7],
+    [2, 4, 5, 6, 7, 8],
+    [2, 4, 5, 3, 6, 7, 8],
+    [4, 3, 2, 5, 6, 4, 3, 2],
+    [3, 5, 6, 4, 3, 5, 6, 7, 8],
+    [3, 4, 5, 3, 6, 7, 8, 9, 5, 10],
+    [2, 4, 5, 7, 8, 2, 4, 10, 12, 5, 6]
+]
+
+# Store results for each matrix dimension
+dimensions = []
+elapsed_time = []
+
+# Calculate optimal chain and measure time
+for dimension in matrix_dimensions:
+    matrices_count = len(dimension) - 1
+    dimensions.append(matrices_count)
+    start_time = time()
+    cost, split = matrix_chain_order(dimension)
+    print("\nMatrix Dimensions: " + str(dimension))
+    print("\nOptimal Cost Matrix:\n")
+    for i in range(matrices_count):
+        for j in range(matrices_count):
+            print(str(cost[i][j]) + "\t", end="")
+        print("")
+    print("\nSplit Matrix:\n")
+    for i in range(matrices_count):
+        for j in range(matrices_count):
+            print(str(split[i][j]) + "\t", end="")
+        print("")
+    print("\nOptimal Parenthesization:", end="")
+    print_optimal_parens(split, 1, matrices_count)
+    print("")
+    end_time = time()
+    elapsed_time.append(end_time - start_time)
+
+print("\n\nMatrix Dimensions\tElapsed Time")
+for i in range(len(matrix_dimensions)):
+    print(str(dimensions[i]) + "\t\t\t" + str(elapsed_time[i]))

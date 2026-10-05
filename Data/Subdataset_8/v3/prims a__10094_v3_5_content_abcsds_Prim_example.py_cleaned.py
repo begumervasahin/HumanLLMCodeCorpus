@@ -1,0 +1,29 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+from prim import prim
+def create_graph():
+    graph = nx.Graph()
+    edges = [
+        ('A', 'B', 3), ('A', 'D', 5), ('A', 'E', 9),
+        ('B', 'C', 5), ('B', 'D', 4), ('B', 'E', 8),
+        ('C', 'D', 7), ('C', 'G', 3), ('D', 'F', 8),
+        ('D', 'G', 5), ('D', 'H', 6), ('E', 'F', 2),
+        ('F', 'H', 10), ('G', 'I', 1), ('H', 'I', 3)
+    ]
+    graph.add_weighted_edges_from(edges)
+    return graph
+def main():
+    graph = create_graph()
+    start_node = 'A'
+    minimal_spanning_tree = prim(graph, start_node)
+    other_edges = [edge for edge in graph.edges() if edge not in minimal_spanning_tree]
+    print("Minimal Spanning Tree:", minimal_spanning_tree)
+    layout = nx.spring_layout(graph)
+    nx.draw_networkx_nodes(graph, layout, node_size=500)
+    nx.draw_networkx_edges(graph, layout, edgelist=minimal_spanning_tree, width=6)
+    nx.draw_networkx_edges(graph, layout, edgelist=other_edges, width=6, alpha=0.5, edge_color='b', style='dashed')
+    nx.draw_networkx_labels(graph, layout, font_size=20, font_family='sans-serif')
+    plt.axis('off')
+    plt.show()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,50 @@
+import re
+def scrape_newegg_laptops(page_soup):
+    with open('data/newegg-laptops.csv', 'w') as f:
+        f.write('Brand,Name,Price-was,Current-Price,Discount(%),RAM(GB),Storage(GB/TB),Refurbished(0/1),URL\n')
+        containers = page_soup.findAll('div', {'class': 'item-container'})
+        for container in containers:
+            try:
+                brand = container.find('div', 'item-info').div.a.img['title']
+            except:
+                brand = 'NaN'
+            title = container.findAll('a', {'class': 'item-title'})[0].text
+            refurbished = '1' if 'refurbished' in title.lower() or 'renewed' in title.lower() else '0'
+            link = container.findAll('a', {'class': 'item-title'})[0]['href']
+            features = title.replace(' ', '')
+            match = re.search('.*(?:\)|\w|-)(\d+)GB.*(?:y|\+|-|M)(\d+)', features)
+            if match:
+                ram, storage = match.groups()
+            else:
+                ram, storage = 'NaN', 'NaN'
+            try:
+                previous_price = container.find('div', 'item-info').find('div','item-action').ul.li.span.text
+                discount = container.find('div', 'item-info').find('div','item-action').ul.find('li','price-save').find('span','price-save-percent').text[:-1]
+            except:
+                previous_price = 'NaN'
+                discount = '0'
+            try:
+                current_price = container.find('div', 'item-info').find('div','item-action').ul.find('li','price-current').text
+                current_price = current_price.replace(',', '')
+                current_price = re.search('.+\s([0-9]+).+', current_price).group(1)
+            except:
+                current_price = 'NaN'
+            f.write(f'{brand},{title.replace(",", " ")},{previous_price},{current_price},{discount},{ram},{storage},{refurbished},{link}\n')
+    print('Scraped Newegg\'s page')
+def generate_newegg_urls(page_soup, base_url):
+    '''
+    Generate a list of URLs for Newegg's laptop pages, up to the last page number
+    '''
+    last_page = extract_last_page_number(page_soup)
+    urls = []
+    for i in range(2, last_page + 1):
+        url = f'{base_url}/Page-{i}?Tid=1297918'
+        urls.append(url)
+    return urls
+def extract_last_page_number(page_soup):
+    '''
+    Extract the last page number from the page
+    '''
+    navigation_bar = page_soup.findAll('div', {'class': 'page_NavigationBar'})[1]
+    last_page = navigation_bar.select_one('div:nth-of-type(10)').text.strip()
+    return int(last_page)

@@ -1,0 +1,90 @@
+import os
+import numpy as np
+from scipy.spatial.distance import cdist
+from prettytable import PrettyTable
+def load_embeddings(embedding_file):
+    embeddings = {}
+    with open(embedding_file, 'r', encoding='utf-8') as file:
+        for line in file:
+            values = line.strip().split()
+            word = values[0]
+            vector = np.array(values[1:], dtype=np.float32)
+            embeddings[word] = vector
+    idx2vec = np.array(list(embeddings.values()))
+    word2idx = {word: idx for idx, word in enumerate(embeddings.keys())}
+    idx2word = {idx: word for word, idx in word2idx.items()}
+    vocab = set(word2idx.keys())
+    return idx2vec, word2idx, idx2word, vocab
+def indices_of_words(words_list, word2idx):
+    return [word2idx[word] for word in words_list]
+def create_batches(questions, batch_size):
+    if batch_size >= len(questions):
+        return [questions]
+    batches = []
+    for k in range(0, len(questions), batch_size):
+        batches.append(questions[k : k + batch_size])
+    return batches
+def load_analogy_questions(file_path):
+    with open(file_path, "r") as file:
+        lines = file.read().strip().split('\n')
+    all_questions = []
+    category = None
+    for line in lines:
+        if line.startswith(":"):
+            category = line.lower().split()[1]
+        else:
+            words = line.split()
+            all_questions.append((category, words[0], words[1], words[2], words[3]))
+    all_categories = set([question[0] for question in all_questions])
+    syn_categories = set([category for category in all_categories if category.startswith('gram')])
+    sem_categories = set([category for category in all_categories if category not in syn_categories])
+    syn_questions = [question[1:] for question in all_questions if question[0] in syn_categories]
+    sem_questions = [question[1:] for question in all_questions if question[0] in sem_categories]
+    return syn_questions, sem_questions
+def calculate_analogy_accuracy(questions, idx2vec, word2idx, vocab, batch_size=1000):
+    table = PrettyTable(['Category', 'Accuracy', 'Total Questions', 'Missing Words'])
+    for category in questions:
+        cat_questions = questions[category]
+        missing = 0
+        filtered_questions = []
+        for question in cat_questions:
+            if all(word in vocab for word in question):
+                filtered_questions.append(question)
+            else:
+                missing += 1
+        predictions = []
+        ground_truth = []
+        for mini_questions in create_batches(filtered_questions, batch_size):
+            np_mini_questions = np.array(mini_questions)
+            word1, word2, word3, word4 = np_mini_questions[:, 0], np_mini_questions[:, 1], np_mini_questions[:, 2], np_mini_questions[:, 3]
+            word1_indices = indices_of_words(list(word1), word2idx)
+            word2_indices = indices_of_words(list(word2), word2idx)
+            word3_indices = indices_of_words(list(word3), word2idx)
+            word4_indices = indices_of_words(list(word4), word2idx)
+            word1_vec = idx2vec[word1_indices]
+            word2_vec = idx2vec[word2_indices]
+            word3_vec = idx2vec[word3_indices]
+            D_vec = word2_vec - word1_vec + word3_vec
+            cos = 1 - cdist(D_vec, idx2vec, 'cosine')
+            cos[:, 0] = -1
+            mini_predictions = np.argmax(cos, axis=1)
+            predictions.extend(list(mini_predictions))
+            ground_truth.extend(word4_indices)
+        ground_truth = np.array(ground_truth)
+        predictions = np.array(predictions)
+        accuracy = round(np.sum(predictions == ground_truth) / len(ground_truth) * 100, 2)
+        table.add_row([category, accuracy, len(cat_questions), missing])
+    print(table)
+input_embedding_file = os.path.join('embeddings', 'input_embeddings.txt')
+output_embedding_file = os.path.join('embeddings', 'output_embeddings.txt')
+analogy_file = os.path.join('evaluation data', 'analogy', 'EN-GOOGLE.txt')
+input_idx2vec, input_word2idx, _, input_vocab = load_embeddings(input_embedding_file)
+output_idx2vec, _, _, _ = load_embeddings(output_embedding_file)
+syn_questions, sem_questions = load_analogy_questions(analogy_file)
+questions = {'Syntactic': syn_questions, 'Semantic': sem_questions}
+input_idx2vec /= np.linalg.norm(input_idx2vec, axis=1, keepdims=True)
+output_idx2vec /= np.linalg.norm(output_idx2vec, axis=1, keepdims=True)
+print('\nResults of input embeddings:')
+calculate_analogy_accuracy(questions, input_idx2vec, input_word2idx, input_vocab, batch_size=1000)
+print('\nResults of output embeddings:')
+calculate_analogy_accuracy(questions, output_idx2vec, input_word2idx, input_vocab, batch_size=1000)

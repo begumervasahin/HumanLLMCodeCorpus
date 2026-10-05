@@ -1,0 +1,26 @@
+import time
+import sys
+def insertion_sort(input_list):
+    for i in range(1, len(input_list)):
+        key = input_list[i]
+        j = i - 1
+        while j >= 0 and input_list[j] > key:
+            input_list[j + 1] = input_list[j]
+            j -= 1
+        input_list[j + 1] = key
+def main():
+    if len(sys.argv) != 3:
+        print("Incorrect Format!! Enter [filename].py [input file name] [output file name]")
+        sys.exit()
+    input_filename = sys.argv[1]
+    output_filename = sys.argv[2]
+    with open(input_filename, 'r') as file:
+        input_list = [int(x) for x in file.read().split(',')]
+    start_time = time.time()
+    insertion_sort(input_list)
+    end_time = time.time()
+    print("Running time = ", end_time - start_time, " secs")
+    with open(output_filename, 'w') as file:
+        file.write(','.join(map(str, input_list)))
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,53 @@
+import numpy as np
+import math
+from scipy.stats import norm
+
+# Function to calculate the minimum value in an array
+def calculate_min(array):
+    return np.min(array)
+
+# Function to calculate the maximum value in an array
+def calculate_max(array):
+    return np.max(array)
+
+# The function f(x) = x^3 + 3x^2 + 3x + 1
+def cubic_function(x):
+    return math.pow(x, 3) + (3 * math.pow(x, 2)) + (3 * x) + 1
+
+# Function to calculate the average value of the cubic function for an array of x values
+def calculate_average_cubic_value(array):
+    return np.mean([cubic_function(x) for x in array])
+
+# Function to calculate the sample variance of the cubic function for an array of x values
+def calculate_sample_variance(array, average_value):
+    return np.sum(np.power(np.array([cubic_function(x) for x in array]) - average_value, 2)) / (len(array) - 1)
+
+# Load data from files
+data_uniform = np.genfromtxt('RandUnif.csv', delimiter='')
+data_normal = np.genfromtxt('RandDist.csv', delimiter='')
+
+# Constants
+bottom_uniform = 2
+top_uniform = 4
+bottom_normal = calculate_min(data_normal)
+top_normal = calculate_max(data_normal)
+sample_size_uniform = len(data_uniform)
+sample_size_normal = len(data_normal)
+confidence_level = 0.95
+z_value = norm.ppf(confidence_level)
+
+# Calculate mean and variance for uniform distribution
+average_cubic_value_uniform = calculate_average_cubic_value(data_uniform)
+sample_variance_uniform = calculate_sample_variance(data_uniform, average_cubic_value_uniform)
+scaled_variance_uniform = sample_variance_uniform / sample_size_uniform
+lower_bound_uniform = (top_uniform - bottom_uniform) * (average_cubic_value_uniform - (z_value * scaled_variance_uniform))
+upper_bound_uniform = (top_uniform - bottom_uniform) * (average_cubic_value_uniform + (z_value * scaled_variance_uniform))
+print(f'Uniform Distribution Results (Bag A): [{lower_bound_uniform}, {upper_bound_uniform}]')
+
+# Calculate mean and variance for normal distribution
+average_cubic_value_normal = calculate_average_cubic_value(data_normal)
+sample_variance_normal = calculate_sample_variance(data_normal, average_cubic_value_normal)
+scaled_variance_normal = sample_variance_normal / sample_size_normal
+lower_bound_normal = (top_normal - bottom_normal) * (average_cubic_value_normal - (z_value * scaled_variance_normal))
+upper_bound_normal = (top_normal - bottom_normal) * (average_cubic_value_normal + (z_value * scaled_variance_normal))
+print(f'Normal Distribution Results (Bag B): [{lower_bound_normal}, {upper_bound_normal}]')

@@ -1,0 +1,44 @@
+import numpy as np
+import pandas as pd
+csv_data = pd.read_csv('C:/Users/ebhavaniprasad/Desktop/magic04.txt', header=None)
+print("Data structure:", type(csv_data))
+print("Sample data with labels:")
+print(csv_data.head(3))
+features = csv_data.iloc[:, :-1]
+print("Features without class labels:")
+print(features.head(3))
+transposed_features = features.T
+print("Transposed features:")
+print(transposed_features)
+transposed_features["Row Sum"] = transposed_features.sum(axis=1)
+print("Sum of each row:")
+print(transposed_features["Row Sum"])
+num_samples = len(features.columns)
+mean_row_sum = transposed_features["Row Sum"] / num_samples
+print("Mean row sum:", mean_row_sum)
+standardized_data = (features - mean_row_sum) / features.std()
+covariance_matrix = np.cov(standardized_data, bias=True, rowvar=False)
+eigen_values, eigen_vectors = np.linalg.eig(covariance_matrix)
+sorted_indices = np.argsort(eigen_values)[::-1]
+sorted_eigen_values = eigen_values[sorted_indices]
+sorted_eigen_vectors = eigen_vectors[:, sorted_indices]
+dominant_eigenvectors = sorted_eigen_vectors[:, :2]
+projected_data = standardized_data.dot(dominant_eigenvectors)
+def perform_pca(data, threshold):
+    sigma = np.cov(data, bias=True, rowvar=False)
+    eigenvalues, eigenvectors = np.linalg.eig(sigma)
+    sorted_indices = np.argsort(eigenvalues)[::-1]
+    sorted_eigenvalues = eigenvalues[sorted_indices]
+    sorted_eigenvectors = eigenvectors[:, sorted_indices]
+    total_variance = eigenvalues.sum()
+    cumulative_percentage = np.cumsum((sorted_eigenvalues / total_variance) * 100)
+    num_eigenvectors = np.argmax(cumulative_percentage >= threshold) + 1
+    principal_eigenvectors = sorted_eigenvectors[:, :num_eigenvectors]
+    reduced_data = data.dot(principal_eigenvectors)
+    return reduced_data, sorted_eigenvalues, num_eigenvectors
+reduced_data, eigenvalues, num_eigenvectors = perform_pca(features, 95)
+covariance_projected = np.cov(reduced_data, bias=True, rowvar=False)
+trace_covariance_projected = np.trace(covariance_projected)
+sum_principal_eigenvalues = eigenvalues[:num_eigenvectors].sum()
+print("Covariance of the projected data points:", trace_covariance_projected)
+print("Sum of the eigenvalues corresponding to the principal vectors:", sum_principal_eigenvalues)

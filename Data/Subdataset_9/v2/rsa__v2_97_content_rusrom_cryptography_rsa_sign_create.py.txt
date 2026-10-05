@@ -1,0 +1,37 @@
+# Import necessary modules
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+# Define password and message
+PASSWORD = 'In Crypto We Trust'
+MESSAGE = 'Bitcoin[a] (₿) is a cryptocurrency. It is a decentralized digital currency without a central bank or single administrator that can be sent from user to user on the peer-to-peer bitcoin network without the need for intermediaries'
+
+# Load private key from encrypted PEM file
+with open("private_key_encrypted.pem", "rb") as key_file:
+    private_key = serialization.load_pem_private_key(
+        key_file.read(),
+        password=PASSWORD.encode(),
+        backend=default_backend()
+    )
+
+# Sign the message using the private key
+signature = private_key.sign(
+    MESSAGE.encode(),
+    padding.PSS(
+        mgf=padding.MGF1(hashes.SHA256()),
+        salt_length=padding.PSS.MAX_LENGTH
+    ),
+    hashes.SHA256()
+)
+
+# Convert signature to a hexadecimal string
+signature_string = signature.hex()
+
+# Write the signature to a file
+with open('signature.txt', 'w') as signature_file:
+    signature_file.write(signature_string)
+
+# Print the generated signature
+print('Signature:')
+print(signature_string)

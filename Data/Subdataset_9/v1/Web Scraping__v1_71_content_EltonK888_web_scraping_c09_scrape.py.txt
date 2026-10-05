@@ -1,0 +1,44 @@
+import os
+import urllib.request
+from fpdf import FPDF
+import requests
+from bs4 import BeautifulSoup
+
+URL = r'https://thierrysans.me/CSCC09/lectures/'
+SOURCE = requests.get(URL).text
+PDF = FPDF(format='letter')
+PDF.add_page()
+PDF.set_font("Arial", size=12)
+SOUP = BeautifulSoup(SOURCE, 'html.parser')
+
+def main():
+    '''
+    Finds the name of every lecture pdf and saves it to the current directory    
+    Writes all reading links to a pdf called c09_readings.pdf
+    '''
+    table_notes = SOUP.find_all('div', class_='notes')
+    table_urls = SOUP.find_all('div', class_='readings')
+
+    for i in range(len(table_notes)):
+        try:
+            cur_files = table_notes[i].find_all('a')
+            cur_urls = table_urls[i].find_all('a')
+        except Exception as e:
+            print("Error:", e)
+            pass
+        else:
+            for j in range(len(cur_files)):
+                cur = cur_files[j]['href']
+                file_name = cur.split('/')[-1]
+                urllib.request.urlretrieve(URL + cur, file_name)
+                print("Successfully downloaded: " + cur + " and saved as: " + file_name)
+
+            for k in range(len(cur_urls)):
+                cur_url = cur_urls[k]['href']
+                PDF.cell(200, 10, txt=cur_url, ln=True)
+                print('Wrote ' + cur_url + " to PDF file")
+
+    PDF.output('c09_urls.pdf')
+
+if __name__ == "__main__":
+    main()

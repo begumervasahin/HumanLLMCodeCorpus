@@ -1,0 +1,21 @@
+import numpy as np
+import csv
+def is_prime(num, prime_list):
+    for prime_num in prime_list:
+        if prime_num <= np.sqrt(num):
+            if num % prime_num == 0:
+                return False
+        else:
+            break
+    return True
+target = 100
+prime_list = np.array([])
+for num in range(2, target + 1):
+    if is_prime(num, prime_list):
+        prime_list = np.append(prime_list, num)
+file_name = f'prime_{target}_({len(prime_list)}).csv'
+with open(file_name, 'w', newline='') as csvfile:
+    primewriter = csv.writer(csvfile, delimiter=',')
+    primewriter.writerow(prime_list)
+print(f"Target: {target}")
+print(f"Number of primes found: {len(prime_list)}")

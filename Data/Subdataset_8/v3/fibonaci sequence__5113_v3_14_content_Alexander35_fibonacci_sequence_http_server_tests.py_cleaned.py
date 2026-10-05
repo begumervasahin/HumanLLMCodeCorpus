@@ -1,0 +1,22 @@
+import unittest
+import http_server
+import json
+import requests
+class TestHttpServer(unittest.TestCase):
+    def setUp(self):
+        with open('config.json') as config_file:
+            self.config = json.load(config_file)
+    def test_fibonacci_from_a_to_b(self):
+        endpoint = 'http:
+        response = requests.get(endpoint)
+        control_sequence = response.content
+        expected_sequence = [b"<div>[9] == 34</div>", b"<div>[10] == 55</div>", b"<div>[11] == 89</div>", b"<div>[12] == 144</div>"]
+        self.assertEqual(control_sequence, b"".join(expected_sequence))
+    def test_get_sequence_from_a_to_b(self):
+        endpoint = 'http:
+        response = requests.get(endpoint)
+        control_sequence = response.content
+        expected_sequence = [b"<div>[9] == 34</div>", b"<div>[10] == 55</div>", b"<div>[11] == 89</div>", b"<div>[12] == 144</div>"]
+        self.assertEqual(control_sequence, b"".join(expected_sequence))
+if __name__ == '__main__':
+    unittest.main()

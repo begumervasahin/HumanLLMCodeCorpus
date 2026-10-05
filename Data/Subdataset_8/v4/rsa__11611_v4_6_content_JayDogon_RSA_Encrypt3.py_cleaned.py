@@ -1,0 +1,28 @@
+def encrypt(message, e, n):
+    padded_message = pad_message(message)
+    encrypted_blocks = []
+    for i in range(0, len(padded_message), 3):
+        block = padded_message[i:i + 3]
+        encrypted_blocks.append(encrypt_block(block, e, n))
+    return encrypted_blocks
+def pad_message(message):
+    while len(message) % 3 != 0:
+        message += " "
+    return message
+def encrypt_block(block, e, n):
+    encrypted_value = 0
+    for char in block:
+        encrypted_value = (encrypted_value * 1000) + ord(char)
+    encrypted_value = pow(encrypted_value, e, n)
+    return encrypted_value
+def main():
+    while True:
+        message = input("Enter a message here (or enter 'quit' to quit): ")
+        if message.lower() == "quit":
+            break
+        n = int(input("Enter the value of 'n': "))
+        e = int(input("Enter the value of 'e': "))
+        encrypted_message = encrypt(message, e, n)
+        print("Encrypted message:", encrypted_message)
+if __name__ == "__main__":
+    main()

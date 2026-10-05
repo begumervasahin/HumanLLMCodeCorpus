@@ -1,0 +1,57 @@
+from __future__ import print_function, division
+from CPUtimer import CPUTimer
+from data2 import instance_iterator, print_solution
+
+def solve(instance_path):
+    # Initialize the CPU timer
+    timer = CPUTimer()
+
+    # Iterate over instances from the specified path
+    for instance in instance_iterator(instance_path):
+        instance_name, k, P, W = instance
+
+        # Reset and start the timer for each instance
+        timer.reset()
+        timer.start()
+
+        # Solve the knapsack problem twice
+        for i in range(2):
+            items = knapsack(k, P, W)
+            timer.lap()
+
+        # Stop the timer after solving
+        timer.stop()
+
+        # Print the solution for the instance
+        print_solution(P, W, items, instance_name, '2a', timer)
+
+def knapsack(k, P, W):
+    # Convert items to a list of tuples with indices, weights, and values per weight
+    items = [(i + 1, w, p / w) for i, (p, w) in enumerate(zip(P, W))]
+
+    # Sort items in descending order of value per weight
+    items = iter(sorted(items, key=lambda t: t[2], reverse=True))
+
+    # Initialize the result list and weight
+    x = [0] * len(P)
+    weight = 0
+
+    # Greedy algorithm to fill the knapsack
+    while weight < k:
+        try:
+            i, w, _ = next(items)
+            if weight + w <= k:
+                x[i - 1] = 1
+                weight += w
+            else:
+                x[i - 1] = (k - weight) / w
+                weight = k
+        except StopIteration:
+            break
+
+    # Filter items that are selected and return them with their fractions
+    return [(i + 1, fract) for i, fract in enumerate(x) if fract > 0]
+
+# Example usage
+instance_path = "path_to_instance_file"  # Replace with the actual path to your instance file
+solve(instance_path)

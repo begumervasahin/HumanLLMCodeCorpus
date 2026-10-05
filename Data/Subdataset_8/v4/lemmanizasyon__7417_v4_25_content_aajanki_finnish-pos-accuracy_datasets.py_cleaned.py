@@ -1,0 +1,61 @@
+from pathlib import Path
+from preprocess_data import split_into_sentences
+class Dataset:
+    def __init__(self, name, datapath):
+        self.name = name
+        self.datapath = datapath
+        self.sentences = self._parse_conllu(open(datapath))
+    def _parse_conllu(self, file):
+        sentences = []
+        for sentence in split_into_sentences(file.readlines()):
+            tokens = []
+            for line in sentence:
+                if line and not line.startswith('
+                    fields = line.split('\t')
+                    assert len(fields) == 10
+                    text = fields[1].replace(' ', '')
+                    lemma = fields[2].replace(' ', '')
+                    space_after = fields[9] != 'SpaceAfter=No'
+                    tokens.append(Token(text, lemma, fields[3], space_after)))
+            sentences.append(TestSentence(tokens))
+        return sentences
+    def count_tokens(self):
+        return sum(sentence.count_tokens() for sentence in self.sentences)
+class Token:
+    def __init__(self, text, lemma, pos, space_after):
+        self.text = text
+        self.lemma = lemma
+        self.pos = pos
+        self.space_after = space_after
+class TestSentence:
+    def __init__(self, tokens):
+        self.tokens = tokens
+    def text(self):
+        text = []
+        for token in self.tokens:
+            text.append(token.text)
+            if token.space_after:
+                text.append(' ')
+        return ''.join(text).rstrip(' ')
+    def lemmas(self):
+        return [token.lemma for token in self.tokens]
+    def pos(self):
+        return [token.pos for token in self.tokens]
+    def count_tokens(self):
+        return len(self.tokens)
+def gold_path(testset_name):
+    paths = {
+        'UD_Finnish_TDT': Path('data/preprocessed/UD_Finnish-TDT/fi_tdt-ud-test.conllu'),
+        'ftb1u': Path('data/preprocessed/ftb1/ftb1u_sample.tsv'),
+        'ftb2-news': Path('data/preprocessed/ftb2/FinnTreeBank_2/news-samples_tab.txt'),
+        'ftb2-sofie': Path('data/preprocessed/ftb2/FinnTreeBank_2/sofie12_tab.txt'),
+        'ftb2-wikipedia': Path('data/preprocessed/ftb2/FinnTreeBank_2/wikipedia-samples_tab.txt'),
+    }
+    return paths.get(testset_name)
+all_testsets = [
+    Dataset('UD_Finnish_TDT', gold_path('UD_Finnish_TDT')),
+    Dataset('ftb1u', gold_path('ftb1u')),
+    Dataset('ftb2-news', gold_path('ftb2-news')),
+    Dataset('ftb2-sofie', gold_path('ftb2-sofie')),
+    Dataset('ftb2-wikipedia', gold_path('ftb2-wikipedia'))
+]

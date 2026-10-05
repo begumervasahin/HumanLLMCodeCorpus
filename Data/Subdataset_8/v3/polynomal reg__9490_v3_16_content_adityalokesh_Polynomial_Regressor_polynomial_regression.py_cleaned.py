@@ -1,0 +1,37 @@
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+data_path = '/home/chrx/Downloads/Machine-Learning-A-Z-New/Machine Learning A-Z New/Part 2 - Regression/Section 6 - Polynomial Regression/Position_Salaries.csv'
+data = pd.read_csv(data_path)
+X = data['Level'].values.reshape(-1, 1)
+Y = data['Salary'].values.reshape(-1, 1)
+linear_reg = LinearRegression()
+linear_reg.fit(X, Y)
+predictions_linear = linear_reg.predict(X)
+poly_degree = 8
+polynomial_features = PolynomialFeatures(degree=poly_degree)
+X_poly = polynomial_features.fit_transform(X)
+polynomial_reg = LinearRegression()
+polynomial_reg.fit(X_poly, Y)
+predictions_poly = polynomial_reg.predict(X_poly)
+plt.scatter(X, Y, color='red')
+plt.plot(X, predictions_linear, color='blue')
+plt.title('Linear Regression Model')
+plt.xlabel('Level')
+plt.ylabel('Salary')
+plt.show()
+plt.scatter(X, Y, color='red')
+plt.plot(X, predictions_poly, color='blue')
+plt.title('Polynomial Regression Model')
+plt.xlabel('Level')
+plt.ylabel('Salary')
+plt.show()
+new_level = np.array([6.5]).reshape(1, -1)
+predicted_salary_linear = linear_reg.predict(new_level)
+print("Predicted Salary using Linear Regression:", predicted_salary_linear[0][0])
+new_level_poly = polynomial_features.transform(new_level)
+predicted_salary_poly = polynomial_reg.predict(new_level_poly)
+print("Predicted Salary using Polynomial Regression:", predicted_salary_poly[0][0])

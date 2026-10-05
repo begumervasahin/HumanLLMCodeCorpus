@@ -1,0 +1,36 @@
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.utils.data as data
+import torchvision.models as models
+import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
+DATA_PATH = "train/"
+BATCH_SIZE = 64
+image_transforms = transforms.Compose([
+    transforms.Resize(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+test_dataset = ImageFolder(root=DATA_PATH, transform=image_transforms)
+data_loader = data.DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+model = models.inception_v3(pretrained=True).cuda()
+model.fc = nn.Sequential()
+for param in model.parameters():
+    param.requires_grad = False
+model.eval()
+total_samples = 0
+features = []
+labels = []
+for images, labels_batch in data_loader:
+    total_samples += images.shape[0]
+    with torch.no_grad():
+        outputs = model(images.cuda())
+    features.extend(outputs.cpu().numpy())
+    labels.extend(labels_batch.numpy())
+features_array = np.array(features)
+labels_array = np.array(labels)
+print("Shape of features array:", features_array.shape)
+np.save("tiny_imagenet_features.npy", features_array)
+np.save("tiny_imagenet_labels.npy", labels_array)

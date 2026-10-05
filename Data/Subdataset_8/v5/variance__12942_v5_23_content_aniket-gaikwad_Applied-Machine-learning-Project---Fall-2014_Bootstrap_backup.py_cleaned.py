@@ -1,0 +1,39 @@
+import sys
+import random
+import KNN
+inputData = []
+SIGMA = 0.66
+def bootstrapping(trainSet, no_of_bootstraps):
+    bootstrap = []
+    print("Number of Instances: %d" % len(trainSet))
+    size_of_bootstrap = len(trainSet)
+    print("One Bootstrap size: %d" % size_of_bootstrap)
+    for _ in range(no_of_bootstraps):
+        bootstrap_lst = [random.choice(trainSet) for _ in range(size_of_bootstrap)]
+        bootstrap.append(bootstrap_lst)
+    for i in range(no_of_bootstraps):
+        print("**********")
+        print("Length: %d" % len(bootstrap[i]))
+    return bootstrap
+def generate_train_test_sample(inputFile):
+    trainSet = []
+    testSet = []
+    with open(inputFile, "r") as fin:
+        for line in fin:
+            new_line = line.strip().split(',')
+            if random.random() < SIGMA:
+                trainSet.append(new_line)
+            else:
+                testSet.append(new_line)
+    return trainSet, testSet
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python script.py <input_file> <number_of_bootstraps>")
+        return
+    inputFile = sys.argv[1]
+    NO_OF_BOOTSTRAPS = int(sys.argv[2])
+    trainSet, testSet = generate_train_test_sample(inputFile)
+    bootstrap = bootstrapping(trainSet, NO_OF_BOOTSTRAPS)
+    KNN.main(bootstrap[1], testSet, 3)
+if __name__ == "__main__":
+    main()

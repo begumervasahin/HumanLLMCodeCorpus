@@ -1,0 +1,57 @@
+import re
+from tqdm import tqdm
+import requests
+from zipfile import ZipFile
+import os
+
+# Download and extract the dataset
+url = "http://thinknook.com/wp-content/uploads/2012/09/Sentiment-Analysis-Dataset.zip"
+zip_file_path = "sentiment_dataset.zip"
+data_folder = "twitter-sentiment-dataset"
+
+try:
+    os.makedirs(data_folder, exist_ok=True)
+    with open(zip_file_path, "wb") as f:
+        response = requests.get(url)
+        f.write(response.content)
+
+    with ZipFile(zip_file_path, "r") as zip_ref:
+        zip_ref.extractall(data_folder)
+except Exception as e:
+    print("Failed to download or extract dataset:", e)
+    quit()
+
+# Open files for reading and writing
+try:
+    full_dataset = open(os.path.join(data_folder, "Sentiment Analysis Dataset.csv"), "r", encoding="ISO-8859-1")
+    pos_dataset = open(os.path.join(data_folder, "tw-data.pos"), "w")
+    neg_dataset = open(os.path.join(data_folder, "tw-data.neg"), "w")
+except IOError:
+    print("Failed to open file")
+    quit()
+
+# Read and process dataset
+csv_lines = full_dataset.readlines()
+for line in tqdm(csv_lines):
+    line = line.strip().split(",", 3)
+    tweet = line[3].strip()
+
+    # Preprocess tweet
+    tweet = re.sub(r'@[\w_]+', '<NAME/>', tweet)  # Replace usernames with <NAME/>
+    tweet = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '<LINK/>', tweet)  # Replace links with <LINK/>
+    tweet = re.sub(r'&quot;', '\"', tweet)
+    tweet = re.sub(r'&amp;', '&', tweet)
+    tweet = re.sub(r'&gt;', '>', tweet)
+    tweet = re.sub(r'&lt;', '<', tweet)
+
+    if line[1].strip() == '1':
+        pos_dataset.write(tweet + "\n")
+    else:
+        neg_dataset.write(tweet + "\n")
+
+# Close files
+full_dataset.close()
+pos_dataset.close()
+neg_dataset.close()
+
+print("Dataset split and preprocessed successfully.")

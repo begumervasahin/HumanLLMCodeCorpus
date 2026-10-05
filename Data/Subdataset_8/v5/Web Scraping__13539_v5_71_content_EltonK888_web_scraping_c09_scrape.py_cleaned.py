@@ -1,0 +1,46 @@
+import urllib.request
+from bs4 import BeautifulSoup
+import requests
+import fpdf
+URL = 'https:
+def fetch_webpage_source(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        print("Failed to fetch webpage source.")
+        return None
+def download_file(url, file_name):
+    try:
+        urllib.request.urlretrieve(url, file_name)
+        print("Successfully downloaded:", url, "and saved as:", file_name)
+    except Exception as e:
+        print("Failed to download:", url, "Error:", e)
+def main():
+    '''
+    Finds the name of every lecture pdf and saves it to current directory
+    writes all reading links to a pdf called c09_readings.pdf
+    '''
+    source = fetch_webpage_source(URL)
+    if not source:
+        return
+    pdf = fpdf.FPDF(format='letter')
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    soup = BeautifulSoup(source, 'lxml')
+    table_notes = soup.find_all('div', class_='notes')
+    table_urls = soup.find_all('div', class_='readings')
+    for notes, urls in zip(table_notes, table_urls):
+        cur_files = notes.find_all('a')
+        cur_urls = urls.find_all('a')
+        for file_link in cur_files:
+            file_url = file_link['href']
+            file_name = file_url.split('/')[-1]
+            download_file(URL + file_url, file_name)
+        for url_link in cur_urls:
+            url = url_link['href']
+            pdf.write(5, url + '\n', url)
+            print('Wrote', url, "to PDF file")
+    pdf.output('c09_urls.pdf')
+if __name__ == "__main__":
+    main()

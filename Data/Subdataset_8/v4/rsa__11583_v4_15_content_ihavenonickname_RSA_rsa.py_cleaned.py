@@ -1,0 +1,46 @@
+class RSAKey:
+    def __init__(self, exponent, modulus):
+        self.exponent = exponent
+        self.modulus = modulus
+    def encrypt(self, plaintext):
+        return pow(plaintext, self.exponent, self.modulus)
+def modular_inverse(u, v):
+    u1 = 1
+    u3 = u
+    v1 = 0
+    v3 = v
+    is_even_iter = False
+    while v3:
+        quotient = u3
+        remainder = u3 % v3
+        t3 = remainder
+        t1 = u1 + quotient * v1
+        u1 = v1
+        v1 = t1
+        u3 = v3
+        v3 = t3
+        is_even_iter = not is_even_iter
+    if u3 != 1:
+        return 0
+    if is_even_iter:
+        return v - u1
+    else:
+        return u1
+def generate_rsa_keys(prime_p, prime_q):
+    phi = (prime_p - 1) * (prime_q - 1)
+    modulus = prime_p * prime_q
+    public_exponent = 65537
+    private_exponent = modular_inverse(public_exponent, phi)
+    public_key = RSAKey(exponent=public_exponent, modulus=modulus)
+    private_key = RSAKey(exponent=private_exponent, modulus=modulus)
+    return public_key, private_key
+def main():
+    public_key, private_key = generate_rsa_keys(23, 29)
+    original_value = 42
+    encrypted_value = public_key.encrypt(original_value)
+    decrypted_value = private_key.encrypt(encrypted_value)
+    print("Original:", original_value)
+    print("Encrypted:", encrypted_value)
+    print("Decrypted:", decrypted_value)
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,37 @@
+import json
+import pickle
+from gensim import models
+from gensim.corpora import Dictionary
+from LDATopicSimilarity import TopicSimilarity
+def load_lda_models(tragedy_path, comedy_path):
+    return models.LdaModel.load(tragedy_path), models.LdaModel.load(comedy_path)
+def load_json_data(root_dir, sent_root):
+    with open(sent_root + 'topic2vecSentancesSchrew.json', 'r') as file:
+        schrew_sentences = json.load(file)
+    with open(root_dir + 'trag_data_const.json', 'r') as file:
+        trag_data_const = json.load(file)
+    with open(root_dir + 'com_data_const.json', 'r') as file:
+        com_data_const = json.load(file)
+    with open(root_dir + 'trag_data_dyn.json', 'r') as file:
+        trag_data_dyn = json.load(file)
+    with open(root_dir + 'com_data_dynt.json', 'r') as file:
+        com_data_dyn = json.load(file)
+    return schrew_sentences, trag_data_const, com_data_const, trag_data_dyn, com_data_dyn
+def save_similarity_results(similarity_suite, output_filename):
+    with open(output_filename, 'wb') as output_file:
+        pickle.dump(similarity_suite.findSimilarity(45), output_file, pickle.HIGHEST_PROTOCOL)
+def load_similarity_results(input_filename):
+    with open(input_filename, 'rb') as input_file:
+        return pickle.load(input_file)
+if __name__ == '__main__':
+    root_dir = "/Users/loaner/Documents/Renncode_2016/SKPN/py-server/batch/topicSimilarity/"
+    sent_root = '/Users/loaner/Documents/Renncode_2016/SKPN/py-server/'
+    tragedy_model, comedy_model = load_lda_models('/Users/loaner/Documents/Renncode_2016/SKPN/py-server/LDA Tragedy',
+                                                  '/Users/loaner/Documents/Renncode_2016/SKPN/py-server/LDA Screw')
+    schrew_sentences, trag_data_const, com_data_const, trag_data_dyn, com_data_dyn = load_json_data(root_dir, sent_root)
+    sim_suite = TopicSimilarity(comedy_model, schrew_sentences, flag=False, filename="Schrew-600-5-10")
+    output_filename = 'tragedySimilaritySuite'
+    save_similarity_results(sim_suite, output_filename)
+    loaded_sim_suite = load_similarity_results(output_filename)
+    print("Comparison Testing")
+    print("Done")

@@ -1,0 +1,9 @@
+def is_perfect_number(num):
+    divisor_sum = sum(i for i in range(1, num) if num % i == 0)
+    return divisor_sum == num
+def find_perfect_numbers(limit):
+    perfect_numbers = [num for num in range(1, limit) if is_perfect_number(num)]
+    for perfect_num in perfect_numbers:
+        print(f"{perfect_num} is a perfect number")
+if __name__ == "__main__":
+    find_perfect_numbers(10000)

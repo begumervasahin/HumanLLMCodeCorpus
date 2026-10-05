@@ -1,0 +1,45 @@
+import numpy as np
+def initialize_table(s1, s2):
+    row = len(s2) + 2
+    column = len(s1) + 2
+    table = [[0] * column for _ in range(row)]
+    table[0][0], table[0][1] = "L", "P"
+    table[1][0] = "P"
+    for i, letter in enumerate(s1, start=2):
+        table[0][i] = letter
+        table[1][i] = 0
+    for i, letter in enumerate(s2, start=2):
+        table[i][0] = letter
+        table[i][1] = 0
+    return table
+def fill_table(table, s1, s2):
+    for i in range(2, len(s2) + 2):
+        for j in range(2, len(s1) + 2):
+            if table[i][0] == table[0][j]:
+                table[i][j] = table[i - 1][j - 1] + 1
+            else:
+                table[i][j] = max(table[i][j - 1], table[i - 1][j])
+def trace_back(table):
+    sequence = []
+    row, column = len(table) - 1, len(table[0]) - 1
+    while row > 1 and column > 1:
+        if table[row][column] == table[row][column - 1]:
+            column -= 1
+        elif table[row][column] == table[row - 1][column]:
+            row -= 1
+        else:
+            sequence.append(table[0][column])
+            row, column = row - 1, column - 1
+    return ''.join(reversed(sequence))
+def find_lcs(s1, s2):
+    table = initialize_table(s1, s2)
+    fill_table(table, s1, s2)
+    lcs = trace_back(table)
+    return lcs, table
+if __name__ == "__main__":
+    s1 = "ACCGGTCGAGTGCGCGGAAGCCGGCCGAA"
+    s2 = "GTCGTTCGGAATGCCGTTGCTCTGTAAA"
+    lcs, table = find_lcs(s1, s2)
+    print("Longest Common Subsequence:", lcs)
+    print("Dynamic Programming Table:")
+    print(np.matrix(table))

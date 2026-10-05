@@ -1,0 +1,34 @@
+from htable import htable_put, htable_get, htable
+from words import get_text, words
+def create_index_with_custom_hashtable(files):
+    if not files:
+        return None
+    index_table = htable(4011)
+    for file_index, file_path in enumerate(files):
+        file_content = get_text(file_path)
+        keywords = words(file_content)
+        for word in keywords:
+            index_entry = htable_get(index_table, word)
+            if index_entry:
+                index_entry.add(file_index)
+            else:
+                htable_put(index_table, word, {file_index})
+    return index_table
+def search_index_with_custom_hashtable(files, index, terms):
+    if not files or not index or not terms:
+        return None
+    matching_files = []
+    term_sets = []
+    for term in terms:
+        term_set = htable_get(index, term)
+        if term_set:
+            term_sets.append(term_set)
+        else:
+            return None
+    if term_sets:
+        matching_indices = set.intersection(*term_sets)
+        for index in matching_indices:
+            matching_files.append(files[index])
+    else:
+        return None
+    return matching_files

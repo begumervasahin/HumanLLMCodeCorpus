@@ -1,0 +1,56 @@
+import sys
+import getopt
+import pandas as pd
+import os
+import time
+
+def get_options():
+    input_file = ""
+    output_file = ""
+    h = ""
+    try:
+        opts, _ = getopt.getopt(sys.argv[1:], "hi:o:")
+    except getopt.GetoptError:
+        h = 'Usage:\nRemove the sequences which contain "N"\n-i: input file\n-o: output file\n'
+        return "", "", h
+    
+    for op, value in opts:
+        if op == "-i":
+            input_file = value
+        elif op == "-o":
+            output_file = value
+        elif op == "-h":
+            h = 'Usage:\nRemove the sequences which contain "N"\n-i: input file\n-o: output file\n'
+    return input_file, output_file, h
+
+def main(input_file, output_file):
+    sequences = []
+    with open(input_file, "r") as f:
+        for line in f:
+            if line[0] != ">":
+                sequences.append(line.strip())
+
+    tag_all = {}
+    for sequence in sequences:
+        if sequence not in tag_all:
+            tag_all[sequence] = 1
+        else:
+            tag_all[sequence] += 1
+
+    with open('tmp.txt', 'w') as fou:
+        for k, v in tag_all.items():
+            fou.write(f"{k}\t{v}\n")
+
+    data = pd.read_csv('tmp.txt', sep='\t', names=['Sequence', 'Count'])
+    data = data.sort_values(by='Count', ascending=False)
+    data.to_csv(output_file, sep='\t', index=False)
+    os.remove('tmp.txt')
+
+if __name__ == "__main__":
+    time_start = time.time()
+    input_file, output_file, h = get_options()
+    if h:
+        print(h)
+    else:
+        main(input_file, output_file)
+        print("Time:", time.time() - time_start)

@@ -1,0 +1,21 @@
+
+from ciphers.present import class_present
+from ciphers.gift import class_gift
+from ciphers.rectangle import class_rectangle
+from ciphers.lblock import class_lblock
+from ciphers.twine import class_twine
+def choose_block_cipher():
+    '''
+    Returns:
+    - cipher: an instance of a block cipher class
+    '''
+    return class_lblock()
+def set_cipher_goal():
+    '''
+    Returns:
+    - goal: "AS" to calculate the minimum number of acts
+            "DC" to search for the best differential characteristic
+    '''
+    return "DC"
+cipher = choose_block_cipher()
+goal = set_cipher_goal()

@@ -1,0 +1,108 @@
+import requests
+from lxml import html
+import time
+from random import uniform
+import progressbar
+import urllib
+import json
+from bs4 import BeautifulSoup
+import pandas as pd
+import math
+def find_between(s, first, last):
+    try:
+        start = s.index(first) + len(first)
+        end = s.index(last, start)
+        return s[start:end]
+    except ValueError:
+        return ""
+def scrape_amazon_reviews(asin):
+    def get_reviews_number(asin):
+        while True:
+            amazon_url = f'http:
+            headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36'}
+            page = requests.get(amazon_url, headers=headers)
+            time.sleep(uniform(3, 5))
+            parser = html.fromstring(page.content)
+            reviews_number = ' '.join(parser.xpath('
+            if reviews_number:
+                return int(reviews_number)
+    reviews_number = get_reviews_number(asin)
+    def get_review_page_url(asin):
+        while True:
+            try:
+                amazon_url = f'http:
+                headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36'}
+                page = requests.get(amazon_url, headers=headers)
+                time.sleep(uniform(3, 5))
+                parser = html.fromstring(page.content)
+                elt = parser.xpath('
+                return f'http:
+            except IndexError:
+                print('Retrying to get review page URL...')
+    review_page_url = get_review_page_url(asin)
+    review_page_url = review_page_url.replace('ref=cm_cr_dp_d_show_all_top?ie=UTF8&reviewerType=all_reviews',
+                                              'ref=cm_cr_arp_d_paging_btm_next_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1')
+    product_reviews = {}
+    for page_number in progressbar.progressbar(range(1, reviews_number
+        while True:
+            try:
+                url = review_page_url.replace(review_page_url.split('=')[-1], str(page_number))
+                headers = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322)'}
+                page = requests.get(url, headers=headers)
+                time.sleep(uniform(3, 6))
+                parser = html.fromstring(page.content)
+                reviews = parser.xpath('
+                if reviews:
+                    break
+            except Exception as e:
+                print(f"Error: {e}. Retrying to scrape reviews...")
+        for review in reviews:
+            data = [item for item in review.xpath('.
+            author, rating, title, date, *text = data
+            product_reviews[len(product_reviews)] = {
+                'author': author,
+                'rating': rating,
+                'title': title,
+                'date': date,
+                'text': ' '.join(text)
+            }
+    return product_reviews
+def scrape_tripadvisor_reviews(url_originale):
+    page = urllib.request.urlopen(url_originale)
+    time.sleep(uniform(2, 3))
+    soup = BeautifulSoup(page, 'html.parser')
+    n_rec = int(soup.find('div', {"class": "pagination-details"}).text.split()[-3])
+    num_pages = math.floor(n_rec / 10)
+    index_pages = [url_originale] + [f"https{''.join(url_originale.split('https')[1].split('Reviews-', 1))}Reviews-or{i*10}-{url_originale.split('Reviews-', 1)[1]}" for i in range(1, num_pages)]
+    trip_reviews = []
+    trip_reviews_json = []
+    for index_page in progressbar.progressbar(index_pages):
+        page = urllib.request.urlopen(index_page)
+        time.sleep(uniform(2, 4))
+        soup = BeautifulSoup(page, 'html.parser')
+        links = [a['href'] for a in soup.find_all('a', href=True)]
+        to_match = find_between(url_originale, 'Reviews-', '.html')
+        review_links = [f for f in links if to_match in f and 'ShowUserReviews' in f]
+        for review_link in review_links:
+            page = urllib.request.urlopen(f"https:
+            time.sleep(uniform(3, 7))
+            soup = BeautifulSoup(page, 'html.parser')
+            script = soup.find('script', type='application/ld+json').text
+            review_json = json.loads(str(script))
+            trip_reviews_json.append(review_json)
+            trip_reviews.append({
+                'name': soup.find('span', {'class': 'expand_inline scrname'}).text,
+                'author Location': soup.find('span', {'class': 'expand_inline userLocation'}).text,
+                'title': review_json['name'],
+                'date': soup.find('span', {"class": "ratingDate relativeDate"}).text,
+                'rating': int(review_json['reviewRating']['ratingValue']),
+                'text': review_json['reviewBody']
+            })
+    return trip_reviews, trip_reviews_json
+if __name__ == "__main__":
+    asin = 'B01DFKC2SO'
+    amazon_reviews = scrape_amazon_reviews(asin)
+    print(f"Amazon Reviews: {amazon_reviews}")
+    tripadvisor_url = 'https:
+    tripadvisor_reviews, tripadvisor_reviews_json = scrape_tripadvisor_reviews(tripadvisor_url)
+    print(f"TripAdvisor Reviews: {tripadvisor_reviews}")

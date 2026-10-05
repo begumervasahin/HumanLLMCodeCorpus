@@ -1,0 +1,71 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+import operator
+
+class DisjointSet:
+    def __init__(self, elements):
+        self.parent = {x: x for x in elements}
+
+    def find(self, element):
+        if self.parent[element] != element:
+            self.parent[element] = self.find(self.parent[element])
+        return self.parent[element]
+
+    def union(self, element1, element2):
+        self.parent[self.find(element1)] = self.find(element2)
+
+# Create a graph
+G = nx.Graph()
+
+# Initialize a Disjoint Set with nodes
+disjoint_set = DisjointSet(['a', 'b', 'c', 'd'])
+
+# Add nodes to the graph with positions and keys
+G.add_node('a', pos=(0, 1), key=0)
+G.add_node('b', pos=(2, 1), key=0)
+G.add_node('c', pos=(1, 0), key=0)
+G.add_node('d', pos=(1, 2), key=0)
+
+# Add edges to the graph with weights
+G.add_edge('a', 'b', weight=2)
+G.add_edge('a', 'c', weight=10)
+G.add_edge('b', 'c', weight=90)
+G.add_edge('b', 'd', weight=1)
+G.add_edge('d', 'a', weight=3)
+
+# Get edge and position attributes
+edges = nx.get_edge_attributes(G, 'weight')
+pos = nx.get_node_attributes(G, 'pos')
+
+# Initialize variables for Kruskal's algorithm
+t = list()
+KruskalG = nx.Graph()
+sorted_edges = sorted(edges.items(), key=operator.itemgetter(1))
+
+# Apply Kruskal's algorithm
+for uv in sorted_edges:
+    u = uv[0][0]
+    v = uv[0][1]
+    if disjoint_set.find(u) != disjoint_set.find(v):
+        disjoint_set.union(u, v)
+        t.append(uv)
+        KruskalG.add_edge(u, v, weight=uv[1], color='b')
+    else:
+        KruskalG.add_edge(u, v, weight=uv[1], color='r')
+
+# Get edges, colors, and weights for visualization
+edgesK = KruskalG.edges()
+colors = [KruskalG[u][v]['color'] for u, v in edgesK]
+weights = [KruskalG[u][v]['weight'] for u, v in edgesK]
+
+# Plot the original graph and Kruskal's tree
+plt.subplot(121)
+nx.draw(G, pos, with_labels=True)
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edges)
+
+plt.subplot(122)
+nx.draw(G, pos, with_labels=True)
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edges)
+nx.draw(KruskalG, pos, edges=edgesK, edge_color=colors)
+
+plt.show()

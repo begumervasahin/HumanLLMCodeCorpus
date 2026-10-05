@@ -1,0 +1,14 @@
+def longest_common_subsequence(str1, str2):
+    len_str1 = len(str1)
+    len_str2 = len(str2)
+    lcs_matrix = [[0] * (len_str2 + 1) for _ in range(len_str1 + 1)]
+    for i in range(1, len_str1 + 1):
+        for j in range(1, len_str2 + 1):
+            if str1[i - 1] == str2[j - 1]:
+                lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + 1
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1])
+    return lcs_matrix[len_str1][len_str2]
+string1 = input("Enter the first string: ")
+string2 = input("Enter the second string: ")
+print("The length of the longest common subsequence is:", longest_common_subsequence(string1, string2))

@@ -1,0 +1,31 @@
+import os
+import json
+import jsonlines
+import nltk
+import codecs
+import utilities
+def getRelevantSentences(relevant_docs, entities, wiki_split_docs_dir):
+	relevant_sentences = []
+	for relevant_doc in relevant_docs:
+		file = codecs.open(wiki_split_docs_dir + "/" + relevant_doc + ".json","r","utf-8")
+		file = json.load(file)
+		full_lines = file["lines"]
+		lines = []
+		for line in full_lines:
+			lines.append(line['content'])
+		for i in range(len(lines)):
+			lines[i] = lines[i].strip()
+			lines[i] = lines[i].replace("-LRB-"," ( ")
+			lines[i] = lines[i].replace("-RRB-"," ) ")
+			if lines[i] == "":
+				continue
+			temp = {}
+			temp['id'] = relevant_doc
+			temp['line_num'] = i
+			temp['sentence'] = lines[i]
+			relevant_sentences.append(temp)
+	return relevant_sentences
+def getSentence(wiki_doc_dir, doc_filename, sentence_id):
+	doc = codecs.open(wiki_doc_dir + "/" + doc_filename + ".txt","r","utf-8")
+	doc_splitted_lines= doc["lines"].split("\n")
+	return doc_splitted_lines[sentence_id].split("\t")[1]

@@ -1,0 +1,84 @@
+import CreateBaseFromFile
+from sklearn.model_selection import train_test_split
+from PCA import PCA as PCAR
+from PCA import PCA_SCORE as PCARS
+from Base import Base
+from Grafico import GerarGrafico
+from classificadores import *
+def calculate_classification_errors(base, hold, classifier_functions):
+    errors = [0] * len(classifier_functions)
+    for i in range(hold):
+        train_atr, test_atr, train_classes, test_classes = train_test_split(base.atributos, base.classes, test_size=0.5, random_state=i)
+        for idx, classifier_func in enumerate(classifier_functions):
+            errors[idx] += classifier_func(train_atr, train_classes, test_atr, test_classes)
+    return [(1 - (error / hold)) for error in errors]
+def perform_classification_with_PCA(base, hold, classifier_functions):
+    acerto_PCA = []
+    acerto_PCA_Score = []
+    attributes_range = list(range(1, len(base.atributos[0]) + 1))
+    for num_attributes in attributes_range:
+        errors = [0] * len(classifier_functions)
+        errors_score = [0] * len(classifier_functions)
+        for i in range(hold):
+            pcaR = PCAR()
+            pcaRS = PCARS()
+            train_atr, test_atr, train_classes, test_classes = train_test_split(base.atributos, base.classes, test_size=0.5, random_state=i)
+            b = Base(train_classes, train_atr)
+            pcaR.fit(b)
+            pcaRS.fit(b)
+            baseTreino = pcaR.run(Base(train_classes, train_atr), num_attributes)
+            baseTeste = pcaR.run(Base(test_classes, test_atr), num_attributes)
+            baseTreinoS = pcaRS.run(Base(train_classes, train_atr), num_attributes)
+            baseTesteS = pcaRS.run(Base(test_classes, test_atr), num_attributes)
+            for idx, classifier_func in enumerate(classifier_functions):
+                errors[idx] += classifier_func(baseTreino.atributos, baseTreino.classes, baseTeste.atributos, baseTeste.classes)
+                errors_score[idx] += classifier_func(baseTreinoS.atributos, baseTreinoS.classes, baseTesteS.atributos, baseTesteS.classes)
+        acerto_PCA.append([(1 - (error / hold)) for error in errors])
+        acerto_PCA_Score.append([(1 - (error / hold)) for error in errors_score])
+    return acerto_PCA, acerto_PCA_Score
+if __name__ == '__main__':
+    hold = 100
+    base_climate = CreateBaseFromFile.createFromFile("Bases/climate", [20], [0, 1], 1, " ")
+    base_bank = CreateBaseFromFile.createFromFile("Bases/bankNote", [4], [])
+    classifiers = [classicarKNN, naiveBayes, arvoreDecisao]
+    errors_climate = calculate_classification_errors(base_climate, hold, classifiers)
+    errors_bank = calculate_classification_errors(base_bank, hold, classifiers)
+    print("WITHOUT PCA Climate Dataset:")
+    print(f"KNN accuracy: {errors_climate[0]}")
+    print(f"Naive Bayes accuracy: {errors_climate[1]}")
+    print(f"Decision Tree accuracy: {errors_climate[2]}\n")
+    print("WITHOUT PCA Banknote Dataset:")
+    print(f"KNN accuracy: {errors_bank[0]}")
+    print(f"Naive Bayes accuracy: {errors_bank[1]}")
+    print(f"Decision Tree accuracy: {errors_bank[2]}\n")
+    classifiers = [classicarKNN, naiveBayes, arvoreDecisao, dlFisher]
+    acerto_PCA_climate, acerto_PCA_Score_climate = perform_classification_with_PCA(base_climate, hold, classifiers)
+    acerto_PCA_bank, acerto_PCA_Score_bank = perform_classification_with_PCA(base_bank, hold, classifiers)
+    attributes_range_climate = list(range(1, 19))
+    attributes_range_bank = list(range(1, 5))
+    for idx, num_attributes in enumerate(attributes_range_climate):
+        print(f"WITH PCA Climate Dataset - atr: {num_attributes}")
+        print(f"KNN accuracy: {acerto_PCA_climate[idx][0]}")
+        print(f"Naive Bayes accuracy: {acerto_PCA_climate[idx][1]}")
+        print(f"Decision Tree accuracy: {acerto_PCA_climate[idx][2]}")
+        print(f"Fisher accuracy: {acerto_PCA_climate[idx][3]}\n")
+        print(f"WITH PCA Score Climate Dataset - atr: {num_attributes}")
+        print(f"KNN accuracy: {acerto_PCA_Score_climate[idx][0]}")
+        print(f"Naive Bayes accuracy: {acerto_PCA_Score_climate[idx][1]}")
+        print(f"Decision Tree accuracy: {acerto_PCA_Score_climate[idx][2]}")
+        print(f"Fisher accuracy: {acerto_PCA_Score_climate[idx][3]}\n")
+    for idx, num_attributes in enumerate(attributes_range_bank):
+        print(f"WITH PCA Banknote Dataset - atr: {num_attributes}")
+        print(f"KNN accuracy: {acerto_PCA_bank[idx][0]}")
+        print(f"Naive Bayes accuracy: {acerto_PCA_bank[idx][1]}")
+        print(f"Decision Tree accuracy: {acerto_PCA_bank[idx][2]}")
+        print(f"Fisher accuracy: {acerto_PCA_bank[idx][3]}\n")
+        print(f"WITH PCA Score Banknote Dataset - atr: {num_attributes}")
+        print(f"KNN accuracy: {acerto_PCA_Score_bank[idx][0]}")
+        print(f"Naive Bayes accuracy: {acerto_PCA_Score_bank[idx][1]}")
+        print(f"Decision Tree accuracy: {acerto_PCA_Score_bank[idx][2]}")
+        print(f"Fisher accuracy: {acerto_PCA_Score_bank[idx][3]}\n")
+    GerarGrafico.saveMultuplos(attributes_range_climate, [acerto_PCA_climate[i] for i in range(4)], "PCA Accuracy - Climate", "Number of Attributes", "Accuracy", ["KNN", "Naive Bayes", "Decision Tree", "Fisher"])
+    GerarGrafico.saveMultuplos(attributes_range_bank, [acerto_PCA_bank[i] for i in range(4)], "PCA Accuracy - Banknote", "Number of Attributes", "Accuracy", ["KNN", "Naive Bayes", "Decision Tree", "Fisher"])
+    GerarGrafico.saveMultuplos(attributes_range_climate, [acerto_PCA_Score_climate[i] for i in range(4)], "PCA Score Accuracy - Climate", "Number of Attributes", "Accuracy", ["KNN", "Naive Bayes", "Decision Tree", "Fisher"])
+    GerarGrafico.saveMultuplos(attributes_range_bank, [acerto_PCA_Score_bank[i] for i in range(4)], "PCA Score Accuracy - Banknote", "Number of Attributes", "Accuracy", ["KNN", "Naive Bayes", "Decision Tree", "Fisher"])

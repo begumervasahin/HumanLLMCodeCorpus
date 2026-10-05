@@ -1,0 +1,30 @@
+import asyncio
+import math
+import sys
+async def calculate_factorial(n):
+    return math.factorial(n)
+async def produce_factorial(queue: asyncio.Queue, start: int = 0, finish: int = None):
+    loop = asyncio.get_event_loop()
+    async def __calculate_and_enqueue(n):
+        item = await loop.run_in_executor(None, calculate_factorial, n)
+        await queue.put(item)
+    n = 0 if not start else abs(int(start))
+    end_condition = finish if finish is not None else float('inf')
+    while n != end_condition:
+        await __calculate_and_enqueue(n)
+        n += 1
+    await queue.put(None)
+async def consume_factorial(queue: asyncio.Queue):
+    while True:
+        item = await queue.get()
+        if item is None:
+            break
+        sys.stdout.write(f"Current value: {item}\n")
+        await asyncio.sleep(0.2)
+async def main():
+    queue = asyncio.Queue(maxsize=1)
+    producer_coroutine = produce_factorial(queue)
+    consumer_coroutine = consume_factorial(queue)
+    await asyncio.gather(producer_coroutine, consumer_coroutine)
+if __name__ == "__main__":
+    asyncio.run(main())

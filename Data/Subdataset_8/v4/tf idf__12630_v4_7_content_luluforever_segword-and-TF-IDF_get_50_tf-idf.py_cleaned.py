@@ -1,0 +1,33 @@
+
+import os
+import pandas as pd
+def getFilelist(directory):
+    path = directory
+    filelist = []
+    files = os.listdir(path)
+    for file in files:
+        filelist.append(file)
+    return filelist
+allfile = getFilelist('/TF-IDF')
+allfile1 = getFilelist('/TF-IDF1')
+os.chdir('/TF-IDF')
+path = '/TF-IDF1'
+j = 0
+for filename in allfile:
+    if filename not in allfile1:
+        try:
+            data = pd.read_csv(filename, sep='    ', header=None, engine='python')
+            filtered_data = data[data[1] > 0]
+            sorted_data = filtered_data.sort_values(by=[1], axis=0, ascending=False)
+            if len(sorted_data) <= 50:
+                new_filename = filename.replace('.txt', '')
+                new_path = path + '/' + new_filename + '.txt'
+                sorted_data.to_csv(new_path, sep='\t', header=None, index=False)
+            else:
+                top_50 = sorted_data.iloc[0:50, :]
+                new_filename = filename.replace('.txt', '')
+                new_path = path + '/' + new_filename + '.txt'
+                top_50.to_csv(new_path, sep='\t', header=None, index=False)
+        except Exception as e:
+            j += 1
+print('Execution complete!')

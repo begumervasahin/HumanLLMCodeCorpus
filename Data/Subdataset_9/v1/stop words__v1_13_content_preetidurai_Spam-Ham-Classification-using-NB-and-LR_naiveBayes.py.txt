@@ -1,0 +1,103 @@
+from collections import Counter
+import math as m
+import sys
+from NBHelper import *
+
+class NBClassifier:
+    def __init__(self, numOfClasses, classNames):
+        self.numOfClasses = numOfClasses
+        self.classMapping = {i: classNames[i] for i in range(numOfClasses)}
+        self.dictOfVocabs = {}
+        self.dictPriorProb = {}
+        self.arrayDictCondProb = {}
+        self.totVocabList = []
+        self.vocabSet = set()
+
+    def buildVocab(self, pathArray):
+        numOfMails = {}
+        totMails = 0
+        for key, value in self.classMapping.items():
+            setOfMails = getMailDictionary(pathArray[key])
+            numOfMails[value] = len(setOfMails)
+            totMails += len(setOfMails)
+            self.dictOfVocabs[value] = getVocabulary(setOfMails)
+        for key, value in numOfMails.items():
+            self.dictPriorProb[key] = numOfMails[key] / totMails
+
+    def buildVocabWOStopWords(self, pathArray, stopWordPath):
+        numOfMails = {}
+        totMails = 0
+        stopWords = readStopWords(stopWordPath)
+        for key, value in self.classMapping.items():
+            setOfMails = getMailDictionaryWOStopWords(pathArray[key], stopWords)
+            numOfMails[value] = len(setOfMails)
+            totMails += len(setOfMails)
+            self.dictOfVocabs[value] = getVocabulary(setOfMails)
+        for key, value in numOfMails.items():
+            self.dictPriorProb[key] = numOfMails[key] / totMails
+
+    def buildVocabSet(self):
+        for value in self.dictOfVocabs.values():
+            self.totVocabList.extend(value)
+        self.vocabSet = set(self.totVocabList)
+
+    def train(self):
+        for value in self.classMapping.values():
+            wordFreqDict = Counter(self.dictOfVocabs[value])
+            self.arrayDictCondProb[value] = {}
+            for term in self.vocabSet:
+                if term in wordFreqDict.keys():
+                    termCount = wordFreqDict[term]
+                    self.arrayDictCondProb[value][term] = (1 + termCount) / (len(self.vocabSet) + len(self.dictOfVocabs[value]))
+                else:
+                    self.arrayDictCondProb[value][term] = (1) / (len(self.vocabSet) + len(self.dictOfVocabs[value]))
+
+    def getClassification(self, listOfWords):
+        posteriorProb = {val: m.log(self.dictPriorProb[val]) for val in self.classMapping.values()}
+        for term in listOfWords:
+            for val in self.classMapping.values():
+                if term in self.arrayDictCondProb[val]:
+                    posteriorProb[val] += m.log(self.arrayDictCondProb[val][term])
+        return max(posteriorProb, key=posteriorProb.get)
+
+    def validate(self, testPaths):
+        spamTestMails = getMailDictionary(testPaths[0])
+        hamTestMails = getMailDictionary(testPaths[1])
+        spamcorrect = sum(1 for value in spamTestMails.values() if self.getClassification(value) == "spam")
+        hamcorrect = sum(1 for value in hamTestMails.values() if self.getClassification(value) == "ham")
+        spamaccuracy = (spamcorrect / len(spamTestMails)) * 100
+        hamaccuracy = (hamcorrect / len(hamTestMails)) * 100
+        accuracy = ((spamcorrect + hamcorrect) / (len(spamTestMails) + len(hamTestMails))) * 100
+        print("Accuracy without removing stopwords:", accuracy)
+
+    def validateWOStopWords(self, testPaths, stopPath):
+        stopWords = readStopWords(stopPath)
+        spamTestMails = getMailDictionaryWOStopWords(testPaths[0], stopWords)
+        hamTestMails = getMailDictionaryWOStopWords(testPaths[1], stopWords)
+        spamcorrect = sum(1 for value in spamTestMails.values() if self.getClassification(value) == "spam")
+        hamcorrect = sum(1 for value in hamTestMails.values() if self.getClassification(value) == "ham")
+        spamaccuracy = (spamcorrect / len(spamTestMails)) * 100
+        hamaccuracy = (hamcorrect / len(hamTestMails)) * 100
+        accuracy = ((spamcorrect + hamcorrect) / (len(spamTestMails) + len(hamTestMails))) * 100
+        print("Accuracy after removing stopwords:", accuracy)
+
+def main():
+    NB = NBClassifier(2, ["spam", "ham"])
+    argvList = sys.argv
+    trainPaths = [argvList[1], argvList[2]]
+    testPaths = [argvList[3], argvList[4]]
+    stopPath = argvList[5]
+
+    NB.buildVocab(trainPaths)
+    NB.buildVocabSet()
+    NB.train()
+    NB.validate(testPaths)
+
+    NB1 = NBClassifier(2, ["spam", "ham"])
+    NB1.buildVocabWOStopWords(trainPaths, stopPath)
+    NB1.buildVocabSet()
+    NB1.train()
+    NB1.validateWOStopWords(testPaths, stopPath)
+
+if __name__ == "__main__":
+    main()

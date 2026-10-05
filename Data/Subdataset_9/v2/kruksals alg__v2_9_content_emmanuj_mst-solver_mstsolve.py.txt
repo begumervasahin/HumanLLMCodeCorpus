@@ -1,0 +1,116 @@
+import sys
+import argparse
+from heapq import heappop, heappush
+
+class Edge:
+    def __init__(self, u, v, weight):
+        self.u = u
+        self.v = v
+        self.weight = weight
+
+    def __str__(self):
+        return f"e {self.u} {self.v} {self.weight}"
+
+class DisjointSet:
+    def __init__(self):
+        self.parent = {}
+
+    def make_set(self, x):
+        self.parent[x] = x
+
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):
+        self.parent[self.find(x)] = self.find(y)
+
+class PriorityQueue:
+    def __init__(self, d):
+        self.heap = []
+        self.d = d
+
+    def make_heap(self, edges):
+        for edge in edges:
+            heappush(self.heap, (edge.weight, edge))
+
+    def size(self):
+        return len(self.heap)
+
+    def find_min(self):
+        return self.heap[0][1]
+
+    def delete_min(self):
+        heappop(self.heap)
+
+def main():
+    parser = argparse.ArgumentParser(description='Minimum Spanning Tree (MST) Solver')
+    parser.add_argument("-d", "--heap_d", default=2, type=int, help="balanced head width")
+    parser.add_argument("-o", "--output", help="Output file to write solution")
+    parser.add_argument("-i", "--infile", help="Input graph file. Graph must be in DIMACS format")
+    args = parser.parse_args()
+
+    edges = []
+    vertices = []
+    mst_edges = []
+
+    d = args.heap_d
+    priority_queue = PriorityQueue(d)
+
+    if args.infile:
+        with open(args.infile) as f:
+            for line in f:
+                if line.startswith("e"):
+                    _, u, v, weight = map(int, line.split()[1:])
+                    edge = Edge(u, v, weight)
+                    edges.append(edge)
+                    vertices.extend([u, v])
+    else:
+        print("Enter edge line by line in the format e u v w. Press enter each time. Press enter twice when done.")
+        for line in sys.stdin:
+            if not line.strip():
+                break
+            if line.startswith("e"):
+                _, u, v, weight = map(int, line.split()[1:])
+                edge = Edge(u, v, weight)
+                edges.append(edge)
+                vertices.extend([u, v])
+
+    vertices = list(set(vertices))
+
+    if len(vertices) <= 0:
+        print("Error: Invalid number of nodes")
+        sys.exit(0)
+
+    if len(edges) <= 0:
+        print("Error: Invalid number of edges")
+        sys.exit(0)
+
+    priority_queue.make_heap(edges)
+
+    disjoint_set = DisjointSet()
+    for i in vertices:
+        disjoint_set.make_set(i)
+
+    total_cost = 0
+    while priority_queue.size() != 0:
+        _, edge_i = priority_queue.find_min()
+        if disjoint_set.find(edge_i.u) != disjoint_set.find(edge_i.v):
+            disjoint_set.union(edge_i.u, edge_i.v)
+            mst_edges.append(edge_i)
+            total_cost += edge_i.weight
+        priority_queue.delete_min()
+
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(f"c Total cost of tree {total_cost}\n")
+            for edge in mst_edges:
+                f.write(str(edge) + "\n")
+    else:
+        print(f"c Total cost of tree {total_cost}")
+        for edge in mst_edges:
+            print(edge)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,98 @@
+from math import sqrt
+
+# Define parameters
+R = 0.1  # Threshold parameter
+direction_unknown = 0
+direction_up = 1
+direction_down = 2
+
+# Function to find peaks in the data
+def choose_peak(data, max_d):
+    peak_value = [data[0]]  # Initialize list to store peak values
+    peak_index = [0]        # Initialize list to store peak indices
+    current_dir = direction_unknown  # Initialize direction as unknown
+    d0 = 0.0                # Initialize distance variable
+
+    # Loop through the data points
+    for index in range(1, len(data)):
+        if current_dir == direction_unknown:
+            # Determine initial direction of data
+            if data[index] > data[index - 1]:
+                current_dir = direction_up
+            elif data[index] < data[index - 1]:
+                current_dir = direction_down
+            continue
+
+        if current_dir == direction_up and data[index] < data[index - 1]:
+            # If direction changes from up to down, check distance threshold
+            current_dir = direction_down
+            d0 = (data[index - 1] - peak_value[-1]) / max_d
+            if d0 >= R:
+                peak_value.append(data[index - 1])
+                peak_index.append(index - 1)
+            continue
+
+        if current_dir == direction_down and data[index] > data[index - 1]:
+            # If direction changes from down to up, check distance threshold
+            current_dir = direction_up
+            d0 = (peak_value[-1] - data[index - 1]) / max_d
+            if d0 >= R:
+                peak_value.append(data[index - 1])
+                peak_index.append(index - 1)
+            continue
+
+    return peak_value, peak_index
+
+# Function to calculate slopes between peaks
+def calc_slope(peak):
+    slope = []  # Initialize list to store slopes
+
+    # Calculate slopes between consecutive peaks
+    for index in range(1, len(peak[0])):
+        sl = (peak[0][index] - peak[0][index - 1]) / (peak[1][index] - peak[1][index - 1])
+        slope.append(sl)
+
+    return slope
+
+# Function to calculate mean values between peaks
+def calc_mean(data, peak):
+    mean = []  # Initialize list to store mean values
+
+    # Calculate mean values between consecutive peaks
+    for i in range(1, len(peak[0])):
+        ml = 0.0  # Initialize mean value
+        for j in range(peak[1][i-1], peak[1][i]):
+            ml += data[j]  # Sum data points between peaks
+        ml = ml / (peak[1][i] - peak[1][i-1])  # Calculate mean
+        mean.append(ml)
+
+    return mean
+
+# Function to calculate distances between peaks based on slope and mean
+def calc_dist(slope, peak, mean):
+    dist = []  # Initialize list to store distances
+
+    # Calculate distances based on slope and mean between consecutive peaks
+    for index in range(1, len(slope)):
+        d1 = sqrt((slope[index] - slope[index-1])**2 + (peak[1][index] - peak[1][index - 1])**2 + (mean[index] - mean[index-1])**2)
+        dist.append(d1)
+
+    return dist
+
+# Sample data
+data0 = (10.0, 11.0, 14.0, 13.0, 40.0, 39.0, 38.0, 60.0, 59.0, 62.0, 80.0, 81.0, 79.0, 78.0, 50.0, 52.0, 51.0, 53.0, 10.0, 9.0, 8.0, 50.0)
+
+# Find peaks in the data
+peak = choose_peak(data0, 1)
+
+# Calculate slopes between peaks
+slope = calc_slope(peak)
+
+# Calculate mean values between peaks
+mean = calc_mean(data0, peak)
+
+# Calculate distances between peaks based on slope and mean
+result = calc_dist(slope, peak, mean)
+
+# Print the calculated distances
+print(result)

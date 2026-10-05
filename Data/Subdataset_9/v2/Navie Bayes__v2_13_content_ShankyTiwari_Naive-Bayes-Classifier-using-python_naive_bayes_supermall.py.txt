@@ -1,0 +1,49 @@
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
+
+class PurchasePredictionModel:
+    def __init__(self):
+        self.X = None
+        self.Y = None
+        self.standard_scaler = None
+
+    def import_data(self):
+        # Import dataset
+        dataset = pd.read_csv('supermall.csv')
+        self.X = dataset.iloc[:, [2, 3]].values
+        self.Y = dataset.iloc[:, 4].values
+
+    def do_feature_scaling(self):
+        # Perform feature scaling
+        self.standard_scaler = StandardScaler()
+        self.X = self.standard_scaler.fit_transform(self.X)
+
+    def predict_purchase_likelihood(self):
+        # Prepare data, train model, and make prediction
+        self.import_data()
+        self.do_feature_scaling()
+
+        # Train the Gaussian Naive Bayes classifier
+        classifier = GaussianNB()
+        classifier.fit(self.X, self.Y)
+
+        # Input user's age and salary
+        user_age = float(input("Enter the user's age: "))
+        user_salary = float(input("What is the salary of the user? "))
+
+        # Scale the user input using the same scaler
+        test_data = self.standard_scaler.transform([[user_age, user_salary]])
+
+        # Predict the purchase likelihood
+        prediction = classifier.predict(test_data)
+
+        # Output prediction result
+        if prediction[0] == 1:
+            print("This user is most likely to buy the product.")
+        else:
+            print("This user is not likely to buy your product.")
+
+# Create an instance of the model and make predictions
+purchase_model = PurchasePredictionModel()
+purchase_model.predict_purchase_likelihood()

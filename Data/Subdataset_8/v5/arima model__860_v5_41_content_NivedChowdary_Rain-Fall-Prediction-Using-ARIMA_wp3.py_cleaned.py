@@ -1,0 +1,84 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.seasonal import seasonal_decompose
+dataset = pd.read_csv('annual.csv', parse_dates=['YEAR'])
+dataset['YEAR'] = pd.date_range(start='1901', end='2017', freq='AS')
+dataset = dataset.set_index(['YEAR'])
+def plot_initial_dataset(data):
+    plt.figure(figsize=(10, 6))
+    plt.plot(data, label='Rainfall')
+    plt.xlabel("Year")
+    plt.ylabel("Rainfall")
+    plt.title('Annual Rainfall')
+    plt.legend()
+    plt.show()
+plot_initial_dataset(dataset)
+def plot_rolling_statistics(ts, title='Rolling Mean & Standard Deviation', window=12):
+    rolling_mean = ts.rolling(window=window).mean()
+    rolling_std = ts.rolling(window=window).std()
+    plt.figure(figsize=(10, 6))
+    plt.plot(ts, color='blue', label='Original')
+    plt.plot(rolling_mean, color='red', label='Rolling Mean')
+    plt.plot(rolling_std, color='black', label='Rolling Std')
+    plt.legend(loc='best')
+    plt.title(title)
+    plt.show(block=False)
+def perform_dickey_fuller_test(ts):
+    print('Results of Dickey-Fuller Test:')
+    dftest = adfuller(ts, autolag='AIC')
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '
+    for key, value in dftest[4].items():
+        dfoutput[f'Critical Value ({key})'] = value
+    print(dfoutput)
+plot_rolling_statistics(dataset['ANNUAL'])
+perform_dickey_fuller_test(dataset['ANNUAL'])
+dataset_log = np.log(dataset)
+moving_avg = dataset_log.rolling(window=12).mean()
+plt.figure(figsize=(10, 6))
+plt.plot(dataset_log, color='blue', label='Log Transformed')
+plt.plot(moving_avg, color='red', label='Moving Average')
+plt.legend(loc='best')
+plt.show()
+log_minus_mov_avg = dataset_log - moving_avg
+log_minus_mov_avg.dropna(inplace=True)
+plot_rolling_statistics(log_minus_mov_avg, title='Log Transformed Data minus Moving Average')
+perform_dickey_fuller_test(log_minus_mov_avg['ANNUAL'])
+decomposition = seasonal_decompose(dataset_log)
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid
+plt.figure(figsize=(11, 9))
+plt.subplot(411)
+plt.plot(dataset_log, label='Original')
+plt.legend(loc='best')
+plt.subplot(412)
+plt.plot(trend, label='Trend')
+plt.legend(loc='best')
+plt.subplot(413)
+plt.plot(seasonal, label='Seasonality')
+plt.legend(loc='best')
+plt.subplot(414)
+plt.plot(residual, label='Residuals')
+plt.legend(loc='best')
+plt.tight_layout()
+def fit_arima_model(ts, order):
+    model = ARIMA(ts, order=order)
+    results = model.fit(disp=-1)
+    plt.figure(figsize=(10, 6))
+    plt.plot(ts, label='Original')
+    plt.plot(results.fittedvalues, color='red', label='Fitted Values')
+    plt.title('RSS: %.4f' % sum((results.fittedvalues - ts) ** 2))
+    plt.legend(loc='best')
+    plt.show()
+    return results
+model_results = fit_arima_model(dataset_log['ANNUAL'], (1, 1, 1))
+forecast_steps = 90
+forecast = model_results.forecast(steps=forecast_steps)[0]
+plt.figure(figsize=(10, 6))
+plt.plot(np.exp(forecast), label='Forecast')
+plt.title('Future Rainfall Prediction')
+plt.legend(loc='best')
+plt.show()

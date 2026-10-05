@@ -1,0 +1,49 @@
+import numpy as np
+import pandas as pd
+from numpy.linalg import norm, eig
+from scipy.stats import zscore
+
+# Read data from file
+file_path = 'C:/Users/ebhavaniprasad/Desktop/magic04.txt'
+csv_data = pd.read_csv(file_path, header=None)
+
+# Extract features without class labels
+features = csv_data.iloc[:, :-1]
+
+# Calculate mean for each data point
+mean_values = features.mean(axis=1)
+
+# Calculate variance for each data point
+variance_values = features.var(axis=1)
+
+# Calculate standard deviation for each data point
+std_deviation_values = np.sqrt(variance_values)
+
+# Z-score normalization
+z_normalized_data = (features.sub(mean_values, axis=0)).div(std_deviation_values, axis=0)
+
+# Calculate covariance matrix
+covariance_matrix = np.cov(z_normalized_data, bias=True, rowvar=False)
+
+# Eigen decomposition
+eigen_values, eigen_vectors = eig(covariance_matrix)
+
+# Sort eigenvalues and eigenvectors
+sorted_indices = np.argsort(eigen_values)[::-1]
+sorted_eigen_values = eigen_values[sorted_indices]
+sorted_eigen_vectors = eigen_vectors[:, sorted_indices]
+
+# Project data onto the first two principal components
+reduced_data = z_normalized_data.dot(sorted_eigen_vectors[:, :2])
+
+# Calculate covariance of projected data
+covariance_projected_data = np.cov(reduced_data, bias=True, rowvar=False)
+trace_of_covariance = np.trace(covariance_projected_data)
+
+# Calculate sum of eigenvalues corresponding to the first two principal vectors
+sum_of_principal_eigenvalues = np.sum(sorted_eigen_values[:2])
+
+# Output results
+print("Covariance Matrix of the Projected Data Points:\n", covariance_projected_data)
+print("Trace of Covariance Matrix:", trace_of_covariance)
+print("Sum of Eigenvalues Corresponding to the First Two Principal Vectors:", sum_of_principal_eigenvalues)

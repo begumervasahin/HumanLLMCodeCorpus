@@ -1,0 +1,66 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import AgglomerativeClustering
+import scipy.cluster.hierarchy as sch
+
+def load_dataset(file_path):
+    """
+    Load the dataset from a CSV file.
+    """
+    return pd.read_csv(file_path)
+
+def plot_dendrogram(X):
+    """
+    Plot the dendrogram for hierarchical clustering.
+    """
+    dendrogram = sch.dendrogram(sch.linkage(X, method='ward'))
+    plt.title('Dendrogram')
+    plt.xlabel('Customers')
+    plt.ylabel('Euclidean distances')
+    plt.show()
+
+def perform_clustering(X, n_clusters=5):
+    """
+    Perform hierarchical clustering with a given number of clusters.
+    """
+    hc = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')        
+    return hc.fit_predict(X)
+
+def visualize_clusters(X, labels):
+    """
+    Visualize the clusters.
+    """
+    colors = ['red', 'blue', 'green', 'black', 'magenta']
+    for i, color in enumerate(colors):
+        plt.scatter(X[labels == i, 0], X[labels == i, 1], s=100, c=color, label=f'Cluster {i+1}')
+
+    # Add title and labels
+    plt.title('Clusters of clients')
+    plt.xlabel('Annual income (K$)')
+    plt.ylabel('Spending score (1-100)')
+
+    # Show legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
+def main():
+    # Load the dataset
+    dataset = load_dataset('Mall_Customers.csv')
+
+    # Extract the features (Annual Income and Spending Score)
+    X = dataset.iloc[:, [3, 4]].values
+
+    # Plot the dendrogram
+    plot_dendrogram(X)
+
+    # Perform hierarchical clustering with 5 clusters
+    labels = perform_clustering(X, n_clusters=5)
+
+    # Visualize the clusters
+    visualize_clusters(X, labels)
+
+if __name__ == '__main__':
+    main()

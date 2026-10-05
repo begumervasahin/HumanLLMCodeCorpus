@@ -1,0 +1,66 @@
+from unittest import TestCase
+from flask import json
+from mock import patch
+from application import application
+class TestWebResource(TestCase):
+    def setUp(self):
+        self.client = application.test_client()
+    def test_negative_size_returns_400(self):
+        response = self.client.get('/fibonacci/-1')
+        self.assertEqual(response.status_code, 400)
+    def test_negative_size_error_message(self):
+        response = self.client.get('/fibonacci/-1')
+        error_message = self.retrieve_error_message(response)
+        expected_error_message = 'Size must be a positive integer. Actual -1'
+        self.assertEqual(expected_error_message, error_message)
+    def test_invalid_string_returns_400(self):
+        response = self.client.get('/fibonacci/bad')
+        self.assertEqual(response.status_code, 400)
+    def test_invalid_string_error_message(self):
+        response = self.client.get('/fibonacci/bad')
+        error_message = self.retrieve_error_message(response)
+        expected_error_message = 'Size must be a positive integer. Actual bad'
+        self.assertEqual(expected_error_message, error_message)
+    def test_size_greater_than_upper_boundary_returns_400(self):
+        response = self.client.get('/fibonacci/1001')
+        self.assertEqual(response.status_code, 400)
+    def test_size_greater_than_upper_boundary_error_message(self):
+        response = self.client.get('/fibonacci/1001')
+        error_message = self.retrieve_error_message(response)
+        expected_error_message = 'Size must be a positive integer <= to 1000. Actual 1001'
+        self.assertEqual(expected_error_message, error_message)
+    def test_invalid_path_returns_404(self):
+        response = self.client.get('/fibonacci/test/1223')
+        self.assertEqual(response.status_code, 404)
+    def test_invalid_path_returns_json_response(self):
+        response = self.client.get('/fibonacci/test/1223')
+        self.assertEqual(response.content_type, 'application/json')
+    def test_size_is_0_returns_200(self):
+        response = self.client.get('/fibonacci/0')
+        self.assertEqual(response.status_code, 200)
+    def test_size_is_0_returns_empty_list(self):
+        response = self.client.get('/fibonacci/0')
+        response_data = json.loads(response.data)
+        fibonacci_list = response_data.get("fibonacci")
+        self.assertEqual(len(fibonacci_list), 0)
+    def test_size_is_5_returns_correct_list(self):
+        response = self.client.get('/fibonacci/5')
+        response_data = json.loads(response.data)
+        fibonacci_list = response_data.get("fibonacci")
+        expected_fibonacci_list = [0, 1, 1, 2, 3]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(expected_fibonacci_list, fibonacci_list)
+    def test_post_to_valid_url_returns_405(self):
+        response = self.client.post('/fibonacci/0')
+        self.assertEqual(response.status_code, 405)
+    def test_unhandled_exception_returns_json_response(self):
+        response = self.client.post('/fibonacci/0')
+        self.assertEqual(response.content_type, 'application/json')
+    @patch('sequence_generators.fibonacci.generate_sequence')
+    def test_get_calls_fibonacci_generator(self, mock_generator):
+        self.client.get('/fibonacci/0')
+        mock_generator.assert_called_with(0)
+    def retrieve_error_message(self, response):
+        response_data = json.loads(response.data)
+        error_message = response_data.get("message")
+        return error_message

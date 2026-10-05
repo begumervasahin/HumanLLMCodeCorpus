@@ -1,0 +1,87 @@
+import sys
+
+# Global variable to count the number of recursive calls
+num_recursive_calls = 0
+
+def recursive_lcs(x, y, reconstruct=False):
+    """
+    Recursively computes the length of the longest common subsequence (LCS) of two strings x and y.
+    
+    Args:
+        x (str): First string sequence
+        y (str): Second string sequence
+        reconstruct (bool): Boolean indicating whether to reconstruct the LCS string or not (default False)
+    
+    Returns:
+        int or str: Length of the LCS if reconstruct=False, LCS string if reconstruct=True
+    """
+    global num_recursive_calls
+    num_recursive_calls += 1
+    
+    # Base case: if either of the sequences is empty, return 0 or an empty string
+    if len(x) == 0 or len(y) == 0:
+        if reconstruct:
+            return ""
+        else:
+            return 0
+    
+    # If the last characters of both strings are equal
+    if x[-1] == y[-1]:
+        if reconstruct:
+            # Include the last character in the LCS string and recurse for the remaining strings
+            return recursive_lcs(x[:-1], y[:-1], reconstruct) + x[-1]
+        else:
+            # Increment the LCS length by 1 and recurse for the remaining strings
+            return 1 + recursive_lcs(x[:-1], y[:-1], reconstruct)
+    
+    else:
+        # If the last characters are not equal, choose the maximum length LCS by excluding one character at a time
+        if reconstruct:
+            return max(recursive_lcs(x, y[:-1], reconstruct),
+                       recursive_lcs(x[:-1], y, reconstruct), key=len)
+        else:
+            return max(recursive_lcs(x, y[:-1], reconstruct),
+                       recursive_lcs(x[:-1], y, reconstruct))
+
+def test(x, y, reconstruct):
+    """
+    Tests the recursive LCS function with given input sequences x and y.
+    
+    Args:
+        x (str): First string sequence
+        y (str): Second string sequence
+        reconstruct (bool): Boolean indicating whether to reconstruct the LCS string or not
+    
+    Returns:
+        int or str: Length of the LCS if reconstruct=False, LCS string if reconstruct=True
+    """
+    return recursive_lcs(x, y, reconstruct)
+
+if __name__ == "__main__":
+    # Check if the correct number of command-line arguments are provided
+    if len(sys.argv) < 2:
+        print("Usage: python3 " + sys.argv[0] + " <filename> <reconstruct_flag>")
+        print("<filename>: name of the file containing sequences")
+        print("<reconstruct_flag>: 0 - without reconstruction, 1 - with reconstruction")
+    else:
+        # Extract filename and reconstruction flag from command-line arguments
+        filename = sys.argv[1]
+        reconstruct = False
+        if len(sys.argv) == 3:
+            reconstruct = int(sys.argv[2]) == 1
+        
+        # Read sequences from the file
+        with open(filename, 'r') as f:
+            x = f.readline().strip()
+            y = f.readline().strip()
+            
+            # Compute LCS based on reconstruction flag
+            if reconstruct:
+                lcs = test(x, y, reconstruct)
+                print("LCS: " + lcs)
+                print("LCS length: " + str(len(lcs)))
+            else:
+                print("LCS length: " + str(test(x, y, reconstruct)))
+            
+            # Print the number of recursive calls made
+            print("Number of recursive calls: " + str(num_recursive_calls))

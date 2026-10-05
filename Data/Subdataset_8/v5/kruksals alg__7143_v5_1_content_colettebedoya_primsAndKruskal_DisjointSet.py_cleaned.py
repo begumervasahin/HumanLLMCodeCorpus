@@ -1,0 +1,19 @@
+class DisjointSet:
+    def __init__(self, size):
+        if size < 0:
+            raise ValueError("Size must be >= 0")
+        self.size = size
+        self.set = [-1] * (size + 1)
+    def union(self, root1, root2):
+        if not self._is_valid_root(root1) or not self._is_valid_root(root2):
+            raise ValueError("Invalid root value")
+        self.set[root2] = root1
+    def find(self, root):
+        if not self._is_valid_root(root):
+            raise ValueError("Invalid root value")
+        if self.set[root] < 0:
+            return root
+        else:
+            return self.find(self.set[root])
+    def _is_valid_root(self, root):
+        return 0 <= root <= self.size

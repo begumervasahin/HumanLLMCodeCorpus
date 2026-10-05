@@ -1,0 +1,106 @@
+from math import floor, ceil
+from bisect import bisect
+from sys import stdout as so
+PRECISION = 32
+def encode(x, probabilities):
+    one = 2 ** PRECISION - 1
+    quarter = ceil(one / 4)
+    half = 2 * quarter
+    three_quarters = 3 * quarter
+    probabilities = {symbol: probabilities[symbol] for symbol in probabilities if probabilities[symbol] > 0}
+    cumulative_probabilities = [0]
+    for symbol in probabilities:
+        cumulative_probabilities.append(probabilities[symbol] + cumulative_probabilities[-1])
+    cumulative_probabilities.pop()
+    cumulative_probabilities = {symbol: cumulative_probabilities[symbol] for symbol in probabilities}
+    y = []
+    lo, hi = 0, one
+    straddle = 0
+    for k in range(len(x)):
+        if k % 100 == 0:
+            so.write('Arithmetic encoded %d%%    \r' % int(floor(k / len(x) * 100)))
+            so.flush()
+        lohi_range = hi - lo + 1
+        lo = ceil(lo + (cumulative_probabilities[x[k]] * lohi_range))
+        hi = floor(lo + (probabilities[x[k]] * lohi_range))
+        if lo == hi:
+            raise ValueError('Zero interval!')
+        while True:
+            if hi < half:
+                y.append(0)
+                y.extend([1] * straddle)
+                straddle = 0
+            elif lo >= half:
+                y.append(1)
+                y.extend([0] * straddle)
+                straddle = 0
+                lo -= half
+                hi -= half
+            elif lo >= quarter and hi < three_quarters:
+                straddle += 1
+                lo -= quarter
+                hi -= quarter
+            else:
+                break
+            lo *= 2
+            hi = 2 * hi + 1
+    straddle += 1
+    if lo < quarter:
+        y.append(0)
+        y.extend([1] * straddle)
+    else:
+        y.append(1)
+        y.extend([0] * straddle)
+    return y
+def decode(y, probabilities, n):
+    one = 2 ** PRECISION - 1
+    quarter = ceil(one / 4)
+    half = 2 * quarter
+    three_quarters = 3 * quarter
+    probabilities = {symbol: probabilities[symbol] for symbol in probabilities if probabilities[symbol] > 0}
+    alphabet = list(probabilities)
+    cumulative_probabilities = [0]
+    for symbol in probabilities:
+        cumulative_probabilities.append(cumulative_probabilities[-1] + probabilities[symbol])
+    cumulative_probabilities.pop()
+    probabilities = list(probabilities.values())
+    y.extend(PRECISION * [0])
+    x = n * [0]
+    value = int(''.join(str(bit) for bit in y[0:PRECISION]), 2)
+    y_position = PRECISION
+    lo, hi = 0, one
+    x_position = 0
+    while 1:
+        if x_position % 100 == 0:
+            so.write('Arithmetic decoded %d%%    \r' % int(floor(x_position / n * 100)))
+            so.flush()
+        lohi_range = hi - lo + 1
+        symbol_index = bisect(cumulative_probabilities, (value - lo) / lohi_range) - 1
+        x[x_position] = alphabet[symbol_index]
+        lo += ceil(cumulative_probabilities[symbol_index] * lohi_range)
+        hi = lo + floor(probabilities[symbol_index] * lohi_range)
+        if lo == hi:
+            raise ValueError('Zero interval!')
+        while True:
+            if hi < half:
+                pass
+            elif lo >= half:
+                lo -= half
+                hi -= half
+                value -= half
+            elif lo >= quarter and hi < three_quarters:
+                lo -= quarter
+                hi -= quarter
+                value -= quarter
+            else:
+                break
+            lo *= 2
+            hi = 2 * hi + 1
+            value = 2 * value + y[y_position]
+            y_position += 1
+            if y_position == len(y):
+                break
+        x_position += 1
+        if x_position == n or y_position == len(y):
+            break
+    return x

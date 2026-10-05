@@ -1,0 +1,54 @@
+"""
+Updated script for sentiment analysis on restaurant reviews.
+Author: Vijendra Sharma
+Date: 2024-03-14
+"""
+import numpy as np
+import pandas as pd
+# Matplotlib is imported but not used in the provided script. If visualization is needed, include it as necessary.
+# import matplotlib.pyplot as plt
+
+# Loading the dataset
+dataset = pd.read_csv('Restaurant_Reviews.tsv', delimiter='\t', quoting=3)
+
+# Preprocessing the text data
+import re
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+
+corpus = []
+for i in range(0, 1000):
+    review = re.sub('[^a-zA-Z]', ' ', dataset['Review'][i])
+    review = review.lower()
+    review = review.split()
+    ps = PorterStemmer()
+    review = [ps.stem(word) for word in review if word not in set(stopwords.words('english'))]
+    review = ' '.join(review)
+    corpus.append(review)
+
+# Vectorizing the text data
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer(max_features=1500)
+X = cv.fit_transform(corpus).toarray()
+y = dataset.iloc[:, 1].values
+
+# Splitting the dataset into the Training set and Test set
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0)
+
+# Training a Naive Bayes classifier on the Training set
+from sklearn.naive_bayes import GaussianNB
+classifier = GaussianNB()
+classifier.fit(X_train, y_train)
+
+# Predicting the Test set results
+y_pred = classifier.predict(X_test)
+
+# Evaluating the results
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy}")
+
+# Additional evaluation metrics could be considered for a deeper analysis, such as Confusion Matrix, Precision, Recall, and F1 Score.

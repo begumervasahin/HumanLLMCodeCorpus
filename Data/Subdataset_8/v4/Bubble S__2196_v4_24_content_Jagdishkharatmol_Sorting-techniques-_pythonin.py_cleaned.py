@@ -1,0 +1,109 @@
+import time
+decorative_line = '_' * 80
+print(f"{decorative_line} \n")
+title = "Sort techniques on dataset"
+print(title.center(80))
+print(f"\n{decorative_line}\n\n")
+def bubble_sort(lst):
+    for j in range(len(lst)-1, 0, -1):
+        for i in range(j):
+            if lst[i] > lst[i+1]:
+                temp = lst[i]
+                lst[i] = lst[i+1]
+                lst[i+1] = temp
+def insertion_sort(lst):
+    for i in range(1, len(lst)):
+        current_value = lst[i]
+        position = i
+        while position > 0 and lst[position-1] > current_value:
+            lst[position] = lst[position-1]
+            position = position - 1
+            lst[position] = current_value
+def merge_sort(alist):
+    if len(alist) > 1:
+        mid = len(alist)
+        left_half = alist[:mid]
+        right_half = alist[mid:]
+        merge_sort(left_half)
+        merge_sort(right_half)
+        i = j = k = 0
+        while i < len(left_half) and j < len(right_half):
+            if left_half[i] < right_half[j]:
+                alist[k] = left_half[i]
+                i = i + 1
+            else:
+                alist[k] = right_half[j]
+                j = j + 1
+            k = k + 1
+        while i < len(left_half):
+            alist[k] = left_half[i]
+            i = i + 1
+            k = k + 1
+        while j < len(right_half):
+            alist[k] = right_half[j]
+            j = j + 1
+            k = k + 1
+def selection_sort(lst):
+    for fillslot in range(len(lst)-1, 0, -1):
+        position_of_max = 0
+        for location in range(1, fillslot+1):
+            if lst[location] > lst[position_of_max]:
+                position_of_max = location
+        temp = lst[fillslot]
+        lst[fillslot] = lst[position_of_max]
+        lst[position_of_max] = temp
+while True:
+    print("Enter:")
+    print("1 for bubble sort")
+    print("2 for insertion sort")
+    print("3 for merge sort")
+    print("4 for selection sort")
+    cho = int(input("\nEnter your choice: "))
+    if cho == 1:
+        start = time.time()
+        lst = []
+        n = int(input("\nHow many numbers do you want to enter? "))
+        for i in range(n):
+            num = int(input("Enter the number: "))
+            lst.append(num)
+        bubble_sort(lst)
+        print("\nThe list after bubble sorting is", lst)
+        end = time.time()
+        print("The time taken by sorting process:", end - start)
+    elif cho == 2:
+        start = time.time()
+        lst = []
+        n = int(input("\nHow many numbers do you want to enter? "))
+        for i in range(n):
+            num = int(input("Enter the number: "))
+            lst.append(num)
+        insertion_sort(lst)
+        print("\nThe list after insertion sorting is", lst)
+        end = time.time()
+        print("The time taken by sorting process:", end - start)
+    elif cho == 3:
+        start = time.time()
+        alist = []
+        n = int(input("\nHow many numbers do you want to enter? "))
+        for i in range(n):
+            num = int(input("Enter the number: "))
+            alist.append(num)
+        merge_sort(alist)
+        print("\nThe list after merge sorting is", alist)
+        end = time.time()
+        print("The time taken by sorting process:", end - start)
+    elif cho == 4:
+        start = time.time()
+        lst = []
+        n = int(input("\nHow many numbers do you want to enter? "))
+        for i in range(n):
+            num = int(input("Enter the number: "))
+            lst.append(num)
+        selection_sort(lst)
+        print("\nThe list after selection sorting is", lst)
+        end = time.time()
+        print("The time taken by sorting process:", end - start)
+    n = int(input("\nEnter 1 to continue and 0 to exit: "))
+    print("\n\n")
+    if n == 0:
+        break

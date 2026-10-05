@@ -1,0 +1,84 @@
+from PIL import Image
+import shutil
+import cv2
+import os
+def extract_frames(video_path):
+    temp_folder = 'temp'
+    try:
+        os.makedirs(temp_folder, exist_ok=True)
+    except OSError:
+        remove(temp_folder)
+        os.makedirs(temp_folder)
+    vidcap = cv2.VideoCapture(video_path)
+    count = 0
+    while True:
+        success, image = vidcap.read()
+        if not success:
+            break
+        cv2.imwrite(os.path.join(temp_folder, f"{count}.png"), image)
+        count += 1
+def remove(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+def split_text(text, chunk_size):
+    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+def caesar_cipher(char, mode, shift):
+    if mode == "enc":
+        return chr((ord(char) + shift) % 128)
+    elif mode == "dec":
+        return chr((ord(char) - shift) % 128)
+def encode_text_into_frames(frame_dir, text_to_hide_path, shift):
+    with open(text_to_hide_path, "r") as file:
+        text_to_hide = repr(file.read())
+    chunks = split_text(text_to_hide, 255)
+    for index, chunk in enumerate(chunks):
+        length = len(chunk)
+        frame_path = os.path.join(frame_dir, f"{index + 1}.png")
+        frame = Image.open(frame_path)
+        if frame.mode != "RGB":
+            print("Source frame must be in RGB format")
+            return False
+        encoded_frame = frame.copy()
+        width, height = frame.size
+        char_index = 0
+        for row in range(height):
+            for col in range(width):
+                r, g, b = frame.getpixel((col, row))
+                if row == 0 and col == 0 and char_index < length:
+                    asc = length
+                    total_encoded_frame = len(chunks) if index == 0 else g
+                elif char_index <= length:
+                    char = chunk[char_index]
+                    asc = ord(caesar_cipher(char, "enc", shift))
+                    total_encoded_frame = g
+                else:
+                    asc = r
+                    total_encoded_frame = g
+                encoded_frame.putpixel((col, row), (asc, total_encoded_frame, b))
+                char_index += 1
+        encoded_frame.save(frame_path, compress_level=0)
+def decode_frames(frame_dir, shift):
+    first_frame_path = os.path.join(frame_dir, "1.png")
+    first_frame = Image.open(first_frame_path)
+    r, g, b = first_frame.getpixel((0, 0))
+    total_encoded_frame = g
+    decoded_text = ""
+    for i in range(1, total_encoded_frame + 1):
+        frame_path = os.path.join(frame_dir, f"{i}.png")
+        frame = Image.open(frame_path)
+        width, height = frame.size
+        char_index = 0
+        for row in range(height):
+            for col in range(width):
+                try:
+                    r, g, _ = frame.getpixel((col, row))
+                except ValueError:
+                    r, g, _, _ = frame.getpixel((col, row))
+                if row == 0 and col == 0:
+                    length = r
+                elif char_index <= length:
+                    decoded_text += caesar_cipher(chr(r), "dec", shift)
+                char_index += 1
+    decoded_text = decoded_text[1:-1]
+    with open("data/recovered-text.txt", "w") as file:
+        file.write(decoded_text)

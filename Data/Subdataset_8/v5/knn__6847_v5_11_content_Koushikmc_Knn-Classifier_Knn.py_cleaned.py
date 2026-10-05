@@ -1,0 +1,43 @@
+import csv
+import math
+import operator
+training_data = []
+def load_training_data(file_name):
+    try:
+        with open(file_name) as train_file:
+            data = csv.reader(train_file)
+            for row in data:
+                record = [float(val) for val in row[:-1]] + [row[-1]]
+                training_data.append(record)
+        print("Training data loaded")
+    except IOError:
+        print("File not available. Please check the filename")
+        exit()
+def calculate_distance(train_data, test_data):
+    distances = []
+    for train_record in train_data:
+        if len(train_record) != len(test_data):
+            print("Dimensions of test and train data do not match")
+            break
+        else:
+            dist = math.sqrt(sum((test - train_val) ** 2 for test, train_val in zip(test_data, train_record[:-1])))
+            print(f"Distance between the test point and training data {train_data.index(train_record) + 1}: {round(dist, 3)}")
+            distances.append(round(dist, 3))
+    return distances
+def find_neighbours(distances, num_neighbors):
+    sorted_indices = sorted(range(len(distances)), key=lambda x: distances[x])
+    neighbors = sorted_indices[:num_neighbors]
+    class_dict = {}
+    for neighbor_idx in neighbors:
+        class_label = training_data[neighbor_idx][-1]
+        class_dict[class_label] = class_dict.get(class_label, 0) + 1
+    output_class = max(class_dict.items(), key=operator.itemgetter(1))[0]
+    print(f"Predicted class label: {output_class}")
+if __name__ == "__main__":
+    print("Place the input dataset CSV file in the same directory as the Python module.")
+    file_name = input("Enter the name of the training dataset CSV file: ")
+    load_training_data(file_name)
+    test_data = [float(val.strip()) for val in input("Enter the values separated by comma: ").split(",")]
+    k_neighbors = int(input("Enter the number of neighbors to consider: "))
+    distances = calculate_distance(training_data, test_data)
+    find_neighbours(distances, k_neighbors)

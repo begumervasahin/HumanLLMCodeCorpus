@@ -1,0 +1,33 @@
+class CompressedGene:
+    def __init__(self, gene: str) -> None:
+        self._compress(gene)
+    def _compress(self, gene: str) -> None:
+        self.bit_string: int = 1
+        for nucleotide in gene.upper():
+            self.bit_string <<= 2
+            self.bit_string |= self._encode_nucleotide(nucleotide)
+    def _encode_nucleotide(self, nucleotide: str) -> int:
+        encoding = {'A': 0b00, 'C': 0b01, 'G': 0b10, 'T': 0b11}
+        if nucleotide not in encoding:
+            raise ValueError("Invalid Nucleotide: {}".format(nucleotide))
+        return encoding[nucleotide]
+    def decompress(self) -> str:
+        gene: str = ""
+        for i in range(0, self.bit_string.bit_length() - 1, 2):
+            bits: int = self.bit_string >> i & 0b11
+            gene += self._decode_bits(bits)
+        return gene[::-1]
+    def _decode_bits(self, bits: int) -> str:
+        decoding = {0b00: 'A', 0b01: 'C', 0b10: 'G', 0b11: 'T'}
+        if bits not in decoding:
+            raise ValueError("Invalid bits: {}".format(bits))
+        return decoding[bits]
+    def __str__(self) -> str:
+        return self.decompress()
+if __name__ == "__main__":
+    original: str = "TAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATATAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATA"
+    print("Original is {} bytes".format(len(original.encode())))
+    compressed: CompressedGene = CompressedGene(original)
+    print("Compressed is {} bytes".format(compressed.bit_string.bit_length()
+    print(compressed)
+    print("Original is the same as decompressed: {}".format(original == compressed.decompress()))

@@ -1,0 +1,72 @@
+import requests
+from bs4 import BeautifulSoup
+import os
+
+# URL prefix for the website
+URL_PREFIX = "http://example.com/page="
+
+# Path to save the dataset
+DATASET_PATH = "DataSet/"
+
+def month_to_digit(month):
+    # Dictionary mapping month names to their respective digits
+    month_dict = {'January': '01', 'February': '02', 'March': '03',
+                  'April': '04', 'May': '05', 'June': '06', 'July': '07',
+                  'August': '08', 'September': '09', 'October': '10',
+                  'November': '11', 'December': '12'}
+    # Return the digit corresponding to the month, or '00' if not found
+    return month_dict.get(month, '00')
+
+def convert_to_filename(date_str):
+    # Split the date string into components
+    date_components = date_str.split()
+    # Extract year, month, and day
+    year = date_components[3][2:]
+    month = month_to_digit(date_components[2])
+    day = date_components[1]
+    # Format the filename
+    filename = f"1{year}{month}{day.zfill(2)}"
+    return filename, date_components[3]
+
+def get_data(page_number):
+    # Construct the URL for the given page number
+    url = URL_PREFIX + str(page_number)
+    # Send a GET request to the URL
+    response = requests.get(url)
+    
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        # Parse the HTML content of the response
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Find all paragraphs with class "text-center"
+        paragraphs = soup.findAll("p", {"class": "text-center"})
+        
+        # Check if there is exactly one paragraph found
+        if len(paragraphs) != 1:
+            # Extract relevant text data
+            title = soup.findAll("h1")[0].text
+            date_info = soup.findAll("div", {"class": "myd"})[1].text
+            content = soup.findAll("p", {"class": ""})[0].text
+            
+            # Generate filename and year
+            filename, year = convert_to_filename(date_info)
+            # Construct the full path for saving the file
+            file_path = os.path.join(DATASET_PATH, filename + str(page_number) + ".utf8")
+            
+            # Write data to file
+            with open(file_path, 'w+') as file:
+                file.write("<DOC>\n<DOCNO>" + filename + "</DOCNO>\n<TEXT>\n" + 
+                           title + "\n" + date_info + "\n" + content + 
+                           "\n</TEXT>\n</DOC>")
+            
+            print("File " + filename + " written to " + DATASET_PATH)
+        else:
+            print("File missing at " + url)
+    else:
+        print("Error fetching data from " + url)
+
+def main():
+    print("This program is obsolete since the website structure has changed.")
+
+if __name__ == "__main__":
+    main()

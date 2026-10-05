@@ -1,0 +1,146 @@
+import requests
+import cgi
+import errno
+import os
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
+from PIL import Image
+from io import BytesIO
+from requests_toolbelt import MultipartEncoder
+CONNECTION_ABORTED = "Connection aborted. Please try again later."
+REQUEST_FAILED = "Request failed. Please try again later."
+CONNECTION_ECONNRESET = ("The remote system could not complete the request. "
+                         "Please try again later."
+                        )
+JSON_DECODING_FAILURE = ("The remote system has encountered a technical problem. "
+                         "Please try again later."
+                         )
+class WebAPIException(Exception):
+    def __init__(self, msg, *args, **kwargs):
+        super().__init__(msg, *args, **kwargs)
+        self.dict = msg if isinstance(msg, dict) else {'error': msg}
+    def __str__(self):
+        return str(self.dict)
+class WebAPI:
+    CHUNK_SIZE = 1024
+    def __init__(self, headers, cookies=None):
+        self.session = requests.session()
+        self.session.headers.update(headers)
+        self.cookies = cookies or {}
+    @staticmethod
+    def is_success(code):
+        return 200 <= code <= 299
+    def update_cookies(self):
+        self.cookies.update(self.session.cookies.get_dict())
+    def get(self, url, stream=None, **kwargs):
+        try:
+            kwargs.pop('cookies', None)
+            response = self.session.get(url, cookies=self.cookies, stream=stream, **kwargs)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            if isinstance(e, requests.ConnectionError):
+                raise WebAPIException(CONNECTION_ABORTED)
+            elif isinstance(e, OSError) and e.errno == errno.ECONNRESET:
+                raise WebAPIException(CONNECTION_ECONNRESET)
+            else:
+                raise WebAPIException(REQUEST_FAILED)
+        self.update_cookies()
+        return response
+    def get_file(self, url, stream=True, **kwargs):
+        response = self.get(url, stream=stream, **kwargs)
+        try:
+            params = cgi.parse_header(response.headers['content-disposition'])[1]
+            filename = params.get("filename")
+        except (KeyError, IndexError):
+            path = urlparse(response.url).path
+            filename = os.path.basename(path).strip() or None
+            if filename and not isinstance(filename, str):
+                filename = filename.decode('utf-8')
+        if stream:
+            return filename, response.iter_content(self.CHUNK_SIZE)
+        return filename, response.content
+    def post(self, url, data, **kwargs):
+        try:
+            response = self.session.post(url, data, cookies=self.cookies, **kwargs)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            if isinstance(e, requests.ConnectionError):
+                raise WebAPIException(CONNECTION_ABORTED)
+            elif isinstance(e, OSError) and e.errno == errno.ECONNRESET:
+                raise WebAPIException(CONNECTION_ECONNRESET)
+            else:
+                raise WebAPIException(REQUEST_FAILED)
+        self.update_cookies()
+        return response
+    def put(self, url, data=None, **kwargs):
+        try:
+            kwargs.pop('cookies', None)
+            response = self.session.put(url, data=data, cookies=self.cookies, **kwargs)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            if isinstance(e, requests.ConnectionError):
+                raise WebAPIException(CONNECTION_ABORTED)
+            elif isinstance(e, OSError) and e.errno == errno.ECONNRESET:
+                raise WebAPIException(CONNECTION_ECONNRESET)
+            else:
+                raise WebAPIException(REQUEST_FAILED)
+        self.update_cookies()
+        return response
+    def validate(self):
+        pass
+    def parse(self, beautiful_html):
+        return beautiful_html
+    def beautifulsoup(self, html):
+        return BeautifulSoup(html, features="html.parser")
+    def webpost(self, url, data, **kwargs):
+        self.validate()
+        response = self.post(url, data, **kwargs)
+        return self.parse(self.beautifulsoup(response.content))
+    def webget(self, url, **kwargs):
+        return self.beautifulsoup(self.get(url, **kwargs).content)
+    def ajaxget(self, url, **kwargs):
+        response = self.get(url=url, headers={'X-Requested-With': 'XMLHttpRequest'}, **kwargs)
+        try:
+            return response.json()
+        except ValueError:
+            raise WebAPIException(JSON_DECODING_FAILURE)
+    def ajaxpost(self, url, data=None, **kwargs):
+        self.validate()
+        response = self.post(url=url, data=data or {}, headers={'X-Requested-With': 'XMLHttpRequest'}, **kwargs)
+        content_type = cgi.parse_header(response.headers['Content-Type'])[0]
+        if 'html' in content_type:
+            return self.parse(self.beautifulsoup(response.content))
+        if 'json' in content_type:
+            try:
+                return response.json()
+            except ValueError:
+                raise WebAPIException(JSON_DECODING_FAILURE)
+        return response
+    def ajaxput(self, url, data=None, **kwargs):
+        self.validate()
+        response = self.put(url=url, data=data or {}, headers={'X-Requested-With': 'XMLHttpRequest'}, **kwargs)
+        content_type = cgi.parse_header(response.headers['Content-Type'])[0]
+        if 'html' in content_type:
+            return self.parse(self.beautifulsoup(response.content))
+        if 'json' in content_type:
+            try:
+                return response.json()
+            except ValueError:
+                raise WebAPIException(JSON_DECODING_FAILURE)
+        return response
+    def multipart_upload(self, url, data=None, **kwargs):
+        self.validate()
+        encoder = MultipartEncoder(fields=data)
+        response = self.post(url=url, data=encoder, headers={'Content-Type': encoder.content_type,
+                                                             'Content-Length': str(encoder.len)}, **kwargs)
+        return self.parse(self.beautifulsoup(response.content))
+    def show_captcha(self, url):
+        _, content_iterator = self.get_file(url)
+        imagebytes = b''.join(content_iterator)
+        in_memory_file = BytesIO(imagebytes)
+        Image.open(in_memory_file).show()
+if __name__ == "__main__":
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/58.0.3029.110 Safari/537.3'
+    }

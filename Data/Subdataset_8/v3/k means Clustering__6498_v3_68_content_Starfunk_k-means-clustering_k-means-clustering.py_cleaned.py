@@ -1,0 +1,152 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import random
+import math
+def load_data(file_path):
+    return pd.read_csv(file_path)
+def calculate_distance(point, centroid):
+    distance_x = abs(centroid[0] - point[0])
+    distance_y = abs(centroid[1] - point[1])
+    return math.sqrt(distance_x ** 2 + distance_y ** 2)
+def assign_label(point, centroids):
+    min_distance = float('inf')
+    label = 0
+    for index, centroid in enumerate(centroids, start=1):
+        distance = calculate_distance(point, centroid)
+        if distance < min_distance:
+            min_distance = distance
+            label = index
+    return label
+def get_labels(points):
+    return [point[2] for point in points]
+def get_num_centroids():
+    while True:
+        try:
+            num_centroids = int(input("Please enter the number of centroids you would like to use (1-7): "))
+            if 1 <= num_centroids <= 7:
+                return num_centroids
+            else:
+                print("Please enter a number between 1 and 7.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+def initialize_centroids(data, num_centroids):
+    centroids = []
+    for _ in range(num_centroids):
+        centroid_x = round(random.uniform(0, data.mean()[0]), 1)
+        centroid_y = round(random.uniform(0, data.mean()[1]), 1)
+        centroids.append([centroid_x, centroid_y])
+    return centroids
+def update_centroids(points, centroids):
+    num_centroids = len(centroids)
+    for _ in range(num_centroids):
+        sum_x, sum_y, count = 0, 0, 0
+        for point in points:
+            if point[2] == _ + 1:
+                sum_x += point[0]
+                sum_y += point[1]
+                count += 1
+        centroids[_][0] = sum_x / count if count != 0 else centroids[_][0]
+        centroids[_][1] = sum_y / count if count != 0 else centroids[_][1]
+    return centroids
+def k_means_clustering(data):
+    points = []
+    num_centroids = get_num_centroids()
+    centroids = initialize_centroids(data, num_centroids)
+    for _, point in data.iterrows():
+        x, y = point
+        label = assign_label([x, y], centroids)
+        points.append([x, y, label])
+    for _ in range(num_centroids):
+        centroids = update_centroids(points, centroids)
+        for point in points:
+            point[2] = assign_label([point[0], point[1]], centroids)
+    return points, centroids
+def plot_clusters(data, points, centroids):
+    x_values = data.iloc[:, 0]
+    y_values = data.iloc[:, 1]
+    labels = get_labels(points)
+    plt.scatter(x_values, y_values, c=labels, cmap=plt.cm.tab10)
+    for centroid in centroids:
+        plt.scatter(centroid[0], centroid[1], color='black')
+    plt.show()
+file_path = "kmeans.csv"
+data = load_data(file_path)
+clustered_points, final_centroids = k_means_clustering(data)
+plot_clusters(data, clustered_points, final_centroids)
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import random
+import math
+def load_data(file_path):
+    return pd.read_csv(file_path)
+def calculate_distance(point, centroid):
+    distance_x = abs(centroid[0] - point[0])
+    distance_y = abs(centroid[1] - point[1])
+    return math.sqrt(distance_x ** 2 + distance_y ** 2)
+def assign_label(point, centroids):
+    min_distance = float('inf')
+    label = 0
+    for index, centroid in enumerate(centroids, start=1):
+        distance = calculate_distance(point, centroid)
+        if distance < min_distance:
+            min_distance = distance
+            label = index
+    return label
+def get_labels(points):
+    return [point[2] for point in points]
+def get_num_centroids():
+    while True:
+        try:
+            num_centroids = int(input("Please enter the number of centroids you would like to use (1-7): "))
+            if 1 <= num_centroids <= 7:
+                return num_centroids
+            else:
+                print("Please enter a number between 1 and 7.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+def initialize_centroids(data, num_centroids):
+    centroids = []
+    for _ in range(num_centroids):
+        centroid_x = round(random.uniform(0, data.mean()[0]), 1)
+        centroid_y = round(random.uniform(0, data.mean()[1]), 1)
+        centroids.append([centroid_x, centroid_y])
+    return centroids
+def update_centroids(points, centroids):
+    num_centroids = len(centroids)
+    for _ in range(num_centroids):
+        sum_x, sum_y, count = 0, 0, 0
+        for point in points:
+            if point[2] == _ + 1:
+                sum_x += point[0]
+                sum_y += point[1]
+                count += 1
+        centroids[_][0] = sum_x / count if count != 0 else centroids[_][0]
+        centroids[_][1] = sum_y / count if count != 0 else centroids[_][1]
+    return centroids
+def k_means_clustering(data):
+    points = []
+    num_centroids = get_num_centroids()
+    centroids = initialize_centroids(data, num_centroids)
+    for _, point in data.iterrows():
+        x, y = point
+        label = assign_label([x, y], centroids)
+        points.append([x, y, label])
+    for _ in range(num_centroids):
+        centroids = update_centroids(points, centroids)
+        for point in points:
+            point[2] = assign_label([point[0], point[1]], centroids)
+    return points, centroids
+def plot_clusters(data, points, centroids):
+    x_values = data.iloc[:, 0]
+    y_values = data.iloc[:, 1]
+    labels = get_labels(points)
+    plt.scatter(x_values, y_values, c=labels, cmap=plt.cm.tab10)
+    for centroid in centroids:
+        plt.scatter(centroid[0], centroid[1], color='black')
+    plt.show()
+file_path = "kmeans.csv"
+data = load_data(file_path)
+clustered_points, final_centroids = k_means_clustering(data)
+plot_clusters(data, clustered_points, final_centroids)

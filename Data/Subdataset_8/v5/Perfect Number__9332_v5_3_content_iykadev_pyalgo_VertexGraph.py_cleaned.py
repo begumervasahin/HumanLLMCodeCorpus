@@ -1,0 +1,109 @@
+class Vertex:
+    def __init__(self, key):
+        self.id = key
+        self.connected_to = {}
+    def add_neighbor(self, nbr, weight=0):
+        self.connected_to[nbr] = weight
+    def __str__(self):
+        return f"{self.id} connectedTo: {[x.id for x in self.connected_to]}"
+    def get_connections(self):
+        return self.connected_to.keys()
+    def get_id(self):
+        return self.id
+    def get_weight(self, nbr):
+        return self.connected_to[nbr]
+class Graph:
+    def __init__(self):
+        self.vert_list = {}
+        self.num_vertices = 0
+    def add_vertex(self, key):
+        self.num_vertices += 1
+        new_vertex = Vertex(key)
+        self.vert_list[key] = new_vertex
+        return new_vertex
+    def get_vertex(self, n):
+        return self.vert_list.get(n)
+    def __contains__(self, n):
+        return n in self.vert_list
+    def add_edge(self, f, t, cost=0):
+        if f not in self.vert_list:
+            self.add_vertex(f)
+        if t not in self.vert_list:
+            self.add_vertex(t)
+        self.vert_list[f].add_neighbor(self.vert_list[t], cost)
+    def get_vertices(self):
+        return self.vert_list.keys()
+    def __iter__(self):
+        return iter(self.vert_list.values())
+g = Graph()
+for i in range(6):
+    g.add_vertex(i)
+print(g.vert_list)
+g.add_edge(0, 1, 5)
+g.add_edge(0, 5, 2)
+g.add_edge(1, 2, 4)
+g.add_edge(2, 3, 9)
+g.add_edge(3, 4, 7)
+g.add_edge(3, 5, 3)
+g.add_edge(4, 0, 1)
+g.add_edge(5, 4, 8)
+g.add_edge(5, 2, 1)
+for v in g:
+    for w in v.get_connections():
+        print(f"( {v.get_id()} , {w.get_id()} )")
+def build_graph(word_file):
+    d = {}
+    g = Graph()
+    with open(word_file, 'r') as wfile:
+        for line in wfile:
+            word = line.strip()
+            for i in range(len(word)):
+                bucket = word[:i] + '_' + word[i + 1:]
+                d.setdefault(bucket, []).append(word)
+    for bucket in d.keys():
+        for word1 in d[bucket]:
+            for word2 in d[bucket]:
+                if word1 != word2:
+                    g.add_edge(word1, word2)
+    return g
+def knight_graph(bd_size):
+    kt_graph = Graph()
+    for row in range(bd_size):
+        for col in range(bd_size):
+            node_id = pos_to_node_id(row, col, bd_size)
+            new_positions = gen_legal_moves(row, col, bd_size)
+            for e in new_positions:
+                nid = pos_to_node_id(e[0], e[1], bd_size)
+                kt_graph.add_edge(node_id, nid)
+    return kt_graph
+def pos_to_node_id(row, column, board_size):
+    return (row * board_size) + column
+def gen_legal_moves(x, y, bd_size):
+    new_moves = []
+    move_offsets = [(-1, -2), (-1, 2), (-2, -1), (-2, 1),
+                    (1, -2), (1, 2), (2, -1), (2, 1)]
+    for i in move_offsets:
+        new_x = x + i[0]
+        new_y = y + i[1]
+        if legal_coord(new_x, bd_size) and legal_coord(new_y, bd_size):
+            new_moves.append((new_x, new_y))
+    return new_moves
+def legal_coord(x, bd_size):
+    return 0 <= x < bd_size
+def knight_tour(n, path, u, limit):
+    u.set_color('gray')
+    path.append(u)
+    if n < limit:
+        nbr_list = list(u.get_connections())
+        i = 0
+        done = False
+        while i < len(nbr_list) and not done:
+            if nbr_list[i].get_color() == 'white':
+                done = knight_tour(n + 1, path, nbr_list[i], limit)
+            i += 1
+        if not done:
+            path.pop()
+            u.set_color('white')
+    else:
+        done = True
+    return done

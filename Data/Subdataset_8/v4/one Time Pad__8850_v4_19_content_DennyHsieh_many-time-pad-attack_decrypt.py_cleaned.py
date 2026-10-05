@@ -1,0 +1,41 @@
+def hex_to_str(hex_str):
+    return hex_str and chr(int(hex_str[:2], base=16)) + hex_to_str(hex_str[2:]) or ''
+def str_xor(a, b):
+    if len(a) > len(b):
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a[:len(b)], b)])
+    else:
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b[:len(a)])])
+def show_messages(cipher_texts, challenge_cipher_text):
+    challenge_msg = 'Hackers should be judged by their acting, not bogus criteria.'
+    xor_key = str_xor(challenge_cipher_text, challenge_msg)
+    for cipher_text in cipher_texts:
+        print(str_xor(cipher_text, xor_key))
+    print(challenge_msg)
+if __name__ == '__main__':
+    cipher_texts = []
+    with open('msg', 'r') as f:
+        for line in f:
+            temp = ''.join(line.split())
+            cipher_texts.append(temp)
+    challenge_cipher_text = open('msg_challenge', 'r').read()
+    challenge_cipher_text = ''.join(challenge_cipher_text.split())
+    str_cipher_texts = []
+    for text in cipher_texts:
+        str_cipher_texts.append(hex_to_str(text))
+    str_challenge_cipher_text = hex_to_str(challenge_cipher_text)
+    results = []
+    for i in range(len(str_challenge_cipher_text)):
+        chars = []
+        for j in range(len(str_cipher_texts)):
+            len_cipher_j = len(str_cipher_texts[j])
+            if i >= len_cipher_j:
+                continue
+            char = chr(ord(str_cipher_texts[j][i:i + 1]) ^ ord(str_challenge_cipher_text[i:i + 1]))
+            if 'A' <= char <= 'z':
+                new_char = chr(ord(char) ^ ord(' '))
+                if new_char not in chars:
+                    chars.append(new_char)
+        results.append(chars)
+    for chg_char in results:
+        print(chg_char)
+    show_messages(str_cipher_texts, str_challenge_cipher_text)

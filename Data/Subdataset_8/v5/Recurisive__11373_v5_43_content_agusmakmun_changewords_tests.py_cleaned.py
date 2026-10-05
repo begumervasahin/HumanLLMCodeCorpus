@@ -1,0 +1,18 @@
+import unittest
+from changewords.changewords import ChangeWords
+class TestChangeWords(unittest.TestCase):
+    def setUp(self):
+        change_words = ChangeWords()
+        self.parser = change_words.create_parser()
+        self.change_words_function = change_words.change_words
+    def test_change_words_function(self):
+        parsed_args = self.parser.parse_args(['--path', 'changewords_test'])
+        file_type_args = self.parser.parse_args(['--file_type', '.py'])
+        from_string_args = self.parser.parse_args(['--from_string', 'helloworld'])
+        to_string_args = self.parser.parse_args(['--to_string', 'mantabjiwa'])
+        self.assertTrue(self.change_words_function(parsed_args.path,
+                                                    file_type_args.file_type,
+                                                    from_string_args.from_string,
+                                                    to_string_args.to_string))
+if __name__ == '__main__':
+    unittest.main()

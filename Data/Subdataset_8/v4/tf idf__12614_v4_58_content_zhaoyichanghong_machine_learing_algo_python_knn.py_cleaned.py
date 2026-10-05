@@ -1,0 +1,48 @@
+import numpy as np
+class KNN:
+    def fit(self, X, y, n_neighbors, distance_func):
+        '''
+        Fit the KNN model with training data.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training data
+        y : array-like, shape (n_samples,)
+            Target values
+        n_neighbors : int
+            Number of neighbors
+        distance_func : function
+            Function to compute distance between two points
+        '''
+        self.X_train = X
+        self.y_train = y
+        self.n_neighbors = n_neighbors
+        self.distance_func = distance_func
+    def __predict_single(self, x):
+        '''
+        Predict the label of a single sample.
+        Parameters
+        ----------
+        x : array-like, shape (n_features,)
+            Single data sample
+        Returns
+        -------
+        int
+            Predicted class label
+        '''
+        distances = self.distance_func(x, self.X_train)
+        nearest_indices = np.argpartition(distances, self.n_neighbors - 1)[:self.n_neighbors]
+        return np.argmax(np.bincount(self.y_train[nearest_indices].astype(int)))
+    def predict(self, X):
+        '''
+        Predict the labels of the input samples.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Predicting data
+        Returns
+        -------
+        array-like, shape (n_samples,)
+            Predicted class labels per sample.
+        '''
+        return np.apply_along_axis(self.__predict_single, 1, X)

@@ -1,0 +1,70 @@
+def apply_permutation(table, data):
+    """Applies a permutation table to data."""
+    return [data[i - 1] for i in table]
+
+def left_shift(arr, n):
+    """Performs a left circular shift on an array."""
+    return arr[n:] + arr[:n]
+
+def generate_subkeys(key):
+    """Generates subkeys using the key schedule."""
+    key = apply_permutation(PC_1, key)
+    subkeys = []
+    for shift in SHIFT:
+        left_half, right_half = key[:28], key[28:]
+        left_half = left_shift(left_half, shift)
+        right_half = left_shift(right_half, shift)
+        key = left_half + right_half
+        subkeys.append(apply_permutation(PC_2, key))
+    return subkeys
+
+def initial_permutation(data):
+    """Performs the initial permutation on the data."""
+    return apply_permutation(IP_table, data)
+
+def inverse_initial_permutation(data):
+    """Performs the inverse initial permutation on the data."""
+    return apply_permutation(IP_re_table, data)
+
+def expansion(data):
+    """Expands data using the expansion table."""
+    return apply_permutation(E, data)
+
+def permutation(data):
+    """Performs permutation on the data."""
+    return apply_permutation(P, data)
+
+def substitution(data):
+    """Performs substitution using the S-boxes."""
+    result = []
+    for i in range(0, len(data), 6):
+        chunk = data[i:i + 6]
+        row = int(chunk[0] + chunk[-1], 2)
+        col = int(chunk[1:-1], 2)
+        value = bin(S[i // 6][row * 16 + col])[2:].zfill(4)
+        result.extend(value)
+    return result
+
+def feistel_round(data, key):
+    """Performs a Feistel round on the data with the given key."""
+    expanded_data = expansion(data)
+    xor_result = [str(int(a) ^ int(b)) for a, b in zip(expanded_data, key)]
+    sub_result = substitution(''.join(xor_result))
+    permuted_result = permutation(sub_result)
+    return permuted_result
+
+def encrypt(data, subkeys):
+    """Encrypts the data using DES algorithm with the given subkeys."""
+    data = initial_permutation(data)
+    left, right = data[:32], data[32:]
+    for subkey in subkeys:
+        left, right = right, feistel_round(right, subkey)
+    encrypted_data = inverse_initial_permutation(right + left)
+    return encrypted_data
+
+# Example usage
+key = '0001001100110100010101110111100110011011101111001101111111110001'
+subkeys = generate_subkeys(key)
+plaintext = '0000000100100011010001010110011110001001101010111100110111101111'
+ciphertext = encrypt(plaintext, subkeys)
+print('Ciphertext:', ''.join(ciphertext))

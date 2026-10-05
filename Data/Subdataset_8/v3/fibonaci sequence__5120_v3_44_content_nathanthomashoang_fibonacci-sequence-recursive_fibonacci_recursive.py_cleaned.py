@@ -1,0 +1,29 @@
+def recursive_fibo(index):
+    '''Calculate the Fibonacci value recursively.'''
+    if index <= 1:
+        return index
+    return recursive_fibo(index - 2) + recursive_fibo(index - 1)
+def generate_fibonacci_sequence(num_terms):
+    '''Generate the Fibonacci sequence up to the given number of terms.'''
+    fibonacci_sequence = []
+    for index in range(num_terms + 1):
+        fibonacci_sequence.append(recursive_fibo(index))
+    return fibonacci_sequence
+def run_fibonacci_program():
+    '''Run the Fibonacci program.'''
+    while True:
+        try:
+            num_terms = int(input('How many Fibonacci terms would you like to generate?: '))
+        except ValueError:
+            print('\nPlease enter an integer.')
+        else:
+            if num_terms <= 0:
+                print("\nPlease enter a positive integer.")
+            else:
+                break
+    print("\nGenerated Fibonacci sequence:\n")
+    fibonacci_sequence = generate_fibonacci_sequence(num_terms)
+    for term in fibonacci_sequence:
+        print(term)
+if __name__ == "__main__":
+    run_fibonacci_program()

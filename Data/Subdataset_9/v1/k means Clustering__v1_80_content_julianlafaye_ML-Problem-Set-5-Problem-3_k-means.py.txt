@@ -1,0 +1,73 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.spatial.distance as metric
+
+def initialize(dataset, k):
+    n = np.shape(dataset)[1]
+    centroids = np.mat(np.zeros((k, n)))
+    for i in range(n):
+        min_i = min(dataset[:, i])
+        range_i = float(max(dataset[:, i]) - min_i)
+        centroids[:, i] = min_i + range_i * np.random.rand(k, 1)
+    return centroids
+
+def cluster(dataset, k):
+    m = np.shape(dataset)[0]
+    cluster_class = np.mat(np.zeros((m, 2)))
+    centroids = initialize(dataset, k)
+    centroids_origin = centroids.copy()
+    changed = True
+    n_iter = 0
+    while changed:
+        changed = False
+        for i in range(m):
+            min_dist = np.inf
+            min_index = -1
+            for j in range(k):
+                distance = metric.euclidean(centroids[j, :], dataset[i, :])     
+                if distance < min_dist:
+                    min_dist = distance
+                    min_index = j
+            if cluster_class[i, 0] != min_index:
+                changed = True
+            cluster_class[i, :] = min_index, min_dist ** 2
+        for cent in range(k):
+            points = dataset[np.nonzero(cluster_class[:, 0].A == cent)[0]]      
+            centroids[cent, :] = np.mean(points, axis=0)
+        n_iter += 1
+    return centroids, cluster_class, n_iter, centroids_origin
+
+print('k Means Clustering Algorithm in Python')
+
+# Load dataset
+filename = 'kmeans_data.csv'
+dataset = np.genfromtxt(filename, delimiter=',')
+
+# Plot dataset
+plt.scatter(dataset[:, 0], dataset[:, 1])
+plt.title('Input Dataset')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.show()
+
+# Input number of centroids
+var = int(input("Number of Centroids: "))
+k = var
+
+# Perform clustering
+centroids, cluster_classes, n, origin_centroids = cluster(dataset, k)
+
+# Output number of iterations and final centroids
+print('Number of iterations:', n)
+print('\nFinal centroids:\n', centroids)
+print('\nOriginal centroids:\n', origin_centroids)
+
+# Combine dataset with cluster assignments for visualization
+newSet = np.concatenate((dataset, cluster_classes), axis=1)
+
+# Plot clustered dataset
+plt.scatter(newSet[:, 0], newSet[:, 1], c=newSet[:, 2])
+plt.title('Clustered Dataset')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.show()

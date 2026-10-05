@@ -1,0 +1,175 @@
+from PythonCard import model, timer, dialog
+import pickle
+import datetime
+import wx
+class MyBackground(model.Background):
+    def on_initialize(self, event):
+        self.initialize_variables()
+        self.load_saved_data()
+        self.set_timers()
+    def initialize_variables(self):
+        self.doctor = False
+        self.walking = False
+        self.sleeping = False
+        self.playing = False
+        self.eating = False
+        self.time_cycle = 0
+        self.hunger = 0
+        self.happiness = 8
+        self.health = 8
+        self.force_awake = False
+        self.set_image_lists()
+    def set_image_lists(self):
+        self.sleep_images = ["sleep1.gif", "sleep2.gif", "sleep3.gif", "sleep4.gif"]
+        self.eat_images = ["eat1.gif", "eat2.gif"]
+        self.walk_images = ["walk1.gif", "walk2.gif", "walk3.gif", "walk4.gif"]
+        self.play_images = ["play1.gif", "play2.gif"]
+        self.doctor_images = ["doc1.gif", "doc2.gif"]
+        self.nothing_images = ["pet1.gif", "pet2.gif", "pet3.gif"]
+        self.image_list = self.nothing_images
+        self.image_index = 0
+    def load_saved_data(self):
+        try:
+            with open("savedata_vp.pkl", "rb") as file:
+                save_list = pickle.load(file)
+                self.happiness, self.health, self.hunger, then, self.time_cycle = save_list
+                self.update_pet_state(then)
+        except FileNotFoundError:
+            self.reset_pet_state()
+    def reset_pet_state(self):
+        self.happiness = 8
+        self.health = 8
+        self.hunger = 0
+        self.time_cycle = 0
+        self.sleeping = False
+        self.force_awake = False
+        self.update_pet_state(datetime.datetime.now())
+    def update_pet_state(self, then):
+        difference = datetime.datetime.now() - then
+        ticks = difference.seconds / 50
+        for _ in range(0, ticks):
+            self.time_cycle += 1
+            if self.time_cycle == 60:
+                self.time_cycle = 0
+            if self.time_cycle <= 48:
+                self.sleeping = False
+                if self.hunger < 8:
+                    self.hunger += 1
+            else:
+                self.sleeping = True
+                if self.hunger < 8 and self.time_cycle % 3 == 0:
+                    self.hunger += 1
+            if self.hunger == 7 and (self.time_cycle % 2 == 0) and self.health > 0:
+                self.health -= 1
+            if self.hunger == 8 and self.health > 0:
+                self.health -= 1
+        self.image_list = self.sleep_images if self.sleeping else self.nothing_images
+    def set_timers(self):
+        self.myTimer1 = timer.Timer(self.components.petwindow, -1)
+        self.myTimer1.Start(500)
+        self.myTimer2 = timer.Timer(self.components.HungerGauge, -1)
+        self.myTimer2.Start(5000)
+    def sleep_test(self):
+        if self.sleeping:
+            result = dialog.messageDialog(self, , 'WARNING!', wx.ICON_EXCLAMATION | wx.YES_NO | wx.NO_DEFAULT)
+            if result.accepted:
+                self.sleeping = False
+                self.happiness -= 4
+                self.force_awake = True
+                return True
+            else:
+                return False
+        else:
+            return True
+    def on_doctor_mouseClick(self, event):
+        if self.sleep_test():
+            self.image_list = self.doctor_images
+            self.doctor = True
+            self.walking = False
+            self.eating = False
+            self.playing = False
+    def on_feed_mouseClick(self, event):
+        if self.sleep_test():
+            self.image_list = self.eat_images
+            self.eating = True
+            self.walking = False
+            self.playing = False
+            self.doctor = False
+    def on_play_mouseClick(self, event):
+        if self.sleep_test():
+            self.image_list = self.play_images
+            self.playing = True
+            self.walking = False
+            self.eating = False
+            self.doctor = False
+    def on_walk_mouseClick(self, event):
+        if self.sleep_test():
+            self.image_list = self.walk_images
+            self.walking = True
+            self.eating = False
+            self.playing = False
+            self.doctor = False
+    def on_stop_mouseClick(self, event):
+        if not self.sleeping:
+            self.image_list = self.nothing_images
+            self.walking = False
+            self.eating = False
+            self.playing = False
+            self.doctor = False
+    def on_petwindow_timer(self, event):
+        if self.sleeping and not self.force_awake:
+            self.image_list = self.sleep_images
+        self.image_index += 1
+        if self.image_index >= len(self.image_list):
+            self.image_index = 0
+        self.components.petwindow.file = self.image_list[self.image_index]
+        self.components.HappyGauge.value = self.happiness
+        self.components.HealthGauge.value = self.health
+        self.components.HungerGauge.value = self.hunger
+    def on_HungerGauge_timer(self, event):
+        self.time_cycle += 1
+        if self.time_cycle == 60:
+            self.time_cycle = 0
+        if self.time_cycle <= 48 or self.force_awake:
+            self.sleeping = False
+        else:
+            self.sleeping = True
+        if self.time_cycle == 0:
+            self.force_awake = False
+        if self.doctor:
+            self.health += 1
+        elif self.walking and (self.time_cycle % 2 == 0):
+            self.happiness += 1
+            self.health += 1
+        elif self.playing:
+            self.happiness += 1
+        elif self.eating:
+            self.hunger -= 1
+        elif self.sleeping:
+            if self.time_cycle % 3 == 0:
+                self.hunger += 1
+        else:
+            self.hunger += 1
+            if self.time_cycle % 2 == 0:
+                self.happiness -= 1
+        self.limit_values()
+        self.update_gauge_values()
+    def limit_values(self):
+        self.hunger = min(max(self.hunger, 0), 8)
+        if self.hunger == 7 and (self.time_cycle % 2 == 0):
+            self.health -= 1
+        if self.hunger == 8:
+            self.health -= 1
+        self.health = min(max(self.health, 0), 8)
+        self.happiness = min(max(self.happiness, 0), 8)
+    def update_gauge_values(self):
+        self.components.HappyGauge.value = self.happiness
+        self.components.HealthGauge.value = self.health
+        self.components.HungerGauge.value = self.hunger
+    def on_close(self, event):
+        with open("savedata_vp.pkl", "wb") as file:
+            save_list = [self.happiness, self.health, self.hunger, datetime.datetime.now(), self.time_cycle]
+            pickle.dump(save_list, file)
+        event.Skip()
+app = model.Application(MyBackground)
+app.MainLoop()

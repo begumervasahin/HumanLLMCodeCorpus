@@ -1,0 +1,56 @@
+# Define a function to calculate the longest common subsequence (LCS) of two strings
+def calculate_LCS(A, B):
+    # Get the lengths of the input strings
+    len_A = len(A)
+    len_B = len(B)
+    
+    # Initialize matrices to store the length of LCS and parent array
+    lcs_length_matrix = [[0 for _ in range(len_B + 1)] for _ in range(len_A + 1)]
+    parent_matrix = [[0 for _ in range(len_B + 1)] for _ in range(len_A + 1)]
+    
+    # Populate the matrices to compute the length of LCS and the parent array
+    for i in range(1, len_A + 1):
+        for j in range(1, len_B + 1):
+            if A[i - 1] == B[j - 1]:
+                lcs_length_matrix[i][j] = lcs_length_matrix[i - 1][j - 1] + 1
+                parent_matrix[i][j] = 0  # Diagonal direction
+            elif lcs_length_matrix[i][j - 1] >= lcs_length_matrix[i - 1][j]:
+                lcs_length_matrix[i][j] = lcs_length_matrix[i][j - 1]
+                parent_matrix[i][j] = 1  # Left direction
+            else:
+                lcs_length_matrix[i][j] = lcs_length_matrix[i - 1][j]
+                parent_matrix[i][j] = 2  # Up direction
+
+    # Reconstruct the LCS from the parent array
+    i, j = len_A, len_B
+    lcs = ''
+    while i > 0 and j > 0:
+        if parent_matrix[i][j] == 0:  # Diagonal direction
+            lcs = A[i - 1] + lcs
+            i -= 1
+            j -= 1
+        elif parent_matrix[i][j] == 2:  # Up direction
+            i -= 1
+        else:
+            j -= 1  # Left direction
+
+    # Return the length of LCS and the LCS itself
+    return str(lcs_length_matrix[len_A][len_B]), lcs
+
+# Define file paths for input and output
+input_file_path = "input.txt"
+output_file_path = "output.txt"
+
+# Read input strings from file
+with open(input_file_path, "r") as input_file:
+    lines = input_file.readlines()
+    first_string = lines[0].strip()  # First string
+    second_string = lines[1].strip()  # Second string
+
+# Calculate LCS length and sequence
+lcs_length, lcs_sequence = calculate_LCS(first_string, second_string)
+
+# Write LCS length and sequence to output file
+with open(output_file_path, "w") as output_file:
+    output_file.write(lcs_length + "\n")  # Write LCS length
+    output_file.write(lcs_sequence)  # Write LCS sequence 

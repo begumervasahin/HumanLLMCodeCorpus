@@ -1,0 +1,102 @@
+import enum
+class State:
+    def __init__(self, value):
+        self.value = value
+        self.transitions = {}
+    def add_transition(self, transition):
+        self.transitions[transition.read] = transition
+    def step(self, symbol):
+        try:
+            transition = self.transitions[symbol]
+            return transition.next_state, transition.write, transition.direction
+        except KeyError:
+            return self, None, None
+class Transition:
+    class Direction(enum.Enum):
+        RIGHT = 1
+        LEFT = 2
+    def __init__(self, read, write, next_state, direction):
+        self.read = read
+        self.write = write
+        self.next_state = next_state
+        self.direction = direction
+class Tape:
+    def __init__(self, cells):
+        self.cells = cells
+        self.position = 0
+    def reach_end(self):
+        return self.position < 0 or self.position >= len(self.cells)
+    def head(self):
+        return -1 if self.reach_end() else self.cells[self.position]
+    def reset(self):
+        self.position = 0
+    def head_position(self):
+        return self.position
+    def write_on_position(self, symbol):
+        if not self.reach_end():
+            self.cells = self.cells[:self.position] + symbol + self.cells[self.position + 1:]
+    def update(self, to_write, direction):
+        if not self.reach_end():
+            self.write_on_position(to_write)
+            self.position += 1 if direction == Transition.Direction.RIGHT else -1
+class TuringMachine:
+    def __init__(self):
+        self.states = {}
+        self.current_state = None
+        self.tape = None
+        self.visited = set()
+        self.simulating = True
+        self.initial_state = None
+    def add_state(self, state):
+        self.states[state.value] = state
+    def add_transition(self, source_state, transition):
+        if source_state in self.states:
+            self.states[source_state].add_transition(transition)
+    def set_init_state(self, state):
+        if state in self.states:
+            self.current_state = self.initial_state = self.states[state]
+    def set_tape(self, tape):
+        self.tape = tape
+    def start_over(self):
+        if self.initial_state and self.tape:
+            self.current_state = self.initial_state
+            self.tape.reset()
+            log = f"State: ({self.current_state.value}) {self.tape.cells}\n"
+            log += " " * self.tape.head_position() + "^\n"
+            return log
+    def get_state(self, state_value):
+        return self.states[state_value]
+    def simulate_step(self):
+        if self.simulating and self.current_state and self.tape:
+            next_state, to_write, direction = self.current_state.step(self.tape.head())
+            if to_write:
+                self.tape.update(to_write, direction)
+            if to_write is None or self.tape.reach_end():
+                self.simulating = False
+                return "\nEnd of computation\n"
+            else:
+                log = f"State: ({self.current_state.value}) {self.tape.cells}\n"
+                log += " " * self.tape.head_position() + "^\n"
+                return log
+    def simulate(self):
+        if self.initial_state and self.tape:
+            with open("log.txt", "a") as log_file:
+                log_file.write("Beginning computation\n\n")
+                log_file.write(self.start_over() or "")
+                while self.simulating:
+                    log_entry = self.simulate_step()
+                    log_file.write(log_entry or "")
+                log_file.write("--------------------------------------\n")
+if __name__ == "__main__":
+    turing_machine = TuringMachine()
+    state0 = State(0)
+    state1 = State(1)
+    transition0 = Transition(0, 1, state1, Transition.Direction.RIGHT)
+    transition1 = Transition(1, 0, state0, Transition.Direction.RIGHT)
+    turing_machine.add_state(state0)
+    turing_machine.add_state(state1)
+    turing_machine.add_transition(0, transition0)
+    turing_machine.add_transition(1, transition1)
+    turing_machine.set_init_state(0)
+    turing_machine.set_tape(Tape("0101010101010101"))
+    turing_machine.simulate()

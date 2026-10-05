@@ -1,0 +1,64 @@
+import random
+import time
+def generate_numbers(filename, n):
+    random.seed(0)
+    with open(filename, 'w') as f:
+        for _ in range(n):
+            f.write(str(random.randrange(0, 100)) + "\n")
+def merge(left, right):
+    merged_list = []
+    left_index, right_index = 0, 0
+    while left_index < len(left) and right_index < len(right):
+        if left[left_index] < right[right_index]:
+            merged_list.append(left[left_index])
+            left_index += 1
+        else:
+            merged_list.append(right[right_index])
+            right_index += 1
+    merged_list.extend(left[left_index:])
+    merged_list.extend(right[right_index:])
+    return merged_list
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    else:
+        mid = len(arr)
+        left = merge_sort(arr[:mid])
+        right = merge_sort(arr[mid:])
+        return merge(left, right)
+def selection_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        small_index = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[small_index]:
+                small_index = j
+        arr[i], arr[small_index] = arr[small_index], arr[i]
+    return arr
+def analyze_performance(sort_func, inputfile, outputfile):
+    start_input = time.time()
+    with open(inputfile, 'r') as f:
+        lst = [int(line.strip()) for line in f]
+    end_input = time.time()
+    start_sort = time.time()
+    sorted_lst = sort_func(lst)
+    end_sort = time.time()
+    start_output = time.time()
+    with open(outputfile, 'w') as f:
+        for num in sorted_lst:
+            f.write(str(num) + "\n")
+    end_output = time.time()
+    total_time = end_output - start_input
+    print(f"Input time: {end_input - start_input:.6f} seconds")
+    print(f"Sort time: {end_sort - start_sort:.6f} seconds")
+    print(f"Output time: {end_output - start_output:.6f} seconds")
+    print(f"Total time: {total_time:.6f} seconds\n")
+def main():
+    filename = input("Enter the filename: ")
+    n = int(input("Enter number of values: "))
+    generate_numbers(filename, n)
+    outputfile = input("Enter the output filename: ")
+    analyze_performance(merge_sort, filename, outputfile)
+    analyze_performance(selection_sort, filename, outputfile)
+if __name__ == "__main__":
+    main()

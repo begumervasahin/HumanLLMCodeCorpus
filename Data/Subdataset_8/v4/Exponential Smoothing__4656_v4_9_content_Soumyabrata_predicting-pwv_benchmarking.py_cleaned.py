@@ -1,0 +1,55 @@
+
+import numpy as np
+import pandas as pd
+import random
+from read_matfile import read_matfile
+from statsmodels.tsa.api import ExponentialSmoothing
+import matplotlib.pyplot as plt
+matlab_file = './data/PWV_2010from_WS_2_withGradient.mat'
+(timestamp, pwv) = read_matfile(matlab_file)
+print('Imported the MATLAB file')
+df = pd.DataFrame(data=np.column_stack((timestamp, pwv)), columns=['timestamps', 'pwv']).set_index(['timestamps'])
+end_index_of_df = len(df)
+lead_time_array = np.arange(5, 20, 5)
+no_of_experiments = 10
+previous_time = 10000
+previous_observations = int(previous_time / 5)
+with open("./results/comparison.txt", "w") as text_file:
+    text_file.write("time, our, naive, average \n")
+    for lead_time in lead_time_array:
+        lead_observations = int(lead_time / 5)
+        rmse_array = []
+        persist_array = []
+        average_array = []
+        for _ in range(no_of_experiments):
+            last_possible_index = end_index_of_df - (previous_observations + lead_observations)
+            start_index = random.randint(0, last_possible_index)
+            print('From start index of ', str(start_index))
+            print(['computing for lead time = ', str(lead_time), ' mins with history of ', str(previous_time), ' mins'])
+            train = df[start_index:start_index + previous_observations]
+            test = df[start_index + previous_observations:start_index + previous_observations + lead_observations]
+            y_hat_avg = test.copy()
+            print('computation started')
+            fit1 = ExponentialSmoothing(np.asarray(train['pwv']), seasonal_periods=288, trend='add', seasonal='add').fit()
+            y_hat_avg['Holt_Winter'] = fit1.forecast(len(test))
+            last_value = train['pwv'][-1]
+            y_hat_avg['naive'] = last_value * np.ones(len(test))
+            mean_training_value = np.mean(train['pwv'])
+            y_hat_avg['aver'] = mean_training_value * np.ones(len(test))
+            print('computation completed')
+            a = y_hat_avg['pwv']
+            b = y_hat_avg['Holt_Winter']
+            rmse_value = np.sqrt(np.mean((b - a) ** 2))
+            rmse_array.append(rmse_value)
+            a = y_hat_avg['pwv']
+            b = y_hat_avg['naive']
+            rmse_value = np.sqrt(np.mean((b - a) ** 2))
+            persist_array.append(rmse_value)
+            a = y_hat_avg['pwv']
+            b = y_hat_avg['aver']
+            rmse_value = np.sqrt(np.mean((b - a) ** 2))
+            average_array.append(rmse_value)
+        rmse_array = np.array(rmse_array)
+        persist_array = np.array(persist_array)
+        average_array = np.array(average_array)
+        text_file.write("%s, %s, %s, %s \n" % (lead_time, np.mean(rmse_array), np.mean(persist_array), np.mean(average_array)))

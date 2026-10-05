@@ -1,0 +1,90 @@
+from pyspark import SparkConf, SparkContext
+import sys
+import re
+
+def main():
+    # Set Spark configuration
+    spark_conf = configure_spark()
+
+    # Initialize SparkContext
+    spark_context = SparkContext(conf=spark_conf)
+
+    # Create actor experience data
+    create_actor_experience(spark_context)
+
+    # Stop SparkContext
+    spark_context.stop()
+
+def configure_spark():
+    """Configure Spark."""
+    conf = SparkConf()
+
+    if sys.argv[1] == 'local':
+        conf.setMaster("local[3]")
+        print('Running locally')
+    elif sys.argv[1] == 'cluster':
+        conf.setMaster("spark://10.0.22.241:7077")
+        print('Running on cluster')
+
+    # Set memory allocation for executor and driver
+    conf.set("spark.executor.memory", "10g")
+    conf.set("spark.driver.memory", "10g")
+
+    return conf
+
+def create_actor_experience(spark):
+    """Create actor experience data."""
+    # Define file paths
+    all_movies_path = 'hdfs:///user/kirvenjt/oscar_data/omdb_responses'
+    imdb_file_path = 'hdfs:///user/kirvenjt/oscar_data/top10ActorsPerMovie.txt'
+    output_path = 'hdfs:///user/kirvenjt/oscar_data/actor_experience'
+
+    # Load data from files
+    imdb_data = spark.textFile(imdb_file_path)
+    movie_data = spark.textFile(all_movies_path)
+
+    # Process IMDb data
+    imdb_data = imdb_data.map(parse_imdb_fields) \
+                         .filter(lambda x: is_correct_field_size(x, 5)) \
+                         .keyBy(lambda x: (x[0], get_clean_year(x[1])))
+
+    # Process movie data
+    movie_data = movie_data.map(parse_movie_fields) \
+                           .filter(lambda x: has_title_and_year(x[1], x[2])) \
+                           .map(lambda x: (x[1], x[2])) \
+                           .keyBy(lambda x: (x[0], get_clean_year(x[1])))
+
+    # Join movie data with IMDb data and save results
+    movie_data.join(imdb_data) \
+              .map(lambda key, (key2, info): tuple(info)) \
+              .distinct() \
+              .saveAsTextFile(output_path)
+
+def is_correct_field_size(item, size):
+    """Check if the item has the correct field size."""
+    return len(item) == size
+
+def has_title_and_year(title, year):
+    """Check if the movie has a title and a valid year."""
+    return bool(title) and len(year) == 4
+
+def get_clean_year(item):
+    """Extract and clean the year from the item."""
+    try:
+        year = int(re.findall(r'\d{4}', item).pop())
+    except Exception as e:
+        return 0
+    return year
+
+def parse_movie_fields(text):
+    """Parse movie fields."""
+    return eval(text)
+
+def parse_imdb_fields(text):
+    """Parse IMDb fields."""
+    text = text.split('|')
+    fields = [x.strip() for x in text]
+    return fields
+
+if __name__ == '__main__':
+    main()

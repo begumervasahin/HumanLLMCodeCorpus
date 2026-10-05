@@ -1,0 +1,173 @@
+from difflib import SequenceMatcher
+import pymysql
+import pyfootball
+import pastData
+import P_Data
+from injury import injuryScrap
+
+# Function to find the most similar string in a list
+def find_most_similar_string(s, string_list):
+    max_similarity = -1
+    most_similar_string = ''
+    
+    for string in string_list:
+        similarity = SequenceMatcher(None, s, string).ratio()
+        if similarity > max_similarity:
+            max_similarity = similarity
+            most_similar_string = string
+    
+    return most_similar_string
+
+# Function to drop existing tables if they exist
+def drop_existing_tables(cursor):
+    existing_tables = ["ft_players", "user", "fantasy_team", "smps", "team_statistics", "players", "club"]
+    for table in existing_tables:
+        cursor.execute(f"DROP TABLE IF EXISTS {table}")
+
+# Function to create tables
+def create_tables(cursor):
+    tables_to_create = [
+        """CREATE TABLE club (
+                clubid INT PRIMARY KEY NOT NULL,
+                cname VARCHAR(20) NOT NULL,
+                nation VARCHAR(20) NOT NULL,
+                sname VARCHAR(20) NOT NULL,
+                league VARCHAR(100)
+            )""",
+        """CREATE TABLE players (
+                pid INT PRIMARY KEY NOT NULL,
+                pname VARCHAR(100) NOT NULL,
+                position VARCHAR(10) NOT NULL,
+                clubid INT,
+                nation VARCHAR(40) NOT NULL,
+                url VARCHAR(2084),
+                injury INT,
+                FOREIGN KEY (clubid) REFERENCES club(clubid)
+            )""",
+        """CREATE TABLE team_statistics (
+                clubid INT,
+                matches INT NOT NULL CHECK (matches >= 0 AND matches <= 34),
+                win INT NOT NULL CHECK (win >= 0 AND win <= 34),
+                draw INT NOT NULL CHECK (draw >= 0 AND draw <= 34),
+                loss INT NOT NULL CHECK (loss >= 0 AND loss <= 34),
+                position INT NOT NULL,
+                FOREIGN KEY (clubid) REFERENCES club(clubid)
+            )""",
+        """CREATE TABLE smps (
+                pid INT,
+                clubid INT,
+                dp INT,
+                ap INT,
+                pp INT,
+                matchday INT,
+                season INT,
+                FOREIGN KEY (pid) REFERENCES player(pid),
+                FOREIGN KEY (clubid) REFERENCES club(clubid)
+            )""",
+        """CREATE TABLE user (
+                id INT PRIMARY KEY,
+                name VARCHAR(20),
+                email VARCHAR(20),
+                uname VARCHAR(20),
+                password VARCHAR(20)
+            )""",
+        """CREATE TABLE fantasy_team (
+                id INT,
+                name VARCHAR(20),
+                season INT,
+                ranking INT,
+                points INT,
+                FOREIGN KEY (id) REFERENCES user(id)
+            )""",
+        """CREATE TABLE ft_players (
+                id INT,
+                pid INT,
+                FOREIGN KEY (id) REFERENCES user(id),
+                FOREIGN KEY (pid) REFERENCES player(id)
+            )"""
+    ]
+
+    for table_create_query in tables_to_create:
+        cursor.execute(table_create_query)
+
+# Function to insert club data into the 'club' table
+def insert_club_data(cursor, standings, football_api):
+    for standing in standings:
+        if standing is not None:
+            club_data_query = 'INSERT INTO club VALUES (%d, "%s", "GER", "%s", "%s")' % (
+                standing.team_id, standing.team_name, football_api.get_team(standing.team_id).short_name, league_table.competition_name)
+            cursor.execute(club_data_query)
+
+# Function to insert player data into the 'players' table
+def insert_player_data(cursor, player_list, team_ids, team_names, injury_list):
+    player_id = 1
+    for player_data in player_list:
+        club_id = team_ids[team_names.index(find_most_similar_string(player_data[3], team_names))]
+        position_mapping = {'G': 'Goalkeeper', 'D': 'Defender', 'M': 'Midfielder', 'F': 'Forward'}
+        position = position_mapping.get(player_data[2], 'Unknown')
+
+        # Determine injury status
+        injury_status = 0
+        for injury_data in injury_list:
+            if player_data[0] in injury_data[1]:
+                if injury_data[0] == 'red':
+                    injury_status = 2
+                elif injury_data[0] == 'yellow1':
+                    injury_status = 1
+
+        player_insert_query = 'INSERT INTO players (pid, pname, position, clubid, nation, injury) VALUES ' \
+                              '(%d, "%s", "%s", %d, "%s", %d)' % (
+                                  player_id, player_data[0], position, club_id, player_data[1], injury_status)
+        cursor.execute(player_insert_query)
+        player_id += 1
+
+# Function to update player URLs in the 'players' table
+def update_player_urls(cursor, url_list):
+    for url_data in url_list:
+        update_url_query = 'UPDATE players SET url = %s WHERE pname SOUNDS LIKE %s OR pname LIKE %s'
+        cursor.execute(update_url_query, (url_data[1], url_data[0], '%' + url_data[0] + '%'))
+
+# Connect to MySQL database
+db = pymysql.connect(host='localhost',
+                     user='root',
+                     passwd='',  # Enter your MySQL password
+                     db='football1',
+                     charset='utf8mb4')
+cursor = db.cursor()
+cursor.execute('set names utf8mb4')
+
+# Drop existing tables if they exist
+drop_existing_tables(cursor)
+
+# Create tables
+create_tables(cursor)
+
+# Initialize pyfootball API
+football_api_key = 'YOUR_API_KEY'
+football_api = pyfootball.Football(api_key=football_api_key)
+
+# Get league table
+league_table = football_api.get_league_table(452)
+standings = league_table.standings
+
+# Insert club data into the 'club' table
+insert_club_data(cursor, standings, football_api)
+
+# Get team IDs and names
+team_ids = [standing.team_id for standing in standings if standing is not None]
+team_names = [standing.team_name for standing in standings if standing is not None]
+
+# Get URLs, player data, and injury data
+url_list = pastData.start()
+player_list = P_Data.start()
+injury_list = injuryScrap()
+
+# Insert player data into the 'players' table
+insert_player_data(cursor, player_list, team_ids, team_names, injury_list)
+
+# Update player URLs in the 'players' table
+update_player_urls(cursor, url_list)
+
+# Commit changes and close connection
+db.commit()
+db.close()

@@ -1,0 +1,71 @@
+# Import necessary functions and modules
+from funcions import factors_primers, invers_modular
+import numpy as np
+import matplotlib.pyplot as plt
+import timeit
+from genera_claus import genera_claus
+
+# Function to factorize N given e
+def factoritza(N, e):
+    # Obtain prime factors of N
+    llista_factors = factors_primers(N)
+    
+    # If N does not have exactly 2 prime factors, return zeros
+    if len(llista_factors) != 2:
+        return 0, 0, 0
+    
+    # Extract prime factors
+    p = llista_factors[0]
+    q = llista_factors[1]
+    
+    # Calculate Euler's totient function of N
+    phi_n = (p - 1) * (q - 1)
+    
+    # Calculate modular inverse of e modulo phi_n
+    d = invers_modular(e, phi_n)
+    
+    return p, q, d
+
+# Function to test the factorization process for different key sizes
+def test():
+    # Set maximum number of bits for keys
+    max_bits = 25
+    
+    # Lists to store key sizes and corresponding processing times
+    mides = []
+    temps = []
+    
+    # Iterate over different key sizes
+    for i in range(8, max_bits):
+        # Generate keys of size i bits
+        n, e, d, p, q = genera_claus(i)
+        
+        # Start timer
+        temps_inicial = timeit.default_timer()
+        
+        # Factorize N
+        pDesc, qDesc, dDesc = factoritza(n, e)
+        
+        # Stop timer
+        temps_final = timeit.default_timer()
+        
+        # Store key size and processing time
+        mides.append(i)
+        temps.append(temps_final - temps_inicial)
+        
+        # Print factorization results
+        print("Factorization completed for N")
+        print("Real prime factor p: " + str(p))
+        print("Real prime factor q: " + str(q))
+        print("Computed prime factor p: " + str(pDesc))
+        print("Computed prime factor q: " + str(qDesc))
+    
+    # Plot key sizes against processing times
+    plt.plot(mides, temps, '-gD')
+    plt.xlabel("Number of bits")
+    plt.ylabel("Seconds")
+    plt.show()
+
+# Entry point of the script
+if __name__ == "__main__":
+    test()

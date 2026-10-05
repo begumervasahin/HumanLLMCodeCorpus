@@ -1,0 +1,72 @@
+import re
+
+def is_valid_sequence(sequence):
+    """Check if a sequence contains only valid characters."""
+    return bool(re.match("^[ATCG ]*$", sequence))
+
+def longest_common_subsequence_length(seq1, seq2):
+    """Find the length of the longest common subsequence of two sequences."""
+    m, n = len(seq1), len(seq2)
+    # Initialize the LCS matrix
+    lcs_matrix = [[0] * (n + 1) for _ in range(m + 1)]
+    # Fill the LCS matrix
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if seq1[i - 1] == seq2[j - 1]:
+                lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + 1
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1])
+    return lcs_matrix[m][n]
+
+def find_longest_common_subsequence(seq1, seq2):
+    """Find the longest common subsequence of two sequences."""
+    m, n = len(seq1), len(seq2)
+    # Initialize the LCS matrix
+    lcs_matrix = [[0] * (n + 1) for _ in range(m + 1)]
+    # Fill the LCS matrix
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if seq1[i - 1] == seq2[j - 1]:
+                lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + 1
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1])
+
+    # Trace back to find the LCS
+    lcs_length = lcs_matrix[m][n]
+    lcs_sequence = [""] * (lcs_length + 1)
+    lcs_sequence[lcs_length] = "\0"
+    i, j = m, n
+    while i > 0 and j > 0:
+        if seq1[i - 1] == seq2[j - 1]:
+            lcs_sequence[lcs_length - 1] = seq1[i - 1]
+            i -= 1
+            j -= 1
+            lcs_length -= 1
+        elif lcs_matrix[i - 1][j] > lcs_matrix[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    return "".join(lcs_sequence).replace("\0", "")
+
+def get_valid_sequence_input(prompt):
+    """Prompt user for a valid sequence input."""
+    while True:
+        sequence = input(prompt).upper()
+        if is_valid_sequence(sequence):
+            return sequence
+        print("Invalid input. Please enter a sequence containing only 'A', 'T', 'C', 'G', ' '.")
+
+def main():
+    # Input sequences
+    s1 = get_valid_sequence_input("Enter the First Sequence: ")
+    s2 = get_valid_sequence_input("Enter the Querying Sequence: ")
+
+    if len(s1) >= len(s2):
+        print(f"\nSequences: {s1}, {s2}")
+        lcs = find_longest_common_subsequence(s1, s2)
+        print(f"\nLongest Common Subsequence: {lcs}\nLength: {len(lcs)}")
+    else:
+        print("Querying Sequence should be smaller than First Sequence.")
+
+if __name__ == "__main__":
+    main()

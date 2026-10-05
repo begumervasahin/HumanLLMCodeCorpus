@@ -1,0 +1,48 @@
+import logging
+from pathlib import Path
+import conll18_ud_eval
+import typer
+from datasets import gold_path
+FORM = 1
+LEMMA = 2
+def setup_logging():
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+def setup_directories():
+    resultdir = Path('results')
+    errordir = resultdir / 'errors'
+    errordir.mkdir(parents=True, exist_ok=True)
+    predictionsdir = resultdir / 'predictions'
+    return errordir, predictionsdir
+def process_model_results(errordir, predictionsdir):
+    model_result_dirs = predictionsdir.glob('*')
+    for model_result_dir in model_result_dirs:
+        model_name = model_result_dir.stem
+        process_test_set_files(model_result_dir, model_name, errordir)
+def process_test_set_files(model_result_dir, model_name, errordir):
+    testset_files = model_result_dir.glob('*.conllu')
+    for predictions_file in testset_files:
+        testset_name = predictions_file.stem
+        gold_ud = conll18_ud_eval.load_conllu_file(gold_path(testset_name))
+        system_ud = conll18_ud_eval.load_conllu_file(predictions_file)
+        output_file = errordir / f'lemma_errors_{model_name}_{testset_name}.txt'
+        print(f'Writing errors in {output_file}')
+        write_errors(output_file, system_ud, gold_ud)
+def write_errors(output_file, system_ud, gold_ud):
+    with open(output_file, 'w') as f:
+        for system_sentence, gold_sentence in zip(system_ud.sentences, gold_ud.sentences):
+            system_words = [w for w in system_ud.words if w.span.start >= system_sentence.start and w.span.end <= system_sentence.end]
+            gold_words = [w for w in gold_ud.words if w.span.start >= gold_sentence.start and w.span.end <= gold_sentence.end]
+            system_lemmas = [x.columns[LEMMA].lower() for x in system_words if not x.is_multiword]
+            gold_lemmas = [x.columns[LEMMA].lower() for x in gold_words if not x.is_multiword]
+            gold_forms = [x.columns[FORM].lower() for x in gold_words if not x.is_multiword]
+            if system_lemmas != gold_lemmas:
+                f.write(' '.join(gold_forms) + '\n')
+                f.write(' '.join(gold_lemmas) + '\n')
+                f.write(' '.join(system_lemmas) + '\n')
+                f.write('\n')
+def main():
+    setup_logging()
+    errordir, predictionsdir = setup_directories()
+    process_model_results(errordir, predictionsdir)
+if __name__ == '__main__':
+    typer.run(main)

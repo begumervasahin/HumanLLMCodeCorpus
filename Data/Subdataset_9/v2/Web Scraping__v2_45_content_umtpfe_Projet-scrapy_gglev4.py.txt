@@ -1,0 +1,70 @@
+from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException, ElementNotVisibleException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+import time
+
+# Initialize Firefox WebDriver
+driver = webdriver.Firefox()
+
+# URL to search for "chanel" on Google
+search_url = "http://www.google.com/search?q=chanel"
+
+# Continuous loop to keep searching for results
+while True:
+    # Load the Google search results page
+    driver.get(search_url)
+
+    # Flag to control the loop
+    continue_search = True
+
+    while continue_search:
+        try:
+            # Find all search result elements
+            search_results = driver.find_elements_by_xpath('//*[@id="rso"]')
+            
+            # Print the text of each search result
+            for result in search_results:
+                print(result.text)
+            
+            # Find the next page button and click it
+            next_button = driver.find_element_by_xpath('//*[@id="pnnext"]')
+            next_button.click()
+        
+        # Handle exceptions that might occur during the process
+        except NoSuchElementException:
+            print("No such element found.")
+        
+        except ElementNotVisibleException:
+            print("Element not visible.")
+        
+        except TimeoutException:
+            print("Timeout occurred.")
+        
+        except WebDriverException:
+            print("WebDriver exception occurred.")
+        
+        # If a CAPTCHA is encountered, handle it
+        except:
+            try:
+                # Switch to the CAPTCHA frame
+                captcha_frame = driver.find_element_by_xpath('//iframe[contains(@src, "recaptcha")]')
+                driver.switch_to.frame(captcha_frame)
+                
+                # Find and click the CAPTCHA checkbox
+                captcha_checkbox = driver.find_element_by_xpath("//*[@id='recaptcha-anchor']")
+                captcha_checkbox.click()
+                
+                # Wait for 2 minutes for user to solve the CAPTCHA
+                time.sleep(120)
+                
+                # Switch back to the main content
+                driver.switch_to.default_content()
+                
+                # Continue searching
+                continue
+            
+            # If there's any other issue, stop searching
+            except:
+                continue_search = False

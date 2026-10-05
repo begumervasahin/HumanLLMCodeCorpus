@@ -1,0 +1,51 @@
+import re
+from bs4 import BeautifulSoup
+from downloading import download_webpage  # Custom module for downloading webpages
+
+# Function to scrape specific URLs using a search regex
+def regex_scrap(url, search_regex):
+    # Download the webpage content
+    html_content = download_webpage(url)
+    # Find all matches using the provided regex
+    matches = re.findall(search_regex, html_content)
+    return matches
+
+# Function to create a BeautifulSoup object from HTML content
+def soup_html(html_content):
+    # Create a BeautifulSoup object
+    soup = BeautifulSoup(html_content, 'html5lib')
+    return soup
+
+# Function to search for specific elements in the BeautifulSoup object
+def search_soup(html_content, info=[]):
+    # Create a BeautifulSoup object from the HTML content
+    soup = soup_html(html_content)
+    # Find all elements with class "w-product"
+    products = soup.find_all("div", {"class": "w-product"})
+    # Write the soup object to a file for inspection
+    with open("soup_object.html", 'w') as soup_file:
+        soup_file.write(str(products))
+    # Iterate over found elements and extract relevant information
+    for product in products:
+        # Extract the game title from the 'title' attribute of the 'img' tag
+        game = product.find("img")['title']
+        # Extract the price from the element with class "w-currentPrice"
+        price = product.find("span", class_="w-currentPrice").text
+        # Append the extracted information as a tuple to the info list
+        info.append((game, price))
+    return info
+
+# Main function to execute the scraping process
+def main():
+    # URL of the webpage to scrape
+    url = 'https://www.worten.pt/promocoes?categoria=Gaming%20e%20Entretenimento&tipologia=Jogos%20PS4&page=1'
+    # Download the webpage content
+    page_content = download_webpage(url)
+    # Search for relevant information in the webpage content
+    scraped_info = search_soup(page_content)
+    # Print the extracted information
+    print(scraped_info)
+
+# Entry point of the script
+if __name__ == '__main__':
+    main()

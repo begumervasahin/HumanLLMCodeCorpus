@@ -1,0 +1,20 @@
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+def print_pyramid(rows):
+    if not is_valid_input(rows):
+        return
+    for repeat_stars in range(1, rows + 1):
+        repeat_dashes = rows - repeat_stars
+        print("-" * repeat_dashes + "=" * (2 * repeat_stars - 1) + "-" * repeat_dashes)
+def is_valid_input(rows):
+    if not isinstance(rows, int) or rows <= 0:
+        print('Please enter a number greater than 0')
+        return False
+    return True
+if __name__ == "__main__":
+    parser = ArgumentParser(
+        description="Print a pyramid to the terminal",
+        formatter_class=RawDescriptionHelpFormatter
+    )
+    parser.add_argument("-r", "--rows", default=10, type=int, help="Number of rows")
+    args = parser.parse_args()
+    print_pyramid(args.rows)

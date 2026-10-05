@@ -1,0 +1,75 @@
+import sys
+import random
+def generate_probable_prime(bits=256):
+    candidate = random.getrandbits(bits) | 1
+    while 1:
+        if is_probable_prime(candidate):
+            return candidate
+        candidate += 2
+def is_probable_prime(n):
+    if n <= 1:
+        return False
+    bases = [random.randrange(2, 50000) for _ in range(90)]
+    for b in bases:
+        if n % b == 0:
+            return False
+    tests, s = 0, 0
+    m = n - 1
+    while not m & 1:
+        m >>= 1
+        s += 1
+    for b in bases:
+        tests += 1
+        is_prob = miller_rabin_test(m, s, b, n)
+        if not is_prob:
+            break
+    if is_prob:
+        return (1 - (1. / (4 ** tests)))
+    return False
+def miller_rabin_test(m, s, b, n):
+    y = pow(b, m, n)
+    for _ in range(s):
+        if (y == 1 and _ == 0) or (y == n - 1):
+            return True
+        y = pow(y, 2, n)
+    return False
+class BlumBlumShub:
+    def __init__(self, bits):
+        self.n = self._generate_n(bits)
+        length = self._bit_len(self.n)
+        seed = random.getrandbits(length)
+        self.set_seed(seed)
+    def _generate_prime(self, bits):
+        """
+        Generate appropriate prime number for use in Blum-Blum-Shub.
+        This generates the appropriate primes (p = 3 mod 4) needed to compute the
+        "n-value" for Blum-Blum-Shub algorithm.
+        bits - Number of bits in prime
+        This generates the "n value" for use in the Blum-Blum-Shub algorithm.
+        bits - The number of bits of security
+        Sets or resets the seed value and internal state.
+        seed - The new seed
+        """
+        self.state = seed % self.n
+    def _bit_len(self, x):
+        "Get the bit length of a positive number"
+        assert x > 0
+        q = 0
+        while x:
+            q += 1
+            x >>= 1
+        return q
+    def next(self, num_bits):
+        "Returns up to num_bits random bits"
+        result = 0
+        for _ in range(num_bits):
+            self.state = (self.state ** 2) % self.n
+            result = (result << 1) | (self.state & 1)
+        return result
+if __name__ == "__main__":
+    bbs = BlumBlumShub(128)
+    print("type: u")
+    print("numbit: 32")
+    print("count: 5000000")
+    for _ in range(5000000):
+        print(bbs.next(32))

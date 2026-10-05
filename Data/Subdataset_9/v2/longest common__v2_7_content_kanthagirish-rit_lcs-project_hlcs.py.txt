@@ -1,0 +1,89 @@
+import numpy as np
+import sys
+
+def hirschberg_linear_space(m, n, A, B):
+    """
+    Compute the final row of DP table using Hirschberg's algorithm B.
+
+    Parameters:
+        m (int): Length of string A.
+        n (int): Length of string B.
+        A (str): String sequence A.
+        B (str): String sequence B.
+
+    Returns:
+        numpy.ndarray: Final row of the dynamic programming table.
+    """
+    K = np.zeros(shape=(2, n+1), dtype='int64')
+    for i in range(m):
+        K[0, :] = K[1, :]
+        for j in range(n):
+            if A[i] == B[j]:
+                K[1, j+1] = K[0, j] + 1
+            else:
+                K[1, j+1] = max(K[1, j], K[0, j+1])
+    return K[1, :]
+
+def longest_common_subsequence(m, n, A, B, reconstruct=False):
+    """
+    Compute the longest common subsequence of two string sequences.
+
+    Parameters:
+        m (int): Length of string A.
+        n (int): Length of string B.
+        A (str): String sequence A.
+        B (str): String sequence B.
+        reconstruct (bool): Indicates whether to reconstruct the subsequence.
+
+    Returns:
+        int or str: Length of LCS if reconstruct is False, else reconstructed LCS.
+    """
+    if n == 0:
+        return ""
+    elif m == 1:
+        if A in B:
+            return A
+        else:
+            return ""
+    else:
+        i = m // 2
+        L1 = hirschberg_linear_space(i, n, A[:i], B)
+        L2 = hirschberg_linear_space(m-i, n, A[i:][::-1], B[::-1])
+        if reconstruct:
+            k = np.argmax(L1 + L2[::-1])
+            return (longest_common_subsequence(i, k, A[:i], B[:k], reconstruct) +
+                    longest_common_subsequence(m-i, n-k, A[i:], B[k:], reconstruct))
+        else:
+            return int(np.amax(L1 + L2[::-1]))
+
+def test_lcs(A, B, reconstruct):
+    """
+    Test function to compute LCS.
+
+    Parameters:
+        A (str): String sequence A.
+        B (str): String sequence B.
+        reconstruct (bool): Indicates whether to reconstruct the subsequence.
+
+    Returns:
+        int or str: Length of LCS if reconstruct is False, else reconstructed LCS.
+    """
+    return longest_common_subsequence(len(A), len(B), A, B, reconstruct)
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python3 replicate_hlcs.py <sequence_file> <reconstruct_flag>")
+        print("sequence_file - text file containing two sequences separated by newline")
+        print("reconstruct_flag - 0 for not reconstructing LCS, 1 for reconstructing LCS")
+    else:
+        sequence_file = sys.argv[1]
+        reconstruct_flag = int(sys.argv[2])
+        
+        with open(sequence_file, 'r') as f:
+            x = f.readline().strip()
+            y = f.readline().strip()
+            
+            if reconstruct_flag:
+                print("LCS length: " + str(len(test_lcs(x, y, True))))
+            else:
+                print("LCS length: " + str(test_lcs(x, y, False))))

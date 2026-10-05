@@ -1,0 +1,65 @@
+import tensorflow as tf
+import tensorflow_hub as hub
+import scipy.spatial.distance as distance
+import logging
+import sys
+from patterns import Pattern, EmbeddingContext, SimpleWeight
+
+class ElmoContext(EmbeddingContext):
+    def __init__(self, spec='http://files.deeppavlov.ai/deeppavlov_data/elmo_ru-twitter_2013-01_2018-04_600k_steps.tar.gz'):
+        # Initialize ElmoContext with a pre-trained ELMo model
+        self.elmo = hub.Module(spec, trainable=False)
+
+    def get_embedding_tensor(self, text):
+        # Get the embedding tensor for a single text
+        return self._get_embedding_tensors([text])[0]
+
+    def get_embedding_tensors(self, texts):
+        # Get the embedding tensors for a list of texts
+        return self._get_embedding_tensors(texts)
+
+    def get_compare_func(self):
+        # Define a comparison function using cosine similarity
+        def cosine_similarity(x, y):
+            return SimpleWeight(1 - distance.cosine(x, y))
+        return cosine_similarity
+
+    def _get_embedding_tensors(self, texts, type="elmo", signature="default"):
+        # Obtain the embedding tensor for a list of texts
+        embedding_tensor = self.elmo(texts, signature=signature, as_dict=True)[type]
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            embeddings = sess.run(embedding_tensor)
+        return embeddings
+
+if __name__ == '__main__':
+    # Set up logging
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    
+    # Log TensorFlow version
+    logging.info(tf.__version__)
+    
+    # Initialize ElmoContext
+    elmo_context = ElmoContext()
+    
+    # Define a pattern text
+    pattern_text = 'Правительство Республики Судан и Правительство Республики Южный Судан далее называемые Cтороны принимают настоящее Соглашение'
+    
+    # Create a Pattern object with the ElmoContext
+    pattern = Pattern(pattern_text, 8, 11, embedding_context=elmo_context)
+    
+    # Define a sample string
+    sample_string = ('Государства участники настоящей Декларации именуемые в дальнейшем Cтороны будут продолжать развивать и укреплять '
+                     'сотрудничество в области развития железнодорожного транспорта на евроазиатском пространстве далее называемые '
+                     'Cтороны принимают настоящее Соглашение')
+    
+    # Obtain matcher for the sample string
+    matcher = pattern.get_matcher_str(sample_string)
+    
+    # Find matches in the sample string
+    while True:
+        word, span = matcher.find()
+        if span is None:
+            break
+        print('Span:{} Word: {}'.format(span, word))
+        print(pattern.get_string_from_span(span, sample_string.split(), delimiter=' '))

@@ -1,0 +1,37 @@
+import sys
+import nltk
+import cPickle
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Load NLTK resources
+nltk.download('stopwords')
+
+# Load the trained vectorizer
+with open('model/vector/vector.pkl', 'rb') as vectorizer_file:
+    vectorizer = cPickle.load(vectorizer_file)
+
+# Define input and output file paths
+input_file_path = sys.argv[1] + '_twt'
+output_file_path = sys.argv[2]
+
+# Read input text from the file
+with open(input_file_path, 'r') as input_file:
+    input_text = input_file.readlines()
+
+# Transform input text using the loaded vectorizer
+transformed_input = vectorizer.transform(input_text)
+
+# Load the trained SVM model
+with open('model/binary_lin.pkl', 'rb') as svm_model_file:
+    svm_model = cPickle.load(svm_model_file)
+
+# Predict using the SVM model
+predictions = svm_model.predict(transformed_input)
+
+# Write predictions to the output file
+with open(output_file_path, 'w') as output_file:
+    for prediction in predictions:
+        output_file.write(str(prediction) + '\n')
+
+# Display a message indicating successful prediction writing
+print("Predictions have been written to", output_file_path)

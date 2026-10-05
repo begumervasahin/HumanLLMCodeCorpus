@@ -1,0 +1,21 @@
+import networkx as nx
+from pqdict import PQDict
+def prim_minimum_spanning_tree(graph, start_node):
+    num_nodes_to_visit = graph.number_of_nodes() - 1
+    current_node = start_node
+    visited_nodes = set()
+    priority_queue = PQDict()
+    mst_edges = []
+    while len(mst_edges) < num_nodes_to_visit:
+        for neighbor_node in graph.neighbors(current_node):
+            if neighbor_node not in visited_nodes and current_node not in visited_nodes:
+                if (current_node, neighbor_node) not in priority_queue and (neighbor_node, current_node) not in priority_queue:
+                    edge_weight = graph.edge[current_node][neighbor_node]['weight']
+                    priority_queue.additem((current_node, neighbor_node), edge_weight)
+        visited_nodes.add(current_node)
+        edge, weight = priority_queue.popitem()
+        while edge[1] in visited_nodes:
+            edge, weight = priority_queue.popitem()
+        mst_edges.append(edge)
+        current_node = edge[1]
+    return mst_edges

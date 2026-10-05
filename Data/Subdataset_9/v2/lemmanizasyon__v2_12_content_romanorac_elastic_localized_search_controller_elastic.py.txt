@@ -1,0 +1,126 @@
+import json
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Index, Q, Search
+from elasticsearch_dsl.document import DocTypeMeta
+from models_elastic import Document  # Assuming you have defined Document class in models_elastic
+
+class ControllerElastic:
+    def __init__(self, hosts, index_name):
+        """
+        Initializes the Elastic controller.
+        
+        Args:
+            hosts (list): List of hostnames, e.g., ["localhost"].
+            index_name (str): Index name in Elasticsearch.
+        """
+        self.client = Elasticsearch(hosts=hosts)
+        self.index_name = index_name
+
+    def initialize_index(self, delete_if_exists=False):
+        """
+        Initializes the index with mapping in Elasticsearch.
+        
+        Args:
+            delete_if_exists (bool): If True, deletes index if it already exists.
+        """
+        def update_index_settings():
+            """
+            Updates settings for Slovenian lemmatization of words.
+            """
+            analysis_settings = {
+                "analysis": {
+                    "filter": {
+                        "lemmagen_filter_sl": {
+                            "type": "lemmagen",
+                            "lexicon": "sl"
+                        }
+                    },
+                    "analyzer": {
+                        "lemmagen_sl": {
+                            "type": "custom",
+                            "tokenizer": "uax_url_email",
+                            "filter": [
+                                "lemmagen_filter_sl",
+                                "lowercase"
+                            ]
+                        }
+                    }
+                }
+            }
+            # Update index settings
+            self.client.cluster.health(index=self.index_name, wait_for_status='green', request_timeout=2)
+            self.client.indices.close(index=self.index_name)
+            self.client.indices.put_settings(json.dumps(analysis_settings), index=self.index_name)
+            self.client.indices.open(index=self.index_name)
+
+        # Initialize index
+        index = Index(self.index_name, using=self.client)
+        if delete_if_exists and index.exists():
+            index.delete()
+        index.settings(number_of_replicas=0)
+        index.doc_type(Document)
+        index.create()
+        update_index_settings()
+
+    def index_document(self, title):
+        """
+        Saves a document to Elasticsearch.
+        
+        Args:
+            title (str): Document's title.
+        
+        Returns:
+            bool: True, if saved successfully; False otherwise.
+        """
+        if title:
+            document = Document(title=title.lower())
+            document.save(using=self.client)
+            return True
+        return False
+
+    def search(self, doc_type, query=""):
+        """
+        Executes a search query and retrieves results.
+        
+        Args:
+            doc_type (DocTypeMeta): Type in Elasticsearch.
+            query (str): Search query.
+        
+        Returns:
+            list: List with search results.
+        """
+        results = []
+        if isinstance(query, str) and issubclass(doc_type, DocTypeMeta):
+            # Build query
+            q = Q("multi_match", query=query.lower(), fields=["title"])
+            s = Search()
+            s = s.using(self.client)
+            s = s.index(self.index_name)
+            s = s.doc_type(doc_type)
+            s = s.query(q)
+            print("search query: " + str(s.to_dict()))  # Print the search query
+            # Execute search query
+            response = s.execute()
+            for resp in response:
+                results.append(resp)
+        return results
+
+# Example usage
+if __name__ == "__main__":
+    hosts = ["localhost"]  # Update with your Elasticsearch host
+    index_name = "example_index"
+    controller = ControllerElastic(hosts, index_name)
+    
+    # Initialize index
+    controller.initialize_index(delete_if_exists=True)
+    
+    # Index documents
+    documents_to_index = ["Document 1", "Document 2", "Document 3"]
+    for doc in documents_to_index:
+        controller.index_document(doc)
+    
+    # Search example
+    search_results = controller.search(Document, query="document")
+    print("Search results:")
+    for result in search_results:
+        print(result.title)

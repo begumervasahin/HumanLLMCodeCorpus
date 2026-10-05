@@ -1,0 +1,50 @@
+import cv2
+import cv2.aruco as aruco
+from nxt.motor import *
+from nxt.sensor import *
+import tty
+import sys
+import termios
+import nxt.locator
+
+def getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+def main():
+    b = nxt.locator.find_one_brick(host='00:16:53:0F:0F:D8')
+    m_left = Motor(b, PORT_C)
+    m_right = Motor(b, PORT_A)
+    light_sensor = Light(b, PORT_1, False)
+    both = SynchronizedMotors(m_left, m_right, 0)
+    right_both = SynchronizedMotors(m_left, m_right, 50)
+    left_both = SynchronizedMotors(m_right, m_left, 50)
+
+    print("Ready")
+    print(b)
+
+    ch = ' '
+    while ch != 'q':
+        ch = getch()
+        light_value = light_sensor.get_input_values()[0]
+        print("Light value:", light_value)
+        
+        if ch == 'w':
+            both.turn(75, 360, True)
+        elif ch == 's':
+            both.turn(-75, 90, True)
+        elif ch == 'a':
+            left_both.turn(75, 90, True)
+        elif ch == 'd':
+            right_both.turn(75, 90, True)
+
+    print("Aborted!")
+
+if __name__ == "__main__":
+    main()

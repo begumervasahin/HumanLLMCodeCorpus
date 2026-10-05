@@ -1,0 +1,49 @@
+import nltk
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus import stopwords
+
+# Download NLTK resources
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+def simplify_text(text):
+    # Remove punctuation and convert to lowercase
+    text = text.translate(str.maketrans('', '', string.punctuation)).lower()
+    
+    # Tokenize text into words
+    words = nltk.word_tokenize(text)
+    
+    # Remove English stopwords and lemmatize words
+    stop_words = set(stopwords.words('english'))
+    lemma = nltk.wordnet.WordNetLemmatizer()
+    filtered_words = [lemma.lemmatize(word) for word in words if word not in stop_words]
+    
+    # Join lemmatized words back into a string
+    simplified_text = " ".join(filtered_words)
+    
+    return simplified_text
+
+def calculate_similarity(text1, text2):
+    # Initialize TF-IDF vectorizer
+    vectorizer = TfidfVectorizer(min_df=1)
+    
+    # Fit-transform text data
+    tfidf_matrix = vectorizer.fit_transform([text1, text2])
+    
+    # Calculate similarity score
+    similarity_score = (tfidf_matrix * tfidf_matrix.T).A[0, 1]
+    
+    return similarity_score
+
+# Sample texts
+text1 = "hello I'm David, and I love my little bunny \n asdf fuck this code"
+text2 = "hello I'm Juwon, and I love my big bear"
+
+# Calculate and print similarity scores
+print("Similarity between text1 and text2:", calculate_similarity(text1, text2))
+print("Similarity after simplification:", calculate_similarity(simplify_text(text1), simplify_text(text2)))
+
+# Example of text simplification
+print("Example of simplified text:", simplify_text("hello I'm David, I was born on the best day of the best month because i'm the best of them all!"))

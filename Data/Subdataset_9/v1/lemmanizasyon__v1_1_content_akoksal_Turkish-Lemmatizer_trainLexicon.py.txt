@@ -1,0 +1,94 @@
+import re
+import json
+import pickle
+import sys
+
+def loadWord(dataset):
+    if dataset == "wiktionary":
+        with open('Datasets/wiktionary.pkl', 'rb') as f:
+            [wordList] = pickle.load(f)
+        wordDict = {}
+        for i in range(len(wordList)):
+            word = wordList[i].replace("â", "a")
+            wordDict[findID(wordDict, word)] = ["kok", findID(wordDict, word)]
+        return wordDict
+    elif dataset == "zargan":
+        with open('Datasets/zargan.pkl', 'rb') as f:
+            zarganDict = pickle.load(f)
+        wordDict = {}
+        for word, valueList in zarganDict.items():
+            word = word.replace("â", "a")
+            wordDict[findID(wordDict, word)] = ["kok", findID(wordDict, word)]
+        return wordDict
+
+def findID(wordDict, word):
+    ct = 1
+    while word + "_" + str(ct) in wordDict:
+        ct = ct + 1
+    return word + "_" + str(ct)
+
+def generate(wordDict, olay):
+    newDict = {}
+    if olay == "olumsuzluk eki":
+        for kelime, valueList in wordDict.items():
+            ind = kelime[kelime.index("_") + 1:]
+            kelime = kelime[:kelime.index("_")]
+            if kelime.endswith("mak"):
+                kelime = kelime[:-3] + "mamak"
+                newDict[findID(wordDict, kelime)] = ["olumsuzluk", kelime + "_" + ind]
+            if kelime.endswith("mek"):
+                kelime = kelime[:-3] + "memek"
+                newDict[findID(wordDict, kelime)] = ["olumsuzluk", kelime + "_" + ind]
+    elif olay == "unsuz yumusamasi":
+        for kelime, valueList in wordDict.items():
+            ind = kelime[kelime.index("_") + 1:]
+            kelime = kelime[:kelime.index("_")]
+            if not (kelime.endswith("mak") or kelime.endswith("mek")):
+                if kelime.endswith("p"):
+                    newDict[findID(wordDict, kelime[:-1] + "b")] = ["unsuz yumusamasi", kelime + "_" + ind]
+                elif kelime.endswith("ç"):
+                    newDict[findID(wordDict, kelime[:-1] + "c")] = ["unsuz yumusamasi", kelime + "_" + ind]
+                elif kelime.endswith("t"):
+                    newDict[findID(wordDict, kelime[:-1] + "d")] = ["unsuz yumusamasi", kelime + "_" + ind]
+                elif kelime.endswith("k"):
+                    if kelime.endswith("nk"):
+                        newDict[findID(wordDict, kelime[:-1] + "g")] = ["unsuz yumusamasi", kelime + "_" + ind]
+                    else:
+                        newDict[findID(wordDict, kelime[:-1] + "ğ")] = ["unsuz yumusamasi", kelime + "_" + ind]
+    # Add the other cases for "unlu daralmasi", "unlu dusmesi", and "fiil" here
+    # ...
+    return newDict
+
+def appendDict(revisedDict, newDict):
+    for kelime, valueList in newDict.items():
+        if kelime in revisedDict:
+            revisedDict[findID(revisedDict, kelime[:kelime.index("_")])] = valueList
+        else:
+            revisedDict[kelime] = valueList
+    return revisedDict
+
+dataset = "zargan"
+if len(sys.argv) > 1:
+    dataset = sys.argv[1]
+
+wordDict = loadWord(dataset)
+wordDict = appendDict(wordDict, generate(wordDict, "olumsuzluk eki"))
+print("Negative verbs are added.")
+wordDict = appendDict(wordDict, generate(wordDict, "fiil"))
+print("Zero infinitive forms of verbs are added.")
+revisedDict = dict(wordDict)
+
+for olay in ["unsuz yumusamasi", "unlu daralmasi", "unlu dusmesi"]:
+    newDict = generate(wordDict, olay)
+    revisedDict = appendDict(revisedDict, newDict)
+    if olay == "unsuz yumusamasi":
+        print("Consonant softening forms are added.")
+    elif olay == "unlu daralmasi":
+        print("Becoming close vowel forms are added.")
+    elif olay == "unlu dusmesi":
+        print("Dropping vowel forms are added.")
+
+with open('revisedDict.pkl', 'wb') as f:
+    pickle.dump(revisedDict, f)
+
+print("Transformed lexicon is saved to revisedDict.pkl")

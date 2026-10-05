@@ -1,0 +1,31 @@
+def tokenize_expression(expression):
+    operators = {'+', '-', '*', '/', '%', '(', ')', '=', '<', '>', '!', '?', ':', ';', ','}
+    expression += ';'
+    index = 0
+    expression_length = len(expression)
+    while index < expression_length:
+        char = expression[index]
+        if char.isspace():
+            index += 1
+            continue
+        if char.isalpha():
+            start_index = index
+            while index < expression_length and expression[index] not in operators and not expression[index].isspace():
+                index += 1
+            yield expression[start_index:index]
+            continue
+        if char.isdigit():
+            start_index = index
+            while index < expression_length and expression[index].isdigit():
+                index += 1
+            yield expression[start_index:index]
+            continue
+        if char in ('=', '!', '<', '>') and index + 1 < expression_length and expression[index + 1] == '=':
+            yield expression[index:index + 2]
+            index += 2
+            continue
+        yield char
+        index += 1
+expression_to_tokenize = "x = 10; if (x > 5) { x += 2; }"
+for token in tokenize_expression(expression_to_tokenize):
+    print(token)

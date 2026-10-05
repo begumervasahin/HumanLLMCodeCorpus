@@ -1,0 +1,38 @@
+import socket
+import sys
+def client():
+    if len(sys.argv) != 3:
+        print("Usage: python script.py [server_hostname] [file_name]")
+        return
+    server_hostname = sys.argv[1]
+    file_name = sys.argv[2]
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as err:
+        print("Socket open error:", err)
+        return
+    try:
+        with open(file_name, "r") as file:
+            server_ip = socket.gethostbyname(server_hostname)
+            port = 50008
+            server_address = (server_ip, port)
+            client_socket.connect(server_address)
+            with open("RESOLVED.txt", "w") as output_file:
+                for hostname in file:
+                    client_socket.send(hostname.strip().encode('utf-8'))
+                    data_from_server = client_socket.recv(100).decode('utf-8')
+                    if data_from_server:
+                        output_file.write(data_from_server + '\n')
+                    else:
+                        break
+    except IOError as err:
+        print("File open error:", err)
+        print("Please ensure the desired file to reverse exists in the source folder")
+        return
+    except socket.error as err:
+        print("Connect error:", err)
+        return
+    finally:
+        client_socket.close()
+if __name__ == "__main__":
+    client()

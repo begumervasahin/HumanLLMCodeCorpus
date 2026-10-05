@@ -1,0 +1,62 @@
+import nltk
+import re
+from nltk.corpus import stopwords
+def create_bow(tokenized_text, bags):
+    for word in tokenized_text:
+        if word not in bags:
+            bags[word] = 1
+        else:
+            bags[word] += 1
+    return bags
+def calculate_matching(bags_dict, user_bags):
+    matched_weights = {}
+    for faq, faq_bow in bags_dict.items():
+        matched_weights[faq] = []
+        for word in user_bags:
+            weight = 0
+            if word in faq_bow:
+                weight = float(user_bags[word] * faq_bow[word]) / sum(faq_bow.values())
+            matched_weights[faq].append(weight)
+    return matched_weights
+def preprocess_faq_data(table, bags_dict, regexp):
+    with open("data.txt") as data_file:
+        for line in data_file:
+            question, answer = line.rstrip("\n").split("?")
+            table[question] = answer
+    for question, answer in table.items():
+        bags = {}
+        processed_question = regexp.sub(' ', question).lower()
+        processed_answer = regexp.sub(' ', answer).lower()
+        combined_text = processed_question + " " + processed_answer
+        tokenized_text = nltk.word_tokenize(combined_text)
+        bags_dict[question] = create_bow(tokenized_text, bags)
+def calculate_tfidf(matched_weights, user_bow_keys, bags_dict):
+    tfidf_results = {}
+    for faq, weights in matched_weights.items():
+        tfidf_score = 0.0
+        for i, word in enumerate(user_bow_keys):
+            idf = sum(1 for bow in bags_dict.values() if word in bow)
+            if idf:
+                idf = 50.0 / idf
+            tfidf_score += weights[i] * idf
+        tfidf_results[faq] = tfidf_score
+    return tfidf_results
+def print_top_ten(matched_weight_sorted, faq_table):
+    for faq in matched_weight_sorted[:10]:
+        print("\nQuestion: " + faq + "\nMatching Score: " + str(matched_weight_next[faq]))
+        print("Answer: " + faq_table[faq])
+        print("---")
+regexp = re.compile('[^a-zA-Z]')
+faq_table = {}
+faq_bags_dict = {}
+preprocess_faq_data(faq_table, faq_bags_dict, regexp)
+user_input = input("Enter a FAQ related to TOEFL: ")
+user_tokenized = regexp.sub(' ', user_input).lower()
+user_bow = create_bow(nltk.word_tokenize(user_tokenized), {})
+matched_weight = calculate_matching(faq_bags_dict, user_bow)
+matched_weight_next = calculate_tfidf(matched_weight, user_bow.keys(), faq_bags_dict)
+matched_weight_sorted = sorted(matched_weight_next, key=matched_weight_next.get, reverse=True)
+print("\n+++++++++++++++++++++++++++")
+print("+Top 10 results for Task 2+")
+print("+++++++++++++++++++++++++++")
+print_top_ten(matched_weight_sorted, faq_table)

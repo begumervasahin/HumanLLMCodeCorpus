@@ -1,0 +1,74 @@
+import time
+from tkinter import *
+from tkinter import messagebox
+import functions as fn
+def raise_frame(frame):
+    frame.tkraise()
+def calculate_complexity():
+    user_input = code_entry.get("1.0", "end-1c")
+    complexity = fn.equation_finder(user_input)
+    messagebox.showinfo("Big O Notation", f"(BIG O notation): {complexity[0]}\nClick OK to sketch the graph")
+    root.destroy()
+    time.sleep(0.5)
+    if complexity[1] == '':
+        fn.plot(1)
+    elif 1 < int(complexity[1]) < 10:
+        fn.plot(complexity[1])
+    else:
+        print("Not able to plot, power > 9")
+def compare_complexities():
+    src1 = code_entry1.get("1.0", "end-1c")
+    src2 = code_entry2.get("1.0", "end-1c")
+    left_complex = fn.equation_finder(src1)
+    right_complex = fn.equation_finder(src2)
+    if left_complex[1] == '':
+        left_complex[1] = "1"
+    if right_complex[1] == '':
+        right_complex[1] = '1'
+    if left_complex[0] > right_complex[0]:
+        messagebox.showinfo("Comparison Result",
+                            f"'Second' algorithm is better.\n{left_complex[0]} > {right_complex[0]}")
+    elif left_complex[0] < right_complex[0]:
+        messagebox.showinfo("Comparison Result",
+                            f"'First' algorithm is better.\n{left_complex[0]} < {right_complex[0]}")
+    else:
+        messagebox.showinfo("Comparison Result", f"Both algorithms have equal complexity: {left_complex[0]}")
+    root.destroy()
+    time.sleep(0.5)
+    fn.plot(left_complex[1], right_complex[1])
+root = Tk()
+root.title("Big O estimation")
+root.geometry('1049x750')
+root.resizable(False, False)
+f1 = Frame(root)
+f2 = Frame(root)
+f3 = Frame(root)
+for frame in (f1, f2, f3):
+    frame.grid(row=0, column=0, sticky='news')
+Label(f1, image=fn.photo).place(x=0, y=0, relwidth=1, relheight=1)
+Button(f1, text=' Single', bg="black", fg="white", command=lambda: raise_frame(f2)).place(x=20, y=40)
+Button(f1, text='Double', bg="black", fg="white", command=lambda: raise_frame(f3)).place(x=20, y=80)
+Label(f1, text="Hint\n"
+               "Single: Estimates an algorithm complexity\n"
+               "Double: Compares two algorithms complexities", fg="white", bg="black").place(x=20, y=680)
+Label(f2, image=fn.photo_earth).place(x=0, y=0, relwidth=1, relheight=1)
+Label(f2, text="Hint: Paste code in the box", bg="black", fg="white").grid(column=3, row=0)
+code_entry = Text(f2, bg="black", fg="white", height=40, width=100)
+code_entry.grid(column=1, row=1)
+code_entry.insert(END, fn.default_code)
+Button(f2, text="Calculate", bg="black", fg="white", command=calculate_complexity).grid(column=1, row=3)
+Button(f2, text='Back', bg="black", fg="white", command=lambda: raise_frame(f1)).grid(row=3, column=4)
+Label(f3, image=fn.photo_earth).place(x=0, y=0, relwidth=1, relheight=1)
+code_entry1 = Text(f3, bg="black", fg="white", height=40, width=50)
+code_entry1.grid(column=1, row=1)
+code_entry1.insert(END, fn.default_code)
+Label(f3, bg="black", fg="white", text="").grid(row=10, column=10)
+code_entry2 = Text(f3, bg="black", fg="white", height=40, width=50)
+code_entry2.grid(column=3, row=1)
+Button(f3, text="Compare", bg="black", fg="white", command=compare_complexities).grid(row=3, columnspan=4)
+Button(f3, text='back', bg="black", fg="white", command=lambda: raise_frame(f1)).place(x=970, y=690)
+if fn.is_connected():
+    raise_frame(f1)
+    root.mainloop()
+else:
+    messagebox.showerror("No Internet Connection", "Please check your internet connection and try again.")

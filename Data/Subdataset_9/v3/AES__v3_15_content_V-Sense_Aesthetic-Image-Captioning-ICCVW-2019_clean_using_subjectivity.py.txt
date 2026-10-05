@@ -1,0 +1,91 @@
+import json
+from langdetect import detect
+import re
+from collections import Counter
+from nltk.util import ngrams
+from nltk.tokenize import word_tokenize
+
+# Constants for file paths
+INPUT_FILE_PATH = 'CLEAN_AVA_FULL_COMMENTS.json'
+OUTPUT_FILE_PATH = 'processed_comments.json'
+
+def is_english(comment):
+    """
+    Check if the provided comment is in English.
+
+    Args:
+    comment (str): Comment text to check.
+
+    Returns:
+    bool: True if the comment is in English, False otherwise.
+    """
+    try:
+        return detect(comment) == 'en'
+    except Exception as e:
+        print(f"Error detecting language: {e}")
+        return False
+
+def normalize_text(text):
+    """
+    Normalize the provided text by reducing repeated characters and removing unwanted punctuation.
+
+    Args:
+    text (str): Text to normalize.
+
+    Returns:
+    str: Normalized text.
+    """
+    # Reduce consecutive identical characters to two
+    text = re.sub(r'(.)\1+', r'\1\1', text)
+    # Remove characters not in the whitelist
+    text = re.sub(r'[^\w\s,!.?]', '', text)
+    return text
+
+def filter_bad_words(tokens, bad_words):
+    """
+    Filter out bad words from the list of tokens.
+
+    Args:
+    tokens (list of str): Tokens to filter.
+    bad_words (list of str): List of bad words.
+
+    Returns:
+    list of str: Filtered list of tokens.
+    """
+    return [token for token in tokens if token.lower() not in bad_words]
+
+def process_comments(input_path, output_path):
+    """
+    Process comments from an input file and save the processed comments to an output file.
+
+    Args:
+    input_path (str): Path to the input file.
+    output_path (str): Path to the output file.
+    """
+    processed_comments = []
+    unigram_counts = Counter()
+    bigram_counts = Counter()
+
+    with open(input_path, 'r') as file:
+        comments = json.load(file)
+
+    for comment in comments:
+        text = comment.get('comment', '')
+        if is_english(text):
+            normalized = normalize_text(text)
+            tokens = word_tokenize(normalized)
+            filtered = filter_bad_words(tokens, ['badword1', 'badword2'])  # Example bad word list
+
+            # Update counts
+            unigram_counts.update(filtered)
+            bigram_counts.update(ngrams(filtered, 2))
+
+            # Save processed comment
+            processed_comments.append({'comment': ' '.join(filtered)})
+
+    # Save processed comments to a file
+    with open(output_path, 'w') as file:
+        json.dump(processed_comments, file, indent=4)
+
+# Execute the processing function
+process_comments(INPUT_FILE_PATH, OUTPUT_FILE_PATH)

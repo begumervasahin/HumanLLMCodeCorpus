@@ -1,0 +1,42 @@
+import random
+message = "this is an ultra secret message:"
+ciphertext = []
+key = []
+decrypted_message = []
+eofFlag = 0
+for i in range(len(message) + 10000):
+    random_number = random.randint(0, 27)
+    key.append(random_number)
+alphabet_to_number = {" ": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8, "i": 9, "j": 10,
+                      "k": 11, "l": 12, "m": 13, "n": 14, "o": 15, "p": 16, "q": 17, "r": 18, "s": 19, "t": 20,
+                      "u": 21, "v": 22, "w": 23, "x": 24, "y": 25, "z": 26, ":": 27}
+number_to_alphabet = {0: " ", 1: 'a', 2: 'b', 3: 'c', 4: 'd', 5: 'e', 6: 'f', 7: 'g', 8: 'h', 9: 'i', 10: 'j',
+                      11: 'k', 12: 'l', 13: 'm', 14: 'n', 15: 'o', 16: 'p', 17: 'q', 18: 'r', 19: 's', 20: 't',
+                      21: 'u', 22: 'v', 23: 'w', 24: 'x', 25: 'y', 26: 'z', 27: ':'}
+for char in message:
+    ciphertext.append(alphabet_to_number[char])
+for j in range(len(message)):
+    encrypted_char = ciphertext[j] + key[j]
+    if encrypted_char > 28:
+        encrypted_char = encrypted_char % 28
+    decrypted_message.append(encrypted_char)
+for i in range(len(message), len(key)):
+    decrypted_message.append(key[i])
+for num in decrypted_message:
+    decrypted_char = num - key[j]
+    if decrypted_char < 0:
+        decrypted_char = decrypted_char + 28
+    j += 1
+    decrypted_message.append(decrypted_char)
+for num in decrypted_message:
+    if num == 27:
+        eofFlag = 1
+    if eofFlag == 0:
+        decrypted_char = number_to_alphabet[num]
+        decrypted_message.append(decrypted_char)
+decrypted_text = "".join(decrypted_message)
+print("One-time pad:")
+print("Key:", key)
+print("Message to number:", ciphertext)
+print("Encrypted message:", decrypted_message)
+print("Decrypted message:", decrypted_text)

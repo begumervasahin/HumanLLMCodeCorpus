@@ -1,0 +1,73 @@
+import networkx as nx
+import queue as q
+import matplotlib.pyplot as plt
+import sys
+
+def read_graph(file_path):
+    """
+    Reads a graph from the specified file path.
+    If the file is not found, generates a complete graph with 10 nodes instead.
+    """
+    try:
+        G = nx.read_pajek(file_path)
+        return G
+    except FileNotFoundError:
+        print("File not found. Generating a complete graph instead.")
+        return nx.complete_graph(10)
+
+def breadth_first_search(G, s):
+    """
+    Performs Breadth-First Search (BFS) starting from node 's' in the graph 'G'.
+    Returns the BFS tree.
+    """
+    for node in G.nodes:
+        G.nodes[node]['color'] = 'white'  # Color initialization
+        G.nodes[node]['delta'] = float('inf')  # Distance initialization
+        G.nodes[node]['pi'] = None  # Predecessor initialization
+
+    G.nodes[s]['color'] = 'gray'  # Marking the starting node as gray
+    G.nodes[s]['delta'] = 0  # Distance to starting node is 0
+
+    queue = q.Queue()
+    queue.put(s)
+
+    while not queue.empty():
+        u = queue.get()
+        for node in G.neighbors(u):
+            if G.nodes[node]['color'] == 'white':
+                G.nodes[node]['color'] = 'gray'  # Marking adjacent nodes as gray
+                G.nodes[node]['delta'] = G.nodes[u]['delta'] + 1  # Updating distance
+                G.nodes[node]['pi'] = u  # Setting predecessor
+                queue.put(node)
+        G.nodes[u]['color'] = 'black'  # Marking processed node as black
+
+    # Constructing the BFS tree
+    BFS_Tree = nx.Graph()
+    for node in G.nodes:
+        BFS_Tree.add_node(node)
+    for node in G.nodes:
+        BFS_Tree.add_edge(node, G.nodes[node]['pi'])
+
+    return BFS_Tree
+
+# Main function
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        input_file = sys.argv[1]  # Read graph file from command-line argument
+    else:
+        input_file = None  # No file provided
+
+    G = read_graph(input_file)  # Read the graph
+
+    if len(sys.argv) > 2:
+        starting_node = sys.argv[2]  # Starting node for BFS from command-line argument
+    else:
+        starting_node = list(G.nodes)[0]  # Default starting node
+
+    Tree = breadth_first_search(G, starting_node)  # Perform BFS
+
+    # Visualize the original graph and BFS tree
+    nx.draw(G)
+    plt.show()
+    nx.draw(Tree)
+    plt.show()

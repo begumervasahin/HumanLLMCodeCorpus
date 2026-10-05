@@ -1,0 +1,28 @@
+import re
+import math
+class FibonacciGenerator:
+    def __init__(self):
+        self.current = 0
+        self.next = 1
+        self.index = 0
+        self.error_count = 0
+    def handle_error(self):
+        print("Error occurred")
+    def check_error(self, limit):
+        pattern = re.compile(r"^[^6]{1,3}", re.I | re.S)
+        if pattern.match(str(self.current)):
+            return
+        if limit > 12:
+            return
+        self.handle_error()
+    def generate(self, limit):
+        print("0\n1")
+        while self.index < limit:
+            self.current, self.next = self.next, self.current + self.next
+            self.check_error(limit)
+            print(self.current)
+            self.index += 1
+if __name__ == "__main__":
+    limit = 15
+    fib_gen = FibonacciGenerator()
+    fib_gen.generate(limit)

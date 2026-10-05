@@ -1,0 +1,65 @@
+from bs4 import BeautifulSoup as soup
+from urllib.request import urlopen
+
+# Function to retrieve webpage content
+def fetch_url_content(url):
+    try:
+        response = urlopen(url)
+        if response.getcode() == 200:
+            return response.read()
+        else:
+            return None
+    except Exception as e:
+        print("Error fetching URL:", e)
+        return None
+
+def main():
+    # URL to scrape
+    url = 'http://cimaclub.com/'
+    
+    # Fetching webpage content
+    webpage_content = fetch_url_content(url)
+    
+    if webpage_content:
+        # Parsing webpage content
+        page_soup = soup(webpage_content, "html.parser")
+        
+        # Finding all movie elements
+        movies = page_soup.findAll("div", {"class": "movie"})
+
+        # Output file
+        output_file = "todayHomepage.csv"
+        
+        # Writing headers to the CSV file
+        with open(output_file, "w", encoding="utf-8") as save_file:
+            headers = "Title, Description, Category, Views, Movie URL\n"
+            save_file.write(headers)
+
+            # Iterating through each movie element
+            for movie in movies:
+                # Extracting movie details
+                title_list = movie.findAll("div", {"class": "boxcontentFilm"})  
+                title = title_list[0].h2.text.strip()
+                description = title_list[0].p.text.strip()
+                category_list = movie.findAll("span", {"class": "category"})    
+                category = category_list[0].text.strip()
+                views_list = movie.findAll("span", {"class": "views"})
+                view = views_list[0].text.strip()
+                movie_url = movie.a["href"]
+
+                # Printing movie details
+                print("Title:", title)
+                print("Description:", description)
+                print("Category:", category)
+                print("Views:", view)
+                print("Movie URL:", movie_url)
+
+                # Writing movie details to the CSV file
+                save_file.write(f"{title.replace(',', ' ')}, {description.replace(',', ' ')}, {category.replace(',', ' ')}, {view.replace(',', ' ')}, {movie_url.replace(',', ' ')}\n")
+
+        print("Data saved to", output_file)
+    else:
+        print("Failed to fetch the webpage.")
+
+if __name__ == "__main__":
+    main()

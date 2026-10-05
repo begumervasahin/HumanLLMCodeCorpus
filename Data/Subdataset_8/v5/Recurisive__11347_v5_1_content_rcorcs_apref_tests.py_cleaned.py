@@ -1,0 +1,22 @@
+import sys
+from apref import *
+def main():
+    setDebugMode(True)
+    examples = [
+        "fac :: Integer -> Integer\nfac 1 = 1\nfac n = n * fac(n-1)",
+        "f :: Integer -> Integer\nf 1 = y0\nf n = y!!n + (1+r) * f(n-1)*2 + y!!n",
+        "f :: Integer -> Integer\nf 1 = 1\nf n = n + (1+1) * f(n-1)*2 + n",
+        "f :: Integer -> Integer\nf 1 = 1\nf n = (1+1) * f(n-1) + n",
+        "f :: Rational -> Rational\nf 0 = 2000\nf n = (1 + 0.005) * f(n-1) + 100",
+        "f :: Rational -> Rational\nf 0 = 2000\nf n = 100 + (1 + 0.005) * f(n-1)",
+        "f :: Integer -> IMG_SET\nf e_0 = y_0\nf n = g_1(n) ++ f(n-e_1) ++ g_2(n)",
+        "f :: Integer -> IMG_SET\nf e_0 = y_0\nf n = g_1(n) ++ g_3(n) *** f(n-e_1) *** g_4(n) ++ g_2(n)",
+        "f :: Integer -> String\nf 0 = ''\nf n = (show n) ++  f(n-1) ++ (show n)",
+        "f :: Integer -> Rational\nf 1 = 1\nf n = (2*(2*n-1)/(n+1)) * f(n-1)",
+        "f :: Integer -> Integer\nf 0 = 0\nf n = 1 + f(n-1)"
+    ]
+    for example in examples:
+        print_parallelize(example)
+        print('')
+if __name__ == '__main__':
+    main()

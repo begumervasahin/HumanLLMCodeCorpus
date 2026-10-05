@@ -1,0 +1,67 @@
+import re
+
+def extract_replacements(grammar):
+    # Regular expression pattern to extract replacements from the grammar
+    syntax_re = r"""(?mx)
+        ^(?:
+          (?: (?P<comment> \s* $ ) |
+              (?P<rule> (?P<pat>.+?) \s+ -> \s+ (?P<repl>.+) (?P<term>\.)? )
+          )
+        )$
+        """
+
+    # Extract replacements from the grammar using regular expressions
+    replacements = []
+    for matchobj in re.finditer(syntax_re, grammar):
+        if matchobj.group('rule'):
+            pat = matchobj.group('pat').strip()
+            repl = matchobj.group('repl').strip()
+            term = bool(matchobj.group('term'))
+            replacements.append((pat, repl, term))
+    return replacements
+
+def replace(text, replacements):
+    # Iterate until no further replacements can be made
+    while True:
+        for pat, repl, term in replacements:
+            if pat in text:
+                # Replace the pattern with its corresponding replacement
+                text = text.replace(pat, repl, 1)
+                if term:
+                    # Terminate if the replacement rule is marked as terminating
+                    return text
+                break
+        else:
+            # If no replacements were made, return the final text
+            return text
+
+# Example grammars and texts for testing
+grammar1 = """\
+A -> apple
+B -> bag
+S -> shop
+T -> the
+the shop -> my brother
+a never used -> .terminating rule
+"""
+
+grammar5 = '''\
+A0 -> 1B
+0A1 -> C01
+1A1 -> C11
+0B0 -> A01
+1B0 -> A11
+B1 -> 1B
+0C0 -> B01
+1C0 -> B11
+0C1 -> H01
+1C1 -> H11
+'''
+
+text1 = "I bought a B of As from T S."
+text5 = '000000A000000'
+
+if __name__ == '__main__':
+    # Extract replacements from the grammar and perform replacements on the text
+    replacements = extract_replacements(grammar5)
+    print(replace(text5, replacements) == '00011H1111000')

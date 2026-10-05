@@ -1,0 +1,81 @@
+from BST import BST
+from linkedList import LinkedList as LL
+from time import time
+from willowCuttingHashTable import WillowCuttingHashTable
+from chainedHashTable import ChainedHashTable
+import sys
+import random
+
+def main():
+    # Set recursion limit to avoid stack overflow
+    sys.setrecursionlimit(10000)
+
+    # Check if the correct number of command-line arguments is provided
+    if len(sys.argv) != 4:
+        print("Invalid Syntax\nUsage: performanceTest.py filename chainedLoad willowLoad\n")
+        sys.exit(1)
+
+    # Extract command-line arguments
+    filename = sys.argv[1]
+    chained_load = sys.argv[2]
+    willow_load = sys.argv[3]
+
+    # Read data from the file
+    with open(filename, "r") as file:
+        data = file.read().split()
+
+    size = len(data)
+    print("Using %d words" % size)
+
+    # Create ChainedHashTable and WillowCuttingHashTable instances
+    chained = ChainedHashTable(12, chained_load, BST)
+    willow = WillowCuttingHashTable(willow_load, 0, size)
+
+    # Create a shuffled list of keys
+    shuffled_keys = list(range(size))
+    random.shuffle(shuffled_keys)
+
+    # Timing put operation
+    print("Timing put")
+    start = time()
+    for i in range(size):
+        chained[i] = data[i]
+    chained_put_time = time() - start
+
+    start = time()
+    for i in range(size):
+        willow[i] = data[i]
+    willow_put_time = time() - start
+
+    print("Willow time: %f Chained time: %f" % (willow_put_time, chained_put_time))
+
+    # Timing get operation with random keys
+    print("Timing get (random)")
+    start = time()
+    for i in shuffled_keys:
+        x = chained[i]
+    chained_put_time = time() - start
+
+    start = time()
+    for i in shuffled_keys:
+        x = chained[i]
+    willow_put_time = time() - start
+
+    print("Willow time: %f Chained time: %f" % (willow_put_time, chained_put_time))
+
+    # Timing get operation with keys in order
+    print("Timing get (in order)")
+    start = time()
+    for i in range(size):
+        x = chained[i]
+    chained_put_time = time() - start
+
+    start = time()
+    for i in range(size):
+        x = chained[i]
+    willow_put_time = time() - start
+
+    print("Willow time: %f Chained time: %f" % (willow_put_time, chained_put_time))
+
+if __name__ == "__main__":
+    main()

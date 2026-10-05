@@ -1,0 +1,102 @@
+import sys
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from pandas.tseries.offsets import DateOffset
+def plot_initial_temperature(df):
+    plt.figure(figsize=(12, 6))
+    plt.plot(df["mean"], color="blue")
+    plt.title("Mean Temperature in Fahrenheit from 2010-2018")
+    plt.xlabel("Time")
+    plt.ylabel("Mean Temperature (ËF)")
+    plt.savefig("plots/initial_temperature_plot.svg", dpi=200)
+    plt.savefig("plots/initial_temperature_plot.png", dpi=200)
+def check_stationarity(df):
+    def adf_check(time_series):
+        result = adfuller(time_series)
+        print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("Augmented Dickey-Fuller Unit Root Test:")
+        labels = ["ADF Test Statistic", "p-value", "Number of Observations Used"]
+        for value, label in zip(result, labels):
+            print(label + " : " + str(value))
+        if result[1] <= 0.05:
+            print("Strong evidence against the null hypothesis - reject the null hypothesis. Data has no unit root and is stationary.")
+        else:
+            print("Weak evidence against null hypothesis - do not reject the null hypothesis. Data has a unit root and is non-stationary.")
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+    adf_check(df["mean"])
+    df["Temp. First Difference"] = df["mean"] - df["mean"].shift(1)
+    df["Seasonal Difference"] = df["mean"] - df["mean"].shift(365)
+    df["Seasonal First Difference"] = df["Temp. First Difference"] - df["Temp. First Difference"].shift(365)
+    adf_check(df["Seasonal First Difference"].dropna())
+    return df
+def plot_acf_pacf(df):
+    plt.figure(figsize=(12, 6))
+    plt.subplot(211)
+    plot_acf(df["mean"].dropna(), lags=30, color="blue")
+    plt.subplot(212)
+    plot_pacf(df["mean"].dropna(), lags=30, color="blue")
+    plt.savefig("plots/acf_pacf_plot.svg", dpi=200)
+    plt.savefig("plots/acf_pacf_plot.png", dpi=200)
+def fit_sarimax_model(df, period):
+    model = sm.tsa.statespace.SARIMAX(df["mean"], order=(1, 1, 2), seasonal_order=(0, 1, 0, period))
+    results = model.fit()
+    print(results.summary())
+    return results
+def plot_residuals(results):
+    plt.figure(figsize=(12, 6))
+    plt.plot(results.resid, color="blue")
+    plt.title("Residuals")
+    plt.xlabel("Time")
+    plt.ylabel("Residual")
+    plt.savefig("plots/residuals_plot1.png", dpi=200)
+    plt.savefig("plots/residuals_plot1.svg", dpi=200)
+    plt.figure(figsize=(12, 6))
+    results.resid.plot(kind="kde", color="blue")
+    plt.title("Residuals (Kernel Density Estimation)")
+    plt.xlabel("Time")
+    plt.savefig("plots/residuals_plot2.png", dpi=200)
+    plt.savefig("plots/residuals_plot2.svg", dpi=200)
+def validate_model_on_existing_data(df, results, period):
+    existing_data = pd.read_csv("forecasted_existing.csv", index_col="Dates", parse_dates=True)
+    df["forecast"] = existing_data["temp"]
+    plt.figure(figsize=(12, 6))
+    plt.title("Forecast of Temperature On Existing Data")
+    plt.xlabel("Time")
+    plt.ylabel("Mean Temperature (ËF)")
+    df[["mean", "forecast"]].plot(color=["green", "red"])
+    plt.savefig("plots/validate_existing_data_plot.png", dpi=200)
+    plt.savefig("plots/validate_existing_data_plot.svg", dpi=200)
+def forecast_temperature(df, results, period):
+    future_dates = [df.index[-1] + DateOffset(days=x) for x in range(0, period)]
+    future_dates_df = pd.DataFrame(index=future_dates[1:], columns=df.columns)
+    future_df = pd.concat([df, future_dates_df])
+    unknown_data_1y = pd.read_csv("forecasted_unknown_1y.csv", index_col="Dates", parse_dates=True)
+    future_df["forecast"] = unknown_data_1y["temp"]
+    plt.figure(figsize=(12, 6))
+    plt.title(f"Forecast of Temperature For Next {period} Days")
+    plt.xlabel("Time")
+    plt.ylabel("Mean Temperature (ËF)")
+    future_df[["mean", "forecast"]].plot(color=["green", "red"])
+    plt.savefig("plots/forecast_temperature_plot.png", dpi=200)
+    plt.savefig("plots/forecast_temperature_plot.svg", dpi=200)
+def main():
+    try:
+        df = pd.read_csv("temp_data_cleaned.csv", index_col="Time", parse_dates=True)
+    except FileNotFoundError:
+        print("Please run `scrape_data.py` and `clean_data.py` in that order to generate the necessary data first.")
+        sys.exit(0)
+    plot_initial_temperature(df)
+    df = check_stationarity(df)
+    plot_acf_pacf(df)
+    period = 365
+    results = fit_sarimax_model(df, period)
+    plot_residuals(results)
+    validate_model_on_existing_data(df, results, period)
+    forecast_temperature(df, results, period)
+    print("~ COMPLETION ~")
+    print("All plots saved to `plots` folder")
+if __name__ == "__main__":
+    main()

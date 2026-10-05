@@ -1,0 +1,81 @@
+import csv
+import os
+from datetime import date, timedelta
+import gridlabd
+config_path = "config/"
+config_glm_path = config_path + "config.glm"
+config_csv_path = config_path + "simulation_configuration.csv"
+if os.path.exists(config_glm_path):
+    os.remove(config_glm_path)
+with open(config_csv_path, newline='') as config_file:
+    config_reader = csv.reader(config_file, delimiter=',', quotechar='|')
+    fw = open(config_glm_path, 'w')
+    fw.write('
+    year, tariff_type, fixed_winter, fixed_summer, TOU_winter, TOU_summer, TOU_multiplier = [None] * 7
+    model_name, tou_start_w, tou_end_w, tou_start_s, tou_end_s = [None] * 5
+    for line in config_reader:
+        if 'SIMULATION START TIME' in line[0]:
+            year = line[1].strip()[:4]
+        elif line[0] == 'TARIFF':
+            tariff_type = str(line[1]).strip()
+        elif line[0] == 'FIXED PRICE WINTER':
+            fixed_winter = line[1].strip()
+        elif line[0] == 'FIXED PRICE SUMMER':
+            fixed_summer = line[1].strip()
+        elif line[0] == 'TOU OFF-PEAK PRICE WINTER':
+            TOU_winter = float(line[1].strip())
+        elif line[0] == 'TOU OFF-PEAK PRICE SUMMER':
+            TOU_summer = float(line[1].strip())
+        elif line[0] == 'TOU MULTIPLIER':
+            TOU_multiplier = float(line[1].strip())
+        elif line[0] == 'MODEL NAME':
+            model_name = line[1].strip()
+            if model_name in ('ieee4', 'ieee13'):
+                print("RUNNING MODEL:", model_name)
+            else:
+                print("ERROR: Invalid model name - Choose either ieee13 or ieee4")
+        elif line[0] == 'TOU PEAK START HOUR WINTER':
+            tou_start_w = line[1].strip().zfill(2)
+        elif line[0] == 'TOU PEAK END HOUR WINTER':
+            tou_end_w = line[1].strip().zfill(2)
+        elif line[0] == 'TOU PEAK START HOUR SUMMER':
+            tou_start_s = line[1].strip().zfill(2)
+        elif line[0] == 'TOU PEAK END HOUR SUMMER':
+            tou_end_s = line[1].strip().zfill(2)
+    fw.close()
+start_dates = [date(int(year) - 1, 12, 31), date(int(year), 5, 1), date(int(year), 11, 1)]
+end_dates = [date(int(year), 4, 30), date(int(year), 10, 31), date(int(year), 12, 31)]
+delta_list = [edate - sdate for sdate, edate in zip(start_dates, end_dates)]
+s_list = start_dates
+tariff_dir = "input/tariff/"
+if tariff_type == 'fixed':
+    fixed_tariff_path = tariff_dir + "fixed.tariff"
+    if os.path.exists(fixed_tariff_path):
+        os.remove(fixed_tariff_path)
+    with open(fixed_tariff_path, 'w') as fw_fixed:
+        for s, (start_date, end_date) in enumerate(zip(start_dates, end_dates)):
+            fw_fixed.write(f"{start_date} 00:00:00,{fixed_winter}\n")
+            fw_fixed.write(f"{end_date} 00:00:00,{fixed_summer}\n")
+            if s == 1:
+                fw_fixed.write(f"{start_date} {tou_start_s}:00:00,{TOU_summer * TOU_multiplier}\n")
+                fw_fixed.write(f"{start_date} {tou_end_s}:00:00,{TOU_summer}\n")
+            else:
+                fw_fixed.write(f"{start_date} {tou_start_w}:00:00,{TOU_winter * TOU_multiplier}\n")
+                fw_fixed.write(f"{start_date} {tou_end_w}:00:00,{TOU_winter}\n")
+elif tariff_type in ('TOU', 'tou'):
+    tou_tariff_path = tariff_dir + "tou.tariff"
+    if os.path.exists(tou_tariff_path):
+        os.remove(tou_tariff_path)
+    with open(tou_tariff_path, 'w') as fw_tou:
+        for s, (start_date, end_date) in enumerate(zip(start_dates, end_dates)):
+            for i in range((end_date - start_date).days + 1):
+                day = start_date + timedelta(days=i)
+                fw_tou.write(f"\n{day} 00:00:00,{TOU_winter}\n")
+                if s == 1:
+                    fw_tou.write(f"{day} {tou_start_s}:00:00,{TOU_summer * TOU_multiplier}\n")
+                    fw_tou.write(f"{day} {tou_end_s}:00:00,{TOU_summer}\n")
+                else:
+                    fw_tou.write(f"{day} {tou_start_w}:00:00,{TOU_winter * TOU_multiplier}\n")
+                    fw_tou.write(f"{day} {tou_end_w}:00:00,{TOU_winter}\n")
+gridlabd.command(f"{model_name}/{model_name}.glm")
+gridlabd.start('wait')

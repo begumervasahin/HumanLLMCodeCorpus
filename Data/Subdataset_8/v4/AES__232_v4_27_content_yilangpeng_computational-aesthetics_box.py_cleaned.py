@@ -1,0 +1,82 @@
+import os
+import cv2
+import numpy as np
+import glob
+def size_of_box(box):
+    x1, y1, x2, y2 = box
+    return (x2 - x1 + 1) * (y2 - y1 + 1)
+def value_of_box(box, table):
+    x1, y1, x2, y2 = box
+    return table[x2, y2] + table[x1, y1] - table[x2, y1] - table[x1, y2]
+def find_save_box(bw, drimgsavepath, m=0.95, savetf=True):
+    nrow, ncol = bw.shape
+    table = np.zeros((nrow, ncol), dtype=np.int)
+    for y in range(1, ncol):
+        table[0, y] = bw[0, y] + table[0, y - 1]
+    for x in range(1, nrow):
+        table[x, 0] = bw[x, 0] + table[x - 1, 0]
+    for x in range(1, nrow):
+        for y in range(1, ncol):
+            table[x, y] = bw[x, y] - table[x - 1, y - 1] + table[x, y - 1] + table[x - 1, y]
+    total = table[nrow - 1, ncol - 1]
+    if total > 0:
+        minvalue = int(total * m)
+        minbox = [0, 0, nrow - 1, ncol - 1]
+        minsize = nrow * ncol
+        for x1 in range(0, nrow):
+            min_x2 = nrow
+            while value_of_box((x1, 0, min_x2 - 1, ncol - 1), table) >= minvalue:
+                min_x2 -= 1
+            if min_x2 == nrow:
+                break
+            for x2 in range(min_x2, nrow):
+                y2 = ncol - 1
+                while value_of_box((x1, 0, x2, y2 - 1), table) >= minvalue:
+                    y2 -= 1
+                for y1 in range(0, ncol):
+                    while value_of_box((x1, y1, x2, y2), table) < minvalue:
+                        y2 += 1
+                        if y2 == ncol:
+                            break
+                    if y2 == ncol:
+                        break
+                    current_box = (x1, y1, x2, y2)
+                    if size_of_box(current_box) <= minsize:
+                        minbox = [x1, y1, x2, y2]
+                        minsize = size_of_box(minbox)
+        minsize_percent = minsize / (nrow * ncol)
+        if savetf:
+            drimg = cv2.cvtColor(bw, cv2.COLOR_GRAY2BGR)
+            drimg = cv2.rectangle(drimg, (minbox[1], minbox[0]), (minbox[3], minbox[2]), (0, 204, 255), 4)
+            of.create_path(drimgsavepath)
+            cv2.imwrite(drimgsavepath, drimg)
+    else:
+        minsize_percent = -99999
+        minbox = -99999
+        if savetf:
+            drimg = cv2.cvtColor(bw, cv2.COLOR_GRAY2BGR)
+            of.create_path(drimgsavepath)
+            cv2.imwrite(drimgsavepath, drimg)
+    print("bounding box", minbox, minsize_percent)
+    return [minbox, minsize_percent]
+def attr_box(imgpath, tffolder, tfmethod='edge canny', m=0.95, savetf=True):
+    imgname = os.path.basename(imgpath)
+    tfpath = os.path.join(tffolder, tfmethod, imgname.replace('.jpg', '.png'))
+    bw = cv2.imread(tfpath, 0)
+    drimgsavepath = os.path.join(tffolder, 'box ' + tfmethod, imgname.replace('.jpg', '.png'))
+    box_list = find_save_box(bw, drimgsavepath, m=m, savetf=savetf)
+    return box_list
+def main():
+    imgfolder = os.path.join('img all', '')
+    tffolder = os.path.join("img transform", '')
+    resultpath = os.path.join('img result', 'box.txt')
+    imgpaths = glob.glob(imgfolder + '*')
+    for j, imgpath in enumerate(imgpaths):
+        print("-" * 100)
+        imgname = os.path.basename(imgpath)
+        print(j, imgname)
+        wlist = [imgname] + attr_box(imgpath, tffolder)
+        of.save_list_to_txt(wlist, resultpath)
+    print("DONE" * 50)
+if __name__ == "__main__":
+    main()

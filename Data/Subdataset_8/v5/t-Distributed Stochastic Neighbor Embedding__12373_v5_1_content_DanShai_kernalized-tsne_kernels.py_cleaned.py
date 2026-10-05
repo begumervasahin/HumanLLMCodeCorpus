@@ -1,0 +1,99 @@
+import numpy as np
+class Kernels:
+    def __init__(self, data, kernel_options={"kernel": "pca", "gamma": .5, "degree": 1, "pcomp": 4}):
+        self.data = data.copy()
+        self.kernel_options = kernel_options
+    def process_data(self):
+        gamma = self.kernel_options["gamma"]
+        p_degree = self.kernel_options["degree"]
+        p_comp = self.kernel_options["pcomp"]
+        kernel_type = self.kernel_options["kernel"]
+        data = self.data
+        if kernel_type == "poly":
+            processed_data = self.compute_poly_kernel(data, gamma=gamma, degree=p_degree, n_components=p_comp).real
+        elif kernel_type == "anova":
+            processed_data = self.compute_anova_kernel(data, gamma=gamma, degree=p_degree, n_components=p_comp).real
+        elif kernel_type == "rbf":
+            processed_data = self.compute_rbf_kernel(data, gamma=gamma, n_components=p_comp).real
+        elif kernel_type == "cosine":
+            processed_data = self.compute_cosine_kernel(data, n_components=p_comp).real
+        elif kernel_type == "iquad":
+            processed_data = self.compute_iquad_kernel(data, gamma=gamma, degree=p_degree, n_components=p_comp).real
+        elif kernel_type == "cauchy":
+            processed_data = self.compute_cauchy_kernel(data, gamma=gamma, n_components=p_comp).real
+        elif kernel_type == "fourier":
+            processed_data = self.compute_fourier_kernel(data, gamma=gamma, n_components=p_comp).real
+        else:
+            processed_data = self.compute_pca_kernel(data, n_components=p_comp).real
+        return processed_data
+    def compute_eigens(self, matrix, n_components=4):
+        eigenvalues, eigenvectors = np.linalg.eig(matrix)
+        sorted_indices = eigenvalues.argsort()[::-1]
+        eigenvalues = eigenvalues[sorted_indices].real
+        print("---------------- eigenvalues: ----------------")
+        print(n_components, eigenvalues.shape)
+        print(eigenvalues[:n_components])
+        print('---------------------------------------------')
+        eigenvectors = eigenvectors[:, sorted_indices]
+        selected_eigenvectors = eigenvectors[:, :n_components]
+        return selected_eigenvectors
+    def center_kernel(self, kernel_matrix):
+        N = kernel_matrix.shape[0]
+        ones_matrix = np.ones((N, N)) / N
+        centered_kernel = (
+            kernel_matrix - ones_matrix.dot(kernel_matrix) - kernel_matrix.dot(ones_matrix) + ones_matrix.dot(kernel_matrix).dot(ones_matrix)
+        )
+        return centered_kernel
+    def compute_pca_kernel(self, data, n_components=2):
+        (n, d) = data.shape
+        data -= np.mean(data, axis=0)
+        covariance_matrix = np.cov(data.T)
+        eigenvectors = self.compute_eigens(covariance_matrix, n_components=n_components)
+        processed_data = np.dot(data, eigenvectors)
+        return processed_data
+    def compute_poly_kernel(self, data, gamma=1, degree=2, n_components=2):
+        data -= np.mean(data, axis=0)
+        kernel_matrix = (gamma * data.dot(data.T) + 1) ** degree
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_rbf_kernel(self, data, gamma=.1, n_components=2):
+        data -= np.mean(data, axis=0)
+        squared_distances_matrix = np.sum((data[None, :] - data[:, None]) ** 2, axis=-1)
+        kernel_matrix = np.exp(-gamma * squared_distances_matrix)
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_cosine_kernel(self, data, n_components=2):
+        data -= np.mean(data, axis=0)
+        norms_squared = ((data ** 2).sum(axis=1)).reshape(data.shape[0], 1)
+        kernel_matrix = data.dot(data.T) / norms_squared
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_iquad_kernel(self, data, gamma=1, degree=1, n_components=2):
+        data -= np.mean(data, axis=0)
+        squared_distances = np.sum((data[None, :] - data[:, None]) ** 2, axis=-1)
+        kernel_matrix = 1. / (squared_distances + gamma ** 2) ** degree
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_cauchy_kernel(self, data, gamma=.2, n_components=2):
+        data -= np.mean(data, axis=0)
+        squared_distances = np.sum((data[None, :] - data[:, None]) ** 2, axis=-1)
+        kernel_matrix = 1 / (1 + squared_distances * gamma)
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_anova_kernel(self, data, gamma=.01, degree=1, n_components=2):
+        data -= np.mean(data, axis=0)
+        kernel_matrix = np.zeros((data.shape[0], data.shape[0]))
+        for d in range(data.shape[1]):
+            data_d = data[:, d].reshape(-1, 1)
+            kernel_matrix += np.exp(-gamma * (data_d - data_d.T) ** 2) ** degree
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)
+    def compute_fourier_kernel(self, data, gamma=.1, n_components=2):
+        data -= np.mean(data, axis=0)
+        kernel_matrix = np.ones((data.shape[0], data.shape[0]))
+        gamma = min(.1, gamma)
+        for d in range(data.shape[1]):
+            data_d = data[:, d].reshape(-1, 1)
+            kernel_matrix *= (1 - gamma ** 2) / (2 * (1 - 2 * gamma * np.cos(data_d - data_d.T)) + gamma ** 2)
+        centered_kernel = self.center_kernel(kernel_matrix)
+        return self.compute_eigens(centered_kernel, n_components=n_components)

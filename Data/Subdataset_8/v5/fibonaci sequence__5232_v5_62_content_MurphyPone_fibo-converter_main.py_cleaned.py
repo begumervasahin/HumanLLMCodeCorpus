@@ -1,0 +1,43 @@
+import sys
+import time
+from visualize import plot_error, plot
+KM_PER_MI = 1.60934
+MI_PER_KM = 0.621371
+def fib(n):
+    if n <= 0:
+        print("Invalid input")
+    elif n == 1:
+        return 0
+    elif n == 2:
+        return 1
+    else:
+        return fib(n - 1) + fib(n - 2)
+def load_fib_sequence(file_path='fib.csv', max_count=1000):
+    fib_sequence = [0]
+    with open(file_path) as fp:
+        count = 1
+        for line in fp:
+            if count >= max_count:
+                break
+            fib_sequence.append(float(line.strip()))
+            count += 1
+    return fib_sequence
+def km_to_mi(km):
+    return km * MI_PER_KM
+def mi_to_km(mi):
+    return mi * KM_PER_MI
+def calculate_loss(n, fib_sequence):
+    mi = fib_sequence[n]
+    fib_km = fib_sequence[n + 1]
+    actual_km = mi_to_km(mi)
+    return abs((actual_km - fib_km) / actual_km) * 100
+def visualize_fib_sequence(fib_sequence):
+    for i in range(1, len(fib_sequence)):
+        error = calculate_loss(i, fib_sequence)
+        plot_error(i, error, 'Error', 'Fibonacci Index')
+        plot(i, fib_sequence[i], 'Fibonacci Index', 'Distance', 'mi', '')
+        plot(i, fib_sequence[i + 1], 'Fibonacci Index', 'Distance', 'km', '')
+        time.sleep(0.2)
+if __name__ == "__main__":
+    fib_sequence = load_fib_sequence()
+    visualize_fib_sequence(fib_sequence)

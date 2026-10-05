@@ -1,0 +1,48 @@
+import json
+import sys
+from Process_TianChi_Main import analysis_Time
+from utils import *
+with open('all_user_id.txt', 'r') as f:
+    users = [line.strip() for line in f.readlines()]
+def process_devices_info(all_user_info):
+    devices = set()
+    total_users = len(all_user_info)
+    for count, user_info in enumerate(all_user_info, 1):
+        percentage = 100 * count / total_users
+        print(f'\r>> Processing Users... {percentage:.2f}%', end='', flush=True)
+        for time_info in user_info["Reach_Time"].values():
+            devices.update(time_info.keys())
+    print('\nTotal number of devices:', len(devices))
+def process_time_info(user_time):
+    total_intervals = sum(len(analysis_Time(user, info)[1]) for user, info in user_time.items())
+    print('\nTotal time intervals:', total_intervals)
+def process_features_info(all_user_info):
+    total_users = len(all_user_info)
+    all_keyword = sum(len(info["Keyword"]) for user_info in all_user_info for time_info in user_info["Reach_Time"].values() for info in time_info.values())
+    all_IP = sum(len(info["Device_IP"]) for user_info in all_user_info for time_info in user_info["Reach_Time"].values() for info in time_info.values())
+    avg_keyword = all_keyword / total_users
+    avg_IP = all_IP / total_users
+    print('\nAverage number of keywords per user:', avg_keyword)
+    print('Average number of IP addresses per user:', avg_IP)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python script.py [choice]")
+    else:
+        choice = sys.argv[1]
+        if choice == '0':
+            print('Processing devices group...')
+            with open('all_user_info.json') as f:
+                all_user_info = json.load(f)
+                process_devices_info(all_user_info)
+        elif choice == '1':
+            print('Processing time group...')
+            with open('user_time_info.json') as f:
+                user_time = json.load(f)
+                process_time_info(user_time)
+        elif choice == '2':
+            print('Processing features...')
+            with open('all_user_info.json') as f:
+                all_user_info = json.load(f)
+                process_features_info(all_user_info)
+        else:
+            print('Invalid choice!')

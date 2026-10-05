@@ -1,0 +1,86 @@
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+
+def start():
+    # Initialize Chrome webdriver
+    browser = webdriver.Chrome('chromedriver.exe')
+    
+    # URL of the main page
+    url = 'http://www.footballsquads.co.uk/ger/2017-2018/'
+    
+    # Subpage tag
+    tag = 'gerbun.htm'
+    
+    # Get the main page
+    browser.get(url + tag)
+    
+    # Get the HTML of the main page
+    html = browser.page_source
+    
+    # Create a BeautifulSoup object for parsing the HTML
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # Find the div with id "main"
+    divTag = soup.find_all("div", {"id": "main"})
+    
+    # Find all the h5 tags within the div with id "main"
+    h5Tag = divTag[0].find_all('h5')
+    
+    p_list = []  # List to store player information
+    
+    # Loop through each team
+    for i in h5Tag:
+        team = i.text  # Get the team name
+        
+        # Get the URL of the team's page
+        team_url = url + i.find("a").get("href")
+        
+        # Open the team's page
+        browser.get(team_url)
+        
+        # Get the HTML of the team's page
+        html = browser.page_source
+        
+        # Create a BeautifulSoup object for parsing the HTML
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Find the div with id "main"
+        divTag = soup.find_all("div", {"id": "main"})
+        
+        # Find all the tables within the div with id "main"
+        tableTag = divTag[0].find_all('table')
+        
+        # Find all the rows within the first table
+        trTag = tableTag[0].find('tbody').find_all('tr')
+        
+        # Loop through each row starting from index 1 (excluding header row)
+        for j in range(1, len(trTag)):
+            temp = []  # Temporary list to store player information
+            
+            # Find all the columns within the row
+            tdTag = trTag[j].find_all('td')
+            
+            try:
+                # Check if the second column has text (ignoring empty rows)
+                if tdTag[1].text:
+                    temp.append(tdTag[1].text)  # Player name
+                    temp.append(tdTag[2].text)  # Player position
+                    temp.append(tdTag[3].text)  # Player date of birth
+                    temp.append(team)  # Team name
+                    p_list.append(temp)  # Append the player information to the list
+            except:
+                break  # Break the loop if an exception occurs
+        
+    # Close the webdriver
+    browser.quit()
+    
+    # Return the list of player information
+    return p_list
+
+# Call the start function to execute the script
+player_list = start()
+
+# Print the player list
+for player_info in player_list:
+    print(player_info)

@@ -1,0 +1,43 @@
+from sklearn import svm
+import numpy as np
+from sklearn import decomposition
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from PIL import Image
+import os
+
+# Load data
+Datam = []
+dirs = os.listdir("/home/hosni/Downloads/faces/")
+for ligne in dirs:
+    if '.pgm' not in ligne:
+        im = Image.open("/home/hosni/Downloads/faces/" + ligne)
+        data = list(im.getdata())
+        trans = np.transpose(data)
+        Datam.append(trans)
+
+# Generate labels
+y = []
+j = 0
+for i in range(0, 15):
+    for i1 in range(0, 11):
+        y.append(j)
+    j = j + 1
+
+# PCA decomposition
+pca = decomposition.PCA(n_components=165)
+x_pca = pca.fit_transform(Datam)
+
+# Split data into train and test sets
+x_train, x_test, y_train, y_test = train_test_split(x_pca, y, test_size=0.33)
+
+# SVM classifier
+clf = svm.SVC(kernel='linear', C=1, decision_function_shape='ovr')
+clf.fit(x_train, y_train)
+
+# Predictions
+predicted = clf.predict(x_test)
+
+# Calculate accuracy
+acc = accuracy_score(y_test, predicted)
+print("Accuracy:", acc)

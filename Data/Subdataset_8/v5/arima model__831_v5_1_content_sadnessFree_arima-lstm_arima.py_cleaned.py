@@ -1,0 +1,41 @@
+import math
+import matplotlib.pyplot as plt
+from pandas import read_csv, datetime
+from statsmodels.tsa.arima_model import ARIMA
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+def parse_datetime(x):
+    return datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
+def mean_absolute_percentage_error(y_true, y_pred):
+    sum_error = sum(math.fabs(pred - true) / true for true, pred in zip(y_true, y_pred))
+    return sum_error / len(y_true)
+dataset_path = '/Users/daihanru/Desktop/arima-lstm/DataSet/FEB15-2.csv'
+series = read_csv(dataset_path, usecols=[2, 3], header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parse_datetime)
+X = series.values.astype('float32')
+start_index = 2000
+train_size = 1100
+test_size = 500
+line_test_size = 300
+windows_size = 10
+test_start = line_test_size + windows_size - 1
+arima_train, arima_test = X[start_index:start_index + train_size], X[start_index + train_size:start_index + train_size + test_size]
+history = list(arima_train)
+predictions = []
+for t in range(len(arima_test)):
+    model = ARIMA(history, order=(4, 1, 0))
+    model_fit = model.fit(disp=0)
+    yhat = model_fit.forecast()[0]
+    predictions.append(yhat)
+    obs = arima_test[t]
+    history.append(obs)
+    print(f'Predicted: {yhat}, Expected: {obs}')
+error = mean_squared_error(arima_test, predictions)
+mae = mean_absolute_error(arima_test, predictions)
+mape = mean_absolute_percentage_error(arima_test, predictions)
+print(f'ARIMA Test - MAE: {mae:.3f}, MSE: {error:.3f}, RMSE: {math.sqrt(error):.3f}, MAPE: {mape:.3f}')
+plt.plot(arima_test[test_start:], '-', label="Real Flow")
+plt.plot(predictions[test_start:], '--', color='red', label="ARIMA")
+plt.legend(loc='upper right')
+plt.xlabel("Period (15-minute intervals)")
+plt.ylabel("Volume (Vehicle/Period)")
+plt.ylim(0, 800)
+plt.show(figsize=(12, 6))

@@ -1,0 +1,98 @@
+class Node:
+    def __init__(self, value=None, next_node=None):
+        self.value = value
+        self.next_node = next_node
+class LinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+    def insert(self, value, position):
+        new_node = Node(value)
+        new_node.next_node = position.next_node
+        position.next_node = new_node
+    def append(self, value):
+        new_node = Node(value)
+        if not self.head:
+            self.head = new_node
+            self.tail = new_node
+        else:
+            self.tail.next_node = new_node
+            self.tail = new_node
+    def search(self, value):
+        current = self.head
+        while current and current.value != value:
+            current = current.next_node
+        return current
+    def print_list(self):
+        current = self.head
+        while current:
+            print(current.value)
+            current = current.next_node
+    def find_position(self, value):
+        if not self.head:
+            new_node = Node(value)
+            self.head = new_node
+            self.tail = new_node
+        else:
+            current = self.head
+            if current.value.cpu > value.cpu:
+                new_node = Node(value)
+                new_node.next_node = current
+                self.head = new_node
+                return
+            while current.next_node and current.next_node.value.cpu < value.cpu:
+                current = current.next_node
+            new_node = Node(value)
+            if not current.next_node:
+                current.next_node = new_node
+                self.tail = new_node
+                return
+            temp = current.next_node
+            current.next_node = new_node
+            new_node.next_node = temp
+    def reverse(self):
+        previous = None
+        new = None
+        current = self.head.next_node
+        while current:
+            new = current.next_node
+            current.next_node = previous
+            previous = current
+            current = new
+        self.head.next_node = previous
+        self.print_list()
+    def insert_head(self, value):
+        new_node = Node(value)
+        if not self.head:
+            self.head = new_node
+            self.tail = new_node
+        else:
+            new_node.next_node = self.head
+            self.head = new_node
+    def remove(self):
+        if not self.head:
+            print("List is empty")
+            return
+        if not self.head.next_node:
+            temp = self.head
+            self.head = None
+            self.tail = None
+            return temp
+        else:
+            temp = self.head
+            self.head = self.head.next_node
+            temp.next_node = None
+            return temp
+def main():
+    linked_list = LinkedList()
+    linked_list.insert_head(1)
+    linked_list.find_position(3)
+    linked_list.print_list()
+    print("Tail:", linked_list.tail.value)
+    linked_list.remove()
+    linked_list.remove()
+    linked_list.remove()
+    linked_list.remove()
+    linked_list.remove()
+if __name__ == "__main__":
+    main()

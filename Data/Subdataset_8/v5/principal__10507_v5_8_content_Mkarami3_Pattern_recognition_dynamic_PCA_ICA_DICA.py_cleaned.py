@@ -1,0 +1,187 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import hilbert, welch
+from scipy.linalg import fractional_matrix_power
+from visual import Plot_press
+class ICA:
+    def __init__(self, sample, num_modes, fun_type):
+        self.sample = sample
+        self.num_modes = num_modes
+        self.func_dict = {}
+        self.func_add(lambda x: x)
+        self.PCA_modes = []
+        self.PCA_eigen = []
+        self.ICA_modes = []
+        self.fun_type = fun_type
+    def func_add(self, func):
+        '''
+        Add a function to the class dictionary
+        '''
+        self.func_dict['id'] = func
+    def pre_process(self, signal):
+        '''
+        Remove the mean component from the sample and return the fluctuation component
+        '''
+        signal_mean = np.mean(signal, axis=0).reshape(1, -1)
+        signal_proc = signal - np.matmul(np.ones(signal.shape[0]).reshape(-1, 1), signal_mean)
+        return signal_proc
+    def PCA(self, signal_proc):
+        '''
+        Perform Principal Component Analysis (PCA) to reduce the dimensionality of the data
+        '''
+        signal_cov = np.dot(signal_proc.T.conj(), signal_proc) / len(signal_proc)
+        u, s, vh = np.linalg.svd(signal_cov, full_matrices=True)
+        self.PCA_modes = u[:, :self.num_modes]
+        self.PCA_eigen = s[:self.num_modes]
+        return self.PCA_modes, self.PCA_eigen
+    def Whitening(self, signal):
+        '''
+        Perform whitening as a pre-processing step
+        '''
+        self.PCA(signal)
+        PCA_eigen_diag = np.diag(self.PCA_eigen)
+        G = fractional_matrix_power(PCA_eigen_diag, -0.5)
+        G1 = np.matmul(G, self.PCA_modes.T.conj())
+        sample_whitened = np.matmul(G1, signal.T.conj())
+        return sample_whitened
+    def norm(self, M):
+        '''
+        Apply normalization to the matrix
+        '''
+        M_norm = M / np.linalg.norm(M, axis=1)[:, np.newaxis]
+        return M_norm
+    def fast_ICA(self, sample_whitened):
+        '''
+        Run the FastICA algorithm to compute the Independent Component Analysis (ICA) modes
+        '''
+        n = sample_whitened.shape[1]
+        r = self.num_modes
+        W = np.random.rand(r, sample_whitened.shape[0])
+        W = self.norm(W)
+        counter = 0
+        diff = np.Inf
+        Tolerance = 1e-6
+        counter_max = 300
+        while (diff > Tolerance) and (counter < counter_max):
+            counter += 1
+            W_new = W
+            y = np.matmul(W_new.T.conj(), sample_whitened)
+            if self.fun_type == 1:
+                G = y * np.exp(-np.power(y, 2) / 2)
+                G_deriv = (1 - np.power(y, 2)) * np.exp(-np.power(y, 2) / 2)
+            elif self.fun_type == 2:
+                G = np.power(y, 3)
+                G_deriv = 3 * np.power(y, 2)
+            else:
+                G = np.tanh(y)
+                G_deriv = 1 - np.power(np.tanh(y), 2)
+            W_1 = np.matmul(G, sample_whitened.T.conj()) / n
+            W_2 = np.multiply(G_deriv.mean(axis=1).reshape(-1, 1), W)
+            W = W_1 - W_2
+            W = self.norm(W)
+            u, s, vh = np.linalg.svd(W, compute_uv=True)
+            s_inv = np.diag(np.reciprocal(s))
+            W1 = np.matmul(u, s_inv)
+            W2 = np.matmul(u.T.conj(), W)
+            W = np.matmul(W1, W2)
+            diff = np.max(1 - np.abs(np.sum(np.multiply(W, W_new).conj(), axis=1)))
+        print("Residual convergence = ", diff)
+        dummy = fractional_matrix_power(np.diag(self.PCA_eigen), 0.5)
+        self.ICA_modes = np.matmul(np.matmul(self.PCA_modes, dummy), W)
+        return self.ICA_modes
+    def independent_comp(self):
+        '''
+        Compute the time coefficients or independent components of each mode
+        '''
+        p1 = self.pre_process(self.sample)
+        a = np.array(self.ICA_modes.T.conj())
+        b = np.array(p1.T.conj())
+        x = np.matmul(a, b)
+        return x
+    def PSD_IC(self):
+        '''
+        Plot the frequency transform of time coefficients of modes
+        '''
+        IC = self.independent_comp()
+        sampling_frequency = 700
+        Nfft = 2 ** 13
+        spec_array = []
+        for i in range(self.num_modes):
+            freq, spec = welch(IC[i, :], nperseg=Nfft, nfft=Nfft, noverlap=Nfft
+            spec_array.append(spec)
+        spec_array = np.array(spec_array)
+        leg_list = ['Mode %i' % (i + 1) for i in range(self.num_modes)]
+        fig, ax = plt.subplots()
+        for i in range(self.num_modes):
+            ax.plot(freq, spec_array[i, :], label=leg_list[i])
+            ax.set_xlim(0, 10)
+            ax.set_xlabel('Frequency (Hz)')
+            ax.set_ylabel('Spectral Density (1/Hz)')
+            ax.legend(loc='best')
+    def execute(self):
+        '''
+        Execute PCA and return PCA modes and their corresponding eigenvalues
+        '''
+        signal_proc = self.pre_process(self.sample)
+        signal_whitened = self.Whitening(signal_proc)
+        self.fast_ICA(signal_whitened)
+    def visualize(self):
+        '''
+        Visualize PCA modes
+        '''
+        self.func_add(Plot_press)
+        for i in range(self.num_modes):
+            self.func_dict['id'](self.ICA_modes[:, i], ['red', 'white', 'blue'], txt=True, num=i + 1)
+        self.PSD_IC()
+class Dynamic_ICA(ICA):
+    def __init__(self, sample, num_modes, fun_type, f1, f2, sampling_freq):
+        super().__init__(sample, num_modes, fun_type)
+        self.f1 = f1
+        self.f2 = f2
+        self.fs = sampling_freq
+        self.DICA_modes = []
+    def bandpass_filter(self, signal):
+        '''
+        Remove frequencies outside the specified bandpass range
+        '''
+        N = len(signal)
+        dF = self.fs / N
+        f = np.linspace(start=-self.fs / 2, stop=self.fs / 2 - dF, num=self.sample.shape[0]).T
+        Boolean = ((self.f1 < abs(f)) & (abs(f) < self.f2)).reshape(-1, 1)
+        FFT = np.fft.fft(signal, axis=0)
+        FFT_shift = np.fft.fftshift(FFT) / N
+        sp = np.multiply(Boolean.astype(np.int), FFT_shift)
+        FFT_shift_inverse = np.fft.ifftshift(sp)
+        FFT_inverse = np.fft.ifft(FFT_shift_inverse, axis=0)
+        sample_filtered = np.real(FFT_inverse)
+        return sample_filtered
+    def hilbert_trans(self, signal):
+        '''
+        Generate analytic signal using Hilbert transform to remove negative frequencies
+        '''
+        Analytic_signal = hilbert(signal, axis=0)
+        return Analytic_signal
+    def execute(self):
+        '''
+        Execute Dynamic ICA
+        '''
+        signal_pre_proc = self.pre_process(self.sample)
+        signal_filtered = self.bandpass_filter(signal_pre_proc)
+        analytic_signal = self.hilbert_trans(signal_filtered)
+        signal_whiten = self.Whitening(analytic_signal)
+        self.DICA_modes = self.fast_ICA(signal_whiten)
+    def Visualize(self, mode_no):
+        '''
+        Visualize the animated movie of PCA mode
+        '''
+        D_ICA = self.DICA_modes[:, mode_no]
+        Z = D_ICA.reshape(-1, 1)
+        phase_shift = np.exp(1j * np.linspace(0, 2 * np.pi, 100)).reshape(1, -1)
+        ZZ = np.real(Z * phase_shift)
+        self.func_add(Plot_press)
+        plt.ion()
+        for i in range(100):
+            press = ZZ[:, i]
+            self.func_dict['id'](press, ['red', 'white', 'blue'], txt=False, num=1)
+            plt.pause(0.1)
+            plt.clf()

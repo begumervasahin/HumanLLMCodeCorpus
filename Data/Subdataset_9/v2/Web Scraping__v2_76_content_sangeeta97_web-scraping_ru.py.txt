@@ -1,0 +1,56 @@
+import pandas as pd
+import numpy as np
+import multiprocessing as mp
+from multiprocessing.dummy import Pool as ThreadPool
+from requests.exceptions import ConnectionError
+from warnings import warn
+from time import sleep
+from bs4 import BeautifulSoup
+import requests
+
+# Read the input Excel file
+df_urls = pd.read_excel('eunew1.xlsx')
+
+# Define a function to scrape data from a single URL
+def scrape_url(url):
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            response = requests.get(url, verify=False)
+            response.raise_for_status()  # Raise HTTPError for bad status codes
+            break
+        except ConnectionError:
+            if attempt < max_attempts - 1:
+                sleep(2)  # Wait before retrying
+            else:
+                raise  # If all attempts fail, raise the exception
+
+    # If the response is successful, parse the HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    data = [td.text.strip().splitlines() for td in soup.find_all("td", "third", limit=8)]
+    return data
+
+# Number of threads to use for parallel processing
+num_threads = mp.cpu_count()
+
+# Use ThreadPool for parallel processing
+pool = ThreadPool(num_threads)
+
+# Extract URLs from DataFrame
+url_list = df_urls['url'].tolist()
+
+# Scrape data from URLs in parallel
+scraped_data = pool.map(scrape_url, url_list)
+
+# Close the pool of threads
+pool.close()
+pool.join()
+
+# Create DataFrame from scraped data
+df_scraped = pd.DataFrame(np.array(scraped_data), columns=['all'])
+
+# Merge with original DataFrame
+df_result = pd.concat([df_urls, df_scraped], axis=1)
+
+# Save the results to Excel
+df_result.to_excel('results_oct.xlsx', index=False)

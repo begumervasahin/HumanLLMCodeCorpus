@@ -1,0 +1,61 @@
+from mpi4py import MPI
+import numpy as np
+import time
+
+# Function to perform bubble sort on a list of numbers
+def bubble_sort(nums):
+    """
+    Sorts a list of numbers using the bubble sort algorithm.
+
+    Args:
+        nums (list): The list of numbers to be sorted.
+    """
+    swapped = True
+    while swapped:
+        swapped = False
+        for i in range(len(nums) - 1):
+            if nums[i] > nums[i + 1]:
+                nums[i], nums[i + 1] = nums[i + 1], nums[i]
+                swapped = True
+
+# Initialize MPI variables
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+
+# Master process
+if rank == 0:
+    # Get input for array size
+    array_size = input("Please enter array size: ")
+    # Generate a list of numbers and shuffle it
+    numbers = np.arange(int(array_size))
+    np.random.shuffle(numbers)
+    print("Generated list of size " + str(array_size) + " is: " + str(numbers))
+    # Split the list into chunks for each process
+    chunks = np.array_split(numbers, size)
+else:
+    chunks = None
+
+# Scatter chunks of data to each process
+start_time = time.time()
+chunk = comm.scatter(chunks, root=0)
+print("Process " + str(rank) + " has this chunk of data: " + str(chunk))
+# Perform bubble sort on the chunk
+bubble_sort(chunk)
+# Gather sorted chunks from all processes
+sorted_arrays = comm.gather(chunk, root=0)
+
+# Master process gathers sorted chunks and merges them into a single sorted array
+if rank == 0:
+    iterator_numbers = np.zeros((len(sorted_arrays),), dtype=int)
+    sorted_array = []
+    for my_index in range(0, int(array_size)):
+        # Create an iterator to track the current position in each sorted chunk
+        iterator = [(i, (99999999 if iterator_numbers[i] >= len(sorted_arrays[i]) else sorted_arrays[i][iterator_numbers[i]])) for i in range(0, len(sorted_arrays))]
+        # Find the minimum element from all iterators
+        res = min(iterator, key=lambda x: x[1])
+        iterator_numbers[res[0]] = iterator_numbers[res[0]] + 1
+        sorted_array.append(res[1])
+        iterator = []
+    print("\n\n Sorted Array: " + str(sorted_array))
+    print("\n\n Execution Time --- %s seconds ---" % (time.time() - start_time))

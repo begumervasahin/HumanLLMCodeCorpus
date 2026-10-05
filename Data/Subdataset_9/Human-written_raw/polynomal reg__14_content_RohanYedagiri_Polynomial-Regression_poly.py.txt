@@ -1,0 +1,32 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+dataset = pd.read_csv('Position_Salaries.csv')
+'''
+Level column is like the encoded version of Position column, so we don't need to consider
+Position
+'''
+X = dataset.drop(['Position','Salary'],axis=1)
+y = dataset.Salary
+from sklearn.linear_model import LinearRegression
+linreg = LinearRegression()
+linreg.fit(X,y)
+from sklearn.preprocessing import PolynomialFeatures
+polyreg = PolynomialFeatures(degree=4)
+X_poly = polyreg.fit_transform(X)
+X_poly = pd.DataFrame(X_poly)
+linreg2 = LinearRegression()
+linreg2.fit(X_poly,y)
+plt.scatter(X,y,color='red')
+plt.plot(X, linreg.predict(X),color='blue')
+plt.title('linear regression 1 predictions')
+plt.xlabel('Position level')
+plt.ylabel('salaries')
+plt.show()
+plt.scatter(X,y,color='red')
+plt.plot(X, linreg2.predict(X_poly),color='blue')
+plt.title('linear regression 1 predictions')
+plt.xlabel('Position level')
+plt.ylabel('salaries')
+plt.show()
+linreg.predict(6.5)
+linreg2.predict(polyreg.fit_transform(6.5))

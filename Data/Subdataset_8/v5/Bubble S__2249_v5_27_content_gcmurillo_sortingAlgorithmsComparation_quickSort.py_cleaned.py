@@ -1,0 +1,50 @@
+from time import time
+import configuraciones
+def quick_sort(alist):
+    quick_sort_helper(alist, 0, len(alist) - 1)
+def quick_sort_helper(alist, first, last):
+    if first < last:
+        split_point = partition(alist, first, last)
+        quick_sort_helper(alist, first, split_point - 1)
+        quick_sort_helper(alist, split_point + 1, last)
+def partition(alist, first, last):
+    pivot_value = alist[first]
+    left_mark = first + 1
+    right_mark = last
+    done = False
+    while not done:
+        while left_mark <= right_mark and alist[left_mark] <= pivot_value:
+            left_mark += 1
+        while alist[right_mark] >= pivot_value and right_mark >= left_mark:
+            right_mark -= 1
+        if right_mark < left_mark:
+            done = True
+        else:
+            alist[left_mark], alist[right_mark] = alist[right_mark], alist[left_mark]
+    alist[first], alist[right_mark] = alist[right_mark], alist[first]
+    return right_mark
+def execute_sorting_and_measure_time(configurations, file_prefix):
+    total_time = 0
+    with open('tiempoQuick.txt', 'a') as archivo_tiempo:
+        for conf_name, conf_func in configurations:
+            arreglo = conf_func('QuickSort')
+            with open(f'ordenado{file_prefix}{conf_name}.txt', 'a') as archivo:
+                conf_total = 0
+                for i in arreglo:
+                    start_time = time()
+                    quick_sort(i)
+                    elapsed_time = time() - start_time
+                    archivo.write(str(i) + '\n')
+                    conf_total += elapsed_time
+                archivo_tiempo.write(f'{conf_name}: {conf_total}\n')
+                total_time += conf_total
+        archivo_tiempo.write(f'Total Execution Time: {total_time}\n')
+configurations = [
+    ('A', configuraciones.confA),
+    ('B', configuraciones.confB),
+    ('C', configuraciones.confC),
+    ('D', configuraciones.confD),
+    ('E', configuraciones.confE),
+    ('F', configuraciones.confF)
+]
+execute_sorting_and_measure_time(configurations, 'QuickSort')

@@ -1,0 +1,111 @@
+import os
+from flask import Flask, render_template, request
+from Services import MainServices
+import MainImplementation
+from PIL import Image
+import SolutionImplementation
+from werkzeug.utils import secure_filename
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = '/Users/Nikita/PycharmProjects/FYPPuzzle/static/pics/'
+app.config['ALLOWED_EXTENSIONS'] = set(['png', 'tiff'])
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
+trained = 0
+correctWords = ['purple', 'black', 'brown', 'pink', 'yellow', 'orange', 'red', 'blue', 'green', 'white']
+@app.route('/')
+def index():
+    MainServices.clean_dir()
+    return render_template('index.html')
+filename = None
+@app.route('/upload', methods=['POST'])
+def upload():
+    global filename
+    MainServices.clean_dir()
+    filename = None
+    file = request.files['file']
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    print("File uploaded")
+    MainImplementation.cropImage()
+    print("Filename:", filename)
+    return render_template('retrieveM.html', message='', displayVal=False, originalFile=filename)
+detected = []
+@app.route('/retrieve', methods=['POST'])
+def getMsg():
+    global detected
+    charsDetected = MainImplementation.neuralNetTrainDetect()
+    k = 0
+    for i in range(15):
+        new = []
+        for j in range(15):
+            new.append(charsDetected[k])
+            k = k + 1
+        detected.append(new)
+        print(new)
+        print("")
+        new = []
+    print(detected)
+    SolutionImplementation.dictionaryProcessing()
+    SolutionImplementation.getCombinationWords(detected)
+    SolutionImplementation.initializeTrie()
+    return render_template("showDetectedGrid.html", detected=detected, grid=False, originalFile=filename, matchedWords=[], matchedMeaning=[], matchedDirection=[], yesNoList=[])
+@app.route('/solutionL', methods=['POST'])
+def solutionL():
+    global detected
+    global filename
+    print("Using Linear Search")
+    matchedWords = []
+    matchedMeaning = []
+    matchedDirection = []
+    matchedWords, matchedMeaning, matchedDirection = SolutionImplementation.LinearSearchImplementation()
+    print("Using Linear", len(matchedWords))
+    global correctWords
+    yesNoList = []
+    for item in matchedWords:
+        if item not in correctWords:
+            yesNoList.append("NO")
+        else:
+            yesNoList.append("YES")
+    return render_template("showDetectedGrid.html", detected=detected, grid=True, originalFile=filename, matchedWords=enumerate(matchedWords), matchedMeaning=matchedMeaning, matchedDirection=matchedDirection, yesNoList=yesNoList)
+@app.route('/solutionB', methods=['POST'])
+def solutionB():
+    global detected
+    global filename
+    print("Using Binary Search")
+    matchedWords = []
+    matchedMeaning = []
+    matchedDirection = []
+    matchedWords, matchedMeaning, matchedDirection = SolutionImplementation.binarySearchImplementation()
+    global correctWords
+    yesNoList = []
+    for item in matchedWords:
+        if item not in correctWords:
+            yesNoList.append("NO")
+        else:
+            yesNoList.append("YES")
+    print("Using Binary", len(matchedWords))
+    return render_template("showDetectedGrid.html", detected=detected, grid=True, matchedWords=enumerate(matchedWords), matchedMeaning=matchedMeaning, matchedDirection=matchedDirection, yesNoList=yesNoList)
+@app.route('/solutionT', methods=['POST'])
+def solutionT():
+    global detected
+    global filename
+    print("Using Trie Search")
+    matchedWords = []
+    matchedMeaning = []
+    matchedDirection = []
+    matchedWords, matchedMeaning, matchedDirection = SolutionImplementation.TriesImplementation()
+    print("Using Trie", len(matchedWords))
+    global correctWords
+    yesNoList = []
+    for item in matchedWords:
+        if item not in correctWords:
+            yesNoList.append("NO")
+        else:
+            yesNoList.append("YES")
+    return render_template("showDetectedGrid.html", detected=detected, grid=True, matchedWords=enumerate(matchedWords), matchedMeaning=matchedMeaning, matchedDirection=matchedDirection, yesNoList=yesNoList)
+@app.errorhandler(Exception)
+def all_exception_handler(error):
+    return render_template('error.html')
+if __name__ == '__main__':
+    app.run(debug=True)

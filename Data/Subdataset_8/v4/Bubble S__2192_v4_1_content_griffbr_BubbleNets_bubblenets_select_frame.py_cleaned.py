@@ -1,0 +1,105 @@
+import numpy as np
+import cv2
+import os
+import glob
+import sys
+from methods.preprocess.grabCutClass import GrabCutter
+from methods.preprocess.videoProcessor import VideoProcessor
+from methods.annotate_suggest.annotation_suggester import annotation_suggester
+from methods.preprocess.color_hist_frame_select import color_hist_frame_select
+from methods.preprocess.ResNet_preprocess import resnet_process_data_dir
+from methods.preprocess.BubbleNets_frame_select import BubbleNets_sort
+from methods.BubbleNets import bn_utils
+user_scale = True
+user_select = True
+def get_user_annotation(videoDir):
+    videoName = os.path.basename(videoDir)
+    print(f"\n\nGenerating user-guided annotation for {videoName}.\n")
+    annotationDir = os.path.join(videoDir, 'usrAnnotate')
+    if not os.path.isdir(annotationDir):
+        os.makedirs(annotationDir)
+    imageDir = os.path.join(videoDir, 'src')
+    imageFiles = glob.glob(os.path.join(imageDir,'*'))
+    imageFiles.sort()
+    ant_idx, ant_file = read_annotation_list(os.path.join(videoDir,'frame_selection','all.txt'))
+    suggester = annotation_suggester(videoDir)
+    userAnnotating = True
+    while userAnnotating:
+        antImageFiles = glob.glob(os.path.join(annotationDir,'*'))
+        nAntImgs = len(antImageFiles)
+        print(f"Currently {nAntImgs} annotation image(s):")
+        for i in range(0, nAntImgs):
+            ant_name = os.path.basename(antImageFiles[i])
+            print(ant_name)
+            if ant_name in ant_file:
+                del ant_file[ant_file.index(ant_name)]
+        print('Suggested annotation frames remaining:')
+        print(ant_file)
+        response = input('Annotate another image? (y or n)\n')
+        if response.lower() not in {'y', 'yes'}:
+            userAnnotating = False
+        if userAnnotating:
+            while True:
+                if user_select:
+                    annotationImageIdx = int(input(f'What is preferred annotation image index? ({os.path.basename(imageFiles[0])}-{os.path.basename(imageFiles[-1])} possible)\n'))
+                    annotationImageIdx -= suggester.manip_start_idx
+                else:
+                    annotationImageIdx = ant_idx[0]
+                try:
+                    imageDir = imageFiles[int(annotationImageIdx)]
+                    annotationImage = cv2.imread(imageDir)
+                    windowx = 100
+                    windowy = 100
+                    if user_scale:
+                        cv2.imshow('Annotation Image', annotationImage)
+                        cv2.moveWindow('Annotation Image', windowx, windowy)
+                        cv2.waitKey(20)
+                        scale = float(input('What is preferred scale? (e.g., 1, 2, or 0.5)\n'))
+                    else:
+                        scale = 1
+                    annotationImageScaled = cv2.resize(annotationImage, (0,0), fx=scale, fy=scale)
+                    cv2.imshow('Scaled Annotation Image', annotationImageScaled)
+                    cv2.moveWindow('Scaled Annotation Image', windowx, windowy)
+                    cv2.waitKey(20)
+                    response = input('Is annotation frame acceptable? (y or n)\n')
+                    if response.lower() in {'y', 'yes'}:
+                        cv2.destroyAllWindows()
+                        break
+                except:
+                    print(f'Image {annotationImageIdx} does not exist!')
+            outputMaskDir = os.path.join(annotationDir, os.path.basename(imageDir).split('.')[0] + '.png')
+            GrabCutter(imageDir, outputMaskDir, windowx, windowy, scale)
+            save_extra_image_copy(imageDir, videoDir, nAntImgs)
+def save_extra_image_copy(image_dir, video_dir, annotation_frame_num):
+    print('Saving extra copy of annotation image for development.')
+    extra_image_dir = os.path.join(video_dir, 'annotation_imgs')
+    if not os.path.isdir(extra_image_dir):
+        os.makedirs(extra_image_dir)
+    cv2.imwrite(os.path.join(extra_image_dir, f"{annotation_frame_num:02d}_annotation_{os.path.basename(image_dir).split('.')[0]}.jpg"),
+                cv2.imread(image_dir))
+def read_annotation_list(text_file):
+    read_list = bn_utils.read_list_file(text_file)
+    n_ant = int(read_list[0].split(' ')[0])
+    ant_idx = []
+    ant_file = []
+    for i in range(n_ant):
+        ant_idx.append(int(read_list[i * 2 + 1]))
+        ant_file.append(read_list[i * 2 + 2])
+    return ant_idx, ant_file
+def main():
+    mainDir = os.getcwd()
+    dataDir = os.path.join(mainDir, 'data')
+    rawDataDir = os.path.join(dataDir, 'rawData')
+    videoList = sorted(next(os.walk(rawDataDir))[1])
+    resnet_process_data_dir(rawDataDir)
+    BubbleNets_sort(rawDataDir, model='BNLF')
+    BubbleNets_sort(rawDataDir, model='BN0')
+    color_hist_frame_select(rawDataDir, annotate_rate=int(10e6))
+    for i, videoName in enumerate(videoList):
+        videoDir = os.path.join(rawDataDir, videoName)
+        VideoProcessor(videoDir)
+        get_user_annotation(videoDir)
+        print(f'Finished with {videoName} annotation.\n\n')
+    print('\n\nFinished with all annotations!\n\n')
+if __name__ == "__main__":
+    main()

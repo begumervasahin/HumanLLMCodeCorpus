@@ -1,0 +1,60 @@
+import matplotlib.pyplot as plt
+import os
+from scipy.optimize import curve_fit
+
+# Define the function for curve fitting
+def func(x, a, b, c, d):
+    return a * x ** 3 + b * x ** 2 + c * x + d        
+
+# Function to retrieve data from files in a folder    
+def getData(folder):
+    x_data = []
+    y_data = []
+    
+    # Retrieve current working directory and folder path
+    cwd = os.getcwd()
+    folder_path = os.path.join(cwd, folder)
+    
+    # Iterate over files in the folder
+    for filename in os.listdir(folder_path):
+        if filename != '.DS_Store':  # Exclude system files
+            with open(os.path.join(folder_path, filename), 'r') as file:
+                # Extract precision and recall from each line
+                for line in file:
+                    precision, recall = map(float, line.split())
+                    x_data.append(recall)
+                    y_data.append(precision)
+
+    # Perform curve fitting
+    params, _ = curve_fit(func, x_data, y_data)       
+    a, b, c, d = params
+
+    # Generate interpolated points for plotting       
+    x_final = []
+    y_final = []
+    i = 0
+    while i <= 1:
+        x_final.append(i)
+        y_final.append(func(i, a, b, c, d))
+        i += 0.2
+
+    return x_final, y_final
+
+# Retrieve data for both models
+p_v, q_v = getData('Vector_Space_Model')
+p_f, q_f = getData('Fuzzy_Retrieval_Model')
+
+# Plotting
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision vs Recall')
+
+# Plot interpolated data points and curves for both models
+plt.plot(p_v, q_v, label='Vector Space Model')        
+plt.plot(p_v, q_v, 'bs', label='Data Points (Vector Space Model)')  # Blue squares for data points
+plt.plot(p_f, q_f, label='Fuzzy Retrieval Model')     
+plt.plot(p_f, q_f, 'r^', label='Data Points (Fuzzy Retrieval Model)')  # Red triangles for data points
+
+plt.legend()
+plt.axis([0.0, 1.0, 0.0, 1.0])  # Set axis limits     
+plt.show()  # Display the plot

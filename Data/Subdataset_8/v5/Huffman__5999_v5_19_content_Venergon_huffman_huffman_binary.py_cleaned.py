@@ -1,0 +1,94 @@
+class Node:
+    def __init__(self, value, probability):
+        self.value = value
+        self.probability = probability
+        self.code = ""
+    def __str__(self):
+        return f"({self.value})"
+    def get_probability(self):
+        return self.probability
+    def get_value(self):
+        return self.value
+    def set_code(self, code):
+        self.code = code
+    def get_code(self):
+        return self.code
+class NodeJoin:
+    def __init__(self, node1, node2):
+        self.node1 = node1
+        self.node2 = node2
+        self.probability = node1.get_probability() + node2.get_probability()
+        self.code = ""
+    def __str__(self):
+        return f"({self.node1},{self.node2})"
+    def get_probability(self):
+        return self.probability
+    def get_value(self):
+        return self.node1.get_value() + self.node2.get_value()
+    def set_code(self, code):
+        self.code = code
+    def get_code(self):
+        return self.code
+def split_nodes(node):
+    code = node.get_code()
+    node1, node2 = node.node1, node.node2
+    node1.set_code(code + "1")
+    node2.set_code(code + "0")
+    if isinstance(node1, NodeJoin):
+        split_nodes(node1)
+    else:
+        final_codes.append(node1)
+    if isinstance(node2, NodeJoin):
+        split_nodes(node2)
+    else:
+        final_codes.append(node2)
+def create_nodes():
+    nodes = []
+    while True:
+        n = input("Enter node (value, probability): ").strip()
+        if not n:
+            break
+        if "," not in n:
+            print("Invalid input format. Please enter (value, probability).")
+            continue
+        value, probability = n.split(",")
+        probability = float(probability)
+        nodes.append(Node(value, probability))
+    return nodes
+def sort_and_print_nodes(nodes):
+    if sorted(nodes, key=lambda x: x.get_probability(), reverse=True) != nodes:
+        print("Nodes are not sorted! Sorting...")
+        nodes.sort(key=lambda x: x.get_probability(), reverse=True)
+        print("New nodes:")
+        for node in nodes:
+            print("  " + str(node))
+    return nodes
+def build_huffman_tree(nodes):
+    while len(nodes) > 1:
+        new_nodes = nodes[:-2]
+        new_node = NodeJoin(nodes[-1], nodes[-2])
+        for i, obj in enumerate(new_nodes):
+            if new_node.get_probability() >= obj.get_probability():
+                new_nodes.insert(i, new_node)
+                break
+        else:
+            new_nodes.append(new_node)
+        nodes = new_nodes
+    assert len(nodes) == 1
+    return nodes[0]
+def main():
+    nodes = create_nodes()
+    nodes = sort_and_print_nodes(nodes)
+    root_node = build_huffman_tree(nodes)
+    root_node.set_code("")
+    if isinstance(root_node, Node):
+        final_codes.append(root_node)
+    else:
+        split_nodes(root_node)
+    final_codes.sort(key=lambda x: x.get_value())
+    print()
+    for node in final_codes:
+        print(f"Node {node} has code {node.get_code()}")
+if __name__ == "__main__":
+    final_codes = []
+    main()

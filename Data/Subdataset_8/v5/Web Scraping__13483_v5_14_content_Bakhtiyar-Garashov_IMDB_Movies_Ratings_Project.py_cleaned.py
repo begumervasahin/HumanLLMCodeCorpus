@@ -1,0 +1,76 @@
+import tkinter as tk
+from tkinter import *
+from tkinter import messagebox, ttk
+import requests
+from bs4 import BeautifulSoup
+import re
+def fetch_movie_data():
+    url = "http:
+    headers = {'Accept-Language': 'en-US,en;'}
+    response = requests.get(url, headers=headers)
+    html_content = response.content
+    soup = BeautifulSoup(html_content, "html.parser")
+    movie_names = soup.find_all("td", {"class": "titleColumn"})
+    ratings = soup.find_all("td", {"class", "ratingColumn imdbRating"})
+    return movie_names, ratings
+def write_to_file():
+    myfile = open('movies.txt', 'w')
+    myfile.write("/* IMDB Movies and Ratings Application. */\n /* Author: Bakhtiyar Garashov */\n")
+    for name, rating in all_movies.items():
+        myfile.write("{} {}\n".format(name, rating))
+    myfile.close()
+def display_all_movies():
+    main_label.pack_forget()
+    list_all = ttk.Treeview(main_window)
+    list_all["columns"] = ("rating",)
+    list_all.heading("
+    list_all.heading("rating", text="IMDB Rating")
+    for name, rating in zip(movie_names, ratings):
+        name = name.text.strip().replace('\n', '')
+        rating = rating.text.strip().replace('\n', '')
+        year = re.findall('\((.*?)\)', name)[0]
+        only_name = name.split("(")[0].strip()
+        list_all.insert('', 'end', text=only_name, values=(rating, year))
+    vsb = ttk.Scrollbar(main_window, orient="vertical", command=list_all.yview)
+    vsb.pack(side='right', fill='y')
+    list_all.configure(yscrollcommand=vsb.set)
+    list_all.pack(side=tk.BOTTOM, fill=tk.Y)
+    write_button = Button(main_window, text="Write to File", command=write_to_file)
+    write_button.pack(side='bottom', pady=15)
+def search_movie():
+    main_label.pack_forget()
+    search_label = Label(main_window, text="Enter movie name to find", padx=10)
+    search_label.pack()
+    user_input = Entry(main_window, width='30')
+    user_input.pack(side='left', ipady=7, ipadx=5, padx=5)
+    def find_specific_movie():
+        movie_name = user_input.get().strip()
+        if movie_name in all_movies:
+            rating, year = all_movies[movie_name]
+            messagebox.showinfo("Movie Found", f"Movie Name: {movie_name}\nYear: {year}\nIMDB Rating: {rating}")
+        else:
+            messagebox.showerror("Movie Not Found", f"No matching information found for '{movie_name}'")
+    search_button = Button(main_window, text="Find Movie", command=find_specific_movie)
+    search_button.pack(side='right', padx=20)
+def display_about_info():
+    about_label = Label(main_window, text="This small application is developed for a course project\n"
+                                           "Contact: bakhtiyar.garashov@ut.ee\nVersion 1.0")
+    about_label.pack()
+def create_menu(win_name):
+    menubar = Menu(win_name)
+    menubar.add_command(label="Get All Movies", command=display_all_movies)
+    menubar.add_command(label="Find Movie by Name", command=search_movie)
+    menubar.add_command(label="About", command=display_about_info)
+    menubar.add_command(label="Exit", command=win_name.destroy)
+    return menubar
+try:
+    main_window = Tk()
+    main_window.geometry("700x350")
+    main_window.title("IMDB Movies and Ratings Application")
+    main_label = Label(main_window, text="Welcome to IMDB Movies and Ratings Application!", pady=130)
+    main_label.pack()
+    movie_names, ratings = fetch_movie_data()
+    main_window.config(menu=create_menu(main_window))
+    main_window.mainloop()
+except Exception as e:
+    print(e)

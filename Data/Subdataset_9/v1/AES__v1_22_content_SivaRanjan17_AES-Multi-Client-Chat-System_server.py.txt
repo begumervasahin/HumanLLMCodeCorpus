@@ -1,0 +1,82 @@
+from socket import AF_INET, socket, SOCK_STREAM
+from threading import Thread
+import AES  # Assuming AES module is available
+
+# Define the master encryption key
+KEY = b'master key'
+
+def accept_incoming_connections():
+    """Sets up handling for incoming clients."""
+    while True:
+        client, client_address = SERVER.accept()
+        print("%s:%s has connected." % client_address)
+        
+        # Send greeting message to the client
+        message = "Greetings from the cave! Now type your name and press enter!"
+        ciphertext = AES.encrypt(KEY, message.encode('UTF-8'))
+        client.send(ciphertext)
+        
+        addresses[client] = client_address
+        Thread(target=handle_client, args=(client,)).start()
+
+def handle_client(client):
+    """Handles a single client connection."""
+    # Receive and decrypt client's name
+    name = AES.decrypt(KEY, client.recv(BUFSIZ)).decode("utf-8")
+    welcome = '\nWelcome %s! If you ever want to quit, type {quit} to exit.' % name
+    ciphertext = AES.encrypt(KEY, welcome.encode('UTF-8'))
+    client.send(ciphertext)
+    
+    # Add client to the clients dictionary
+    clients[client] = name
+    
+    while True:
+        # Receive and decrypt client's message
+        message = AES.decrypt(KEY, client.recv(BUFSIZ)).decode("utf-8")
+        
+        # Check if client wants to quit
+        if message != "{quit}":
+            # Broadcast the message to all clients
+            broadcast(message, name+": ")
+        else:
+            # Close the client connection
+            client.close()
+            del clients[client]
+            
+            # Check if there are no more clients, then close the server
+            if not clients:
+                SERVER.close()
+            break
+
+def broadcast(msg, prefix=""):
+    """Broadcasts a message to all the clients."""
+    message = prefix + msg
+    ciphertext = AES.encrypt(KEY, message.encode('UTF-8'))
+    for sock in clients:
+        sock.send(ciphertext)
+
+# Initialize dictionaries to keep track of clients and their addresses
+clients = {}
+addresses = {}
+
+# Define server constants
+HOST = ''
+PORT = 33000
+BUFSIZ = 1024
+ADDR = (HOST, PORT)
+
+# Create the server socket
+SERVER = socket(AF_INET, SOCK_STREAM)
+SERVER.bind(ADDR)
+
+if __name__ == "__main__":
+    SERVER.listen(5)
+    print("Waiting for connection...")
+    
+    # Start accepting incoming connections in a separate thread
+    ACCEPT_THREAD = Thread(target=accept_incoming_connections)  
+    ACCEPT_THREAD.start()
+    ACCEPT_THREAD.join()
+    
+    # Close the server socket
+    SERVER.close()

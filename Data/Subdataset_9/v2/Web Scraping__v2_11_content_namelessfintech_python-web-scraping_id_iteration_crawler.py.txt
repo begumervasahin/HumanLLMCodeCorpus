@@ -1,0 +1,57 @@
+import itertools
+import urllib.request
+from urllib.error import URLError, HTTPError, ContentTooShortError
+
+# Function to download HTML content from a given URL
+def download(url, num_retries=2, user_agent='wswp', charset='utf-8'):
+    print('Downloading:', url)
+    
+    # Creating a request object with the specified user agent
+    request = urllib.request.Request(url)
+    request.add_header('User-agent', user_agent)
+    
+    try:
+        # Opening the URL and reading the response
+        resp = urllib.request.urlopen(request)
+        
+        # Getting the character set from the response headers
+        cs = resp.headers.get_content_charset()
+        if not cs:
+            cs = charset
+        
+        # Decoding the response content using the character set
+        html = resp.read().decode(cs)
+    
+    # Handling various download errors
+    except (URLError, HTTPError, ContentTooShortError) as e:
+        print('Download error:', e.reason)
+        html = None
+        
+        # Retrying the download if there are retries left and the error is in the 500 range
+        if num_retries > 0:
+            if hasattr(e, 'code') and 500 <= e.code < 600:
+                return download(url, num_retries - 1)
+    
+    return html
+
+# Function to crawl a website starting from a given URL
+def crawl_site(url, max_errors=5):
+    num_errors = 0
+    
+    # Iterate over page numbers using itertools.count starting from 1
+    for page in itertools.count(1):
+        pg_url = '{}{}'.format(url, page)
+        
+        # Download the HTML content of the current page
+        html = download(pg_url)
+        
+        # Handling download errors
+        if html is None:
+            num_errors += 1
+            if num_errors == max_errors:
+                break
+        else:
+            num_errors = 0
+
+# Starting the crawling process from a given URL
+crawl_site('http://example.webscraping.com/view/-')

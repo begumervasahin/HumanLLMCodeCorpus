@@ -1,0 +1,17 @@
+def selection_sort(items):
+    for step in range(len(items)):
+        location_of_largest = step
+        for location in range(step, len(items)):
+            if items[location_of_largest] < items[location]:
+                location_of_largest = location
+        if location_of_largest != step:
+            items[step], items[location_of_largest] = items[location_of_largest], items[step]
+    return items
+try:
+    user_input = input("Enter a list of integers separated by spaces: ")
+    user_list = [int(x) for x in user_input.split()]
+    sorted_list = selection_sort(user_list)
+    print("Sorted items:", sorted_list)
+    print("Total number of items:", len(sorted_list))
+except ValueError:
+    print("Invalid input. Please enter a list of integers.")

@@ -1,0 +1,70 @@
+import time
+import pandas as pd
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+USERNAME = "your_username"
+PASSWORD = "your_password"
+LINKEDIN_URL = 'https:
+browser = webdriver.Firefox()
+browser.get(LINKEDIN_URL)
+time.sleep(3)
+email_field = browser.find_element_by_name('session_key')
+password_field = browser.find_element_by_name('session_password')
+email_field.send_keys(USERNAME + Keys.RETURN)
+password_field.send_keys(PASSWORD + Keys.RETURN)
+time.sleep(3)
+search_results = pd.read_csv("output_search.csv")
+def filter_profiles(title):
+    keywords = ['data', 'science', 'machine']
+    return any(keyword in title.lower() for keyword in keywords)
+search_results['is_driver'] = search_results['title'].apply(filter_profiles)
+filtered_profiles = search_results[search_results['is_driver'] != 0]
+experience_df = pd.DataFrame(columns=['profile', 'exp_title', 'exp_company', 'exp_dates'])
+education_df = pd.DataFrame(columns=['profile', 'ed_name', 'ed_deg', 'ed_dates'])
+skills_df = pd.DataFrame(columns=['profile', 'skill'])
+for profile_url in filtered_profiles['profile']:
+    if profile_url == LINKEDIN_URL:
+        continue
+    time.sleep(2)
+    browser.get(profile_url)
+    time.sleep(2)
+    for _ in range(4):
+        browser.find_element_by_tag_name('body').send_keys(Keys.PAGE_DOWN)
+        time.sleep(0.75)
+    page_content = BeautifulSoup(browser.page_source, 'lxml')
+    experience_sections = page_content.find_all('div', class_="pv-entity__position-group-pager")
+    companies = page_content.find_all('span', class_="pv-entity__secondary-title")
+    dates = page_content.find_all('h4', class_="pv-entity__date-range")
+    array_length = len(experience_sections)
+    profile = profile_url
+    exp_titles = [section.h3.text.strip() for section in experience_sections][:array_length]
+    exp_companies = [company.text.strip() for company in companies][:array_length]
+    exp_dates = [date.text.strip().split('\n')[-1] for date in dates][:array_length]
+    education_sections = page_content.find_all('div', class_="pv-entity__degree-info")
+    ed_degrees = page_content.find_all('p', class_="pv-entity__degree-name")
+    ed_dates = page_content.find_all('p', class_="pv-entity__dates")
+    array_length = len(education_sections)
+    ed_names = [section.text.strip().split('\n')[-1] for section in education_sections][:array_length]
+    ed_degrees = [degree.text.strip().split('\n')[-1] for degree in ed_degrees][:array_length]
+    ed_dates = [date.text.strip().split('\n')[-1] for date in ed_dates][:array_length]
+    if len(ed_dates) < array_length:
+        ed_dates = 'NA'
+    skills = page_content.find_all('span', class_="pv-skill-category-entity__name-text")
+    array_length = len(skills)
+    profile_skills = [skill.text.strip() for skill in skills][:array_length]
+    try:
+        temp_experience_df = pd.DataFrame({'profile': profile, 'exp_title': exp_titles, 'exp_company': exp_companies, 'exp_dates': exp_dates})
+        temp_education_df = pd.DataFrame({'profile': profile, 'ed_name': ed_names, 'ed_deg': ed_degrees, 'ed_dates': ed_dates})
+        temp_skills_df = pd.DataFrame({'profile': profile, 'skill': profile_skills})
+        experience_df = experience_df.append(temp_experience_df)
+        education_df = education_df.append(temp_education_df)
+        skills_df = skills_df.append(temp_skills_df)
+        print(profile, 'completed')
+    except:
+        print(profile, 'skipped')
+        continue
+experience_df.to_csv("output_experience.csv", index=False, sep='\t', encoding='utf-8')
+education_df.to_csv("output_education.csv", index=False, sep='\t', encoding='utf-8')
+skills_df.to_csv("output_skills.csv", index=False, sep='\t', encoding='utf-8')
+browser.quit()

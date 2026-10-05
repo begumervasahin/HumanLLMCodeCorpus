@@ -1,0 +1,46 @@
+import numpy as np
+from keras.layers import Dense, Input
+from keras.models import Sequential, Model
+from huffmax import Huffmax
+import time
+def generate_random_data(nb_samples, input_dim, nb_classes):
+    X = np.random.random((nb_samples, input_dim))
+    Y_huffmax = np.random.randint(0, nb_classes, size=(nb_samples, 1))
+    Y_softmax = np.array([np.eye(nb_classes)[np.random.randint(0, nb_classes)] for _ in range(nb_samples)])
+    return X, Y_huffmax, Y_softmax
+def train_softmax(X, Y_softmax, input_dim, nb_classes, batch_size):
+    softmax_model = Sequential()
+    softmax_model.add(Dense(input_dim=input_dim, units=nb_classes, activation='softmax'))
+    softmax_model.compile(loss='mse', optimizer='sgd')
+    softmax_model.predict(X[:1])
+    start_time = time.time()
+    softmax_model.fit(X, Y_softmax, batch_size=batch_size)
+    end_time = time.time()
+    return end_time - start_time
+def train_huffmax(X, Y_huffmax, nb_classes, batch_size, mode):
+    vector = Input((input_dim,))
+    target_class = Input((1,))
+    probability = Huffmax(nb_classes, verbose=True, mode=mode)([vector, target_class])
+    huffmax_model = Model(inputs=[vector, target_class], outputs=probability)
+    huffmax_model.compile(loss='mse', optimizer='sgd')
+    huffmax_model.predict([X[:1], Y_huffmax[:1]])
+    start_time = time.time()
+    huffmax_model.fit([X, Y_huffmax], np.ones((nb_samples, 1)), batch_size=batch_size)
+    end_time = time.time()
+    return end_time - start_time
+def main():
+    batch_size = 32
+    input_dim = 100
+    nb_classes = 100000
+    nb_samples = 10000
+    times = {}
+    X, Y_huffmax, Y_softmax = generate_random_data(nb_samples, input_dim, nb_classes)
+    softmax_time = train_softmax(X, Y_softmax, input_dim, nb_classes, batch_size)
+    times['Softmax'] = softmax_time
+    for mode in [0, 1]:
+        huffmax_time = train_huffmax(X, Y_huffmax, nb_classes, batch_size, mode)
+        times[f'Huffmax (mode {mode})'] = huffmax_time
+    for key, value in times.items():
+        print(f'{key}: {value}')
+if __name__ == "__main__":
+    main()

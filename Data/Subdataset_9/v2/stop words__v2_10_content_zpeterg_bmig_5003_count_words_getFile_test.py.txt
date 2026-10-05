@@ -1,0 +1,67 @@
+import unittest
+from time import time
+
+# Function to read a file and process each word
+def getFile(filename, process_word):
+    with open(filename, 'r') as file:
+        # Read each line from the file, strip whitespace, and process each word
+        words = [process_word(word.strip()) for word in file.readlines()]
+    return words
+
+# Sample list of words
+words = [
+    'Fish',
+    'hat',
+    'foo',
+    'cow',
+    'Cow',
+    'siamese.',
+    'Wonderland',
+    'foo',
+    'toothpaste',
+    'bar',
+    'umbrella',
+    'foo\n',
+    'milky',
+    '\'"flight-manual"\'',
+    'toothpick',
+    'bar',
+    'enough',
+    'event-horizon',
+    'bar!'
+]
+
+# Function to process each word
+def on_word(word):
+    # Process each word, returning None if it's 'umbrella', otherwise append 'hi'
+    if word == 'umbrella':
+        return None
+    return word + 'hi'
+
+# Test case class for getFile function
+class GetFileTest(unittest.TestCase):
+    # Test case for basic functionality of getFile function
+    def test_getFile_basic(self):
+        self.assertEqual(words, getFile('small_test.txt', lambda a: a))        
+
+    # Test case for FileNotFoundError when file doesn't exist
+    def test_getFile_no_file(self):
+        self.assertRaises(FileNotFoundError, getFile, 'aaa.txt', lambda a: a)  
+
+    # Test case for custom processing of words in getFile function
+    def test_getFile_(self):
+        # Expected result after processing words using on_word function
+        res = ['Fishhi', 'hathi', 'foohi', 'cowhi', 'Cowhi', 'siamese.hi', 'Wonderlandhi', 'foohi', 'toothpastehi', 'barhi']
+        self.assertEqual(res, getFile('small_test.txt', on_word))
+
+    # Test case for performance with a large file
+    def test_getFile_moby(self):
+        t0 = time()
+        # Check if length of processed words is less than 100000
+        self.assertLess(100000, len(getFile('moby_test.txt', on_word)))        
+        t1 = time()
+        print('Moby import time sec:', t1 - t0)
+
+# Entry point of the script
+if __name__ == '__main__':
+    unittest.main()

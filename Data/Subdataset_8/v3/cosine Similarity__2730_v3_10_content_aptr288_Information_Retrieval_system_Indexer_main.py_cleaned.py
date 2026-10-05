@@ -1,0 +1,85 @@
+import os
+import re
+import math
+import pathlib
+from collections import defaultdict
+from nltk.stem import PorterStemmer
+from Data_Parsing_and_Processing import extractingdata
+from Forward_Index_Build import indexingEachTerm
+from Query_Extraction import extractDifferentQuery
+doc_num_dict = {}
+word_dict = defaultdict(int)
+sorted_inverted_index = {}
+sorted_forward_index = {}
+normalized_doc = {}
+score = defaultdict(int)
+current_directory = pathlib.Path('.')
+start_time = time.time()
+stop_word_list = []
+stopwords_filepath = current_directory / 'files' / 'stopwordlist.txt'
+with open(stopwords_filepath, 'r') as f:
+    stop_word_list.extend(word.strip() for line in f for word in line.split())
+extracted_text_list = []
+extracted_doc_num_list = []
+for i in range(15):
+    filepath = current_directory / f'ft911/ft911_{i + 1}'
+    text_list, doc_num_list = extractingdata(filepath, stop_word_list)
+    extracted_text_list.extend(text_list)
+    extracted_doc_num_list.extend(doc_num_list)
+unique_text = sorted(set(extracted_text_list))
+for idx, text_token in enumerate(unique_text, start=1):
+    word_dict[text_token] = idx
+for idx, doc_num_string in enumerate(extracted_doc_num_list, start=1):
+    doc_num_dict[doc_num_string] = idx
+forward_index = {}
+for i in range(15):
+    filepath = current_directory / f'ft911/ft911_{i + 1}'
+    forward_index.update(indexingEachTerm(filepath, stop_word_list, word_dict))
+inv_index = defaultdict(dict)
+for key, value in forward_index.items():
+    for inner_key, inner_value in value.items():
+        if not inv_index[inner_key]:
+            inv_index[inner_key] = {key: inner_value}
+        else:
+            inv_index[inner_key][key] = inner_value
+sorted_forward_index = {key: {inner_key: value for inner_key, value in sorted(idx.items())} for key, idx in forward_index.items()}
+sorted_inverted_index = {key: {inner_key: value for inner_key, value in sorted(idx.items())} for key, idx in inv_index.items()}
+N = len(sorted_forward_index)
+for key, value in sorted_forward_index.items():
+    sum_of_squares = sum(pow(value[inner_key] * math.log(N / len(sorted_inverted_index[inner_key]), 10), 2) for inner_key in value)
+    normalized_doc[key] = math.sqrt(sum_of_squares)
+query_number = []
+with open(current_directory / 'files' / 'topics.txt', "r+") as fp:
+    total_doc = fp.read()
+    query_number = re.findall(r'<num>.*?([0-9]+)', total_doc)
+title = re.findall(r'<title>(.*?)<desc>', total_doc)
+with open(current_directory / 'files' / 'main.qrels') as fp:
+    reference_query_doc = [line.strip().split(" ") for line in fp if "FT911" in line.strip().split("-")[0]]
+def calculate_precision_recall(score_calculated, query_number_to_evaluate_on):
+    relevant_docs = [doc for doc in reference_query_doc if doc[0] == query_number_to_evaluate_on and doc[3] == '1']
+    relevant_doc_ids = {int(doc[2].split("-")[1]) for doc in relevant_docs}
+    total_docs = len(score_calculated)
+    relevant_docs_given = sum(1 for doc_id in score_calculated.keys() if doc_id in relevant_doc_ids)
+    true_positives = sum(1 for doc_id in score_calculated.keys() if doc_id in relevant_doc_ids)
+    precision = true_positives / total_docs if total_docs != 0 else 0
+    recall = true_positives / relevant_docs_given if relevant_docs_given != 0 else 0
+    score_calculated.clear()
+    return precision, recall
+with open("files/OnlyTitleResults.txt", "w") as query_results:
+    N = len(sorted_forward_index)
+    score.clear()
+    for query_num, query_terms in extractDifferentQuery(title, stop_word_list).items():
+        for query_term, tf_query in query_terms.items():
+            query_id = word_dict.get(query_term, 0)
+            if query_id != 0:
+                df = len(sorted_inverted_index[query_id])
+                for doc_id, tf_doc in sorted_inverted_index[query_id].items():
+                    idf = math.log(N / df, 10)
+                    tfidf = ((tf_doc * idf) * (tf_query * idf))
+                    score[doc_id] += (tfidf / normalized_doc[doc_id])
+        counter_rank = 1
+        for doc_id, score_value in sorted(score.items(), key=lambda x: x[1], reverse=True):
+            query_results.write(f"{query_num}        FT911-{doc_id}        {counter_rank}        {score_value:.15f}\n")
+            counter_rank += 1
+        precision, recall = calculate_precision_recall(score, query_num)
+        query_results.write(f"  Precision ==>  {precision}  Recall ==>  {recall}\n")

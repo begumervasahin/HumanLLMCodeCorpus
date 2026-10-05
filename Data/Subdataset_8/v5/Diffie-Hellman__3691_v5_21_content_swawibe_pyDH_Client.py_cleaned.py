@@ -1,0 +1,37 @@
+import socket
+from DiffieHellman import DH
+import json
+class ClientSocket:
+    def __init__(self, debug_flag):
+        self.dh = DH()
+        self.debug_flag = debug_flag
+    def init_diffie_hellman(self, sock):
+        sock.send("connected".encode())
+        step1 = sock.recv(2048)
+        if self.debug_flag:
+            print(step1)
+        json_data = json.loads(step1.decode())
+        dh_key_exchange = json_data["dh-keyexchange"]
+        self.dh.base = int(dh_key_exchange["base"])
+        self.dh.sharedPrime = int(dh_key_exchange["prime"])
+        public_secret = int(dh_key_exchange["publicSecret"])
+        calculated_pub_secret = str(self.dh.calc_public_secret())
+        step2 = {
+            "dh-keyexchange": {
+                "step": 2,
+                "publicSecret": calculated_pub_secret
+            }
+        }
+        sock.send(json.dumps(step2).encode())
+        self.dh.calc_shared_secret(public_secret)
+    def start_client(self, ip_address):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect((ip_address, 20000))
+            self.init_diffie_hellman(sock)
+            print("The secret key is {}".format(self.dh.key))
+        finally:
+            sock.close()
+if __name__ == "__main__":
+    client = ClientSocket(debug_flag=True)
+    client.start_client("127.0.0.1")

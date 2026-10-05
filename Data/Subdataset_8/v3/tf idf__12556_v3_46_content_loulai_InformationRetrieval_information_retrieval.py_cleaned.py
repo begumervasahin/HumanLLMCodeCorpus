@@ -1,0 +1,28 @@
+import re
+from stop_list import closed_class_stop_words
+def get_query_numbers(text):
+    return re.findall(r"\.I (\d{3})", text)
+def get_query_strings(text):
+    return re.findall(r"([a-z ]+\n){1,3}[a-z ]+\.", text)
+def remove_stop_words(text):
+    words = re.sub(r"\n|\r", " ", text).split(" ")
+    return [word for word in words if word.lower() not in closed_class_stop_words]
+def calculate_term_frequency(words):
+    term_frequency = {}
+    for word in words:
+        term_frequency[word] = term_frequency.get(word, 0) + 1
+    return term_frequency
+def print_dictionary(dictionary):
+    for key, value in dictionary.items():
+        print(key, value)
+queries = open("cran.qry", 'r').read().replace("\s ", "")
+query_strings = get_query_strings(queries)
+for i, query_string in enumerate(query_strings, 1):
+    print(f"Query {i}:")
+    print(remove_stop_words(query_string))
+    print()
+print("Term Frequencies:")
+example_query = open("cran2.qry", 'r').read()
+example_query_terms = remove_stop_words(example_query)
+example_query_tf = calculate_term_frequency(example_query_terms)
+print_dictionary(example_query_tf)

@@ -1,0 +1,47 @@
+import pandas as pd
+import numpy as np
+import random
+
+def read_csv(filename):
+    """Reads a CSV file and returns a pandas DataFrame."""
+    return pd.read_csv(filename)
+
+def generate_centroids(data, k, column_name):
+    """Generates random centroids based on the maximum value in the specified column."""
+    return random.sample(range(1, data[column_name].max() + 1), k)
+
+def assign_clusters(centroids, data, column_name):
+    """Assigns houses to clusters based on the closest centroid."""
+    for idx, house in enumerate(data[column_name]):
+        closest_centroid = min(centroids, key=lambda x: abs(house - x))
+        data.at[idx, 'cluster'] = closest_centroid
+
+def check_convergence(old_centroids, new_centroids):
+    """Checks if the centroids have converged."""
+    return all(abs(old - new) <= 1 for old, new in zip(old_centroids, new_centroids))
+
+city = "san-francisco-ca"
+filename = f"data/propertyInfo/{city}.csv"
+data = read_csv(filename)
+data["cluster"] = -1
+
+k = 5
+centroids = generate_centroids(data, k, 'zestimate')
+
+while True:
+    old_centroids = centroids.copy()
+
+    # Update centroids
+    centroids = generate_centroids(data, k, 'zestimate')
+
+    # Re-cluster
+    assign_clusters(centroids, data, 'zestimate')
+
+    # Check for convergence
+    if check_convergence(old_centroids, centroids):
+        break
+
+# Display results
+pd.set_option('display.max_rows', len(data['zestimate']))
+pd.set_option('display.float_format', lambda x: '%.0f' % x)
+print(data[['zestimate', 'cluster']])

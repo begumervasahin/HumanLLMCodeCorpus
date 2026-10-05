@@ -1,0 +1,41 @@
+import json
+import http.client
+import string
+class RedditScraper:
+    def __init__(self):
+        self.depth = 0
+    def get_documents(self, subreddit, qty):
+        conn = http.client.HTTPSConnection('www.reddit.com')
+        conn.request("GET", f"/r/{subreddit}/hot/.json")
+        response = conn.getresponse()
+        subreddit_data = response.read()
+        subreddit_data = json.loads(subreddit_data)
+        documents = []
+        for i in range(qty):
+            permalink = subreddit_data['data']['children'][i]['data']['permalink']
+            documents.extend(self.get_comments_for_post(permalink))
+        conn.close()
+        return documents
+    def get_comments_for_post(self, link):
+        conn = http.client.HTTPSConnection('www.reddit.com')
+        conn.request("GET", f"{link}/.json?limit=500")
+        response = conn.getresponse()
+        post_data = response.read()
+        post_data = json.loads(post_data)
+        top_level_comments = post_data[1]['data']['children']
+        all_comments = []
+        for comment in top_level_comments:
+            if 'body' in comment['data']:
+                self.depth = 0
+                all_comments.extend(self.recurse_comments(comment))
+        return all_comments
+    def recurse_comments(self, comment):
+        comment_bodies = []
+        body = ''.join(filter(lambda x: x in string.printable, comment['data']['body']))
+        comment_bodies.append(body)
+        if comment['data']['replies'] != '' and self.depth < 1:
+            for reply in comment['data']['replies']['data']['children']:
+                if reply['kind'] != 'more':
+                    self.depth += 1
+                    comment_bodies.extend(self.recurse_comments(reply))
+        return comment_bodies

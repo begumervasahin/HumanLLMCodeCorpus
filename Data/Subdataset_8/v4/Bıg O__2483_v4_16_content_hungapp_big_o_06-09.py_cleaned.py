@@ -1,0 +1,78 @@
+import queue
+INF = int(1e9)
+class Node:
+    def __init__(self, cell, time):
+        self.cell = cell
+        self.time = time
+    def __lt__(self, other):
+        return self.time <= other.time
+def Dijkstra(e):
+    pq = queue.PriorityQueue()
+    pq.put(Node(e, 0))
+    time[e] = 0
+    while not pq.empty():
+        top = pq.get()
+        u = top.cell
+        w = top.time
+        for neighbor in graph[u]:
+            if w + neighbor.time < time[neighbor.cell]:
+                time[neighbor.cell] = w + neighbor.time
+                pq.put(Node(neighbor.cell, time[neighbor.cell]))
+n = int(input())
+e = int(input())
+t = int(input())
+m = int(input())
+graph = [[] for _ in range(n + 1)]
+time = [INF for _ in range(n + 1)]
+for _ in range(m):
+    a, b, w = map(int, input().split())
+    graph[b].append(Node(a, w))
+Dijkstra(e)
+c = 0
+for i in range(1, n + 1):
+    if time[i] <= t:
+        c += 1
+print(c)
+import queue
+INF = int(1e9)
+class Node:
+    def __init__(self, city, cost):
+        self.city = city
+        self.cost = cost
+    def __lt__(self, other):
+        return self.cost <= other.cost
+def Dijkstra(s, f):
+    pq = queue.PriorityQueue()
+    pq.put(Node(s, 0))
+    cost[s] = 0
+    while not pq.empty():
+        top = pq.get()
+        u = top.city
+        w = top.cost
+        if u == f:
+            return
+        for neighbor in graph[u]:
+            if w + neighbor.cost < cost[neighbor.city]:
+                cost[neighbor.city] = w + neighbor.cost
+                pq.put(Node(neighbor.city, cost[neighbor.city]))
+tc = int(input())
+for _ in range(tc):
+    n = int(input())
+    graph = [[] for _ in range(n + 1)]
+    cities = []
+    for i in range(n):
+        city = input()
+        cities.append(city)
+        p = int(input())
+        for _ in range(p):
+            nr, c = map(int, input().split())
+            graph[i + 1].append(Node(nr, c))
+    r = int(input())
+    for _ in range(r):
+        cost = [INF for _ in range(n + 1)]
+        source, destination = input().split()
+        start = cities.index(source) + 1
+        end = cities.index(destination) + 1
+        Dijkstra(start, end)
+        print(cost[end])
+    input()

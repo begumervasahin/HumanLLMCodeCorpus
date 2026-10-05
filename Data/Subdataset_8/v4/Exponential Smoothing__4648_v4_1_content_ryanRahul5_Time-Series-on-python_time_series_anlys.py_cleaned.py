@@ -1,0 +1,101 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.arima_model import ARIMA
+def test_stationarity(timeseries):
+    rolling_mean = timeseries.rolling(window=8).mean()
+    rolling_std = timeseries.rolling(window=8).std()
+    plt.plot(timeseries, color='red', label='Original Series')
+    plt.plot(rolling_mean, color='black', label='Rolling Mean')
+    plt.plot(rolling_std, color='blue', label='Rolling Std')
+    plt.legend(loc='best')
+    plt.title('Rolling Mean vs Rolling Std')
+    plt.show()
+    print('Dickey-Fuller test:')
+    dftest = adfuller(timeseries, autolag='AIC')
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', 'Lags Used', 'Observations Used'])
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)' % key] = value
+    print(dfoutput)
+data = pd.read_csv('C:\Users\Dell\Desktop\Pairs Trading\FuturePrices.csv')
+print(data.head(10))
+print(data.head())
+print(data.dtypes)
+data1 = data[['Date', 'YESBANK']]
+print(data1.head())
+ts = data['YESBANK']
+plt.plot(ts)
+data = pd.read_csv('C:\Users\Dell\Desktop\Pairs Trading\FuturePrices.csv', parse_dates=['Date'], index_col='Date')
+ts = data['YESBANK']
+print(ts.head())
+print(ts['2011-08-21': '2011-08-25'])
+plt.plot(ts)
+test_stationarity(ts)
+ts_log = np.log(ts)
+plt.plot(ts_log)
+moving_avg = ts_log.rolling(window=8).mean()
+plt.plot(ts_log)
+plt.plot(moving_avg, color='red')
+ts_log_moving_avg_diff = ts_log - moving_avg
+ts_log_moving_avg_diff.dropna(inplace=True)
+test_stationarity(ts_log_moving_avg_diff)
+expwighted_avg = ts_log.ewm(halflife=8).mean()
+plt.plot(ts_log)
+plt.plot(expwighted_avg, color='red')
+ts_log_ewma_diff = ts_log - expwighted_avg
+test_stationarity(ts_log_ewma_diff)
+ts_log_diff = ts_log - ts_log.shift()
+plt.plot(ts_log_diff)
+ts_log_diff.dropna(inplace=True)
+test_stationarity(ts_log_diff)
+decomposition = seasonal_decompose(ts_log, freq=100)
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid
+plt.subplot(411)
+plt.plot(ts_log, label='Original')
+plt.legend(loc='best')
+plt.subplot(412)
+plt.plot(trend, label='Trend')
+plt.legend(loc='best')
+plt.subplot(413)
+plt.plot(seasonal, label='Seasonality')
+plt.legend(loc='best')
+plt.subplot(414)
+plt.plot(residual, label='Residuals')
+plt.legend(loc='best')
+plt.tight_layout()
+ts_log_decompose = residual
+ts_log_decompose.dropna(inplace=True)
+test_stationarity(ts_log_decompose)
+lag_acf = acf(ts_log_diff, nlags=20)
+lag_pacf = pacf(ts_log_diff, nlags=20, method='ols')
+plt.subplot(121)
+plt.plot(lag_acf)
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.axhline(y=-1.96/np.sqrt(len(ts_log_diff)), linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_log_diff)), linestyle='--', color='gray')
+plt.title('Autocorrelation Function')
+plt.subplot(122)
+plt.plot(lag_pacf)
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.axhline(y=-1.96/np.sqrt(len(ts_log_diff)), linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_log_diff)), linestyle='--', color='gray')
+plt.title('Partial Autocorrelation Function')
+plt.tight_layout()
+model = ARIMA(ts_log, order=(2, 1, 0))
+results_AR = model.fit(disp=-1)
+plt.plot(ts_log_diff)
+plt.plot(results_AR.fittedvalues, color='red')
+plt.title('RSS: %.4f' % sum((results_AR.fittedvalues - ts_log_diff)**2))
+model = ARIMA(ts_log, order=(0, 1, 2))
+results_MA = model.fit(disp=-1)
+plt.plot(ts_log_diff)
+plt.plot(results_MA.fittedvalues, color='red')
+plt.title('RSS: %.4f' % sum((results_MA.fittedvalues - ts_log_diff)**2))
+model = ARIMA(ts_log, order=(2, 1, 2))
+results_ARIMA = model.fit(disp=-1)
+plt.plot(ts_log_diff)
+plt.plot(results_ARIMA.fitted

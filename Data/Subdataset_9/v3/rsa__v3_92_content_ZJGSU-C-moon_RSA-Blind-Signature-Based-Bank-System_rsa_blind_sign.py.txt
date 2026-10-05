@@ -1,0 +1,77 @@
+import hashlib
+import gmpy2
+import random
+import time
+
+# Function to generate a prime number
+def generate_prime(rs):
+    # Generate a random number of 1024 bits using rs (random state)
+    p = gmpy2.mpz_urandomb(rs, 1024)
+    # Loop until a prime number is found
+    while not gmpy2.is_prime(p):
+        # Increment p until a prime is found
+        p += 1
+    return p
+
+# Function to generate public and private keys
+def generate_keys():
+    # Create a random state using current time as seed
+    rs = gmpy2.random_state(int(time.time()))
+    # Generate two prime numbers, p and q
+    p = generate_prime(rs)
+    q = generate_prime(rs)
+    # Calculate n as the product of p and q
+    n = p * q
+    # Set e as a fixed value (65537 or 0x10001 in hexadecimal)
+    e = 0x10001
+    # Define a hashing function using SHA-256
+    hash_func = lambda m: int(hashlib.sha256(m).hexdigest(), 16)
+    # Public key consists of n, e, and the hash function H
+    public_key = [n, e, hash_func]
+    # Calculate d as the modular inverse of e modulo (p-1)*(q-1)
+    d = gmpy2.invert(e, (p - 1) * (q - 1))
+    # Private key is just d
+    private_key = d
+    return public_key, private_key
+
+# Function to sign a message
+def sign_message(public_key, private_key, message):
+    # Extracting n, e, and hash function from public key
+    n, e, hash_func = public_key
+    # Extracting private key d
+    d = private_key
+    # Generate a random number R between 0 and n
+    R = random.randrange(0, n)
+    # Calculate hash of the message
+    hash_message = hash_func(message) % n
+    # Calculate R^e modulo n
+    R_e = gmpy2.powmod(R, e, n)
+    # Calculate M = R^e * hash_message modulo n
+    M = R_e * hash_message % n
+    # Calculate M^d modulo n
+    M_d = gmpy2.powmod(M, d, n)
+    # Calculate the modular inverse of R modulo n
+    R_inverse = gmpy2.invert(R, n)
+    # Calculate the final signature sigma
+    signature = gmpy2.mul(M_d, R_inverse) % n
+    return signature
+
+# Function to verify a signature
+def verify_signature(public_key, signature):
+    # Extracting n and e from public key
+    n, e, _ = public_key
+    # Calculate signature^e modulo n
+    verification = gmpy2.powmod(signature, e, n)
+    return verification
+
+if __name__ == '__main__':
+    # Prompt user to input a message
+    message = raw_input('Please input your message:')
+    # Generate public and private keys
+    public_key, private_key = generate_keys()
+    # Sign the message using the generated keys
+    signature = sign_message(public_key, private_key, message)
+    print 'Signature:', signature
+    # Verify the signature
+    verification = verify_signature(public_key, signature)
+    print 'Verification result:', verification

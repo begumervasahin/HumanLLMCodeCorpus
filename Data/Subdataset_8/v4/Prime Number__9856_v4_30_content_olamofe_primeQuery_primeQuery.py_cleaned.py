@@ -1,0 +1,77 @@
+def prime_query(n, first, second, values, queries):
+    if n != len(values):
+        raise ValueError("Number of nodes and values are not equal")
+    nodes = queries
+    node_values = values
+    pairs = [[x, y] for x, y in zip(first, second)]
+    tree_dict = {}
+    for index in range(1, n + 1):
+        tree_dict[index] = []
+    root_children = []
+    for x in pairs:
+        if 1 in x:
+            if x.index(1) == 0:
+                root_children.append(x[1])
+            else:
+                root_children.append(x[0])
+    tree_dict[1] = root_children
+    def create_tree_dict(index, dic, pairs_list):
+        stack = []
+        tmp = []
+        current_list = dic.get(index)
+        if not current_list:
+            return
+        for x in current_list:
+            stack.append(x)
+        while stack:
+            for node in stack[::-1]:
+                index = 0
+                while index < len(pairs_list):
+                    node_pairs = pairs_list[index]
+                    if node in node_pairs:
+                        if node_pairs.index(node) == 0:
+                            node_comp = node_pairs[1]
+                        else:
+                            node_comp = node_pairs[0]
+                        tmp.append(node_comp)
+                        pairs_list.remove(node_pairs)
+                        index -= 1
+                    index += 1
+                dic[node] = tmp
+                create_tree_dict(node, dic, pairs_list)
+                stack.pop()
+                tmp = []
+        return dic
+    tree = create_tree_dict(1, tree_dict, pairs.copy())
+    def is_prime(x):
+        if x < 2:
+            return False
+        if x in (2, 3, 5, 7):
+            return True
+        for i in range(2, int(x ** 0.5) + 1):
+            if x % i == 0:
+                return False
+        return True
+    def count_primes(node_dict, node, node_values):
+        prime_counter = 0
+        if node not in node_dict.keys():
+            return prime_counter
+        else:
+            values_at_node = node_dict.get(node)
+            value_inside_node = node_values[node - 1]
+            if is_prime(value_inside_node):
+                prime_counter += 1
+            stack = []
+            if values_at_node:
+                for x in values_at_node:
+                    stack.append(x)
+                while stack:
+                    for x in stack[::-1]:
+                        count_primes(node_dict, x, node_values)
+                        stack.pop()
+        return prime_counter
+    primes_count = []
+    for node in nodes:
+        primes_count.append(count_primes(tree, node, node_values))
+    result = '\n'.join(map(str, primes_count))
+    return result

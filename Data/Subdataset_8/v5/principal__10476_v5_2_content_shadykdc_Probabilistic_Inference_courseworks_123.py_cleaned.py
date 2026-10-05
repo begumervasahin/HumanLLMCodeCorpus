@@ -1,0 +1,70 @@
+import numpy as np
+def calculate_prior(data, root, num_states):
+    prior = np.zeros((num_states[root]), dtype=float)
+    data_amount = len(data[:, 0])
+    for i in range(data_amount):
+        prior[data[i, root]] += 1
+    prior /= data_amount
+    return prior
+def calculate_cpt(data, var_c, var_p, num_states):
+    data_amount = len(data[:, 0])
+    cpt = np.zeros((num_states[var_c], num_states[var_p]), dtype=float)
+    for row in range(data_amount):
+        cpt[data[row, var_c]][data[row, var_p]] += 1
+    for i in range(num_states[var_p]):
+        alpha = np.sum(data[:, var_p] == i)
+        if alpha != 0:
+            cpt[:, i] /= np.sum(data[:, var_p] == i)
+    return cpt
+def calculate_jpt(data, var_row, var_col, num_states):
+    jpt = np.zeros((num_states[var_row], num_states[var_col]), dtype=float)
+    data_amount = len(data[:, 0])
+    for row in range(data_amount):
+        jpt[data[row, var_row]][data[row, var_col]] += 1
+    jpt /= data_amount
+    return jpt
+def jpt_to_cpt(jpt):
+    for i in range(len(jpt[0, :])):
+        alpha = np.sum(jpt[:, i])
+        if alpha != 0:
+            jpt[:, i] *= 1 / alpha
+    return jpt
+def query(the_query, naive_bayes):
+    root_pdf = np.zeros((naive_bayes[0].shape[0]), dtype=float)
+    for i in range(len(root_pdf)):
+        root_pdf[i] = naive_bayes[0][i]
+        for j in range(0, len(the_query)):
+            root_pdf[i] *= naive_bayes[j + 1][the_query[j], i]
+    if np.sum(root_pdf) != 0:
+        root_pdf *= 1 / np.sum(root_pdf)
+    else:
+        root_pdf = np.ones((naive_bayes[0].shape[0]), dtype=float) / naive_bayes[0].shape[0]
+    return root_pdf
+def calculate_mutual_information(jpt):
+    mi = 0.0
+    num_cols = len(jpt[0, :])
+    num_rows = len(jpt[:, 0])
+    col_sum = np.zeros(num_cols, dtype=float)
+    for j in range(num_cols):
+        col_sum[j] = np.sum(jpt[:, j])
+    for i in range(num_rows):
+        row_sum = np.sum(jpt[i, :])
+        for j in range(num_cols):
+            if jpt[i][j] != 0 and col_sum[j] != 0 and row_sum != 0:
+                mi += jpt[i][j] * np.log(jpt[i][j] / (row_sum * col_sum[j]), 2)
+    return mi
+the_data = np.array([[1, 1, 1, 1], [1, 2, 1, 1], [2, 1, 2, 2], [2, 2, 2, 2], [2, 2, 1, 1]])
+the_query = np.array([0, 1, 1])
+prior = calculate_prior(the_data, 0, [3, 2, 2, 2])
+print("Prior:", prior)
+cpt = calculate_cpt(the_data, 1, 0, [3, 2, 2, 2])
+print("CPT:", cpt)
+jpt = calculate_jpt(the_data, 0, 1, [3, 2, 2, 2])
+print("JPT:", jpt)
+cpt_from_jpt = jpt_to_cpt(jpt)
+print("CPT from JPT:", cpt_from_jpt)
+naive_bayes = [prior, cpt_from_jpt]
+for i in range(len(the_query)):
+    print("Query result:", query(the_query, naive_bayes))
+mutual_info = calculate_mutual_information(jpt)
+print("Mutual Information:", mutual_info)

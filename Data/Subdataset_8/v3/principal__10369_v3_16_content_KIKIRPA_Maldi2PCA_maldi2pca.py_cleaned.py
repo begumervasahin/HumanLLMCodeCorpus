@@ -1,0 +1,179 @@
+import sys
+import math
+from optparse import OptionParser
+def print_header():
+    print("Maldi2PCA - Prepares Maldi data for PCA: reduce & normalize TAB-delimited data files")
+    print("  Author:\tWim Fremout / Royal Institute for Cultural Heritage, Brussels, Belgium (4 Oct 2016)")
+    print("  Licence:\tGNU GPL version 3.0\n")
+def parse_options():
+    usage = "usage: %prog [options] INFILES"
+    parser = OptionParser(usage=usage, version="%prog 0.2")
+    parser.add_option("--nolimits", help="do not set X range", action="store_false", dest="FILT", default=True)
+    parser.add_option("--low", help="lower limit (default: 900)", action="store", type="int", dest="LOW", default=900)
+    parser.add_option("--high", help="higher limit (default: 2000)", action="store", type="int", dest="HIGH", default=2000)
+    parser.add_option("-n", help="normalize Y data, no normalization when zero (default: 999)", action="store", type="int", dest="NORM", default=999)
+    parser.add_option("-c", help="display columns (default: 15, 13 in case of -n0) \n 1-Xround\n 2-Xpeak\n 3-Ypeak\n 4-Ysum\n 5-Ypeak*\n 6-Ysum*\n 7-iterations", action="store", type="int", dest="COL", default="15")
+    parser.add_option("--headerless", help="do not display the table header", action="store_false", dest="HEADER", default=True)
+    parser.add_option("--comma", help="comma as digital separator", action="store_true", dest="COMMA", default=False)
+    parser.add_option("-o", help="output file", action="store", type="string", dest="OUTFILE")
+    parser.add_option("-v", "--verbose", help="be very verbose", action="store_true", dest="VERBOSE", default=False)
+    return parser.parse_args()
+def read_data(options, args):
+    xround = []
+    xpeak = []
+    ysum = []
+    ypeak = []
+    iterations = []
+    datapointindex = [0]
+    for z in args:
+        with open(z, 'r') as sourcefile:
+            for line in sourcefile:
+                line = line.strip()
+                temp = line.split()
+                xroundtemp = math.trunc(round(float(temp[0]), 0))
+                if xroundtemp <= options.LOW:
+                    pass
+                elif xroundtemp > options.HIGH:
+                    break
+                elif xroundtemp == xround[-1]:
+                    if "7" in options.COL:
+                        iterations[-1] += 1
+                    if any(x in options.COL for x in ["4", "6"]):
+                        ysum[-1] += round(float(temp[1]), 0)
+                    if any(x in options.COL for x in ["2", "3", "5"]):
+                        ypeaktemp = round(float(temp[1]), 0)
+                        if ypeaktemp > ypeak[-1]:
+                            ypeak[-1] = ypeaktemp
+                            if "2" in options.COL:
+                                xpeak[-1] = round(float(temp[0]), 4)
+                else:
+                    xround.append(xroundtemp)
+                    if "2" in options.COL:
+                        xpeak.append(round(float(temp[0]), 4))
+                    if any(x in options.COL for x in ["4", "6"]):
+                        ysum.append(round(float(temp[1]), 0))
+                    if any(x in options.COL for x in ["2", "3", "5"]):
+                        ypeak.append(round(float(temp[1]), 0))
+                    if "7" in options.COL:
+                        iterations.append(1)
+                    datapointindex.append(len(xround) - 1)
+    return xround, xpeak, ysum, ypeak, iterations, datapointindex
+def normalize_data(options, ypeak, ysum, datapointindex):
+    ypeaknorm = []
+    ysumnorm = []
+    if options.NORM > 0:
+        for z in range(len(datapointindex) - 1):
+            if "5" in options.COL:
+                vMax = max(ypeak[datapointindex[z]:datapointindex[z + 1]])
+                for x in ypeak[datapointindex[z]:datapointindex[z + 1]]:
+                    ypeaknorm.append(round(x / (vMax * 1.0) * options.NORM, 0))
+            if "6" in options.COL:
+                vMax = max(ysum[datapointindex[z]:datapointindex[z + 1]])
+                for x in ysum[datapointindex[z]:datapointindex[z + 1]]:
+                    ysumnorm.append(round(x / (vMax * 1.0) * options.NORM, 0))
+    return ypeaknorm, ysumnorm
+def write_output(options, args, xround, xpeak, ypeak, ysum, ypeaknorm, ysumnorm, iterations, datapointindex):
+    with open(options.OUTFILE, 'w') as outfile:
+        if options.COL[0] == "1":
+            options.COL = options.COL.replace("1", "", 1)
+            xcolumn = True
+        else:
+            xcolumn = False
+        if options.HEADER:
+            headerline1 = ""
+            headerline2 = ""
+            if xcolumn:
+                headerline1 += "\t"
+                headerline2 += "X\t"
+            for z in args:
+                for y in range(len(options.COL)):
+                    if options.COL[y] == "1":
+                        headerline1 += z + "\t"
+                        headerline2 += "X\t"
+                    elif options.COL[y] == "2":
+                        headerline1 += z + "\t"
+                        headerline2 += "Xpeak\t"
+                    elif options.COL[y] == "3":
+                        headerline1 += z + "\t"
+                        headerline2 += "Ypeak\t"
+                    elif options.COL[y] == "4":
+                        headerline1 += z + "\t"
+                        headerline2 += "Ysum\t"
+                    elif options.COL[y] == "5":
+                        headerline1 += z + "\t"
+                        headerline2 += "Ypeak*\t"
+                    elif options.COL[y] == "6":
+                        headerline1 += z + "\t"
+                        headerline2 += "Ysum*\t"
+                    elif options.COL[y] == "7":
+                        headerline1 += z + "\t"
+                        headerline2 += "iterations\t"
+            outfile.write(headerline1 + "\n" + headerline2 + "\n")
+        for x in range(min(xround), max(xround) + 1):
+            outputline = ""
+            if xcolumn:
+                outputline += str(x) + "\t"
+            for z in range(len(datapointindex) - 1):
+                if xround[datapointindex[z]] == x:
+                    for y in range(len(options.COL)):
+                        if options.COL[y] == "1":
+                            outputline += str(xround[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "2":
+                            outputline += str(xpeak[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "3":
+                            outputline += str(ypeak[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "4":
+                            outputline += str(ysum[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "5":
+                            outputline += str(ypeaknorm[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "6":
+                            outputline += str(ysumnorm[datapointindex[z]]).replace(".", ",") + "\t"
+                        elif options.COL[y] == "7":
+                            outputline += str(iterations[datapointindex[z]]) + "\t"
+                    datapointindex.pop(z)
+                    if "2" in options.COL:
+                        xpeak.pop(datapointindex[z])
+                    if "3" in options.COL:
+                        ypeak.pop(datapointindex[z])
+                    if "4" in options.COL:
+                        ysum.pop(datapointindex[z])
+                    if "5" in options.COL:
+                        ypeaknorm.pop(datapointindex[z])
+                    if "6" in options.COL:
+                        ysumnorm.pop(datapointindex[z])
+                    if "7" in options.COL:
+                        iterations.pop(datapointindex[z])
+                    for y in range(z + 1, len(datapointindex) - 1):
+                        datapointindex[y] -= 1
+                else:
+                    outputline += "\t" * len(options.COL)
+            outfile.write(outputline + "\n")
+def main():
+    print_header()
+    options, args = parse_options()
+    if len(args) == 0:
+        parser.error("incorrect number of arguments")
+    if options.NORM == 0:
+        options.COL = options.COL.replace("5", "3")
+        options.COL = options.COL.replace("6", "4")
+    digsep = "," if options.COMMA else "."
+    if options.VERBOSE:
+        print("PARAMETERS")
+        print("  mass range:", options.FILT)
+        print("    lower limit:", options.LOW)
+        print("    higher limit:", options.HIGH)
+        print("  normalization:", options.NORM)
+        print("  columns:", options.COL)
+        print("  header:", options.HEADER)
+        print("  digital separator:", digsep)
+        print("  OUTFILE:", options.OUTFILE)
+        print("  INFILES:", args, "\n")
+    xround, xpeak, ysum, ypeak, iterations, datapointindex = read_data(options, args)
+    ypeaknorm, ysumnorm = normalize_data(options, ypeak, ysum, datapointindex)
+    if options.VERBOSE:
+        print("\n\nCREATING OUTPUT...\n")
+    if options.OUTFILE is not None:
+        write_output(options, args, xround, xpeak, ypeak, ysum, ypeaknorm, ysumnorm, iterations, datapointindex)
+    print("All done.")
+if __name__ == "__main__":
+    main()

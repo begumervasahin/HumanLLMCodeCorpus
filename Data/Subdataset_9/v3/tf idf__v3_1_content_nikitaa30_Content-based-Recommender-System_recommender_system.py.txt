@@ -1,0 +1,43 @@
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel    
+
+# Load the dataset
+dataset_path = "/home/nikita/Downloads/sample-data.csv"
+data = pd.read_csv(dataset_path)
+
+# Create TF-IDF vectorizer
+tfidf_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0, stop_words='english')     
+tfidf_matrix = tfidf_vectorizer.fit_transform(data['description'])
+
+# Compute cosine similarities
+cosine_similarities = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+# Initialize dictionary to store results
+similar_items_dict = {}
+
+# Iterate over each row in the dataset
+for idx, row in data.iterrows():
+    # Get indices of most similar items
+    similar_indices = cosine_similarities[idx].argsort()[:-1][::-1]
+    # Store similar items along with cosine similarity scores
+    similar_items = [(cosine_similarities[idx][i], data.loc[i, 'id']) for i in similar_indices if i != idx]
+    # Exclude the item itself from the recommendations
+    similar_items_dict[row['id']] = similar_items
+
+print('Recommendation process completed!')
+
+# Function to get item description by ID
+def get_item_description(item_id):
+    return data.loc[data['id'] == item_id, 'description'].iloc[0].split(' - ')[0]
+
+# Function to recommend similar items
+def recommend_similar_items(item_id, num_recommendations):
+    print(f"Recommending {num_recommendations} products similar to '{get_item_description(item_id)}'...")
+    print("-------")
+    recommendations = similar_items_dict.get(item_id, [])
+    for idx, (similarity_score, similar_item_id) in enumerate(recommendations[:num_recommendations], start=1):
+        print(f"{idx}. {get_item_description(similar_item_id)} (score: {similarity_score:.4f})")
+
+# Example usage: recommend 5 products similar to item with ID 11
+recommend_similar_items(item_id=11, num_recommendations=5)

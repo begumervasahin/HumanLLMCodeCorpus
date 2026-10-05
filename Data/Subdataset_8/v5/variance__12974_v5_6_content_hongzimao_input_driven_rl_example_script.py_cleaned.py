@@ -1,0 +1,29 @@
+import subprocess
+from utils import create_folder_if_not_exists
+def run_subprocesses(prefixes):
+    procs = []
+    log_files = []
+    log_path = './results/logs/'
+    create_folder_if_not_exists(log_path)
+    for prefix in prefixes:
+        log_file = open(f'{log_path}{prefix}', 'w')
+        log_files.append(log_file)
+        command = generate_command(prefix)
+        p = subprocess.Popen(command, stdout=log_file, stderr=log_file, shell=True)
+        procs.append(p)
+    wait_for_processes(procs)
+    close_log_files(log_files)
+def generate_command(prefix):
+    return f'python3 load_balance_actor_critic_train.py \
+--num_workers 10 --service_rates 0.15 0.25 0.35 0.45 0.55 0.65 0.75 0.85 0.95 1.05 \
+--result_folder ./results/{prefix}/ \
+--model_folder ./results/parameters/{prefix}/'
+def wait_for_processes(processes):
+    for process in processes:
+        process.wait()
+def close_log_files(log_files):
+    for log_file in log_files:
+        log_file.close()
+if __name__ == "__main__":
+    prefixes = ['regular_value_network', '10_value_networks']
+    run_subprocesses(prefixes)

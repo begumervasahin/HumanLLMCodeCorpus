@@ -1,0 +1,46 @@
+from collections import namedtuple
+from GraphGeneration import Graph
+Edge = namedtuple('Edge', ['vertex', 'weight'])
+NumberOfVertices = 5000
+status = [None] * NumberOfVertices
+wt = [None] * NumberOfVertices
+def pickBestVertex():
+    best_weight = 0
+    best_vertex = None
+    for i in range(len(status)):
+        if status[i] == 'fringe' and wt[i] > best_weight:
+            best_weight = wt[i]
+            best_vertex = i
+    return best_vertex
+def initialize(graph, source):
+    dad = [None] * NumberOfVertices
+    for i in graph.get_vertex():
+        status[i] = 'unseen'
+    status[source] = 'intree'
+    for i in graph.get_edge(source):
+        status[i.vertex] = 'fringe'
+        wt[i.vertex] = i.weight
+        dad[i.vertex] = source
+    return dad
+def updateStatus(graph, v, dad):
+    status[v] = 'intree'
+    for e in graph.get_edge(v):
+        if status[e.vertex] == 'unseen':
+            status[e.vertex] = 'fringe'
+            dad[e.vertex] = v
+            wt[e.vertex] = wt[v] if wt[v] < e.weight else e.weight
+        elif status[e.vertex] == 'fringe' and wt[e.vertex] < min(wt[v], e.weight):
+            dad[e.vertex] = v
+            wt[e.vertex] = wt[v] if wt[v] < e.weight else e.weight
+def DijkstrasNoHeap(graph, source, destination):
+    dad = initialize(graph, source)
+    while 'fringe' in status:
+        v = pickBestVertex()
+        updateStatus(graph, v, dad)
+    max_bw_path = []
+    end = destination
+    while end is not None:
+        max_bw_path.append(end)
+        end = dad[end]
+    max_bw_path.reverse()
+    return max_bw_path, wt[destination]

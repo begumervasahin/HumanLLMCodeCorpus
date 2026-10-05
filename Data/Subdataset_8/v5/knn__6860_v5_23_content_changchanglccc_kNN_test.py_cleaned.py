@@ -1,0 +1,27 @@
+import numpy as np
+import operator
+a = 1
+b = 2
+c = a + b
+print(c)
+b = np.array([6, 7, 8])
+c = len(b)
+print(c)
+a = np.sum([[0, 1, 2], [2, 1, 3]])
+print(a)
+a = np.sum([[0, 1, 2], [2, 1, 3]], axis=0)
+print(a)
+a = np.sum([[8, 1, 2], [2, 1, 3], [0, 0, 0]], axis=1)
+print(a)
+d = np.argsort(a)
+print(d)
+classCount = {"A": 6, "B": 1, "C": 0, "D": 2}
+sortedClassCount = sorted(classCount.items(), key=operator.itemgetter(1), reverse=True)
+print(sortedClassCount)
+f = np.array([[5, 8], [1, 2]])
+def imgToVector(image):
+    rows, cols = image.shape
+    myVector = image.reshape(1, rows * cols)
+    return myVector
+myVector = imgToVector(f)
+print(myVector[0, 1])

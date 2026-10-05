@@ -1,0 +1,68 @@
+import os
+import csv
+import pickle
+import numpy as np
+import tensorflow as tf
+from nltk import word_tokenize
+from keras.preprocessing.text import Tokenizer
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from keras.models import load_model
+from keras.preprocessing import sequence
+MODELS_DIR = "models"
+DATA_DIR = "data"
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+MODEL_BATCH_SIZE = 128
+MAX_POST_LENGTH = 40
+TYPES = [
+    "INFJ", "ENTP", "INTP", "INTJ", "ENTJ", "ENFJ", "INFP", "ENFP",
+    "ISFP", "ISTP", "ISFJ", "ISTJ", "ESTP", "ESFP", "ESTJ", "ESFJ"
+]
+TYPES = [x.lower() for x in TYPES]
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words("english"))
+def lemmatize_posts(posts):
+    lemmatized = []
+    for post in posts:
+        temp = post.lower()
+        for type_ in TYPES:
+            temp = temp.replace(" " + type_, "")
+        temp = " ".join(
+            [lemmatizer.lemmatize(word) for word in temp.split(" ") if word not in stop_words]
+        )
+        lemmatized.append(temp)
+    return lemmatized
+def preprocess_text(tokenizer, texts):
+    tokenized = tokenizer.texts_to_sequences(texts)
+    return sequence.pad_sequences(tokenized, maxlen=MAX_POST_LENGTH)
+def generate_extreme_examples(dimension):
+    x_test_a = []
+    x_test_b = []
+    with open(os.path.join(DATA_DIR, f"test_{dimension[0]}.csv"), "r") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            x_test_a.append(row)
+    with open(os.path.join(DATA_DIR, f"test_{dimension[1]}.csv"), "r") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            x_test_b.append(row)
+    x_test = x_test_a + x_test_b
+    model = load_model(os.path.join(MODELS_DIR, f"rnn_model_{dimension}.h5"))
+    with open(os.path.join(MODELS_DIR, f"rnn_tokenizer_{dimension}.pkl"), "rb") as f:
+        tokenizer = pickle.load(f)
+    lemmatized_posts = lemmatize_posts(x_test)
+    preprocessed_text = preprocess_text(tokenizer, lemmatized_posts)
+    probs = model.predict(preprocessed_text)
+    sorted_indices = np.argsort(probs.flatten())
+    num_extreme_examples = 500
+    min_prob_indices = sorted_indices[:num_extreme_examples]
+    max_prob_indices = sorted_indices[-num_extreme_examples:]
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"), "w") as f:
+        for i in min_prob_indices:
+            f.write(lemmatized_posts[i] + "\n\n")
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"), "w") as f:
+        for i in max_prob_indices:
+            f.write(lemmatized_posts[i] + "\n\n")
+if __name__ == "__main__":
+    for dimension in DIMENSIONS:
+        generate_extreme_examples(dimension)

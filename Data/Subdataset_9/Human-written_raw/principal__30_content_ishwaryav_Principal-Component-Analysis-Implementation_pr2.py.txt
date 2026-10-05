@@ -1,0 +1,26 @@
+"""
+Created on Fri Mar 30 14:23:51 2018
+@author: ishwaryavaradarajan
+"""
+import pandas as pd
+import numpy as np
+train = pd.read_csv('train.dat', header=None, sep=' ', quoting=3)
+label = pd.read_csv('train.labels', header=None, sep=' ', quoting=3)
+test = pd.read_csv('test.dat', header=None, sep=' ', quoting=3)
+X_train = train.iloc[:,0:887]
+y_train = label.iloc[:,0]
+X_test = test.iloc[:,0:887]
+X_train_mean = np.mean(X_train, axis=0)
+X_train = X_train - X_train_mean
+X_test_sm = np.mean(X_test, axis=0)
+X_test = X_test - X_test_sm
+from sklearn.decomposition import PCA
+pca = PCA(n_components = 28)
+X_train = pca.fit_transform(X_train)
+X_test = pca.transform(X_test)
+from xgboost import XGBClassifier
+xgb = XGBClassifier(learning_rate=0.3, n_estimators=2000, max_depth=7, min_child_weight=1, gamma=0, subsample=0.8, colsample_bytree=0.8, objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)
+xgb.fit(X_train, y_train)
+y_pred=xgb.predict(X_test)
+output = pd.DataFrame(data=y_pred)
+output.to_csv("output.dat", index=False, quoting=3, header=None)

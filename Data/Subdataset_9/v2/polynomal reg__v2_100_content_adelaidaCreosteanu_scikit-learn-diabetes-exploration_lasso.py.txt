@@ -1,0 +1,69 @@
+# Import necessary libraries
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.datasets import load_diabetes
+import utility as u
+
+# Function to plot different alpha values against RMSE for Lasso regression
+def plot_alphas_lasso(dataset):
+    # Splitting dataset into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.2, random_state=42)
+    
+    # Lists to store training and testing errors for different alpha values
+    train_errors, test_errors = [], []
+    
+    # Generating alpha values
+    alphas = np.linspace(1e-06, 3, 1000)
+    
+    # Iterating over each alpha value
+    for alpha in alphas:
+        # Creating Lasso regression model with current alpha value
+        lasso = linear_model.Lasso(alpha=alpha)
+        
+        # Fitting the model on training data
+        lasso.fit(x_train, y_train)
+        
+        # Calculating RMSE for training and testing data
+        train_rmse = u.rmse(y_train, lasso.predict(x_train))
+        test_rmse = u.rmse(y_test, lasso.predict(x_test))
+        
+        # Appending errors to respective lists
+        train_errors.append(train_rmse)
+        test_errors.append(test_rmse)
+    
+    # Plotting alpha values against RMSE
+    plt.plot(alphas, train_errors, 'r-', linewidth=2, label='Training')
+    plt.plot(alphas, test_errors, 'b-', linewidth=3, label='Validation')
+    plt.xlabel('Alpha')
+    plt.ylabel('RMSE')
+    plt.legend(loc='lower right')
+    plt.show()
+
+# Function to find the optimal alpha value using grid search
+def optimal_alpha(dataset):
+    # Defining parameter grid for grid search
+    param_grid = [{'alpha': np.logspace(-6, 0.5, 1000)}]
+    
+    # Creating Lasso regression model
+    lasso = linear_model.Lasso()
+    
+    # Performing grid search with 5-fold cross-validation
+    grid_search = GridSearchCV(lasso, param_grid, cv=5)
+    
+    # Fitting grid search on dataset
+    grid_search.fit(dataset.data, dataset.target)
+    
+    # Returning the optimal alpha value
+    return grid_search.best_params_['alpha']
+
+# Load dataset (example with diabetes dataset)
+dataset = load_diabetes()
+
+# Plot alphas and corresponding RMSEs
+plot_alphas_lasso(dataset)
+
+# Find optimal alpha using grid search
+optimal_alpha_val = optimal_alpha(dataset)
+print("Optimal Alpha:", optimal_alpha_val)

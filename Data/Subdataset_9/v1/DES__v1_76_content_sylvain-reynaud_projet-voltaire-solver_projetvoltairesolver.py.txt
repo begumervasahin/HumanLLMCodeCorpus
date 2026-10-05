@@ -1,0 +1,40 @@
+import json
+import difflib
+import re
+from urllib.parse import unquote
+from termcolor import colored
+import os
+
+data_filename = "data.txt"
+directory = "."
+
+reponses = []
+
+# Read data from files in the directory
+for filename in os.listdir(directory):
+    if filename.endswith(data_filename):
+        with open(os.path.join(directory, filename), 'r', encoding="utf-8") as f:
+            data = f.read()
+            try:
+                # Extract relevant data from the file
+                data = data[data.index("[\"java.util.ArrayList"):data.index("]")] + "]"
+                data = data.replace("\\", "\\\\")
+                reponses += json.loads(data)
+            except:
+                pass
+
+# Filter responses containing '\\x3C'
+reponses = [x for x in reponses if "\\x3C" in x]
+
+while True:
+    # Prompt user to enter a phrase
+    phrase = input("Enter the given phrase: ")
+    possibilites = difflib.get_close_matches(phrase, reponses)
+    
+    if len(possibilites) != 0:
+        # If similar phrases found, format and print the closest match
+        toPrint = re.sub(r"<B>(.*)<\/B>", colored(r"\1", "green"), unquote(possibilites[0].replace("\\x", "%")))
+        print('', toPrint, '\n')
+    else:
+        # If no similar phrases found, print a message indicating so
+        print('', colored("There is no mistake", "green"), '\n')

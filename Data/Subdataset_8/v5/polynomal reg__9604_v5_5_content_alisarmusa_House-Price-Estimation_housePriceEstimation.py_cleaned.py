@@ -1,0 +1,36 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import time
+def load_data(filename):
+    data = pd.read_csv(filename)
+    return data["squareMeter"].values, data["price"].values
+def plot_polynomial_curve(x, y, degree=3):
+    coefficients = np.polyfit(x, y, degree)
+    z = np.arange(150)
+    polynomial_curve = np.poly1d(coefficients)
+    plt.scatter(x, y, label="Original Data")
+    plt.plot(z, polynomial_curve(z), color='red', label="Polynomial Curve")
+    plt.xlabel("Square Meter")
+    plt.ylabel("Price")
+    plt.legend()
+    plt.show()
+def get_house_price_guess(square_meter, coefficients):
+    return np.polyval(coefficients, square_meter)
+def get_square_meter_guess(house_price, coefficients):
+    for i in np.arange(0, 1000, 0.001):
+        if np.polyval(coefficients, i) >= house_price:
+            return i
+def main():
+    start_time = time.time()
+    square_meter, price = load_data("housePriceDataset.csv")
+    plot_polynomial_curve(square_meter, price)
+    m2_guess = float(input("Please, enter square meter (m2): "))
+    house_price_guess = get_house_price_guess(m2_guess, np.polyfit(square_meter, price, 3))
+    print("House Price Guess => ${:.2f}".format(house_price_guess))
+    house_price = float(input("Please, enter house price ($): "))
+    square_meter_guess = get_square_meter_guess(house_price, np.polyfit(square_meter, price, 3))
+    print("Square Meter (m2) Guess => {:.2f}m2".format(square_meter_guess))
+    print("Total Execution Time: {:.4f} Seconds".format(time.time() - start_time))
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,26 @@
+import torchvision
+from torch.utils.data import Dataset
+class CIFAR10Wrapper(Dataset):
+    def __init__(self, root, train=True, download=False, transform=None):
+        self.dataset = torchvision.datasets.CIFAR10(root=root, train=train, download=download, transform=transform)
+        self.transformed_cache = {}
+        self.access_total = 0
+        self.cache_hit = 0
+        self.access_since_retransform = 0
+    def __getitem__(self, index):
+        if index in self.transformed_cache:
+            item = self.transformed_cache[index]
+            self.cache_hit += 1
+        else:
+            item = self.dataset[index]
+            self.transformed_cache[index] = item
+        self.access_total += 1
+        self.access_since_retransform += 1
+        return item
+    def __len__(self):
+        return len(self.dataset)
+    def retransform(self):
+        print(f"Total calls to retransform: {self.access_since_retransform}, Cache hits: {self.cache_hit}")
+        self.transformed_cache = {}
+        self.access_since_retransform = 0
+        self.cache_hit = 0

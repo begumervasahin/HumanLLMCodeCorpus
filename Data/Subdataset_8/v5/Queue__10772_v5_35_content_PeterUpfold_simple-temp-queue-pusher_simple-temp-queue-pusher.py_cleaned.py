@@ -1,0 +1,62 @@
+import yaml
+import subprocess
+import json
+import logging
+from datetime import datetime
+from time import sleep
+import os
+import sys
+LIB_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+if os.path.exists(LIB_DIR):
+    sys.path.append(LIB_DIR)
+from PUStatusReporter import reporter
+with open('config.yml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+logging.basicConfig(level=logging.INFO)
+def run_temperature_reading():
+    command = ['./simple-temp-readout', '/dev/hidraw1', '0x01', '0x80', '0x33', '0x01', '0x00', '0x00', '0x00', '0x00']
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = process.communicate()
+    return output, err
+def report_error_status(error_message):
+    try:
+        if not reporter.get_context('cupboard_temperature_fail', config['status_reporter_key']):
+            reporter.create_context('cupboard_temperature_fail', config['status_reporter_key'])
+        reporter.set_status('cupboard_temperature_fail', error_message, config['status_reporter_key'])
+    except IOError as e:
+        logging.error(f'Failed to communicate with StatusReporter: {e}')
+def report_temperature_status(actual_temp):
+    try:
+        if not reporter.get_context('cupboard_temperature', config['status_reporter_key']):
+            reporter.create_context('cupboard_temperature', config['status_reporter_key'])
+        date_string = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        actual_temp_with_date = f'{actual_temp} {date_string}'
+        reporter.set_status('cupboard_temperature', actual_temp_with_date, config['status_reporter_key'])
+    except IOError as e:
+        logging.error(f'Failed to communicate with StatusReporter: {e}')
+def check_temperature_panic(actual_temp):
+    if actual_temp > config['panic_temperature']:
+        logging.error(f'Panic at {actual_temp}')
+        actions = subprocess.Popen(['./temp-panic-actions'])
+        actions_out, actions_err = actions.communicate()
+def main():
+    while True:
+        try:
+            logging.debug('Spawning simple-temp-readout process')
+            output, err = run_temperature_reading()
+            err_string = err.decode('ascii').strip()
+            if err_string:
+                logging.warning(f'Completed with stderr: {err_string}')
+                report_error_status(err_string)
+            try:
+                actual_temp = float(output.decode('ascii').strip())
+                logging.info(f"Temperature: {actual_temp}. Panic threshold: {config['panic_temperature']}")
+                report_temperature_status(actual_temp)
+                check_temperature_panic(actual_temp)
+            except Exception as e:
+                logging.error(f'Failed to parse temperature output: {e}')
+        except Exception as outer_e:
+            logging.error(f'Outer loop failed: {outer_e}')
+        sleep(60)
+if __name__ == "__main__":
+    main()

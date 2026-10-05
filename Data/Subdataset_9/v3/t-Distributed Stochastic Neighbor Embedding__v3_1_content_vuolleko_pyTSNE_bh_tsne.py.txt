@@ -1,0 +1,169 @@
+import numpy as np
+
+class VPTreeNode:
+    """
+    Represents a node in the Vantage-point tree.
+    """
+
+    def __init__(self, indices, data):
+        """
+        Initialize a VPTreeNode.
+
+        Parameters:
+        - indices: Indices of points in the dataset represented by this node.
+        - data: The dataset.
+        """
+        self.indices = indices
+        self.data = data
+        self.radius = 0.
+        self.center = np.mean(data[indices], axis=0)
+        if len(indices) > 1:
+            self.radius = np.max(np.linalg.norm(data[indices] - self.center, axis=1))   
+            left_indices = indices[data[indices, 0] < self.center[0]]
+            right_indices = indices[data[indices, 0] >= self.center[0]]
+            self.left = VPTreeNode(left_indices, data)
+            self.right = VPTreeNode(right_indices, data)
+        else:
+            self.left = None
+            self.right = None
+
+    def find_neighbors(self, query, neighbors, distances, data):
+        """
+        Find the neighbors of a query point.
+
+        Parameters:
+        - query: Index of the query point.
+        - neighbors: Array to store the indices of the neighbors.
+        - distances: Array to store the distances to the neighbors.
+        - data: The dataset.
+        """
+        distance = np.linalg.norm(data[query] - self.center)
+        if distance + self.radius < np.max(distances):
+            return
+        if self.left is None and self.right is None:
+            new_distances = np.linalg.norm(data[self.indices] - data[query], axis=1)    
+            combined_distances = np.vstack((distances, new_distances))
+            sorted_indices = np.argsort(combined_distances)
+            distances[:] = combined_distances[sorted_indices[:len(distances)]]
+            neighbors[:] = self.indices[sorted_indices[:len(neighbors)]]
+        else:
+            if data[query, 0] < self.center[0]:
+                self.left.find_neighbors(query, neighbors, distances, data)
+                self.right.find_neighbors(query, neighbors, distances, data)
+            else:
+                self.right.find_neighbors(query, neighbors, distances, data)
+                self.left.find_neighbors(query, neighbors, distances, data)
+
+class QuadTreeNode:
+    """
+    Represents a node in the Quadtree.
+    """
+
+    def __init__(self, data, x, y, width):
+        """
+        Initialize a QuadTreeNode.
+
+        Parameters:
+        - data: Points in the node.
+        - x: x-coordinate of the node's center.
+        - y: y-coordinate of the node's center.
+        - width: Width of the node.
+        """
+        self.data = data
+        self.x = x
+        self.y = y
+        self.width = width
+        self.children = []
+
+    def summarize(self, query, threshold):
+        """
+        Summarize the contributions of child nodes to a query point.
+
+        Parameters:
+        - query: The query point.
+        - threshold: Threshold for summarization.
+
+        Returns:
+        - The summarized contribution of child nodes.
+        """
+        if len(self.data) == 1:
+            diff = self.data[0] - query
+            distance = np.linalg.norm(diff)
+            if distance < threshold * self.width:
+                return diff / distance, 1
+            return np.zeros_like(query), 0
+        else:
+            F = np.zeros_like(query)
+            student_sum = 0.
+            for child in self.children:
+                diff, count = child.summarize(query, threshold)
+                F += diff
+                student_sum += count
+            return F, student_sum
+
+class TSNE:
+    """
+    Base class for t-SNE.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize t-SNE.
+        """
+        self.n_samples = 0
+        self.data = None
+        self.affin_hd = None
+        self.coord = None
+        self.gradient = None
+        self.cost_min_since_max = None
+
+    def _set_affin_hd(self):
+        """
+        Set high-dimensional affinities.
+        """
+        pass
+
+    def _affin_bin_search_sigma(self, distances):
+        """
+        Perform binary search to find sigma.
+        """
+        pass
+
+    def _set_gradient(self):
+        """
+        Set gradient.
+        """
+        pass
+
+class BarnesHutTSNE(TSNE):
+    """
+    Implements Barnes-Hut accelerated t-Distributed Stochastic Neighbor Embedding.
+    """
+
+    def __init__(self, bh_threshold=0.5, *args, **kwargs):
+        """
+        Initialize Barnes-Hut t-SNE.
+
+        Parameters:
+        - bh_threshold: Threshold for Barnes-Hut condition.
+        """
+        self.bh_threshold = bh_threshold
+        super(BarnesHutTSNE, self).__init__(*args, **kwargs)
+        self.cost_min_since_max = 0
+
+    def _set_affin_hd(self):
+        """
+        Set high-dimensional affinities.
+        """
+        pass
+
+    def _set_gradient(self):
+        """
+        Set gradient.
+        """
+        pass
+
+# Usage example
+bh_tsne = BarnesHutTSNE(bh_threshold=0.5)
+bh_tsne._set_affin_hd()
+bh_tsne._set_gradient()

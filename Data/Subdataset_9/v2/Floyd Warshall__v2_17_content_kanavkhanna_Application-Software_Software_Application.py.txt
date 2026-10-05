@@ -1,0 +1,88 @@
+import googlemaps
+import numpy as np
+
+# Initialize Google Maps API client
+gmaps = googlemaps.Client(key='YOUR_API_KEY')
+
+def geocode_to_coordinates(geocode):
+    """Extracts coordinates from Google Geocode API response"""
+    location = geocode[0]['geometry']['location']
+    return location['lat'], location['lng']
+
+def get_nearby_metro_stations(location):
+    """Returns the five nearest metro stations"""
+    geocode = gmaps.geocode(location)
+    coordinates = geocode_to_coordinates(geocode)
+    stations = gmaps.places_nearby(
+        keyword='metro',
+        location=coordinates,
+        rank_by='distance',
+        type='subway_station'
+    )['results']
+    return stations[:4]
+
+def get_travel_time(origin, destination):
+    """Gets travel time between origin and destination"""
+    origin_stations = get_nearby_metro_stations(origin)
+    destination_stations = get_nearby_metro_stations(destination)
+
+    origin_id = 'place_id:' + gmaps.geocode(origin)[0]['place_id']
+    destination_id = 'place_id:' + gmaps.geocode(destination)[0]['place_id']
+
+    o_to_metro = gmaps.distance_matrix(origin_id, get_place_ids(origin_stations))
+    metro_to_d = gmaps.distance_matrix(get_place_ids(destination_stations), destination_id)
+
+    distance_matrix = gmaps.distance_matrix(
+        get_place_ids(origin_stations),
+        get_place_ids(destination_stations),
+        mode='transit',
+        transit_mode='subway'
+    )
+
+    return o_to_metro, distance_matrix, metro_to_d
+
+def get_place_ids(geocodes):
+    """Gets place IDs from geocode results"""
+    return ['place_id:' + geocode['place_id'] for geocode in geocodes]
+
+def find_optimal_route(value):
+    """Finds the optimal route and calculates total travel time"""
+    # Extract durations for each leg of the journey
+    a = [value[0]['rows'][0]['elements'][i]['duration']['value'] for i in range(4)]
+    b = [value[1]['rows'][i]['elements'][j]['duration']['value'] for i in range(4) for j in range(4)]
+    c = [value[2]['rows'][i]['elements'][0]['duration']['value'] for i in range(4)]
+
+    # Duplicate durations for repeated calculations
+    a = np.tile(a, 2)
+    c = np.tile(c, 2)
+
+    # Calculate total duration for each possible route
+    d = np.add(a, b) + c
+    min_index = np.argmin(d)
+
+    # Extract addresses for optimal route
+    origin = value[0]['origin_addresses'][0]
+    metro_station = value[0]['destination_addresses'][min_index // 4]
+    destination = value[1]['destination_addresses'][min_index // 4]
+    final_destination = value[2]['destination_addresses'][0]
+
+    return (
+        origin, ' to ', metro_station, ' to ', destination, ' to ', final_destination
+    ), (
+        "It will take", int(d[min_index] / 60), 'minutes'
+    )
+
+def main():
+    # Get user input for origin and destination
+    origin = input("Enter origin: ")
+    destination = input("Enter destination: ")
+
+    # Retrieve travel time information
+    value = get_travel_time(origin, destination)
+
+    # Find and print the optimal route
+    output = find_optimal_route(value)
+    print(output)
+
+if __name__ == "__main__":
+    main()

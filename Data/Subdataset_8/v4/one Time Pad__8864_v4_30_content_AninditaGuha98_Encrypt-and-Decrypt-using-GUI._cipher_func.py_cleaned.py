@@ -1,0 +1,46 @@
+
+def caesar_encrypt(plaintext, key):
+    encrypted_text = ''
+    for char in plaintext:
+        char_value = ord(char) + int(key)
+        if char_value - int(key) == 32:
+            char_value = 32
+        elif char_value > ord('z'):
+            char_value -= 26
+        elif char_value < ord('a'):
+            char_value += 26
+        encrypted_char = chr(char_value)
+        encrypted_text += encrypted_char
+    print(encrypted_text)
+    return encrypted_text
+def caesar_decrypt(ciphertext, key):
+    decrypted_text = ''
+    for char in ciphertext:
+        char_value = ord(char) - int(key)
+        if char_value + int(key) == 32:
+            char_value = 32
+        elif char_value > ord('z'):
+            char_value -= 26
+        elif char_value < ord('a'):
+            char_value += 26
+        decrypted_char = chr(char_value)
+        decrypted_text += decrypted_char
+    return decrypted_text
+def vigenere_encrypt(plaintext, key):
+    key_length = len(key)
+    key_int = [ord(char) for char in key]
+    plaintext_int = [ord(char) for char in plaintext]
+    ciphertext = ''
+    for i in range(len(plaintext_int)):
+        value = (plaintext_int[i] + key_int[i % key_length]) % 26
+        ciphertext += chr(value + 65)
+    return ciphertext
+def vigenere_decipher(ciphertext, key):
+    key_length = len(key)
+    key_int = [ord(char) for char in key]
+    ciphertext_int = [ord(char) for char in ciphertext]
+    plaintext = ''
+    for i in range(len(ciphertext_int)):
+        value = (ciphertext_int[i] - key_int[i % key_length]) % 26
+        plaintext += chr(value + 65)
+    return plaintext

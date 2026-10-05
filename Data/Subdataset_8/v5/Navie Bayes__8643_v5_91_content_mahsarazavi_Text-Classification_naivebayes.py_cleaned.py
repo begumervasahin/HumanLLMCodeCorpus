@@ -1,0 +1,87 @@
+import re
+import math
+from collections import Counter, OrderedDict
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+class1file = "raw_data_sport.txt"
+class2file = "raw_data_politics.txt"
+def random_partitioner(text, percent):
+    words = text.split()
+    partition_index = int(len(words) * percent)
+    partition1 = ' '.join(words[:partition_index])
+    partition2 = ' '.join(words[partition_index:])
+    return partition1, partition2
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'\d+', '', text)
+    text = text.replace("\n", " ")
+    text = text.replace("-", "")
+    stop_words = set(stopwords.words('english'))
+    for word in stop_words:
+        text = text.replace(" " + word + " ", " ")
+    return text
+def calculate_p(word, count_all_words, count_dist_words, class_words):
+    if word in class_words:
+        return math.log10((class_words[word] + 1) / (count_dist_words + count_all_words))
+    else:
+        return math.log10(1 / (count_dist_words + count_all_words))
+def count_words(text):
+    return Counter(text.split())
+def stringify_every_n_words(text, n):
+    chunks = [text[i:i + n] for i in range(0, len(text), n)]
+    return [' '.join(chunk) for chunk in chunks]
+def classifier():
+    class1_text = open(class1file).read()
+    class2_text = open(class2file).read()
+    class1_text = class1_text.lower().replace("\n", " ")
+    class2_text = class2_text.lower().replace("\n", " ")
+    train1, test1 = random_partitioner(class1_text, 0.10)
+    train2, test2 = random_partitioner(class2_text, 0.10)
+    class1_words = count_words(train1)
+    class2_words = count_words(train2)
+    count_all_words1 = sum(class1_words.values())
+    count_all_words2 = sum(class2_words.values())
+    count_dist_words1 = len(class1_words)
+    count_dist_words2 = len(class2_words)
+    p_class1 = len(re.split(r'[.!?]', train1)) / (len(re.split(r'[.!?]', train1)) + len(re.split(r'[.!?]', train2)))
+    p_class2 = len(re.split(r'[.!?]', train2)) / (len(re.split(r'[.!?]', train1)) + len(re.split(r'[.!?]', train2)))
+    test_sentences1 = stringify_every_n_words(test1, 50)
+    test_sentences2 = stringify_every_n_words(test2, 50)
+    important_words_class1 = {}
+    important_words_class2 = {}
+    for sentence in test_sentences1:
+        words = clean_text(sentence).split()
+        for word in words:
+            if len(word) >= 3:
+                p1 = calculate_p(word, count_all_words1, count_dist_words1, class1_words)
+                if p1 > important_words_class1.get(word, 0):
+                    important_words_class1[word] = p1
+    for sentence in test_sentences2:
+        words = clean_text(sentence).split()
+        for word in words:
+            if len(word) >= 3:
+                p2 = calculate_p(word, count_all_words2, count_dist_words2, class2_words)
+                if p2 > important_words_class2.get(word, 0):
+                    important_words_class2[word] = p2
+    true_positives = sum(1 for sentence in test_sentences1 if classify_sentence(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words) == 1)
+    false_negatives = len(test_sentences1) - true_positives
+    true_negatives = sum(1 for sentence in test_sentences2 if classify_sentence(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words) == 2)
+    false_positives = len(test_sentences2) - true_negatives
+    precision = true_positives / (true_positives + false_positives)
+    recall = true_positives / (true_positives + false_negatives)
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("Important words in class 1:", OrderedDict(sorted(important_words_class1.items(), key=lambda x: x[1], reverse=True)))
+    print("Important words in class 2:", OrderedDict(sorted(important_words_class2.items(), key=lambda x: x[1], reverse=True)))
+def classify_sentence(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_dist_words1, count_dist_words2, class1_words, class2_words):
+    words = clean_text(sentence).split()
+    p_word_in_class1 = p_class1
+    p_word_in_class2 = p_class2
+    for word in words:
+        if len(word) >= 3:
+            p1 = calculate_p(word, count_all_words1, count_dist_words1, class1_words)
+            p2 = calculate_p(word, count_all_words2, count_dist_words2, class2_words)
+            p_word_in_class1 += p1
+            p_word_in_class2 += p2
+    return 1 if p_word_in_class1 > p_word_in_class2 else 2
+classifier()

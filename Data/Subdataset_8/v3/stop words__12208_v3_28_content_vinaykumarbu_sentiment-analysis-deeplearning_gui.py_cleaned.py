@@ -1,0 +1,53 @@
+import tkinter as tk
+from tkinter import simpledialog, messagebox
+import subprocess
+def fetch_tweets():
+    keyword = simpledialog.askstring("Search Word", "Enter keyword to fetch tweets")
+    if keyword:
+        keyword = "\\" + keyword if keyword.startswith('\\') else keyword
+        subprocess.run(['python', 'tweet.py', keyword])
+        messagebox.showinfo("Total Fetched Tweets", "Fetched 30 Tweets.\nView them at new_tweets.txt")
+        display_tweets('new_tweets.txt')
+    else:
+        messagebox.showwarning("No Keyword", "Please enter a keyword.")
+def preprocess():
+    subprocess.run(['python', 'preprocess.py'])
+    count = sum(1 for line in open('new_preprocessed.txt'))
+    messagebox.showinfo("Preprocessing Tweets", f"After preprocessing we have {count} tweets left. \nView them at new_preprocessed.txt")
+    display_tweets('new_preprocessed.txt')
+def run_model():
+    messagebox.showinfo("CNN model", "Model running....\nThis takes around 5-10mins.\nPlease be patient")
+    subprocess.run(['python', 'twitter-sentiment-cnn.py', '--load', '/home/sujit_surendranath/Music/NLP/twitter-sentiment-cnn/run20190322-011848', '--custom_input', '"this book sucks"'])
+    pos, neg = 0, 0
+    with open('twitter-out.txt', 'r') as f:
+        for line in f:
+            line = line.rstrip()
+            if line == 'pos':
+                pos += 1
+            elif line == "neg":
+                neg += 1
+    messagebox.showinfo("Result", f"Positives: {pos}\nNegatives: {neg}")
+def display_tweets(file_path):
+    display_window = tk.Toplevel(window)
+    display_window.title("Display Tweets")
+    display_window.geometry("1000x600")
+    max_length = max(len(line) for line in open(file_path))
+    listbox = tk.Listbox(display_window, height=31, width=max_length+5)
+    with open(file_path, 'r') as f:
+        for i, line in enumerate(f, 1):
+            line = line.rstrip()
+            listbox.insert(i, f"{i}: {line}")
+    listbox.pack()
+def plot_graph():
+    subprocess.run(['python', 'graph.py'])
+window = tk.Tk()
+window.title("Sentiment Analysis")
+window.geometry("250x150")
+window.resizable(False, False)
+button1 = tk.Button(window, text='Fetch Tweets', width=15, command=fetch_tweets, background='white', foreground="black", highlightthickness=0, bd=0)
+button1.pack()
+button2 = tk.Button(window, text='Preprocess tweets', width=15, command=preprocess, background='black', foreground="white", highlightthickness=0, bd=0)
+button2.pack()
+button3 = tk.Button(window, text='Run Model', width=15, command=run_model, background='white', foreground="black", highlightthickness=0, bd=0)
+button3.pack()
+window.mainloop()

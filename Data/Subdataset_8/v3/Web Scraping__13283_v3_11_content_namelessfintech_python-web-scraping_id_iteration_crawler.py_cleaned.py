@@ -1,0 +1,29 @@
+import itertools
+import urllib.request
+from urllib.error import URLError, HTTPError, ContentTooShortError
+def download(url, num_retries=2, user_agent='wswp', charset='utf-8'):
+    print('Downloading:', url)
+    request = urllib.request.Request(url)
+    request.add_header('User-agent', user_agent)
+    try:
+        with urllib.request.urlopen(request) as response:
+            charset = response.headers.get_content_charset() or charset
+            html = response.read().decode(charset)
+    except (URLError, HTTPError, ContentTooShortError) as e:
+        print('Download error:', e.reason)
+        html = None
+        if num_retries > 0 and hasattr(e, 'code') and 500 <= e.code < 600:
+            return download(url, num_retries - 1)
+    return html
+def crawl_site(url, max_errors=5):
+    num_errors = 0
+    for page in itertools.count(1):
+        page_url = f'{url}{page}'
+        html = download(page_url)
+        if html is None:
+            num_errors += 1
+            if num_errors == max_errors:
+                break
+        else:
+            num_errors = 0
+crawl_site('http:

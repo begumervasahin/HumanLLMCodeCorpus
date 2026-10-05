@@ -1,0 +1,51 @@
+from bs4 import BeautifulSoup, Comment
+import urllib.request
+from urllib.error import HTTPError
+
+def tag_visible(element):
+    """
+    Check if a tag is visible or not.
+    """
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
+def extract_visible_text(body):
+    """
+    Extract visible text from HTML content.
+    """
+    soup = BeautifulSoup(body, 'html.parser')
+    texts = soup.find_all(text=tag_visible)
+    visible_texts = (t.strip() for t in texts)
+    return ' '.join(visible_texts)
+
+def extract_links_with_text(html):
+    """
+    Extract links with associated text from HTML content.
+    """
+    bs = BeautifulSoup(html, "html.parser")
+    possible_links = bs.select('a[href^="http"]')
+    for link in possible_links:
+        if link.has_attr('href'):
+            print("Link:", link.attrs['href'])
+            try:
+                check_for_200 = urllib.request.urlopen(link.attrs['href'])
+                html_content = check_for_200.read()
+                print("HTML Content:", html_content)
+                print("")
+                print("Text from HTML:", extract_visible_text(html_content))
+            except HTTPError as e:
+                print("HTTP Error:", e)
+                continue
+
+if __name__ == "__main__":
+    url = 'http://www.awebsite.com'
+    try:
+        html = urllib.request.urlopen(url).read()
+        print("Visible Text from HTML:", extract_visible_text(html))
+        print("\nExtracted Links with Text:")
+        extract_links_with_text(html)
+    except HTTPError as e:
+        print("HTTP Error:", e)

@@ -1,0 +1,22 @@
+from Enlace import Enlace
+class Nodo:
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.enlaces = []
+    def get_enlaces(self):
+        return self.enlaces
+    def get_num_enlaces(self):
+        return len(self.enlaces)
+    def get_nombre(self):
+        return self.nombre
+    def agregar_enlace(self, destino, peso):
+        for enlace in self.enlaces:
+            if enlace.get_destino() == destino:
+                return
+        self.enlaces.append(Enlace(destino, peso))
+    def eliminar_enlace(self, destino):
+        for i, enlace in enumerate(self.enlaces):
+            if enlace.get_destino() == destino:
+                del self.enlaces[i]
+                return True
+        return False

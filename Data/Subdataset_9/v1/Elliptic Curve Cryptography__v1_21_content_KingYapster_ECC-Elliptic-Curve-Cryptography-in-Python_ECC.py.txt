@@ -1,0 +1,41 @@
+from ecies.utils import generate_key
+from ecies import encrypt, decrypt
+from tkinter import filedialog
+import base64
+import os
+
+# Generate ECIES key pair
+secp_k = generate_key()
+privhex = secp_k.to_hex()
+pubhex = secp_k.public_key.format(True).hex()
+
+# Ask user to select a file
+filepath = filedialog.askopenfilename()
+head, tail = os.path.split(filepath)
+newfilepath1 = os.path.join(head, 'encrypted_' + tail)
+newfilepath2 = os.path.join(head, 'decrypted_' + tail)
+
+# Read the file and encode it in base64
+with open(filepath, "rb") as file:
+    data = base64.b64encode(file.read())
+
+print("Private key:", privhex)
+print("Public key:", pubhex)
+print("Type:", type(privhex))
+print("Binary of the file:", data)
+
+# Encrypt the data using the public key
+encrypted_data = encrypt(pubhex, data)
+print("Encrypted binary:", encrypted_data)
+
+# Write the encrypted data to a new file
+with open(newfilepath1, "wb") as efile:
+    efile.write(base64.b64decode(encrypted_data))
+
+# Decrypt the encrypted data using the private key
+decrypted_data = decrypt(privhex, encrypted_data)
+print("\nDecrypted:", decrypted_data)
+
+# Write the decrypted data to a new file
+with open(newfilepath2, "wb") as dfile:
+    dfile.write(base64.b64decode(decrypted_data))

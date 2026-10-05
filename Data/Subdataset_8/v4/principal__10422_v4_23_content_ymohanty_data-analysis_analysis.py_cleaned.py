@@ -1,0 +1,190 @@
+import random
+import numpy as np
+import scipy.stats
+import scipy.cluster.vq as vq
+import math
+import scipy.spatial.distance as norms
+import data
+import pandas as pd
+def data_range(data_obj, column_headers):
+    range_list = []
+    columns = data_obj.get_data(column_headers).transpose().tolist()
+    for column in columns:
+        min_max_list = [max(column), min(column)]
+        range_list.append(min_max_list)
+    return range_list
+def mean(data_obj, column_headers):
+    mean_list = []
+    columns = data_obj.get_data(column_headers).transpose().tolist()
+    for column in columns:
+        mean_list.append(np.mean(column))
+    return mean_list
+def stdev(data_obj, column_headers):
+    stdev_list = []
+    columns = data_obj.get_data(column_headers).transpose().tolist()
+    for column in columns:
+        stdev_list.append(np.std(column))
+    return stdev_list
+def median(data_obj, column_headers):
+    median_list = []
+    columns = data_obj.get_data(column_headers).tolist()
+    for column in columns:
+        median_list.append(np.median(column))
+    return median_list
+def normalize_columns_separately(data_obj, column_headers):
+    final_columns = []
+    columns = data_obj.get_data(column_headers).transpose().tolist()
+    for column in columns:
+        temp_column = []
+        max_num = max(column)
+        min_num = min(column)
+        for number in column:
+            number -= min_num
+            number *= 1 / (max_num - min_num)
+            temp_column.append(number)
+        final_columns.append(temp_column)
+    return np.matrix(final_columns).transpose()
+def normalize_columns_together(data_obj, column_headers):
+    final_columns = []
+    columns = data_obj.get_data(column_headers).T.tolist()
+    max_num = max(columns[0])
+    min_num = min(columns[0])
+    for column in columns:
+        max_num = max(max_num, max(column))
+        min_num = min(min_num, min(column))
+    for column in columns:
+        temp_column = []
+        for number in column:
+            number -= min_num
+            number *= 1 / (max_num - min_num)
+            temp_column.append(number)
+        final_columns.append(temp_column)
+    return np.matrix(final_columns).transpose()
+def pca(d, headers, normalize=True):
+    if normalize:
+        A = normalize_columns_separately(d, headers)
+        m = []
+        for i in range(A.shape[1]):
+            m.append(np.mean(A[:, i]))
+    else:
+        A = d.get_data(headers)
+        m = np.matrix(mean(d, headers))
+    D = A - m
+    U, S, V = np.linalg.svd(D, full_matrices=False)
+    evals = []
+    for i in range(len(S)):
+        evals.append((math.pow(S[i], 2)) / (A.shape[0] - 1))
+    evals = np.matrix(evals)
+    pdata = (V * D.T).T
+    return data.PCAData(headers, pdata, evals, V, m)
+def linear_regression(data_obj, ind, dep):
+    y = data_obj.get_data([dep])
+    A = data_obj.get_data(ind)
+    A = np.append(A, np.ones((A.shape[0], 1)), axis=1)
+    AAinv = np.linalg.inv(np.dot(A.T, A))
+    x = np.linalg.lstsq(A, y)
+    b = x[0]
+    N = y.shape[0]
+    C = len(b)
+    df_e = N - C
+    df_r = C - 1
+    error = y - np.dot(A, b)
+    sse = np.dot(error.T, error) / df_e
+    stderr = np.sqrt(np.diagonal(sse[0, 0] * AAinv))
+    t = b.T / stderr
+    p = 2 * (1 - scipy.stats.t.cdf(abs(t), df_e))
+    r2 = 1 - error.var() / y.var()
+    return b, sse, r2, t, p
+def save_analysis(filename, datafile, b, sse, r2, t, p, ind, dep):
+    with open(filename + '.txt', mode='w') as f:
+        f.write("***Linear Regression Report***\n")
+        f.write("File: %s\n" % datafile)
+        f.write("Independent variables: ")
+        for i in range(len(ind)):
+            f.write(ind[i] + "\t")
+        f.write("\nDependent variable: %s\n" % dep)
+        f.write("Beta Coefficients: \n")
+        for i in range(len(b)):
+            f.write('\t\tB%d: %f\n' % (len(b) - 1 - i, b[i, 0]))
+        f.writelines(["Sum Squared Error: %f\n" % sse[0, 0], "R^2: %f\n" % r2, 'T-Statistic: %s\n' % t[0], 'P-value: %s\n' % p[0]])
+def kmeans_init(d, K, categories=None):
+    means = []
+    A = d
+    N = A.shape[0]
+    if categories is None:
+        for i in range(K):
+            means.append(A[np.random.randint(0, N)].tolist()[0])
+    else:
+        if K != max(categories) + 1:
+            print "The highest category label and specified clusters should be the same"
+            return
+        for i in range(K):
+            sum = np.zeros(A.shape[1])
+            num_elem = 0
+            for j in range(len(categories)):
+                if categories[j] == i:
+                    sum = np.add(sum, A[j].tolist()[0])
+                    num_elem += 1
+            sum = 1 / float(num_elem) * sum
+            means.append(sum)
+    return np.matrix(means)
+def kmeans_classify(A, means, metric):
+    data_classes = []
+    data_metrics = []
+    dist = sys.maxint
+    for v in A:
+        index = 0
+        for i in range(len(means.tolist())):
+            m = means.tolist()[i]
+            norm_matrix = np.vstack((v, m))
+            if norms.pdist(norm_matrix, metric)[0] < dist:
+                dist = norms.pdist(norm_matrix, metric)[0]
+                index = i
+        data_classes.append([index])
+        data_metrics.append([dist])
+        dist = sys.maxint
+    return np.matrix(data_classes), np.matrix(data_metrics)
+def kmeans_algorithm(A, means, metric):
+    MIN_CHANGE = 1e-7
+    MAX_ITERATIONS = 100
+    D = means.shape[1]
+    K = means.shape[0]
+    N = A.shape[0]
+    for i in range(MAX_ITERATIONS):
+        codes, errors = kmeans_classify(A, means, metric)
+        newmeans = np.zeros_like(means)
+        counts = np.zeros((K, 1))
+        for j in range(N):
+            newmeans[codes[j, 0], :] += A[j, :]
+            counts[codes[j, 0], 0] += 1.0
+        for j in range(K):
+            if counts[j, 0] > 0.0:
+                newmeans[j, :] /= counts[j, 0]
+            else:
+                newmeans[j, :] = A[random.randint(0, A.shape[0]), :]
+        diff = np.sum(np.square(means - newmeans))
+        means = newmeans
+        if diff < MIN_CHANGE:
+            break
+    codes, errors = kmeans_classify(A, means, metric)
+    return (means, codes, errors)
+def kmeans(d, headers, K, metric, whiten=True, categories=None):
+    try:
+        A = d.get_data(headers)
+    except AttributeError:
+        A = d
+    if whiten:
+        W = vq.whiten(A)
+    else:
+        W = A
+    codebook = kmeans_init(W, K, categories)
+    codebook, codes, errors = kmeans_algorithm(W, codebook, metric)
+    return codebook, codes, errors
+def test_lin_reg(filename, ind, dep):
+    b, sse, r2, t, p = linear_regression(data.Data(filename), ind, dep)
+    savefilename = filename.split('.')[0] + "-analysis"
+    save_analysis(savefilename, filename, b, sse, r2, t, p, ind, dep)
+if __name__ == '__main__':
+    d = data.Data("clusterdata.csv")
+    means = kmeans_init(d, 3, [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2])
+    kmeans_classify(d, means)

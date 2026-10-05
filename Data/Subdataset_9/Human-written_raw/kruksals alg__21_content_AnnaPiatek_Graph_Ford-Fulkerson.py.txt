@@ -1,0 +1,197 @@
+import graphviz as gv
+from graphvizual import *
+class Edge:
+    def __init__(self,node_0,node_1,capacity):
+        self.node_0 = node_0
+        self.node_1 = node_1
+        self.capacity = capacity
+        self.flow=0
+class Graph_0:
+    def __init__(self):
+        self.list_edges = []
+        self.max_flow=0
+    def add_edge(self,start,end,capacity):
+        self.list_edges.append(Edge(start,end,capacity))
+        return self
+    def list_nodes(self):
+        list=[]
+        for i in self.list_edges:
+            if i.node_0 not in list:
+                list.append(i.node_0)
+            if i.node_1 not in list:
+                list.append(i.node_1)
+        return list
+    def making_friends(self,node):
+        list=[]
+        for i in self.list_edges:
+            if i.node_0==node:
+                list.append(i)
+        return list
+    def print_list_edges(self):
+        list_e=[]
+        for i in self.list_edges:
+            list_e.append([i.node_0,i.node_1,i.flow,i.capacity])
+        return(list_e)
+    def creating_antecendents(self):
+        antecendents = {}
+        for i in self.list_nodes():
+            antecendents[str(i)]=0
+        return(antecendents)
+    def find_path(self,node_start,node_end):
+        antecendents = self.creating_antecendents()
+        list_visited_nodes = [str(node_start)]
+        list_visited_edges = []
+        friends = []
+        roar = 1
+        while roar != 20:
+            for k in list_visited_nodes:
+                if roar == 20:
+                    break
+                friends_i = self.making_friends(k)
+                for i in friends_i:
+                        if i.capacity!=i.flow:
+                            antecendents[i.node_1] = i.node_0
+                for i in friends_i:
+                    if i not in friends:
+                        friends.append(i)
+                for k in friends:
+                    if k not in list_visited_edges and k.node_1 not in list_visited_nodes and k.node_0 != node_end and k.capacity!=k.flow:
+                        list_visited_edges.append(k)
+                        if k.node_0 not in list_visited_nodes:
+                            list_visited_nodes.append(k.node_0)
+                            if k.node_0 == node_end:
+                                roar = 20
+                                break
+                        if k.node_1 not in list_visited_nodes:
+                            list_visited_nodes.append(k.node_1)
+                            if k.node_1 == node_end:
+                                roar = 20
+                                break
+        node = node_end
+        path_d = []
+        node_ant = antecendents[node]
+        end=0
+        while node_ant != 0:
+            for i in self.list_edges:
+                if i.node_1==node and i.node_0==node_ant:
+                    path_d.insert(0,i)
+                    node=i.node_0
+                    node_ant=antecendents[node]
+        max_flow=0
+        minimum=path_d[0]
+        for i in path_d:
+            if (i.capacity-i.flow)<(minimum.capacity-minimum.flow):
+                minimum=i
+        minn=minimum.capacity-minimum.flow
+        max_flow=max_flow+minn
+        final_path=[]
+        for i in path_d:
+            i.flow=i.flow+minn
+            final_path.append([i.node_0,i.node_1,i.flow,i.capacity])
+        list_visited_nodes=[]
+        list_visited_edges=[]
+        antecendents=self.creating_antecendents()
+        end=0
+        path_d=[]
+        return [final_path,max_flow]
+    def list_nodes(self):
+        list_nodes=[]
+        visited_nodes=[]
+        for i in self.list_edges:
+            if i.node_0 not in visited_nodes:
+                list_nodes.append(i.node_0)
+                visited_nodes.append(i.node_0)
+            elif i.node_1 not in visited_nodes:
+                list_nodes.append(i.node_1)
+                visited_nodes.append(i.node_1)
+        return list_nodes
+if __name__ == "__main__":
+    d = Graph_0()
+    d.add_edge('Start', 'B', 5)
+    d.add_edge('Start', 'C', 4)
+    d.add_edge('C', 'B', 6)
+    d.add_edge('B', 'E', 4)
+    d.add_edge('C', 'E', 4)
+    d.add_edge('E', 'Sink', 7)
+    d.add_edge('C', 'Sink', 4)
+    to_draw=[]
+    sum=0
+    max_flow=[]
+    for i in range (0,3):
+        to_draw.append((d.find_path('Start','Sink')))
+        sum=sum+to_draw[i][1]
+        max_flow.append(sum)
+    Drawing = gv.Digraph(format='png')
+    for i in range(0,len(d.print_list_edges())):
+        Drawing.edge(str(d.print_list_edges()[i][0]),str(d.print_list_edges()[i][1]), '0/%s'%(str(d.print_list_edges()[i][3])), color='black')
+    Drawing = apply_styles(Drawing, styles)
+    new_path=[[]]
+    a=0
+    for i in to_draw:
+        for k in i[0]:
+            new_path[a].append([k[0],k[1]])
+        new_path.append([])
+        a=a+1
+    edges_path=[]
+    for i in d.print_list_edges():
+        edges_path.append([i[0],i[1]])
+    def find_edge(edge,number_of_path):
+        for i in to_draw[number_of_path][0]:
+            if edge[0] == i[0] and edge[1] == i[1]:
+                new_edge = i
+                return (new_edge)
+    def find_in_list(edge):
+        for i in d.print_list_edges():
+            if edge[0] == i[0] and edge[1] == i[1]:
+                return i
+    number_of_path=-1
+    number_of_edge=-1
+    lol=1
+    for found_path in new_path[0:3]:
+        number_of_path=number_of_path+1
+        number_of_edge=-1
+        list=[]
+        for found_edge in found_path:
+            list.append(found_edge)
+        lol=0
+        for found_edge in found_path:
+            number_of_edge = number_of_edge + 1
+            minimum=to_draw[number_of_path][1]
+            Drawing = gv.Digraph(format='png')
+            Drawing = apply_styles(Drawing, styles)
+            styles['graph']['label'] =str('minimum %s,max flow %s'%(minimum,max_flow[number_of_path]))
+            for edge in edges_path:
+                if edge in list:
+                    new_edge=find_edge(edge,number_of_path)
+                    wei=str('%s/%s'%(str(new_edge[2]),str(new_edge[3])))
+                    Drawing.edge(new_edge[0], new_edge[1],wei, color='red')
+                else:
+                    if number_of_path==0:
+                        new_edge=find_in_list(edge)
+                        wei=str('0/%s'%(new_edge[3]))
+                        Drawing.edge(edge[0], edge[1], wei, color='black')
+                    if number_of_path==1:
+                        if find_edge(edge,number_of_path-1)!=None:
+                            new_edge=find_edge(edge,number_of_path-1)
+                            wei=str('%s/%s'%(new_edge[2],new_edge[3]))
+                            Drawing.edge(edge[0], edge[1], wei, color='black')
+                        else:
+                            new_edge = find_in_list(edge)
+                            wei = str('%s/%s'%(new_edge[2],new_edge[3]))
+                            Drawing.edge(edge[0], edge[1], wei, color='black')
+                    if number_of_path==2:
+                        if find_edge(edge,number_of_path-1)!=None:
+                            new_edge=find_edge(edge,number_of_path-1)
+                            wei=str('%s/%s'%(new_edge[2],new_edge[3]))
+                            Drawing.edge(edge[0], edge[1], wei, color='black')
+                        elif find_edge(edge,number_of_path-2)!=None:
+                            new_edge=find_edge(edge,number_of_path-2)
+                            wei=str('%s/%s'%(new_edge[2],new_edge[3]))
+                            Drawing.edge(edge[0], edge[1], wei, color='black')
+                        else:
+                            new_edge = find_in_list(edge)
+                            wei = str('%s/%s'%(new_edge[2],new_edge[3]))
+                            Drawing.edge(edge[0], edge[1], wei, color='black')
+        Drawing.render(view=True,filename=str(lol))
+        lol=lol+1
+    print(to_draw)

@@ -1,0 +1,47 @@
+def encrypt_bit(byte, password_byte):
+    encrypted_byte = ''
+    for i in range(8):
+        if int(password_byte[i]) == 1 and int(byte[i]) == 1:
+            encrypted_byte += '0'
+        elif int(password_byte[i]) == 1 and int(byte[i]) == 0:
+            encrypted_byte += '1'
+        elif int(password_byte[i]) == 0 and int(byte[i]) == 1:
+            encrypted_byte += '1'
+        else:
+            encrypted_byte += '0'
+    return encrypted_byte
+def encrypt_bytes(bytes_list, password_list):
+    encrypted_list = []
+    for byte, password_byte in zip(bytes_list, password_list):
+        encrypted_byte = encrypt_bit(byte, password_byte)
+        encrypted_list.append(encrypted_byte)
+    return encrypted_list
+def decrypt_bit(encrypted_bit, password_bit):
+    if int(password_bit) == 1 and int(encrypted_bit) == 1:
+        return '0'
+    elif int(password_bit) == 1 and int(encrypted_bit) == 0:
+        return '1'
+    elif int(password_bit) == 0 and int(encrypted_bit) == 1:
+        return '1'
+    else:
+        return '0'
+def decrypt_bytes(encrypted_list, password_list):
+    decrypted_bits = [decrypt_bit(encrypted_bit, password_bit)
+                      for encrypted_bit, password_bit in zip(encrypted_list, password_list)]
+    decrypted_bytes = [''.join(decrypted_bits[i:i+8]) for i in range(0, len(decrypted_bits), 8)]
+    decrypted_message = ''.join([chr(int(byte, 2)) for byte in decrypted_bytes])
+    return decrypted_message
+def encrypt_and_decrypt(message, password):
+    message_bytes = [format(ord(char), '08b') for char in message]
+    password_bytes = [format(ord(char), '08b') for char in password]
+    encrypted_once = encrypt_bytes(message_bytes, password_bytes)
+    encrypted_twice = encrypt_bytes(encrypted_once, password_bytes)
+    decrypted_message = decrypt_bytes(encrypted_twice, password_bytes)
+    return decrypted_message
+def main(message, password):
+    return encrypt_and_decrypt(message, password)
+if __name__ == "__main__":
+    message = "Hello, world!"
+    password = "password123"
+    encrypted_message = main(message, password)
+    print("Encrypted message:", encrypted_message)

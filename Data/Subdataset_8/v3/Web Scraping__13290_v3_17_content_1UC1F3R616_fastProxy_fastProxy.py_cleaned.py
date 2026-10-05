@@ -1,0 +1,103 @@
+import requests
+from bs4 import BeautifulSoup as soup
+import threading
+from queue import Queue
+import fire
+session = requests.session()
+response = session.get('https:
+page = soup(response.text, 'html.parser')
+table_rows = page.find_all('tr')
+check_url = 'https:
+proxies = table_rows[1:]
+alive_queue = Queue()
+DEFAULT_THREAD_COUNT = 100
+DEFAULT_REQUEST_TIMEOUT = 4
+GENERATE_CSV = False
+FETCH_ALL_IPS = False
+def alter_globals(thread_count=100, request_timeout=4, generate_csv=False, fetch_all_ips=False):
+    global DEFAULT_THREAD_COUNT, DEFAULT_REQUEST_TIMEOUT, GENERATE_CSV, FETCH_ALL_IPS
+    try:
+        thread_count = int(thread_count)
+        request_timeout = int(request_timeout)
+    except ValueError as e:
+        print("Invalid input:", e)
+        return
+    if thread_count <= 0:
+        DEFAULT_THREAD_COUNT = 1
+        print("[!] Negative Values are not Entertained")
+        print("[*] Thread Count Set to 100")
+    else:
+        DEFAULT_THREAD_COUNT = thread_count
+    if request_timeout <= 0:
+        print("[!] Negative Values are not Entertained")
+        print("[*] Request Timeout Set to 4 sec")
+    else:
+        DEFAULT_REQUEST_TIMEOUT = request_timeout
+    print("[-] Threads: {}\tRequest Timeout:{}".format(DEFAULT_THREAD_COUNT, DEFAULT_REQUEST_TIMEOUT))
+    GENERATE_CSV = str(generate_csv).lower() in ['true', 'yes', '1']
+    FETCH_ALL_IPS = str(fetch_all_ips).lower() in ['true', 'yes', '1']
+class AliveIP(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue = queue
+    def run(self):
+        while True:
+            proxy = self.queue.get()
+            self.check_proxy(proxy)
+            self.queue.task_done()
+    def check_proxy(self, proxy):
+        try:
+            http_proxy = "http:
+            https_proxy = "https:
+            response = requests.get(check_url, proxies={'http': http_proxy, 'https': https_proxy}, timeout=DEFAULT_REQUEST_TIMEOUT)
+            if response.status_code == 200:
+                alive_queue.put(proxy)
+        except Exception as e:
+            pass
+def main(proxies):
+    queue = Queue()
+    for _ in range(DEFAULT_THREAD_COUNT):
+        t = AliveIP(queue)
+        t.setDaemon(True)
+        t.start()
+    for proxy in proxies:
+        try:
+            content = proxy.find_all('td')
+            if content:
+                ip, port = content[0].get_text(), content[1].get_text()
+                proxy_ = '{}:{}'.format(ip, port)
+                queue.put(proxy_)
+        except Exception as e:
+            print('[!] ' + str(e))
+    queue.join()
+    return list(alive_queue.queue)
+def generate_csv():
+    if FETCH_ALL_IPS:
+        filename = 'all_proxies.csv'
+        with open(filename, 'w') as f:
+            for line in table_rows:
+                content = str(line.getText(separator=';'))
+                if 'Date' in content:
+                    break
+                f.write(content + '\n')
+    else:
+        filename = 'working_ips.csv'
+        with open(filename, 'w') as f:
+            for ip in list(alive_queue.queue):
+                f.write(ip + '\n')
+    print(f"CSV file '{filename}' generated successfully!")
+def print_working_ips():
+    for ip in list(alive_queue.queue):
+        print(ip)
+def fetch_proxies(thread_count=100, request_timeout=4, generate_csv=False, fetch_all_ips=False):
+    alter_globals(thread_count, request_timeout, generate_csv, fetch_all_ips)
+    working_ips = main(proxies)
+    if GENERATE_CSV:
+        generate_csv()
+    return working_ips
+if __name__ == "__main__":
+    fire.Fire(alter_globals)
+    main(proxies)
+    print_working_ips()
+    if GENERATE_CSV:
+        generate_csv()

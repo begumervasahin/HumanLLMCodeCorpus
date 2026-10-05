@@ -1,0 +1,33 @@
+from pandas import read_csv
+from format import clean_str, shuffle_both  # Assuming the format module contains the shuffle_both and clean_str functions
+
+def read_train_data(file_name, x_col, y_col, separator='\t', with_cleaning=True, with_header=False, with_shuffle=True):
+    with open(file_name) as pos_src:
+        if not with_header:
+            out = read_csv(pos_src, sep=separator, skiprows=[0], header=None)  
+        else:
+            out = read_csv(pos_src, sep=separator, header=None)
+    x_text = _read_unicode_lines(out[x_col].tolist(), with_cleaning)
+    y_text = out[y_col].tolist()
+    if with_shuffle:
+        return shuffle_both(x_text, y_text)
+    else:
+        return x_text, y_text
+
+def read_test_data(file_name, x_col, with_cleaning=True):
+    x_text = read_csv(file_name, skiprows=[0], header=None)
+    return _read_unicode_lines(x_text[x_col], with_cleaning)
+
+def _read_unicode_lines(lines, with_cleaning=True):
+    if with_cleaning:
+        return [clean_str(sentence.decode('utf-8')) for sentence in lines]     
+    else:
+        return [sentence.decode('utf-8') for sentence in lines]
+
+# Example usage:
+train_file = "train_data.csv"
+test_file = "test_data.csv"
+x_train, y_train = read_train_data(train_file, x_col=0, y_col=1)
+x_test = read_test_data(test_file, x_col=0)
+
+# Now you can use x_train, y_train, and x_test in your further processing

@@ -1,0 +1,54 @@
+import sys
+import getopt
+import re
+import time
+import pandas as pd
+import os
+def get_options():
+    opts, args = getopt.getopt(sys.argv[1:], "hi:o:")
+    input_file = ""
+    output_file = ""
+    h = ""
+    for op, value in opts:
+        if op == "-i":
+            input_file = value
+        elif op == "-o":
+            output_file = value
+        elif op == "-h":
+            h = 'usage:\nremove the sequence which contains "N"\n-i : inputfile\n-o : outputfile\n'
+    return input_file, output_file, h
+def read_sequences(input_file):
+    sequences = []
+    with open(input_file) as f:
+        for line in f:
+            if line[0] != ">":
+                sequences.append(line.strip())
+    return sequences
+def count_tag_occurrences(sequences):
+    tag_counts = {}
+    for sequence in sequences:
+        tag_counts[sequence] = tag_counts.get(sequence, 0) + 1
+    return tag_counts
+def write_tag_counts(tag_counts):
+    with open('tmp.txt', 'w') as fout:
+        for tag, count in tag_counts.items():
+            line = f"{tag}\t{count}\n"
+            fout.write(line)
+def main(input_file, output_file):
+    sequences = read_sequences(input_file)
+    print("Total sequences:", len(sequences))
+    tag_counts = count_tag_occurrences(sequences)
+    print("Tag counts:", tag_counts)
+    write_tag_counts(tag_counts)
+    data = pd.DataFrame(pd.read_table('tmp.txt', names=['sequence', 'count']))
+    data = data.sort_values(by=['count'], ascending=False)
+    data.to_csv(output_file, sep='\t', index=False)
+    os.remove('tmp.txt')
+if __name__ == "__main__":
+    time_start = time.time()
+    input_file, output_file, h = get_options()
+    if h == "":
+        main(input_file, output_file)
+        print("Time taken:", time.time() - time_start)
+    else:
+        print(h)

@@ -1,0 +1,41 @@
+def read_input_file(file_name):
+    with open(file_name, "r") as file:
+        return file.readline().lower()
+def generate_frequency_table(input_string):
+    unique_chars = set(input_string)
+    frequency_table = {char: input_string.count(char) for char in unique_chars}
+    return frequency_table
+def build_huffman_tree(frequency_table):
+    sorted_frequency = sorted(frequency_table.items(), key=lambda x: x[1], reverse=True)
+    tree = {char: '' for char, freq in sorted_frequency}
+    while len(sorted_frequency) > 1:
+        char1, freq1 = sorted_frequency.pop()
+        char2, freq2 = sorted_frequency.pop()
+        combined_char = char1 + char2
+        combined_freq = freq1 + freq2
+        for char in char1:
+            tree[char] = '0' + tree[char]
+        for char in char2:
+            tree[char] = '1' + tree[char]
+        sorted_frequency.append((combined_char, combined_freq))
+        sorted_frequency.sort(key=lambda x: x[1], reverse=True)
+    return tree
+def encode_string(input_string, huffman_tree):
+    encoded_string = ''.join(huffman_tree[char] for char in input_string)
+    return encoded_string
+def write_encoded_string_to_file(encoded_string, file_name):
+    with open(file_name, "w") as file:
+        file.write(encoded_string)
+def write_huffman_codes_to_file(huffman_tree, file_name):
+    with open(file_name, "w") as file:
+        for char, code in huffman_tree.items():
+            file.write(f"{char}={code}\n")
+def main():
+    input_string = read_input_file("input.txt")
+    frequency_table = generate_frequency_table(input_string)
+    huffman_tree = build_huffman_tree(frequency_table)
+    encoded_string = encode_string(input_string, huffman_tree)
+    write_encoded_string_to_file(encoded_string, "output.txt")
+    write_huffman_codes_to_file(huffman_tree, "dictionary.txt")
+if __name__ == "__main__":
+    main()

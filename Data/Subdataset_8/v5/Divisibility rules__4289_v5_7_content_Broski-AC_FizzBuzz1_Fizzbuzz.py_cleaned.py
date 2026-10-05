@@ -1,0 +1,15 @@
+
+upper_limit = input("This program will evaluate numbers from 1 to x. Please enter the value of x (numerical value only):\n")
+try:
+    max_value = int(upper_limit) + 1
+    for num in range(1, max_value):
+        if num % 3 == 0 and num % 5 == 0:
+            print("FizzBuzz!")
+        elif num % 3 == 0:
+            print("Fizz")
+        elif num % 5 == 0:
+            print("Buzz")
+        else:
+            print(num)
+except ValueError:
+    print("Error: Please enter a valid numerical value for the upper limit.")

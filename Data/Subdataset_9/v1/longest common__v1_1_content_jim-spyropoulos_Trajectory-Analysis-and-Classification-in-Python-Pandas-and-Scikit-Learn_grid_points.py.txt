@@ -1,0 +1,44 @@
+import pandas as pd
+from auxiliaryfunctions import haversine_np
+
+# Load the DataFrame from the pickle file
+df = pd.read_pickle('final_cleaned.df')
+
+# Initialize a new DataFrame to store the trip IDs and corresponding grids
+df_final = pd.DataFrame(columns=['TripId', 'Grids'])
+
+# Define cell size and zero point
+cell_size = 0.2
+zero_point = [0, -6.61505, 53.07045]
+
+# Iterate over each row in the DataFrame
+for index, row in df.iterrows():
+    grid = ''
+    trajectory = df['timestamp_longitude_latitude'][index]
+    last = ' '
+    
+    # Iterate over each point in the trajectory
+    for i in range(0, len(trajectory)):
+        # Calculate grid indices for longitude and latitude
+        on_longitude_axis = [zero_point[0], trajectory[i][1], zero_point[2]]
+        dist_of_longitude_axis = haversine_np(on_longitude_axis, zero_point)
+        grid_lon = int(dist_of_longitude_axis // cell_size)
+        
+        on_latitude_axis = [zero_point[0], zero_point[1], trajectory[i][2]]
+        dist_of_latitude_axis = haversine_np(on_latitude_axis, zero_point)
+        grid_lat = int(dist_of_latitude_axis // cell_size)
+        
+        current_cell = f"{grid_lat},{grid_lon}"
+        
+        # Avoid duplicates
+        if current_cell == last:
+            continue
+        
+        grid += f'C{current_cell};'
+        last = current_cell
+    
+    # Append trip ID and grid information to the final DataFrame
+    df_final = df_final.append({'TripId': df['TripId'][index], 'Grids': grid}, ignore_index=True)
+
+# Save the final DataFrame to a CSV file
+df_final.to_csv('grids.csv', index=False)

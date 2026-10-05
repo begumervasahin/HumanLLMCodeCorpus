@@ -1,0 +1,39 @@
+import os
+import csv
+import requests
+from bs4 import BeautifulSoup
+def get_user_input():
+    product = input("Enter the product you want to search: ")
+    pages = int(input("Enter the number of pages to scrape: "))
+    return product, pages
+def create_search_url(product):
+    return f"/search?q={product}&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=off&as=off"
+def extract_data_from_page(soup):
+    products = soup.find_all(class_="_1UoZlX")
+    for product in products:
+        title = product.find(class_='_3wU53n').text.strip()
+        price = product.find(class_="_1vC4OE._2rQ-NK").text.strip()[1:]
+        rating_tag = product.find(class_="hGSR34")
+        rating = rating_tag.text.strip() if rating_tag else "No Rating"
+        yield title, price, rating
+def scrape_flipkart(product, pages, file_name):
+    search_url = create_search_url(product)
+    if os.path.exists(file_name):
+        print("Previous search results found. Deleting previous results...")
+        os.remove(file_name)
+    with open(file_name, "a", newline="", encoding="utf-8") as file:
+        csv_file = csv.writer(file)
+        csv_file.writerow(["Title", "Price", "Rating"])
+        for page_num in range(pages):
+            print(f"Scraping data from page {page_num + 1}...")
+            url = "https:
+            html = requests.get(url)
+            soup = BeautifulSoup(html.text, 'lxml')
+            for title, price, rating in extract_data_from_page(soup):
+                csv_file.writerow([title, price, rating])
+            next_page_link = soup.find_all(class_="_3fVaIS")[-1]['href']
+            search_url = next_page_link
+if __name__ == "__main__":
+    product, pages = get_user_input()
+    file_name = f"Flipkart Scraping on {product}.csv"
+    scrape_flipkart(product, pages, file_name)

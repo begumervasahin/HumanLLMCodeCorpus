@@ -1,0 +1,40 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
+def compute_accuracy(X_train, Y_train, kf, pipeline):
+    accuracies = []
+    for fold_num, (train_index, test_index) in enumerate(kf):
+        X_train_fold, X_test = X_train[train_index], X_train[test_index]
+        Y_train_fold, Y_test = Y_train[train_index], Y_train[test_index]
+        predictions = pipeline.fit(X_train_fold, Y_train_fold).predict(X_test)
+        accuracy = accuracy_score(Y_test, predictions)
+        accuracies.append(accuracy)
+    return accuracies
+df = pd.read_csv("grids.csv")
+label_encoder = LabelEncoder()
+label_encoder.fit(df["TripId"])
+Y_train = label_encoder.transform(df["TripId"])
+X_train = df['Grids']
+vectorizer = CountVectorizer()
+tfidf_transformer = TfidfTransformer()
+svd = TruncatedSVD(n_components=300, random_state=42)
+kf = KFold(n_splits=10)
+rf_clf1 = RandomForestClassifier(n_estimators=40, n_jobs=-1)
+rf_clf2 = RandomForestClassifier(n_estimators=50, n_jobs=-1)
+knn_clf = KNeighborsClassifier(n_neighbors=7, n_jobs=-1)
+voting_classifier = VotingClassifier(estimators=[('rf1', rf_clf1), ('rf2', rf_clf2), ('knn', knn_clf)], voting='hard')
+pipeline = Pipeline([
+    ('vect', vectorizer),
+    ('tfidf', tfidf_transformer),
+    ('svd', svd),
+    ('clf', voting_classifier)
+])
+accuracies = compute_accuracy(X_train, Y_train, kf.split(X_train), pipeline)
+print("Accuracy for each fold:", accuracies)

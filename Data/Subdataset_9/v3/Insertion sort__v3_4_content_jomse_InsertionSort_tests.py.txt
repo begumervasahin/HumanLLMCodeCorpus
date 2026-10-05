@@ -1,0 +1,63 @@
+import tempfile
+import sortit
+import unittest
+
+class TestSortIt(unittest.TestCase):
+    # Test cases for reading lines containing integers
+    def test_read_lines_int(self):
+        # Arrange
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            tmp.write('34\n2\n333\n10\n8\n')
+            tmp.seek(0)
+            # Act
+            result = sortit.read_lines(tmp.name)
+            # Assert
+            self.assertEqual(result, ['34', '2', '333', '10', '8'])
+
+    # Test cases for reading lines containing strings
+    def test_read_lines_str(self):
+        # Arrange
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            tmp.write('dfdf\na\ngg\n\n\n\nhty\ncccccc\nzz\n')
+            tmp.seek(0)
+            # Act
+            result = sortit.read_lines(tmp.name)
+            # Assert
+            self.assertEqual(result, ['dfdf', 'a', 'gg', '', '', '', 'hty', 'cccccc', 'zz'])
+
+    # Test case for writing integers to a file
+    def test_file_writer(self):
+        # Arrange
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+            # Act
+            sortit.write_file(True, False, tmp.name, [34, 2, 333, 10, 8])
+            tmp.seek(0)
+            # Assert
+            self.assertEqual(tmp.read().splitlines(), ['34', '2', '333', '10', '8'])    
+
+    # Test case for handling FileReadError when reading lines
+    def test_raises_read_lines(self):
+        # Act & Assert
+        with self.assertRaises(sortit.FileReadError):
+            sortit.read_lines('input_gg.txt')
+
+    # Test case for handling FileReadError when writing to a file
+    def test_raises_file_writer(self):
+        # Act & Assert
+        with self.assertRaises(sortit.FileReadError):
+            sortit.write_file(True, True, 'output.txt', ['zz', 'hty', 'gg', 'dfdf', 'cccccc', 'a', '', '', ''])
+
+    # Test case for handling NotIntError when converting lines to integers
+    def test_raises_convert_lines_to_ints_int(self):
+        # Act & Assert
+        with self.assertRaises(sortit.NotIntError):
+            sortit.convert_lines_to_ints(True, ['34', 'z', '333', '10', '8'])
+
+    # Test case for handling NotIntError when converting lines to integers
+    def test_raises_convert_lines_to_ints_str(self):
+        # Act & Assert
+        with self.assertRaises(sortit.NotIntError):
+            sortit.convert_lines_to_ints(True, ['dfdf', 'a', 'gg', '', '', '', 'hty', 'cccccc', 'zz'])
+
+if __name__ == '__main__':
+    unittest.main()

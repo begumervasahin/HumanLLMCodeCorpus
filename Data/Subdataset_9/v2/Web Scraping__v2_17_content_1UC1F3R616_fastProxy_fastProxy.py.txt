@@ -1,0 +1,167 @@
+import requests
+from bs4 import BeautifulSoup as soup
+import threading
+from queue import Queue
+import fire
+
+# Initialize a session and make a GET request to the website
+s = requests.session()
+r1 = s.get('https://free-proxy-list.net/')
+
+# Parse the HTML content of the page using BeautifulSoup
+page = soup(r1.text, 'html.parser')
+
+# Find all table rows in the page
+tr_container = page.find_all('tr')
+
+# Define the URL to check if proxies are working
+url = 'https://httpbin.org/ip'
+
+# Extract all table rows except the first one (header)
+ips = page.find_all('tr')[1:]
+
+# Create a queue to store alive proxies
+alive_queue = Queue()
+
+# Default values for thread count, request timeout, CSV generation, and fetching all IPs
+THREAD_COUNT = 100
+REQUEST_TIMEOUT = 4
+GENERATE_CSV = False
+ALL_IPS = False
+
+
+# Function to alter global variables based on user input
+def alter_globals(c=100, t=4, g=False, a=False):
+    global THREAD_COUNT, REQUEST_TIMEOUT, GENERATE_CSV, ALL_IPS
+
+    # Convert input strings to integers
+    try:
+        c = int(c)
+        t = int(t)
+    except Exception as e:
+        print(e)
+        return
+
+    # Ensure positive thread count
+    if c < 0:
+        THREAD_COUNT = 1
+        print("[!] Negative Values are not Entertained")
+        print("[*] Thread Count Set to 100")
+    elif c == 0:
+        THREAD_COUNT = 1
+
+    # Ensure positive request timeout
+    if t < 0:
+        print("[!] Negative Values are not Entertained")
+        print("[*] Request Timeout Set to 4 sec")
+
+    THREAD_COUNT = c
+    REQUEST_TIMEOUT = t
+    print("[-] Threads: {}\tRequest Timeout:{}".format(THREAD_COUNT, REQUEST_TIMEOUT))
+
+    # Convert input strings to boolean for CSV generation and fetching all IPs
+    if g in ['True', 'true', True, 1, 'yes']:
+        GENERATE_CSV = True
+
+    if a in ['True', 'true', True, 1, 'yes']:
+        ALL_IPS = True
+
+
+# Class to handle the checking of proxy status
+class AliveIP(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue = queue
+
+    def run(self):
+        while True:
+            proxy = self.queue.get()
+            self.check_proxy(proxy)
+            self.queue.task_done()
+
+    def check_proxy(self, proxy):
+        try:
+            http_proxy = "http://{}".format(proxy)
+            https_proxy = "https://{}".format(proxy)
+            r2 = requests.get(url, proxies={'http': http_proxy, 'https': https_proxy}, timeout=REQUEST_TIMEOUT)
+            if r2.status_code == 200:
+                alive_queue.put(proxy)
+        except Exception as e:
+            pass
+
+
+# Main function to run the program
+def main(proxies=ips):
+    queue = Queue()
+
+    # Create and start threads to check proxy status
+    for i in range(THREAD_COUNT):
+        t = AliveIP(queue)
+        t.setDaemon(True)
+        t.start()
+
+    # Iterate through proxies and add them to the queue
+    for proxy in proxies:
+        try:
+            content = proxy.find_all('td')
+            if len(content) != None:
+                ip, port = content[0].get_text(), content[1].get_text()
+                proxy_ = '{}:{}'.format(ip, port)
+                queue.put(proxy_)
+        except IndexError:
+            pass
+        except Exception as e:
+            print('[!] ' + str(e))
+
+    # Wait for all threads to finish
+    queue.join()
+    return list(alive_queue.queue)
+
+
+# Function to generate CSV file
+def generate_csv():
+    if ALL_IPS:
+        with open('all_proxies.csv', 'w') as f:
+            for line in tr_container:
+                content = str(line.getText(separator=';'))
+                if 'Date' in content:
+                    break
+                f.write(content + '\n')
+    else:
+        with open('working_ips.csv', 'w') as f:
+            for ip in list(alive_queue.queue):
+                f.write(ip + '\n')
+
+
+# Function to print working IPs
+def printer(ip_list=list(alive_queue.queue)):
+    for ip in list(alive_queue.queue):
+        print(ip)
+
+
+# Function to fetch proxies
+def fetch_proxies(c=100, t=4, g=False, a=False):
+    global THREAD_COUNT, REQUEST_TIMEOUT, GENERATE_CSV, ALL_IPS
+    THREAD_COUNT = c
+    REQUEST_TIMEOUT = t
+    GENERATE_CSV = g
+    ALL_IPS = a
+    working_ips = main(proxies=ips)
+    if GENERATE_CSV:
+        generate_csv()
+    return working_ips
+
+
+if __name__ == "__main__":
+    # Use Fire to automatically generate a CLI from the alter_globals function
+    fire.Fire(alter_globals)
+
+    # Run the main program
+    main(proxies=ips)
+
+    # Print working IPs
+    printer()
+
+    # Generate CSV file if required
+    if GENERATE_CSV:
+        generate_csv()

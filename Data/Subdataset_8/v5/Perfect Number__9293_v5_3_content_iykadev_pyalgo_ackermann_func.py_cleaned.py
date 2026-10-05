@@ -1,0 +1,11 @@
+import sys
+sys.setrecursionlimit(3000)
+def ackermann_function(m, n):
+    if m == 0:
+        return n + 1
+    elif n == 0:
+        return ackermann_function(m - 1, 1)
+    else:
+        return ackermann_function(m - 1, ackermann_function(m, n - 1))
+result = ackermann_function(3, 4)
+print(result)

@@ -1,0 +1,84 @@
+import os
+import re
+import io
+import math
+class NaiveBayes:
+    def __init__(self, training_ham, training_spam, test_ham, test_spam):
+        self.training_ham = training_ham
+        self.training_spam = training_spam
+        self.test_ham = test_ham
+        self.test_spam = test_spam
+        self.HAM = 0
+        self.SPAM = 1
+        self.total_word_list = []
+        self.ham_count_dict = {}
+        self.total_ham_word_count = 0
+        self.spam_count_dict = {}
+        self.total_spam_word_count = 0
+        self.prior_prob = {}
+        self.cond_prob = {}
+    def _get_word_count_list(self, flag):
+        path = self.training_ham if flag == self.HAM else self.training_spam
+        files = os.listdir(path)
+        word_count_dict = {}
+        total_word_count = 0
+        for file_name in files:
+            with io.open(os.path.join(path, file_name), 'r', encoding='iso-8859-1') as f:
+                lines = f.readlines()
+                for line in lines:
+                    words = re.sub("[^a-zA-Z\s]", "", line).lower().split()
+                    for word in words:
+                        word_count_dict[word] = word_count_dict.get(word, 0) + 1
+                        total_word_count += 1
+        word_list = list(word_count_dict.keys())
+        total_word_count += len(word_list)
+        if flag == self.HAM:
+            self.ham_count_dict = word_count_dict
+            self.total_ham_word_count = total_word_count
+        else:
+            self.spam_count_dict = word_count_dict
+            self.total_spam_word_count = total_word_count
+    def _calculate_conditional_probability(self):
+        for word in self.total_word_list:
+            ham_count = self.ham_count_dict.get(word, 0) + 1
+            spam_count = self.spam_count_dict.get(word, 0) + 1
+            self.cond_prob[word] = [ham_count / self.total_ham_word_count, spam_count / self.total_spam_word_count]
+    def train(self):
+        total_ham_files = len(os.listdir(self.training_ham))
+        total_spam_files = len(os.listdir(self.training_spam))
+        total_training_files = total_ham_files + total_spam_files
+        self.prior_prob[self.HAM] = total_ham_files / total_training_files
+        self.prior_prob[self.SPAM] = total_spam_files / total_training_files
+        self._get_word_count_list(self.HAM)
+        self._get_word_count_list(self.SPAM)
+        self.total_word_list = set(self.ham_count_dict.keys()).union(self.spam_count_dict.keys())
+        self._calculate_conditional_probability()
+    def _classify(self, path):
+        correct_count = 0
+        total_files = os.listdir(path)
+        for file_name in total_files:
+            with io.open(os.path.join(path, file_name), 'r', encoding='iso-8859-1') as f:
+                file_data = f.read()
+                words = re.sub("[^a-zA-Z\s]", "", file_data).lower().split()
+                word_set = set(words)
+                score = {self.HAM: math.log2(self.prior_prob[self.HAM]),
+                         self.SPAM: math.log2(self.prior_prob[self.SPAM])}
+                for word in word_set:
+                    if word in self.total_word_list:
+                        score[self.HAM] += math.log2(self.cond_prob[word][self.HAM])
+                        score[self.SPAM] += math.log2(self.cond_prob[word][self.SPAM])
+                predicted_class = max(score, key=score.get)
+                if predicted_class == self.HAM and path == self.test_ham:
+                    correct_count += 1
+                elif predicted_class == self.SPAM and path == self.test_spam:
+                    correct_count += 1
+        return correct_count
+    def test(self):
+        ham_correct_count = self._classify(self.test_ham)
+        ham_accuracy = (ham_correct_count / len(os.listdir(self.test_ham))) * 100
+        print("Ham test accuracy =", ham_accuracy)
+        spam_correct_count = self._classify(self.test_spam)
+        spam_accuracy = (spam_correct_count / len(os.listdir(self.test_spam))) * 100
+        print("Spam test accuracy =", spam_accuracy)
+        total_accuracy = ((ham_correct_count + spam_correct_count) / (len(os.listdir(self.test_ham)) + len(os.listdir(self.test_spam)))) * 100
+        print("Total test accuracy =", total_accuracy)

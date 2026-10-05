@@ -1,0 +1,55 @@
+import asyncio
+import json
+import asyncpg
+from nats.aio.client import Client as NATS
+
+# Constants
+NATS_HOST = 'localhost'
+NATS_PORT = '4222'
+CHANNEL = 'fixtures.parameters'
+
+async def bridge(loop):
+    async def connect_listener():
+        # Connect to PostgreSQL database
+        pgconn = await asyncpg.connect(user='postgres', password='password', database='postgres', host='127.0.0.1', loop=loop)
+        print("Connected to PostgreSQL")
+        
+        # Add PostgreSQL listener for channel
+        await pgconn.add_listener(CHANNEL, publish_update)
+        
+        # Connect to NATS server
+        await nc.connect(f"{NATS_HOST}:{NATS_PORT}", loop=loop)
+        print("Connected to NATS server")
+        print("Listener added")
+
+    async def publish_update(_con, _pid, _channel, payload):
+        # Publish update to NATS server
+        await nc.publish(CHANNEL, json.dumps(payload).encode('utf-8'))
+        print(f"Update received: {payload}")
+
+    # Initialize NATS client
+    nc = NATS()
+    
+    # Connect listener to PostgreSQL and NATS
+    await connect_listener()
+
+if __name__ == '__main__':
+    import logging
+
+    # Configure logging
+    logging.basicConfig(format='%(asctime)s, %(message)s', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    # Get the event loop
+    event_loop = asyncio.get_event_loop()
+
+    try:
+        # Run the bridge
+        event_loop.run_until_complete(bridge(event_loop))
+        
+        # Run event loop forever
+        print('Running forever')
+        event_loop.run_forever()
+    
+    finally:
+        print('Closing')

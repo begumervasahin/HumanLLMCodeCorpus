@@ -1,0 +1,72 @@
+import re
+import os
+import pickle
+class WatchList:
+    def __init__(self, filename=""):
+        self.bills = {"5": [], "10": [], "20": [], "50": [], "100": []}
+        if filename == '':
+            self.is_sorted = True
+        else:
+            with open(filename, 'r') as file:
+                self.is_sorted = False
+                for line in file.readlines():
+                    data = line.split()
+                    self.bills[data[-1]].append(data[0])
+        self.validator = re.compile(r'^[A-M][A-L](?!00000000)\d{8}(?![OZ])[A-Z]$')
+        with open('bill_file_77.txt', 'r') as serial_file:
+            serial_num_file = serial_file.readlines()
+    def insert(self, bill_string):
+        data = bill_string.split()
+        denominator = data[1]
+        serial_number = data[0]
+        specific_bill_values = self.bills[denominator]
+        if self.is_sorted and serial_number not in specific_bill_values:
+            for i, value in enumerate(specific_bill_values):
+                if serial_number < value:
+                    specific_bill_values.insert(i, serial_number)
+                    return
+            specific_bill_values.append(serial_number)
+        elif not self.is_sorted and serial_number not in specific_bill_values:
+            specific_bill_values.append(serial_number)
+    def sort_bills(self):
+        for key in self.bills:
+            self.bills[key].sort()
+        self.is_sorted = True
+    def linear_search(self, bill_string):
+        data = bill_string.split()
+        denominator = data[1]
+        serial_number = data[0]
+        dictionary_list = self.bills[denominator]
+        if serial_number in dictionary_list:
+            return True
+        else:
+            return False
+    def binary_search(self, bill_string):
+        data = bill_string.split()
+        denomination = data[1]
+        serial_number = data[0]
+        dictionary_list = self.bills[denomination]
+        low_index = 0
+        high_index = len(dictionary_list) - 1
+        while low_index <= high_index:
+            mid = (high_index + low_index)
+            if dictionary_list[mid] == serial_number:
+                return True
+            if dictionary_list[mid] > serial_number:
+                high_index = mid - 1
+            else:
+                low_index = mid + 1
+        return False
+    def check_bills(self, filename, bool_val=False):
+        if bool_val and not self.is_sorted:
+            self.sort_bills()
+        search = self.binary_search if self.is_sorted else self.linear_search
+        serial_watchlist = WatchList()
+        with open(filename, 'r') as serial_file:
+            bad_bills = []
+            for line in serial_file:
+                serial_number, denominator = line.split()[0], line.split()[1]
+                serial_denominator = serial_number + " " + denominator
+                if search(line) or not self.validator.match(serial_number):
+                    bad_bills.append(serial_denominator)
+        return bad_bills

@@ -1,0 +1,13 @@
+from filecmp import dircmp
+def print_differing_files(dcmp):
+    for name in dcmp.diff_files:
+        left_dir = dcmp.left
+        right_dir = dcmp.right
+        print(f"Differing file '{name}' found in '{left_dir}' and '{right_dir}'")
+    for sub_dcmp in dcmp.subdirs.values():
+        print_differing_files(sub_dcmp)
+if __name__ == "__main__":
+    directory1 = 'dir1'
+    directory2 = 'dir2'
+    directory_comparison = dircmp(directory1, directory2)
+    print_differing_files(directory_comparison)

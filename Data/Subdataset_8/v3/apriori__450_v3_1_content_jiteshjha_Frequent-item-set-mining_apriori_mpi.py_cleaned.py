@@ -1,0 +1,136 @@
+import csv
+import sys
+import operator
+import time
+from math import floor
+from mpi4py import MPI
+from os import getcwd, walk, system, path
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+start_time = time.time()
+def find_frequent_1_itemsets(D, min_sup):
+    itemset = {}
+    with open(D, 'r') as f:
+        dataset = csv.reader(f)
+        for transaction in dataset:
+            for item in transaction:
+                item = item.strip()
+                itemset[item] = itemset.get(item, 0) + 1
+    itemset = {item: sup for item, sup in itemset.items() if sup >= min_sup}
+    return sorted(itemset.items(), key=operator.itemgetter(0))
+def powerset(s, k):
+    x = len(s)
+    powerset = []
+    for i in range(1, 1 << x):
+        subset = [s[j] for j in range(x) if (i & (1 << j))]
+        if len(subset) == k:
+            powerset.append(subset)
+    return powerset
+def has_frequent_subset(c, L, k):
+    subsets = powerset(c, k)
+    for subset in subsets:
+        if set(subset) not in [set(item[0].split(",")) for item in L]:
+            return False
+    return True
+def apriori_gen(L, k):
+    C = []
+    for l1 in L:
+        for l2 in L:
+            first_itemlist = l1[0].split(",")
+            second_itemlist = l2[0].split(",")
+            if all([first_itemlist[i] == second_itemlist[i] for i in range(k - 2)]) and \
+               first_itemlist[k - 1] < second_itemlist[k - 1]:
+                c = sorted(set(first_itemlist) | set(second_itemlist))
+                if has_frequent_subset(c, L, k - 1):
+                    C.append(",".join(c))
+    return C
+def generate_association_rules(itemset, min_conf, row_count):
+    if len(itemset) < 2:
+        print("No association rules")
+    else:
+        print("\nMinimum Confidence Threshold: ", min_conf * 100, "%\n")
+        print("Association rules:\n")
+        for k in range(1, len(itemset)):
+            for pair in itemset[k]:
+                for i in range(1, len(itemset[k][0][0].split(','))):
+                    for item in powerset(pair[0].split(','), i):
+                        item_sup = next((j[1] for j in itemset[i - 1] if j[0] == ",".join(item)), None)
+                        if item_sup is not None and pair[1] / float(item_sup) >= min_conf:
+                            print(",".join(item), "=>", ",".join(set(pair[0].split(',')) - set(item)),
+                                  "Support: ", "{:.2f}%".format(float(item_sup) / row_count * 100),
+                                  "Confidence: ", "{:.2f}%".format(pair[1] / float(item_sup) * 100))
+def main(D):
+    min_sup = float(sys.argv[2])
+    min_conf = float(sys.argv[3])
+    row_count = sum(1 for _ in open(D, 'r'))
+    min_sup *= row_count
+    min_conf *= row_count
+    L1 = find_frequent_1_itemsets(D, min_sup)
+    itemset = [L1]
+    k = 2
+    while True:
+        if not itemset[k - 2]:
+            break
+        C = apriori_gen(itemset[k - 2], k)
+        L = {}
+        with open(D, 'r') as f:
+            dataset = csv.reader(f)
+            for transaction in dataset:
+                for c in C:
+                    if set(c.split(",")).issubset(set(transaction)):
+                        L[c] = L.get(c, 0) + 1
+        L = {item: sup for item, sup in L.items() if sup >= min_sup}
+        itemset.append(sorted(L.items(), key=operator.itemgetter(0)))
+        k += 1
+    itemset.pop()
+    return itemset
+if __name__ == "__main__":
+    onlyfiles = []
+    if rank == 0:
+        system("mkdir temp")
+        dataset = str(sys.argv[1])
+        num_process = comm.Get_size()
+        file_size = int(floor(path.getsize(dataset) / (float(1000000) * num_process)))
+        system("split --bytes=" + str(file_size) + "M " + dataset + " temp/retail")
+        cwd = getcwd()
+        for (dirpath, dirnames, filenames) in walk(cwd + "/temp"):
+            onlyfiles.extend(filenames)
+            break
+    dataset = comm.scatter(onlyfiles, root=0)
+    itemset = main("temp/" + dataset)
+    set_itemsets = comm.gather(itemset, root=0)
+    if rank == 0:
+        itemsetsi = []
+        max_itemsets_length = max(len(itemsets) for itemsets in set_itemsets)
+        for i in range(max_itemsets_length):
+            iset = set()
+            for j in range(num_process):
+                temp_set = []
+                if i <= (len(set_itemsets[j]) - 1):
+                    for item in set_itemsets[j][i]:
+                        temp_set.append(list(item)[0])
+                    iset = iset.union(list(temp_set))
+            itemsetsi.append({k: 0 for k in list(iset)})
+        system("rm -rf temp")
+        D = str(sys.argv[1])
+        row_count = sum(1 for _ in open(D, 'r'))
+        for t in open(D, 'r'):
+            for itemset in itemsetsi:
+                for item in itemset:
+                    if set(item.split(",")).issubset(set(t.strip().split(","))):
+                        itemset[item] += 1
+        min_sup = float(sys.argv[2])
+        for itemset in itemsetsi:
+            itemset = {k: v for k, v in itemset.items() if v / row_count >= min_sup}
+        print("\nResultant Item sets:")
+        k = 1
+        for itemset in itemsetsi:
+            if itemset:
+                print("\n{}-itemsets:\n".format(k))
+                k += 1
+                for item, sup in itemset.items():
+                    print("{} | Support {:.2f}%".format(item, sup / row_count * 100))
+        list_itemsets = [sorted(itemset.items(), key=operator.itemgetter(0)) for itemset in itemsetsi if itemset]
+        min_conf = float(sys.argv[3])
+        generate_association_rules(list_itemsets, min_conf, row_count)
+    print("\nRank: {} - Program Execution Time: {:.2f} seconds".format(rank, time.time() - start_time))

@@ -1,0 +1,49 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import sympy as sp
+from sympy.abc import x as spx
+import argparse
+import os
+
+# Define and parse command-line arguments
+parser = argparse.ArgumentParser(description='Plot polynomial regression for given dataset.')
+parser.add_argument('--input', help='Path to input data file (CSV format)', required=True)
+parser.add_argument('--poly_degree', default=2, type=int, help='Degree of polynomial regression (default: 2)')
+args = parser.parse_args()
+
+# Load the dataset
+dataset = pd.read_csv(args.input)
+X = dataset.iloc[:, 0].values
+y = dataset.iloc[:, 1].values
+
+# Extract dataset information
+dataset_name = os.path.splitext(os.path.basename(args.input))[0].replace('_', ' ').title()
+x_label, y_label = dataset.columns.tolist()
+
+# Scatter plot to visualize the dataset
+plt.scatter(X, y, color='green')
+
+# Plot polynomial regression
+def plot_polynomial_regression():
+    # Calculate regression coefficients
+    weights = np.polyfit(X, y, args.poly_degree)
+    # Create polynomial model
+    model = np.poly1d(weights)
+    # Plot regression line
+    plt.plot(X, model(X), color='orange')
+    # Print polynomial equation in LaTeX format
+    sp.init_printing()
+    print("Polynomial Regression Equation:")
+    print(sp.latex(sp.Poly(model.coef, spx).as_expr()))
+
+# Display the plot
+def show_plot():
+    plt.title(dataset_name)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.show()
+
+# Call functions to plot and display regression
+plot_polynomial_regression()
+show_plot()

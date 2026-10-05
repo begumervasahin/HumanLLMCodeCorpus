@@ -1,0 +1,43 @@
+import os
+from ecdsa.curves import SECP256k1
+import threshold_cryptosystem as threshold
+
+# Number of keys to generate
+num_keys = 50
+
+# Directory to save the keys
+directory = 'keys/'
+
+# Create directory if it doesn't exist
+if not os.path.exists(directory):
+    os.makedirs(directory)
+
+# Generate secret keys
+secret_keys = [threshold.generate_key() for _ in range(num_keys)]
+
+# Generate corresponding public keys
+public_keys = [key * SECP256k1.generator for key in secret_keys]
+
+# Function to convert a number to a BigNumber format string
+def big_number(num):
+    return 'new BigNumber(\'{}\')'.format(num)
+
+# Function to convert a point to a string format
+def stringify_point(point):
+    return big_number(point.x()) + ',' + big_number(point.y())
+
+# Write secret keys to private.js and private.txt
+with open(os.path.join(directory, 'private.js'), 'w') as file:
+    secret_keys_js = ','.join([big_number(key) for key in secret_keys])
+    file.write('var secretKeys = [{}];'.format(secret_keys_js))
+
+with open(os.path.join(directory, 'private.txt'), 'w') as file:
+    file.write('\n'.join(map(str, secret_keys)))
+
+# Write public keys to public.js and public.txt
+with open(os.path.join(directory, 'public.js'), 'w') as file:
+    public_keys_js = ','.join(['[{}]'.format(stringify_point(key)) for key in public_keys])
+    file.write('var publicKeys = [{}];'.format(public_keys_js))
+
+with open(os.path.join(directory, 'public.txt'), 'w') as file:
+    file.write('\n'.join(['{},{}'.format(key.x(), key.y()) for key in public_keys]))

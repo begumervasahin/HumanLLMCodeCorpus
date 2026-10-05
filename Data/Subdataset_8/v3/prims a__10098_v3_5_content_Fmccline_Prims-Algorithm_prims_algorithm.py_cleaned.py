@@ -1,0 +1,52 @@
+class PrimsQueue:
+    def __init__(self):
+        self.queue = []
+    def push(self, from_node, to_node, value):
+        self.queue.append((from_node, to_node, value))
+    def pop(self):
+        return self.queue.pop(0)
+    def update(self, from_node, to_node, value):
+        for i, (f, t, v) in enumerate(self.queue):
+            if f == from_node and t == to_node:
+                self.queue[i] = (from_node, to_node, value)
+                break
+    def front(self):
+        return self.queue[0]
+class PrimsAlgorithm:
+    FROM_NODE = 0
+    TO_NODE = 1
+    VALUE = 2
+    def __init__(self, graph):
+        self.graph = graph
+    def min_span_tree_generator(self):
+        graph = self.graph
+        nodes = list(graph.nodes)
+        min_tree = {nodes[0]: True}
+        tree_edges = []
+        queue = PrimsQueue()
+        tree_neighbors = {}
+        current_node = nodes[0]
+        for _ in range(len(nodes) - 1):
+            for neighbor in graph.neighbors(current_node):
+                if neighbor in min_tree:
+                    continue
+                weight = graph[current_node][neighbor]['weight']
+                if neighbor in tree_neighbors:
+                    queue.update(current_node, neighbor, weight)
+                else:
+                    queue.push(current_node, neighbor, weight)
+                    tree_neighbors[neighbor] = True
+            from_node, to_node, value = queue.front()
+            queue.pop()
+            min_tree[to_node] = True
+            tree_edges.append((from_node, to_node, value))
+            current_node = to_node
+            yield tree_edges
+import networkx as nx
+G = nx.Graph()
+G.add_weighted_edges_from([(0, 1, 4), (0, 7, 8), (1, 2, 8), (1, 7, 11), (2, 3, 7), (2, 5, 4),
+                           (2, 8, 2), (3, 4, 9), (3, 5, 14), (4, 5, 10), (5, 6, 2), (6, 7, 1),
+                           (6, 8, 6), (7, 8, 7)])
+prim_algo = PrimsAlgorithm(G)
+for edge in prim_algo.min_span_tree_generator():
+    print(edge)

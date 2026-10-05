@@ -1,0 +1,61 @@
+class AStar:
+    def __init__(self, initial_state, actions, result, goal_test, get_cost, heuristic):
+        self.open_list = []
+        self.closed_list = []
+        self.visited_nodes = []
+        self.initial_state = initial_state
+        self.actions = actions
+        self.result = result
+        self.goal_test = goal_test
+        self.get_cost = get_cost
+        self.heuristic = heuristic
+        self.max_memory_usage = 0
+    def search(self):
+        while self.open_list:
+            self.max_memory_usage = max(self.max_memory_usage, len(self.open_list) + len(self.closed_list))
+            current_node = self.choose_node_to_expand()
+            path = current_node[0]
+            path_cost = current_node[1]
+            actions_taken = current_node[2]
+            heuristic_value = current_node[3]
+            if self.goal_test(path[-1]):
+                return [actions_taken, path, path_cost, heuristic_value]
+            self.open_list.remove([path, path_cost, actions_taken, heuristic_value])
+            if path[-1] not in self.closed_list:
+                self.closed_list.append(path[-1])
+            for action in self.actions(path[-1]):
+                next_node = self.result(path[-1], action)
+                if next_node not in self.closed_list:
+                    new_path_cost = self.get_cost(path[0], next_node) + path_cost
+                    heuristic_value = self.heuristic(next_node)
+                    new_path = path[:]
+                    new_path.append(next_node)
+                    new_actions_taken = actions_taken[:]
+                    new_actions_taken.append(action)
+                    self.open_list.append([new_path, new_path_cost, new_actions_taken, heuristic_value])
+                    if next_node not in self.visited_nodes:
+                        self.visited_nodes.append(next_node)
+    def search_astar(self):
+        start_state = self.initial_state()
+        self.open_list = [[[start_state], 0, [], 0]]
+        self.closed_list = []
+        self.res = []
+        result = self.search()
+        if not result:
+            print("There is no path.")
+        else:
+            print("Path found:")
+            print(result[0])
+            print("Number of visited nodes:", len(self.visited_nodes))
+            print("Number of nodes in the closed list:", len(self.closed_list))
+            print("Maximum memory usage:", self.max_memory_usage)
+            print("Path cost:", result[2] + result[3])
+    def choose_node_to_expand(self):
+        min_f_value = float('inf')
+        chosen_node = None
+        for node in self.open_list:
+            f_value = node[1] + node[3]
+            if f_value < min_f_value:
+                min_f_value = f_value
+                chosen_node = node
+        return chosen_node

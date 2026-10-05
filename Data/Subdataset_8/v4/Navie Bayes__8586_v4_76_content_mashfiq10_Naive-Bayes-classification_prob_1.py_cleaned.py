@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+training_images_file = open('train-images.idx3-ubyte', 'rb')
+training_images = bytearray(training_images_file.read())[16:]
+training_images_file.close()
+training_images = np.array(training_images, dtype=np.float64) > 100.
+fig = plt.figure()
+for k in range(20 * 20):
+    a = fig.add_subplot(20, 20, k + 1)
+    plt.imshow(training_images[k].reshape(28, 28), cmap=plt.cm.bone)
+    a.set_axis_off()
+plt.show()
+d = 28 * 28
+n = training_images.shape[0]
+training_images = training_images.reshape(int(n), d)
+training_labels_file = open('train-labels.idx1-ubyte', 'rb')
+training_labels = bytearray(training_labels_file.read())[8:]
+training_labels_file.close()
+training_labels = np.array(training_labels)
+training_labels = training_labels.reshape(training_labels.shape[0], 1)
+k = 10
+counts = np.bincount(training_labels)
+prior = counts / n
+log_prior = np.log10(prior)
+theta = np.zeros((k, d), dtype=np.float64)
+for i in range(k):
+    mask = (training_labels == i)
+    theta[i] += (np.sum(training_images[mask], axis=0, dtype=np.float64) + 1.) / (counts[i] + k)
+log_theta = np.log10(theta)
+log_complement = np.log10(1. - theta)
+test_images_file = open('t10k-images.idx3-ubyte', 'rb')
+test_images = bytearray(test_images_file.read())[16:]
+test_images_file.close()
+test_images = np.array(test_images, dtype=np.float64) > 100.
+test_images = test_images.reshape(int(n), d)
+test_labels_file = open('t10k-labels.idx1-ubyte', 'rb')
+test_labels = bytearray(test_labels_file.read())[8:]
+test_labels_file.close()
+test_labels = np.array(test_labels)
+test_labels = test_labels.reshape(test_labels.shape[0], 1)
+test_labels_hat = np.zeros(test_labels.shape)
+for i in range(test_images.shape[0]):
+    log_likelihood = np.sum(log_theta[:, test_images[i].reshape(-1)], axis=1) + np.sum(log_complement[:, np.logical_not(test_images[i].reshape(-1))], axis=1)
+    log_posterior = log_prior + log_likelihood
+    test_labels_hat[i] = np.argmax(log_posterior)
+c = np.sum(test_labels == test_labels_hat)
+accuracy = float(c / len(test_labels)) * 100.
+print("Naive Bayes classifier classification accuracy:", accuracy, '%')

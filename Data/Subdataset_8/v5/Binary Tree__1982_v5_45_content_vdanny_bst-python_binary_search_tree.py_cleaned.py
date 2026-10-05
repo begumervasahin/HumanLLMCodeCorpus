@@ -1,0 +1,46 @@
+import sys
+class TreeNode:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+class BinaryTree:
+    def insert(self, root, data):
+        if root is None:
+            return TreeNode(data)
+        if data <= root.data:
+            root.left = self.insert(root.left, data)
+        else:
+            root.right = self.insert(root.right, data)
+        return root
+    def get_height(self, root):
+        if root is None:
+            return -1
+        left_height = self.get_height(root.left)
+        right_height = self.get_height(root.right)
+        return max(left_height, right_height) + 1
+    def inorder_traversal(self, root):
+        if root:
+            self.inorder_traversal(root.left)
+            sys.stdout.write(str(root.data) + " ")
+            self.inorder_traversal(root.right)
+    def postorder_traversal(self, root):
+        if root:
+            self.postorder_traversal(root.left)
+            self.postorder_traversal(root.right)
+            sys.stdout.write(str(root.data) + " ")
+    def preorder_traversal(self, root):
+        if root:
+            sys.stdout.write(str(root.data) + " ")
+            self.preorder_traversal(root.left)
+            self.preorder_traversal(root.right)
+    def level_order_traversal(self, root):
+        if root:
+            queue = [root]
+            while queue:
+                current = queue.pop(0)
+                sys.stdout.write(str(current.data) + " ")
+                if current.left:
+                    queue.append(current.left)
+                if current.right:
+                    queue.append(current.right)

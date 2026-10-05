@@ -1,0 +1,26 @@
+import os
+import numpy as np
+from sklearn.cluster import AgglomerativeClustering as AgglomClustering
+from libHLR import linkages as Linkages
+input_path = './input/'
+link_type = 'complete'
+distance = 'manhattan'
+R = 40
+linkage_object = Linkages(distance, link_type)
+linkage_object.R = R
+with open(os.path.join(input_path, 'X.txt')) as file:
+    X = np.array([[float(digit) for digit in line.split()] for line in file])
+if not os.path.exists(os.path.join(input_path, 'kx.txt')):
+    kx = np.ones((np.shape(X)[0],))
+else:
+    kx = np.genfromtxt(os.path.join(input_path, 'kx.txt'))
+last_index = len(kx) - 2
+K = len(np.unique(kx[:last_index]))
+L = np.asarray([])
+for j in range(K):
+    print(f'Processing linkage {j + 1} of {K}')
+    idx = np.where(kx[:last_index] == j + 1)[0]
+    Xi = X[idx]
+    L = np.concatenate((L, linkage_object.get(Xi)))
+L = np.hsplit(L, K)
+np.savetxt(os.path.join(input_path, 'linkages.txt'), L, fmt='%.8f', delimiter='\t', newline='\n')

@@ -1,0 +1,40 @@
+import scipy.io as sio
+import numpy as np
+import itertools
+def continuity_score(sequence):
+    if 0 in sequence:
+        max_zeros_group = max([len(list(group)) for value, group in itertools.groupby(sequence) if value == 0])
+        total_zeros = sequence.count(0)
+        continuity = 1 - max_zeros_group / total_zeros
+    else:
+        continuity = 0
+    return continuity
+def find_zero_pairs(sequence):
+    n = len(sequence) - 1
+    zero_pairs = []
+    for i in range(n):
+        if sequence[i] + sequence[i + 1] == 0:
+            zero_pairs.append(i)
+            zero_pairs.append(i + 1)
+    zero_pairs_array = np.array(zero_pairs).reshape(-1, 2)
+    return zero_pairs_array
+def calculate_continuity_for_pairs(sequence, zero_pairs):
+    continuity_array = []
+    for pair in zero_pairs:
+        temp_sequence = sequence.copy()
+        temp_sequence[pair[0]], temp_sequence[pair[1]] = 1, 1
+        continuity = continuity_score(temp_sequence)
+        continuity_array.append(continuity)
+        temp_sequence[pair[0]], temp_sequence[pair[1]] = 0, 0
+    if len(continuity_array) == 0:
+        min_continuity = 9
+        min_pair = np.array([9, 9])
+    else:
+        min_continuity = min(continuity_array)
+        min_pair_index = continuity_array.index(min_continuity)
+        min_pair = zero_pairs[min_pair_index]
+    return min_pair, min_continuity
+if __name__ == '__main__':
+    sequence = [0, 1, 0, 0, 0, 0]
+    zero_pairs = find_zero_pairs(sequence)
+    print(calculate_continuity_for_pairs(sequence, zero_pairs))

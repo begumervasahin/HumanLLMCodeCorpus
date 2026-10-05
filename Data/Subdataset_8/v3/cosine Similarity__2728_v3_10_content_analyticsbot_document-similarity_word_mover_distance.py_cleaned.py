@@ -1,0 +1,44 @@
+import os
+import numpy as np
+from gensim.models import KeyedVectors
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics import euclidean_distances
+from pyemd import emd
+from text_unidecode import unidecode
+doc1 = "Obama speaks to the media in Illinois"
+doc2 = "The President addresses the press in Chicago"
+word_embeddings_file = "data/embed.dat"
+vocab_file = "data/embed.vocab"
+if not os.path.exists(word_embeddings_file):
+    print("Caching word embeddings in memmapped format...")
+    wv = KeyedVectors.load_word2vec_format(
+        "data/GoogleNews-vectors-negative300.bin.gz",
+        binary=True)
+    wv.init_sims(replace=True)
+    with np.memmap(word_embeddings_file, dtype=np.double, mode='w+', shape=wv.vectors_norm.shape) as fp:
+        fp[:] = wv.vectors_norm[:]
+    with open(vocab_file, "w") as f:
+        for word in sorted(wv.vocab.keys()):
+            print(unidecode(word), file=f)
+wv = KeyedVectors.load_word2vec_format(
+    "data/GoogleNews-vectors-negative300.bin.gz",
+    binary=True)
+W = np.memmap(word_embeddings_file, dtype=np.double, mode="r", shape=wv.vectors.shape)
+with open(vocab_file) as f:
+    vocab_list = [line.strip() for line in f.readlines()]
+vocab_dict = {word: idx for idx, word in enumerate(vocab_list)}
+def calculate_similarity(doc1, doc2):
+    vectorizer = CountVectorizer(stop_words="english").fit([doc1, doc2])
+    word_indices = [vocab_dict[word] for word in vectorizer.get_feature_names()]
+    embeddings = W[word_indices]
+    distance_matrix = euclidean_distances(embeddings)
+    doc1_vector, doc2_vector = vectorizer.transform([doc1, doc2]).toarray()
+    doc1_vector = doc1_vector.astype(np.double)
+    doc2_vector = doc2_vector.astype(np.double)
+    doc1_vector /= doc1_vector.sum()
+    doc2_vector /= doc2_vector.sum()
+    distance_matrix = distance_matrix.astype(np.double)
+    distance_matrix /= distance_matrix.max()
+    return emd(doc1_vector, doc2_vector, distance_matrix)
+similarity_score = calculate_similarity(doc1, doc2)
+print("Similarity score between doc1 and doc2:", similarity_score)

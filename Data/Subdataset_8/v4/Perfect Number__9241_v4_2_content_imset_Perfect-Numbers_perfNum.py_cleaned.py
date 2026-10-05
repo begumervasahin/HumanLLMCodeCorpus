@@ -1,0 +1,27 @@
+import sys
+def perfCheck(action, num):
+    if action.lower() not in ['check', 'iterate']:
+        print("Invalid action:", action)
+        return
+    numChk = int(num) if action.lower() == 'check' else 2
+    while numChk <= int(num):
+        factorList = []
+        factorChk = 1
+        while factorChk < numChk:
+            if numChk % factorChk == 0:
+                factorList.append(factorChk)
+            factorChk += 1
+        factorSum = sum(factorList)
+        if factorChk == factorSum:
+            print(str(numChk) + " is perfect!")
+        else:
+            print(str(numChk) + " is not perfect!")
+        if action.lower() == 'check':
+            break
+        else:
+            numChk += 1
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Usage: python script.py [check/iterate] [number]")
+    else:
+        perfCheck(sys.argv[1], sys.argv[2])

@@ -1,0 +1,80 @@
+import math
+import heapq
+
+class DijkstraOutput:
+    def __init__(self, graph, start_vertex):
+        self.start_vertex = start_vertex
+        self.graph = graph
+        self.distance_from_start = {vertex: math.inf for vertex in graph.vertices}
+        self.distance_from_start[start_vertex] = 0
+        self.predecessor_edges = {vertex: [] for vertex in graph.vertices}
+
+    def update_shortest_path(self, vertex, edge, new_distance):
+        """Update the shortest path information for a vertex."""
+        self.distance_from_start[vertex] = new_distance
+        self.predecessor_edges[vertex].append(edge)
+
+    def has_shorter_path(self, destination, edge):
+        """Check if there exists a shorter path to the destination."""
+        predecessors = self.predecessor_edges[destination]
+        return edge in predecessors or any(
+            self.has_shorter_path(pre.source, edge) for pre in predecessors
+        )
+
+    def total_distance(self, subset=None):
+        """Calculate the total distance for a subset of vertices."""
+        subset = subset or self.graph.vertices
+        return sum(self.distance_from_start[vertex] for vertex in subset)
+
+def dijkstra_shortest_paths(graph, start_vertex):
+    """
+    Compute the shortest paths and distances from the start vertex to all
+    possible destination vertices. Return an instance of DijkstraOutput.
+    """
+    output = DijkstraOutput(graph, start_vertex)
+    visit_queue = [(0, start_vertex)]
+    while visit_queue:
+        priority, current_vertex = heapq.heappop(visit_queue)
+        for edge in graph.incident_edges[current_vertex]:
+            target_vertex = edge.target
+            weight = edge.weight
+            total_distance = output.distance_from_start[current_vertex] + weight
+            if total_distance < output.distance_from_start[target_vertex]:
+                output.update_shortest_path(target_vertex, edge, total_distance)
+                heapq.heappush(visit_queue, (total_distance, target_vertex))
+    return output
+
+class Edge:
+    def __init__(self, source, target, weight):
+        self.source = source
+        self.target = target
+        self.weight = weight
+
+class Graph:
+    def __init__(self, vertices):
+        self.vertices = vertices
+        self.incident_edges = {vertex: [] for vertex in vertices}
+
+    def add_edge(self, source, target, weight):
+        """Add an edge to the graph."""
+        edge = Edge(source, target, weight)
+        self.incident_edges[source].append(edge)
+
+# Create a graph
+vertices = ['A', 'B', 'C', 'D', 'E']
+graph = Graph(vertices)
+graph.add_edge('A', 'B', 2)
+graph.add_edge('A', 'C', 4)
+graph.add_edge('B', 'C', 1)
+graph.add_edge('B', 'D', 7)
+graph.add_edge('C', 'D', 3)
+graph.add_edge('C', 'E', 5)
+graph.add_edge('D', 'E', 2)
+
+# Compute shortest paths
+output = dijkstra_shortest_paths(graph, 'A')
+
+# Print results
+print("Shortest distances from 'A' to each vertex:", output.distance_from_start)
+print("Predecessor edges for each vertex:", output.predecessor_edges)
+print("Total distance:", output.total_distance())

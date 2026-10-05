@@ -1,0 +1,46 @@
+import os
+import collections
+import re
+DATA_DIR = "data"
+DIMENSIONS = ["IE", "NS", "FT", "PJ"]
+WORDS_TO_REMOVE = [
+    "intj", "intp", "infj", "infp", "istj", "istp", "isfj", "isfp",
+    "entj", "entp", "enfj", "enfp", "estj", "estp", "esfj", "esfp",
+    "si", "ni", "ti", "fi", "se", "ne", "te", "fe", "nt", "nf",
+    "sxsp", "spsx", "spso", "sxso", "sosp", "sosx", "sp", "sx",
+    "sj", "sf", "st", "le", "socionic", "socionics", "enneagram",
+    "d", "w", "mbti",
+]
+for dimension in DIMENSIONS:
+    wordcount_a = {}
+    wordcount_b = {}
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[0]}.txt"), "r") as f:
+        wordcount_a = collections.Counter(f.read().split())
+    with open(os.path.join(DATA_DIR, f"extreme_examples_{dimension[1]}.txt"), "r") as f:
+        wordcount_b = collections.Counter(f.read().split())
+    cache = list(set(wordcount_a.keys()) | set(wordcount_b.keys()))
+    a = {}
+    b = {}
+    for key in cache:
+        if key in wordcount_a and key not in WORDS_TO_REMOVE:
+            if key in wordcount_b:
+                diff = wordcount_a[key] - wordcount_b[key]
+                if diff > 0:
+                    a[key] = diff
+                elif diff < 0:
+                    b[key] = -diff
+            else:
+                a[key] = wordcount_a[key]
+        elif key in wordcount_b and key not in WORDS_TO_REMOVE:
+            b[key] = wordcount_b[key]
+    regex = re.compile("[^a-zA-Z]")
+    with open(os.path.join(DATA_DIR, f"special_words_{dimension[0]}.txt"), "w") as f:
+        for key, value in a.items():
+            mod = regex.sub("", str(key))
+            if value > 2:
+                f.write(f"{mod}\n" * value)
+    with open(os.path.join(DATA_DIR, f"special_words_{dimension[1]}.txt"), "w") as f:
+        for key, value in b.items():
+            mod = regex.sub("", str(key))
+            if value > 2:
+                f.write(f"{mod}\n" * value)

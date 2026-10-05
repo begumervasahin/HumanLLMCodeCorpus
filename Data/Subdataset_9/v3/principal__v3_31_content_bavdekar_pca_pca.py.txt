@@ -1,0 +1,87 @@
+import numpy as np
+import scipy as sp
+
+def lpca(data, cv=None, normalize=False):
+    """
+    Perform Linear Principal Component Analysis (LPCA).
+    
+    Args:
+    - data: Input data matrix.
+    - cv: Cumulative variance threshold (default is 95).
+    - normalize: Whether to normalize data (default is False).
+    
+    Returns:
+    - Retained principal components.
+    """
+    # Normalize data if requested
+    if normalize:
+        mean_vector = np.mean(data, axis=0)
+        var_vector = np.var(data, axis=0, ddof=1)
+        data_normalized = (data - np.outer(np.ones(data.shape[0]), mean_vector)) / var_vector[:, np.newaxis]
+    else:
+        data_normalized = data
+    
+    # Perform Singular Value Decomposition (SVD)
+    U, S, Vt = np.linalg.svd(data_normalized)
+    
+    # Calculate cumulative explained variance
+    cumulative_variance_explained = np.cumsum(100 * S / np.sum(S))
+    
+    # Determine the number of principal components to retain based on explained variance threshold
+    if cv is None:
+        cv = 95
+    num_components = np.argmax(cumulative_variance_explained >= cv)
+    
+    # Return the retained principal components
+    return Vt[:num_components, :]
+
+def scpa(data, cv=None, normalize=False):
+    """
+    Perform Sparse Correlation-based Principal Component Analysis (SCPA).
+    
+    Args:
+    - data: Input data matrix.
+    - cv: Cumulative variance threshold (default is 95).
+    - normalize: Whether to normalize data (default is False).
+    
+    Returns:
+    - Retained principal components.
+    """
+    # SCPA does not support normalization, so ignore it if requested
+    if normalize:
+        normalize = False
+    
+    # Compute the weighted adjacency matrix using the exponential of the correlation matrix
+    W = sp.linalg.expm(np.corrcoef(data, rowvar=False) / 0.1)
+    
+    # Compute the degree matrix
+    D = np.diag(np.sum(W, axis=0))
+    
+    # Compute the scaled data
+    scaled_data = np.matmul(sp.linalg.inv(sp.linalg.sqrtm(D)), np.matmul(W, sp.linalg.inv(sp.linalg.sqrtm(D))))
+    
+    # Perform Singular Value Decomposition (SVD) on scaled data
+    U, S, Vt = np.linalg.svd(scaled_data)
+    
+    # Calculate cumulative explained variance
+    cumulative_variance_explained = np.cumsum(100 * S / np.sum(S))
+    
+    # Determine the number of principal components to retain based on explained variance threshold
+    if cv is None:
+        cv = 95
+    num_components = np.argmax(cumulative_variance_explained >= cv)
+    
+    # Return the retained principal components
+    return np.matmul(sp.linalg.inv(sp.linalg.sqrtm(D)), Vt.T)[:num_components, :].T
+
+if __name__ == "__main__":
+    # Generate some sample data
+    data = np.random.rand(100, 10)
+    
+    # Run lpca
+    lpca_result = lpca(data)
+    print("LPCA Result Shape:", lpca_result.shape)
+    
+    # Run scpa
+    scpa_result = scpa(data)
+    print("SCPA Result Shape:", scpa_result.shape)

@@ -1,0 +1,49 @@
+# Import necessary libraries
+import plotly.graph_objs as go
+import pandas as pd
+import plotly.offline as pyo
+from pandas.io.json import json_normalize
+import plotly.tools as tools
+import dash
+import dash_html_components as html
+import dash_core_components as dcc
+
+# Initialize Dash app
+app = dash.Dash()
+
+# Prompt user for stock symbol
+symbol = input('Stock Symbol: \n')
+
+# Set API parameters
+datatype = 'datatype=csv'
+API_KEY = 'VW506K51LFXGUT1C'
+API_QUERY = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={API_KEY}&{datatype}'
+print(API_QUERY)
+
+# Retrieve data from Alpha Vantage API and load into DataFrame
+df = pd.read_csv(API_QUERY)
+
+# Define Dash layout
+app.layout = html.Div([
+    # Graph component displaying stock prices over time
+    dcc.Graph(
+        id='linegraph',
+        figure={
+            'data': [
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=df['close'],
+                    mode='lines',
+                    marker={'size': 12}
+                )
+            ],
+            'layout': go.Layout(
+                title='Stock prices over time'
+            )
+        }
+    )
+])
+
+# Run the Dash app
+if __name__ == '__main__':
+    app.run_server()

@@ -1,0 +1,31 @@
+import re
+def extract_replacements(grammar):
+    replacements = []
+    syntax_re = r
+    for matchobj in re.finditer(syntax_re, grammar):
+        if matchobj.group('rule'):
+            replacements.append((matchobj.group('pat'), matchobj.group('repl'), bool(matchobj.group('term'))))
+    return replacements
+def replace(text, replacements):
+    while True:
+        for pat, repl, term in replacements:
+            if pat in text:
+                text = text.replace(pat, repl, 1)
+                if term:
+                    return text
+                break
+        else:
+            return text
+grammar = '''\
+A -> apple
+B -> bag
+S -> .shop
+T -> the
+the shop -> my brother
+a never used -> .terminating rule
+'''
+text = "I bought a B of As from T S."
+if __name__ == '__main__':
+    replacements = extract_replacements(grammar)
+    result = replace(text, replacements)
+    print(result)

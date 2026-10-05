@@ -1,0 +1,68 @@
+import json
+import sys
+from Process_TianChi_Main import analysis_Time
+from utils import *
+users = []
+with open('all_user_id.txt', 'r') as f:
+    users = [line.strip() for line in f.readlines()]
+def process_users(choice):
+    if choice == '0':
+        print('Processing devices group...')
+        with open('all_user_info.json') as f:
+            all_user_info = json.load(f)
+            devices = set()
+            count = 0
+            for user in all_user_info:
+                count += 1
+                percentage = 100 * count / len(all_user_info)
+                print(f'\r>> Processing Users... {percentage:.2f}%', end='', flush=True)
+                info = all_user_info[user]["Reach_Time"]
+                for time in info:
+                    current_devices = info[time].keys()
+                    devices.update(current_devices)
+        num_devices = len(devices)
+        print('\nTotal number of devices:', num_devices)
+    elif choice == '1':
+        print('Processing time group...')
+        with open('user_time_info.json') as f:
+            user_time = json.load(f)
+            all_time = 0
+            count = 0
+            for user in user_time:
+                count += 1
+                percentage = 100 * count / len(user_time)
+                print(f'\r>> Processing Users... {percentage:.2f}%', end='', flush=True)
+                per_user_info = user_time[user]
+                _, Dates_Interval_Dict = analysis_Time(user, per_user_info)
+                all_time += len(Dates_Interval_Dict)
+        print('\nTotal time intervals:', all_time)
+    elif choice == '2':
+        print('Processing features...')
+        with open('all_user_info.json') as f:
+            all_user_info = json.load(f)
+            all_keyword = 0
+            avg_keyword = 0
+            all_IP = 0
+            avg_IP = 0
+            count = 0
+            for user in all_user_info:
+                count += 1
+                percentage = 100 * count / len(all_user_info)
+                print(f'\r>> Processing Users... {percentage:.2f}%', end='', flush=True)
+                info = all_user_info[user]["Reach_Time"]
+                for time in info:
+                    for user in info[time]:
+                        all_keyword += len(info[time][user]["Keyword"])
+                        all_IP += len(info[time][user]["Device_IP"])
+            avg_keyword = all_keyword / len(all_user_info)
+            avg_IP = all_IP / len(all_user_info)
+        print('\nAverage number of keywords per user:', avg_keyword)
+        print('Average number of IP addresses per user:', avg_IP)
+    else:
+        print('Invalid choice!')
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python script.py [choice]")
+    else:
+        choice = sys.argv[1]
+        process_users(choice)

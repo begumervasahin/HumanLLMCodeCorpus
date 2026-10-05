@@ -1,0 +1,43 @@
+from bs4 import BeautifulSoup
+import requests
+import sqlite3
+
+# Connect to SQLite database
+conn = sqlite3.connect('movie.db')
+cursor = conn.cursor()
+
+# Create a table named 'movie' if it doesn't exist
+cursor.execute("""CREATE TABLE IF NOT EXISTS movie(
+                    Rank TEXT,
+                    MovieTitle TEXT,
+                    Total TEXT,
+                    Opening TEXT,
+                    Open TEXT
+                )""")
+
+# Loop through years from 2010 to 2019
+for year in range(2010, 2020):
+    year_url = 'https://www.boxofficemojo.com/yearly/chart/?yr=' + str(year) + '&p=.htm'
+    page = requests.get(year_url)
+    soup = BeautifulSoup(page.text, 'html.parser')
+    tables = soup.find_all('table')
+    
+    # Assuming the desired table is the 7th table on the page
+    movie_table = tables[6]  
+    header_row = movie_table.find_all('tr')[0]
+    headers = header_row.find_all('td')
+    header_columns = [headers[0].text, headers[1].text, headers[4].text, headers[5].text, headers[6].text]
+    movie_data = [header_columns]
+
+    # Extract movie data and insert into database
+    for movie_row in range(2, len(movie_table.find_all('tr')) - 4):
+        movie_data_row = movie_table.find_all('tr')[movie_row]
+        movie_columns = movie_data_row.find_all('td')
+        movie_info = [movie_columns[0].text, movie_columns[1].text, movie_columns[4].text, movie_columns[5].text, movie_columns[6].text]
+        movie_data.append(movie_info)
+        cursor.execute("INSERT INTO movie VALUES (?, ?, ?, ?, ?)", (movie_columns[0].text, movie_columns[1].text, movie_columns[4].text, movie_columns[5].text, movie_columns[6].text))
+
+# Commit changes and close connection
+conn.commit()
+conn.close()
+print("Data appended to database successfully.")

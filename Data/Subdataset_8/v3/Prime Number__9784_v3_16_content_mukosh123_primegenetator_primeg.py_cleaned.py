@@ -1,0 +1,15 @@
+def generate_primes_up_to(num):
+    if not isinstance(num, int) or num < 0:
+        return 'Argument must be a non-negative integer'
+    primes = []
+    for candidate in range(2, num + 1):
+        is_prime = True
+        for divisor in range(2, int(candidate ** 0.5) + 1):
+            if candidate % divisor == 0:
+                is_prime = False
+                break
+        if is_prime:
+            primes.append(candidate)
+    return primes
+result = generate_primes_up_to(20)
+print(result)

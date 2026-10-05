@@ -1,0 +1,65 @@
+import hashlib
+import re
+
+def main():
+    # Define input and output file paths
+    input_file = 'data/test/ftb1/ftb1u.tsv'
+    output_file = 'data/test/ftb1/ftb1u_sample.tsv'
+    
+    # Read sentences from input file
+    with open(input_file) as file:
+        sentences = list(split_sentences(file.readlines()))
+    
+    # Select sentences with SHA-256 digest starting with '0'
+    selected_sentences = filter_sentences(sentences)
+    
+    # Print summary of sampled sentences
+    print_summary(len(selected_sentences), len(sentences))
+    
+    # Write selected sentences to output file
+    write_to_file(output_file, selected_sentences)
+    
+    # Print confirmation message
+    print(f'Wrote samples to {output_file}')
+
+def split_sentences(lines):
+    # Regular expression to match start of a sentence
+    start_re = re.compile(r'^')
+    sentence = []
+    
+    # Iterate through lines to split sentences
+    for line in lines:
+        # If line matches the start of a sentence
+        if start_re.match(line):
+            # If there's a sentence being accumulated, yield it
+            if sentence:
+                yield ''.join(sentence)
+                sentence = []  # Reset sentence buffer
+        # If line is not empty, add it to the current sentence
+        if line.strip():
+            sentence.append(line)
+    
+    # Yield the last accumulated sentence if any
+    if sentence:
+        yield ''.join(sentence)
+
+def filter_sentences(sentences):
+    # Select sentences with SHA-256 digest starting with '0'
+    selected = []
+    for sentence in sentences:
+        digest = hashlib.sha256(sentence.encode('utf-8')).hexdigest()
+        if digest.startswith('0'):
+            selected.append(sentence)
+    return selected
+
+def print_summary(selected_count, total_count):
+    # Print summary of sampled sentences
+    print(f'Sampled {selected_count} out of {total_count} sentences')
+
+def write_to_file(file_path, sentences):
+    # Write selected sentences to output file
+    with open(file_path, 'w') as file:
+        file.write('\n'.join(sentences))
+
+if __name__ == '__main__':
+    main()

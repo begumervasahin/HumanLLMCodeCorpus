@@ -1,0 +1,74 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+# Parameters for the Heston model
+T = 1                # Time to maturity
+s0 = 100             # Initial stock price
+v0 = 0.12            # Initial volatility
+kappa = 2            # Rate of mean reversion for volatility
+theta = 0.15         # Long-term average volatility
+sigma = 0.8          # Volatility of volatility
+r = 0                # Risk-free interest rate
+
+# Function to simulate one path of the Heston model using Euler discretization
+def ED_Heston(N):
+    dt = T / N
+    ST = s0
+    VT = v0
+    for i in range(N):
+        # Euler discretization for stock price and volatility
+        ST += r * ST * dt + max(VT, 0) ** 0.5 * ST * dt ** 0.5 * np.random.randn()
+        VT += kappa * (theta - VT) * dt + sigma * max(VT, 0) ** 0.5 * dt ** 0.5 * np.random.randn()
+    return [ST, VT]
+
+# Strikes and number of steps for simulations
+K = [100, 500, 1000, 5000, 10000]
+nsteps = [int(100 ** 0.5), int(500 ** 0.5), int(1000 ** 0.5), int(5000 ** 0.5), int(10000 ** 0.5)]
+epsilon = [70, 90, 100, 110, 130]
+
+# Lists to store option price estimations and execution times
+estimator = []
+Estimator = []
+t_time = []
+
+# Calculate option price estimations for different strikes and numbers of simulations
+for strike in epsilon:
+    estimator = []
+    for i in K:
+        sum_estimator = 0
+        # Perform i simulations
+        for j in range(i):
+            # Simulate one path of the Heston model
+            ST = ED_Heston(int(i ** 0.5))[0]
+            # Calculate option payoff and discount it to present value
+            sum_estimator += np.exp(-r * T) * max(ST - strike, 0)
+        # Calculate average option price estimation
+        estimator.append(sum_estimator / i)
+    Estimator.append(estimator)
+
+print("Estimated Prices:")
+print(Estimator)
+
+# Measure execution times for simulations
+for strike in epsilon:
+    run = []
+    for i in K:
+        sum_estimator = 0
+        start = time.time()
+        # Perform i simulations
+        for j in range(i):
+            # Simulate one path of the Heston model
+            ST = ED_Heston(int(i ** 0.5))[0]
+            # Calculate option payoff and discount it to present value
+            sum_estimator += np.exp(-r * T) * max(ST - strike, 0)
+        end = time.time()
+        # Calculate execution time for i simulations
+        run.append(end - start)
+    t_time.append(run)
+
+print("\nExecution Times:")
+print(t_time)
+
+# Correct option prices for comparison
+correct_price = [32.70326, 18.92499, 13.984957, 10.263762, 5.5888102]

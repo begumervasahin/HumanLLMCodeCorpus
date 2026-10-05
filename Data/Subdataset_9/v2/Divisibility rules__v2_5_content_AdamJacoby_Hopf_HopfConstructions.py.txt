@@ -1,0 +1,88 @@
+import scipy.sparse as sps
+import sympy as sym
+import numpy as np
+from HopfConstructions_Functions import *
+from HopfClass import *
+from Frobenius_Tools import HigmanTrace
+
+def tensor_product(A, B):
+    # Determine the type of tensor product
+    tensor_type = get_tensor_type(A, B)
+    
+    # Construct the name of the resulting algebra
+    name = A.name + '(T)' + B.name
+    
+    # Generate element names for the tensor product
+    element_names = []
+    for iA in range(A.dim):
+        for iB in range(B.dim):
+            element_names.append(A.element_names[iA] + '(T)' + B.element_names[iB])
+    
+    # Based on the type, perform the tensor product operation
+    if tensor_type == 'HopfAlgebra':
+        mult = tensor_mult(A, B)
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        antipode = sps.kron(A.antipode, B.antipode)
+        result = HopfAlgebra(name, element_names, mult, comult, counit, antipode)
+        if A.int_flag != 'no' and B.int_flag != 'no':
+            result.input_integral(np.kron(A.int, B.int))
+    elif tensor_type == 'BiAlgebra':
+        mult = tensor_mult(A, B)
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        result = BiAlgebra(name, element_names, mult, comult, counit)
+    elif tensor_type == 'Algebra':
+        mult = tensor_mult(A, B)
+        result = Algebra(name, element_names, mult)
+    elif tensor_type == 'CoAlgebra':
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        result = CoAlgebra(name, element_names, comult, counit)
+    
+    return result
+
+def drinfeld_twist(H, J, JI, twist_name):
+    # Calculate the comultiplication and antipode of the twisted Hopf algebra
+    comult = drinfeld_twist_comult(H, J, JI)
+    name = H.name + '(' + twist_name + ')'
+    antipode = drinfeld_twist_antipode(H, J, JI)
+    
+    # Create the twisted Hopf algebra
+    result = HopfAlgebra(name, H.element_names, H.mult, comult, H.counit, antipode)
+    result.input_integral(H.int)  # Input the integral if available
+    
+    return result
+
+def left_adjoint_module(H):
+    # Calculate the left adjoint action
+    action = left_adjoint_action(H)
+    
+    # Create the left adjoint module algebra
+    return ModuleAlgebra('ad' + H.name, H.name, action, H.element_names, H.mult)        
+
+def left_smash_product(A, H):
+    # Calculate the left smash product multiplication
+    mult = left_smash_product_mult(A, H)
+    
+    # Generate element names for the left smash product
+    ele_names = left_smash_element_names(A, H)
+    
+    # Create the left smash product algebra
+    return Algebra(A.name + '*')
+
+def dual_hopf_algebra(H):
+    # Transpose the comultiplication and antipode matrices
+    mult = H.comult.transpose()
+    comult = H.comult.transpose()
+    antipode = H.antipode.transpose()
+    
+    # Generate element names for the dual Hopf algebra
+    element_names = dual_element_names(H.element_names)
+    
+    # Set the counit to the first element of the original algebra
+    counit = np.zeros((H.dim), dtype=complex)
+    counit[0] = 1
+    
+    # Create the dual Hopf algebra
+    return HopfAlgebra(H.name + '^*', element_names, mult, comult, counit, antipode)

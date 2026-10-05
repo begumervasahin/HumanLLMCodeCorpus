@@ -1,0 +1,41 @@
+import numpy as np
+
+# Read the distance matrix from the full CSV file
+with open("distance_matrix_full.csv", "r") as file:
+    users_list = []
+    distance_matrix = np.zeros((8357, 8357))
+
+    for i, line in enumerate(file):
+        data = line.strip().split(",")
+        users_list.append(data[0])
+
+        for j in range(1, len(data)):
+            distance_matrix[i][j - 1] = float(data[j])
+            distance_matrix[j - 1][i] = distance_matrix[i][j - 1]
+
+# Read additional distance values from the file "distance_matrix_1698.csv"
+with open("distance_matrix_1698.csv", "r") as file:
+    for i, line in enumerate(file):
+        data = line.strip().split(",")
+        users_list.append(data[0])
+
+        for j in range(1, len(data)):
+            distance_matrix[i + 8357][j - 1] = float(data[j])
+            distance_matrix[j - 1][i + 8357] = distance_matrix[i + 8357][j - 1]
+
+# Write the final distance matrix to the file "distance_matrix_final.csv" and "distance_matrix_final_withoutid.csv"
+with open("distance_matrix_final.csv", "w") as file_with_id, open("distance_matrix_final_withoutid.csv", "w") as file_without_id:
+    for i in range(8357):
+        file_with_id.write(str(users_list[i]) + ",")
+        file_without_id.write(str(users_list[i]) + ",")
+
+        for j in range(8357):
+            file_with_id.write(str(distance_matrix[i][j]))
+            file_without_id.write(str(distance_matrix[i][j]))
+
+            if j != 8356:
+                file_with_id.write(",")
+                file_without_id.write(",")
+
+        file_with_id.write("\n")
+        file_without_id.write("\n")

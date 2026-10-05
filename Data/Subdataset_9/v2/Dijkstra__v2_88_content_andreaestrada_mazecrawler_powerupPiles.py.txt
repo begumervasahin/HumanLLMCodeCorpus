@@ -1,0 +1,87 @@
+import pygame
+from random import randint
+import spec
+import powerup
+
+class Piles(powerup.PowerupGeneric):
+    """
+    Class representing a generic powerup pile.
+    """
+    def __init__(self, centerX, centerY, amount, images, group, size):
+        """
+        Initialize a powerup pile object.
+
+        Args:
+        - centerX (int): X-coordinate of the center.
+        - centerY (int): Y-coordinate of the center.
+        - amount (int): Amount of the powerup.
+        - images (list): List of images for the powerup.
+        - group (pygame.sprite.Group): Group to which the powerup belongs.
+        - size (int): Size of the powerup.
+        """
+        super().__init__(centerX, centerY, images, group, size)
+        self.amount = amount
+
+    @staticmethod
+    def generate_new_powerup(data, type_added):
+        """
+        Generate a new powerup and send the data to the server.
+
+        Args:
+        - data: Data object containing the server.
+        - type_added (str): Type of powerup added ('AmmoAdded' or 'PointsAdded').
+        """
+        centerX, centerY = powerup.PowerupGeneric.generateNewPowerupLocation()
+        amount = randint(3, 7)
+        msg = f"{type_added} {centerX} {centerY} {amount}\n"
+        data.server.send(msg.encode())
+        if type_added == "AmmoAdded":
+            AmmoPile(centerX, centerY, amount)
+        elif type_added == "PointsAdded":
+            PointPile(centerX, centerY, amount)
+
+class AmmoPile(Piles):
+    """
+    Class representing an ammo powerup pile.
+    """
+    def __init__(self, centerX, centerY, amount):
+        """
+        Initialize an ammo powerup pile object.
+
+        Args:
+        - centerX (int): X-coordinate of the center.
+        - centerY (int): Y-coordinate of the center.
+        - amount (int): Amount of ammo in the pile.
+        """
+        super().__init__(centerX, centerY, amount, spec.ammoPileImages, spec.staticAmmos, spec.cellWidth/3)
+
+class PointPile(Piles):
+    """
+    Class representing a point powerup pile.
+    """
+    def __init__(self, centerX, centerY, amount):
+        """
+        Initialize a point powerup pile object.
+
+        Args:
+        - centerX (int): X-coordinate of the center.
+        - centerY (int): Y-coordinate of the center.
+        - amount (int): Amount of points in the pile.
+        """
+        super().__init__(centerX, centerY, amount, spec.pointPileImages, spec.staticPoints, spec.cellWidth/3)
+
+# Sample usage:
+# Assuming data.server is defined and spec.ammoPileImages, spec.pointPileImages, spec.staticAmmos,
+# spec.staticPoints, and spec.cellWidth are properly defined elsewhere in the code.     
+
+# Initialize pygame
+pygame.init()
+
+# Create a data object
+data = pygame.Surface((800, 600))  # Example surface, replace with your own data object 
+
+# Generate a new Ammo Pile powerup
+Piles.generate_new_powerup(data, "AmmoAdded")
+
+# Generate a new Point Pile powerup
+Piles.generate_new_powerup(data, "PointsAdded")

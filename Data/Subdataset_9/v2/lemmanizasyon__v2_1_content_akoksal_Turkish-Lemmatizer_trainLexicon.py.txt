@@ -1,0 +1,87 @@
+import pickle
+import sys
+
+def load_word(dataset):
+    if dataset == "wiktionary":
+        with open('Datasets/wiktionary.pkl', 'rb') as file:
+            [word_list] = pickle.load(file)
+        word_dict = {find_id({}, word): ["kok", find_id({}, word)] for word in word_list}
+        return word_dict
+    elif dataset == "zargan":
+        with open('Datasets/zargan.pkl', 'rb') as file:
+            zargan_dict = pickle.load(file)
+        word_dict = {find_id({}, word): ["kok", find_id({}, word)] for word in zargan_dict.keys()}
+        return word_dict
+
+def find_id(word_dict, word):
+    count = 1
+    while f"{word}_{count}" in word_dict:
+        count += 1
+    return f"{word}_{count}"
+
+def generate(word_dict, action):
+    new_dict = {}
+    
+    if action == "negative_suffix":
+        for word, value_list in word_dict.items():
+            index = word.index("_") + 1
+            base_word = word[:index - 1] if word.endswith("mak") or word.endswith("mek") else word[:-3]
+
+            if base_word.endswith("p"):
+                new_dict[find_id(word_dict, base_word + "b")] = ["unsuz yumusamasi", f"{base_word}_{index}"]
+            elif base_word.endswith("ç"):
+                new_dict[find_id(word_dict, base_word + "c")] = ["unsuz yumusamasi", f"{base_word}_{index}"]
+            elif base_word.endswith("t"):
+                new_dict[find_id(word_dict, base_word + "d")] = ["unsuz yumusamasi", f"{base_word}_{index}"]
+            elif base_word.endswith("k"):
+                if base_word.endswith("nk"):
+                    new_dict[find_id(word_dict, base_word + "g")] = ["unsuz yumusamasi", f"{base_word}_{index}"]
+                else:
+                    new_dict[find_id(word_dict, base_word + "ð")] = ["unsuz yumusamasi", f"{base_word}_{index}"]
+
+    # Add similar logic for other actions like "consonant_softening", "vowel_becoming_close", and "vowel_dropping"
+    # ...
+
+    return new_dict
+
+def append_dict(revised_dict, new_dict):
+    for word, value_list in new_dict.items():
+        if word in revised_dict:
+            revised_dict[find_id(revised_dict, word.split("_")[0])] = value_list
+        else:
+            revised_dict[word] = value_list
+    return revised_dict
+
+def main():
+    dataset = "zargan"
+    if len(sys.argv) > 1:
+        dataset = sys.argv[1]
+
+    word_dict = load_word(dataset)
+
+    word_dict = append_dict(word_dict, generate(word_dict, "negative_suffix"))
+    print("Negative verbs are added.")
+
+    word_dict = append_dict(word_dict, generate(word_dict, "fiil"))
+    print("Zero infinitive forms of verbs are added.")
+
+    revised_dict = dict(word_dict)
+
+    for action in ["consonant_softening", "vowel_becoming_close", "vowel_dropping"]:
+        new_dict = generate(word_dict, action)
+        revised_dict = append_dict(revised_dict, new_dict)
+        
+        if action == "consonant_softening":
+            print("Consonant softening forms are added.")
+        elif action == "vowel_becoming_close":
+            print("Becoming close vowel forms are added.")
+        elif action == "vowel_dropping":
+            print("Dropping vowel forms are added.")
+
+    with open('revisedDict.pkl', 'wb') as file:
+        pickle.dump(revised_dict, file)
+
+    print("Transformed lexicon is saved to revisedDict.pkl")
+
+if __name__ == "__main__":
+    main()

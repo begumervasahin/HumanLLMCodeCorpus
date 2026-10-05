@@ -1,0 +1,22 @@
+def find_factors(n):
+    return [i for i in range(2, n) if n % i == 0]
+def generate_possible_e(phiN):
+    return [i for i in range(2, phiN)]
+def remove_divisible_values(possible_values, factors):
+    remaining_values = possible_values[:]
+    for value in possible_values:
+        for factor in factors:
+            if value % factor == 0:
+                remaining_values.remove(value)
+                break
+    return remaining_values
+def eKey(N, phiN):
+    factors_N = find_factors(N)
+    factors_phiN = find_factors(phiN)
+    possible_e = generate_possible_e(phiN)
+    possible_e = remove_divisible_values(possible_e, factors_N)
+    possible_e = remove_divisible_values(possible_e, factors_phiN)
+    return possible_e
+N = 35
+phiN = 24
+print("Possible values for e:", eKey(N, phiN))

@@ -1,0 +1,28 @@
+from fractions import gcd
+from random import randint
+def is_private_key_valid(d, e, p_1, p_2):
+    return gcd(e * d - 1, (p_1 - 1)*(p_2 - 1)) == (p_1 - 1)*(p_2 - 1)
+def decrypt_numbers(input_numbers, key, N):
+    decrypted = [(num ** key) % N for num in input_numbers]
+    return decrypted
+def convert_to_characters(input_numbers):
+    decrypted_chars = [chr(num) for num in input_numbers]
+    return decrypted_chars
+def main():
+    cipher_text = input('Please enter the encoded message here in numbers form: ')
+    input_numbers = [int(num) for num in cipher_text.split()]
+    p_1 = input('Please enter your first password: ')
+    p_2 = input('Please enter your second password: ')
+    N = input('Please enter your Public Key number: ')
+    e = input('Please enter your Private Key number: ')
+    valid_private_key_found = False
+    while not valid_private_key_found:
+        key = randint(0, N)
+        if is_private_key_valid(key, e, p_1, p_2):
+            valid_private_key_found = True
+    decrypted_numbers = decrypt_numbers(input_numbers, key, N)
+    decrypted_message = ''.join(convert_to_characters(decrypted_numbers))
+    print('Decrypted message: %s' % decrypted_message)
+    print('\nThank you for using our service!')
+if __name__ == "__main__":
+    main()

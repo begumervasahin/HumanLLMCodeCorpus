@@ -1,0 +1,32 @@
+def linear_search(my_list, search_num):
+    for index, num in enumerate(my_list):
+        if num == search_num:
+            return True
+    return False
+def get_user_input(message):
+    return input(message).strip()
+def get_number_list_from_input():
+    numbers_input = get_user_input('Enter numbers for your list (separated by space): ')
+    return [eval(num) for num in numbers_input.split()]
+def search_number_in_list():
+    input_list = get_number_list_from_input()
+    print('\n\n\t ************************************************************\n\nYour list is: ', end='')
+    print(input_list)
+    search_num = eval(get_user_input('\n\n    Enter the number you want to search for: '))
+    found = linear_search(input_list, search_num)
+    if found:
+        print(f'\n\t{search_num} is found at index {input_list.index(search_num)}')
+    else:
+        print(f'\n\t{search_num} is not in the list. Better luck next time.')
+def main():
+    while True:
+        user_input = get_user_input('Enter **YES** to run the searching program: ')
+        if user_input.upper() == 'YES':
+            search_number_in_list()
+            exit_choice = get_user_input('\n\t(If you want to search for another number, enter **YES**. Otherwise, type any key to exit): ')
+            if exit_choice.upper() != 'YES':
+                break
+        else:
+            break
+if __name__ == "__main__":
+    main()

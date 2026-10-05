@@ -1,0 +1,42 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+    def insert(self, data):
+        if self.data is None:
+            self.data = data
+        elif data < self.data:
+            if self.left is None:
+                self.left = Node(data)
+            else:
+                self.left.insert(data)
+        elif data > self.data:
+            if self.right is None:
+                self.right = Node(data)
+            else:
+                self.right.insert(data)
+    def find_value(self, lookup_value):
+        if lookup_value < self.data:
+            if self.left is None:
+                return str(lookup_value) + " Not Found"
+            return self.left.find_value(lookup_value)
+        elif lookup_value > self.data:
+            if self.right is None:
+                return str(lookup_value) + " Not Found"
+            return self.right.find_value(lookup_value)
+        else:
+            return str(self.data) + " is found"
+    def print_tree(self):
+        if self.left:
+            self.left.print_tree()
+        print(self.data, end=' ')
+        if self.right:
+            self.right.print_tree()
+root = Node(14)
+root.insert(6)
+root.insert(18)
+root.insert(3)
+print(root.find_value(7))
+print(root.find_value(14))
+root.print_tree()

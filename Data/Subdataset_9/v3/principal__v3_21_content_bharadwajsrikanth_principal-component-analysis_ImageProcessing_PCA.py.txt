@@ -1,0 +1,69 @@
+import cv2
+import numpy as np
+from PIL import Image
+from sklearn.feature_extraction import image
+import matplotlib.pyplot as plt
+
+def load_image(image_path):
+    """Load an image from the given path."""
+    return cv2.imread(image_path).astype(np.float64)
+
+def extract_patches(image_channel, patch_size=(16, 16), num_patches=1000):
+    """Extract patches from the given image channel."""
+    return image.extract_patches_2d(image_channel, patch_size=patch_size, max_patches=num_patches)
+
+def compute_correlation_matrix(patches):
+    """Compute the correlation matrix from the given patches."""
+    correlation_matrix = np.zeros((256, 256))
+    for patch in patches:
+        patch_vector = patch.reshape(256, 1)
+        outer_product = patch_vector.dot(patch_vector.T)
+        correlation_matrix += outer_product
+    return correlation_matrix
+
+def save_patches_as_images(eigenvectors, num_patches=64, patch_size=(16, 16)):
+    """Save the top eigenvectors as patch images."""
+    for i in range(num_patches):
+        patch = np.reshape(eigenvectors[:, i], patch_size)
+        plt.imsave(f"Result{i}.png", patch.real, cmap='Greys')
+
+def create_result_image(patch_filenames, result_size=(142, 142), patch_offset=18):
+    """Create a result image by pasting patches onto a blank canvas."""
+    result_image = Image.new('RGB', result_size, "white")
+    y_coordinate = 0
+    for _ in range(8):
+        x_coordinate = 0
+        for filename in patch_filenames:
+            patch_image = Image.open(filename)
+            result_image.paste(patch_image, (x_coordinate, y_coordinate))
+            x_coordinate += patch_offset
+        y_coordinate += patch_offset
+    return result_image
+
+# Load the original image
+original_image = load_image('clockwork-angels.jpg')
+
+# Split the image into its RGB channels
+blue_channel, green_channel, red_channel = cv2.split(original_image)
+
+# Extract patches from the Red channel
+patches = extract_patches(red_channel)
+
+# Compute the correlation matrix
+correlation_matrix = compute_correlation_matrix(patches)
+
+# Compute eigenvalues and eigenvectors of the correlation matrix
+eigenvalues, eigenvectors = np.linalg.eig(correlation_matrix)
+
+# Sort eigenvalues and corresponding eigenvectors
+sorted_indices = np.argsort(eigenvalues)[::-1]
+
+# Save top 64 eigenvectors as patches
+save_patches_as_images(eigenvectors, num_patches=64)
+
+# Create a result image by pasting patches onto a blank canvas
+patch_filenames = [f"Result{i}.png" for i in range(64)]
+result_image = create_result_image(patch_filenames)
+
+# Display the result image with patches
+result_image.show()

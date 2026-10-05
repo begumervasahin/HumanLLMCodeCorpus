@@ -1,0 +1,16 @@
+def generate_sequence(j, k, initial_sequence):
+    sequence = initial_sequence.copy()
+    for _ in range(10):
+        for i in range(len(sequence)):
+            if i == 0:
+                output = (sequence[j - 1] + sequence[k - 1]) % 10
+            elif 0 < i < 6:
+                sequence[i] = sequence[i + 1]
+            else:
+                sequence[i] = output
+                print(sequence[i])
+if __name__ == "__main__":
+    j = 3
+    k = 7
+    initial_sequence = [8, 6, 7, 5, 3, 0, 9]
+    generate_sequence(j, k, initial_sequence)

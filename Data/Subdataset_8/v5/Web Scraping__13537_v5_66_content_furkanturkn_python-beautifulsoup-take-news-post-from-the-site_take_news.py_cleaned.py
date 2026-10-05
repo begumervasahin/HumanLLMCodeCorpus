@@ -1,0 +1,83 @@
+import requests
+from bs4 import BeautifulSoup
+import urllib.request
+import os
+BASE_PATH = "C:/Users/Administrator/Desktop/Haberler/BBC_News/"
+RSS_URLS = {
+    "world": "http:
+    "technology": "http:
+    "politics": "http:
+}
+def fetch_article_urls():
+    article_urls = []
+    for category, rss_url in RSS_URLS.items():
+        response = requests.get(rss_url)
+        soup = BeautifulSoup(response.content, "xml")
+        items = soup.findAll('item')
+        for item in items[:20]:
+            article_urls.append(item.contents[5].text)
+    return article_urls
+def fetch_article_content(article_url):
+    response = requests.get(article_url)
+    soup = BeautifulSoup(response.content, "html.parser")
+    return soup
+def extract_images(soup):
+    image_list = []
+    alt_text_list = []
+    images = soup.findAll("span", {"class": "image-and-copyright-container"})
+    for i, image in enumerate(images):
+        if i % 2 == 0:
+            img_px = int(image.find_previous("span")['height'])
+            if img_px > 200:
+                img_src = image.find_previous("img")['src']
+                alt_text = image.find_previous("img")['alt']
+                if alt_text != "BBC Stories logo":
+                    image_list.append(img_src)
+                    alt_text_list.append(alt_text)
+    thumbnail_img = soup.findAll('img', {"class": "js-image-replace"})
+    if thumbnail_img:
+        image_list.append(thumbnail_img[0]['src'])
+        alt_text_list.append(thumbnail_img[0]['alt'])
+    return image_list, alt_text_list
+def extract_article_info(soup):
+    title = soup.find("h1", {"class": "story-body__h1"})
+    wp_title = title.text if title else ""
+    description = soup.find("meta", {"name": "description"}).get("content", "")
+    article_text = soup.find("div", {"class": "story-body__inner"})
+    article_text = article_text.findAll(['p', 'h2']) if article_text else []
+    return wp_title, description, article_text
+def process_article_text(article_text):
+    stopwords = set()
+    wordcount = {}
+    for word in article_text.lower().split():
+        word = word.strip(".,:!?*Ã¢â¬ÅÃ¢â¬Ë")
+        if word not in stopwords:
+            wordcount[word] = wordcount.get(word, 0) + 1
+    sorted_wordcount = sorted(wordcount.items(), key=lambda x: x[1], reverse=True)
+    keywords = [word for word, _ in sorted_wordcount[:1]]
+    tags = ','.join([word for word, _ in sorted_wordcount[:7]])
+    return keywords, tags
+def clean_title(title):
+    return title.replace(":", "").replace("<", "").replace(">", "").replace("*", "").replace("?", "").replace("/", "").replace("|", "").replace('"', '')
+def save_article_content(article_id, wp_title, wp_description, keywords, tags, wp_category, alt_text_list):
+    article_directory = os.path.join(BASE_PATH, article_id)
+    os.makedirs(article_directory, exist_ok=True)
+    with open(os.path.join(article_directory, "Content.txt"), "w", encoding='utf-8') as file:
+        file.write(f"{wp_title}<--->{wp_description}<--->{keywords}<--->{tags}<--->{wp_category}<--->{','.join(alt_text_list)}")
+def main():
+    print("BBC News" + "\n")
+    article_urls = fetch_article_urls()
+    for article_count, article_url in enumerate(article_urls[:60], start=1):
+        try:
+            print('Article ID:', article_url[-8:])
+            soup_article = fetch_article_content(article_url)
+            image_list, alt_text_list = extract_images(soup_article)
+            wp_title, wp_description, article_text = extract_article_info(soup_article)
+            keywords, tags = process_article_text(article_text)
+            wp_title = clean_title(wp_title)
+            save_article_content(article_url[-8:], wp_title, wp_description, keywords, tags, "World", alt_text_list)
+        except Exception as e:
+            print("Error occurred:", e)
+            continue
+if __name__ == "__main__":
+    main()

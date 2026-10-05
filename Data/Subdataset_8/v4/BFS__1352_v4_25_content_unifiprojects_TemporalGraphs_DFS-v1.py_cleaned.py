@@ -1,0 +1,45 @@
+
+from temporal_graph import TemporalGraph
+from TreeNode import TreeNode
+from draw_tree import draw_tree
+from math import inf
+def find_edge_with_min_time(edges):
+    min_edge = edges[0]
+    for edge in edges[1:]:
+        if edge.time < min_edge.time:
+            min_edge = edge
+    return min_edge
+def dfs_v1(current_node):
+    global current_tree_node
+    for neighbor in graph.get_neighbors(current_node):
+        if neighbor is predecessor[current_tree_node.name]:
+            continue
+        eligible_edges = [edge for edge in graph.get_edge_neighbor(current_node, neighbor)
+                          if not edge.is_traversed and sigma[current_node] <= edge.time]
+        if eligible_edges:
+            min_edge = find_edge_with_min_time(eligible_edges)
+            min_edge.is_traversed = True
+            if sigma[min_edge.destination] > min_edge.time:
+                next_tree_node = TreeNode(min_edge.destination, min_edge.time)
+                predecessor[next_tree_node.name] = current_tree_node
+                current_tree_node.add_node(next_tree_node)
+                current_tree_node = next_tree_node
+                sigma[min_edge.destination] = min_edge.time
+                dfs_v1(min_edge.destination)
+    current_tree_node = predecessor[current_tree_node.name]
+graph = TemporalGraph()
+edges = [["a", "b", 1], ["a", "b", 6], ["b", "a", 8], ["b", "c", 4], ["b", "c", 7],
+         ["c", "b", 6], ["a", "f", 3], ["a", "f", 7], ["f", "c", 5], ["f", "h", 2],
+         ["f", "g", 8], ["g", "a", 9]]
+for source, destination, time in edges:
+    graph.add_edge(source, destination, time)
+starting_time = 2
+V = graph.get_nodes()
+sigma = {key: inf for key in V}
+source = V[0]
+sigma[source] = starting_time
+tree_node_root = TreeNode(source, starting_time)
+predecessor = {node: None for node in V}
+current_tree_node = tree_node_root
+dfs_v1(source)
+draw_tree(tree_node_root, 'DFS_v1')

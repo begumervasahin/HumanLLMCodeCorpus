@@ -1,0 +1,33 @@
+names = ["", "", "ROSE", "ALGERNON", "CLARENCE", "VIOLET", "CECIL", "CUTHBERT"]
+genders = ["", "", "FEMALE", "MALE", "MALE", "FEMALE", "MALE", "MALE"]
+links = [0, 0]
+def initialise():
+    for index in range(2, len(names)):
+        if genders[index] == "FEMALE":
+            setup_list(0, index)
+        elif genders[index] == "MALE":
+            setup_list(1, index)
+def setup_list(que, index):
+    links[index] = links[que]
+    links[que] = index
+def ripple_sort():
+    for index in range(2, len(names)):
+        swop = False
+        current = links[0]
+        for index1 in range(2, len(names) - index):
+            previous = current
+            current = links[current]
+            following = links[current]
+            if names[current] >= names[following]:
+                swop = True
+                perform_swapping(previous, current, following)
+                current = following
+        if not swop:
+            return
+def perform_swapping(previous, current, following):
+    temp = links[previous]
+    links[previous] = links[current]
+    links[current] = links[following]
+    links[following] = temp
+initialise()
+ripple_sort()

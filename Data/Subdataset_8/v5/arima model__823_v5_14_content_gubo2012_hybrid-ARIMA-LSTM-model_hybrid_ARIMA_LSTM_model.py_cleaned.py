@@ -1,0 +1,146 @@
+import pandas as pd
+import numpy as np
+from scipy.stats import kurtosis
+from pmdarima import auto_arima
+import pmdarima as pm
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+from keras.callbacks import EarlyStopping
+from talib import abstract
+import json
+def mean_absolute_percentage_error(actual, prediction):
+    actual_series = pd.Series(actual)
+    prediction_series = pd.Series(prediction)
+    return 100 * np.mean(np.abs((actual_series - prediction_series)) / actual_series)
+def get_arima_predictions(data, train_len, test_len):
+    data = data.tail(test_len + train_len).reset_index(drop=True)
+    train_data = data.head(train_len).values.tolist()
+    test_data = data.tail(test_len).values.tolist()
+    model = auto_arima(train_data, max_p=3, max_q=3, seasonal=False, trace=True,
+                       error_action='ignore', suppress_warnings=True)
+    model.fit(train_data)
+    order = model.get_params()['order']
+    print('ARIMA order:', order, '\n')
+    predictions = []
+    for i in range(len(test_data)):
+        model = pm.ARIMA(order=order)
+        model.fit(train_data)
+        print('working on', i+1, 'of', test_len, '-- ' + str(int(100 * (i + 1) / test_len)) + '% complete')
+        predictions.append(model.predict()[0])
+        train_data.append(test_data[i])
+    mse = mean_squared_error(test_data, predictions)
+    rmse = mse ** 0.5
+    mape = mean_absolute_percentage_error(pd.Series(test_data), pd.Series(predictions))
+    return predictions, mse, rmse, mape
+def get_lstm_predictions(data, train_len, test_len, lstm_len=4):
+    data = data.tail(test_len + train_len).reset_index(drop=True)
+    df = pd.DataFrame({'the data': data.values})
+    dataset = df.values
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    dataset_scaled = scaler.fit_transform(dataset)
+    x_train = []
+    y_train = []
+    x_test = []
+    for i in range(lstm_len, train_len):
+        x_train.append(dataset_scaled[i - lstm_len:i, 0])
+        y_train.append(dataset_scaled[i, 0])
+    for i in range(train_len, len(dataset_scaled)):
+        x_test.append(dataset_scaled[i - lstm_len:i, 0])
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+    x_test = np.array(x_test)
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+    model = Sequential()
+    model.add(LSTM(units=lstm_len, return_sequences=True, input_shape=(x_train.shape[1], 1)))
+    model.add(LSTM(units=int(lstm_len/2)))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    early_stopping = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=5)
+    model.fit(x_train, y_train, epochs=500, batch_size=1, verbose=2, callbacks=[early_stopping])
+    predictions = model.predict(x_test)
+    predictions = scaler.inverse_transform(predictions).tolist()
+    output = []
+    for i in range(len(predictions)):
+        output.extend(predictions[i])
+    predictions = output
+    mse = mean_squared_error(data.tail(len(predictions)).values, predictions)
+    rmse = mse ** 0.5
+    mape = mean_absolute_percentage_error(data.tail(len(predictions)).reset_index(drop=True), pd.Series(predictions))
+    return predictions, mse, rmse, mape
+if __name__ == '__main__':
+    data = pd.read_csv('YOUR-DATA-HERE.csv', index_col=0, header=0).tail(1500).reset_index(drop=True)
+    talib_moving_averages = ['SMA', 'EMA', 'WMA', 'DEMA', 'KAMA', 'MIDPOINT', 'MIDPRICE', 'T3', 'TEMA', 'TRIMA']
+    functions = {ma: abstract.Function(ma) for ma in talib_moving_averages}
+    kurtosis_results = {'period': []}
+    for i in range(4, 100):
+        kurtosis_results['period'].append(i)
+        for ma in talib_moving_averages:
+            ma_output = functions[ma](data[:-252], i).tail(60)
+            k = kurtosis(ma_output, fisher=False)
+            kurtosis_results.setdefault(ma, []).append(k)
+    kurtosis_results = pd.DataFrame(kurtosis_results)
+    kurtosis_results.to_csv('kurtosis_results.csv')
+    optimized_period = {}
+    for ma in talib_moving_averages:
+        difference = np.abs(kurtosis_results[ma] - 3)
+        df = pd.DataFrame({'difference': difference, 'period': kurtosis_results['period']})
+        df = df.sort_values(by=['difference'], ascending=True).reset_index(drop=True)
+        if df.at[0, 'difference'] < 3 * 0.05:
+            optimized_period[ma] = df.at[0, 'period']
+        else:
+            print(ma + ' is not viable, best K greater or less than 3 +/-5%')
+    print('\nOptimized periods:', optimized_period)
+    simulation = {}
+    for ma in optimized_period:
+        low_vol = functions[ma](data, optimized_period[ma])
+        high_vol = data['close'] - low_vol
+        print('\nWorking on ' + ma + ' predictions')
+        try:
+            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima_predictions(low_vol, 1000, 252)
+        except:
+            print('ARIMA error, skipping to next MA type')
+            continue
+        high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm_predictions(high_vol, 1000, 252)
+        final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction)
+        mse = mean_squared_error(final_prediction.values, data['close'].tail(252).values)
+        rmse = mse ** 0.5
+        mape = mean_absolute_percentage_error(data['close'].tail(252).reset_index(drop=True), final_prediction)
+        actual = data['close'].tail(252).values
+        result_1 = []
+        result_2 = []
+        for i in range(1, len(final_prediction)):
+            if final_prediction[i] > actual[i-1] and actual[i] > actual[i-1]:
+                result_1.append(1)
+            elif final_prediction[i] < actual[i-1] and actual[i] < actual[i-1]:
+                result_1.append(1)
+            else:
+                result_1.append(0)
+            if final_prediction[i] > final_prediction[i-1] and actual[i] > actual[i-1]:
+                result_2.append(1)
+            elif final_prediction[i] < final_prediction[i-1] and actual[i] < actual[i-1]:
+                result_2.append(1)
+            else:
+                result_2.append(0)
+        accuracy_1 = np.mean(result_1)
+        accuracy_2 = np.mean(result_2)
+        simulation[ma] = {'low_vol': {'prediction': low_vol_prediction, 'mse': low_vol_mse,
+                                      'rmse': low_vol_rmse, 'mape': low_vol_mape},
+                          'high_vol': {'prediction': high_vol_prediction, 'mse': high_vol_mse,
+                                       'rmse': high_vol_rmse},
+                          'final': {'prediction': final_prediction.values.tolist(), 'mse': mse,
+                                    'rmse': rmse, 'mape': mape},
+                          'accuracy': {'prediction vs close': accuracy_1, 'prediction vs prediction': accuracy_2}}
+        with open('simulation_data.json', 'w') as fp:
+            json.dump(simulation, fp)
+    for ma in simulation.keys():
+        print('\n' + ma)
+        print('Prediction vs Close:\t\t' + str(round(100*simulation[ma]['accuracy']['prediction vs close'], 2))
+              + '% Accuracy')
+        print('Prediction vs Prediction:\t' + str(round(100*simulation[ma]['accuracy']['prediction vs prediction'], 2))
+              + '% Accuracy')
+        print('MSE:\t', simulation[ma]['final']['mse'],
+              '\nRMSE:\t', simulation[ma]['final']['rmse'],
+              '\nMAPE:\t', simulation[ma]['final']['mape'])

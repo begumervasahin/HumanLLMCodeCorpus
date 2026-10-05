@@ -1,0 +1,129 @@
+import sys
+import binarytree
+import avltree
+import uteis
+MENU_OPTIONS = {
+    1: "Create binary tree",
+    2: "Create AVL tree",
+    0: "Exit"
+}
+TREE_OPERATIONS = {
+    1: "Enter nodes",
+    2: "Walk in order",
+    3: "Walk pos order",
+    4: "Remove node",
+    5: "Successor",
+    6: "Predecessor",
+    0: "Exit"
+}
+def display_menu(options):
+    print("Options:")
+    print("***************************")
+    for key, value in options.items():
+        print(f"{key} - {value}")
+    print("***************************")
+def get_menu_option(options):
+    while True:
+        try:
+            op = int(input("Enter the option: "))
+            if op in options:
+                return op
+            else:
+                print("Invalid option. Please try again.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+def handle_trees(bt=None):
+    uteis.clear()
+    if not bt:
+        display_menu(MENU_OPTIONS)
+        op = get_menu_option(MENU_OPTIONS)
+        if op == 1:
+            bt = binarytree.BinaryTree()
+        elif op == 2:
+            bt = avltree.AVLTree()
+        elif op == 0:
+            sys.exit(0)
+    uteis.clear()
+    op = None
+    while op != 0:
+        display_menu(TREE_OPERATIONS)
+        op = get_menu_option(TREE_OPERATIONS)
+        uteis.clear()
+        if op == 1:
+            enter_nodes(bt)
+        elif op == 2:
+            walk_in_order(bt)
+        elif op == 3:
+            walk_pos_order(bt)
+        elif op == 4:
+            remove_node(bt)
+        elif op == 5:
+            get_successor(bt)
+        elif op == 6:
+            get_predecessor(bt)
+        elif op == 0:
+            sys.exit(0)
+def enter_nodes(bt):
+    print("Enter the nodes (enter none to end):")
+    print("*********************************************")
+    key = input("node: ")
+    while key:
+        try:
+            key = int(key)
+            bt.insert(key)
+            key = input("node: ")
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
+    print("*********************************************\n")
+def walk_in_order(bt):
+    print("Walk In Order:")
+    print("node\tparent\tleft\tright\theight\tfb")
+    print("***********************************************")
+    bt.walk_in_order()
+    print("***********************************************\n")
+def walk_pos_order(bt):
+    print("Walk In Order:")
+    print("node\tparent\tleft\tright\theight\tfb")
+    print("***********************************************")
+    bt.walk_pos_order()
+    print("***********************************************\n")
+def remove_node(bt):
+    print("***********************************************")
+    key = input("To remove node enter it's key: ")
+    try:
+        key = int(key)
+        if bt.remove(key):
+            print(f"Successfully removed {key}")
+        else:
+            print(f"Failed to remove {key}. Make sure it exists on the tree")
+    except ValueError:
+        print("Invalid input. Please enter an integer.")
+    print("***********************************************\n")
+def get_successor(bt):
+    print("*********************************************************")
+    key = input("Enter the key of the node you want the successor: ")
+    try:
+        key = int(key)
+        successor = bt.successor(key)
+        if successor:
+            print(f"Successor is: {successor.key}")
+        else:
+            print("Not found.")
+    except ValueError:
+        print("Invalid input. Please enter an integer.")
+    print("*********************************************************")
+def get_predecessor(bt):
+    print("*********************************************************")
+    key = input("Enter the key of the node you want the predecessor: ")
+    try:
+        key = int(key)
+        predecessor = bt.predecessor(key)
+        if predecessor:
+            print(f"Predecessor is: {predecessor.key}")
+        else:
+            print("Not found.")
+    except ValueError:
+        print("Invalid input. Please enter an integer.")
+    print("*********************************************************")
+if __name__ == '__main__':
+    handle_trees()

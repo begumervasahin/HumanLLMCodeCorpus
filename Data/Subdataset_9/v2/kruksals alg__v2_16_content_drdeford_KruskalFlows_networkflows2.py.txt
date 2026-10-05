@@ -1,0 +1,174 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import time
+from operator import itemgetter
+
+def MST2(a):
+    # Calculate and visualize MST using Kruskal's, Prim's, and Sollin's algorithms
+    graphplot2(a)
+    ktime, kcost = kruskal2(a)
+    ptime, pcost = prim2(a)
+    stime, scost = sollin2(a)
+    print('Kruskal Time:', ktime, '\nKruskal Cost:', kcost,
+          '\nPrim Time:', ptime, '\nPrim Cost:', pcost,
+          '\nSollin Time:', stime, '\nSollin Cost:', scost)
+    plt.show()
+
+def graphplot2(a):
+    # Plot the original graph
+    size = len(a)
+    x = []
+    y = []
+    theta = 2 * math.pi / size
+    plt.figure(1)
+    plt.title('Original Graph')
+    for i in range(size):
+        x.append(size * math.cos(i * theta))
+        y.append(size * math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for i in range(size):
+        for j in range(i, size):
+            if a[i][j] != 0:
+                plt.plot([x[i], x[j]], [y[i], y[j]], 'b-', linewidth=3)
+                plt.text((x[i] + x[j]) / 2, (y[i] + y[j]) / 2, a[i][j], fontsize=15, color='red')
+    plt.scatter(x, y, s=50)
+
+def kruskal2(a):
+    # Kruskal's algorithm for finding the MST
+    t = time.time()
+    arclist = []
+    parclist = []
+    stree = []
+    forest = [[i] for i in range(len(a))]
+    for i in range(len(a)):
+        for j in range(i, len(a)):
+            arclist.append([i, j, a[i][j]])
+    arclist = sorted(arclist, key=itemgetter(-1))
+    for k in arclist:
+        if k[2] != 0:
+            parclist.append(k)
+    for l in parclist:
+        stree.append(l)
+        counter = sum(1 for m in forest if l[0] in m and l[1] in m)
+        if counter == 0:
+            t1 = next((n for n in range(len(forest)) if l[0] in forest[n]), None)
+            t2 = next((n for n in range(len(forest)) if l[1] in forest[n]), None)
+            forest[t1] = list(set(forest[t1] + forest[t2]))
+            forest.pop(t2)
+    x = []
+    y = []
+    cost = 0
+    theta = 2 * math.pi / len(a)
+    plt.figure(2)
+    plt.title('Kruskal Tree')
+    for i in range(len(a)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in stree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        cost += k[2]
+    plt.scatter(x, y, s=50)
+    s = time.time() - t
+    return s, cost
+
+def prim2(a):
+    # Prim's algorithm for finding the MST
+    ptime = time.time()
+    arclist = []
+    parclist = []
+    innode = [0]
+    stree = []
+    for i in range(len(a)):
+        for j in range(i, len(a)):
+            arclist.append([i, j, a[i][j]])
+    for k in arclist:
+        if k[2] != 0:
+            parclist.append(k)
+    for _ in range(len(a) - 1):
+        templist = [n for n in parclist if (n[0] in innode and n[1] not in innode)
+                     or (n[1] in innode and n[0] not in innode)]
+        templist = sorted(templist, key=itemgetter(-1))
+        stree.append(templist[0])
+        innode.extend(templist[0][:-1])
+        innode = list(set(innode))
+    x = []
+    y = []
+    pcost = 0
+    theta = 2 * math.pi / len(a)
+    plt.figure(3)
+    plt.title('Prim Tree')
+    for i in range(len(a)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in stree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        pcost += k[2]
+    plt.scatter(x, y, s=50)
+    ptime = time.time() - ptime
+    return ptime, pcost
+
+def sollin2(a, var):
+    # Sollin's algorithm for finding the MST
+    stime = time.time()
+    arclist = []
+    parclist = []
+    innode = [0]
+    stree = []
+    forest = [[i] for i in range(len(a))]
+    for i in range(len(a)):
+        for j in range(i, len(a)):
+            arclist.append([i, j, a[i][j]])
+    for k in arclist:
+        if k[2] != 0:
+            parclist.append(k)
+    while len(stree) < len(a) - 1:
+        tforest = forest[:]
+        for l in range(len(tforest)):
+            templist = [n for n in parclist if (n[0] in tforest[l] and n[1] not in tforest[l])
+                        or (n[1] in tforest[l] and n[0] not in tforest[l])]
+            templist = sorted(templist, key=itemgetter(-1))
+            if templist[0] not in stree:
+                stree.append(templist[0])
+                t1 = next((m for m in range(len(forest)) if templist[0][0] in forest[m]), None)
+                t2 = next((m for m in range(len(forest)) if templist[0][1] in forest[m]), None)
+                forest[t1] = list(set(forest[t1] + forest[t2]))
+                forest.pop(t2)
+    x = []
+    y = []
+    scost = 0
+    theta = 2 * math.pi / len(a)
+    plt.figure(4)
+    plt.title('Sollin Tree')
+    for i in range(len(a)):
+        x.append(math.cos(i * theta))
+        y.append(math.sin(i * theta))
+        plt.text(x[i], y[i], i + 1, fontsize=15, color='green')
+    for k in stree:
+        plt.plot([x[k[0]], x[k[1]]], [y[k[0]], y[k[1]]], 'c-', linewidth=3)
+        plt.text((x[k[0]] + x[k[1]]) / 2, (y[k[0]] + y[k[1]]) / 2, k[2], fontsize=15, color='red')
+        scost += k[2]
+    plt.scatter(x, y, s=50)
+    stime = time.time() - stime
+    return stime, scost
+
+def adjconvert2(n, a):
+    # Convert edge list representation to adjacency matrix
+    matrix = [[0] * n for _ in range(n)]
+    for k in a:
+        matrix[k[0]][k[1]] = k[2]
+        matrix[k[1]][k[0]] = k[2]
+    # Remove zero rows and columns if any
+    if not any(matrix[0]):
+        matrix.pop(0)
+        for i in range(len(matrix)):
+            matrix[i].pop(0)
+    return matrix
+
+# Test the MST2 function with an example graph
+a = [[0, 1, 3, 4, 0], [1, 0, 0, 2, 0], [3, 0, 0, 0, 5], [4, 2, 0, 0, 0], [0, 0, 5, 0, 0]]
+MST2(a)

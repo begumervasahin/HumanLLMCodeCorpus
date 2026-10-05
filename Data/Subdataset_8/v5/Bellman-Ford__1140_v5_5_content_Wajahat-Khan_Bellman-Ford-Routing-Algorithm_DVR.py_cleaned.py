@@ -1,0 +1,91 @@
+import sys
+import socket
+import json
+import threading
+import time
+import os
+current_node = sys.argv[1]
+current_port = int(sys.argv[2])
+config = sys.argv[3]
+routing_table = {}
+nexthop = {}
+display_lock = threading.Lock()
+class Node:
+    def __init__(self, current_node, current_port, config):
+        self.current_node = current_node
+        self.current_port = current_port
+        self.direct_links = {}
+        self.neighbours = []
+        self.load_config(config)
+    def load_config(self, config_file):
+        with open(config_file, "r") as fo:
+            data = fo.read()
+            nodes = data.split()
+            total_nodes = nodes[0]
+            i = 1
+            while i < len(nodes):
+                d[nodes[i]] = [float(0), int(nodes[i + 2])]
+                i += 3
+            for key, value in d.items():
+                self.direct_links[key] = value[0]
+                if key != self.current_node:
+                    self.neighbours.append(key)
+            routing_table[self.current_node] = self.direct_links.copy()
+def receive():
+    recvIP = "localhost"
+    recvPort = current_port
+    recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    recv_socket.bind((recvIP, recvPort))
+    while True:
+        message, client_address = recv_socket.recvfrom(2048)
+        dist_vector = json.loads(message)
+        for key, val in dist_vector.items():
+            neighbour = key.encode('ascii', 'ignore')
+            for k, v in dist_vector[neighbour].items():
+                k = k.encode('ascii', 'ignore')
+                routing_table[k] = v
+        threading.Thread(target=bellman_ford).start()
+    recv_socket.close()
+def send():
+    while True:
+        port_list = [value[1][1] for value in d.items()]
+        serverIP = "localhost"
+        send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        strings = json.dumps(routing_table)
+        for item in port_list:
+            if int(item) != current_port:
+                send_socket.sendto(strings.encode(), (serverIP, int(item)))
+        time.sleep(5)
+        send_socket.close()
+def bellman_ford():
+    my_neighbours = [node for node in routing_table if node in node_instance.neighbours]
+    all_routers = set([neighbour for node in routing_table for neighbour in routing_table[node]])
+    for node in routing_table:
+        for router in all_routers:
+            if router not in routing_table[node]:
+                routing_table[node][router] = float('inf')
+    for router in all_routers:
+        for neighbour in my_neighbours:
+            if routing_table[current_node][router] > routing_table[neighbour][router] + routing_table[current_node][neighbour]:
+                min_distance = routing_table[neighbour][router] + routing_table[current_node][neighbour]
+                routing_table[current_node][router] = min_distance
+                if router in my_neighbours and node_instance.direct_links[router] <= min_distance:
+                    routing_table[current_node][router] = node_instance.direct_links[router]
+                    nexthop[router] = 'direct'
+                else:
+                    nexthop[router] = neighbour
+            elif len(nexthop) != len(all_routers):
+                nexthop[router] = 'direct'
+            elif router in my_neighbours and node_instance.direct_links[router] <= routing_table[current_node][router]:
+                routing_table[current_node][router] = node_instance.direct_links[router]
+                nexthop[router] = 'direct'
+    display()
+def display():
+    with display_lock:
+        os.system("cls")
+        print(f"\nI am Router {current_node}\n")
+        for node in routing_table[current_node]:
+            print(f"Least cost path to router {node}: through {nexthop[node]} with cost {routing_table[current_node][node]:.1f}\n")
+node_instance = Node(current_node, current_port, config)
+threading.Thread(target=send).start()
+threading.Thread(target=receive).start()

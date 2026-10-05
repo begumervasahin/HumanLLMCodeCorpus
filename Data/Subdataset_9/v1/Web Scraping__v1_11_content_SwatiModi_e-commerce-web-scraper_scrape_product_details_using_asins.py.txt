@@ -1,0 +1,54 @@
+import pandas as pd
+from bs4 import BeautifulSoup
+import requests
+
+headers_std = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36',
+    'Content-Type': 'text/html',
+}
+
+def get_product_details(asin_list):
+    product_names = []
+    brand_names = []
+    ratings = []
+    no_of_ratings = []
+    product_images = []
+    product_prices = []
+
+    for asin in asin_list:
+        url = "https://www.amazon.in/dp/" + str(asin)
+        html = requests.get(url, headers=headers_std).text
+        soup = BeautifulSoup(html, 'lxml')
+        
+        # Find elements
+        image_list = soup.find_all('span', {'class': 'a-button-text'})
+        brand_name = soup.find('a', {'id': 'bylineInfo'})
+        product_name = soup.find('span', {'id': 'productTitle'})
+        rating = soup.find('span', {'class': 'a-icon-alt'})
+        no_of_rat = soup.find('span', {'id': 'acrCustomerReviewText'})
+        sell_price_range = soup.find('span', {'id': 'priceblock_ourprice'})
+
+        # Extract data
+        image_urls = [image.find('img').get('src') for image in image_list if image.find('img')]
+        product_images.append(str(image_urls))
+        brand_names.append(brand_name.text.strip() if brand_name else '')
+        product_names.append(product_name.text.strip() if product_name else '')
+        ratings.append(rating.text.strip() if rating else '')
+        no_of_ratings.append(no_of_rat.text.strip() if no_of_rat else '')
+        product_prices.append(sell_price_range.text.strip() if sell_price_range else '')
+
+    df = pd.DataFrame({
+        'product_name': product_names,
+        'brand_name': brand_names,
+        'images': product_images,
+        'price': product_prices,
+        'product_rating': ratings,
+        'no. of ratings': no_of_ratings
+    })
+    return df
+
+if __name__ == "__main__":
+    asins_df = pd.read_csv('ASINs.csv')
+    asin_list = asins_df['ASIN']
+    df = get_product_details(asin_list)
+    df.to_csv('ASIN_product_details.csv', index=False)

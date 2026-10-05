@@ -1,0 +1,92 @@
+import prims
+import kruskals
+import glb
+import sys
+def test_read(file, delimiter, algo):
+    if algo == 'k':
+        glb.WGRAPH = kruskals.read_graph(file, delimiter)
+        keys = glb.VERTICES
+    elif algo == 'p':
+        glb.WGRAPH = prims.read_graph(file, delimiter)
+        keys = glb.WGRAPH.keys()
+    else:
+        usage()
+    ex_keys = 3
+    resp_keys = len(keys)
+    if resp_keys != ex_keys:
+        print("ERROR: read_graph() returned wrong amount of keys")
+        print(f"Expected:  {ex_keys}")
+        print(f"Responded: {resp_keys}")
+        return False
+    if algo == 'p':
+        for k in keys:
+            if k in glb.WGRAPH[k]:
+                print("ERROR: Key neighbors have same values as Key")
+                print(f"Expected:  Key = {k}, graph[Key] != Key")
+                print(f"Responded: {glb.WGRAPH[k]}")
+                return False
+    return True
+def test_getmin():
+    glb.Vr = ['a']
+    expected = ('a', 'b', '1')
+    responded = prims.get_min()
+    if expected == responded:
+        return True
+    else:
+        print("ERROR: get_min returns wrong min edge")
+        print(f"Expected:  {expected}")
+        print(f"Responded: {responded}")
+        return False
+def test_algo(algo):
+    if algo == 'k':
+        algo = 'kruskals'
+        responded, cdist = kruskals.kruskals()
+    elif algo == 'p':
+        algo = 'prims'
+        glb.Vr.clear()
+        responded, cdist = prims.prims()
+    expected = [('a', 'b', '1', '1'), ('a', 'c', '2', '3')]
+    exp_cdist = 4
+    if expected == responded:
+        return True
+    else:
+        print(f"ERROR: {algo}.{algo} returned unexpected MST")
+        print(f"Expected:  {expected}")
+        print(f"Responded: {responded}")
+    if cdist == exp_cdist:
+        return True
+    else:
+        print(f"ERROR: {algo}.{algo} returned incorrect cumulative distance")
+        print(f"Expected:  {exp_cdist}")
+        print(f"Responded: {cdist}")
+def usage():
+    print("USAGE: test.py [algo] where p = prims, k = kruskals")
+    print("$ test.py k")
+    sys.exit()
+def main():
+    file = "sample_data.txt"
+    delimiter = ' '
+    if len(sys.argv) < 2:
+        usage()
+    algo = sys.argv[1]
+    if algo == 'p':
+        print("....TESTING PRIMS....")
+    elif algo == 'k':
+        print("....TESTING KRUSKALS....")
+    else:
+        usage()
+    if test_read(file, delimiter, algo):
+        print(f"{algo}.read_graph() : PASS")
+    else:
+        print(f"{algo}.read_graph() : FAIL")
+    if algo == 'p':
+        if test_getmin():
+            print("prims.get_min() : PASS")
+        else:
+            print("prims.get_min() : FAIL")
+    if test_algo(algo):
+        print(f"{algo}.{algo}() : PASS")
+    else:
+        print(f"{algo}.{algo}() : FAIL")
+if __name__ == "__main__":
+    main()

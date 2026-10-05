@@ -1,0 +1,39 @@
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+language = "Python"
+security_suite = "cryptography and openssl"
+task = "task 1"
+print("\nLanguage:\t", language, "\nCryptographic Library:\t", security_suite, "\nTask:\t", task)
+def generate_random_bytes(length):
+    return os.urandom(length)
+def aes_encrypt_decrypt(key, iv, plaintext):
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+    decryptor = cipher.decryptor()
+    decrypted_text = decryptor.update(ciphertext) + decryptor.finalize()
+    return ciphertext, decrypted_text
+def sha256_digest(data):
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(data)
+    return digest.finalize()
+print("\nRandom Number Test")
+rbytes1 = generate_random_bytes(128)
+rbytes2 = generate_random_bytes(256)
+print("Random Bytes (128 bits):\n", rbytes1)
+print("Random Bytes (256 bits):\n", rbytes2)
+print("\nAES Test")
+key = generate_random_bytes(32)
+iv = generate_random_bytes(16)
+pt = b'Hello This is the secret message'
+print("Plain Text:\n", pt)
+ct, pt_new = aes_encrypt_decrypt(key, iv, pt)
+print("Cipher Text:\n", ct)
+print("Decrypted Text:\n", pt_new)
+print("\nSHA 256 Test")
+digest_data = b'abc123'
+sha256_result = sha256_digest(digest_data)
+print("SHA256 Digest:\n", sha256_result)

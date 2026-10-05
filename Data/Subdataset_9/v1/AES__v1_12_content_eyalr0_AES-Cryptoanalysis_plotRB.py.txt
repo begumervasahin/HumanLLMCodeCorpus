@@ -1,0 +1,35 @@
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
+
+def load_data(file_name):
+    with open(file_name, 'rb') as handle:
+        return pickle.load(handle)
+
+def calculate_probability(pair_found, total_run):
+    prob = np.zeros(len(pair_found))
+    for i in range(len(pair_found)):
+        prob[i] = sum(pair_found <= i)
+    return prob * 1.0 / total_run
+
+def plot_graph(prob1, prob2, num_pairs1, num_pairs2):
+    w, h = plt.figaspect(0.5)
+    plt.figure(figsize=(w, h))
+    plt.plot(num_pairs1, prob1, 'b-', label='i.i.d pairs')
+    plt.plot(num_pairs2, prob2, 'r--', label='structured pairs')        
+    plt.legend(loc='upper left')
+    plt.ylabel('Attack Success Probability')
+    plt.xlabel('Number of Plaintext Pairs')
+    plt.savefig('RB.png', dpi=600, format='png')
+    plt.show()
+
+if __name__ == "__main__":
+    pairs1, pair_found1, total_key_find_good1 = load_data('RB500.pickle')
+    prob1 = calculate_probability(pair_found1, len(key))
+    num_pairs1 = range(1, len(pairs1) + 1)
+    
+    pairs2, pair_found2, total_key_find_good2 = load_data('RB500Struct.pickle')
+    prob2 = calculate_probability(pair_found2, len(key))
+    num_pairs2 = range(1, len(pairs2) + 1)
+    
+    plot_graph(prob1, prob2, num_pairs1, num_pairs2)

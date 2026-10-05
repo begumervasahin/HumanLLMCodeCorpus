@@ -1,0 +1,153 @@
+import os
+from collections import Counter
+
+class Node:
+    def __init__(self, content, frequency, binary='', left=None, right=None):
+        self.content = content
+        self.frequency = frequency
+        self.binary = binary
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return f"Node({self.content}, {self.frequency}, {self.binary})"
+
+    def is_leaf(self):
+        return self.left is None and self.right is None
+
+class NodeList:
+    def __init__(self, lst):
+        self.text = lst
+
+    def insert_root(self, new_node):
+        self.root = [new_node]
+
+    def insert_element(self, new_node):
+        for i in self.root:
+            if i.content == new_node.content:
+                i.frequency += 1
+                self.root.sort(key=lambda node: node.frequency)
+                return
+        self.root.append(new_node)
+        self.root.sort(key=lambda node: node.frequency)
+
+    def create_list(self):
+        for l in self.text:
+            if not self.root:
+                self.insert_root(Node(l, 1))
+            else:
+                self.insert_element(Node(l, 1))
+
+    def print_list(self):
+        for elem in self.root:
+            print(elem)
+
+    def create_tree(self):
+        self.create_list()
+        while len(self.root) > 1:
+            new_node = Node("", self.root[0].frequency + self.root[1].frequency, '', self.root[0], self.root[1])
+            del self.root[:2]
+            self.root.append(new_node)
+            self.root.sort(key=lambda node: node.frequency)
+
+class HuffmanTree:
+    def encode(self, node):
+        if node is None:
+            return
+        if node.left is not None:
+            node.left.binary = node.binary + '1'
+            self.encode(node.left)
+        if node.right is not None:
+            node.right.binary = node.binary + '0'
+            self.encode(node.right)
+
+    def character_binary(self, tree, char):
+        binary = ''
+        if tree.content == char:
+            binary = tree.binary
+        if tree.left is not None:
+            binary = self.character_binary(tree.left, char)
+        if not binary and tree.right is not None:
+            binary = self.character_binary(tree.right, char)
+        return binary
+
+    def text_binary(self, tree, text):
+        result = ''
+        for char in text:
+            result += self.character_binary(tree, char)
+        return result
+
+    def decode(self, tree, binary_text):
+        result = ''
+        for bit in binary_text:
+            if bit == '1' and tree.left is not None:
+                tree = tree.left
+            elif bit == '0' and tree.right is not None:
+                tree = tree.right
+            if tree.is_leaf():
+                result += tree.content
+                tree = tree2
+        return result
+
+    def print_table(self, node):
+        if node is None:
+            return
+        if node.left is not None:
+            self.print_table(node.left)
+        if node.is_leaf():
+            print(node)
+        if node.right is not None:
+            self.print_table(node.right)
+
+def load_frequencies(lst):
+    return Counter(lst)
+
+def open_file(file_name):
+    if not os.path.isfile(file_name):
+        print("File not found!")
+        exit()
+    with open(file_name, "r") as file:
+        text = file.read()
+    return text
+
+def create_file(file_name, text):
+    try:
+        with open(file_name, 'w') as file:
+            file.write(text)
+    except IOError:
+        raise print("Error creating file!")
+
+def main(args):
+    print("TO START THE PROGRAM, INSERT THE FILE NAME WHERE THE WORD TO BE COMPRESSED IS LOCATED")
+    file_name = input("Name: ")
+    word = open_file(file_name)
+    lst = list(open_file(file_name))
+    huffman = HuffmanTree()
+    node_list = NodeList(lst)
+    node_list.create_tree()
+    huffman.encode(node_list.root[0])
+    print("--------------------- EXECUTION OF HUFFMAN CODE ---------------------")
+    print("Inserted word:", word)
+    print("")
+    print("Character frequencies:")
+    freqs = load_frequencies(lst)
+    print(freqs)
+    print("")
+    print("Tree created successfully!")
+    print("")
+    print("Huffman table:")
+    huffman.print_table(node_list.root[0])
+    print("")
+    code = huffman.text_binary(node_list.root[0], node_list.text)
+    print("Word compressed to binary:", code)
+    print("")
+    decode_code = huffman.decode(node_list.root[0], huffman.text_binary(node_list.root[0], node_list.text))
+    print("Decompressed word:", decode_code)
+    print("")
+    create_file("result.txt", f"Inserted Word: {word}\nCompressed Word: {code}\nDecompressed Word: {decode_code}\n")
+    print("Output file generated successfully!")
+    return 0
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv))

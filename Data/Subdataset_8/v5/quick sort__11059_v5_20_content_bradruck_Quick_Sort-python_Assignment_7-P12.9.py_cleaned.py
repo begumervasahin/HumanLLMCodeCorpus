@@ -1,0 +1,62 @@
+from random import randint
+from time import time
+def quick_sort_2_way(values, start, end):
+    if start >= end:
+        return
+    pivot_index = partition_2_way(values, start, end)
+    quick_sort_2_way(values, start, pivot_index)
+    quick_sort_2_way(values, pivot_index + 1, end)
+def partition_2_way(values, start, end):
+    pivot = values[start]
+    left = start - 1
+    right = end + 1
+    while True:
+        left += 1
+        while values[left] < pivot:
+            left += 1
+        right -= 1
+        while values[right] > pivot:
+            right -= 1
+        if left >= right:
+            return right
+        values[left], values[right] = values[right], values[left]
+def quick_sort_3_way(values, start, end):
+    if start >= end:
+        return
+    pivot = values[start]
+    equal_start = i = start
+    greater_end = end
+    while i <= greater_end:
+        if values[i] < pivot:
+            values[i], values[equal_start] = values[equal_start], values[i]
+            equal_start += 1
+            i += 1
+        elif values[i] == pivot:
+            i += 1
+        else:
+            values[i], values[greater_end] = values[greater_end], values[i]
+            greater_end -= 1
+    quick_sort_3_way(values, start, equal_start)
+    quick_sort_3_way(values, greater_end + 1, end)
+def generate_random_list(size, max_value):
+    return [randint(1, max_value) for _ in range(size)]
+def measure_sorting_time(sort_func, values):
+    start_time = time()
+    sort_func(values, 0, len(values) - 1)
+    end_time = time()
+    return end_time - start_time
+def main():
+    print()
+    size = int(input("Enter the list size: "))
+    print()
+    max_value = int(input("Enter the maximum element number to build the list (minimum is 1): "))
+    values_2_way = generate_random_list(size, max_value)
+    values_3_way = values_2_way.copy()
+    time_2_way = measure_sorting_time(quick_sort_2_way, values_2_way)
+    time_3_way = measure_sorting_time(quick_sort_3_way, values_3_way)
+    print()
+    print(f"The number of seconds for the 2-way sort was: {time_2_way:.8f}")
+    print(f"The number of seconds for the 3-way sort was: {time_3_way:.8f}")
+    print()
+if __name__ == "__main__":
+    main()

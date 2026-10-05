@@ -1,0 +1,48 @@
+import collections
+
+def read_wrestlers(file_name):
+    wrestlers = {}
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        num_players = int(lines[0])
+        num_rivalries = int(lines[num_players + 1])
+        for line in lines[num_players + 2:]:
+            wrestler1, wrestler2 = line.strip().split()
+            wrestlers.setdefault(wrestler1, []).append(wrestler2)
+            wrestlers.setdefault(wrestler2, []).append(wrestler1)
+    return wrestlers
+
+def categorize_wrestlers(wrestlers):
+    baby_faces = []
+    heels = []
+    queue = collections.deque()
+
+    for wrestler in wrestlers:
+        if wrestler not in baby_faces and wrestler not in heels:
+            baby_faces.append(wrestler)
+            queue.append(wrestler)
+
+            while queue:
+                current_wrestler = queue.popleft()
+                for rival in wrestlers[current_wrestler]:
+                    if rival not in baby_faces and rival not in heels:
+                        heels.append(rival)
+                        queue.append(rival)
+                    elif rival in baby_faces:
+                        return False, [], []
+
+    return True, baby_faces, heels
+
+def print_results(possible, baby_faces, heels):
+    if possible:
+        print("Yes, it's possible")
+        print("Baby Faces:", baby_faces)
+        print("Heels:", heels)
+    else:
+        print("No, it's not possible")
+
+if __name__ == "__main__":
+    file_name = "wrestler.txt"
+    wrestlers = read_wrestlers(file_name)
+    possible, baby_faces, heels = categorize_wrestlers(wrestlers)
+    print_results(possible, baby_faces, heels)

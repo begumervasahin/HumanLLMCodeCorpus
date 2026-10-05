@@ -1,0 +1,32 @@
+import numpy as np
+from k_means import KMeans
+class BisectingKMeans:
+    def fit(self, X, n_clusters):
+        '''
+        Parameters
+        ----------
+        X : shape (n_samples, n_features)
+            Training data
+        n_clusters : The number of clusters
+        Returns
+        -------
+        y : shape (n_samples,)
+            Predicted cluster label per sample.
+        '''
+        n_samples = X.shape[0]
+        data = X
+        clusters = []
+        while True:
+            kmeans_model = KMeans()
+            cluster_labels = kmeans_model.fit(data, 2, 100)
+            clusters.append(np.flatnonzero(cluster_labels == 0))
+            clusters.append(np.flatnonzero(cluster_labels == 1))
+            if len(clusters) == n_clusters:
+                break
+            cluster_errors = [np.var(data[cluster]) for cluster in clusters]
+            data = data[clusters[np.argmax(cluster_errors)]]
+            del clusters[np.argmax(cluster_errors)]
+        y = np.zeros(n_samples)
+        for i in range(len(clusters)):
+            y[clusters[i]] = i
+        return y

@@ -1,0 +1,90 @@
+import sqlite3
+
+class House:
+    def __init__(self, house_link, title, price, m2, date, neighborhood, room, img):
+        """Initialize a House object with its attributes."""
+        self.house_link = house_link
+        self.title = title
+        self.price = price
+        self.m2 = m2
+        self.date = date
+        self.neighborhood = neighborhood
+        self.room = room
+        self.img = img
+
+class DatabasePost:
+    def __init__(self, db_name="Sahibinden.db"):
+        """Initialize a DatabasePost object and connect to the database."""
+        self.db_name = db_name
+        self.connect_database()
+
+    def connect_database(self):
+        """Connect to the SQLite database and create tables if they don't exist."""
+        self.connection = sqlite3.connect(self.db_name)
+        self.cursor = self.connection.cursor()
+        self.create_tables()
+
+    def create_tables(self):
+        """Create necessary tables if they don't exist."""
+        query = """
+            CREATE TABLE IF NOT EXISTS Tbl_Posts (
+                Link TEXT,
+                Title TEXT,
+                Price TEXT,
+                M2 TEXT,
+                Date TEXT,
+                Neighborhood TEXT,
+                Room TEXT,
+                Img TEXT
+            );
+            CREATE TABLE IF NOT EXISTS Tbl_Posts_Backup (
+                Link TEXT,
+                Title TEXT,
+                Price TEXT,
+                M2 TEXT,
+                Date TEXT,
+                Neighborhood TEXT,
+                Room TEXT,
+                Img TEXT
+            );
+        """
+        self.cursor.executescript(query)
+        self.connection.commit()
+
+    def check_if_house_exists(self, link):
+        """Check if a house with the given link exists in the database."""
+        query = "SELECT * FROM Tbl_Posts WHERE Link = ?"
+        self.cursor.execute(query, (link,))
+        posts = self.cursor.fetchall()
+        return len(posts) > 0
+
+    def add_house(self, house, backup=False):
+        """Add a house to the database."""
+        table_name = "Tbl_Posts_Backup" if backup else "Tbl_Posts"
+        query = f"INSERT INTO {table_name} VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        self.cursor.execute(query, (house.house_link, house.title, house.price, house.m2, house.date,
+                                    house.neighborhood, house.room, house.img))
+        self.connection.commit()
+
+    def clear_posts(self, day):
+        """Clear posts for a specific day."""
+        query = f"DELETE FROM Tbl_Posts WHERE Date LIKE '%{day}%'"
+        self.cursor.execute(query)
+        self.connection.commit()
+
+# Example usage:
+if __name__ == "__main__":
+    db = DatabasePost()
+    house1 = House("link1", "title1", "100000", "100", "2022-05-01", "Neighborhood1", "3+1", "image1.jpg")
+    house2 = House("link2", "title2", "150000", "120", "2022-05-02", "Neighborhood2", "2+1", "image2.jpg")
+
+    # Add houses to the database
+    db.add_house(house1)
+    db.add_house(house2)
+
+    # Check if a house exists
+    print("House 1 exists:", db.check_if_house_exists("link1"))  # Output: House 1 exists: True
+    print("House 3 exists:", db.check_if_house_exists("link3"))  # Output: House 3 exists: False
+
+    # Clear posts for a specific day
+    db.clear_posts("2022-05-01")

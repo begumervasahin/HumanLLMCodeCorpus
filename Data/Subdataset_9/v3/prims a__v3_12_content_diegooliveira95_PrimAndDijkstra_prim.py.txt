@@ -1,0 +1,65 @@
+# Import necessary classes
+from graph import Vertex, Graph
+from pythonds.graphs import PriorityQueue
+import sys
+
+# Define Prim's algorithm
+def prim_minimum_spanning_tree(graph, start_vertex):
+    # Initialize priority queue
+    priority_queue = PriorityQueue()
+
+    # Initialize distances and previous vertices for all vertices
+    for vertex in graph:
+        # Set distance to infinity
+        vertex.setDistance(sys.maxsize)
+        # Set previous vertex to None
+        vertex.setPrevious(None)
+
+    # Set distance of the start vertex to 0
+    start_vertex.setDistance(0)
+
+    # Build heap for priority queue with tuples of (distance, vertex)
+    priority_queue.buildHeap([(vertex.getDistance(), vertex) for vertex in graph])
+
+    # Main loop
+    while not priority_queue.isEmpty():
+        # Get the vertex with minimum distance
+        current_vertex = priority_queue.delMin()
+
+        # Explore neighbors of the current vertex
+        for neighbor_vertex in current_vertex.getConnections():
+            # Calculate the new cost to reach the neighbor
+            new_cost = current_vertex.getWeight(neighbor_vertex)
+
+            # Update distance and previous vertex if a shorter path is found
+            if neighbor_vertex in priority_queue and new_cost < neighbor_vertex.getDistance():
+                neighbor_vertex.setPrevious(current_vertex)
+                neighbor_vertex.setDistance(new_cost)
+                # Update priority queue with the new cost
+                priority_queue.decreaseKey(neighbor_vertex, new_cost)
+
+# Example usage
+if __name__ == "__main__":
+    # Create a sample graph
+    sample_graph = Graph()
+    for i in range(6):
+        sample_graph.addVertex(i)
+    # Add edges to the graph with their weights
+    sample_graph.addEdge(0, 1, 5)
+    sample_graph.addEdge(0, 5, 2)
+    sample_graph.addEdge(1, 2, 4)
+    sample_graph.addEdge(2, 3, 9)
+    sample_graph.addEdge(3, 4, 7)
+    sample_graph.addEdge(3, 5, 3)
+    sample_graph.addEdge(4, 0, 1)
+    sample_graph.addEdge(5, 4, 8)
+    sample_graph.addEdge(5, 2, 1)
+
+    # Run Prim's algorithm starting from vertex 0
+    prim_minimum_spanning_tree(sample_graph, sample_graph.getVertex(0))
+
+    # Output the minimum spanning tree
+    for vertex in sample_graph:
+        previous_vertex = vertex.getPrevious()
+        if previous_vertex:
+            print("(%s, %s) -> %s" % (previous_vertex.getId(), vertex.getId(), vertex.getDistance()))

@@ -1,0 +1,57 @@
+
+import pandas as pd
+import numpy as np
+import nltk
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from AdvancedAnalytics import TextAnalytics, logreg
+from sklearn import metrics
+nltk.download('punkt')
+nltk.download('stopwords')
+pd.set_option('max_colwidth', 32000)
+data_frame = pd.read_excel("C:/Users/gaura/Desktop/stat 656/week 11/week 11 assignment/GMC_Complaints.xlsx")
+num_reviews = len(data_frame)
+max_df = 0.5
+min_df = 2
+max_features = None
+num_topics = 8
+max_iter = 10
+norm = None
+use_idf = True
+text_analyzer = TextAnalytics()
+count_vectorizer = CountVectorizer(max_df=max_df, min_df=min_df, max_features=max_features, analyzer=text_analyzer.my_analyzer)
+term_frequency_matrix = count_vectorizer.fit_transform(data_frame['description'])
+terms = count_vectorizer.get_feature_names()
+tfidf_transformer = TfidfTransformer(norm=norm, use_idf=use_idf)
+tfidf_matrix = tfidf_transformer.fit_transform(term_frequency_matrix)
+lda_model = LatentDirichletAllocation(n_components=num_topics, max_iter=max_iter, random_state=12345)
+topic_distribution = lda_model.fit_transform(tfidf_matrix)
+print("\n********** GENERATED TOPICS **********")
+TextAnalytics.display_topics(lda_model.components_, terms, n_terms=15, mask=None)
+review_topics = [np.argmax(topic) for topic in topic_distribution]
+topic_columns = ["topic"] + [f"T{i}" for i in range(1, num_topics + 1)]
+review_scores = np.column_stack((review_topics, topic_distribution))
+topic_df = pd.DataFrame(review_scores, columns=topic_columns)
+data_frame = pd.concat([data_frame, topic_df], axis=1)
+data_frame['mileage'] = data_frame['mileage'].fillna(data_frame['mileage'].mean())
+data_frame['abs'] = data_frame['abs'].fillna('N')
+data_frame = data_frame.drop(columns=['nthsa_id', 'description'])
+categorical_variables = ['Year', 'make', 'model', 'abs', 'crashed']
+for var in categorical_variables:
+    data_frame = pd.get_dummies(data_frame, columns=[var], prefix=[var])
+X = data_frame.drop(columns=['crashed_Y', 'crashed_N'])
+Y = data_frame['crashed_Y']
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3)
+logistic_regression_model = LogisticRegression()
+logistic_regression_model.fit(X_train, Y_train)
+logreg.display_binary_metrics(logistic_regression_model, X_test, Y_test)
+predicted_probabilities = logistic_regression_model.predict_log_proba(X_test)
+threshold_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
+for threshold in threshold_list:
+    print(f'\n******** For threshold = {threshold} ******')
+    Y_test_predictions = (predicted_probabilities[:, 1] > threshold).astype(int)
+    test_accuracy = metrics.accuracy_score(Y_test, Y_test_predictions)
+    print(f'Testing accuracy: {test_accuracy}')

@@ -1,0 +1,81 @@
+import csv
+import random
+import copy
+import numpy as np
+import sys
+
+def main():
+    if len(sys.argv) != 4:
+        print("Usage: python kmeans.py <input_file> <k_clusters> <output_file>")
+        sys.exit(1)
+
+    inputFile, k, outputFile = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+
+    data = read_data(inputFile)
+    X = preprocess_data(data)
+
+    clusters, centroids = k_means(X, k)
+    sse = calculate_sse(X, centroids, clusters)
+
+    print(f"SSE is {sse:.2f}")
+
+    write_clusters(clusters, sse, outputFile)
+
+def read_data(inputFile):
+    with open(inputFile, 'r') as file:
+        csv_reader = csv.reader(file)
+        data = np.array([row for row in csv_reader if row])
+    return data
+
+def preprocess_data(data):
+    X = data[:, :-1].astype(float)
+    X = min_max_normalize(X)
+    return X
+
+def min_max_normalize(X):
+    normalized_data = []
+    for column in X.T:
+        col_min, col_max = column.min(), column.max()
+        normalized_column = (column - col_min) / (col_max - col_min)
+        normalized_data.append(normalized_column)
+    return np.array(normalized_data).T
+
+def k_means(X, k):
+    centroids = initialize_centroids(X, k)
+    old_centroids = np.zeros(centroids.shape)
+    cluster_assignments = np.zeros(len(X))
+
+    while not np.array_equal(centroids, old_centroids):
+        for i in range(len(X)):
+            distances = [np.linalg.norm(X[i] - centroid, 2) for centroid in centroids]
+            cluster_index = np.argmin(distances)
+            cluster_assignments[i] = cluster_index
+
+        old_centroids = copy.deepcopy(centroids)
+        for i in range(k):
+            if len(X[cluster_assignments == i]) > 0:
+                centroids[i] = np.mean(X[cluster_assignments == i], axis=0)
+
+    return cluster_assignments, centroids
+
+def initialize_centroids(X, k):
+    centroids = []
+    indices = random.sample(range(len(X)), k)
+    for index in indices:
+        centroids.append(X[index])
+    return np.array(centroids)
+
+def calculate_sse(X, centroids, clusters):
+    sse = 0
+    for i, centroid in enumerate(centroids):
+        sse += np.sum(np.linalg.norm(X[clusters == i] - centroid, axis=1) ** 2)
+    return sse
+
+def write_clusters(clusters, sse, outputFile):
+    clusters = list(map(int, clusters))
+    with open(outputFile, 'w') as file:
+        file.write('\n'.join(map(str, clusters)) + '\n')
+        file.write(f"SSE is {sse:.2f}")
+
+if __name__ == '__main__':
+    main()

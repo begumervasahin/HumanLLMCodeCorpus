@@ -1,0 +1,41 @@
+from ecies.utils import generate_key
+from ecies import encrypt, decrypt
+from tkinter import filedialog
+import base64
+import os
+
+# Generate an ECIES key pair
+key_pair = generate_key()
+private_key_hex = key_pair.to_hex()
+public_key_hex = key_pair.public_key.format(True).hex()
+
+# Ask the user to select a file
+selected_file_path = filedialog.askopenfilename()
+file_directory, file_name = os.path.split(selected_file_path)
+encrypted_file_path = os.path.join(file_directory, 'encrypted_' + file_name)
+decrypted_file_path = os.path.join(file_directory, 'decrypted_' + file_name)
+
+# Read the file and encode it in base64
+with open(selected_file_path, "rb") as file:
+    file_data = base64.b64encode(file.read())
+
+print("Private key:", private_key_hex)
+print("Public key:", public_key_hex)
+print("Type of private key:", type(private_key_hex))
+print("Encoded data of the file:", file_data)
+
+# Encrypt the data using the public key
+encrypted_data = encrypt(public_key_hex, file_data)
+print("Encrypted data:", encrypted_data)
+
+# Write the encrypted data to a new file
+with open(encrypted_file_path, "wb") as encrypted_file:
+    encrypted_file.write(base64.b64decode(encrypted_data))
+
+# Decrypt the encrypted data using the private key
+decrypted_data = decrypt(private_key_hex, encrypted_data)
+print("\nDecrypted data:", decrypted_data)
+
+# Write the decrypted data to a new file
+with open(decrypted_file_path, "wb") as decrypted_file:
+    decrypted_file.write(base64.b64decode(decrypted_data))

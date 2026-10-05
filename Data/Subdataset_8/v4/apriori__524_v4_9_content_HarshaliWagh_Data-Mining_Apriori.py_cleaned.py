@@ -1,0 +1,90 @@
+def generate_combinations(freq_itemset):
+    combinations = []
+    items = list(freq_itemset.keys())
+    for i in range(len(freq_itemset) - 1):
+        for j in range(i + 1, len(freq_itemset)):
+            combination = [items[i], items[j]]
+            combinations.append(combination)
+    return combinations
+def generate_candidates(freq_itemset, count):
+    combinations = generate_combinations(freq_itemset)
+    candidate_list = [comb.split(',') for comb in [','.join(comb) for comb in combinations]]
+    unique_candidates = []
+    pruned_candidates = []
+    for candidate in candidate_list:
+        unique_set = set(candidate)
+        unique_list = list(unique_set)
+        unique_candidates.append(unique_list)
+        if len(unique_list) == count:
+            pruned_candidates.append(unique_list)
+    return pruned_candidates
+def calculate_support(candidates, data):
+    support_list = []
+    candidate_sets = [set(candidate) for candidate in candidates]
+    data_sets = [set(data_row) for data_row in data]
+    for candidate_set in candidate_sets:
+        counter = sum(1 for data_set in data_sets if candidate_set.issubset(data_set))
+        support_list.append(counter)
+    return support_list
+def extract_frequent_itemsets(candidate_set, support, min_support):
+    frequent_itemsets = {}
+    for i in range(len(candidate_set)):
+        itemset = candidate_set[i]
+        itemset_string = ','.join(itemset)
+        if support[i] >= min_support:
+            frequent_itemsets[itemset_string] = support[i]
+    return frequent_itemsets
+def generate_associations(frequent_itemset, glue, n):
+    if len(frequent_itemset) == n:
+        if glue.count(frequent_itemset) == 0:
+            glue.append(frequent_itemset)
+        return glue
+    elif len(frequent_itemset) != n:
+        for i in range(len(frequent_itemset)):
+            next_frequent_itemset = frequent_itemset[i + 1:] + frequent_itemset[:i]
+            glue = generate_associations(next_frequent_itemset, glue, n)
+        return glue
+def main():
+    dataset = []
+    print("Select the dataset:")
+    print("1. Grocery")
+    print("2. Clothing")
+    print("3. Electronics")
+    print("4. Utensils")
+    print("5. Furniture")
+    dataset_number = input("Enter the dataset number: ")
+    min_support = int(input('Enter minimum Support: '))
+    min_confidence = int(input('Enter minimum Confidence: '))
+    dataset_file = ""
+    if dataset_number == '1':
+        dataset_file = "db1.txt"
+    elif dataset_number == '2':
+        dataset_file = "db2.txt"
+    elif dataset_number == '3':
+        dataset_file = "db3.txt"
+    elif dataset_number == '4':
+        dataset_file = "db4.txt"
+    else:
+        dataset_file = "db5.txt"
+    with open(dataset_file, 'r') as fp:
+        dataset = [line.strip().split(", ") for line in fp]
+    item_dict = {}
+    for data_row in dataset:
+        for item in data_row:
+            item_dict[item] = item_dict.get(item, 0) + 1
+    freq_itemsets_1 = {item: count for item, count in item_dict.items() if count >= min_support}
+    count = 2
+    candidate_set_2 = generate_candidates(freq_itemsets_1, count)
+    support_2 = calculate_support(candidate_set_2, dataset)
+    frequent_itemsets_2 = extract_frequent_itemsets(candidate_set_2, support_2, min_support)
+    n = count - 1
+    while n != 0:
+        for frequent_itemset in frequent_itemsets_2:
+            glue = []
+            associations = generate_associations(frequent_itemset.split(','), glue, n)
+            for association in associations:
+                dumpy = [item for item in frequent_itemset.split(',') if item not in association]
+                print(f"{dumpy} ---------> {association}")
+        n -= 1
+if __name__ == "__main__":
+    main()

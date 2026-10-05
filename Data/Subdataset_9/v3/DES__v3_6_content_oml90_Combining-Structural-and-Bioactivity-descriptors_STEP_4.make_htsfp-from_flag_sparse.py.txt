@@ -1,0 +1,68 @@
+import pandas as pd
+import time
+import argparse
+import os
+
+# Displaying a separator for better readability
+print('-' * 90)
+
+# Starting the timer
+start_time = time.time()
+
+# Creating an argument parser for command-line arguments
+parser = argparse.ArgumentParser(description='Generate a flag-based fingerprint from refined HTS data.')
+parser.add_argument('-a', action='store', dest='annotation_data', required=True, help='Path to the annotation file.')
+parser.add_argument('-i', action='store', dest='hts_data', required=True, help='Path to the refined HTS data.')
+parser.add_argument('-o', action='store', dest='outpath', default='htsfp_gen_out/', help='Output path for the fingerprint file.')
+parser.add_argument('-t', action='store', dest='threshold', default=20000, type=int, help='Threshold for the minimum number of compounds per assay.')
+args = parser.parse_args()
+
+# Checking and formatting the paths
+args.hts_data = args.hts_data.rstrip('/') + '/'
+
+# Defining the path for the CID to SMILES file
+cid2smi_file = 'C:/CESFP_project/CID2smi_pubchem.txt'
+
+# Creating the output directory if it doesn't exist
+if not os.path.exists(args.outpath):
+    os.makedirs(args.outpath)
+
+# Defining the output path for the fingerprint file
+outpath = args.outpath + 'htsfp_t' + str(args.threshold)
+
+# Loading the annotation file
+print('Loading the annotation file...')
+stats_df = pd.read_csv(args.annotation_data, sep='\t')
+assay_selection = stats_df.loc[stats_df['count'] >= args.threshold]['assay'].values
+print('Number of assays containing at least', args.threshold, 'assays:', len(assay_selection))
+print('Time taken:', time.time() - start_time)
+
+# Loading the CID to SMILES file
+print('Loading the CID to SMILES file...')
+cid2smi = {}
+with open(cid2smi_file, 'r') as file:
+    for line in file:
+        cid, smi = line.strip().split('\t')
+        cid2smi[cid] = smi
+print('Time taken:', time.time() - start_time)
+
+# Creating an empty dictionary for compound data
+print('Creating an empty dictionary...')
+main_cmpd_dict = {cid: [0] * len(assay_selection) for cid in cid2smi}
+print('Done.')
+print('Dimensions of the fingerprint:', len(main_cmpd_dict), 'x', len(assay_selection))
+print('Time taken:', time.time() - start_time)
+
+# Filling the dictionary with flag values
+print('Filling the dictionary with flag values...')
+for idx, assay in enumerate(assay_selection):
+    if idx % 10 == 0:
+        print('Progress:', round((idx + 1) / len(assay_selection) * 100), '%', end='\r')
+    assay_file = args.hts_data + assay
+    with open(assay_file, 'r') as file:
+        for line in file.readlines()[1:]:
+            cid, flag = line.strip().split('\t')
+            if flag not in ['A', 'N']:
+                # Process the flag value here if needed
+                pass
+print('Time taken:', time.time() - start_time)

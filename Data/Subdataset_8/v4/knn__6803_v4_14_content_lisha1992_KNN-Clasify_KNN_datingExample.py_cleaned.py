@@ -1,0 +1,70 @@
+
+import numpy as np
+import operator
+import matplotlib.pyplot as plt
+def KNNClassifier(unlabeled_data, data_set, labels, k):
+    num_samples = data_set.shape[0]
+    diff = np.tile(unlabeled_data, (num_samples, 1)) - data_set
+    sq_diff = diff ** 2
+    sq_dist = np.sum(sq_diff, axis=1)
+    distance = sq_dist ** 0.5
+    sorted_dist_index = np.argsort(distance)
+    class_count = {}
+    for i in range(k):
+        vote_label = labels[sorted_dist_index[i]]
+        class_count[vote_label] = class_count.get(vote_label, 0) + 1
+    max_count = 0
+    for key, value in class_count.items():
+        if value > max_count:
+            max_count = value
+            max_index = key
+    return max_index
+def file_to_matrix(filename, dim):
+    data_matrix = np.zeros((len(open(filename).readlines()), dim))
+    class_labels = []
+    with open(filename) as file:
+        index = 0
+        for line in file:
+            line = line.strip()
+            list_from_line = line.split('\t')
+            data_matrix[index, :] = list_from_line[:dim]
+            class_labels.append(int(list_from_line[-1]))
+            index += 1
+    return data_matrix, class_labels
+def draw_scatter(data_matrix, labels):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.scatter(data_matrix[:, 0], data_matrix[:, 1], 15.0 * np.array(labels), 15.0 * np.array(labels))
+    plt.show()
+def auto_normalize(data_set):
+    min_values = data_set.min(0)
+    max_values = data_set.max(0)
+    ranges = max_values - min_values
+    m = data_set.shape[0]
+    norm_data_set = (data_set - np.tile(min_values, (m, 1))) / np.tile(ranges, (m, 1))
+    return norm_data_set, ranges, min_values
+def dating_class_test():
+    rate = 0.1
+    dating_data_mat, dating_labels = file_to_matrix('/Users/ceciliaLee/Desktop/datingTestSet2.txt', 3)
+    norm_mat, _, _ = auto_normalize(dating_data_mat)
+    test_vector_count = int(norm_mat.shape[0] * rate)
+    error_count = 0.0
+    for i in range(test_vector_count):
+        classified_result = KNNClassifier(norm_mat[i, :], norm_mat[test_vector_count:, :], dating_labels[test_vector_count:], 3)
+        print(f'Result from KNN Classifier: {classified_result}, Actual class: {dating_labels[i]}')
+        if classified_result != dating_labels[i]:
+            error_count += 1
+    print(f'Total error rate: {error_count / (test_vector_count * 1.0)}')
+def classify_people():
+    results = ['not at all', 'in small doses', 'in large doses']
+    percent_time_game = float(input('Percentage of time spent playing video games? '))
+    freq_fly_miles_earn = float(input('Frequent flier miles earned per year? '))
+    ice_consumed = float(input('Liters of ice cream consumed per year? '))
+    dating_data_mat, dating_labels = file_to_matrix('/Users/ceciliaLee/Desktop/datingTestSet2.txt', 3)
+    norm_mat, ranges, min_values = auto_normalize(dating_data_mat)
+    input_array = np.array([percent_time_game, freq_fly_miles_earn, ice_consumed])
+    classified_result = KNNClassifier((input_array - min_values) / ranges, norm_mat, dating_labels, 3)
+    print(f'You will probably like this person: {results[classified_result - 1]}')
+if __name__ == '__main__':
+    dating_class_test()
+    classify_people()

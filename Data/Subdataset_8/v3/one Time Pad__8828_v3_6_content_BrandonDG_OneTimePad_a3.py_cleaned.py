@@ -1,0 +1,38 @@
+import os
+def xor_message(message: bytes, key: bytes) -> bytes:
+    return bytes(p ^ k for p, k in zip(message, key))
+def get_plaintext_from_user_input() -> str:
+    while True:
+        where_is_cipher = input("Is the plaintext given via stdin or file? ")
+        if where_is_cipher == "file":
+            filename = input("Enter file name: ")
+            with open(filename, 'r') as file:
+                return file.read().strip()
+        elif where_is_cipher == "stdin":
+            return input("Enter plaintext: ").strip()
+        else:
+            print("Please select a valid option ('file' or 'stdin')")
+def main():
+    print("One-Time Pad Encryption")
+    plaintext = get_plaintext_from_user_input()
+    key = os.urandom(len(plaintext))
+    print("------")
+    print("Plaintext:")
+    print(plaintext)
+    print(" ")
+    print("Key:")
+    print(key)
+    print("------")
+    ciphertext = xor_message(plaintext.encode("utf-8"), key)
+    print("Binary Ciphertext:")
+    print(ciphertext)
+    print("------")
+    print("Verify:")
+    print(xor_message(ciphertext, key))
+    with open("ciphertext", "wb") as outputfile:
+        outputfile.write(ciphertext)
+    print("------")
+    print("Character Ciphertext:")
+    os.system("cat ciphertext")
+if __name__ == "__main__":
+    main()

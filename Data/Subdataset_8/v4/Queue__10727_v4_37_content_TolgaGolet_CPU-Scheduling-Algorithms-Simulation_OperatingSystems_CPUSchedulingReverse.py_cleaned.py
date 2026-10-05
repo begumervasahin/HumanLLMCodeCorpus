@@ -1,0 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import Processor
+speed = 0.1
+number_of_processes = 15
+burst_time_lambda = 3
+arrival_time_scale = 15.0
+SJF_priority = 0.6
+FCFS_priority = 1 - SJF_priority
+max_arrival_time = 0
+process_pool = []
+def create_process_pool():
+    print("Creating the process pool...")
+    global max_arrival_time
+    for i in range(number_of_processes):
+        process = [i+1, 0, 0, np.random.randint(1, 3)]
+        process_pool.append(process)
+    max_arrival_time = create_exponential_arrival_times()
+    create_poisson_burst_times()
+    print("Process pool successfully created.")
+    return max_arrival_time
+def create_poisson_burst_times():
+    poisson = np.random.poisson(burst_time_lambda, number_of_processes)
+    for i, burst_time in zip(range(number_of_processes+1), poisson):
+        if burst_time <= 0:
+            burst_time = 1
+        process_pool[i][2] = burst_time
+    plt.subplot(2, 1, 1)
+    plt.hist(poisson)
+    plt.tight_layout()
+    plt.title('Poisson Burst Times')
+    plt.ylabel('Frequency')
+    plt.xlabel('Burst Times')
+def create_exponential_arrival_times():
+    exponential = np.random.exponential(arrival_time_scale, number_of_processes)
+    for i, exp in zip(range(number_of_processes+1), exponential):
+        if int(exp) <= 0:
+            arrival_time = 1
+        else:
+            arrival_time = int(exp)
+        process_pool[i][1] = arrival_time
+    plt.subplot(2, 1, 2)
+    plt.hist(exponential)
+    plt.tight_layout()
+    plt.title('Exponential Arrival Times')
+    plt.ylabel('Frequency')
+    plt.xlabel('Arrival Times')
+    return max(exponential)
+def sort_process_pool():
+    def sort_by_arrival_time(elem):
+        return elem[1]
+    process_pool.sort(key=sort_by_arrival_time)
+plt.figure(1)
+max_arrival_time = create_process_pool()
+sort_process_pool()
+print("Number Of Processes:", number_of_processes)
+print("Burst Time Lambda:", burst_time_lambda)
+print("Arrival Time Scale:", arrival_time_scale)
+print("SJF Priority:", SJF_priority * 100, "%")
+print("FCFS Priority:", FCFSpriority * 100, "%")
+print("[processID, arrivalTime, burstTime, priority]  priority=1=foreground(SJF), priority=2=batch(FCFS)")
+print("Process Pool:", process_pool)
+Processor.start(SJF_priority, FCFS_priority, process_pool, max_arrival_time, speed)

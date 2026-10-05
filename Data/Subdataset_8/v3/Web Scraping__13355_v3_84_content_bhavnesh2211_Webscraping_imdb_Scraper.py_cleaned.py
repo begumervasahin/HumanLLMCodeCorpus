@@ -1,0 +1,125 @@
+import requests
+import os
+import json
+from bs4 import BeautifulSoup
+from collections import defaultdict
+def scrape_top_list():
+    url = "https:
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    movie_list = soup.find("tbody", class_="lister-list").find_all("tr")
+    top_movies = []
+    for movie in movie_list:
+        movie_details = {}
+        title_column = movie.find("td", class_="titleColumn")
+        position = int(title_column.span.text.strip("."))
+        title = title_column.a.text
+        year = int(title_column.span.next_sibling.strip("()"))
+        rating = float(movie.find("strong").text)
+        movie_url = "https:
+        movie_details["title"] = title
+        movie_details["year"] = year
+        movie_details["position"] = position
+        movie_details["rating"] = rating
+        movie_details["url"] = movie_url
+        top_movies.append(movie_details)
+    return top_movies
+def scrape_movie_cast(movie_cast_url):
+    cast_file = "Webscraping_cast/" + movie_cast_url[27:36] + "_cast.json"
+    if os.path.isfile(cast_file):
+        with open(cast_file, "r") as file:
+            return json.load(file)
+    else:
+        cast_url = movie_cast_url + "fullcredits"
+        response = requests.get(cast_url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        cast_table = soup.find("table", class_="cast_list")
+        cast_list = []
+        for actor_row in cast_table.find_all("tr")[1:]:
+            actor_id = actor_row.find("a").get("href").split("/")[2]
+            actor_name = actor_row.find("a").text.strip()
+            cast_list.append({"imdb_id": actor_id, "name": actor_name})
+        with open(cast_file, "w") as file:
+            json.dump(cast_list, file)
+        return cast_list
+def scrape_movie_details(movie_url):
+    movie_file = "Webscraping/" + movie_url[27:36] + ".json"
+    if os.path.isfile(movie_file):
+        with open(movie_file, "r") as file:
+            return json.load(file)
+    else:
+        response = requests.get(movie_url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        details = {}
+        details["title"] = soup.find("h1").text.strip()
+        details["director"] = [director.text.strip() for director in soup.find("div", class_="credit_summary_item").find_all("a")]
+        details["bio"] = soup.find("div", class_="summary_text").text.strip()
+        details["runtime"] = int(soup.find("div", class_="subtext").time.text.strip(" min"))
+        details["genres"] = [genre.text for genre in soup.find("div", class_="subtext").find_all("a")[:-1]]
+        details["languages"] = [lang.text.strip() for lang in soup.find("div", attrs={"data-testid": "title-details-section"}).find_all("h4") if "Language" in lang.text]
+        details["country"] = soup.find("div", attrs={"data-testid": "title-details-section"}).find("h4", string="Country:").find_next_sibling("a").text
+        details["poster_image_url"] = soup.find("div", class_="poster").img["src"]
+        details["cast"] = scrape_movie_cast(movie_url)
+        with open(movie_file, "w") as file:
+            json.dump(details, file)
+        return details
+def get_movie_list_details(movie_list):
+    return [scrape_movie_details(movie["url"]) for movie in movie_list]
+def analyse_movies_language(movie_list):
+    language_count = defaultdict(int)
+    for movie in movie_list:
+        for lang in movie["languages"]:
+            language_count[lang] += 1
+    return dict(language_count)
+def analyse_movies_director(movie_list):
+    director_count = defaultdict(int)
+    for movie in movie_list:
+        for director in movie["director"]:
+            director_count[director] += 1
+    return dict(director_count)
+def analyse_language_and_directors(movie_list):
+    language_director_count = defaultdict(lambda: defaultdict(int))
+    for movie in movie_list:
+        for director in movie["director"]:
+            for lang in movie["languages"]:
+                language_director_count[director][lang] += 1
+    return dict(language_director_count)
+def analyse_movies_genre(movie_list):
+    genre_count = defaultdict(int)
+    for movie in movie_list:
+        for genre in movie["genres"]:
+            genre_count[genre] += 1
+    return dict(genre_count)
+def analyse_co_actors(movie_list):
+    main_actors = [movie["cast"][0] for movie in movie_list]
+    co_actors = defaultdict(list)
+    for actor in main_actors:
+        actor_id = actor["imdb_id"]
+        co_actors[actor_id]["name"] = actor["name"]
+        for movie in movie
+_list:
+            for co_actor in movie["cast"][1:]:
+                if co_actor["imdb_id"] == actor_id:
+                    co_actors[actor_id]["frequent_co_actors"].append(co_actor["name"])
+    return dict(co_actors)
+def analyse_actors(movie_list):
+    actor_count = defaultdict(int)
+    for movie in movie_list:
+        for actor in movie["cast"]:
+            actor_count[actor["name"]] += 1
+    return {actor: count for actor, count in actor_count.items() if count > 1}
+if __name__ == "__main__":
+    top_movies = scrape_top_list()
+    movie_list_details = get_movie_list_details(top_movies)
+    print("Movies Language Analysis:")
+    pprint(analyse_movies_language(movie_list_details))
+    print("\nMovies Director Analysis:")
+    pprint(analyse_movies_director(movie_list_details))
+    print("\nLanguage and Directors Analysis:")
+    pprint(analyse_language_and_directors(movie_list_details))
+    print("\nMovies Genre Analysis:")
+    pprint(analyse_movies_genre(movie_list_details))
+    print("\nFrequent Co-actors Analysis:")
+    pprint(analyse_co_actors(movie_list_details))
+    print("\nFrequent Actors Analysis:")
+    pprint(analyse_actors(movie_list_details))

@@ -1,0 +1,50 @@
+import os
+import pandas as pd
+
+def get_file_list(directory):
+    """
+    Get the list of files in the specified directory.
+    """
+    return os.listdir(directory)
+
+def process_files(input_dir, output_dir):
+    """
+    Process files in the input directory according to the provided requirements.
+    """
+    input_files = get_file_list(input_dir)
+    output_files = get_file_list(output_dir)
+    
+    os.chdir(input_dir)
+    
+    for filename in input_files:
+        if filename not in output_files:
+            try:
+                # Read the CSV file
+                df = pd.read_csv(filename, sep='    ', header=None, engine='python')
+                
+                # Filter rows where the second column value is greater than 0
+                filtered_df = df[df[1] > 0]
+                
+                # Sort the DataFrame by the second column in descending order
+                sorted_df = filtered_df.sort_values(by=1, ascending=False)
+                
+                # Select top 50 rows or all rows if less than 50
+                top_50_rows = sorted_df.head(50)
+                
+                # Define output file path
+                output_file_path = os.path.join(output_dir, filename.replace('.txt', '') + '.txt')
+                
+                # Write the processed DataFrame to the output file
+                top_50_rows.to_csv(output_file_path, sep='\t', header=None, index=False)
+                
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+
+    print('Processing completed!')
+
+# Specify input and output directories
+input_directory = '/TF-IDF'
+output_directory = '/TF-IDF1'
+
+# Process files
+process_files(input_directory, output_directory)

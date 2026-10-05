@@ -1,0 +1,41 @@
+import os
+import sys
+import datetime
+from prime import is_day_prime
+OUTPUT_FILE = 'all-days.csv'
+def increment_day(date):
+    return date + datetime.timedelta(days=1)
+def increment_year(date):
+    if date.month == 2 and date.day == 28:
+        if date.year % 4 == 0 and (date.year % 100 != 0 or date.year % 400 == 0):
+            return date.replace(year=date.year + 4)
+    return date.replace(year=date.year + 1)
+def num_prime_days(date, num_years):
+    num_days = 0
+    for _ in range(num_years):
+        if is_day_prime(date):
+            num_days += 1
+        date = increment_year(date)
+    write_file(date, num_days)
+def write_file(date, num_days):
+    with open(OUTPUT_FILE, 'a+') as out_file:
+        out_file.write(f'{date.month:02d}-{date.day:02d},{num_days}\n')
+if __name__ == '__main__':
+    if os.path.exists(OUTPUT_FILE):
+        os.remove(OUTPUT_FILE)
+    year, month, day, num_years = map(int, sys.argv[1:5])
+    date = datetime.date(year, month, day)
+    while date.year == year:
+        sys.stdout.write('\rCurrent Date: {}'.format(date))
+        sys.stdout.flush()
+        num_prime_days(date, num_years)
+        if date.month == 2 and date.day == 27 and year % 4 != 0:
+            date = datetime.date(year + 4 - (year % 4), 2, 29)
+            sys.stdout.write('\rCurrent Date: {}'.format(date))
+            sys.stdout.flush()
+            num_prime_days(date, num_years)
+            date = datetime.date(year, 2, 28)
+        date = increment_day(date)
+        while date.day % 2 == 0 or date.day % 5 == 0:
+            date = increment_day(date)
+    print()

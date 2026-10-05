@@ -1,0 +1,57 @@
+import re
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+
+def get_tennis_scores():
+    # Define the URL to fetch tennis scores
+    tennis_url = 'http://m.espn.com/general/tennis/dailyresults?date=20200125&matchType=1&wjb='
+    
+    # Open the URL and create BeautifulSoup object
+    with urlopen(tennis_url) as response:
+        soup = BeautifulSoup(response, 'html.parser')
+    
+    # Find relevant sections in the HTML
+    game_sections = soup.find_all("div", class_="ind")
+    tournament_section = soup.find("div", class_="sec row")
+    
+    # Extract tournament information
+    tournament_info = tournament_section.text
+    tournament_name = ' '.join(re.findall(r'([A-Z]\w+-*\w*)', tournament_info))
+    
+    # Extract round information
+    round_sections = soup.find_all("div", class_="ind sub bold")
+    for section in round_sections:
+        if section.text != "FULL TOURNAMENT RESULTS":
+            round_info = section.text
+            break
+    
+    # Find and process match scores
+    matches = []
+    for section in game_sections:
+        if "Final" in section.text:
+            match_info = section.text.split("Final")
+            matches.extend(match_info)
+    
+    # Count and print match details
+    count_matches(matches, tournament_name, round_info)
+
+def count_matches(matches, tournament_name, round_info):
+    # Count non-empty matches
+    match_count = sum(1 for match in matches if match.strip())
+    # Print match details
+    print(f"Tournament Round: {round_info} of the Tournament: {tournament_name}")
+    for match in matches:
+        if match.strip() and match not in ["FULL TOURNAMENT RESULTS", "TENNIS HOME PAGE"]:
+            process_match(match, round_info)
+
+def process_match(match, round_info):
+    # Process individual match
+    score = re.sub(r'([a-z])(\d{1})', r'\1 \2', match.strip())
+    players = re.findall(r'([A-Z]\w+-*\w*)', score)
+    if len(players) >= 2:
+        player1, player2 = players[:2]
+        print(f"Match: {player1} vs {player2}")
+        print(f"Score: {score.strip()}\n")
+
+if __name__ == "__main__":
+    get_tennis_scores()

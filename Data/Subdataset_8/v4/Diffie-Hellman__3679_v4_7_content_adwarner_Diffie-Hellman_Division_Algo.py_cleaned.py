@@ -1,0 +1,41 @@
+import numpy as np
+def division_algorithm(n, d):
+    result = []
+    while n >= 1:
+        result.append(str(n % d))
+        n = int(n / d)
+    return ''.join(result)
+def gcd(a, b):
+    mod = a % b
+    while a % b >= 1:
+        n = b * int(a / b) + a % b
+        a = b
+        b = mod
+    return mod
+def sieve_of_eratosthenes(n):
+    store = []
+    primes = []
+    z = n
+    r = range(z + 1)[2:len(range(z + 1))]
+    r = r[1::2]
+    for i in range(len(r)):
+        for j in range(len(r)):
+            prime.append(r[i] % r[j])
+    chunks = [prime[x:x + len(r)] for x in range(0, len(prime), len(r))]
+    for i in range(len(chunks)):
+        if chunks[i].count(0) == 1:
+            store.append(r[i])
+    store.insert(0, 2)
+    return store
+def extended_gcd(a, b):
+    if a == 0:
+        return (b, 0, 1)
+    else:
+        g, y, x = extended_gcd(b % a, a)
+        return (g, x - (b
+def modular_inverse(a, m):
+    g, x, y = extended_gcd(a, m)
+    if g != 1:
+        raise Exception('Modular inverse does not exist')
+    else:
+        return x % m

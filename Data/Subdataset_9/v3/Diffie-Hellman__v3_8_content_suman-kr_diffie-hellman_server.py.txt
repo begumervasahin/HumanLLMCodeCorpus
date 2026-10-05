@@ -1,0 +1,81 @@
+import socket
+
+def print_header(title):
+    """Print a formatted header."""
+    print("\n" + "*" * 27)
+    print(f"* {title.center(23)} *")
+    print("*" * 27)
+
+def get_prime_and_base():
+    """Get the prime number and base from user input."""
+    prime = int(input("Enter the prime number: "))
+    base = int(input("Enter the base number: "))
+    return prime, base
+
+def get_secrets():
+    """Get Alice and Bob's secret numbers."""
+    alice_secret = int(input("Enter Alice's secret number: "))
+    bob_secret = int(input("Enter Bob's secret number: "))
+    return alice_secret, bob_secret
+
+def diffie_hellman_key_exchange(prime, base, alice_secret, bob_secret):
+    """Perform the Diffie-Hellman key exchange."""
+    print_header("Diffie-Hellman Key Exchange")
+
+    print("\nPublicly Shared Variables:")
+    print(f"  Prime Number: {prime}")
+    print(f"  Base Number:  {base}")
+
+    # Calculate Alice and Bob's public keys
+    a_public = (base ** alice_secret) % prime
+    b_public = (base ** bob_secret) % prime
+
+    print("\nAlice Sends Over Public Channel:", a_public)
+    print("Bob Sends Over Public Channel:", b_public)
+
+    # Calculate the shared secret
+    alice_shared_secret = (b_public ** alice_secret) % prime
+    bob_shared_secret = (a_public ** bob_secret) % prime
+
+    if alice_shared_secret == bob_shared_secret:
+        print("\nShared Secrets Match!")
+        print("Connection Established")
+
+    return alice_shared_secret, bob_shared_secret
+
+def establish_server(alice_secret, bob_secret, shared_secret):
+    """Establish a server to exchange the shared secret."""
+    print("\nSetting up server for shared secret exchange...")
+
+    # Create a socket object
+    server_socket = socket.socket()
+
+    # Get the local machine name
+    host = socket.gethostname()
+    port = 51125  # Use a port number that is not used by other services
+
+    # Bind to the port
+    server_socket.bind((host, port))
+
+    # Listen for incoming connections
+    server_socket.listen(5)
+    print("Waiting for incoming connections...")
+
+    while True:
+        # Accept client connection
+        client_socket, addr = server_socket.accept()
+        print('Got connection from', addr)
+
+        # Send the shared secret to the client
+        client_socket.send(str(shared_secret).encode())
+
+        # Close the connection
+        client_socket.close()
+
+if __name__ == "__main__":
+    prime_number, base_number = get_prime_and_base()
+    alice_secret_number, bob_secret_number = get_secrets()
+    alice_shared_secret, bob_shared_secret = diffie_hellman_key_exchange(
+        prime_number, base_number, alice_secret_number, bob_secret_number
+    )
+    establish_server(alice_secret_number, bob_secret_number, alice_shared_secret)

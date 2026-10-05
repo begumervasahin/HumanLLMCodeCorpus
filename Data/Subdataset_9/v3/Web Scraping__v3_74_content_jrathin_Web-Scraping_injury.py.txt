@@ -1,0 +1,39 @@
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_injuries():
+    # URL to scrape
+    url = 'https://www.online-betting.me.uk/germany-bundesliga-injuries-and-suspensions.php'
+
+    # Send a GET request to fetch the HTML content
+    response = requests.get(url)
+
+    # Parse the HTML content
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Find the table containing injury information
+    injury_table = soup.find('div', {'id': 'main-content'})\
+                       .find('div', {'class': 'injuries-table-container'})\
+                       .find('table', {'class': 'injurytable'})
+
+    # Initialize a list to store injury data
+    injuries = []
+
+    # Extract data from each row in the injury table
+    for row in injury_table.find_all('tr')[1:]:  # Skip the header row
+        # Extract team and player names
+        team = row.find('td').text.strip()
+        player = row.find_all('td')[1].text.strip()
+
+        # Store the data in a dictionary and add it to the injuries list
+        injury_data = {'team': team, 'player': player}
+        injuries.append(injury_data)
+
+    return injuries
+
+# Example usage
+injuries = scrape_injuries()
+
+# Print each injury record
+for injury in injuries:
+    print(injury)

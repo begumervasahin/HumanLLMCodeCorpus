@@ -1,0 +1,42 @@
+import pprint
+import random
+import time
+import json
+import os
+from task1 import top_scrape_list
+from task4 import scrape_movie_details
+def collect_unique_directors_and_languages(data):
+    unique_directors = set()
+    unique_languages = set()
+    for movie in data:
+        unique_directors.update(movie['director'])
+        unique_languages.update(movie['language'])
+    return unique_directors, unique_languages
+def count_movies_by_director_and_language(data, directors, languages):
+    director_language_counts = {}
+    for director in directors:
+        director_language_counts[director] = {}
+        for language in languages:
+            count = sum(1 for movie in data if director in movie['director'] and language in movie['language'])
+            if count > 0:
+                director_language_counts[director][language] = count
+    return director_language_counts
+def analyse_language_and_directors():
+    if os.path.isfile("all_movies_data.json"):
+        with open("all_movies_data.json", "r+") as file_data:
+            data = json.load(file_data)
+            unique_directors, unique_languages = collect_unique_directors_and_languages(data)
+            director_language_counts = count_movies_by_director_and_language(data, unique_directors, unique_languages)
+            pprint.pprint(director_language_counts)
+    else:
+        movie_data = top_scrape_list()
+        all_movie_details = []
+        for movie_info in movie_data:
+            link = movie_info['url']
+            random_sleep_time = random.randint(1, 3)
+            time.sleep(random_sleep_time)
+            movie_details = scrape_movie_details(link)
+            all_movie_details.append(movie_details)
+        with open("all_movies_data.json", "w+") as file_data:
+            json.dump(all_movie_details, file_data)
+analyse_language_and_directors()

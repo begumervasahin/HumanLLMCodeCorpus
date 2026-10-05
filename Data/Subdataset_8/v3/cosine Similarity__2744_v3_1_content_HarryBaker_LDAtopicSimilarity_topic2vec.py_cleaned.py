@@ -1,0 +1,56 @@
+import gensim
+import random
+from gensim.corpora import Dictionary
+from gensim import models
+class Topic2Vec:
+    def __init__(self, sentences, lda_model, use_variation, filename, vector_size, window_size, min_count):
+        self.sentences = sentences
+        self.lda_model = lda_model
+        self.filename = filename
+        self.vector_size = vector_size
+        self.window_size = window_size
+        self.min_count = min_count
+        self.permuted_sentences = []
+        self.dictionary = Dictionary.load('/path/to/dictionary').token2id
+        if use_variation:
+            self.generate_permuted_sentences()
+            self.train_word2vec_model()
+        self.load_word2vec_model()
+        self.lda_topics = [self.lda_model.show_topic(x) for x in range(50)]
+        self.topic_vecs = [self.topic2vec.most_similar(positive=["u" + str(x)]) for x in range(50)]
+        print(f"{self.filename} training completed.")
+    def generate_permuted_sentences(self):
+        for sentence in self.sentences:
+            sentence_permute = self.generate_permuted_sentence(sentence)
+            self.permuted_sentences.append(sentence_permute)
+    def generate_permuted_sentence(self, sentence):
+        permuted_sentence = []
+        for index, word in enumerate(sentence):
+            permuted_word = self.permute_word(word)
+            permuted_sentence.append(permuted_word)
+        return permuted_sentence
+    def permute_word(self, word):
+        if word in self.dictionary:
+            word_bow = self.lda_model[self.dictionary[word]]
+            likely_topic = word_bow[-1][0] if word_bow else ''
+            return "u" + str(likely_topic)
+        return word
+    def train_word2vec_model(self):
+        random.shuffle(self.permuted_sentences)
+        self.topic2vec = models.Word2Vec(self.permuted_sentences, size=self.vector_size, window=self.window_size, min_count=self.min_count, workers=2)
+        self.topic2vec.save(self.filename)
+    def load_word2vec_model(self):
+        self.topic2vec = models.Word2Vec.load(self.filename)
+    def most_similar_topic(self, word):
+        if word in self.dictionary:
+            scores = [(self.topic2vec.similarity("u" + word, "u" + str(x)), "u" + str(x)) for x in range(50)]
+            return max(scores, key=lambda x: x[0])
+        else:
+            print(f"Word {word} not found in dictionary")
+            return (0, 0)
+sentences = [['apple', 'banana', 'orange'], ['dog', 'cat', 'horse'], ['tree', 'flower', 'grass']]
+lda_model = gensim.models.ldamodel.LdaModel()
+t2v = Topic2Vec(sentences, lda_model, True, 'topic2vec_model', 100, 5, 1)
+word = 'apple'
+most_similar = t2v.most_similar_topic(word)
+print(f"Most similar topic to '{word}': {most_similar[1]} with similarity score {most_similar[0]}")

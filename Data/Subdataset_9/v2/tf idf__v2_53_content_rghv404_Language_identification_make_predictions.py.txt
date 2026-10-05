@@ -1,0 +1,54 @@
+import re
+import json
+import time
+from string import punctuation
+from joblib import load
+
+# Start measuring time
+start_time = time.process_time()
+
+# Initialize an empty list to store cleaned text data
+x_test = []
+
+# Open the file containing JSON objects
+with open('test_X_languages_homework.json.txt', encoding='utf-8') as f:
+    # Read lines from the file
+    objects = f.readlines()
+    
+    # Iterate over each JSON object in the file
+    for j_obj in objects:
+        # Load the JSON object
+        feature = json.loads(j_obj)
+        # Extract the 'text' field from the JSON object
+        feature = feature['text']
+        
+        # Clean the text data
+        feature_clean = re.sub(r"[-()\"]", "", feature)
+        feature_clean = re.sub(r"\s+", " ", feature_clean)
+        feature_clean = feature_clean.strip()
+        punc = list(punctuation)
+        temp = filter(lambda x: x not in punc + [',', "’", '!', ':', "–"], feature_clean)
+        clean_text = "".join(ch for ch in list(temp)) 
+        
+        # Append the cleaned text to the list after converting to lowercase
+        x_test.append(clean_text.lower())
+
+# Load the trained model
+pipe = load('model.bin')
+
+# Use the model to predict labels for the test data
+y_predicted = pipe.predict(x_test)
+
+# Write the predicted labels to a file
+with open('predictions.txt', 'w+', encoding='utf-8') as f:
+    # Iterate over each predicted label
+    for y in y_predicted:
+        # Create a dictionary with the classification
+        predictions = {'classification': y}
+        # Convert the dictionary to JSON format
+        json_obj = json.dumps(predictions)
+        # Write the JSON object to the file
+        f.write(json_obj + "\n")
+
+# Print the time taken for the script to execute
+print(time.process_time() - start_time, 'seconds')

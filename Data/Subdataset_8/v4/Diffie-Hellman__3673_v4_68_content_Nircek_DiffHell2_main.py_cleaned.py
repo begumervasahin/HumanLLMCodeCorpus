@@ -1,0 +1,67 @@
+from random import randrange, getrandbits
+from gmpy2 import powmod, next_prime
+class Globals:
+    def __init__(self):
+        self.p = None
+        self.g = None
+        self.a = None
+        self.A = None
+        self.B = None
+        self.s = None
+GLOBALS = Globals()
+def input_int(prompt):
+    while True:
+        try:
+            return int(input(prompt))
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
+def gen_base(glob=GLOBALS):
+    bits = int(input_int('Enter the number of bits for prime generation: '))
+    glob.p = next_prime(getrandbits(bits))
+    print(f'Generated prime (p): {hex(glob.p)}')
+    glob.g = gen_g(glob.p)
+    print(f'Generated generator (g): {hex(glob.g)}')
+def gen_g(prime):
+    while True:
+        testing = randrange(1, prime)
+        if powmod(testing, prime
+            return testing
+def set_base(glob=GLOBALS):
+    glob.p = input_int('Enter the prime modulus (p): ')
+    glob.g = input_int('Enter the generator (g): ')
+def calc_public(glob=GLOBALS):
+    glob.a = input_int('Enter the private key (a): ')
+    if glob.a >= glob.p:
+        print('Error: Private key (a) should be less than prime (p).')
+        return
+    glob.A = powmod(glob.g, glob.a, glob.p)
+    print(f'Calculated public key (A): {hex(glob.A)}')
+def calc_common(glob=GLOBALS):
+    glob.B = input_int('Enter the received public key (B): ')
+    glob.s = powmod(glob.B, glob.a, glob.p)
+    print(f'Calculated shared key (s): {hex(glob.s)}')
+MENU = '''
+    Choose an option:
+    1) Generate prime modulus and generator (p, g)
+    2) Set prime modulus and generator (p, g)
+    3) Calculate public key (A)
+    4) Calculate shared key (s)
+    q) Quit
+'''
+MENU_OPTS = {
+    '1': gen_base,
+    '2': set_base,
+    '3': calc_public,
+    '4': calc_common,
+    'q': exit
+}
+def main(glob=GLOBALS):
+    while True:
+        settings = '\n'.join(f'{key}: {hex(value)}' for key, value in vars(glob).items() if value is not None)
+        print(settings)
+        print(MENU)
+        choice = input().lower()
+        if choice in MENU_OPTS:
+            MENU_OPTS[choice]()
+if __name__ == '__main__':
+    main()

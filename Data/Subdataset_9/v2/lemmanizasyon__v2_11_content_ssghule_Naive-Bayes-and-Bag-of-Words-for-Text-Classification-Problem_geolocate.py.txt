@@ -1,0 +1,119 @@
+import pandas as pd
+import sys
+import string
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem.snowball import SnowballStemmer
+from nltk.corpus import stopwords
+import numpy as np
+
+nltk.download('stopwords')
+nltk.download('punkt')
+
+# Function to parse the training file
+def parse_file(file_path):
+    with open(file_path, 'r') as file:
+        content = file.readlines()
+
+    stop_words = stopwords.words('english')
+    punct_stopwords = list(string.punctuation) + ['i', '\x89', '_CA', '_TX', '_IL', '_NY', '_PA', '_GA', '_Ontario',
+                                                   '_MA', '_FL', '_DC', '__', '___'] + stop_words
+
+    stemmer = SnowballStemmer("english")
+
+    words = [
+        [stemmer.stem(word) for word in word_tokenize(line) if word not in punct_stopwords]
+        for line in content if len(word_tokenize(line)) > 1
+    ]
+
+    return [word for word in words if len(word) > 1 and word[0] in city]
+
+# Function to create a DataFrame for training data
+def train_df(training_data):
+    word_list = set([word for item in training_data for word in item])
+    data = pd.DataFrame(0, index=word_list, columns=city)
+
+    for item in training_data:
+        current_city = item[0]
+        for word in item[1:]:
+            data.at[word, current_city] += 1
+
+    return data
+
+# Function to create a dictionary from the test file
+def test_dict(file_path):
+    with open(file_path, 'r') as file:
+        content = file.readlines()
+
+    stop_words = stopwords.words('english')
+    punct_stopwords = list(string.punctuation) + ['i', '\x89', '_CA', '_TX', '_IL', '_NY', '_PA', '_GA', '_Ontario',
+                                                   '_MA', '_FL', '_DC', '__', '___'] + stop_words
+
+    stemmer = SnowballStemmer("english")
+
+    test_dict = {}
+
+    for line in content:
+        words = [stemmer.stem(word) for word in word_tokenize(line) if word not in punct_stopwords]
+        if words:
+            words.pop(0)
+            test_dict[line] = words
+
+    return test_dict
+
+# Function to calculate city probabilities
+def get_city_prob(training_data):
+    for item in training_data:
+        city_prob[item[0]] += 1
+
+    total = sum(city_prob.values())
+
+    for city_name in city_prob:
+        city_prob[city_name] = float(city_prob[city_name] / total)
+
+# Function to perform Naive Bayes classification
+def bayes(training_df, test_data, output_file):
+    with open(output_file, 'w') as file:
+        for tweet, words in test_data.items():
+            if not words:
+                continue
+
+            word_posterior = [
+                [
+                    (training_df.at[word, city[i]] / sum(training_df.loc[:, city[i]]) * city_prob[city[i]])
+                    if word in training_df.index else 0.00001 * city_prob[city[i]]
+                    for i in range(12)
+                ] for word in words
+            ]
+
+            probabilities = np.prod(word_posterior, axis=0)
+            label = old_city[np.argmax(probabilities)]
+
+            file.write(label + " " + tweet)
+
+    print("Output written to", output_file)
+
+# File paths and output file name
+train_file_path = "path_to_train_file.txt"
+test_file_path = "path_to_test_file.txt"
+output_file_name = "output_file.txt"
+
+# City information
+old_city = ['Los_Angeles,_CA', 'San_Francisco,_CA', 'San_Diego,_CA', 'Houston,_TX', 'Chicago,_IL', 'Philadelphia,_PA',
+            'Toronto,_Ontario', 'Atlanta,_GA', 'Boston,_MA', 'Orlando,_FL', 'Washington,_DC', 'Manhattan,_NY']
+city = ["los_angel", "san_francisco", "san_diego", "houston", "chicago", "philadelphia", "toronto", "atlanta", "boston",
+        "orlando", "washington", "manhattan"]
+city_prob = dict.fromkeys(city, 0)
+
+# Processing the data and performing classification
+training_data = parse_file(train_file_path)
+training_df = train_df(training_data)
+test_data = test_dict(test_file_path)
+get_city_prob(training_data)
+training_df = training_df + (0.00001)
+bayes(training_df, test_data, output_file_name)
+
+# Display top five words for each city
+print('Top five words for each city:')
+for city_name in city:
+    print(old_city[city.index(city_name)], training_df.nlargest(5, city_name).index.tolist())

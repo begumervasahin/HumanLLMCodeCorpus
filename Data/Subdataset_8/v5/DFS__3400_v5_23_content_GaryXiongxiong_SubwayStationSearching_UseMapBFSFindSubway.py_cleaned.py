@@ -1,0 +1,32 @@
+from collections import deque
+from Stations import stationMap, stationStringMap
+def find_shortest_path(start_station, destination_station):
+    search_queue = deque()
+    searched_stations = {start_station.getName(): None}
+    search_queue.append(start_station)
+    while search_queue:
+        current_station = search_queue.popleft()
+        for adjacent_station in stationMap[current_station]:
+            if adjacent_station.getName() not in searched_stations:
+                searched_stations[adjacent_station.getName()] = current_station.getName()
+                if adjacent_station.getName() == destination_station.getName():
+                    return searched_stations, destination_station.getName()
+                else:
+                    search_queue.append(adjacent_station)
+    print("No path found.")
+    return False, destination_station
+if __name__ == "__main__":
+    start_station_name = input("Enter the starting station: ")
+    destination_station_name = input("Enter the destination station: ")
+    start_station = stationStringMap[start_station_name]
+    destination_station = stationStringMap[destination_station_name]
+    searched_output, destination_output = find_shortest_path(start_station, destination_station)
+    print("-" * 10 + " Shortest Path " + "-" * 10)
+    path = [destination_output]
+    while searched_output[destination_output] is not None:
+        path.append(searched_output[destination_output])
+        destination_output = searched_output[destination_output]
+    path.reverse()
+    print("Shortest path:")
+    print(" -> ".join(path))
+    print()

@@ -1,0 +1,52 @@
+import numpy as np
+import xlrd
+import sys
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+def load_data_from_excel(sheet_index):
+    workbook = xlrd.open_workbook(sys.argv[1])
+    sheet = workbook.sheet_by_index(sheet_index)
+    return sheet
+def extract_statistic(sheet, column_number):
+    data = [sheet.cell(row, column_number).value for row in range(1, sheet.nrows)
+            if sheet.cell(row, column_number).value != '']
+    return data
+def standardize_data(data):
+    mean = np.mean(data)
+    std_dev = np.sqrt(np.var(data, ddof=1))
+    standardized_data = [(value - mean) / std_dev for value in data]
+    return standardized_data
+def prepare_data_for_pca():
+    sheet_info = {
+        0: ('Percentage', 3),
+        1: [('Runs', 2), ('Walks', 3), ('Strikeouts', 4), ('Stolen Bases', 5), ('Batting Average', 6),
+            ('On Base Percentage', 7), ('Slugging Percentage', 8)],
+        2: [('Innings Pitched', 2), ('Hits', 3), ('Walks', 4), ('Strikeouts Through 9', 5),
+            ('Earned Run Average', 6), ('Walks Hits Per Inning Pitched', 7)],
+        3: [('Fielding Percentage', 2)]
+    }
+    standardized_data = []
+    for sheet_index, stats in sheet_info.items():
+        sheet = load_data_from_excel(sheet_index)
+        for stat_name, column_number in stats:
+            raw_data = extract_statistic(sheet, column_number)
+            standardized_stat = standardize_data([float(value) for value in raw_data])
+            standardized_data.append(standardized_stat)
+    standardized_matrix = np.vstack(standardized_data)
+    assert standardized_matrix.shape[1] == len(standardized_data[0]), 'Data matrix has inconsistent row lengths'
+    return standardized_matrix
+def perform_pca_and_plot(data):
+    pca = PCA(n_components=2)
+    transformed_data = pca.fit_transform(data.T)
+    plt.figure(figsize=(8, 6))
+    plt.scatter(transformed_data[:, 0], transformed_data[:, 1], alpha=0.7)
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('PCA of Baseball Team Statistics')
+    plt.grid(True)
+    plt.show()
+def main():
+    standardized_matrix = prepare_data_for_pca()
+    perform_pca_and_plot(standardized_matrix)
+if __name__ == "__main__":
+    main()

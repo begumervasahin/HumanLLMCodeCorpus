@@ -1,0 +1,65 @@
+import gc
+import warnings
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import export_graphviz
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import f1_score, accuracy_score
+warnings.filterwarnings("ignore")
+def load_dataset(file_path):
+    df = pd.read_csv(file_path)
+    df = df.sample(frac=1).reset_index(drop=True)
+    print("Sample Data:\n", df.head(10))
+    print("\nNumber of classes:", len(df['app_name'].unique()))
+    print("Number of samples:", len(df))
+    le = LabelEncoder()
+    df['app_name'] = le.fit_transform(df['app_name'])
+    print("Encoded classes:", list(le.classes_))
+    return df, le
+def plot_class_frequency(y_train, y_test):
+    plt.figure(figsize=(8, 6))
+    plt.hist([y_train, y_test], bins=len(np.unique(y_train)), label=['Train', 'Test'])
+    plt.title('Class Frequency')
+    plt.xlabel('Class (encoded)')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.show()
+def evaluate_classifier(classifier, X_train, y_train, X_test, y_test):
+    classifier.fit(X_train, y_train)
+    y_pred = classifier.predict(X_test)
+    not_predicted = set(y_test) - set(y_pred)
+    f_score = f1_score(y_test, y_pred, average='weighted', labels=np.unique(y_pred))
+    accuracy = accuracy_score(y_test, y_pred)
+    print("Classes not predicted:", str(not_predicted), str(len(not_predicted)))
+    print("F-score:", str(f_score))
+    print("Accuracy:", str(accuracy))
+    del classifier, y_pred
+    gc.collect()
+    return f_score, accuracy
+df, le = load_dataset('10k.anon.csv')
+X_train, X_test, y_train, y_test = train_test_split(df.iloc[:, :-1], df['app_name'], test_size=0.4)
+plot_class_frequency(y_train, y_test)
+print("\n*** KNN ***")
+knn_classifier = KNeighborsClassifier(n_neighbors=5, weights='uniform', algorithm='kd_tree', leaf_size=30)
+evaluate_classifier(knn_classifier, X_train, y_train, X_test, y_test)
+print("\n*** Naive Bayes (Gaussian) ***")
+nb_classifier = GaussianNB()
+evaluate_classifier(nb_classifier, X_train, y_train, X_test, y_test)
+print("\n*** Multilayer Perceptron ***")
+mlp_classifier = MLPClassifier(hidden_layer_sizes=(100,), activation='relu', solver='lbfgs', max_iter=200, shuffle=True)
+evaluate_classifier(mlp_classifier, X_train, y_train, X_test, y_test)
+print("\n*** Random Forest ***")
+rf_classifier = RandomForestClassifier(n_estimators=100, criterion='gini', class_weight='balanced')
+rf_f_score, rf_accuracy = evaluate_classifier(rf_classifier, X_train, y_train, X_test, y_test)
+del rf_classifier
+gc.collect()
+print("\nCross-validated accuracy:")
+rf_classifier_cv = RandomForestClassifier(n_estimators=100, criterion='gini', class_weight='balanced')
+scores = cross_val_score(rf_classifier_cv, df.iloc[:, :-1], df['app_name'], cv=5, scoring='accuracy')
+print(scores)

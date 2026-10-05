@@ -1,0 +1,98 @@
+from bs4 import BeautifulSoup
+from urllib.request import urlopen
+
+
+def get_all_links(web_page, file_names, file_common_names, file_symptoms):
+    clarke_start = urlopen(web_page).read()
+    soup = BeautifulSoup(clarke_start, "html.parser")
+    links = soup.find_all("a")
+    return_point = len(links) - 1
+
+    for idx, link in enumerate(links):
+        if len(link.get("href")) == 5:
+            continue
+        if link.get("href")[-9:] == "index.htm":
+            find_exit = str(links[idx])
+            if ">H.I.<" in find_exit:
+                return
+            continue
+
+        if idx == return_point:
+            return
+
+        page_url = "http://www.homeoint.org/clarke/" + link.get("href")
+        remedy_read = urlopen(page_url).read()
+        soup2 = BeautifulSoup(remedy_read, "html.parser")
+        paragraphs = soup2.find_all("p")
+
+        name = str(paragraphs[2])
+        name_text = extract_text(name)
+        print(name_text)
+        file_names.write(name_text + "\n")
+
+        common_names = str(paragraphs[3])
+        common_names_text = extract_text(common_names)
+        common_names_text = format_common_names(common_names_text)
+        file_common_names.write(common_names_text + "\n")
+
+        diseases = extract_diseases(soup2)
+        file_symptoms.write(diseases + "\n")
+        break
+
+
+def extract_text(tag_text):
+    start = stop = 0
+    count_stop = 0
+    for pos, char in enumerate(tag_text):
+        if char == ">":
+            start = pos + 1
+        elif char == "<":
+            count_stop += 1
+            if count_stop == 2:
+                stop = pos
+                break
+    return tag_text[start:stop]
+
+
+def format_common_names(common_names):
+    common_names = common_names[1:].replace("(", "").replace(")", "")
+    return common_names
+
+
+def extract_diseases(soup):
+    info = str(soup)
+    pass_clinical = False
+    start_diseases = stop_diseases = 0
+
+    for pos, char in enumerate(info):
+        if info[pos:pos + 8] == "Clinical":
+            pass_clinical = True
+        if pass_clinical and info[pos:pos + 4] == "</b>":
+            start_diseases = pos + 4
+        if start_diseases > 0 and info[pos:pos + 13] == "</blockquote>":
+            stop_diseases = pos
+            break
+
+    diseases_text = info[start_diseases:stop_diseases]
+    cleaned_diseases = clean_text(diseases_text)
+    return cleaned_diseases
+
+
+def clean_text(text):
+    text = text.replace("<i>", " 2").replace('<font color="', "").replace("</font>", "")
+    text = text.replace("</i>", "").replace("\n", "").replace("        ", " ")
+    return text
+
+
+def main():
+    with open("h-remedies.csv", "w") as file_names, \
+         open("commonRemedyNames.csv", "w") as file_common_names, \
+         open("remedy-symptoms.csv", "w") as file_symptoms:
+
+        for char_code in range(97, 123):  # ASCII codes for 'a' to 'z'
+            web_page = "http://www.homeoint.org/clarke/" + chr(char_code) + ".htm"
+            get_all_links(web_page, file_names, file_common_names, file_symptoms)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,11 @@
+from vertex import Vertex
+class Graph:
+    def __init__(self, n):
+        self.adjacency_list = [[] for _ in range(n)]
+    def insert(self, u, v, w):
+        new_vertex = Vertex()
+        new_vertex.id = v
+        new_vertex.parentId = u
+        new_vertex.distance = w
+        new_vertex.position = 0
+        self.adjacency_list[u - 1].append(new_vertex)

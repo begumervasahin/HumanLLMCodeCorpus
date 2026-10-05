@@ -1,0 +1,57 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+# Parameters for the Heston model
+T = 1                # Time to maturity
+s0 = 100             # Initial stock price
+v0 = 0.12            # Initial volatility
+kappa = 2            # Rate of mean reversion for volatility
+theta = 0.15         # Long-term average volatility
+sigma = 0.8          # Volatility of volatility
+r = 0                # Risk-free interest rate
+
+# Function to simulate one path of the Heston model using Euler discretization
+def simulate_path_Heston(N):
+    dt = T / N
+    ST = s0
+    VT = v0
+    for _ in range(N):
+        # Euler discretization for stock price and volatility
+        ST += r * ST * dt + max(VT, 0) ** 0.5 * ST * dt ** 0.5 * np.random.randn()
+        VT += kappa * (theta - VT) * dt + sigma * max(VT, 0) ** 0.5 * dt ** 0.5 * np.random.randn()
+    return ST
+
+# Strikes and number of steps for simulations
+strikes = [70, 90, 100, 110, 130]
+num_simulations = [100, 500, 1000, 5000, 10000]
+num_steps = [int(n ** 0.5) for n in num_simulations]
+
+# Calculate option price estimations for different strikes and numbers of simulations
+option_prices = []
+execution_times = []
+
+for strike in strikes:
+    prices_for_strike = []
+    times_for_strike = []
+    for num_steps, num_sims in zip(num_steps, num_simulations):
+        start_time = time.time()
+        sim_results = [simulate_path_Heston(num_steps) for _ in range(num_sims)]
+        option_price = np.mean([np.exp(-r * T) * max(ST - strike, 0) for ST in sim_results])
+        end_time = time.time()
+        prices_for_strike.append(option_price)
+        times_for_strike.append(end_time - start_time)
+    option_prices.append(prices_for_strike)
+    execution_times.append(times_for_strike)
+
+# Display results
+print("Option Price Estimations:")
+for i, strike in enumerate(strikes):
+    print(f"Strike: {strike}, Prices: {option_prices[i]}")
+
+print("\nExecution Times:")
+for i, strike in enumerate(strikes):
+    print(f"Strike: {strike}, Times: {execution_times[i]}")
+
+# Correct option prices for comparison
+correct_prices = [32.70326, 18.92499, 13.984957, 10.263762, 5.5888102]

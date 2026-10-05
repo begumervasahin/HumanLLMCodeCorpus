@@ -1,0 +1,39 @@
+class Node:
+    def __init__(self, data=None):
+        self.data = data
+        self.next = None
+class LinkedList:
+    def __init__(self):
+        self.head = Node()
+    def is_empty(self):
+        return self.head.next is None
+    def add(self, item):
+        new_node = Node(item)
+        new_node.next = self.head.next
+        self.head.next = new_node
+    def size(self):
+        current = self.head.next
+        count = 0
+        while current:
+            count += 1
+            current = current.next
+        return count
+    def search(self, item):
+        current = self.head.next
+        while current:
+            if current.data == item:
+                return True
+            current = current.next
+        return False
+    def remove(self, item):
+        current = self.head.next
+        previous = None
+        while current:
+            if current.data == item:
+                if previous:
+                    previous.next = current.next
+                else:
+                    self.head.next = current.next
+                return
+            previous = current
+            current = current.next

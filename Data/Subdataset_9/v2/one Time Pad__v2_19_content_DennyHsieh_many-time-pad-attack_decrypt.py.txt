@@ -1,0 +1,39 @@
+def hex_to_str(hex_str):
+    return ''.join(chr(int(hex_str[i:i+2], 16)) for i in range(0, len(hex_str), 2))
+
+def str_xor(a, b):
+    return ''.join(chr(ord(x) ^ ord(y)) for x, y in zip(a, b))
+
+def decrypt_messages(ciphertexts, challenge_ciphertext):
+    challenge_message = 'Hackers should be judged by their acting, not bogus criteria.'
+    xor_key = str_xor(challenge_ciphertext, challenge_message)
+    for ciphertext in ciphertexts:
+        print(str_xor(ciphertext, xor_key))
+    print(challenge_message)
+
+if __name__ == '__main__':
+    ciphertexts = []
+    with open('msg', 'r') as file:
+        for line in file:
+            ciphertexts.append(line.strip().replace(' ', ''))
+
+    challenge_ciphertext = open('msg_challenge', 'r').read().replace(' ', '')
+
+    str_ciphertexts = [hex_to_str(ciphertext) for ciphertext in ciphertexts]
+    str_challenge_ciphertext = hex_to_str(challenge_ciphertext)
+
+    results = []
+    for i in range(len(str_challenge_ciphertext)):
+        chars = set()
+        for j in range(len(str_ciphertexts)):
+            if i < len(str_ciphertexts[j]):
+                char = chr(ord(str_ciphertexts[j][i]) ^ ord(str_challenge_ciphertext[i]))
+                if 'A' <= char <= 'z':
+                    new_char = chr(ord(char) ^ ord(' '))
+                    chars.add(new_char)
+        results.append(chars)
+
+    for chg_char in results:
+        print(chg_char)
+
+    decrypt_messages(str_ciphertexts, str_challenge_ciphertext)

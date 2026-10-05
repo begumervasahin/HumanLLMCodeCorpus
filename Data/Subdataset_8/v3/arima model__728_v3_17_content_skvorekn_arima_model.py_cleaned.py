@@ -1,0 +1,142 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.arima.model import ARIMA
+import pmdarima as pm
+def plot_original_and_acf(data):
+    fig, axes = plt.subplots(3, 2, figsize=(9, 7))
+    axes[0, 0].plot(data)
+    axes[0, 0].set_title('Original Series')
+    plot_acf(data, ax=axes[0, 1])
+    for i, diff_order in enumerate([1, 2]):
+        diff_series = data.diff(diff_order)
+        axes[i+1, 0].plot(diff_series)
+        axes[i+1, 0].set_title(f'{diff_order}st Order Differencing')
+        plot_acf(diff_series.dropna(), ax=axes[i+1, 1])
+    plt.show()
+def determine_number_of_diffs(data):
+    print("ADF Test for differencing:")
+    print(ndiffs(data, test='adf'))
+    print("KPSS Test for differencing:")
+    print(ndiffs(data, test='kpss'))
+    print("PP Test for differencing:")
+    print(ndiffs(data, test='pp'))
+def plot_pacf_for_diff_series(data):
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3))
+    diff_series = data.diff()
+    axes[0].plot(diff_series)
+    axes[0].set_title('1st Differencing')
+    plot_pacf(diff_series.dropna(), ax=axes[1])
+    plt.show()
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3))
+    diff_series = data.diff().diff()
+    axes[0].plot(diff_series)
+    axes[0].set_title('2nd Differencing')
+    plot_pacf(diff_series.dropna(), ax=axes[1])
+    plt.show()
+def analyze_residuals(model_fit):
+    residuals = pd.DataFrame(model_fit.resid)
+    fig, ax = plt.subplots(1, 2)
+    residuals.plot(title="Residuals", ax=ax[0])
+    residuals.plot(kind='kde', title='Density', ax=ax[1])
+    plt.show()
+def plot_forecast_vs_actual(data, fc, conf, train_size):
+    fc_series = pd.Series(fc, index=data[train_size:].index)
+    lower_series = pd.Series(conf[:, 0], index=data[train_size:].index)
+    upper_series = pd.Series(conf[:, 1], index=data[train_size:].index)
+    plt.figure(figsize=(12, 5), dpi=100)
+    plt.plot(data[:train_size], label='Training')
+    plt.plot(data[train_size:], label='Actual')
+    plt.plot(fc_series, label='Forecast')
+    plt.fill_between(lower_series.index, lower_series, upper_series,
+                     color='k', alpha=.15)
+    plt.title('Forecast vs Actuals')
+    plt.legend(loc='upper left', fontsize=8)
+    plt.show()
+def compute_forecast_accuracy(fc, actual):
+    mape = np.mean(np.abs(fc - actual) / np.abs(actual))
+    me = np.mean(fc - actual)
+    mae = np.mean(np.abs(fc - actual))
+    mpe = np.mean((fc - actual) / actual)
+    rmse = np.mean((fc - actual) ** 2) ** .5
+    corr = np.corrcoef(fc, actual)[0, 1]
+    mins = np.amin(np.hstack([fc[:, None], actual[:, None]]), axis=1)
+    maxs = np.amax(np.hstack([fc[:, None], actual[:, None]]), axis=1)
+    minmax = 1 - np.mean(mins / maxs)
+    acf1 = acf(fc - actual)[1]
+    return {'MAPE': mape, 'ME': me, 'MAE': mae,
+            'MPE': mpe, 'RMSE': rmse, 'ACF1': acf1,
+            'Corr': corr, 'Min-Max': minmax}
+def fit_arima_model_and_forecast(data, order, train_size):
+    model = ARIMA(data[:train_size], order=order)
+    fitted = model.fit(disp=-1)
+    fc, se, conf = fitted.forecast(len(data) - train_size, alpha=0.05)
+    return fc, conf
+def perform_auto_arima(data):
+    model_auto = pm.auto_arima(data, start_p=1, start_q=1,
+                               test='adf',
+                               max_p=3, max_q=3,
+                               m=1,
+                               d=None,
+                               seasonal=False,
+                               start_P=0,
+                               D=0,
+                               trace=True,
+                               error_action='ignore',
+                               suppress_warnings=True,
+                               stepwise=True)
+    return model_auto
+def plot_auto_arima_diagnostics(model_auto):
+    model_auto.plot_diagnostics(figsize=(7, 5))
+    plt.show()
+def perform_auto_arima_forecasting(model_auto, data, n_periods):
+    fc, confint = model_auto.predict(n_periods=n_periods, return_conf_int=True)
+    index_of_fc = np.arange(len(data), len(data) + n_periods)
+    fc_series = pd.Series(fc, index=index_of_fc)
+    lower_series = pd.Series(confint[:, 0], index=index_of_fc)
+    upper_series = pd.Series(confint[:, 1], index=index_of_fc)
+    return fc_series, lower_series, upper_series
+def perform_sarima_modeling(data, seasonal_index):
+    smodel = pm.auto_arima(data[['value']], exogenous=data[['seasonal_index']],
+                           start_p=1, start_q=1,
+                           test='adf',
+                           max_p=3, max_q=3, m=12,
+                           start_P=0, seasonal=True,
+                           d=None, D=1, trace=True,
+                           error_action='ignore',
+                           suppress_warnings=True,
+                           stepwise=True)
+    return smodel
+def perform_sarimax_forecasting(smodel, data, n_periods):
+    fitted, confint = smodel.predict(n_periods=n_periods,
+                                     exogenous=np.tile(data.seasonal_index, 2).reshape(-1, 1),
+                                     return_conf_int=True)
+    index_of_fc = pd.date_range(data.index[-1], periods=n_periods, freq='MS')
+    fitted_series = pd.Series(fitted, index=index_of_fc)
+    lower_series = pd.Series(confint[:, 0], index=index_of_fc)
+    upper_series = pd.Series(confint[:, 1], index=index_of_fc)
+    return fitted_series, lower_series, upper_series
+df = pd.read_csv('wwwusage.csv', names=['value'], header=0)
+result_adf = adfuller(df.value.dropna())
+print('ADF Statistic: %f' % result_adf[0])
+print('p-value: %f' % result_adf[1])
+plot_original_and_acf(df.value)
+determine_number_of_diffs(df.value)
+plot_pacf_for_diff_series(df.value)
+model_order = (1, 1, 2)
+train_size = 85
+fc, conf = fit_arima_model_and_forecast(df.value, model_order, train_size)
+plot_forecast_vs_actual(df.value, fc, conf, train_size)
+print(compute_forecast_accuracy(fc, df.value[train_size:].values))
+model_auto = perform_auto_arima(df.value)
+print(model_auto.summary())
+plot_auto_arima_diagnostics(model_auto)
+n_periods = 24
+fc_series, lower_series, upper_series = perform_auto_arima_forecasting(model_auto, df.value, n_periods)
+plt.plot(df.value)
+plt.plot(fc_series, color='darkgreen')
+plt.fill_between(lower_series.index, lower_series, upper_series, color='k', alpha=.15)
+plt.title("Final Forecast of WWW Usage")
+plt.show()

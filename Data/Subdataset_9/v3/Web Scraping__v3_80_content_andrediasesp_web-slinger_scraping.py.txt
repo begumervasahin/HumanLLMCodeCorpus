@@ -1,0 +1,57 @@
+import re
+from bs4 import BeautifulSoup
+from downloading import download_webpage  # Custom module for downloading webpages
+
+def scrape_url_with_regex(url, search_regex):
+    """
+    Scrape specific URLs using a search regex.
+    Returns a list of all matches found.
+    """
+    html_content = download_webpage(url)
+    matches = re.findall(search_regex, html_content)
+    return matches
+
+def create_soup_from_html(html_content):
+    """
+    Create a BeautifulSoup object from HTML content.
+    """
+    soup = BeautifulSoup(html_content, 'html5lib')
+    return soup
+
+def extract_product_info(soup):
+    """
+    Extract product information from a BeautifulSoup object.
+    Returns a list of tuples containing product names and prices.
+    """
+    products = soup.find_all("div", {"class": "w-product"})
+    
+    # Write the soup object to a file for inspection
+    with open("soup_object.html", 'w') as soup_file:
+        soup_file.write(str(products))
+    
+    product_info = []
+    for product in products:
+        game = product.find("img")['title']
+        price = product.find("span", class_="w-currentPrice").text
+        product_info.append((game, price))
+    
+    return product_info
+
+def main():
+    # URL of the webpage to scrape
+    url = 'https://www.worten.pt/promocoes?categoria=Gaming%20e%20Entretenimento&tipologia=Jogos%20PS4&page=1'
+    
+    # Download the webpage content
+    page_content = download_webpage(url)
+    
+    # Create a BeautifulSoup object from the HTML content
+    soup = create_soup_from_html(page_content)
+    
+    # Extract product information
+    product_info = extract_product_info(soup)
+    
+    # Print the extracted information
+    print(product_info)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.optimize as op
+import nonlinear_mass_faster as nlm
+
+# Activate interactive mode for plotting
+plt.ion()
+plt.show()
+
+# Load power spectrum data
+pk_fiducial = np.loadtxt('pklin/default.txt')
+
+# Constants
+om_fid = 0.3096  # Matter density parameter
+delta_c = 1.686  # Critical density threshold
+rs = np.linspace(0, 5, int(4e4) + 1)  # Distance range
+y = np.linspace(0, 2, 100)  # Grid for kernel computation
+dy = y[1] - y[0]  # Step size for grid
+ysqkernel = y * y * nlm.kernel(y)  # Kernel computation
+cflinr_fid = nlm.pk_to_xi(pk_fiducial[:, 0], pk_fiducial[:, 1], rs)  # Compute correlation function
+interp_cf_lin_fid = lambda x: np.interp(x, rs, cflinr_fid)  # Interpolation function
+zs = np.linspace(0, 6, 61)  # Redshift values
+
+# Normalize power spectrum
+norm = np.interp(1.0, pk_fiducial[:, 0], pk_fiducial[:, 1], left=np.nan, right=np.nan)
+sigma2_norm = nlm.sigma2_prefactor(-2, norm)
+
+# Write results to file
+with open('fiducial_rnl.txt', 'w') as f:
+    for j, z in enumerate(zs):
+        # Compute growth factor
+        Dz_fid = nlm.growth_factor(z, om_fid)
+        
+        # Compute analytical nonlinear scale
+        rnl_analytic = op.brentq(lambda R: nlm.sigma_pl(sigma2_norm, -2, R) - delta_c / Dz_fid, 0.01, 8.0)
+        
+        # Set starting point for numerical search
+        if z > 5 or rnl_analytic < 0:
+            start = 0.01
+        else:
+            start = rnl_analytic
+        
+        # Compute nonlinear scale using power spectrum
+        Rnl_fid = op.brentq(lambda R: nlm.sigma_Pk(R, pk_fiducial[:, 0], np.log(pk_fiducial[:, 0]),
+                                                   pk_fiducial[:, 1]) - delta_c / Dz_fid, start, 5)
+        
+        # Write result to file
+        f.write('%.2f %15.10f\n' % (z, Rnl_fid))

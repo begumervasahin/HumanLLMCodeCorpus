@@ -1,0 +1,53 @@
+import json
+import http.client
+import string
+class RedditScraper:
+    def __init__(self):
+        self.depth = 0
+    def get_documents(self, subreddit, quantity):
+        subreddit_data = self._get_subreddit_data(subreddit)
+        documents = []
+        for i in range(min(quantity, len(subreddit_data))):
+            post_permalink = subreddit_data[i]['data']['permalink']
+            post_comments = self._get_comments_for_post(post_permalink)
+            documents.extend(post_comments)
+        return documents
+    def _get_subreddit_data(self, subreddit):
+        with http.client.HTTPSConnection('www.reddit.com') as connection:
+            connection.request("GET", f"/r/{subreddit}/hot/.json")
+            response = connection.getresponse()
+            subreddit_data = json.loads(response.read())['data']['children']
+        return subreddit_data
+    def _get_comments_for_post(self, post_link):
+        post_data = self._get_post_data(post_link)
+        all_comments = []
+        for comment in post_data['data']['children']:
+            if 'body' in comment['data']:
+                self.depth = 0
+                comment_bodies = self._recurse_comments(comment)
+                all_comments.extend(comment_bodies)
+        return all_comments
+    def _get_post_data(self, post_link):
+        with http.client.HTTPSConnection('www.reddit.com') as connection:
+            connection.request("GET", f"{post_link}/.json?limit=500")
+            response = connection.getresponse()
+            post_data = json.loads(response.read())
+        return post_data
+    def _recurse_comments(self, comment):
+        comment_bodies = []
+        body = ''.join(filter(lambda x: x in string.printable, comment['data']['body']))
+        comment_bodies.append(body)
+        if 'replies' in comment['data'] and comment['data']['replies'] != '' and self.depth < 1:
+            for reply in comment['data']['replies']['data']['children']:
+                if 'kind' in reply and reply['kind'] != 'more':
+                    self.depth += 1
+                    reply_comments = self._recurse_comments(reply)
+                    comment_bodies.extend(reply_comments)
+        return comment_bodies
+if __name__ == "__main__":
+    reddit_scraper = RedditScraper()
+    subreddit = 'Python'
+    quantity = 3
+    documents = reddit_scraper.get_documents(subreddit, quantity)
+    for document in documents:
+        print(document)

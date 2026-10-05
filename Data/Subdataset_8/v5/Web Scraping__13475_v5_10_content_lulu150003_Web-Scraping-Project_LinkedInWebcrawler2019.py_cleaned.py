@@ -1,0 +1,51 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import time
+from bs4 import BeautifulSoup
+import pandas as pd
+COMPANY_ID = input("Enter Company ID: ")
+USERNAME = input("Enter username: ")
+PASSWORD = input("Enter password: ")
+EMPLOYEE_LIMIT = 1000
+LINKEDIN_URL = 'https:
+browser = webdriver.Firefox()
+browser.get(LINKEDIN_URL)
+time.sleep(3)
+email_input = browser.find_element_by_name('session_key')
+password_input = browser.find_element_by_name('session_password')
+email_input.send_keys(USERNAME + Keys.RETURN)
+password_input.send_keys(PASSWORD + Keys.RETURN)
+time.sleep(3)
+search_url = f"{LINKEDIN_URL}/search/results/people/?facetCurrentCompany=%5B%22{COMPANY_ID}%22%5D"
+browser.get(search_url)
+time.sleep(3)
+browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+current_url = 'url_placeholder'
+df = pd.DataFrame(columns=['name', 'title', 'location', 'profile'])
+while True:
+    if 'page=100' in current_url:
+        break
+    previous_url = current_url
+    current_url = browser.current_url
+    if current_url == previous_url:
+        break
+    page = BeautifulSoup(browser.page_source, 'lxml')
+    page_names = page.find_all('span', class_='actor-name')
+    page_titles = page.find_all('p', class_='subline-level-1')
+    page_locations = page.find_all('p', class_='subline-level-2')
+    page_profiles = page.find_all('a', class_='search-result__result-link')
+    names = [name.text for name in page_names]
+    titles = [title.text.replace('\n', '') for title in page_titles]
+    locations = [location.text.replace('\n', '') for location in page_locations]
+    profiles = [f"{LINKEDIN_URL}{profile['href']}" for profile in page_profiles][::2]
+    temp_df = pd.DataFrame({'name': names, 'title': titles, 'location': locations, 'profile': profiles})
+    temp_df = temp_df[temp_df['name'] != 'LinkedIn Member']
+    df = df.append(temp_df)
+    if df.shape[0] >= EMPLOYEE_LIMIT:
+        break
+    next_button = browser.find_element_by_class_name('next')
+    next_button.click()
+    time.sleep(5)
+df.reset_index(drop=True, inplace=True)
+df.to_csv("output_search.csv", index=False)
+browser.quit()

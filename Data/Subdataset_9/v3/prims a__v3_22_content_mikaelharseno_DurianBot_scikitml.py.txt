@@ -1,0 +1,71 @@
+import pandas as pd
+import pickle
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+def load_data(file_path):
+    """Load data from a file."""
+    data = pd.read_csv(file_path, sep=" ", header=None)
+    data.columns = ['worst_case_prob', 'scout_report', 'actual_value']  # Add column names for clarity
+    return data
+
+def train_logistic_regression(X_train, Y_train):
+    """Train a Logistic Regression model."""
+    model = LogisticRegression()
+    model.fit(X_train, Y_train)
+    return model
+
+def save_model(model, filename):
+    """Save the trained model to a file."""
+    with open(filename, 'wb') as file:
+        pickle.dump(model, file)
+
+def load_model(filename):
+    """Load a trained model from a file."""
+    with open(filename, 'rb') as file:
+        loaded_model = pickle.load(file)
+    return loaded_model
+
+def evaluate_model(model, X_test, Y_test):
+    """Evaluate the model's accuracy on the test set."""
+    accuracy = model.score(X_test, Y_test)
+    return accuracy
+
+def main():
+    # Set up file path
+    file_directory = os.path.dirname(os.path.abspath(__file__))       
+    file_path = os.path.join(file_directory, 'results.txt')
+
+    # Load data
+    data = load_data(file_path)
+
+    # Split data into features and target
+    features, target = data.iloc[:, :2], data.iloc[:, 2]
+
+    # Split data into training and testing sets
+    test_size = 0.2
+    X_train, X_test, Y_train, Y_test = train_test_split(features, target, test_size=test_size)
+
+    # Train a Logistic Regression model
+    model = train_logistic_regression(X_train, Y_train)
+
+    # Predict probabilities for the test set
+    predicted_probabilities = model.predict_proba(X_test)
+    print("Predicted Probabilities:", predicted_probabilities)        
+
+    # Evaluate the model's accuracy on the test set   
+    accuracy = evaluate_model(model, X_test, Y_test)
+    print("Model Accuracy:", accuracy)
+
+    # Save the trained model to a file
+    model_filename = 'finalized_model.sav'
+    save_model(model, model_filename)
+
+    # Load the saved model from file and evaluate it
+    loaded_model = load_model(model_filename)
+    loaded_model_accuracy = evaluate_model(loaded_model, X_test, Y_test)
+    print("Loaded Model Accuracy:", loaded_model_accuracy)
+
+if __name__ == "__main__":
+    main()

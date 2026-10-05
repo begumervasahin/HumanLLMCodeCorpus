@@ -1,0 +1,42 @@
+# Import necessary functions from ecc_simple module
+from ecc_simple import set_p256_param, times, add, subtract, encode, decode
+import random
+
+def generate_key_pair():
+    """Generate a random private key and corresponding public key."""
+    private_key = random.randrange(1, p)
+    public_key = times(private_key, g)
+    return private_key, public_key
+
+# Set parameters for the elliptic curve P-256
+set_p256_param()
+
+# Define prime modulus p and generator point g
+p = 115792089210356248762697446949407573530086143415290314195533631308867097853951      
+x = 48439561293906451759052585252797914202762949526041747995844080717082404635286       
+y = 36134250956749795798585127919587881956611106672985015071877198253568414405109       
+g = (x, y)
+
+# Generate random private keys for Alice and Bob, and their public keys
+private_key_Alice, public_key_Alice = generate_key_pair()
+private_key_Bob, public_key_Bob = generate_key_pair()
+
+# Generate a random message
+message = 32454324564335645345643
+
+# Calculate shared keys for Alice and Bob
+shared_key_Alice = times(private_key_Alice, public_key_Bob)
+shared_key_Bob = times(private_key_Bob, public_key_Alice)
+
+# Encrypt the message using ElGamal
+c_1 = public_key_Alice
+c_2 = add(encode(message, 100), shared_key_Alice)
+ciphertext = (c_1, c_2)
+
+# Decrypt the ciphertext to obtain the plaintext message
+plaintext = subtract(ciphertext[1], shared_key_Bob)
+decoded_message = decode(plaintext, 100)
+
+# Print original and decrypted messages
+print("Original Message:", message)
+print("Decrypted Message:", decoded_message)

@@ -1,0 +1,75 @@
+import json
+from os import listdir
+from os.path import isfile, join
+CONFIG_DEFAULT = "graph1.json"
+def run_project():
+    config = CONFIG_DEFAULT
+    print_main_menu(config)
+    while True:
+        user_input = input().strip()
+        for char in user_input:
+            if char == "c":
+                config = choose_configuration()
+            elif char in ("t", "n"):
+                graph = load_and_create_graph(config)
+                start_algorithm(graph, char)
+            elif char == "h":
+                display_help()
+            elif char == "m":
+                print_main_menu(config)
+            elif char == "q":
+                return
+def print_main_menu(config):
+    print("py_graphpath")
+    print("-----------------------------------------------------")
+    print(f"c : Choisir la configuration (Actuel : {config})")
+    print("t : Lancer l'algorithme Point de rendez-vous optimal par le temps")
+    print("n : Lancer l'algorithme Point de rendez-vous optimal par les déplacements")
+    print("h : pour accéder à l'aide")
+    print("m : pour afficher le menu")
+    print("q : pour arrêter le programme.")
+def choose_configuration():
+    print("Configurations disponibles :")
+    available_configs = get_available_configurations()
+    for config in available_configs:
+        print(config)
+    while True:
+        selected_config = input("").strip()
+        if selected_config in available_configs:
+            print("Configuration changée avec succès.")
+            return selected_config
+        else:
+            print("Cette configuration n'existe pas.")
+def get_available_configurations():
+    return [f for f in listdir('./cfg') if isfile(join('./cfg', f))]
+def display_help():
+    print("Aide")
+    print("Pour un exemple de la syntaxe de configuration, voir graph_sujet.json")
+    print("Le premier algorithme calcule le point de rendez-vous le plus optimal")
+    print("pour que les deux personnes se rencontrent sur ce point en temps minimum.")
+    print("Le second algorithme calcule le point de rendez-vous le plus optimal")
+    print("pour que les deux personnes se rencontrent sur ce point en un nombre")
+    print("de déplacements minimum.")
+    print("Il est possible de saisir plusieurs caractères à la suite dans le menu du programme.")
+def start_algorithm(graph, choice):
+    if graph.error != 0:
+        if graph.error == 1:
+            print("Erreur dans le fichier configuration (nbNoeuds/nomSommets)")
+        elif graph.error == 2:
+            print("Erreur dans le fichier configuration (nbLieuxRdv/nomRdv)")
+    if choice == "t":
+        result = graph.rdv_optimal()
+        print_rdv_result(result, "par le temps")
+    elif choice == "n":
+        result = graph.rdv_optimal2()
+        print_rdv_result(result, "par les déplacements")
+def print_rdv_result(result, criteria):
+    if result:
+        print(f"Le point de rendez-vous le plus optimal {criteria} est : {result}")
+    else:
+        print("Pas de point de rendez-vous compatible")
+def load_and_create_graph(config):
+    with open('./cfg/' + config, 'r') as fichier:
+        return Graph(json.load(fichier))
+if __name__ == '__main__':
+    run_project()

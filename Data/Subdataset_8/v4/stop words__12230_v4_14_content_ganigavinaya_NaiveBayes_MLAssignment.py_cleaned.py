@@ -1,0 +1,35 @@
+import sys
+import LRwithStopWords
+import LRwithoutStopWords
+import NBwithStopWords
+import NBwithoutStopWords
+def main():
+    if len(sys.argv) < 6:
+        print("Please input command line arguments:")
+        print("[training ham path] [training spam path] [test ham path] [test spam path] [stopwords]\n")
+        return
+    else:
+        trainingHamPath = sys.argv[1]
+        trainingSpamPath = sys.argv[2]
+        testHamPath = sys.argv[3]
+        testSpamPath = sys.argv[4]
+        if sys.argv[5].lower() in ("y", "yes"):
+            stopWords = True
+        else:
+            stopWords = False
+        if stopWords:
+            print("------------------------------------------------")
+            print("Naive Bayes removing stop words")
+            nb = NBwithStopWords.NaiveBayes(trainingHamPath, trainingSpamPath, testHamPath, testSpamPath)
+            nb.run()
+            nb.train()
+            nb.test()
+        else:
+            print("------------------------------------------------")
+            print("Naive Bayes without removing stop words")
+            nb = NBwithoutStopWords.NaiveBayes(trainingHamPath, trainingSpamPath, testHamPath, testSpamPath)
+            nb.run()
+            nb.train()
+            nb.test()
+if __name__ == "__main__":
+    main()

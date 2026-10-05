@@ -1,0 +1,75 @@
+def factorial_recursive(n):
+    if n == 0:
+        return 1
+    else:
+        return n * factorial_recursive(n - 1)
+def factorial_cps(n, cont):
+    if n == 0:
+        return cont(1)
+    else:
+        return factorial_cps(n - 1, lambda value: cont(n * value))
+def end_continuation(n):
+    return n
+def trampoline(f, *args):
+    result = f(*args)
+    while callable(result):
+        result = result()
+    return result
+def factorial_cps_thunked(n, cont):
+    if n == 0:
+        return cont(1)
+    else:
+        return lambda: factorial_cps_thunked(
+            n - 1,
+            lambda value: lambda: cont(n * value)
+        )
+def fibonacci_recursive(n):
+    if n <= 2:
+        return 1
+    else:
+        return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+def fibonacci_cps(n, cont):
+    if n <= 2:
+        return cont(1)
+    else:
+        return fibonacci_cps(
+            n - 1,
+            lambda value1: fibonacci_cps(
+                n - 2,
+                lambda value2: cont(value1 + value2)
+            )
+        )
+def fibonacci_cps_thunked(n, cont):
+    if n <= 2:
+        return cont(1)
+    else:
+        return lambda: fibonacci_cps_thunked(
+            n - 1,
+            lambda value1: fibonacci_cps_thunked(
+                n - 2,
+                lambda value2: cont(value1 + value2)
+            )
+        )
+def main():
+    try:
+        print(factorial_recursive(1000))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+    try:
+        print(factorial_cps(1000, end_continuation))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+    try:
+        print(trampoline(factorial_cps_thunked(1000, end_continuation)))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+    try:
+        print(fibonacci_cps(43, end_continuation))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+    try:
+        print(trampoline(fibonacci_cps_thunked(43, end_continuation)))
+    except RecursionError as e:
+        print(f'RecursionError: {e}')
+if __name__ == '__main__':
+    main()

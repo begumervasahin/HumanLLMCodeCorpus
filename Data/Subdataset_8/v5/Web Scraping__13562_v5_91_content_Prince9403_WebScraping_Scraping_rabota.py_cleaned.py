@@ -1,0 +1,83 @@
+import requests
+import re
+import time
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+def check_if_appropriate(vacancy_name):
+    if not vacancy_name:
+        return False
+    keywords = ["analyst", "scientist", "Ð°Ð½Ð°Ð»Ð¸ÑÐ¸Ðº", "machin.*learn", "Ð¼Ð°ÑÐ¸Ð½.*Ð¾Ð±ÑÑ", "Ð¼Ð°ÑÐ¸Ð½.*Ð½Ð°Ð²Ñ", "seo"]
+    return any(re.search(keyword, vacancy_name.lower()) for keyword in keywords)
+def get_requirements_from_html(text):
+    if not text:
+        return None
+    pattern = r"<p.*(ÑÑÐµÐ±Ð¾Ð²Ð°Ð½Ð¸Ñ|requirements|Ð²Ð¸Ð¼Ð¾Ð³Ð¸).*?<ul>(.*?)</ul>"
+    requirements = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+    if requirements:
+        requirements_list = re.split(r"<li>", requirements.group(2))
+        return [re.sub(r"<.*?>", "", req).strip().replace("&nbsp;", " ") for req in requirements_list if req.strip()]
+    return None
+def scrape_vacancy_details(vacancy):
+    vacancy_title = vacancy.find('a', {'class': 'f-visited-enable ga_listing'})
+    vacancy_employer = vacancy.find('a', {'class': 'f-text-dark-bluegray f-visited-enable'})
+    vacancy_salary = vacancy.find('p', {'class': 'fd-beefy-soldier -price'})
+    vacancy_link = vacancy.find('a', {'class': 'f-visited-enable ga_listing'})
+    if vacancy_title:
+        vacancy_title = vacancy_title.text.strip()
+    if vacancy_employer:
+        vacancy_employer = vacancy_employer.text.strip()
+    if vacancy_salary:
+        vacancy_salary = vacancy_salary.text.strip()
+    if vacancy_link:
+        vacancy_link = vacancy_link.get('href')
+    return vacancy_title, vacancy_employer, vacancy_salary, vacancy_link
+def scrape_vacancies(page_number):
+    url = f"https:
+    response = requests.get(url)
+    if not response.ok:
+        return None
+    bsObj = BeautifulSoup(response.text, "html.parser")
+    return bsObj.findAll("article", {"class": "f-vacancylist-vacancyblock"})
+def main():
+    start_time = time.time()
+    max_num_faults = 40
+    output_file = open("rabota_analyst.txt", "w")
+    num_faults = 0
+    vacancy_number = 0
+    page_number = 0
+    while num_faults <= max_num_faults:
+        page_number += 1
+        vacancy_list = scrape_vacancies(page_number)
+        if not vacancy_list:
+            num_faults += 1
+            continue
+        for vacancy in vacancy_list:
+            vacancy_title, vacancy_employer, vacancy_salary, vacancy_link = scrape_vacancy_details(vacancy)
+            if not check_if_appropriate(vacancy_title):
+                continue
+            vacancy_text = requests.get(f"https:
+            requirements_list = get_requirements_from_html(vacancy_text)
+            vacancy_number += 1
+            output_file.write(f"{vacancy_number}.\n")
+            if vacancy_title:
+                output_file.write(f"Vacancy title: {vacancy_title}\n")
+            if vacancy_employer:
+                output_file.write(f"Employer: {vacancy_employer}\n")
+            if vacancy_salary:
+                output_file.write(f"Salary: {vacancy_salary}\n")
+            if vacancy_link:
+                output_file.write(f"Vacancy link: https:
+            if requirements_list:
+                output_file.write("Requirements:\n")
+                for requirement in requirements_list:
+                    output_file.write(f"- {requirement}\n")
+                output_file.write("end requirements\n")
+            output_file.write(f"Page number: {page_number}\n\n")
+            print("Page number:", page_number, "   Vacancy:", vacancy_title)
+    output_file.close()
+    print("Finished!")
+    seconds = time.time() - start_time
+    hours = seconds / 3600
+    print(f"Program took {hours:.2f} hours")
+if __name__ == "__main__":
+    main()

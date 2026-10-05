@@ -1,0 +1,104 @@
+import cv2
+import numpy as np
+from PIL import Image
+import bfscore
+import math
+
+# Get the major version of OpenCV
+major = cv2.__version__.split('.')[0]
+
+# Set debug mode
+bDebug = False
+
+
+def fast_hist(a, b, n):
+    """
+    Compute a fast histogram.
+    """
+    k = (a >= 0) & (a < n)
+    return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)
+
+
+def compute_hist(img_path, gt_path, num_classes=18):
+    """
+    Compute the histogram of pixel values.
+    """
+    hist = np.zeros((num_classes, num_classes))
+
+    try:
+        label = Image.open(gt_path)
+        label_array = np.array(label, dtype=np.int32)
+        image = Image.open(img_path)
+        image_array = np.array(image, dtype=np.int32)
+
+        gtsz = label_array.shape
+        imgsz = image_array.shape
+
+        # Resize image if sizes don't match
+        if not gtsz == imgsz:
+            image = image.resize((gtsz[1], gtsz[0]), Image.ANTIALIAS)
+            image_array = np.array(image, dtype=np.int32)
+
+        hist += fast_hist(label_array, image_array, num_classes)
+    except Exception as err:
+        print(err)
+
+    return hist
+
+
+def show_result(hist, n_cl=18):
+    """
+    Show the evaluation result.
+    """
+    # Define class names
+    classes = ['background', 'hat', 'hair', 'sunglasses', 'upperclothes', 'skirt', 'pants', 'dress',
+               'belt', 'leftShoe', 'rightShoe', 'face', 'leftLeg', 'rightLeg', 'leftArm', 'rightArm', 'bag', 'scarf']
+
+    # Update class names based on number of classes
+    if n_cl == 23:
+        classes = ['bk', 'T-shirt', 'bag', 'belt', 'blazer', 'blouse', 'coat', 'dress', 'face', 'hair',
+                   'hat', 'jeans', 'legging', 'pants', 'scarf', 'shoe', 'shorts', 'skin', 'skirt',
+                   'socks', 'stocking', 'sunglass', 'sweater']
+    elif n_cl == 20:
+        classes = ['background', 'hat', 'hair', 'glove', 'sunglasses', 'upperclothes',
+                   'dress', 'coat', 'socks', 'pants', 'jumpsuits', 'scarf', 'skirt',
+                   'face', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'leftShoe',
+                   'rightShoe']
+
+    # Compute IoU for each class
+    num_cor_pix = np.diag(hist)
+    num_gt_pix = hist.sum(1)
+    print('IoU for each class:')
+    union = num_gt_pix + hist.sum(0) - num_cor_pix
+
+    for i in range(n_cl):
+        print('%-15s: %f' % (classes[i], num_cor_pix[i] / union[i]))
+    iu = num_cor_pix / (num_gt_pix + hist.sum(0) - num_cor_pix)
+    print('>>>', 'mean IoU', np.nanmean(iu))
+
+
+if __name__ == "__main__":
+    # Define file paths and number of classes
+    label_path = "gt_0.png"
+    pred_path = "pred_0.png"
+    n_classes = 18
+
+    # Compute histogram and show result for mean IoU
+    val_hist = compute_hist(pred_path, label_path, n_classes)
+    show_result(val_hist, n_classes)
+
+    print('\n')
+
+    # Compute BFScore and show result
+    bfscores, areas_gt = bfscore.bfscore(label_path, pred_path, 2)
+
+    print("\n>>>>BFscore:\n")
+    print("BFSCORE:", bfscores)
+    print("Per image BFscore:", np.nanmean(bfscores))
+
+    total_area = np.nansum(areas_gt)
+    fw_bfscore = [each[0] * each[1] if not (math.isnan(each[0]) or math.isnan(each[1])) else math.nan for each in zip(bfscores, areas_gt)]
+
+    print("\n>>>>Weighted BFscore:\n")
+    print("Weighted-BFSCORE:", fw_bfscore)
+    print("Per image Weighted-BFscore:", np.nansum(fw_bfscore) / total_area)

@@ -1,0 +1,70 @@
+import BST_Iter as BST
+def print_tree(bst, verbose=False):
+    print()
+    print("In order:  ", bst.inOrder())
+    print("Pre order: ", bst.preOrder())
+    print("BFS:       ", bst.BFS())
+    if verbose:
+        print("Nodes (in BFS order):")
+        nodes = bst.BFS()
+        for node in nodes:
+            bst.find(node).printNode()
+    print()
+def create_tree():
+    bst = BST.BinarySearchTree(BST.Node(7))
+    keys_to_insert = [4, 1, 6, 13, 15, 10]
+    for key in keys_to_insert:
+        bst.insert(key)
+    return bst, bst.getRoot()
+def test_tree():
+    bst, root = create_tree()
+    print("\nPrint:")
+    print("In order:  ", bst.inOrder())
+    print("Pre order: ", bst.preOrder())
+    print("Post order:", bst.postOrder())
+    print("BFS:       ", bst.BFS())
+    print("Root:", end=' ')
+    root.printNode()
+    print("\nFind:")
+    keys_to_search = [0, 1, 2, 5, 6, 7, 8, 12, 13, 14, 15, 20]
+    for key in keys_to_search:
+        print(key, bst.find(key))
+    print("\nNext:")
+    for key in keys_to_search:
+        print(key, bst.next(bst.find(key)))
+    print("\nPrevious:")
+    for key in keys_to_search:
+        print(key, bst.previous(bst.find(key)))
+    print("\nRange search:")
+    print("Range: 5 - 12")
+    for node in bst.rangeSearch(5, 12):
+        print(node, end=' ')
+    print("\nRotate right:")
+    print_tree(bst, True)
+    n = 7
+    bst.rotateRight(bst.find(n))
+    print("Rotating right", n)
+    print_tree(bst, True)
+    bst.find(n).printNode()
+    print("\nRotate left:")
+    print_tree(bst, True)
+    n = 1
+    bst.rotateLeft(bst.find(n))
+    print("Rotating left", n)
+    print_tree(bst, True)
+    bst.find(n).printNode()
+def test_case_1():
+    bst = BST.BinarySearchTree(BST.Node(3))
+    keys_to_insert = [1, 4, 5]
+    for key in keys_to_insert:
+        bst.insert(key)
+    print_tree(bst, True)
+    bst.delete(bst.find(3))
+    print_tree(bst, True)
+def test_case_2():
+    bst, root = create_tree()
+    print_tree(bst, True)
+    bst.delete(bst.find(7))
+    print_tree(bst, True)
+if __name__ == '__main__':
+    test_tree()

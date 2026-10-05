@@ -1,0 +1,26 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.cluster import AgglomerativeClustering
+import scipy.cluster.hierarchy as sch
+dataset = pd.read_csv('Mall_Customers.csv')
+features = dataset.iloc[:, [3, 4]].values
+dendrogram = sch.dendrogram(sch.linkage(features, method='ward'))
+plt.title('Dendrograms')
+plt.xlabel('Customers')
+plt.ylabel('Euclidean Distance')
+plt.show()
+cluster_model = AgglomerativeClustering(n_clusters=5, affinity='euclidean', linkage='ward')
+cluster_labels = cluster_model.fit_predict(features)
+plt.scatter(features[cluster_labels == 0, 0], features[cluster_labels == 0, 1], s=100, c='red', label='Careful')
+plt.scatter(features[cluster_labels == 1, 0], features[cluster_labels == 1, 1], s=100, c='blue', label='Standard')
+plt.scatter(features[cluster_labels == 2, 0], features[cluster_labels == 2, 1], s=100, c='green', label='Target')
+plt.scatter(features[cluster_labels == 3, 0], features[cluster_labels == 3, 1], s=100, c='cyan', label='Careless')
+plt.scatter(features[cluster_labels == 4, 0], features[cluster_labels == 4, 1], s=100, c='magenta', label='Sensible')
+plt.scatter(cluster_model.cluster_centers_[:, 0], cluster_model.cluster_centers_[:, 1], s=300, c='yellow', label='Centroids')
+plt.title('Clusters of customers')
+plt.xlabel('Annual Income (k$)')
+plt.ylabel('Spending Score (1-100)')
+plt.legend()
+plt.show()

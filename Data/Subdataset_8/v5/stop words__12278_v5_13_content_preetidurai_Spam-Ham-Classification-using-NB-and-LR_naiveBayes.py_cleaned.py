@@ -1,0 +1,87 @@
+from collections import Counter
+from NBHelper import *
+import math as m
+import sys
+class NaiveBayesClassifier:
+    def __init__(self, num_classes, class_names):
+        self.num_classes = num_classes
+        self.class_mapping = {i: class_names[i] for i in range(num_classes)}
+        self.vocabularies = {}
+        self.prior_probs = {}
+        self.cond_probs = {}
+        self.total_vocab_list = []
+        self.vocab_set = set()
+    def build_vocab(self, path_array):
+        num_of_mails = {}
+        total_mails = 0
+        for key, value in self.class_mapping.items():
+            mail_dict = get_mail_dictionary(path_array[key])
+            num_of_mails[value] = len(mail_dict)
+            total_mails += len(mail_dict)
+            self.vocabularies[value] = get_vocabulary(mail_dict)
+        for key, value in num_of_mails.items():
+            self.prior_probs[key] = value / total_mails
+    def build_vocab_without_stopwords(self, path_array, stop_word_path):
+        num_of_mails = {}
+        total_mails = 0
+        stop_words = read_stop_words(stop_word_path)
+        for key, value in self.class_mapping.items():
+            mail_dict = get_mail_dictionary_without_stopwords(path_array[key], stop_words)
+            num_of_mails[value] = len(mail_dict)
+            total_mails += len(mail_dict)
+            self.vocabularies[value] = get_vocabulary(mail_dict)
+        for key, value in num_of_mails.items():
+            self.prior_probs[key] = value / total_mails
+    def build_vocab_set(self):
+        for value in self.vocabularies.values():
+            self.total_vocab_list.extend(value)
+        self.vocab_set = set(self.total_vocab_list)
+    def train(self):
+        for value in self.class_mapping.values():
+            word_freq_dict = Counter(self.vocabularies[value])
+            for term in self.vocab_set:
+                term_count = word_freq_dict[term] if term in word_freq_dict else 0
+                self.cond_probs[value][term] = (1 + term_count) / (len(self.vocab_set) + len(self.vocabularies[value]))
+    def classify(self, word_list):
+        posterior_probs = {val: m.log(self.prior_probs[val]) for val in self.class_mapping.values()}
+        for term in word_list:
+            for val in self.class_mapping.values():
+                if term in self.cond_probs[val]:
+                    posterior_probs[val] += m.log(self.cond_probs[val][term])
+        predicted_class = max(posterior_probs, key=posterior_probs.get)
+        return predicted_class
+    def validate(self, test_paths):
+        spam_test_mails = get_mail_dictionary(test_paths[0])
+        ham_test_mails = get_mail_dictionary(test_paths[1])
+        spam_correct = sum(1 for value in spam_test_mails.values() if self.classify(value) == "spam")
+        ham_correct = sum(1 for value in ham_test_mails.values() if self.classify(value) == "ham")
+        spam_accuracy = (spam_correct / len(spam_test_mails)) * 100
+        ham_accuracy = (ham_correct / len(ham_test_mails)) * 100
+        total_accuracy = ((spam_correct + ham_correct) / (len(spam_test_mails) + len(ham_test_mails))) * 100
+        print("Accuracy without removing stopwords:", total_accuracy)
+    def validate_without_stopwords(self, test_paths, stop_path):
+        stop_words = read_stop_words(stop_path)
+        spam_test_mails = get_mail_dictionary_without_stopwords(test_paths[0], stop_words)
+        ham_test_mails = get_mail_dictionary_without_stopwords(test_paths[1], stop_words)
+        spam_correct = sum(1 for value in spam_test_mails.values() if self.classify(value) == "spam")
+        ham_correct = sum(1 for value in ham_test_mails.values() if self.classify(value) == "ham")
+        spam_accuracy = (spam_correct / len(spam_test_mails)) * 100
+        ham_accuracy = (ham_correct / len(ham_test_mails)) * 100
+        total_accuracy = ((spam_correct + ham_correct) / (len(spam_test_mails) + len(ham_test_mails))) * 100
+        print("Accuracy after removing stopwords:", total_accuracy)
+def main():
+    nb_classifier = NaiveBayesClassifier(2, ["spam", "ham"])
+    argv_list = sys.argv
+    train_paths = [argv_list[1], argv_list[2]]
+    test_paths = [argv_list[3], argv_list[4]]
+    nb_classifier.build_vocab(train_paths)
+    nb_classifier.build_vocab_set()
+    nb_classifier.train()
+    nb_classifier.validate(test_paths)
+    nb_classifier_wo_stopwords = NaiveBayesClassifier(2, ["spam", "ham"])
+    nb_classifier_wo_stopwords.build_vocab_without_stopwords(train_paths, argv_list[5])
+    nb_classifier_wo_stopwords.build_vocab_set()
+    nb_classifier_wo_stopwords.train()
+    nb_classifier_wo_stopwords.validate_without_stopwords(test_paths, argv_list[5])
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,74 @@
+# Importing necessary libraries and modules
+import re
+import requests
+from bs4 import BeautifulSoup
+from threading import Thread
+
+# Importing functions from custom modules
+from proxy_list import get_proxies
+from parse_and_write import parse_and_write
+from clean_db import db_cleaner
+
+# Function to scrape cryptocurrency names from CoinMarketCap
+def scrape_coins(url):
+    # Fetching the webpage content
+    page = requests.get(url)
+    # Parsing the HTML content
+    soup = BeautifulSoup(page.content, "html.parser")
+    # List to store cryptocurrency names
+    coins = []
+    # Looping through all 'a' tags in the page
+    for link in soup.find_all('a'):
+        # Checking if the link is valid and not empty
+        if (link.get('href') != None and link.get('href') != '/' and link.get('href') != ''):
+            # Checking if the link matches the pattern for cryptocurrency pages
+            if (re.match('^/currencies' , link.get('href'))):
+                # Extracting the cryptocurrency name from the link
+                coin = re.search('/currencies/(.+?)/', link.get('href')).group(1)
+                # Checking if the cryptocurrency name is not already in the list
+                # and not equal to 'volume'
+                if(coin not in coins and coin != 'volume'):
+                    # Adding the cryptocurrency name to the list
+                    coins.append(coin)
+    # Returning the list of cryptocurrency names
+    return coins
+
+# Main function to orchestrate the scraping process
+def main():
+    # URL of the CoinMarketCap website
+    url = 'https://coinmarketcap.com/'
+    # Scraping cryptocurrency names from the website
+    coins = scrape_coins(url)
+    # Getting proxies for making requests (assuming this function is implemented in proxy_list module)
+    proxies = get_proxies()
+
+    # Number of threads to be used for concurrent processing
+    num_threads = 4
+    # Calculating batch size for dividing the cryptocurrency list
+    batch_size = len(coins) // num_threads
+    # List to store thread objects
+    threads = []
+
+    # Looping through the number of threads
+    for i in range(num_threads):
+        # Calculating start and end indices for the current batch
+        start_index = i * batch_size
+        end_index = (i + 1) * batch_size if i < num_threads - 1 else len(coins)
+        # Creating a thread for processing the current batch
+        thread = Thread(target=parse_and_write, args=(coins[start_index:end_index], proxies))
+        # Starting the thread
+        thread.start()
+        # Adding the thread object to the list
+        threads.append(thread)
+
+    # Joining all threads to wait for their completion
+    for thread in threads:
+        thread.join()
+
+    # Printing a message indicating the main thread is exiting
+    print("Exiting Main Thread")
+
+# Entry point of the script
+if __name__ == "__main__":
+    # Calling the main function
+    main()

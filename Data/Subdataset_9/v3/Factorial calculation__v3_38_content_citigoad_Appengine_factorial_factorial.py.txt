@@ -1,0 +1,59 @@
+import time
+import webapp2
+from google.appengine.api import memcache
+from google.appengine.api import users
+
+def factorial(n):
+    """
+    Calculate the factorial of a number 'n' using memoization with memcache.
+    """
+    n = int(n)
+    cached_factorial = memcache.get(str(n))
+
+    if cached_factorial is not None:
+        return cached_factorial
+
+    if n == 0:
+        return 1
+    else:
+        result = n * factorial(n - 1)
+        memcache.set(str(n), result)
+        return result
+
+class MainPage(webapp2.RequestHandler):
+    """
+    Handles HTTP GET requests for the main page.
+    """
+    def get(self):
+        """
+        Renders the main page with a form to calculate the factorial of a number.       
+        """
+        user = users.get_current_user()
+
+        if user:
+            # If the user is logged in
+            self.response.out.write('<html><h1>Welcome ' + user.nickname())
+            self.response.out.write('<h1>Factorial of \'n\'</h1>')
+            self.response.out.write('<form method="get">')
+            self.response.out.write('<input name="n" type="text">')
+            self.response.out.write('<input type="submit" name="submit"></br>')
+
+            # Check if 'f' parameter is present to flush memcache
+            if 'f' in self.request.GET.keys():
+                memcache.flush_all()
+
+            # Calculate and display the factorial if 'n' parameter is present
+            if 'n' in self.request.GET.keys():
+                self.response.out.write(str(factorial(self.request.GET['n'])))
+
+            # Add logout link
+            logout_url = users.create_logout_url('/')
+            self.response.out.write('<a href="' + logout_url + '" style="color: blue;">Logout</a>')
+        else:
+            # If the user is not logged in, display login link
+            login_url = users.create_login_url('/')
+            self.response.out.write('<a href="' + login_url + '">Login</a>')
+
+app = webapp2.WSGIApplication([
+    ('/', MainPage)
+], debug=True)

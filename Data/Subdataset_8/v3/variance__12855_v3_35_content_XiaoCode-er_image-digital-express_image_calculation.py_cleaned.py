@@ -1,0 +1,34 @@
+import math
+import numpy as np
+from skimage import io
+class ImageDigitalExpress:
+    def __init__(self, image_path):
+        self._image_path = image_path
+    def _calculate_mean_variance(self, img):
+        rows, columns = img.shape
+        mean = np.mean(img)
+        variance = np.var(img)
+        return mean, math.sqrt(variance)
+    def _calculate_entropy(self, img):
+        img_size = img.size
+        hist, _ = np.histogram(img, bins=256)
+        probabilities = hist / img_size
+        probabilities = probabilities[probabilities != 0]
+        entropy = -np.sum(probabilities * np.log2(probabilities))
+        return entropy
+    def image_mean_variance(self):
+        img = io.imread(self._image_path, as_gray=True)
+        mean, variance = self._calculate_mean_variance(img)
+        return mean, variance
+    def image_infoentropy(self):
+        img = io.imread(self._image_path, as_gray=True)
+        entropy = self._calculate_entropy(img)
+        return entropy
+if __name__ == "__main__":
+    image_path = "path_to_your_image.jpg"
+    image_processor = ImageDigitalExpress(image_path)
+    mean, variance = image_processor.image_mean_variance()
+    entropy = image_processor.image_infoentropy()
+    print("Mean:", mean)
+    print("Variance:", variance)
+    print("Entropy:", entropy)

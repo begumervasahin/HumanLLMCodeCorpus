@@ -1,0 +1,84 @@
+from time import time
+import configuraciones
+def shell_sort_algorithm(alist):
+    sublist_count = len(alist)
+    while sublist_count > 0:
+        for start_position in range(sublist_count):
+            gap_insertion_sort(alist, start_position, sublist_count)
+        print("After increments of size", sublist_count, "The list is", alist)
+        sublist_count
+def gap_insertion_sort(alist, start, gap):
+    for i in range(start + gap, len(alist), gap):
+        current_value = alist[i]
+        position = i
+        while position >= gap and alist[position - gap] > current_value:
+            alist[position] = alist[position - gap]
+            position -= gap
+        alist[position] = current_value
+arreglo = configuraciones.confA('ShellSort')
+archivo = open('ordenadoAShellSort.txt', 'a')
+archivo_tiempo = open('tiempoShell.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfA: ' + str(total) + '\n')
+archivo.close()
+arreglo = configuraciones.confB('ShellSort')
+archivo = open('ordenadoBShellSort.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfB: ' + str(total) + '\n')
+archivo.close()
+arreglo = configuraciones.confC('ShellSort')
+archivo = open('ordenadoCShellSort.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfC: ' + str(total) + '\n')
+archivo.close()
+arreglo = configuraciones.confD('ShellSort')
+archivo = open('ordenadoDShellSort.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfD: ' + str(total) + '\n')
+archivo.close()
+arreglo = configuraciones.confE('ShellSort')
+archivo = open('ordenadoEShellSort.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfE: ' + str(total) + '\n')
+archivo.close()
+arreglo = configuraciones.confF('ShellSort')
+archivo = open('ordenadoFShellSort.txt', 'a')
+total = 0
+for i in arreglo:
+    start_time = time()
+    shell_sort_algorithm(i)
+    elapsed_time = time() - start_time
+    archivo.write(str(i) + '\n')
+    total += elapsed_time
+archivo_tiempo.write('ConfF: ' + str(total) + '\n')
+archivo.close()

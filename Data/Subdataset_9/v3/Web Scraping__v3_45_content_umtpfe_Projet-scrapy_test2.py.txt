@@ -1,0 +1,46 @@
+import csv
+import time
+from selenium import webdriver
+
+# Constants for maximum page number and digits
+MAX_PAGE_NUMBER = 50
+MAX_PAGE_DIGITS = 5
+WAIT_TIME_SECONDS = 3
+
+# Configure Firefox profile with proxy settings
+firefox_profile = webdriver.FirefoxProfile()
+firefox_profile.set_preference("network.proxy.type", 1)
+firefox_profile.set_preference("network.proxy.http", "200.37.54.10")
+firefox_profile.set_preference("network.proxy.http_port", 57040)
+firefox_profile.update_preferences()
+
+# Initialize Firefox WebDriver with the configured profile
+driver = webdriver.Firefox(firefox_profile=firefox_profile)
+
+# Open a CSV file to write the results
+with open("idmail.csv", "w", newline='', encoding='utf-8') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    
+    # Loop through each page
+    for page_number in range(1, MAX_PAGE_NUMBER + 1):
+        page_num_str = str(page_number).zfill(MAX_PAGE_DIGITS)
+        url = f"http://jecherchemonexpertcomptable.oecmaroc.com/users/index/{page_num_str}"
+        driver.get(url)
+        
+        # Wait for the page to load
+        time.sleep(WAIT_TIME_SECONDS)
+        
+        # Find all elements with id="page-content"
+        page_content_elements = driver.find_elements_by_xpath('//*[@id="page-content"]')
+        
+        # Write data to CSV
+        for element in page_content_elements:
+            csv_writer.writerow([element.text])
+        
+        # Log progress
+        print(f"Page {page_num_str} processed")
+    
+# Close the WebDriver
+driver.quit()
+
+print("Finished scraping all pages.")

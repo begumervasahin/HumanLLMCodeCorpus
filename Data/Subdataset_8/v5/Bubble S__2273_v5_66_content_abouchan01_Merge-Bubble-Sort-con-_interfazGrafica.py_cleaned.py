@@ -1,0 +1,25 @@
+from tkinter import *
+def create_entry_boxes():
+    remaining = num_boxes.get()
+    i = remaining
+    if remaining < 5 or remaining > 20:
+        Label(root, text='Solo se pueden ordenar entre 5 y 20 numeros').grid(row=i + 5, column=0, padx=15, pady=1, sticky=N)
+    else:
+        while i >= 1:
+            print("Counting down and trying" + str(remaining))
+            number_var = IntVar()
+            Label(root, text=i).grid(row=i + 5, column=0, padx=10, pady=1, sticky=N)
+            Entry(root, text='Teclee el numero a ordenar', textvariable=number_var).grid(row=i + 5, column=1, padx=15, pady=1, sticky=N)
+            i -= 1
+root = Tk()
+root.minsize(380, 600)
+root.title("Algoritmos de ordenamiento, practica 1")
+root.configure(background="turquoise")
+Button(root, text='Bubble Sort').grid(row=1, column=0, ipadx=35, padx=40, pady=15, sticky=NW)
+Button(root, text='Merge Sort').grid(row=1, column=1, ipadx=35, padx=40, pady=15, sticky=NE)
+Label(root, text='¿Cuantos números deseas ordenar? (Minimo 5, máximo 20)').grid(row=2, padx=180, pady=20, sticky=N)
+num_boxes = IntVar()
+Entry(root, text='número', textvariable=num_boxes).grid(row=3, ipadx=30, padx=70, pady=5, sticky=N)
+Button(root, text='aceptar', command=create_entry_boxes).grid(row=4, ipadx=30, padx=70, pady=5, sticky=N)
+Label(root, text='El arreglo ordenado es:').grid(row=5, ipadx=30, padx=70, pady=5, sticky=N)
+root.mainloop()

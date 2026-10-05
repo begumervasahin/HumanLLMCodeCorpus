@@ -1,0 +1,122 @@
+import matplotlib.pyplot as plt
+import math
+
+class EllipticCurve:
+    def __init__(self, prime_modulus, coefficient_a, coefficient_b, base_point=None, order=None, cofactor=None):
+        """
+        Initialize an elliptic curve object with the specified parameters.
+
+        :param prime_modulus: Prime modulus for arithmetic operations
+        :param coefficient_a: Coefficient 'a' in the curve equation
+        :param coefficient_b: Coefficient 'b' in the curve equation
+        :param base_point: Base point (optional)
+        :param order: Order of the base point (optional)
+        :param cofactor: Cofactor (optional)
+        """
+        self.p = prime_modulus
+        self.a = coefficient_a
+        self.b = coefficient_b
+        self.G = base_point
+        self.n = order
+        self.h = cofactor
+
+    def plot_curve(self, num_points):
+        """
+        Plot the elliptic curve by generating 'num_points' points on the curve.
+
+        :param num_points: Number of points to plot on the curve
+        """
+        x_values = []
+        y_values = []
+        for i in range(num_points):
+            x_values.append(i)
+            y_values.append(math.sqrt(i**3 + self.a*i + self.b) % self.p)
+        plt.plot(x_values, y_values)
+        plt.title(f'Elliptic Curve: y^2 = x^3 + {self.a}x + {self.b} (mod {self.p})')
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.grid(True)
+        plt.show()
+
+class EllipticCurvePoint(EllipticCurve):
+    def __init__(self, x_coord, y_coord, curve):
+        """
+        Initialize a point on the elliptic curve with coordinates (x, y) and the associated curve.
+
+        :param x_coord: x-coordinate of the point
+        :param y_coord: y-coordinate of the point
+        :param curve: EllipticCurve object to which the point belongs
+        """
+        super().__init__(curve.p, curve.a, curve.b, curve.G, curve.n, curve.h)
+        self.x = x_coord % self.p
+        self.y = y_coord % self.p
+
+    def __add__(self, other):
+        """
+        Add two points on the elliptic curve.
+
+        :param other: Another EllipticCurvePoint object
+        :return: Result of the addition operation as a new EllipticCurvePoint object
+        """
+        if self.x == other.x and self.y == other.y:
+            m = (3 * (self.x**2) + self.a) * self.modular_inverse(2*self.y)
+        else:
+            m = (other.y - self.y) * self.modular_inverse(other.x - self.x)
+        x3 = (m**2 - self.x - other.x) % self.p
+        y3 = (m * (self.x - x3) - self.y) % self.p
+        return EllipticCurvePoint(x3, y3, self)
+
+    def __eq__(self, other):
+        """
+        Check if two EllipticCurvePoint objects are equal.
+
+        :param other: Another EllipticCurvePoint object
+        :return: True if equal, False otherwise
+        """
+        return self.x == other.x and self.y == other.y and self.curve == other.curve
+
+    def __ne__(self, other):
+        """
+        Check if two EllipticCurvePoint objects are not equal.
+
+        :param other: Another EllipticCurvePoint object
+        :return: True if not equal, False otherwise
+        """
+        return not self == other
+
+    def modular_inverse(self, x_val):
+        """
+        Compute the modular inverse of 'x_val' modulo p.
+
+        :param x_val: Input value
+        :return: Modular inverse of 'x_val' modulo p
+        """
+        return pow(x_val, -1, self.p) if x_val != 0 else 0
+
+    def scalar_multiply(self, scalar_val):
+        """
+        Multiply the point by a scalar value using the double-and-add algorithm.
+
+        :param scalar_val: Scalar value for multiplication
+        :return: Result of the multiplication as a new EllipticCurvePoint object
+        """
+        result_point = EllipticCurvePoint(0, 0, self)
+        binary_scalar = bin(scalar_val)[2:]
+        for bit in binary_scalar:
+            result_point = result_point + result_point
+            if bit == '1':
+                result_point = result_point + self
+        return result_point
+
+# Example usage:
+curve = EllipticCurve(23, 0, 7)
+point1 = EllipticCurvePoint(1, 3, curve)
+point2 = EllipticCurvePoint(18, 20, curve)
+
+# Plot the elliptic curve
+curve.plot_curve(20)
+
+# Perform arithmetic operations on points
+print(point1 + point2)
+print(point1 == point2)
+print(point1.scalar_multiply(5))

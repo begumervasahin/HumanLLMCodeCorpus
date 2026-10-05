@@ -1,0 +1,12 @@
+def first_index(arr, low, high):
+    return low
+def last_index(arr, low, high):
+    return high
+def median_of_three_index(arr, low, high):
+    mid = (low + high)
+    if arr[low] < arr[mid] < arr[high] or arr[high] < arr[mid] < arr[low]:
+        return mid
+    elif arr[mid] < arr[low] < arr[high] or arr[high] < arr[low] < arr[mid]:
+        return low
+    else:
+        return high

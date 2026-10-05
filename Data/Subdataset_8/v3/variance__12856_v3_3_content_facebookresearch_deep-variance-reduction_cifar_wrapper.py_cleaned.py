@@ -1,0 +1,41 @@
+import torch
+import torchvision
+import torchvision.transforms as transforms
+class CIFAR10_Wrapper(torch.utils.data.Dataset):
+    def __init__(self, root, train=True, download=False, transform=None):
+        self.dataset = torchvision.datasets.CIFAR10(
+            root=root,
+            train=train,
+            download=download,
+            transform=transform
+        )
+        self.transformed_cache = {}
+        self.cache_hit = 0
+        self.access_since_retransform = 0
+    def __getitem__(self, index):
+        if index in self.transformed_cache:
+            item = self.transformed_cache[index]
+            self.cache_hit += 1
+        else:
+            item = self.dataset[index]
+            self.transformed_cache[index] = item
+        self._update_access_stats()
+        return item
+    def __len__(self):
+        return len(self.dataset)
+    def retransform(self):
+        print(f"Total calls to retransform: {self.access_since_retransform}, cache hits: {self.cache_hit}")
+        self._reset_cache_stats()
+    def _update_access_stats(self):
+        self.access_since_retransform += 1
+    def _reset_cache_stats(self):
+        self.transformed_cache = {}
+        self.access_since_retransform = 0
+        self.cache_hit = 0
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+trainset = CIFAR10_Wrapper(root='./data', train=True, download=True, transform=transform)
+item = trainset[0]
+trainset.retransform()

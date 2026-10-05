@@ -1,0 +1,11 @@
+'''
+Created on March 29, 2017
+@author: Madalina
+'''
+class UserInterface:
+    def __init__(self, controller):
+        self.controller = controller
+    def start(self):
+        hamiltonian_cycle = self.controller.find_hamiltonian_cycle()
+        if not hamiltonian_cycle:
+            print("No Hamiltonian cycles were found.")

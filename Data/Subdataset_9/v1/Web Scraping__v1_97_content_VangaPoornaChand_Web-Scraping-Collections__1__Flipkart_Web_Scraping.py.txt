@@ -1,0 +1,42 @@
+from bs4 import BeautifulSoup
+import requests
+import csv
+import os
+
+product = input("Enter product you want to search: ")
+pages = int(input("Enter number of pages: "))
+search = "/search?q=" + product + "&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=off&as=off"
+file_name = f"Flipkart Scraping on {product}.csv"
+
+if os.path.exists(file_name):
+    print("You have already searched for this...\nDeleting your previous results...")
+    os.remove(file_name)
+
+for i in range(pages):
+    try:
+        with open(file_name, "a", newline="", encoding="utf-8") as file:
+            csv_file = csv.writer(file)
+            if i == 0:
+                csv_file.writerow(["TITLE", "Price", "Rating"])
+
+            url = "https://www.flipkart.com" + search
+            print("Working on Page No:", i+1)
+            html = requests.get(url)
+            soup = BeautifulSoup(html.text, 'lxml')
+
+            for mobile_area in soup.find_all(class_="_1UoZlX"):
+                title = mobile_area.find(class_='_3wU53n').text.strip()
+                price = mobile_area.find(class_="_1vC4OE._2rQ-NK").text.strip()[1:]
+                rating_tag = mobile_area.find(class_="hGSR34")
+                rating = rating_tag.text.strip() if rating_tag else "No Rating"
+                csv_file.writerow([title, price, rating])
+
+            next_page_link = soup.find_all(class_="_3fVaIS")[-1]['href']
+            search = next_page_link
+
+    except IndexError:
+        print("Out Of Pages for your search!!!")
+        break
+
+    except Exception as e:
+        print("An error occurred:", e)

@@ -1,0 +1,82 @@
+from pyspark import SparkConf, SparkContext
+from pyspark.ml.feature import HashingTF, IDF, NGram
+from pyspark.sql import SparkSession
+import re
+
+def clean_and_split_content(content):
+    """
+    Clean the content of each file by converting to lowercase and removing non-alphanumeric characters.
+    Then, split the content into words.
+    """
+    return re.sub('[^a-z0-9]+', ' ', content.lower()).split()
+
+def extract_file_name(file_path):
+    """
+    Extract and return the file name from the file path.
+    """
+    return file_path.split("/")[-1]
+
+def process_file_content(file_path_content_pair):
+    """
+    Given a pair of file path and content, clean the content and extract the file name.
+    Return a tuple of (file_name, words).
+    """
+    file_path, content = file_path_content_pair
+    words = clean_and_split_content(content)
+    file_name = extract_file_name(file_path)
+    return file_name, words
+
+def configure_spark(app_name="part2_uni", executor_memory="2g"):
+    """
+    Configure and return a SparkContext and SparkSession.
+    """
+    conf = SparkConf().setAppName(app_name).set("spark.executor.memory", executor_memory)
+    sc = SparkContext(conf=conf)
+    spark = SparkSession(sc)
+    return sc, spark
+
+def transform_data_to_tfidf(tokenized_df):
+    """
+    Given a DataFrame of tokenized data, apply N-Gram, HashingTF, and IDF transformations.
+    Return the transformed DataFrame.
+    """
+    # N-Gram transformation to generate unigrams
+    unigram_transformer = NGram(n=1, inputCol="words", outputCol="unigrams")
+    unigram_df = unigram_transformer.transform(tokenized_df)
+
+    # Apply HashingTF to convert unigrams into term frequency vectors
+    hashing_tf_transformer = HashingTF(inputCol="unigrams", outputCol="unigram-tf")
+    tf_data = hashing_tf_transformer.transform(unigram_df)
+
+    # Apply IDF to get TF-IDF measures
+    idf_transformer = IDF(inputCol="unigram-tf", outputCol="unigram-tf-idf")
+    idf_model = idf_transformer.fit(tf_data)
+    tfidf_result = idf_model.transform(tf_data)
+
+    return tfidf_result
+
+def main():
+    # Configure Spark
+    sc, spark = configure_spark()
+
+    # Load data
+    file_content_rdd = sc.wholeTextFiles("/cosc6339_s17/books-longlist/")
+    
+    # Ensure the 'toDF' method is available
+    if hasattr(file_content_rdd, "toDF"):
+        # Process files and convert to DataFrame
+        tokenized_df = file_content_rdd.map(process_file_content).toDF(["bookname", "words"])
+
+        # Transform data and calculate TF-IDF
+        tfidf_result = transform_data_to_tfidf(tokenized_df)
+
+        # Save the result
+        tfidf_result.rdd.saveAsTextFile("/bigd12/output2_1")
+    else:
+        print("DataFrame support is not available. Please update your Spark installation.")
+
+    # Stop the SparkContext
+    sc.stop()
+
+if __name__ == "__main__":
+    main()

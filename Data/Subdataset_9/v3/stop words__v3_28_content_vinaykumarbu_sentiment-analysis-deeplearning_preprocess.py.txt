@@ -1,0 +1,70 @@
+import string
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import enchant
+
+# Download NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
+
+# Initialize enchant dictionary for English words
+english_dict = enchant.Dict("en_US")
+
+# Set up stopwords
+stop_words = set(stopwords.words("english"))
+
+# Open output file
+with open("new_preprocessed.txt", "a") as output_file:
+    # Open input file containing tweets
+    with open('new_tweets.txt', 'r') as input_file:
+        # Process each tweet in the input file
+        for line in input_file:
+            # Extract the text of the tweet
+            tweet_text = line.split(',text:')[1]
+
+            # Preprocess the tweet text
+            cleaned_tweet_text = preprocess_tweet(tweet_text)
+
+            # Tokenize the cleaned tweet text
+            tokenized_words = word_tokenize(cleaned_tweet_text)
+
+            # Filter out stopwords from the tokenized words
+            filtered_words = filter_stopwords(tokenized_words)
+
+            # Lemmatize the filtered words
+            lemmatized_words = lemmatize_words(filtered_words)
+
+            # Filter out proper nouns from the tagged words
+            edited_words = filter_proper_nouns(lemmatized_words)
+
+            # Write the preprocessed tweet text to the output file
+            output_file.write(" ".join(edited_words) + "\n")
+
+def preprocess_tweet(tweet_text):
+    """Preprocesses the given tweet text."""
+    tweet_text_lowercase = tweet_text.lower()
+    cleaned_tweet_text = ''.join([char for char in tweet_text_lowercase if not char.isdigit() and char not in string.punctuation])
+    clean_tweet_text = " ".join(word for word in cleaned_tweet_text.split() if is_valid_word(word))
+    return clean_tweet_text
+
+def is_valid_word(word):
+    """Checks if the given word is a valid English word."""
+    return not word.startswith('@') and len(word) > 2 and english_dict.check(word)
+
+def filter_stopwords(words):
+    """Filters out stopwords from the given list of words."""
+    return [word for word in words if word not in stop_words]
+
+def lemmatize_words(words):
+    """Lemmatizes the given list of words."""
+    lemmatizer = WordNetLemmatizer()
+    return [lemmatizer.lemmatize(word) for word in words]
+
+def filter_proper_nouns(words):
+    """Filters out proper nouns from the given list of tagged words."""
+    tagged_words = nltk.tag.pos_tag(words)
+    return [word for word, tag in tagged_words if tag != 'NNP' and tag != 'NNPS']

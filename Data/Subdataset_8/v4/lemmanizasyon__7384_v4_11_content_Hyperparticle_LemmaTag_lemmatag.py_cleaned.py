@@ -1,0 +1,95 @@
+import numpy as np
+import tensorflow as tf
+import argparse
+import datetime
+import os
+import shutil
+import sys
+from tqdm import tqdm
+from tensorflow.python.client import timeline
+import logging
+from logging import warning, info, debug, error
+from util import morpho_dataset
+from util.utils import MorphoAnalyzer, Tee, log_time, find_first, AddInputsWrapper
+from util.tags import WholeTags, CharTags, DictTags
+from model.encoder import encoder_network
+from model.tag_decoder import tag_decoder, tag_features
+from model.lemma_decoder import lemma_decoder, sense_predictor
+class LemmaTagNetwork:
+    def __init__(self, threads, seed=42):
+        graph = tf.Graph()
+        graph.seed = seed
+        self.session = tf.Session(graph=graph, config=tf.ConfigProto(inter_op_parallelism_threads=threads,
+                                                                     intra_op_parallelism_threads=threads))
+    def construct(self, args, num_words, num_chars, lem_num_chars, num_tags, num_senses, bow, eow):
+        with self.session.graph.as_default():
+            self.is_training = tf.placeholder(tf.bool, [])
+            self.learning_rate = tf.placeholder(tf.float32, [], name="learning_rate")
+            enc_out = encoder_network(self.word_indexes, self.word_ids, self.charseqs, self.charseq_ids,
+                                      self.charseq_lens, self.sentence_lens, num_words, num_chars, args.we_dim,
+                                      args.cle_dim, rnn_cell, args.rnn_cell_dim, args.rnn_layers, args.dropout,
+                                      self.is_training, args.separate_embed, args.separate_rnn)
+            loss = loss_tag + loss_lem * args.loss_lem_w + loss_sense * args.loss_sense_w
+            self.global_step = tf.train.create_global_step()
+            self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(self.update_ops):
+                optimizer = tf.contrib.opt.LazyAdamOptimizer(learning_rate=self.learning_rate, beta2=args.beta_2)
+            self.session.run(tf.global_variables_initializer())
+            with summary_writer.as_default():
+                tf.contrib.summary.initialize(session=self.session, graph=self.session.graph)
+    def _lemma_stats(self, target_seqs, target_lens, target_senses):
+    def train_epoch(self, train, args, rate):
+    def evaluate(self, dataset_name, dataset, args):
+        return self.session.run([self.current_accuracy_tag, self.current_accuracy_lem, self.current_accuracy_lemsense] +
+                                self.summaries[dataset_name])[:3]
+    def predict(self, dataset, args):
+        return lemmas, tags
+if __name__ == "__main__":
+    np.random.seed(args.seed)
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+    basename = "LT-{}-{}-S{}".format(
+        datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
+        args.name, args.seed)
+    args.logdir = "logs/" + basename
+    os.mkdir(args.logdir)
+    shutil.copy(__file__, args.logdir + "/taglem.py")
+    tee = Tee(args.logdir + "/log.txt")
+    tee.start()
+    args.realstderr = tee.stderr
+    logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+    info("Running in {} with args: {}".format(args.logdir, str(args)))
+    info("Commandline: {}".format(' '.join(sys.argv)))
+    with log_time("load inputs"):
+    if args.tag_type == "char":
+        args.tags = CharTags(train, args.compositional_tags_regularization, args.whole_tags_regularization)
+    elif args.tag_type == "dict":
+        raise ValueError("Tag type not supported: " + args.tag_type)
+    elif args.tag_type == "whole":
+        args.tags = WholeTags(train)
+    else:
+        raise ValueError("Invalid tag_type")
+    network = LemmaTagNetwork(threads=args.threads, seed=args.seed)
+    network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
+                      len(train.factors[train.LEMMAS].alphabet), args.tags.num_tags(),
+                      len(train.factors[train.SENSES].words), train.factors[train.LEMMAS].alphabet_map["<bow>"],
+                      train.factors[train.LEMMAS].alphabet_map["<eow>"])
+    if args.checkpoint:
+        network.saver.restore(network.session, args.checkpoint)
+    dev_best = 0
+    for ep in range(args.epochs):
+        rate = args.learning_rate
+        if args.drop_rate_after and args.drop_rate_after <= ep:
+            rate = args.learning_rate * 0.25 ** (1 + ((ep - args.drop_rate_after)
+        if not args.only_eval:
+            info("Training epoch %d with rate %f", ep, rate)
+            network.train_epoch(train, args, rate=rate)
+        info("Evaluating dev")
+        dev_acc_tag, dev_acc_lem, dev_acc_lemsense = network.evaluate("dev", dev, args)
+        info(".. epoch {} (step {}) dev accuracy: {:.2f} tag, {:.2f} lemma, {:.2f} lemma with sense".format(
+            ep, network.session.run(network.global_step), 100 * dev_acc_tag, 100 * dev_acc_lem, 100 * dev_acc_lemsense))
+        if dev_acc_tag + dev_acc_lemsense > dev_best or ep == args.epochs - 1:
+            if not args.no_save_net and not args.only_eval:
+                network.saver.save(network.session, "{}/checkpoint".format(args.logdir),
+                                   global_step=network.global_step, write_meta_graph=False)
+        dev_best = max(dev_best, dev_acc_tag + dev_acc_lemsense)

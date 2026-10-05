@@ -1,0 +1,20 @@
+import numpy as np
+from scipy.special import spherical_jn
+from scipy import integrate
+def integrand(x, l, n):
+    return x**n * spherical_jn(l, x)
+x_low = 2
+x_high = 4
+l = 4
+n = 3
+val, err = integrate.quad(integrand, x_low, x_high, args=(l, n))
+def custom_integrand(x, params):
+    return x**params[1] * spherical_jn(params[0], x)
+y_low = custom_integrand(x_low, (l, n))
+y_high = custom_integrand(x_high, (l, n))
+print("Testing Integration")
+print(f"X in [{x_low}, {x_high}]")
+print("l =", l)
+print("n =", n)
+print("Recursive Integral: ", y_high - y_low)
+print("Numerical Integral: ", val, " +/- ", err)

@@ -1,0 +1,38 @@
+import json
+import spotipy
+import spotipy.util as util
+from time import perf_counter
+from typing import List
+from chunker import chunker  # Assuming you have a custom chunker module
+import config
+
+# Load tracks from JSON file
+with open("json/tracks.json") as json_file:
+    tracks = json.load(json_file)
+
+try:
+    # Obtain token for Spotify API access
+    token = util.prompt_for_user_token(config.username, config.scope,
+                                       config.client_id, config.client_secret,
+                                       config.redirect_uri)   
+    sp = spotipy.Spotify(token)
+except Exception as e:
+    print(f"Token is not accessible for {config.username}: {e}")
+
+print("Start retrieving audio features...")
+startTime = perf_counter()
+
+audioFeatures = []
+# Retrieve audio features for each track in chunks of 50
+for tracksIds in chunker([track["id"] for track in tracks], 50):  
+    audioFeatures.extend(sp.audio_features(tracksIds))
+
+# Remove None values from audio features list
+audioFeatures = [audioFeature for audioFeature in audioFeatures if audioFeature]
+
+elapsed = perf_counter() - startTime
+print(f"Retrieved {len(audioFeatures)} audio features in {elapsed:.2f}s.")
+
+# Save retrieved audio features to a JSON file
+with open("json/audioFeatures.json", "w") as outfile:
+    json.dump(audioFeatures, outfile)

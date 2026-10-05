@@ -1,0 +1,61 @@
+import gensim
+import random
+class Topic2Vec:
+    def __init__(self, sentences, lda_model, use_variation, filename, size, window, min_count):
+        self.sentences = sentences
+        self.lda_model = lda_model
+        self.filename = filename
+        self.size = size
+        self.window = window
+        self.min_count = min_count
+        self.permuted_sentences = []
+        self.dictionary = gensim.corpora.Dictionary.load('/path/to/dictionary').token2id
+        if use_variation:
+            self._perform_variation()
+            self._train_topic2vec_model()
+            self._train_word2vec_model()
+        self.topic2vec = gensim.models.Word2Vec.load(self.filename)
+        self.lda_topics = [self.lda_model.show_topic(x) for x in range(50)]
+        self.topic_vecs = [self.topic2vec.most_similar(positive=["u" + str(x)]) for x in range(50)]
+        print(f"Topic2Vec model loaded from {self.filename}.")
+    def _perform_variation(self):
+        print("Starting sentence variation...")
+        print(f"There are {len(self.sentences)} sentences.")
+        self.generate_permuted_sentences()
+        random.shuffle(self.permuted_sentences)
+    def generate_permuted_sentences(self):
+        for sentence in self.sentences:
+            permuted_sentence = self._generate_permuted_sentence(sentence)
+            self.permuted_sentences.append(permuted_sentence)
+    def _generate_permuted_sentence(self, sentence):
+        permuted_sentence = []
+        for index, word in enumerate(sentence):
+            permuted_word = self._permute_word(word)
+            permuted_sentence.append(permuted_word)
+        return permuted_sentence
+    def _permute_word(self, word):
+        if word in self.dictionary:
+            word_bow = self.dictionary.doc2bow([word])
+            topic = self.lda_model[word_bow]
+            likely_topic = topic[-1][0] if topic else ''
+            return "u" + str(likely_topic)
+        return word
+    def _train_topic2vec_model(self):
+        self.topic2vec = gensim.models.Word2Vec(self.permuted_sentences, size=self.size, window=self.window, min_count=self.min_count, workers=2)
+        self.topic2vec.save(self.filename)
+    def _train_word2vec_model(self):
+        word2vec_model = gensim.models.Word2Vec(self.sentences, size=self.size, window=self.window, min_count=3, workers=2)
+        word2vec_model.save(self.filename + "_w2v")
+    def most_similar_topic(self, word):
+        if word in self.dictionary:
+            scores = [(self.topic2vec.similarity("u" + word, "u" + str(x)), "u" + str(x)) for x in range(50)]
+            return max(scores, key=lambda x: x[0])
+        else:
+            print(f"Word {word} not found in dictionary")
+            return (0, 0)
+sentences = [['apple', 'banana', 'orange'], ['dog', 'cat', 'horse'], ['tree', 'flower', 'grass']]
+lda_model = gensim.models.ldamodel.LdaModel()
+t2v = Topic2Vec(sentences, lda_model, True, 'topic2vec_model', 100, 5, 1)
+word = 'apple'
+most_similar = t2v.most_similar_topic(word)
+print(f"Most similar topic to '{word}': {most_similar[1]} with similarity score {most_similar[0]}")

@@ -1,0 +1,21 @@
+def linear_search(lst, target):
+    for value in lst:
+        if value == target:
+            return True
+    return False
+list_to_search = [10, 20, 30, 40, 50]
+search_key = 30
+print(linear_search(list_to_search, search_key))
+def binary_search(lst, target):
+    if not lst:
+        return False
+    mid = len(lst)
+    if lst[mid] == target:
+        return True
+    elif target < lst[mid]:
+        return binary_search(lst[:mid], target)
+    else:
+        return binary_search(lst[mid + 1:], target)
+sorted_list = [10, 20, 30, 50, 60, 70, 80]
+search_key = 50
+print(binary_search(sorted_list, search_key))

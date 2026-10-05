@@ -1,0 +1,127 @@
+import pandas as pd
+import numpy as np
+import time
+
+def to_float(x):
+    return float(x)
+
+def mutate_dict(f, d):
+    for k, v in d.items():
+        d[k] = f(v)
+
+def create_new_cluster(key, current_tuple):
+    summary = []
+    cluster_structure = []
+    for k in current_tuple:
+        value_stats = {}
+        value_stats[current_tuple[k]] = 1
+        summary.append([value_stats])
+    cluster_structure.append([key])
+    cluster_structure.append(summary)
+    return cluster_structure
+
+def update_same_cluster(cluster, current_tuple):
+    for k in current_tuple:
+        if current_tuple[k] in cluster[k][0]:
+            cluster[k][0][current_tuple[k]] += 1
+        else:
+            cluster[k][0][current_tuple[k]] = 1
+
+def calculate_similarity(c, current):
+    similarity = 0
+    for k in current:
+        if current[k] in c[k][0]:
+            support = c[k][0][current[k]]
+        else:
+            support = 0
+        similarity += (support / float(sum(c[k][0].values())))
+    return similarity
+
+data = pd.read_csv("fsd.csv")
+data_array = np.array(data)
+value_counts = {}
+for column in data:
+    column_data = np.array(data[column])
+    for key in column_data:
+        if key in value_counts:
+            value_counts[key] += 1
+        else:
+            value_counts[key] = 1
+    break
+
+converted_data = {}
+N = 0
+start_time = time.time()
+while N < len(data_array):
+    m = 0
+    converted_data[N] = {}
+    for key in data_array[N]:
+        converted_data[N][m] = key
+        m += 1
+    mutate_dict(to_float, converted_data[N])
+    N += 1
+elapsed_data_conversion_time = time.time() - start_time
+
+clusters = []
+start_time = time.time()
+for key in converted_data:
+    current_tuple = converted_data[key]
+    print("Processing tuple", key)
+    if key == 0:
+        clusters.append(create_new_cluster(key, current_tuple))
+    else:
+        all_similarities = []
+        for cluster in clusters:
+            all_similarities.append(calculate_similarity(cluster[1], current_tuple))
+        max_similarity = max(all_similarities)
+        max_similarity_index = all_similarities.index(max_similarity)
+        similarity_threshold = 5
+        if max_similarity >= similarity_threshold:
+            clusters[max_similarity_index][0].append(key)
+            update_same_cluster(clusters[max_similarity_index][1], current_tuple)
+        else:
+            clusters.append(create_new_cluster(key, current_tuple))
+            print("New cluster created for tuple", key)
+elapsed_clustering_time = time.time() - start_time
+
+cluster_statistics = {}
+for cluster in clusters:
+    cluster_statistics[len(cluster[0])] = cluster
+sorted_cluster_sizes = sorted(cluster_statistics.keys())
+
+alpha = 0.1
+sum_of_clusters = 0
+large_clusters = []
+small_clusters = []
+for size in sorted_cluster_sizes:
+    sum_of_clusters += size
+    if sum_of_clusters <= alpha * len(converted_data):
+        small_clusters.append(size)
+    else:
+        large_clusters.append(size)
+
+start_time = time.time()
+cblof_scores = {}
+for key in converted_data:
+    current_data = converted_data[key]
+    for cluster_size in cluster_statistics:
+        if key in cluster_statistics[cluster_size][0]:
+            cluster_id = cluster_size
+            break
+    if cluster_id in large_clusters:
+        similarity = calculate_similarity(cluster_statistics[cluster_id][1], current_data)
+        lof = cluster_id * similarity
+        cblof_scores[key] = round(lof, 6)
+    else:
+        all_similarities = []
+        for lc in large_clusters:
+            all_similarities.append(calculate_similarity(cluster_statistics[lc][1], current_data))
+        max_similarity = min(all_similarities)
+        lof = cluster_id * max_similarity
+        cblof_scores[key] = round(lof, 6)
+elapsed_cblof_time = time.time() - start_time
+
+sorted_cblof_scores = sorted(cblof_scores, key=cblof_scores.get, reverse=True)
+top_n_percent = 5
+num_outliers = int((top_n_percent / 100.0) * len(sorted_cblof_scores))
+outliers = sorted_cblof_scores[:num_outliers]

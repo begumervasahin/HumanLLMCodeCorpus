@@ -1,0 +1,103 @@
+import os
+import re
+import operator
+
+STOP_WORDS = {
+    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "as", "at",
+    "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "could", "did", "do",
+    "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had", "has", "have", "having",
+    "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how",
+    "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "it", "it's", "its", "itself", "let's",
+    "me", "more", "most", "my", "myself", "nor", "of", "on", "once", "only", "or", "other", "ought", "our", "ours",
+    "ourselves", "out", "over", "own", "same", "she", "she'd", "she'll", "she's", "should", "so", "some", "such",
+    "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these",
+    "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until",
+    "up", "very", "was", "we", "we'd", "we'll", "we're", "we've", "were", "what", "what's", "when", "when's",
+    "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "would", "you", "you'd",
+    "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"
+}
+
+
+class Rake:
+    def __init__(self, stop_words=None):
+        self.stop_words = stop_words or STOP_WORDS
+
+    @staticmethod
+    def is_number(s):
+        try:
+            float(s) if '.' in s else int(s)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def clean(content):
+        return re.sub(r'[^a-zA-Z0-9\s]', '', content)
+
+    def get_cleaned_content(self, content_file):
+        cleaned_content = []
+        with open(content_file, encoding='utf-8') as file:
+            for line in file:
+                cleaned_content.append(self.clean(line.strip()))
+        return cleaned_content
+
+    def separate_words(self, text, min_word_return_size):
+        words = []
+        word_splitter = re.compile('[^a-zA-Z0-9_\\+\\-/]')
+        for word in word_splitter.split(text):
+            cleaned_word = word.strip().lower()
+            if len(cleaned_word) > min_word_return_size and cleaned_word and not self.is_number(cleaned_word):
+                words.append(cleaned_word)
+        return words
+
+    def generate_candidate_keywords(self, sentence_list):
+        phrase_list = []
+        for sentence in sentence_list:
+            tmp = re.sub(r'\b(' + '|'.join(self.stop_words) + r')\b', '|', sentence.strip().lower())
+            phrases = tmp.split("|")
+            for phrase in phrases:
+                cleaned_phrase = phrase.strip().lower()
+                if cleaned_phrase:
+                    phrase_list.append(cleaned_phrase)
+        return phrase_list
+
+    def calculate_word_scores(self, phrase_list):
+        word_frequency = {}
+        word_degree = {}
+        for phrase in phrase_list:
+            words = self.separate_words(phrase, 0)
+            word_list_length = len(words)
+            word_list_degree = word_list_length - 1
+            for word in words:
+                word_frequency[word] = word_frequency.get(word, 0) + 1
+                word_degree[word] = word_degree.get(word, 0) + word_list_degree
+                word_degree[word] += word_frequency[word]
+        word_score = {word: word_degree[word] / (word_frequency[word] * 1.0) for word in word_frequency}
+        return word_score
+
+    def generate_candidate_keyword_scores(self, phrase_list, word_score):
+        keyword_scores = {}
+        for phrase in phrase_list:
+            words = self.separate_words(phrase, 0)
+            candidate_score = sum(word_score[word] for word in words)
+            keyword_scores[phrase] = candidate_score
+        return keyword_scores
+
+    def run(self, content_file):
+        if content_file and os.path.isfile(content_file):
+            sentence_list = self.get_cleaned_content(content_file)
+            phrase_list = self.generate_candidate_keywords(sentence_list)
+            word_scores = self.calculate_word_scores(phrase_list)
+            keyword_scores = self.generate_candidate_keyword_scores(phrase_list, word_scores)
+            sorted_keywords = sorted(keyword_scores.items(), key=operator.itemgetter(1), reverse=True)
+            sorted_keywords_cut = [keyword for keyword in sorted_keywords if len(keyword[0].split()) <= 3]
+            return sorted_keywords_cut
+        else:
+            return []
+
+
+if __name__ == "__main__":
+    rake = Rake()
+    content_file = "your_content_file.txt"  # Provide the path to your content file
+    keywords = rake.run(content_file)
+    print(keywords)

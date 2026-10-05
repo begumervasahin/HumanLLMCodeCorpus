@@ -1,0 +1,20 @@
+def linear_search(arr, val):
+    found = False
+    for i in range(len(arr)):
+        if arr[i] == val:
+            print("We found your number", val, "at index", i)
+            found = True
+            break
+    if not found:
+        print("Value not found in the array")
+def main():
+    n = int(input("Enter the size of the array: "))
+    arr = []
+    for i in range(n):
+        x = int(input("Enter element {} of the array: ".format(i+1)))
+        arr.append(x)
+    print("Array:", arr)
+    val = int(input("Enter the value you want to search for: "))
+    linear_search(arr, val)
+if __name__ == "__main__":
+    main()

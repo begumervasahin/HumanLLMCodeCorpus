@@ -1,0 +1,109 @@
+import sys
+
+# Function to read the graph from a file
+def read_graph(filename, debug=False):
+    """
+    Reads a file containing node connections and stores them in a graph dictionary.
+    Each line in the file represents a node followed by its adjacent nodes.
+    """
+    graph = {}
+
+    with open(filename, 'r') as file:
+        for line in file:
+            # Split the line into node and its adjacent nodes
+            nodes = line.strip().split(" ")
+
+            # Skip empty lines
+            if not nodes:
+                continue
+
+            # Extract node name and its adjacent nodes
+            node_name = nodes[0]
+            adjacent_nodes = nodes[1:]
+
+            # Store node and its adjacent nodes in the graph
+            graph[node_name] = {
+                'color': 'white',
+                'adjacent_nodes': adjacent_nodes
+            }
+
+            # Print debug information if enabled
+            if debug:
+                print("Node:", node_name, "Adjacent nodes:", adjacent_nodes)
+
+    return graph
+
+# Function to print the graph
+def print_graph(graph):
+    """
+    Prints the contents of the graph dictionary.
+    """
+    print("Graph Contents: Node (Color, [Adjacent Nodes])")
+    for node, data in graph.items():
+        print(node, data)
+
+# Breadth-First Search (BFS) algorithm
+def bfs(graph, root):
+    """
+    Performs Breadth-First Search (BFS) traversal on the graph starting from the root node.
+    Returns a list of tuples containing node names and their respective distances from the root.
+    """
+    queue = [(root, 0)]  # Initialize queue with root node and distance 0
+    graph[root]['color'] = "black"  # Mark root node as visited
+    result = []  # Initialize result list
+
+    if not graph[root]['adjacent_nodes']:  # If root node has no adjacent nodes, return empty result
+        return result
+
+    while queue:
+        node, distance = queue.pop(0)  # Dequeue a node from the queue
+        for neighbor in graph[node]['adjacent_nodes']:  # Iterate through adjacent nodes of the dequeued node
+            if graph[neighbor]['color'] == "white":  # If neighbor node is unvisited
+                graph[neighbor]['color'] = 'grey'  # Mark neighbor node as visited
+                result.append((neighbor, distance + 1))  # Add neighbor node and its distance to result
+                queue.append((neighbor, distance + 1))  # Enqueue neighbor node with updated distance
+        graph[node]['color'] = "black"  # Mark dequeued node as fully explored
+
+    return result
+
+# Depth-First Search (DFS) algorithm
+def dfs(graph, root, parent=None):
+    """
+    Performs Depth-First Search (DFS) traversal on the graph starting from the root node.
+    Prints a message if a cycle is detected during traversal.
+    """
+    graph[root]['color'] = "grey"  # Mark root node as visited
+
+    for neighbor in graph[root]['adjacent_nodes']:  # Iterate through adjacent nodes of the root node
+        if graph[neighbor]['color'] == "white":  # If neighbor node is unvisited
+            dfs(graph, neighbor, root)  # Recursively traverse the neighbor node
+        elif graph[neighbor]['color'] == "grey" and neighbor != parent:  # If neighbor node is visited and in grey state (back edge)
+            print("Cycle detected between nodes:", root, "and", neighbor)  # Print cycle detection message
+
+    graph[root]['color'] = "black"  # Mark root node as fully explored
+
+if __name__ == "__main__":
+    # Check if debug mode is enabled
+    debug = len(sys.argv) > 4
+
+    # Read graph from file
+    graph = read_graph(sys.argv[1], debug)
+
+    # Get the root node from command line arguments
+    root = sys.argv[2]
+
+    # Print root key
+    print("Root key:", root)
+
+    # Perform BFS traversal
+    bfs_result = bfs(graph, root)
+    print("BFS Result:")
+    print(bfs_result)
+
+    # Reset graph nodes to unvisited state
+    for node in graph:
+        graph[node]['color'] = 'white'
+
+    # Perform DFS traversal
+    print("DFS Result:")
+    dfs(graph, root)

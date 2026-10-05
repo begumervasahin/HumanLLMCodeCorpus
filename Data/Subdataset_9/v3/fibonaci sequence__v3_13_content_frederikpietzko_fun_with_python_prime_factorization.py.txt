@@ -1,0 +1,50 @@
+from find_prime_numbers import sieve_of_eratosthenes
+from gdc_euclidian_algorithm import modern_euclic_recursive as gcd
+
+def naive_factorization(n):
+    # Generate primes up to half of n
+    primes = sieve_of_eratosthenes(n // 2 + 1)
+    factors = []
+    # Check for factors by dividing n by each prime
+    for prime in primes[2:]:
+        if n % prime == 0:
+            factors.append(prime)
+    return factors
+
+def g(x, n):
+    # Define the function g(x, n) = (x^2 + 1) mod n
+    return (x ** 2 + 1) % n
+
+def pollard_rho(n):
+    x = 2
+    y = 2
+    d = 1
+    # Pollard's rho algorithm to find a non-trivial divisor of n
+    while d == 1:
+        x = g(x, n)
+        y = g(g(y, n), n)
+        d = gcd(abs(x - y), n)
+    # Return the divisor found
+    if d == n:
+        return False  # Indicate failure if no non-trivial divisor is found
+    return d
+
+if __name__ == "__main__":
+    while True:
+        algorithm_choice = input("Choose the approach: Naive (n) or Pollard Rho (p)? ").lower()
+
+        while True:
+            number_input = input("Enter 'exit' to choose another approach. Otherwise, enter a number: ")
+            if number_input.lower() == "exit":
+                break
+
+            if number_input.isnumeric():
+                n = int(number_input)
+                if algorithm_choice == "n":
+                    print("Factors using the naive approach:", naive_factorization(n))
+                elif algorithm_choice == "p":
+                    print("Factors using the Pollard Rho algorithm:", pollard_rho(n))
+                else:
+                    print("Invalid choice. Please select 'n' for naive or 'p' for Pollard Rho.")
+            else:
+                print("Invalid input. Please enter a number or 'exit'.")

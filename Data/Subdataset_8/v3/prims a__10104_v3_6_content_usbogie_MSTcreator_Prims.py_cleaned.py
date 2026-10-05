@@ -1,0 +1,66 @@
+import copy
+class Node:
+    def __init__(self, id, x, y, adjList):
+        self.id = id
+        self.x = x
+        self.y = y
+        self.adjList = adjList
+def run_prims(trees):
+    MSTs = []
+    for tree in trees:
+        MSTs.append(run_prims_on_tree(tree))
+    return MSTs
+def run_prims_on_tree(tree):
+    mst_nodes = []
+    tree_to_mst = {}
+    mst_to_tree = {}
+    for node in tree:
+        copied_node = copy.deepcopy(node)
+        copied_node.adjList = {}
+        tree_to_mst[node] = copied_node
+        mst_to_tree[copied_node] = node
+    first_node = tree_to_mst[next(iter(tree.keys()))]
+    mst_nodes.append(first_node)
+    done = False
+    while not done:
+        if len(mst_nodes) == len(tree):
+            done = True
+        else:
+            mst_nodes.append(get_next_node(mst_nodes, tree, tree_to_mst, mst_to_tree))
+    return mst_nodes
+def get_next_node(mst_nodes, tree, tree_to_mst, mst_to_tree):
+    lowest_node = Node(0, 0, 0, {})
+    lowest_weight = -1
+    parent = Node(0, 0, 0, {})
+    tree_child = Node(0, 0, 0, {})
+    for node in mst_nodes:
+        tree_node = mst_to_tree[node]
+        for child, weight in tree_node.adjList.items():
+            if (weight < lowest_weight or lowest_weight == -1) and tree_to_mst[child] not in mst_nodes:
+                lowest_weight = weight
+                lowest_node = tree_to_mst[child]
+                tree_child = child
+                parent = node
+    tree_parent = mst_to_tree[parent]
+    del tree_parent.adjList[tree_child]
+    del tree_child.adjList[tree_parent]
+    parent.adjList[lowest_node] = lowest_weight
+    lowest_node.adjList[parent] = lowest_weight
+    return lowest_node
+if __name__ == "__main__":
+    tree1 = {
+        Node(1, 0, 0, {Node(2, 0, 0, {}): 5, Node(3, 0, 0, {}): 6}),
+        Node(2, 0, 0, {Node(1, 0, 0, {}): 5, Node(3, 0, 0, {}): 1}),
+        Node(3, 0, 0, {Node(1, 0, 0, {}): 6, Node(2, 0, 0, {}): 1})
+    }
+    tree2 = {
+        Node(1, 0, 0, {Node(2, 0, 0, {}): 4, Node(3, 0, 0, {}): 1}),
+        Node(2, 0, 0, {Node(1, 0, 0, {}): 4, Node(3, 0, 0, {}): 2}),
+        Node(3, 0, 0, {Node(1, 0, 0, {}): 1, Node(2, 0, 0, {}): 2})
+    }
+    trees = [tree1, tree2]
+    msts = run_prims(trees)
+    for mst in msts:
+        print("Minimum Spanning Tree:")
+        for node in mst:
+            print("Node:", node.id, "Adjacent Nodes:", [(adj_node.id, weight) for adj_node, weight in node.adjList.items()])

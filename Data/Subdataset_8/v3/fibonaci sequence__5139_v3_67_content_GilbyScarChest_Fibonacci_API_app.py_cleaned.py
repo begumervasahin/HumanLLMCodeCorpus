@@ -1,0 +1,41 @@
+def fibo(n: int) -> int:
+    if n < 1:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fibo(n - 1) + fibo(n - 2)
+current_index = 0
+def home():
+    return (
+        f"Available Routes:<br/>"
+        f"/previous<br/>"
+        f"/current<br/>"
+        f"/next<br/>"
+    )
+def current_fib():
+    global current_index
+    return str(fibo(current_index))
+def next_fib():
+    global current_index
+    current_index += 1
+    return str(fibo(current_index))
+def prev_fib():
+    global current_index
+    current_index -= 1
+    return str(fibo(current_index))
+def handle_request(endpoint):
+    if endpoint == "/":
+        return home()
+    elif endpoint == "/current":
+        return current_fib()
+    elif endpoint == "/next":
+        return next_fib()
+    elif endpoint == "/previous":
+        return prev_fib()
+    else:
+        return "Invalid endpoint"
+if __name__ == '__main__':
+    while True:
+        user_input = input("Enter endpoint (current/next/previous): ")
+        print(handle_request(user_input))

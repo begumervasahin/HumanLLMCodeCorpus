@@ -1,0 +1,123 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import adfuller as ADF
+from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.graphics.api import qqplot
+from statsmodels.stats.diagnostic import acorr_ljungbox
+input_file = 'data/sales_by_item.xlsx'
+output_path = 'result/'
+eda_figure_output = 'eda_fig/'
+acf_pacf_figure_output = 'acf_pacf_fig/'
+forecast_output_file = 'result/forecast.xlsx'
+model_output_file = 'result/model.xlsx'
+for path in [output_path, eda_figure_output, acf_pacf_figure_output]:
+    if not os.path.exists(path):
+        os.makedirs(path)
+data = pd.read_excel(input_file).T
+data.index = pd.to_datetime(data.index)
+data_analysis = data.iloc[:-12, :]
+data_test = data.iloc[-12:-7, :]
+data_prediction = data.iloc[-7:-1, :]
+plt.style.use('ggplot')
+for column in data_analysis.columns:
+    figure_output = os.path.join(eda_figure_output, f"{column}.png")
+    data_analysis[column].plot(figsize=(10, 8))
+    plt.title(column)
+    plt.xlabel('Date')
+    plt.ylabel('Sales Quantity')
+    plt.savefig(figure_output, dpi=200)
+    plt.close()
+def plot_acf_pacf(data, save_fig=False, save_name=''):
+    lag = len(data) - 1
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
+    sm.graphics.tsa.plot_acf(data, lags=lag, ax=axes[0])
+    sm.graphics.tsa.plot_pacf(data, lags=lag, ax=axes[1])
+    if not save_fig:
+        plt.show()
+    else:
+        plt.savefig(save_name, dpi=200)
+    plt.close()
+differences = {}
+p_values_adf = {}
+for column in data_analysis.columns:
+    adf_result = ADF(data_analysis[column])
+    differences[column] = 0
+    p_values_adf[column] = adf_result[1]
+    while adf_result[1] >= .05:
+        differences[column] += 1
+        adf_result = ADF(data_analysis[column].diff(differences[column]).dropna())
+        p_values_adf[column] = adf_result[1]
+new_products = [key for key, value in p_values_adf.items() if np.isnan(value) or value == 0.0]
+current_products = [column for column in data.columns if column not in new_products]
+for column in current_products:
+    d = differences[column]
+    data_to_plot = data_analysis[column] if d == 0 else data_analysis[column].diff(d).dropna()
+    save_directory = os.path.join(acf_pacf_figure_output, f"{column}_diff_{d}.png")
+    plot_acf_pacf(data_to_plot, save_fig=True, save_name=save_directory)
+limit = int(len(current_products) / 10)
+p_max = limit
+q_max = limit
+bic_values = {}
+for column in current_products:
+    print(f'Working on {column}')
+    d = differences[column]
+    data_to_fit = data_analysis[column].astype(float)
+    bic_matrix = []
+    for p in range(p_max + 1):
+        tmp = []
+        for q in range(q_max + 1):
+            try:
+                tmp.append(ARIMA(data_to_fit, (p, d, q)).fit().bic)
+            except:
+                tmp.append(np.nan)
+        bic_matrix.append(tmp)
+    bic_values[column] = bic_matrix
+    print('-' * 80)
+manual_check_columns = [column for column in current_products if pd.DataFrame(bic_values[column]).isnull().sum().sum() == (limit + 1) ** 2]
+machine_run_columns = [column for column in current_products if column not in manual_check_columns]
+p_q_values = {}
+for column in machine_run_columns:
+    data = pd.DataFrame(bic_values[column])
+    p, q = data.stack().idxmin()
+    p_q_values[column] = [p, q]
+parameters_df = pd.DataFrame({column: [p_q_values[column][0], differences[column], p_q_values[column][1]] for column in machine_run_columns})
+validity_dict = {}
+arima_models = {}
+for column in machine_run_columns:
+    try:
+        arima_model = ARIMA(data_analysis[column].astype(float), tuple(parameters_df[column])).fit()
+        predicted_values = arima_model.predict()
+        error_series = predicted_values - data_analysis[column]
+        lb_test_results, p_value = acorr_ljungbox(error_series, lags=1)
+        significant_lags_count = (p_value < 0.05).sum()
+        validity_dict[column] = significant_lags_count == 0
+        arima_models[column] = arima_model if validity_dict[column] else None
+    except:
+        validity_dict[column] = False
+machine_run_columns = [column for column in machine_run_columns if validity_dict[column]]
+parameters_df[machine_run_columns].to_excel(model_output_file)
+forecasted_values = {}
+start_timestamp = pd.Timestamp('2017-01')
+end_timestamp = pd.Timestamp('2017-12')
+for column in machine_run_columns:
+    original_data = data_analysis[column]
+    test_data = data_test[column]
+    arima_model = arima_models[column]
+    predicted_values = arima_model.predict(start_timestamp, end_timestamp) if arima_model else None
+    forecasted_values[column] = predicted_values
+    if predicted_values is not None:
+        plt.figure(figsize=(10, 5))
+        plt.title(f'Sales Projection of {column} for {start_timestamp.strftime("%Y-%m")} - {end_timestamp.strftime("%Y-%m")}')
+        plt.plot(original_data, color='r', label='History', linestyle='-')
+        plt.plot(test_data, color='c', label='YTD', linestyle='-')
+        plt.plot(predicted_values, color='g', label='Projection', linestyle='--')
+        plt.xlabel('Date')
+        plt.ylabel('Sales Quantity')
+        plt.legend(loc=0)
+        figure_name = f"{column}_for_{start_timestamp.strftime('%Y-%m')}_to_{end_timestamp.strftime('%Y-%m')}.png"
+        figure_path = os.path.join(output_path, figure_name)
+        plt.savefig(figure_path, dpi=200)
+        plt.close()

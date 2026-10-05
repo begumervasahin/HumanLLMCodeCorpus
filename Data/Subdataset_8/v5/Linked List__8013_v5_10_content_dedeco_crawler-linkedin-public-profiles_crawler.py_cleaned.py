@@ -1,0 +1,94 @@
+import os
+import pickle
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from bs4 import BeautifulSoup
+from joblib import Parallel, delayed
+from slugify import slugify
+from config import timeout, dir_path, crawl_urls, credentials, cookie_file, screenshot_dir, domain, SEED
+from database import Recomendation, SESSION
+chrome_driver_path = os.path.join(dir_path, 'chromedriver')
+chrome_options = webdriver.ChromeOptions()
+chrome_options.add_argument('--incognito')
+def init_browser():
+    browser = webdriver.Chrome(executable_path=chrome_driver_path, chrome_options=chrome_options)
+    return browser
+def save_html(html_str, filename):
+    with open(filename, "w") as html_file:
+        html_file.write(html_str)
+def save_record(session, source_html, url, parent_id=None, visited=0):
+    record = Recomendation()
+    record.parent_id = parent_id
+    record.url = url
+    file_path = './pages/' + slugify(url.split('/')[4]) + '.html'
+    record.file = file_path
+    record.visited = visited
+    if save_html(source_html, file_path):
+        session.add(record)
+        session.commit()
+    return record
+def visit_page(url):
+    print('Visiting profile:', url)
+    browser = init_browser()
+    browser.get(url)
+    cookies = pickle.load(open(cookie_file, "rb"))
+    for cookie in cookies:
+        browser.add_cookie(cookie)
+    browser.refresh()
+    browser.get(url)
+    WebDriverWait(browser, timeout).until(EC.visibility_of_element_located((By.CLASS_NAME, 'pv-deferred-area__content')))
+    page_source = browser.page_source
+    browser.quit()
+    return page_source
+def process_url(url_seed, parent_id):
+    exists = SESSION.query(Recomendation).filter_by(url=url_seed).first()
+    if not exists or exists.visited == 0:
+        print('Processing seed profile:', url_seed)
+        page_source = visit_page(url_seed)
+        record = save_record(SESSION, page_source, url_seed, parent_id=parent_id, visited=1)
+        soup = BeautifulSoup(page_source, 'html.parser')
+        ul = soup.find('ul', class_='pv-profile-section__section-info section-info browsemap mt4')
+        links = [domain + a['href'] for a in ul.find_all('a', class_='pv-browsemap-section__member ember-view')]
+        visited = []
+        sources = Parallel(n_jobs=-1)(delayed(visit_page)(link) for link in links)
+        for page_source, link in zip(sources, links):
+            r = save_record(SESSION, page_source, link, parent_id=record.id)
+            visited.append(r)
+        for v in visited:
+            v.visited = 1
+            SESSION.commit()
+def crawler():
+    try:
+        browser = init_browser()
+        if not os.path.isfile(cookie_file):
+            print('--- Logging in ---')
+            browser.get(crawl_urls['login'])
+            WebDriverWait(browser, timeout).until(EC.visibility_of_element_located((By.ID, 'login-submit')))
+            browser.find_element_by_id('login-email').send_keys(credentials['email'])
+            browser.find_element_by_id('login-password').send_keys(credentials['password'])
+            browser.find_element_by_id('login-submit').click()
+            WebDriverWait(browser, timeout).until(EC.visibility_of_element_located((By.CLASS_NAME, 'core-rail')))
+            pickle.dump(browser.get_cookies(), open(cookie_file, "wb"))
+            browser.save_screenshot(screenshot_dir + 'homepage_from_auth.png')
+        else:
+            print('--- Using saved cookie ---')
+            browser.get(crawl_urls['home'])
+            cookies = pickle.load(open(cookie_file, "rb"))
+            for cookie in cookies:
+                browser.add_cookie(cookie)
+            browser.refresh()
+            WebDriverWait(browser, timeout).until(EC.visibility_of_element_located((By.CLASS_NAME, 'core-rail')))
+        process_url(SEED, None)
+        for _ in range(100):
+            not_visited = SESSION.query(Recomendation).filter_by(visited=0).all()
+            for v in not_visited:
+                process_url(v.url, v.id)
+        browser.quit()
+    except TimeoutException:
+        print('Timed out waiting for page to load')
+        browser.save_screenshot(screenshot_dir + 'timeout_exception.png')
+        browser.quit()
+crawler()

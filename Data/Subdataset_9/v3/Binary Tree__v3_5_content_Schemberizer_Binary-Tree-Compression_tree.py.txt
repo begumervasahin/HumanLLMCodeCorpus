@@ -1,0 +1,121 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+
+    def get_data(self):
+        return self.data
+
+    def get_left_child(self):
+        return self.left
+
+    def get_right_child(self):
+        return self.right
+
+    def set_left_child(self, node):
+        self.left = node
+
+    def set_right_child(self, node):
+        self.right = node
+
+
+class HuffmanTree:
+    def __init__(self):
+        self.root = None
+        self.encoding_log = []
+
+    def is_empty(self):
+        return self.root is None
+
+    def size(self):
+        return self._size(self.root)
+
+    def _size(self, node):
+        if not node:
+            return 0
+        return 1 + self._size(node.get_left_child()) + self._size(node.get_right_child())
+
+    def height(self):
+        return self._height(self.root)
+
+    def _height(self, node):
+        if not node:
+            return 0
+        return 1 + max(self._height(node.get_left_child()), self._height(node.get_right_child()))
+
+    def find_character(self, query):
+        query_node = Node(query)
+        if not self.encoding_log:
+            self._initialize_encoding_log(self.root, "")
+            self.encoding_log = sorted(self.encoding_log, key=lambda x: x.get_data()[1], reverse=True)
+        for node in self.encoding_log:
+            if node.get_data()[0] == query_node.get_data():
+                return node.get_data()[2]
+        return "error"
+
+    def _initialize_encoding_log(self, node, path):
+        if node.get_data()[0] == '':
+            if node.get_left_child():
+                self._initialize_encoding_log(node.get_left_child(), path + "0")
+            if node.get_right_child():
+                self._initialize_encoding_log(node.get_right_child(), path + "1")
+        if not node.get_right_child() and not node.get_left_child():
+            node.data.append(path)
+            self.encoding_log.append(node)
+
+    def translate(self, bit_string):
+        return self._translate(self.root, bit_string)
+
+    def _translate(self, node, bit_string):
+        if len(bit_string) > 0:
+            if bit_string[0] == "0":
+                if node.get_left_child():
+                    return self._translate(node.get_left_child(), bit_string[1:])
+                else:
+                    return node.get_data()[0], bit_string
+            if bit_string[0] == "1":
+                if node.get_right_child():
+                    return self._translate(node.get_right_child(), bit_string[1:])
+                else:
+                    return node.get_data()[0], bit_string
+        return node.get_data()[0], bit_string
+
+    def build_tree(self, data_list):
+        if isinstance(data_list[0], list):
+            new_list = []
+            for i in data_list:
+                new_list.append(Node(i))
+            data_list = new_list
+        if len(data_list) > 1:
+            temp = Node(['', data_list[0].get_data()[1] + data_list[1].get_data()[1]])
+            temp.set_left_child(data_list[0])
+            temp.set_right_child(data_list[1])
+            data_list.append(temp)
+            data_list = sorted(data_list[2:], key=lambda x: x.get_data()[1], reverse=False)
+            self.build_tree(data_list)
+        else:
+            self.root = data_list[0]
+
+    def lcr_print(self):
+        self._lcr_print(self.root)
+        print()
+
+    def _lcr_print(self, node):
+        if node.get_left_child():
+            self._lcr_print(node.get_left_child())
+        print(node.get_data(), end=" ")
+        if node.get_right_child():
+            self._lcr_print(node.get_right_child())
+
+
+if __name__ == "__main__":
+    huffman_tree = HuffmanTree()
+    huffman_tree.build_tree([['a', 1], ['b', 1], ['c', 1], ['d', 2], ['e', 6], ['f', 10], ['g', 15]])
+    character_c = huffman_tree.find_character('c')
+    character_a = huffman_tree.find_character('a')
+    bit_string = str(character_c + character_a)
+    print(bit_string)
+    while bit_string:
+        character, bit_string = huffman_tree.translate(bit_string)
+        print(character, end="")

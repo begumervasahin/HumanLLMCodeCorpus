@@ -1,0 +1,20 @@
+
+lookup_table_keys = [
+    (0, 12), (13, 37), (38, 62), (63, 87), (88, 112),
+    (113, 137), (138, 162), (163, 187), (188, 212),
+    (213, 237), (238, 9999)
+]
+lookup_table = {
+    'upset': {
+        key_range: value for key_range, value in zip(lookup_table_keys, [8, 10, 13, 16, 20, 25, 30, 35, 40, 45, 50])
+    },
+    'expected_result': {
+        key_range: value for key_range, value in zip(lookup_table_keys, [8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 0])
+    }
+}
+def get_adjustment(winner_rating, loser_rating):
+    table_key = 'upset' if winner_rating < loser_rating else 'expected_result'
+    score_differential = abs(winner_rating - loser_rating)
+    for key_range, value in lookup_table[table_key].items():
+        if score_differential in range(key_range[0], key_range[1] + 1):
+            return value

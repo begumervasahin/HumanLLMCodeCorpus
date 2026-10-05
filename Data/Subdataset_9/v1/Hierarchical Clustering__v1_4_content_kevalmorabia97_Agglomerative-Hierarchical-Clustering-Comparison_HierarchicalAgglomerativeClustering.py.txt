@@ -1,0 +1,40 @@
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import normalize
+import matplotlib.pyplot as plt
+
+# Read data from file
+with open('data/random_3_clusters.txt', 'r') as f:
+    data = []
+    correct_labels = []
+    for line in f:
+        line = line.strip().split(',')
+        tmp = [float(i) for i in line]
+        data.append(tmp[:-1])
+        correct_labels.append(int(tmp[-1]))
+
+# Normalize the data
+X = normalize(data, axis=0)
+
+# Perform PCA
+pca = PCA(n_components=2)
+X = pca.fit_transform(X)
+
+# Define the linkages to be used
+linkages = ['complete', 'average', 'ward', 'actual_data']
+
+# Plotting
+n_clusters = 3
+no_of_subplots = len(linkages)
+plt.figure(figsize=(5 * no_of_subplots, 5))
+for i, linkage in enumerate(linkages):
+    plt.subplot(1, no_of_subplots, i + 1)
+    if linkage == 'actual_data':
+        labels = correct_labels
+    else:
+        model = AgglomerativeClustering(linkage=linkage, n_clusters=n_clusters)
+        labels = model.fit_predict(X)
+    plt.scatter(X[:, 0], X[:, 1], c=labels)
+    plt.title('linkage=%s' % linkage)
+
+plt.show()

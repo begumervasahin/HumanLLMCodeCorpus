@@ -1,0 +1,104 @@
+import re
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_newegg_laptops(url):
+    # Fetching the webpage
+    response = requests.get(url)
+    
+    # Checking if the request was successful
+    if response.status_code == 200:
+        # Parsing the HTML content
+        page_soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Opening a CSV file to store the scraped data
+        with open('data/newegg-laptops.csv', 'w') as file:
+            # Writing the header row for the CSV file
+            file.write('Brand,Name,Price-was,Current-Price,Discount(%),RAM(GB),Storage(GB/TB),Refurbished(0/1),URL\n')
+            
+            # Finding all laptop containers
+            laptops = page_soup.findAll('div', {'class': 'item-container'})
+            
+            # Iterating over each laptop container
+            for laptop in laptops:
+                try:
+                    # Extracting the brand of the laptop
+                    brand = laptop.find('div', 'item-info').div.a.img['title']
+                except:
+                    brand = 'NaN'
+                
+                # Extracting the title of the laptop
+                title = laptop.findAll('a', {'class': 'item-title'})[0].text
+                
+                # Checking if the laptop is refurbished
+                if ('refurbished' in title.lower()) or ('renewed' in title.lower()): 
+                    refurbished = '1'
+                else:
+                    refurbished = '0'
+                
+                # Extracting the URL of the laptop
+                link = laptop.findAll('a', {'class': 'item-title'})[0]['href']
+                
+                # Extracting RAM and Storage information from the title
+                features = title.replace(' ', '')
+                features = re.search('.*(?:\)|\w|-)(\d+)GB.*(?:y|\+|-|M)(\d+)', features)
+                try:
+                    ram = features.group(1)
+                    storage = features.group(2)
+                except:
+                    ram = 'NaN'
+                    storage = 'NaN'
+                
+                # Extracting the price information
+                try:
+                    price_was = laptop.find('div', 'item-info').find('div', 'item-action').ul.li.span.text
+                    discount = laptop.find('div', 'item-info').find('div', 'item-action').ul.find('li', 'price-save').find('span', 'price-save-percent').text[:-1]
+                except:
+                    price_was = 'NaN'
+                    discount = '0'
+                try:
+                    current_price = laptop.find('div', 'item-info').find('div', 'item-action').ul.find('li', 'price-current').text
+                    current_price = current_price.replace(',', '')
+                    current_price = re.search('.+\s([0-9]+).+', current_price).group(1)
+                except:
+                    current_price = 'NaN'
+                
+                # Writing the extracted data to the CSV file
+                file.write(f"{brand},{title.replace(',', ' ')},{price_was},{current_price},{discount},{ram},{storage},{refurbished},{link}\n")
+        
+        # Printing a message indicating successful scraping
+        print('Scraped Newegg\'s page')
+    else:
+        # Printing a message if fetching the page failed
+        print('Failed to fetch the page')
+
+def egg_urls(url):
+    # Fetching the webpage
+    response = requests.get(url)
+    
+    # Checking if the request was successful
+    if response.status_code == 200:
+        # Parsing the HTML content
+        page_soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Finding the last page number
+        last_page = egg_last(page_soup)
+        
+        # Generating URLs for additional pages
+        urls = [f'https://www.newegg.com/global/in-en/Laptops-Notebooks/SubCategory/ID-32/Page-{page}?Tid=1297918' for page in range(2, last_page + 1)]
+        
+        return urls
+    else:
+        # Printing a message if fetching the page failed
+        print('Failed to fetch the page')
+
+def egg_last(page_soup):
+    # Finding the last page number
+    last_page_element = page_soup.find_all('div', {'class': 'page_NavigationBar'})[1].select_one('div:nth-of-type(10)').text.strip()
+    return int(last_page_element)
+
+# Example usage:
+starting_url = 'https://www.newegg.com/global/in-en/Laptops-Notebooks/SubCategory/ID-32/Page-1?Tid=1297918'
+scrape_newegg_laptops(starting_url)
+additional_urls = egg_urls(starting_url)
+print("Additional pages to scrape:", additional_urls)

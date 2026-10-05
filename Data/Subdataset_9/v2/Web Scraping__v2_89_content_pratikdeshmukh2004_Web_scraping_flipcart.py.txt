@@ -1,0 +1,45 @@
+import requests
+from bs4 import BeautifulSoup
+import pprint
+
+def get_mobile_info(url):
+    # Fetching the webpage content
+    response = requests.get(url)
+    # Parsing the HTML content
+    soup = BeautifulSoup(response.text, "html.parser")
+    # Finding all mobile containers in the HTML
+    main_divs = soup.find_all("div", class_="_1UoZlX")
+    mobiles = []
+
+    # Iterating over each mobile container
+    for div in main_divs:
+        mobile_info = {}
+        # Extracting mobile name
+        mobile_info["Name"] = div.find("div", class_="_3wU53n").text
+        # Extracting mobile price
+        mobile_info["Price"] = div.find("div", class_="_1vC4OE _2rQ-NK").text
+        # Extracting mobile rating if available
+        mobile_rating = div.find("div", class_="hGSR34")
+        if mobile_rating:
+            mobile_info["Rating"] = mobile_rating.text
+        # Extracting mobile details like memory, display, etc.
+        details = div.find_all("li", class_="tVe95H")
+        for detail in details:
+            key, value = detail.text.split(": ")
+            mobile_info[key] = value
+        mobiles.append(mobile_info)
+
+    return mobiles
+
+def main():
+    # Taking user input for page number
+    user_input = input("Enter page number: ")
+    # Constructing URL with user input
+    url = f"https://www.flipkart.com/search?q=Redmi&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=on&as=off&page={user_input}"
+    # Fetching mobile information from the URL
+    mobiles = get_mobile_info(url)
+    # Printing mobile information
+    pprint.pprint(mobiles)
+
+if __name__ == "__main__":
+    main()

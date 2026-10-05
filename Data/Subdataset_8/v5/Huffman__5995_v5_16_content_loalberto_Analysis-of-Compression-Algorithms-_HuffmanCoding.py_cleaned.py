@@ -1,0 +1,71 @@
+from heapq import heappush, heappop, heapify
+from collections import defaultdict
+import string
+import random
+import time
+def huffman_encode(values):
+    operation_count = 0
+    heap = []
+    for sym, wt in values.items():
+        operation_count += 1
+        heap.append([wt, [sym, ""]])
+    heapify(heap)
+    while len(heap) > 1:
+        operation_count += 1
+        lo = heappop(heap)
+        hi = heappop(heap)
+        for pair in lo[1:]:
+            pair[1] = '0' + pair[1]
+        for pair in hi[1:]:
+            pair[1] = '1' + pair[1]
+        heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
+    return sorted(heappop(heap)[1:], key=lambda val: (len(val[-1]), val)), operation_count
+def generate_random_string(string_length):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for _ in range(string_length))
+def measure_iterations(iterations):
+    op_matrix = defaultdict(list)
+    time_matrix = defaultdict(list)
+    for i in range(1, iterations + 1):
+        for j in range(1, iterations + 1):
+            n = 10 ** j
+            txt = generate_random_string(n)
+            huffman = defaultdict(int)
+            first_count = 0
+            for ch in txt:
+                first_count += 1
+                huffman[ch] += 1
+            start_time = time.time()
+            vals = huffman_encode(huffman)
+            end_time = time.time()
+            total_time = (end_time - start_time) * 1000000000
+            total = vals[1] + first_count
+            op_matrix[f'Iteration{i}'].append(total)
+            time_matrix[f'Iteration{i}'].append(total_time)
+    compute_average(op_matrix, 'Average')
+    compute_average(time_matrix, 'Average')
+    return op_matrix, time_matrix
+def compute_average(matrix, average_key):
+    average_res = {}
+    for i in range(0, len(matrix['Iteration1'])):
+        average_res[i] = 0
+    for key in matrix:
+        x = 0
+        for i in matrix[key]:
+            average_res[x] += i
+            x += 1
+    for key in average_res:
+        val = average_res[key]
+        average_res[key] = val / 10
+    matrix[average_key] = []
+    for key in average_res:
+        matrix[average_key].append(average_res[key])
+def print_matrix(matrix, message):
+    print(f'\n\n------------{message}------------\n\n')
+    for key in matrix:
+        print(key + ' ' + str(matrix[key]))
+if __name__ == '__main__':
+    iterations = 10
+    op_matrix, time_matrix = measure_iterations(iterations)
+    print_matrix(op_matrix, 'This is for the operation measurement')
+    print_matrix(time_matrix, 'This is for the time measurement')

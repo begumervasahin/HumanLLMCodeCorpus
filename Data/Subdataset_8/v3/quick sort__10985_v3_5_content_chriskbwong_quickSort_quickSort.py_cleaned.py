@@ -1,0 +1,23 @@
+def partition(arr, low, high):
+    i = low - 1
+    pivot = arr[high]
+    for j in range(low, high):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+def quick_sort_iterative(arr, low, high):
+    size = high - low + 1
+    stack = [(low, high)]
+    while stack:
+        low, high = stack.pop()
+        p = partition(arr, low, high)
+        if p - 1 > low:
+            stack.append((low, p - 1))
+        if p + 1 < high:
+            stack.append((p + 1, high))
+arr = [4, 3, 5, 2, 1, 3, 2, 3]
+quick_sort_iterative(arr, 0, len(arr) - 1)
+print("Sorted array is:")
+print(*arr)

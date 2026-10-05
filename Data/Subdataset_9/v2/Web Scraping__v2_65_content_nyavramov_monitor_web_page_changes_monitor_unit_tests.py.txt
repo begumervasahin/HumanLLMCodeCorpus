@@ -1,0 +1,62 @@
+import unittest
+import os
+import warnings
+import re
+from monitor import Email_Client, Chrome_Driver, Change_Monitor, get_dependency_name, get_credentials
+from PIL import Image
+from email.mime.multipart import MIMEMultipart
+
+class Test_Monitor(unittest.TestCase):
+    def setUp(self):
+        # Ignore warnings
+        warnings.simplefilter("ignore")
+
+        # Get email credentials
+        email, password = get_credentials()
+
+        # Get directory path of the current script
+        directory_this_script = os.path.dirname(os.path.realpath(__file__))
+
+        # Get Chrome driver information
+        chrome_driver_name = get_dependency_name()
+        chrome_driver_location = os.path.join(directory_this_script, "bin", chrome_driver_name)
+
+        # Initialize Chrome driver and Email client
+        self.driver = Chrome_Driver(chrome_driver_location)
+        self.email_client = Email_Client(email, password)
+
+        # Initialize Change Monitor
+        self.monitor = Change_Monitor(self.driver, self.email_client)
+
+    def test_calculate_hash(self):
+        # Open hash file and read the hash
+        with open("testing/monorail_cat_hash.txt", "r") as file:
+            cat_hash = file.read()
+
+        # Close the file
+        test_image = Image.open("testing/monorail_cat_test.jpg")
+        # Calculate hash of the test image and compare with expected hash
+        self.assertEqual(cat_hash, str(self.monitor.calculate_hash(test_image)))     
+
+    def test_prepare_message(self):
+        # Define URL for testing
+        url = "https://www.google.com"
+
+        # Open test images
+        test_image_1 = Image.open("testing/flying_cat.jpg")
+        test_image_2 = Image.open("testing/monorail_cat_test.jpg")
+
+        # Prepare message using the monitor
+        prepared_message = self.monitor.prepare_message(MIMEMultipart(), test_image_1, test_image_2, url)
+
+        # Define regex pattern for expected message format
+        pattern = re.compile(
+            r"Content-Type: multipart/mixed; boundary=\"===============[0-9]*==\"\nMIME-Version: 1.0\nSubject: .*\nFrom: \".*\"\nTo: \".*\"\n\n--===============[0-9]*==\nContent-Type: text/plain; charset=\"us-ascii\"\nMIME-Version: 1.0\nContent-Transfer-Encoding: 7bit\n\n.*\n--===============[0-9]*==\nContent-Type: application/octet-stream\nMIME-Version: 1.0\nContent-Transfer-Encoding: base64\nContent-Disposition: attachment; filename=new_screenshot.png.*--===============[0-9]*==--",
+            re.IGNORECASE | re.DOTALL
+        )
+
+        # Check if prepared message matches the expected pattern
+        self.assertTrue(pattern.match(prepared_message))
+
+if __name__ == '__main__':
+    unittest.main()

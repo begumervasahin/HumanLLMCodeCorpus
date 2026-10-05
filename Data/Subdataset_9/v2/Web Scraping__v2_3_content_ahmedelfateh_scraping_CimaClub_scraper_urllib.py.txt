@@ -1,0 +1,51 @@
+import requests
+from bs4 import BeautifulSoup
+
+# Define the URL of the website to scrape
+url = 'http://cimaclub.com/'
+
+# Send a GET request to the URL
+response = requests.get(url)
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(response.text, 'html.parser')
+
+# Find all movie elements
+movies = soup.find_all("div", class_="movie")
+
+# Define the name of the output CSV file
+file_name = "todayHomepage.csv"
+
+# Open the CSV file in write mode
+with open(file_name, "w", encoding='utf-8') as file:
+    # Write headers to the CSV file
+    file.write("title, description, category, view, movieUrl\n")
+
+    # Loop through each movie
+    for movie in movies:
+        # Find title and description of the movie
+        title = movie.find("div", class_="boxcontentFilm").h2.text.strip()
+        description = movie.find("div", class_="boxcontentFilm").p.text.strip()
+
+        # Find category of the movie
+        category = movie.find("span", class_="category").text.strip()
+
+        # Find views of the movie
+        view = movie.find("span", class_="views").text.strip()
+
+        # Find URL of the movie
+        movieUrl = movie.a["href"]
+
+        # Print movie details for visual confirmation
+        print("Title:", title)
+        print("Description:", description)
+        print("Category:", category)
+        print("Views:", view)
+        print("Movie URL:", movieUrl)
+
+        # Write movie details to the CSV file
+        file.write(f"{title.replace(',', ' ')}, {description.replace(',', ' ')}, "
+                   f"{category.replace(',', ' ')}, {view.replace(',', ' ')}, {movieUrl.replace(',', ' ')}\n")
+
+# Notify user about the completion of the process
+print("Data has been scraped and saved to", file_name)

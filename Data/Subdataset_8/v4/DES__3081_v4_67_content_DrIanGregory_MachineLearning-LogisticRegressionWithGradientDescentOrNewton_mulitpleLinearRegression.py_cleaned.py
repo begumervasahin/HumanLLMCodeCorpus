@@ -1,0 +1,69 @@
+import numpy as np
+import pandas as pd
+from random import seed, normalvariate
+def rmse(Y, Y_pred):
+    return np.sqrt(np.mean((Y - Y_pred) ** 2))
+def r2Score(Y, Y_pred):
+    mean_y = np.mean(Y)
+    ss_tot = sum((Y - mean_y) ** 2)
+    ss_res = sum((Y - Y_pred) ** 2)
+    r2 = 1 - (ss_res / ss_tot)
+    return r2
+def costFunction(X, Y, W):
+    N = len(Y)
+    C = np.sum((X.dot(W) - Y) ** 2) / (2 * N)
+    return C
+def gradientDescent(X, Y, W, alpha, max_iterations=10000):
+    N = len(Y)
+    cost_history = []
+    w_history = []
+    iteration = 0
+    while iteration < max_iterations:
+        h = X.dot(W)
+        loss = h - Y
+        gradient = X.T.dot(loss) / N
+        W = W - alpha * gradient
+        cost = costFunction(X, Y, W)
+        cost_history.append(cost)
+        iteration += 1
+        w_history.append(W)
+    return W, cost_history, w_history
+def showResults(X, Y, W, newW, cost_history, max_iterations, w_history):
+    initial_cost = costFunction(X, Y, W)
+    Y_pred = X.dot(newW)
+    dash_line = '=' * 80
+    print(dash_line)
+    print("MULTI LINEAR REGRESSION USING GRADIENT DESCENT TERMINATION RESULTS")
+    print(dash_line)
+    print(f"Initial Weights:    {W[0]:>12.1f}, {W[1]:>2.1f}, {W[2]:>2.1f}.")
+    print(f"Initial Cost:        {initial_cost:>12,.1f}")
+    print()
+    print(f"Final Weights:       w0:{newW[0]:>+0.2f}, w1:{newW[1]:>+3.2f}, w2:{newW[2]:>+3.3f}")
+    print(f"Final Cost:         {cost_history[-1]:>+12.1f}")
+    print(f"RMSE:              {rmse(Y, Y_pred):>+12.1f}, R-Squared: {r2Score(Y, Y_pred):>+12.1f}")
+    print(dash_line)
+def programBody(data, alpha, max_iterations):
+    num_columns = data.shape[1] - 1
+    W = np.zeros(num_columns + 1)
+    x0 = np.ones(data.shape[0])
+    X = np.column_stack((x0, data.iloc[:, 1:(num_columns + 1)].values))
+    Y = np.array(data.iloc[:, 0])
+    newW, cost_history, w_history = gradientDescent(X, Y, W, alpha, max_iterations)
+    showResults(X, Y, W, newW, cost_history, max_iterations, w_history)
+def run():
+    alpha = 0.0001
+    max_iterations = 2500000
+    np.random.seed(1234)
+    num_data_points = 500
+    means = [70, 70]
+    stds = [9, 9]
+    corr = 0.8
+    covs = [[stds[0] ** 2, stds[0] * stds[1] * corr], [stds[0] * stds[1] * corr, stds[1] ** 2]]
+    data1 = np.random.multivariate_normal(means, covs, num_data_points).T
+    job_probabilities = (data1[0] + data1[1]) / 2.5 + normalvariate(25, 4)
+    data = np.vstack((job_probabilities, data1)).T
+    data = pd.DataFrame({"JobPotential": data[:, 0], "AI": data[:, 1], "MachineLearning": data[:, 2]})
+    programBody(data, alpha, max_iterations)
+    print("Finished")
+if __name__ == '__main__':
+    run()

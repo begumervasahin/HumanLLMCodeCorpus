@@ -1,0 +1,37 @@
+class Criptografia:
+    pass
+class Chaves(Criptografia):
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+    def gerar_chaves(self):
+        n = self.p * self.q
+        phi = (self.p - 1) * (self.q - 1)
+        print("Escolha sua chave pública:")
+        print(self.obter_chaves_publicas(phi))
+        e = int(input("Escolha o valor de e: "))
+        d = self.calcular_chave_privada(e, phi)
+        print("\nChaves públicas (e={}, n={})".format(e, n))
+        print("Chaves privadas (d={}, n={})".format(d, n))
+    def mdc(self, a, b):
+        while a != 0:
+            a, b = b % a, a
+        return b
+    def inverso_modular(self, a, m):
+        for x in range(1, m):
+            if (a * x) % m == 1:
+                return x
+        print('Não há inverso modular para o bloco.')
+        return None
+    def obter_chaves_publicas(self, phi):
+        chaves_publicas = []
+        for x in range(2, phi):
+            if self.mdc(phi, x) == 1 and self.inverso_modular(x, phi) is not None:
+                chaves_publicas.append(x)
+        return chaves_publicas
+    def calcular_chave_privada(self, e, phi):
+        return self.inverso_modular(e, phi)
+p_value = 17
+q_value = 19
+chaves_obj = Chaves(p_value, q_value)
+chaves_obj.gerar_chaves()

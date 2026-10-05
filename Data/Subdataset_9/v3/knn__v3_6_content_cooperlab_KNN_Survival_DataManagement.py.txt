@@ -1,0 +1,49 @@
+import numpy as np
+
+def get_cv_idxs(idxs, kcv, n_shuffles):
+    """Get K-fold cross-validation indices."""
+    N_cv = len(idxs)
+    fold_bounds = np.arange(0, N_cv, int(N_cv / kcv))
+    fold_bounds = list(fold_bounds[:kcv]) + [N_cv - 1]
+    fold_bounds = np.int64(fold_bounds)
+    fold_cv_test = []
+    fold_cv_train = []
+    idx_shuffles = []
+
+    for shuff in range(n_shuffles):
+        np.random.shuffle(idxs)
+        idx_shuffles.append(idxs.copy())
+
+    for S in range(n_shuffles):
+        ThisIdxList = idx_shuffles[S]
+        fold_cv_test.append([])
+        fold_cv_train.append([])
+        for k in range(kcv):
+            fold_cv_test[S].append(list(ThisIdxList[fold_bounds[k]: fold_bounds[k + 1]]))
+            fold_cv_train[S].append([j for j in ThisIdxList if j not in fold_cv_test[S][k]])
+
+    return fold_cv_train, fold_cv_test
+
+def cv_with_shuffling(N, kcv=5, n_shuffles=6, valid_ratio=0.25):
+    """
+    Get cross-validation indices with shuffles. The result
+    is three non-overlapping set indices for training, validation,
+    and testing.
+    """
+    idxs = np.arange(N)
+    np.random.shuffle(idxs)
+    train, test = get_cv_idxs(idxs=idxs, kcv=kcv, n_shuffles=n_shuffles)
+    lim = int(valid_ratio * len(train[0]))
+    valid = [j[:lim] for j in train]
+    train = [j[lim:] for j in train]
+
+    split_idxs = {'test': test, 'train': train, 'valid': valid}
+    return split_idxs
+
+def main():
+    N = 1000
+    split_idxs = cv_with_shuffling(N)
+    print(split_idxs)
+
+if __name__ == '__main__':
+    main()

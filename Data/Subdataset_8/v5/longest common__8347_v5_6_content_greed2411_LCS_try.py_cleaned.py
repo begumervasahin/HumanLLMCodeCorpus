@@ -1,0 +1,45 @@
+import re
+def verify_sequence(sequence):
+    return bool(re.match("^[ATCG ]*$", sequence))
+def compute_lcs_matrix(X, Y, m, n):
+    lcs_matrix = [[0 for _ in range(n + 1)] for _ in range(m + 1)]
+    for i in range(m + 1):
+        for j in range(n + 1):
+            if i == 0 or j == 0:
+                lcs_matrix[i][j] = 0
+            elif X[i - 1] == Y[j - 1]:
+                lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + 1
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1])
+    return lcs_matrix
+def find_longest_common_subsequence(X, Y, m, n):
+    lcs_matrix = compute_lcs_matrix(X, Y, m, n)
+    index = lcs_matrix[m][n]
+    lcs_sequence = [""] * (index + 1)
+    lcs_sequence[index] = "\0"
+    i, j = m, n
+    while i > 0 and j > 0:
+        if X[i - 1] == Y[j - 1]:
+            lcs_sequence[index - 1] = X[i - 1]
+            i -= 1
+            j -= 1
+            index -= 1
+        elif lcs_matrix[i - 1][j] > lcs_matrix[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    lcs_str = "".join(lcs_sequence).replace("\0", "")
+    return lcs_str, len(lcs_str) - 1
+def main():
+    s1 = input("Enter the First Sequence\n").upper()
+    s2 = input("\nEnter the Querying Sequence\n").upper()
+    if verify_sequence(s1) and verify_sequence(s2) and len(s1) >= len(s2):
+        print(f"Sequences: {s1}, {s2}")
+        lcs_result, lcs_length = find_longest_common_subsequence(s1, s2, len(s1), len(s2))
+        print(f"\nLongest Common Subsequence: {lcs_result}\nLength: {lcs_length}")
+    elif not (len(s1) >= len(s2)):
+        print("Querying Sequence should be smaller than First Sequence")
+    else:
+        print("The Sequences should contain 'A', 'T', 'C', 'G', ' ' only")
+if __name__ == "__main__":
+    main()

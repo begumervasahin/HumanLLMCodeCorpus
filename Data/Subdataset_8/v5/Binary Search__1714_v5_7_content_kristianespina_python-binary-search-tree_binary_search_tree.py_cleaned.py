@@ -1,0 +1,58 @@
+from random import randint
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+    def insert(self, value):
+        if value < self.value:
+            if self.left is None:
+                self.left = TreeNode(value)
+            else:
+                self.left.insert(value)
+        elif value > self.value:
+            if self.right is None:
+                self.right = TreeNode(value)
+            else:
+                self.right.insert(value)
+    def to_array(self, array):
+        if self:
+            array.append(self.value)
+            self.left.to_array(array)
+            self.right.to_array(array)
+        return array
+class BinaryTree:
+    def __init__(self):
+        self.root = None
+    def insert(self, data):
+        if self.root is None:
+            self.root = TreeNode(data)
+        else:
+            self.root.insert(data)
+    def find(self, data):
+        return self._find_node(self.root, data)
+    def _find_node(self, node, data):
+        if node is None:
+            return False
+        elif data == node.value:
+            return True
+        elif data < node.value:
+            return self._find_node(node.left, data)
+        else:
+            return self._find_node(node.right, data)
+    def to_array(self):
+        return self.root.to_array([])
+    def rearrange(self):
+        nodes = self.to_array()
+        nodes.sort()
+        middle = len(nodes)
+        self.root = TreeNode(nodes.pop(middle))
+        for element in nodes:
+            self.root.insert(element)
+        return self.to_array()
+tree = BinaryTree()
+for i in range(50):
+    tree.insert(randint(0, 100))
+print("Original Tree:", tree.to_array())
+print("Rearranged Tree:", tree.rearrange())
+print("Is 55 in the tree?", tree.find(55))

@@ -1,0 +1,23 @@
+import datetime
+fib_cache = {}
+def fib(x):
+    if x in fib_cache:
+        return fib_cache[x]
+    if x == 1 or x == 2:
+        return 1
+    else:
+        value = fib(x - 1) + fib(x - 2)
+        fib_cache[x] = value
+        return value
+def calculate_and_print_fibonacci(x):
+    for i in range(1, x + 1):
+        print(f"Fibonacci({i}):", fib(i))
+def calculate_and_print_time_taken(start_time, stop_time):
+    dt = stop_time - start_time
+    print("Time taken:", dt)
+if __name__ == "__main__":
+    num_terms = int(input("Enter the number of Fibonacci terms: "))
+    start_time = datetime.datetime.now()
+    calculate_and_print_fibonacci(num_terms)
+    stop_time = datetime.datetime.now()
+    calculate_and_print_time_taken(start_time, stop_time)

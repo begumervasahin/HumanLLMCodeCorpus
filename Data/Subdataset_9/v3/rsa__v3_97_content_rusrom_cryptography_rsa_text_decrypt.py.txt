@@ -1,0 +1,65 @@
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+# Set the password used to decrypt the private key
+PASSWORD = 'In Crypto We Trust'
+
+# Function to load private key from an encrypted PEM file
+def load_private_key(file_path, password):
+    with open(file_path, "rb") as key_file:
+        private_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=password.encode(),  # Encode the password for comparison
+            backend=default_backend()  # Use the default backend
+        )
+    return private_key
+
+# Function to decrypt ciphertext using the private key
+def decrypt_text(private_key, ciphertext):
+    plaintext = private_key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),  # MGF1 with SHA256 for OAEP padding
+            algorithm=hashes.SHA256(),  # SHA256 hash algorithm
+            label=None  # No label specified
+        )
+    )
+    return plaintext
+
+# Function to read ciphertext from a file
+def read_ciphertext(file_path):
+    with open(file_path) as f:
+        ciphertext_string = f.read()  # Read the ciphertext from the file
+    return bytes.fromhex(ciphertext_string)  # Convert hex string to bytes
+
+# Function to convert private key to PEM format without encryption
+def convert_to_pem(private_key):
+    pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,  # Encode as PEM format
+        format=serialization.PrivateFormat.TraditionalOpenSSL,  # Use traditional OpenSSL format
+        encryption_algorithm=serialization.NoEncryption()  # No encryption for the private key
+    )
+    return pem
+
+# Main function
+def main():
+    # Load the private key from the encrypted PEM file
+    private_key = load_private_key("private_key_encrypted.pem", PASSWORD)
+    
+    # Convert the private key to PEM format without encryption
+    pem_private_key = convert_to_pem(private_key)
+    
+    # Print the PEM-formatted private key
+    for line in pem_private_key.decode().splitlines():  # Decode and split lines for human-readable output
+        print(line)
+
+    # Decrypt ciphertext
+    ciphertext = read_ciphertext('encoded_text.txt')
+    plaintext = decrypt_text(private_key, ciphertext)
+    
+    # Print the decrypted plaintext
+    print(plaintext.decode())  # Decode plaintext bytes and print it
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,29 @@
+import utility as u
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split, GridSearchCV
+def plot_alphas_lasso(dataset):
+    x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.2)
+    train_errors, test_errors = [], []
+    alphas = np.linspace(1e-06, 3, 1000)
+    for alpha in alphas:
+        lasso = linear_model.Lasso(alpha=alpha)
+        lasso.fit(x_train, y_train)
+        train_rmse = u.rmse(y_train, lasso.predict(x_train))
+        test_rmse = u.rmse(y_test, lasso.predict(x_test))
+        train_errors.append(train_rmse)
+        test_errors.append(test_rmse)
+    plt.plot(alphas, train_errors, 'r-', linewidth=2, label='Training')
+    plt.plot(alphas, test_errors, 'b-', linewidth=3, label='Validation')
+    plt.xlabel('Alpha')
+    plt.ylabel('RMSE')
+    plt.legend(loc='lower right')
+    plt.title('Lasso Regression: Alpha vs. RMSE')
+    plt.show()
+def optimal_alpha(dataset):
+    param_grid = [{'alpha': np.logspace(-6, 0.5, 1000)}]
+    lasso = linear_model.Lasso()
+    grid_search = GridSearchCV(lasso, param_grid, cv=5)
+    grid_search.fit(dataset.data, dataset.target)
+    return grid_search.best_params_['alpha']

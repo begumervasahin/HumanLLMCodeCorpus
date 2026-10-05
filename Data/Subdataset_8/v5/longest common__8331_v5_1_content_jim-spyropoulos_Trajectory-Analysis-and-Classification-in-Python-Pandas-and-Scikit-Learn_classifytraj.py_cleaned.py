@@ -1,0 +1,51 @@
+import pandas as pd
+import numpy as np
+import csv
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.pipeline import Pipeline
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+def compute_accuracy(X_train, Y_train, kf, pipeline):
+    accuracies = []
+    for train_index, test_index in kf.split(X_train):
+        X_train_fold, X_test_fold = X_train[train_index], X_train[test_index]
+        Y_train_fold, Y_test_fold = Y_train[train_index], Y_train[test_index]
+        predictions = pipeline.fit(X_train_fold, Y_train_fold).predict(X_test_fold)
+        accuracies.append(accuracy_score(Y_test_fold, predictions))
+    return accuracies
+df = pd.read_csv("grids.csv")
+label_encoder = LabelEncoder()
+label_encoder.fit(df["TripId"])
+Y_train = label_encoder.transform(df["TripId"])
+X_train = df['Grids'].values
+vectorizer = CountVectorizer()
+transformer = TfidfTransformer()
+svd = TruncatedSVD(n_components=300, random_state=42)
+kf = KFold(n_splits=10)
+classifiers = {
+    'KNN': KNeighborsClassifier(n_neighbors=7, n_jobs=-1),
+    'RandomForests': RandomForestClassifier(n_estimators=50, n_jobs=-1),
+    'LogisticRegression': LogisticRegression()
+}
+accuracies = {}
+for classifier_name, classifier in classifiers.items():
+    pipeline = Pipeline([
+        ('vect', vectorizer),
+        ('tfidf', transformer),
+        ('svd', svd),
+        ('clf', classifier)
+    ])
+    accuracies[classifier_name] = compute_accuracy(X_train, Y_train, kf, pipeline)
+with open('EvaluationsMetricAccuracy.csv', 'w', newline='') as csv_out:
+    csv_writer = csv.writer(csv_out)
+    csv_writer.writerow(['Accuracy', 'KNN', 'RandomForests', 'LogisticRegression'])
+    for i in range(10):
+        row = ['Fold' + str(i + 1)]
+        for classifier_name in classifiers.keys():
+            row.append(accuracies[classifier_name][i])
+        csv_writer.writerow(row)

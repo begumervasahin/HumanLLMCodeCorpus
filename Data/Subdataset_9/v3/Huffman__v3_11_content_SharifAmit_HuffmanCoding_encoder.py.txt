@@ -1,0 +1,84 @@
+def read_input_file(filename):
+    """Reads input file and returns the original string."""
+    with open(filename, "r") as file:
+        return file.readline().lower()
+
+def build_frequency_table(string):
+    """Builds a frequency table for characters in the string."""
+    return {char: string.count(char) for char in set(string)}
+
+def sort_frequency_table(freq_table):
+    """Sorts the frequency table by values."""
+    return dict(sorted(freq_table.items(), key=lambda item: item[1], reverse=True))
+
+def huffman_encoding(freq_table):
+    """Performs Huffman encoding and returns the encoder."""
+    encoder = {}
+    sorted_chars = list(freq_table.keys())
+
+    while len(freq_table) > 1:
+        # Merge two lowest frequencies
+        char1, freq1 = freq_table.popitem()
+        char2, freq2 = freq_table.popitem()
+        total_freq = freq1 + freq2
+        merged_char = char1 + char2
+
+        # Update encoder
+        for char in char1:
+            encoder[char] = '0' + encoder.get(char, '')
+        for char in char2:
+            encoder[char] = '1' + encoder.get(char, '')
+
+        # Update frequency table
+        freq_table[merged_char] = total_freq
+
+        # Sort frequency table
+        freq_table = sort_frequency_table(freq_table)
+
+    return encoder
+
+def encode_string(string, encoder):
+    """Encodes the string using the provided encoder."""
+    return ''.join(encoder[char] for char in string)
+
+def write_encoded_string(filename, encoded_string):
+    """Writes the encoded string to a file."""
+    with open(filename, "w") as file:
+        file.write(encoded_string)
+
+def write_dictionary(filename, encoder):
+    """Writes the Huffman dictionary to a file."""
+    with open(filename, "w") as file:
+        for char, code in encoder.items():
+            file.write(f"{char}={code}\n")
+
+# Main function
+def main():
+    input_filename = "input.txt"
+    output_filename = "output.txt"
+    dictionary_filename = "dictionary.txt"
+
+    # Read original string from input file
+    original_string = read_input_file(input_filename)
+    print("Original String:", original_string)
+
+    # Build frequency table
+    frequency_table = build_frequency_table(original_string)
+    print("Frequency Table:", frequency_table)
+
+    # Perform Huffman encoding
+    encoder = huffman_encoding(frequency_table)
+    print("Encoder:", encoder)
+
+    # Encode the original string
+    encoded_string = encode_string(original_string, encoder)
+    print("Encoded String:", encoded_string)
+
+    # Write the encoded string to output file
+    write_encoded_string(output_filename, encoded_string)
+
+    # Write the Huffman dictionary to file
+    write_dictionary(dictionary_filename, encoder)
+
+if __name__ == "__main__":
+    main()

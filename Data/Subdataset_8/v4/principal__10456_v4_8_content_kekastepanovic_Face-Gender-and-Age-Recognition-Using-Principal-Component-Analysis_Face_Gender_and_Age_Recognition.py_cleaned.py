@@ -1,0 +1,122 @@
+import numpy as np
+import cv2
+import os
+import random
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import confusion_matrix
+img_list = []
+img_mf_list = []
+img_age_list = []
+test_mf_predicted = []
+test_age_predicted = []
+face_file_name_lista = []
+correct_pred = 0
+correct_age = 0
+slicne_poredjenje = 0
+folder = r"C:\Users\Computer\Desktop\KV\Viola and Jones"
+folder_slicne_slike = r"C:\Users\Computer\Desktop\KV\treniranje i testiranje"
+folder_jedinicna_lica = r"C:\Users\Computer\Desktop\KV\jedinicna lica"
+num_components = 50
+ii = 0
+while ii <= 110:
+    file = random.choice([x for x in os.listdir(r"C:\Users\Computer\Desktop\KV\part1") if os.path.isfile(os.path.join(r"C:\Users\Computer\Desktop\KV\part1", x))])
+    ii += 1
+    original_image = cv2.imread(os.path.join(r"C:\Users\Computer\Desktop\KV\part1", file))
+    grayscale_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    detected_faces = face_cascade.detectMultiScale(grayscale_image)
+    i = 0
+    for (column, row, width, height) in detected_faces:
+        sub_face = grayscale_image[row:row + height, column:column + width]
+        sub_face = cv2.resize(sub_face, (360, 480))
+        face_file_name = file
+        face_file_name_lista.append(face_file_name)
+        img_list.append(sub_face)
+        male_or_female = face_file_name.find("_")
+        img_mf_list.append(face_file_name[male_or_female + 1])
+        age = int(face_file_name[0:male_or_female])
+        if age < 45:
+            img_age_list.append(0)
+        else:
+            img_age_list.append(1)
+        cv2.imwrite(os.path.join(folder, face_file_name), sub_face)
+        i += 1
+img_mf_list = np.array(img_mf_list)
+img_age_list = np.array(img_age_list)
+face_file_name_lista = np.array(face_file_name_lista)
+train_index = np.random.rand(len(img_list)) < 0.8
+train_matrix = np.array(img_list)[train_index, :]
+test_matrix = np.array(img_list)[~train_index, :]
+face_file_name_lista_train = face_file_name_lista[train_index]
+face_file_name_lista_test = face_file_name_lista[~train_index]
+train_mf_indeks = img_mf_list[train_index]
+test_mf_indeks = img_mf_list[~train_index]
+train_age_indeks = img_age_list[train_index]
+test_age_indeks = img_age_list[~train_index]
+mean_img_train = np.sum(train_matrix, axis=0) / len(train_matrix)
+mean_img_test = np.sum(test_matrix, axis=0) / len(test_matrix)
+train_matrix = train_matrix - mean_img_train
+test_matrix = test_matrix - mean_img_test
+U, Sigma, VT = np.linalg.svd(train_matrix, full_matrices=False)
+new_train_matrix = np.matmul(train_matrix, VT[:num_components, :].T)
+new_test_matrix = np.matmul(test_matrix, VT[:num_components, :].T)
+number_testing = len(new_test_matrix)
+for r_idx in range(len(new_test_matrix)):
+    if slicne_poredjenje <= 3:
+        slika_test = np.reshape(test_matrix[r_idx, :], (360, 480), 'C')
+        ime_slike = str(slicne_poredjenje) + "test" + face_file_name_lista_test[r_idx]
+        cv2.imwrite(os.path.join(folder_slicne_slike, ime_slike), slika_test)
+    distances_euclidian = []
+    for training in range(len(new_train_matrix)):
+        distances_euclidian.append(np.sum((new_train_matrix[training, :] - new_test_matrix[r_idx, :]) ** 2, axis=0))
+    image_closest = distances_euclidian.index(min(distances_euclidian))
+    if slicne_poredjenje <= 3:
+        slika_test_train = np.reshape(train_matrix[image_closest, :], (360, 480), 'C')
+        ime_slike = str(slicne_poredjenje) + "train" + face_file_name_lista_train[image_closest]
+        cv2.imwrite(os.path.join(folder_slicne_slike, ime_slike), slika_test_train)
+    morf = train_mf_indeks[image_closest]
+    test_mf_predicted.append(morf)
+    age = train_age_indeks[image_closest]
+    test_age_predicted.append(age)
+    if test_mf_indeks[r_idx] == morf:
+        correct_pred += 1
+    if test_age_indeks[r_idx] == age:
+        correct_age += 1
+    del distances_euclidian[:]
+    slicne_poredjenje += 1
+PCA_accuracy = (correct_pred / number_testing) * 100
+PCA_age = (correct_age / number_testing) * 100
+print("PCA Accuracy:", PCA_accuracy)
+print("Confusion Matrix for Gender:")
+print(confusion_matrix(test_mf_indeks, test_mf_predicted))
+print("PCA Accuracy for Age:")
+print(PCA_age)
+print("Confusion Matrix for Age:")
+print(confusion_matrix(test_age_indeks, test_age_predicted))
+clf = MLPClassifier(hidden_layer_sizes=(15, 10), max_iter=1000, solver='adam', batch_size='auto', early_stopping=True)
+clf.fit(new_train_matrix, train_mf_indeks)
+y_pred = clf.predict(new_test_matrix)
+print("Confusion Matrix for Gender (MLP):")
+print(confusion_matrix(test_mf_indeks, y_pred))
+clf_age = MLPClassifier(hidden_layer_sizes=(15, 10), max_iter=1000, solver='adam', batch_size='auto', early_stopping=True)
+clf_age.fit(new_train_matrix, train_age_indeks)
+y_pred_age = clf_age.predict(new_test_matrix)
+print("Confusion Matrix for Age (MLP):")
+print(confusion_matrix(test_age_indeks, y_pred_age))
+mean_img = np.sum(train_matrix, axis=0) / len(train_matrix)
+mean_photo = np.reshape(mean_img, (360, 480), 'C')
+cv2.imwrite(os.path.join(folder, "average_photo.jpg"), mean_photo)
+for i in range(4):
+    slika = np.reshape(VT[i, :].T, (360, 480))
+    ret, slika_thresh = cv2.threshold(slika, 0, 175, cv2.THRESH_BINARY)
+    cv2.imwrite(os.path.join(folder_jedinicna_lica, f"face{i+1}.jpg"), slika_thresh)
+niz_sigma = Sigma.tolist()
+broj_sigma_niz = list(range(len(Sigma)))
+plt.plot(broj_sigma_niz, niz_sigma, marker='o', linewidth=2, markersize=12)
+plt.xlabel('i')
+plt.ylabel('sigma_i')
+plt.title('Eigenvalues')
+plt.show()

@@ -1,0 +1,13 @@
+def is_prime(number):
+    if number < 2:
+        return False
+    for divisor in range(2, int(number ** 0.5) + 1):
+        if number % divisor == 0:
+            return False
+    return True
+if __name__ == '__main__':
+    user_input = int(input("Enter the value of a: "))
+    if is_prime(user_input):
+        print("The given number is prime.")
+    else:
+        print("The given number is not prime.")

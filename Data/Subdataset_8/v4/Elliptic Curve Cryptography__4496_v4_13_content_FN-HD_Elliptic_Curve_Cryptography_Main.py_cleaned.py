@@ -1,0 +1,15 @@
+from Mods.EC.Elliptic_Curve import EllipticCurve
+from Mods.EC.Rational_Point_In_EC import RationalPointInEC
+elliptic_curve = EllipticCurve.get_instance(0, -2)
+origin = RationalPointInEC()
+point1 = RationalPointInEC(-1, 1)
+point2 = RationalPointInEC(2, 2)
+print("Showing Values:")
+print("Origin: ", origin)
+print("Point 1:", point1)
+print("Point 2:", point2)
+print("\nPerforming Calculations:")
+print("Point 1 + Origin = ", point1 + origin)
+print("Point 2 + Point 1 = ", point2 + point1)
+print("2 * Point 1 = ", 2 * point1)
+print("\"4 * Point 1 == 3 * Point 1 + Point 1\" is ", 4 * point1 == 3 * point1 + point1)

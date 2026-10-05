@@ -1,0 +1,49 @@
+import random
+import binascii
+def string_to_bits(message):
+    encoded_message = message.encode('utf-8')
+    hex_representation = int(binascii.hexlify(encoded_message), 16)
+    binary_representation = bin(hex_representation)[2:]
+    return binary_representation.zfill(8 * ((len(binary_representation) + 7)
+def bits_to_string(message):
+    decimal_value = int(message, 2)
+    hex_string = '%x' % decimal_value
+    padded_hex_string = hex_string.zfill(len(hex_string) + (len(hex_string) & 1))
+    decoded_message = binascii.unhexlify(padded_hex_string)
+    return decoded_message.decode('utf-8')
+def generate_one_time_pad(length):
+    return bin(random.getrandbits(length))[2:].zfill(length)
+def xor(bit_string1, bit_string2):
+    result = ['0' if bit1 == bit2 else '1' for bit1, bit2 in zip(bit_string1, bit_string2)]
+    return ''.join(result)
+def encrypt_message(message):
+    binary_message = string_to_bits(message)
+    binary_length = len(binary_message)
+    one_time_pad_key = generate_one_time_pad(binary_length)
+    encrypted_result = xor(binary_message, one_time_pad_key)
+    return encrypted_result, one_time_pad_key
+def decrypt_message(encrypted_message, decryption_key):
+    decrypted_result = xor(encrypted_message, decryption_key)
+    decrypted_message = bits_to_string(decrypted_result)
+    return decrypted_message
+def main():
+    print("1. Encrypt")
+    print("2. Decrypt")
+    print("3. Exit")
+    option = int(input("Enter the option you want to perform: "))
+    if option == 1:
+        print("\n+-----------Encryption-----------+")
+        message = input("Enter the message to encrypt: ")
+        encrypted_message, one_time_pad_key = encrypt_message(message)
+        print("\nEncrypted Message: \n" + encrypted_message)
+        print("\nOne-Time Pad Key: \n" + one_time_pad_key)
+    elif option == 2:
+        print("\n+-----------Decryption-----------+")
+        encrypted_message = input("Enter the encrypted message: ")
+        decryption_key = input("Enter the decryption key: ")
+        decrypted_message = decrypt_message(encrypted_message, decryption_key)
+        print("\nThe decrypted message is: " + decrypted_message)
+    elif option == 3:
+        print("Exiting... Goodbye!")
+if __name__ == "__main__":
+    main()

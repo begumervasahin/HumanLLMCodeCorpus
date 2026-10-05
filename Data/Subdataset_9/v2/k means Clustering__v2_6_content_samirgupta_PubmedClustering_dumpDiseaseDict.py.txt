@@ -1,0 +1,52 @@
+import sys
+from time import time
+import pickle
+
+def processPubTatorFile(input_file_name):
+    # Open the input file
+    with open(input_file_name, "r") as linesFH:
+        lines = linesFH.readlines()  # Read all lines from the file
+
+    t0 = time()  # Record the starting time for performance measurement
+    pmid_disease_dict = dict()  # Initialize an empty dictionary to store PMID-disease mappings
+
+    # Iterate through each line in the file
+    for line in lines:
+        line = line.strip()  # Remove leading/trailing whitespaces
+        tokens = line.split("\t")  # Split the line into tokens using tab as delimiter
+
+        # Check if the line contains exactly 4 tokens
+        if len(tokens) == 4:
+            # Extract PMID, Mesh ID, Disease Mentions, and Disease Source from the tokens
+            pmid, mesh_id, dis_mens, dis_source = tokens[0:4]
+            # Split Disease Mentions into individual diseases
+            diseases = dis_mens.split("|")
+
+            # Update the dictionary with PMID-disease mappings
+            if pmid in pmid_disease_dict:
+                pmid_disease_dict[pmid].extend(diseases)
+            else:
+                pmid_disease_dict[pmid] = diseases
+
+    # Print the time taken to process the file
+    print("done in %fs" % (time() - t0))
+    print()
+
+    return pmid_disease_dict  # Return the PMID-disease dictionary
+
+def run():
+    # Check if the correct number of command-line arguments is provided
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <input_file_name>")
+        return
+
+    input_file_name = sys.argv[1]  # Get the input file name from command-line arguments
+    pmid_disease_dict = processPubTatorFile(input_file_name)  # Process the PubTator file
+    file_name = './pubtator_dumps/pmid_disease_dict.pickle'  # Define the path for saving the pickle file
+
+    # Save the PMID-disease dictionary as a pickle file
+    with open(file_name, 'wb') as handle:
+        pickle.dump(pmid_disease_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+if __name__ == '__main__':
+    run()  # Execute the run function if the script is executed directly

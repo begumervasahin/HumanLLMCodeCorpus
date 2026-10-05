@@ -1,0 +1,58 @@
+import pandas as pd
+import json
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+def load_coin_data(file_path):
+    coindata = pd.read_csv(file_path)
+    coindata['Date'] = pd.to_datetime(coindata['Date'], infer_datetime_format=True)
+    return coindata
+def filter_coins_by_market_cap(coindata, selection_date, min_market_cap):
+    universe = coindata[(coindata['Date'] == selection_date) & (coindata['Marketcap'] >= min_market_cap)]
+    return universe['Coin'].tolist()
+def load_exchange_data(file_path):
+    with open(file_path) as f:
+        exchanges = json.load(f)
+    return exchanges
+def filter_coins_by_exchanges(filtered_coins, exchanges, min_exchanges):
+    return [coin for coin in filtered_coins if len(exchanges.get(coin, [])) >= min_exchanges]
+def filter_coins_by_listing_period(coindata, filtered_coins, selection_date, min_listing_period):
+    filtered_coins_with_listing = []
+    for coin in filtered_coins:
+        tempcoinframe = coindata[(coindata['Coin'] == coin)].dropna().copy()
+        start_date = tempcoinframe['Date'].min()
+        days_in_existence = (selection_date - start_date).days
+        if days_in_existence >= min_listing_period:
+            filtered_coins_with_listing.append(coin)
+    return filtered_coins_with_listing
+def filter_coins_by_circulating_supply(coindata, filtered_coins, circulating_pct):
+    filtered_coins_with_circulating_supply = []
+    http = urllib3.PoolManager()
+    for coin in filtered_coins:
+        url = 'https:
+        response = http.request('GET', url)
+        cleandata = json.loads(response.data)
+        circulating_supply = float(cleandata[0]['available_supply'])
+        tempcoinframe = coindata[(coindata['Coin'] == coin)].copy()
+        tempcoinframe['TokenVolume'] = tempcoinframe['Volume'] / tempcoinframe['Close']
+        tempcoinframe = tempcoinframe.groupby(pd.Grouper(key='Date', freq='M')).sum()
+        tempcoinframe.drop(tempcoinframe.tail(1).index, inplace=True)
+        vol_list = tempcoinframe.tail(3)['TokenVolume'].tolist()
+        if all(vol >= circulating_supply * circulating_pct for vol in vol_list):
+            filtered_coins_with_circulating_supply.append(coin)
+    return filtered_coins_with_circulating_supply
+def screen_universe(universe_selection_date, min_market_cap, min_listing_period, circulating_pct, min_exchanges,
+                    coin_data_file='input/clean_coindata.csv', exchange_data_file='input/exchangesdata.json'):
+    coindata = load_coin_data(coin_data_file)
+    filtered_coins = filter_coins_by_market_cap(coindata, universe_selection_date, min_market_cap)
+    exchanges = load_exchange_data(exchange_data_file)
+    filtered_coins = filter_coins_by_exchanges(filtered_coins, exchanges, min_exchanges)
+    filtered_coins = filter_coins_by_listing_period(coindata, filtered_coins, universe_selection_date, min_listing_period)
+    filtered_coins = filter_coins_by_circulating_supply(coindata, filtered_coins, circulating_pct)
+    return filtered_coins
+universe_selection_date = pd.to_datetime('2024-03-27')
+min_market_cap = 1000000
+min_listing_period = 365
+circulating_pct = 0.5
+min_exchanges = 5
+result = screen_universe(universe_selection_date, min_market_cap, min_listing_period, circulating_pct, min_exchanges)
+print("Filtered coins:", result)

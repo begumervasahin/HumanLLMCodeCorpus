@@ -1,0 +1,53 @@
+from collections import defaultdict
+import math
+class SearchIndex:
+    def __init__(self, enable_print=False):
+        self.enable_print = enable_print
+        self.idf = {}
+        self.tfidf = {}
+        self.doc_pairs = {}
+    def load_idf_data(self):
+        pass
+    def load_tfidf_data(self):
+        pass
+class SearchEngine(SearchIndex):
+    def __init__(self, enable_print=False):
+        super().__init__(enable_print)
+        self.load_idf_data()
+        self.load_tfidf_data()
+    def lookup_idf(self, term):
+        return self.idf.get(term, 0.0)
+    def lookup_tfidf(self, term, doc_id):
+        return self.tfidf.get(term, {}).get(doc_id, [0.0, 0.0])
+    def dot_product(self, vector_a, vector_b):
+        if len(vector_a) != len(vector_b):
+            return None
+        return sum(a * b for a, b in zip(vector_a, vector_b))
+    def create_query_vector(self, query_terms):
+        term_count = float(len(query_terms))
+        tf = 1 + math.log10(1 / term_count)
+        return [tf * self.lookup_idf(term) for term in query_terms]
+    def compute_cosine_similarity(self, query_terms):
+        query_vector = self.create_query_vector(query_terms)
+        doc_vectors = defaultdict(list)
+        weights = defaultdict(float)
+        similarities = []
+        target_docs = set(doc_id for term in query_terms for doc_id in self.tfidf.get(term, {}))
+        for term in query_terms:
+            for doc_id in target_docs:
+                tfidf, weight = self.lookup_tfidf(term, doc_id)
+                weights[doc_id] += weight
+                doc_vectors[doc_id].append(tfidf)
+        for doc_id in doc_vectors:
+            dot_product_value = self.dot_product(query_vector, doc_vectors[doc_id])
+            similarities.append([doc_id, self.doc_pairs[doc_id], dot_product_value, weights[doc_id]])
+        return similarities
+    def query_documents(self, query):
+        query_terms = query.lower().split()
+        documents = self.compute_cosine_similarity(query_terms)
+        ranked_documents = sorted(documents, key=lambda doc: (-doc[2], -doc[3], doc[1]))
+        return [doc[0] for doc in ranked_documents]
+if __name__ == '__main__':
+    search_engine = SearchEngine()
+    query_result = search_engine.query_documents("example query")
+    print("Query result:", query_result)

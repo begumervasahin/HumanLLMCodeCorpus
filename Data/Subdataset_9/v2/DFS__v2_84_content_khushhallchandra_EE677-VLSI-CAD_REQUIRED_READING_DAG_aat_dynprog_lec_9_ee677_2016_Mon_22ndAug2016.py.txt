@@ -1,0 +1,62 @@
+import copy
+
+def toposort(fanin_copy):
+    """
+    Perform topological sorting on a given fan-in graph.
+    
+    Args:
+        fanin_copy (list): List of lists representing fan-in connections.
+
+    Returns:
+        list: Topologically sorted nodes.
+    """
+    topo_list = []
+    while len(topo_list) < len(fanin_copy):
+        curr_src = find_node_without_fanin(fanin_copy, topo_list) 
+        topo_list.append(curr_src)
+        for v in range(len(fanin_copy)):
+            if curr_src in fanin_copy[v]:
+                fanin_copy[v].remove(curr_src)
+    return topo_list
+
+def find_node_without_fanin(fanin_copy, topo_list):
+    """
+    Find a node whose all fan-in nodes are processed.
+    
+    Args:
+        fanin_copy (list): List of lists representing fan-in connections.
+        topo_list (list): List of nodes already processed.
+
+    Returns:
+        int: Node index.
+    """
+    for v in range(len(fanin_copy)):
+        if len(fanin_copy[v]) == 0 and v not in topo_list:
+            return v
+    return None
+
+def aat_dynprog(fanin, dly):
+    """
+    Perform dynamic programming to calculate arrival time for each node.
+    
+    Args:
+        fanin (list): List of lists representing fan-in connections.
+        dly (list): List of delays for each node.
+
+    Returns:
+        list: Arrival time for each node.
+    """
+    aat = [0] * len(fanin)
+    toposort_list = toposort(copy.deepcopy(fanin))
+    for v in toposort_list:
+        tmp = dly[v]
+        for u in fanin[v]:
+            if tmp < aat[u] + dly[v]:
+                tmp = aat[u] + dly[v]
+        aat[v] = tmp
+    return aat
+
+# Example usage
+fanin = [[3, 2, 1], [], [8, 5, 4, 3], [7, 6], [8, 6, 5], [7, 6], [9, 8], [9], [9], []]
+dly = [10] * len(fanin)
+print("Arrival time (aat) values are:", aat_dynprog(fanin, dly))

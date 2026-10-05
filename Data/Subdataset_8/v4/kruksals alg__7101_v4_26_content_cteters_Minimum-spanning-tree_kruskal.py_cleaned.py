@@ -1,0 +1,106 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import sys
+'''
+For the program to work, install the following software:
+sudo apt-get install python3-tk
+sudo pip3 install networkx
+sudo pip3 install matplotlib
+Or with O.S. specific information and run as a Python3 file.
+example: python3 prim.py city-pairs.txt
+'''
+def display_graph(MST_list):
+    G = nx.Graph()
+    for i in range(len(MST_list)):
+        G.add_edge(
+            vert_list[MST_list[i][0]],
+            vert_list[MST_list[i][1]],
+            weight=int(MST_list[i][2]))
+    edge = [(u, v) for (u, v, d) in G.edges(data=True)]
+    pos = nx.spring_layout(G, k=20, pos=None, fixed=None, iterations=150, weight='weight', scale=1.0)
+    weight = dict(map(lambda x: ((x[0], x[1]), str(x[2]['weight'])), G.edges(data=True)))
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=weight)
+    node_len = 0
+    for i in range(vert_count):
+        if len(vert_list[i]) > node_len:
+            node_len = len(vert_list)
+    nx.draw_networkx_nodes(G, pos, node_size=node_len * 180, node_shape='h', alpha=0.5)
+    nx.draw_networkx_edges(G, pos, edgelist=edge, width=2, edge_color='b', alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=9, font_family='sans-serif')
+    plt.axis('off')
+    plt.show()
+def sort_edge(wc_graph):
+    sort_graph = []
+    sort_graph.append(wc_graph[0])
+    least = wc_graph[0]
+    for i in range(1, len(wc_graph)):
+        val = wc_graph[i][2]
+        j = 0
+        while val > sort_graph[j][2] and j < len(sort_graph) - 1:
+            j += 1
+        sort_graph.insert(j, wc_graph[i])
+    temp = sort_graph[len(sort_graph) - 1]
+    sort_graph.remove(sort_graph[len(sort_graph) - 1])
+    j = 0
+    while temp[2] > sort_graph[j][2] and j < len(sort_graph) - 1:
+        j += 1
+    sort_graph.insert(j, temp)
+    return sort_graph
+def find(root, parent):
+    while root != parent[root]:
+        root = parent[root]
+    return root
+def union(parent, rootv, rootu, size):
+    if size[rootv] > size[rootu]:
+        parent[rootu] = rootv
+    elif size[rootv] < size[rootu]:
+        parent[rootv] = rootu
+    else:
+        parent[rootu] = rootv
+        size[rootv] += 1
+def kruskal(wc_graph):
+    MST_list = []
+    sort_graph = sort_edge(wc_graph)
+    parent = []
+    size = []
+    for e in range(vert_count):
+        parent.append(e)
+        size.append(0)
+    encounter = 0
+    k = 0
+    while encounter < (vert_count - 1):
+        v = sort_graph[k][0]
+        u = sort_graph[k][1]
+        k += 1
+        rootu = find(v, parent)
+        rootv = find(u, parent)
+        if rootv != rootu:
+            encounter += 1
+            MST_list.append([v, u, sort_graph[k][2]])
+            union(parent, rootv, rootu, size)
+    return MST_list
+file_name = sys.argv[1]
+vert_set = set()
+with open(file_name) as f:
+    for i in f:
+        column = i.strip().split(' ')
+        vert_set.add(column[0])
+        vert_set.add(column[1])
+vert_list = list(vert_set)
+vert_count = (len(vert_set))
+wc_graph = []
+with open(file_name) as f:
+    for i in f:
+        column = i.strip().split(' ')
+        wc_graph.append([
+            int(vert_list.index(column[0])),
+            int(vert_list.index(column[1])),
+            int(column[2])])
+MST_list = kruskal(wc_graph)
+total = 0
+print("The minimum spanning tree is as follows:")
+for i in range(len(MST_list)):
+    print(vert_list[MST_list[i][0]], " to ", vert_list[MST_list[i][1]], " = ", MST_list[i][2], "miles")
+    total += MST_list[i][2]
+print("total weight: ", total, " miles.")
+display_graph(MST_list)

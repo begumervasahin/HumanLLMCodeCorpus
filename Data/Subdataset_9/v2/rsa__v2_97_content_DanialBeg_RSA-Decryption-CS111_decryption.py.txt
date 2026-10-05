@@ -1,0 +1,61 @@
+import string
+
+def main():
+    # Prompt the user to input the exponent and modulus values for the public key
+    exponent = int(input("Please enter the exponent value in the public key: "))
+    modulus = int(input("Please enter the modulus value in the public key: "))
+    
+    # Display the exponent and modulus values
+    print("Exponent:", exponent)
+    print("Modulus:", modulus)
+    
+    # Calculate factors of the modulus
+    p, q = calculate_factors(modulus)
+    
+    # Calculate the value of (p+1)*(q+1)
+    phi_n = (p + 1) * (q + 1)
+    
+    # Calculate the modular multiplicative inverse of the exponent modulo phi_n
+    decrypt_exponent = modular_inverse(exponent, phi_n)
+    
+    # Encrypted message to be decrypted
+    encrypted_message = [51, 12, 51, 39, 31, 21, 14, 10, 20, 17, 7, 25, 14, 26, 33, 52, 15, 7,
+                   27, 51, 7, 49, 8, 15, 51, 7, 8, 25, 7, 25, 10, 49, 18, 52, 51, 7, 8, 
+                   25, 7, 18, 26, 25, 25, 10, 27, 52, 51, 7, 27, 33, 21, 7, 20, 26, 21, 
+                   7, 25, 10, 49, 18, 52, 51, 39]
+    
+    # Define the alphabet including space
+    alphabet = list(string.ascii_lowercase)
+    alphabet.append(' ')
+    
+    # Decrypt and print the message
+    decrypted_message = decrypt_message(encrypted_message, decrypt_exponent, modulus, alphabet)
+    print("Decrypted Message:", decrypted_message)
+
+def calculate_factors(number):
+    # Function to calculate factors of a number
+    factors = []
+    for i in range(1, number + 1):
+        if number % i == 0:
+            factors.append(i)
+    return factors[1], factors[2]  # Returning the second and third factors (first factor is always 1)
+
+def modular_inverse(a, b):
+    # Function to compute the modular multiplicative inverse using brute force
+    for num in range(1, b):
+        if (a * num) % b == 1:
+            return num
+    return 1  # If inverse doesn't exist, return 1 as a default value
+
+def decrypt_message(encrypted_message, decrypt_exponent, modulus, alphabet):
+    # Function to decrypt the encrypted message
+    decrypted_message = ""
+    for encrypted_char in encrypted_message:
+        # Decryption using modular exponentiation
+        decrypted_char_index = pow(encrypted_char, decrypt_exponent, modulus) - 2
+        decrypted_char = alphabet[decrypted_char_index]
+        decrypted_message += decrypted_char
+    return decrypted_message
+
+if __name__ == "__main__":
+    main()

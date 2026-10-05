@@ -1,0 +1,40 @@
+import serial
+import time
+import json
+from Crypto.Cipher import AES
+
+# Define the AES key and create a cipher object
+key = 'abcdefghijklmnop'
+cipher = AES.new(key, AES.MODE_ECB)
+
+# Configure the serial port
+ser = serial.Serial(
+    port='/dev/ttyS0',
+    baudrate=115200
+)
+
+# Sample JSON data to send
+j = {"oi": "abcdef"}
+
+# Main loop to continuously send encrypted JSON messages
+while True:
+    try:
+        # Convert JSON data to string
+        msg = json.dumps(j)
+        
+        # Encrypt the message using AES
+        cm = cipher.encrypt(msg.encode())
+        
+        # Write the encrypted message to the serial port
+        ser.write(cm)
+        
+        # Wait for 1 second before sending the next message
+        time.sleep(1)
+    
+    except KeyboardInterrupt:
+        # If Ctrl+C is pressed, close the serial connection and exit
+        ser.close()
+        print("Serial connection closed. Exiting.")
+        break
+    except Exception as e:
+        print("An error occurred:", str(e))

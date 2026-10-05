@@ -1,0 +1,65 @@
+import numpy as np
+import operator
+
+def main():
+    # Load the dataset
+    features, labels = load_dataset()
+
+    # Split data into test and train sets
+    test_features, test_labels, train_features, train_labels = split_data(features, labels)
+
+    # Perform KNN classification and calculate error rate
+    error_rate = calculate_error_rate(test_features, train_features, train_labels, k=5)
+
+    # Print the results
+    print(f"The total error rate is: {error_rate:.2%}")
+
+def load_dataset():
+    # Load Iris dataset from CSV file
+    iris_data = np.loadtxt(open("./Iris.csv", "rb"), delimiter=",", skiprows=1)
+    return iris_data[:, 1:5], iris_data[:, 5].astype(int)
+
+def split_data(features, labels):
+    # Initialize arrays for test and train data
+    test_features, test_labels = np.zeros((30, 4)), np.zeros(30)
+    train_features, train_labels = np.zeros((120, 4)), np.zeros(120)
+
+    # Split data into test and train sets
+    for i in range(3):
+        test_features[i * 10: i * 10 + 10] = features[i * 50: i * 50 + 10]
+        test_labels[i * 10: i * 10 + 10] = labels[i * 50: i * 50 + 10]
+        train_features[i * 10: i * 10 + 40] = features[i * 50: i * 50 + 40]
+        train_labels[i * 10: i * 10 + 40] = labels[i * 50: i * 50 + 40]
+
+    return test_features, test_labels, train_features, train_labels
+
+def calculate_error_rate(test_features, train_features, train_labels, k):
+    # Perform KNN classification and calculate error rate
+    error_count = 0
+    for i in range(len(test_features)):
+        predicted_label = knn_classification(test_features[i], train_features, train_labels, k)
+        if predicted_label != test_labels[i]:
+            error_count += 1
+    return error_count / len(test_features)
+
+def knn_classification(inX, dataset, labels, k):
+    # Calculate distances and perform KNN classification
+    distances = calculate_distances(inX, dataset)
+    sorted_indices = np.argsort(distances)
+    class_count = {}
+    for i in range(k):
+        vote_label = labels[sorted_indices[i]]
+        class_count[vote_label] = class_count.get(vote_label, 0) + 1
+    sorted_class_count = sorted(class_count.items(), key=operator.itemgetter(1), reverse=True)
+    return sorted_class_count[0][0]
+
+def calculate_distances(inX, dataset):
+    # Calculate Euclidean distances
+    diff_mat = np.tile(inX, (dataset.shape[0], 1)) - dataset
+    sq_diff_mat = diff_mat ** 2
+    sq_distances = sq_diff_mat.sum(axis=1)
+    distances = np.sqrt(sq_distances)
+    return distances
+
+if __name__ == '__main__':
+    main()

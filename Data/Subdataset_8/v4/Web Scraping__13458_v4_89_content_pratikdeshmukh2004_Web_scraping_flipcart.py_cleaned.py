@@ -1,0 +1,34 @@
+import requests
+from bs4 import BeautifulSoup
+import pprint
+def scrape_mobile_data(page_number):
+    url = "https:
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "lxml")
+    mobiles = []
+    mobile_divs = soup.find_all("div", class_="_1UoZlX")
+    for div in mobile_divs:
+        mobile_info = {}
+        name = div.find("div", class_="_3wU53n").text
+        price = div.find("div", class_="_1vC4OE _2rQ-NK").text
+        rating = div.find("div", class_="hGSR34")
+        details = div.find_all("li", class_="tVe95H")
+        mobile_info["Memory"] = details[0].text
+        mobile_info["Display"] = details[1].text
+        mobile_info["Camera"] = details[2].text
+        mobile_info["Battery"] = details[3].text
+        mobile_info["Processor"] = details[4].text
+        if len(details) > 5:
+            mobile_info["Warranty"] = details[5].text
+        mobile_info["Name"] = name
+        mobile_info["Price"] = price
+        if rating is not None:
+            mobile_info["Rating"] = rating.text
+        mobiles.append(mobile_info)
+    return mobiles
+def main():
+    page_number = input("Enter page number: ")
+    mobile_data = scrape_mobile_data(page_number)
+    pprint.pprint(mobile_data)
+if __name__ == "__main__":
+    main()

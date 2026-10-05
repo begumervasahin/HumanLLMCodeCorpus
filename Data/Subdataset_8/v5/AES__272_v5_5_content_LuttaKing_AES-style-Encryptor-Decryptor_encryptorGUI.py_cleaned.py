@@ -1,0 +1,57 @@
+import os
+import pyAesCrypt
+import PySimpleGUI as sg
+BUFFER_SIZE = 64 * 1024
+PASSWORD = "your_password_here"
+def encrypt_file(file_path):
+    try:
+        encrypted_file_path = file_path + ".ltt"
+        pyAesCrypt.encryptFile(file_path, encrypted_file_path, PASSWORD, BUFFER_SIZE)
+        print(f"File '{file_path}' has been encrypted")
+        try:
+            os.remove(file_path)
+        except PermissionError:
+            print(f"Unable to remove '{file_path}' because it is in use")
+    except FileNotFoundError:
+        print(f"File '{file_path}' does not exist")
+def decrypt_file(file_path):
+    if file_path.endswith('.ltt'):
+        original_file_path = file_path[:-4]
+        print(f"Decrypting '{file_path}' to '{original_file_path}'")
+        try:
+            pyAesCrypt.decryptFile(file_path, original_file_path, PASSWORD, BUFFER_SIZE)
+            print(f"File '{file_path}' has been decrypted")
+        except OSError:
+            pass
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            print(f"Encrypted file '{file_path}' not found")
+sg.change_look_and_feel('BluePurple')
+layout = [
+    [sg.Text('Click on the action you wish to perform')],
+    [sg.Text('File path/name', size=(18, 1)), sg.Input(key="chosen_file"), sg.FileBrowse()],
+    [sg.Text(size=(15, 1), key='OUTPUT')],
+    [sg.Button('Encrypt'), sg.Button('Decrypt')],
+    [sg.Button('Exit')]
+]
+window = sg.Window('LUTTA Enc/Decryptor', layout)
+while True:
+    event, values = window.read()
+    if event in (None, 'Exit'):
+        break
+    if event == 'Encrypt':
+        file_name = values["chosen_file"]
+        if file_name:
+            encrypt_file(file_name)
+            window['OUTPUT'].update("File encrypted successfully")
+        else:
+            window['OUTPUT'].update("No file selected")
+    if event == 'Decrypt':
+        file_name = values["chosen_file"]
+        if file_name:
+            decrypt_file(file_name)
+            window['OUTPUT'].update("File decrypted successfully")
+        else:
+            window['OUTPUT'].update("No file selected")
+window.close()

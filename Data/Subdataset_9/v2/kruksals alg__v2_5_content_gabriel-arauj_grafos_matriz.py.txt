@@ -1,0 +1,81 @@
+import networkx as nx
+from random import randint
+
+class GraphGenerator:
+    def __init__(self):
+        self.num_vertices = 0
+        self.adjacency_matrix = []
+
+    def to_graph(self):
+        G = nx.Graph()
+        for vertex in range(self.num_vertices):
+            G.add_node(vertex)
+        for vertex1 in range(self.num_vertices):
+            for vertex2 in range(self.num_vertices):
+                if vertex1 <= vertex2:
+                    weight = self.adjacency_matrix[vertex1][vertex2]
+                    if weight > 0:
+                        G.add_edge(vertex1, vertex2, weight=weight)
+        return G
+
+    def generate_random_graph(self):
+        n = self.num_vertices
+        G = nx.connected_watts_strogatz_graph(n, randint(int(n / 2), n - 1), 0.5, 100, randint(1, 100))
+        edges = G.edges()
+        self.adjacency_matrix = [[0] * n for _ in range(n)]
+        for v1, v2 in edges:
+            weight = randint(1, 50)
+            self.adjacency_matrix[v1][v2] = weight
+            self.adjacency_matrix[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        self.num_vertices = G.number_of_nodes()
+        return G
+
+    def get_adjacency_matrix(self):
+        return self.adjacency_matrix
+
+    def clear_matrix(self):
+        self.num_vertices = 0
+        self.adjacency_matrix = []
+
+    def generate_complete_graph(self):
+        v = int(input("Enter the number of vertices to generate a complete graph: "))
+        G = nx.complete_graph(v)
+        self.num_vertices = G.number_of_nodes()
+        edges = G.edges()
+        self.adjacency_matrix = [[0] * v for _ in range(v)]
+        for v1, v2 in edges:
+            weight = randint(1, 50)
+            self.adjacency_matrix[v1][v2] = weight
+            self.adjacency_matrix[v2][v1] = weight
+            G.edges[v1, v2]['weight'] = weight
+        return G
+
+if __name__ == "__main__":
+    graph_generator = GraphGenerator()
+    graph_generator.num_vertices = int(input("Enter the number of vertices: "))
+    print("1. Convert adjacency matrix to graph")
+    print("2. Generate a random graph")
+    print("3. Generate a complete graph")
+    option = int(input("Choose an option: "))
+    if option == 1:
+        graph = graph_generator.to_graph()
+        print("Graph generated from the adjacency matrix:")
+        print("Nodes:", graph.nodes())
+        print("Edges:", graph.edges())
+    elif option == 2:
+        graph = graph_generator.generate_random_graph()
+        print("Random graph generated:")
+        print("Nodes:", graph.nodes())
+        print("Edges:", graph.edges(data=True))
+        print("Adjacency matrix:")
+        for row in graph_generator.get_adjacency_matrix():
+            print(row)
+    elif option == 3:
+        graph = graph_generator.generate_complete_graph()
+        print("Complete graph generated:")
+        print("Nodes:", graph.nodes())
+        print("Edges:", graph.edges(data=True))
+        print("Adjacency matrix:")
+        for row in graph_generator.get_adjacency_matrix():
+            print(row)

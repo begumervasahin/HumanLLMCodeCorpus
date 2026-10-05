@@ -1,0 +1,69 @@
+import math
+def is_full(visited, pots_num_sum):
+    return pots_num_sum == len(visited)
+def depth_first_search(current, result, visited, pots_num_sum, group_num):
+    if is_full(visited, pots_num_sum):
+        return True
+    for i in range(len(current)):
+        if current[i]:
+            flag = False
+            team = current[i][0]
+            for j in range(group_num):
+                if all(team[0] != pot[0] for pot in result[j]) and \
+                   (all(team[-1] != conf[-1] for conf in result[j]) or \
+                   (sum(p[-1] == 'f' for p in result[j]) < 2 and team[-1] =='f')):
+                    result[j].append(team)
+                    current[i].remove(team)
+                    visited.add(team)
+                    flag = True
+                    if depth_first_search(current, result, visited, pots_num_sum, group_num):
+                        return True
+                    if i == 0:
+                        return False
+                    result[j].remove(team)
+                    current[i].insert(0, team)
+                    visited.remove(team)
+                    flag = False
+            if not flag:
+                return False
+if __name__ == '__main__':
+    with open("input.txt", "r") as file_input, open("output.txt", "w") as file_output:
+        if not file_input:
+            file_output.write('No')
+            exit()
+        group_num = int(file_input.readline().strip())
+        pot_num = int(file_input.readline().strip())
+        pots = []
+        for i in range(pot_num):
+            line = file_input.readline().strip().split(',')
+            line = [str(i) + x for x in line]
+            pots.append(line)
+        if_solution = True
+        current = [[] for _ in range(len(pots))]
+        confederations = {'AFC': [], 'CAF': [], 'CONCACAF': [], 'CONMEBOL': [], 'OFC': [], 'UEFA': []}
+        for i in range(6):
+            line = file_input.readline().strip().replace(':', ',').split(',')
+            confederations[line[0]] = line[1:] if line[1] != 'None' else []
+        for i in range(len(pots)):
+            for j in range(len(pots[i])):
+                for confederation, teams in confederations.items():
+                    if pots[i][j][1:] in teams:
+                        current[i].append(pots[i][j] + confederation[0])
+        pots_num = list(map(len, pots))
+        confederations_num = list(map(len, confederations.values()))
+        if any(group_num < x for x in pots_num) or \
+           any(group_num < x for x in confederations_num[:-1]) or \
+           (2 * group_num < confederations_num[-1]):
+            if_solution = False
+        result = []
+        pots_num_sum = sum(pots_num)
+        if if_solution:
+            result = [[] for _ in range(group_num)]
+            visited = set()
+            depth_first_search(current, result, visited, pots_num_sum, group_num)
+            file_output.write('Yes' + '\n')
+            answer = [[team[1:-1] for team in group] if group else ['None'] for group in result]
+            for line in answer:
+                file_output.write(','.join(line) + '\n')
+        else:
+            file_output.write('No')

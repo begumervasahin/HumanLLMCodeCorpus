@@ -1,0 +1,80 @@
+import unittest
+from binarySearch import binarySearch
+class ListComprehensionTest(unittest.TestCase):
+    def setUp(self):
+        self.one_to_twenty = binarySearch(20, 1)
+        self.two_to_forty = binarySearch(20, 2)
+        self.ten_to_thousand = binarySearch(100, 10)
+    def test_small_list(self):
+        expected_values = [1, 20, 20]
+        actual_values = [
+            self.one_to_twenty[0],
+            self.one_to_twenty[19],
+            self.one_to_twenty.length
+        ]
+        self.assertListEqual(expected_values, actual_values, msg='Array creation failed for range 1 to 20 with intervals of 1')
+        for index in range(self.one_to_twenty.length - 1):
+            self.assertEqual(
+                1,
+                self.one_to_twenty[index + 1] - self.one_to_twenty[index],
+                msg='Expected consecutive numbers with an interval of 1'
+            )
+    def test_medium_list(self):
+        expected_values = [2, 40, 20]
+        actual_values = [
+            self.two_to_forty[0],
+            self.two_to_forty[19],
+            self.two_to_forty.length
+        ]
+        self.assertListEqual(expected_values, actual_values, msg='Array creation failed for range 2 to 40 with intervals of 2')
+        for index in range(self.two_to_forty.length - 1):
+            self.assertEqual(
+                2,
+                self.two_to_forty[index + 1] - self.two_to_forty[index],
+                msg='Expected consecutive numbers with an interval of 2'
+            )
+    def test_large_list(self):
+        expected_values = [10, 1000, 100]
+        actual_values = [
+            self.ten_to_thousand[0],
+            self.ten_to_thousand[99],
+            self.ten_to_thousand.length
+        ]
+        self.assertListEqual(expected_values, actual_values, msg='Array creation failed for range 10 to 1000 with intervals of 10')
+        for index in range(self.ten_to_thousand.length - 1):
+            self.assertEqual(
+                10,
+                self.ten_to_thousand[index + 1] - self.ten_to_thousand[index],
+                msg='Expected consecutive numbers with an interval of 10'
+            )
+class BinarySearchTest(unittest.TestCase):
+    def setUp(self):
+        self.one_to_twenty = binarySearch(20, 1)
+        self.two_to_forty = binarySearch(20, 2)
+        self.ten_to_thousand = binarySearch(100, 10)
+    def test_small_list_search(self):
+        search_result = self.one_to_twenty.search(16)
+        self.assertGreater(5, search_result['count'], msg='Expected at most 5 iterations for search')
+        self.assertEqual(15, search_result['index'], msg='Expected index 15 for item 16')
+    def test_medium_list_search(self):
+        search1 = self.two_to_forty.search(16)
+        search2 = self.two_to_forty.search(40)
+        search3 = self.two_to_forty.search(33)
+        self.assertGreater(5, search1['count'], msg='Expected at most 5 iterations for search 16')
+        self.assertEqual(7, search1['index'], msg='Expected index 7 for item 16')
+        self.assertEqual(0, search2['count'], msg='Expected 0 iterations for search 40')
+        self.assertEqual(19, search2['index'], msg='Expected index 19 for item 40')
+        self.assertGreater(4, search3['count'], msg='Expected at most 4 iterations for search 33')
+        self.assertEqual(-1, search3['index'], msg='Expected index -1 for item 33')
+    def test_large_list_search(self):
+        search1 = self.ten_to_thousand.search(40)
+        search2 = self.ten_to_thousand.search(880)
+        search3 = self.ten_to_thousand.search(10000)
+        self.assertGreater(7, search1['count'], msg='Expected at most 7 iterations for search 40')
+        self.assertEqual(3, search1['index'], msg='Expected index 3 for item 40')
+        self.assertGreater(4, search2['count'], msg='Expected at most 4 iterations for search 880')
+        self.assertEqual(87, search2['index'], msg='Expected index 87 for item 880')
+        self.assertGreater(7, search3['count'], msg='Expected more than 7 iterations for search 10000')
+        self.assertEqual(-1, search3['index'], msg='Expected index -1 for item 10000')
+if __name__ == "__main__":
+    unittest.main(exit=False)

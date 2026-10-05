@@ -1,0 +1,129 @@
+import string
+import re
+import nltk
+from nltk.tag import tnt
+from nltk.corpus import indian
+
+# File paths
+INPUT_FILE_PATH = "tech_text_final.txt"
+OUTPUT_FILE_PATH = "output.txt"
+LEMMA_FILE_PATH = "lemma.txt"
+TAGS_FILE_PATH = "tags.txt"
+
+# Open input and output files
+with open(INPUT_FILE_PATH, "r", encoding="utf-8") as input_file:
+    text = input_file.read()
+
+output_file = open(OUTPUT_FILE_PATH, "w", encoding="utf-8")
+lemma_file = open(LEMMA_FILE_PATH, "w+", encoding="utf-8")
+tags_file = open(TAGS_FILE_PATH, "w", encoding="utf-8")
+
+lemmatized_words = {}
+
+def train_pos_tagger():
+    """Train the TnT POS tagger using the Indian corpus."""
+    train_data = indian.tagged_sents('hindi.pos')
+    tnt_pos_tagger = tnt.TnT()
+    tnt_pos_tagger.train(train_data)
+    return tnt_pos_tagger
+
+def process_text(tnt_pos_tagger):
+    """Process the text, tag each word, and write to output files."""
+    sentences = text.split("।")
+    
+    for sentence in sentences:
+        # Remove digits and punctuation
+        sentence = re.sub(r'(\d+)', r' ', sentence)
+        sentence = sentence.translate(str.maketrans('', '', string.punctuation))
+        words = sentence.split()
+        
+        for word in words:
+            if word:
+                # Tag each word using TnT tagger
+                tagged_word = tnt_pos_tagger.tag(nltk.word_tokenize(word))
+                # Write word and its tag to output files
+                output_file.write(word.rstrip() + "\n")
+                tags_file.write(word.rstrip() + " : " + tagged_word[0][1] + "\n")
+
+def lemmatize_words():
+    """Lemmatize the tagged words."""
+    with open(TAGS_FILE_PATH, "r", encoding="utf-8") as tags:
+        tagged_words = tags.read().split("\n")
+    
+    for tagged_word in tagged_words:
+        if not tagged_word:
+            continue
+        word, tag = tagged_word.split(":")
+        if tag.strip().startswith("NN") or tag.strip().startswith("PR") or tag.strip().startswith("VAUX"):
+            lemmatized_words[word.strip()] = [word.strip()]
+        else:
+            generate_stem_words(word.strip())
+
+def generate_stem_words(word):
+    """Generate stem words for the given word."""
+    suffixes = {
+        1: ["ो", "े", "ू", "ु", "ी", "ि", "ा"],
+        2: ["कर", "ाओ", "िए", "ाई", "ाए", "ने", "नी", "ना", "ते", "ीं", "ती", "ता", "ाँ", "ां", "ों", "ें"],
+        3: ["ाकर", "ाइए", "ाईं", "ाया", "ेगी", "ेगा", "ोगी", "ोगे", "ाने", "ाना", "ाते", "ाती", "ाता", "तीं", "ाओं", "ाएं", "ुओं", "ुएं", "ुआं"],
+        4: ["ाएगी", "ाएगा", "ाओगी", "ाओगे", "एंगी", "ेंगी", "एंगे", "ेंगे", "ूंगी", "ूंगा", "ातीं", "नाओं", "नाएं", "ताओं", "ताएं", "ियाँ", "ियों", "ियां"],
+        5: ["ाएंगी", "ाएंगे", "ाऊंगी", "ाऊंगा", "ाइयाँ", "ाइयों", "ाइयां"],
+    }
+    
+    rule1 = suffixes[4][17]
+    rule2 = suffixes[4][16]
+    rule3 = suffixes[1][1]
+    rule4 = suffixes[1][6]
+    rule5 = suffixes[1][4]
+    rule6 = suffixes[5][4]
+    rule7 = suffixes[5][5]
+    rule8 = suffixes[5][6]
+    
+    if word.endswith(rule1):
+        lemmatized_words[word] = [word[:word.rindex(rule1)] + suffixes[1][4]]
+    elif word.endswith(rule2):
+        lemmatized_words[word] = [word[:word.rindex(rule2)] + suffixes[1][4]]
+    elif word.endswith(rule3):
+        lemmatized_words[word] = [word[:word.rindex(rule3)] + suffixes[1][6]]
+    elif word.endswith(rule4):
+        lemmatized_words[word] = [word[:word.rindex(rule4)] + suffixes[1][6]]
+    elif word.endswith(rule5):
+        lemmatized_words[word] = [word[:word.rindex(rule5)] + suffixes[1][4]]
+    elif word.endswith(rule6):
+        lemmatized_words[word] = [word[:word.rindex(rule6)] + suffixes[3][2]]
+    elif word.endswith(rule7):
+        lemmatized_words[word] = [word[:word.rindex(rule7)] + suffixes[3][2]]
+    elif word.endswith(rule8):
+        lemmatized_words[word] = [word[:word.rindex(rule8)] + suffixes[3][2]]
+    else:
+        if word not in lemmatized_words:
+            lemmatized_words[word] = []
+        for key in suffixes.keys():
+            for value in suffixes[key]:
+                if word.endswith(value):
+                    suff_index = word.rindex(value)
+                    lemmatized_words[word].append(word[:suff_index])
+
+def write_lemmatized_words():
+    """Write lemmatized words to lemma.txt."""
+    for word, lemmas in lemmatized_words.items():
+        if not lemmas:
+            lemma_file.write(word + ": " + word)
+        else:
+            lemma_file.write(word + ": " + " ".join(set(lemmas)))
+        lemma_file.write("\n")
+
+def main():
+    # Train POS tagger
+    tnt_pos_tagger = train_pos_tagger()
+    
+    # Process text, tag words, and write to output files
+    process_text(tnt_pos_tagger)
+    
+    # Lemmatize tagged words
+    lemmatize_words()
+    
+    # Write lemmatized words to lemma.txt
+    write_lemmatized_words()
+
+if __name__ == "__main__":
+    main()

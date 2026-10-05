@@ -1,0 +1,35 @@
+import tkinter as tk
+from tkinter import *
+import sys
+from GUI_gen import GUIGen
+from GUI_decrypt import GUID
+from GUI_encrypt import GUIE
+sys.setrecursionlimit(1000000)
+class RSA_GUI:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.initialize_ui()
+    def initialize_ui(self):
+        self.create_widgets()
+        self.configure_layout()
+        self.set_window_title()
+        self.root.mainloop()
+    def create_widgets(self):
+        self.label = tk.Label(self.root, text="RSA Program by Shivam Sai Gupta for Discrete Maths, Prof. Mahavir Jhawar")
+        self.generate_button = tk.Button(self.root, text="Generate", command=self.generate_rsa_keys)
+        self.encrypt_button = tk.Button(self.root, text="Encrypt", command=self.encrypt_message)
+        self.decrypt_button = tk.Button(self.root, text="Decrypt", command=self.decrypt_message)
+    def configure_layout(self):
+        self.label.pack()
+        self.generate_button.pack()
+        self.encrypt_button.pack()
+        self.decrypt_button.pack()
+    def set_window_title(self):
+        self.root.title("RSA Key Generator by Shivam Sai Gupta")
+    def generate_rsa_keys(self):
+        rsa_key_generator = GUIGen()
+    def encrypt_message(self):
+        message_encrypter = GUIE()
+    def decrypt_message(self):
+        message_decrypter = GUID()
+my_gui = RSA_GUI()
