@@ -1,0 +1,22 @@
+
+from ecc_simple import set_p256_param, times, add, subtract, encode, decode
+import random
+set_p256_param()
+a1 = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+a2 = 48439561293906451759052585252797914202762949526041747995844080717082404635286
+a3 = 36134250956749795798585127919587881956611106672985015071877198253568414405109
+b1 = (a2, a3)
+b2 = random.randrange(1, a1)
+b3 = random.randrange(1, a1)
+b4 = times(b3, b1)
+b5 = times(b2, b1)
+a4 = 32454324564335645345643
+b6 = times(b2, b4)
+b7 = times(b3, b5)
+b8 = b5
+b9 = add(encode(a4, 100), b6)
+b10 = (b8, b9)
+b11 = subtract(b10[1], b7)
+b12 = decode(b11, 100)
+print("Original Message:", a4)
+print("Decrypted Message:", b12)

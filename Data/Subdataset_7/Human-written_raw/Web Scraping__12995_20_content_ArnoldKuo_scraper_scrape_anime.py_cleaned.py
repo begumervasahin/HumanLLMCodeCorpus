@@ -1,0 +1,38 @@
+import requests
+from bs4 import BeautifulSoup
+import os
+import traceback
+def fonk1(b3, b8):
+    if os.path.exists(b8):
+        print('file exists!')
+        return
+    try:
+        b1 = requests.get(b3, stream=True, timeout=60)
+        b1.raise_for_status()
+        with open(b8, 'wb') as f:
+            for chunk in b1.iter_content(b2 = 1024):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        return b8
+    except keyboardInterrupt:
+        if os.path.exists(b8):
+            os.remove(b8)
+        raise KeyboardInterrupt
+    except Exception:
+        traceback.print_exc()
+        if os.path.exists(b8):
+            os.remove(b8)
+if os.path.exists('data/anime') is False:
+    os.makedirs('data/anime')
+a1 = 1
+a2 = 8000
+for i in range(a1, a2 + 1):
+    b3 = 'http:
+    b4 = requests.get(b3).text
+    b5 = BeautifulSoup(b4, 'b4.parser')
+    for img in b5.find_all('img', b6 = "preview"):
+        b7 = 'http:' + img['src']
+        b8 = os.path.join('data/anime', b7.split('/')[-1])
+        fonk1(b7, b8)
+    print('%d / %d' % (i, a2))

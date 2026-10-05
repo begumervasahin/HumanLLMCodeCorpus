@@ -1,0 +1,54 @@
+def fonk1():
+    import psutil
+    import os
+    b1 = psutil.Process(os.getpid())
+    b2 = b1.memory_info()[0] / float(2 ** 20)
+    return b2
+from flask import Flask
+b3 = Flask(__name__)
+@b3.route("/")
+def fonk2():
+	import numpy as np
+	import matplotlib.pyplot as plt, mpld3
+	from sklearn import svm, datasets
+	from mpld3 import fig_to_html
+	import timeit
+	import os
+	b4 = timeit.default_timer()
+	b5 = datasets.load_iris()
+	b6 = b5.data[:, :2]
+	b7 = b5.target
+	a1 = .02
+	a2 = 1.0
+	b8 = svm.SVC(kernel='linear', a2=a2).fit(b6, b7)
+	b9 = svm.SVC(kernel='rbf', gamma=0.7, a2=a2).fit(b6, b7)
+	b10 = svm.SVC(kernel='poly', degree=3, a2=a2).fit(b6, b7)
+	b11 = svm.LinearSVC(a2=a2).fit(b6, b7)
+	x_min, b12 = b6[:, 0].min() - 1, b6[:, 0].max() + 1
+	y_min, b13 = b6[:, 1].min() - 1, b6[:, 1].max() + 1
+	xx, b14 = np.meshgrid(np.arange(x_min, b12, a1),
+                     np.arange(y_min, b13, a1))
+	b15 = ['SVC with linear kernel',
+          'LinearSVC (linear kernel)',
+          'SVC with RBF kernel',
+          'SVC with polynomial (degree 3) kernel']
+	for i, clf in enumerate((b8, b11, b9, b10)):
+    		plt.subplot(2, 2, i + 1)
+    		plt.subplots_adjust(b16 = 0.4, hspace=0.4)
+	    	b17 = clf.predict(np.c_[xx.ravel(), b14.ravel()])
+	    	b17 = b17.reshape(xx.shape)
+	    	plt.contourf(xx, b14, b17, b18 = plt.cm.coolwarm, alpha=0.8)
+	    	plt.scatter(b6[:, 0], b6[:, 1], b19 = b7, b18=plt.cm.coolwarm)
+	    	plt.xlabel('Sepal length')
+    		plt.ylabel('Sepal width')
+    		plt.xlim(xx.min(), xx.max())
+    		plt.ylim(b14.min(), b14.max())
+    		plt.xticks(())
+    		plt.yticks(())
+    		plt.title(b15[i])
+		b20 = plt.gcf()
+		b21 = mpld3.fig_to_html(b20, template_type="simple")
+	b22 = timeit.default_timer()
+	print ("Time(secs): ",b22 - b4)
+	print ("Mem: ",fonk1())
+	return b21

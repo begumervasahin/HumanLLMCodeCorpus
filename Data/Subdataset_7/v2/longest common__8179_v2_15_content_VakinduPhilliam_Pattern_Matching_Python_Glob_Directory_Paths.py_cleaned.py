@@ -1,0 +1,11 @@
+import glob
+b1 = glob.glob('./[0-9].*')
+print("Files starting with a digit in the current directory:", b1)
+b2 = glob.glob('*.gif')
+print("GIF files in the current directory:", b2)
+b3 = glob.glob('?.gif')
+print("Single character named GIF files in the current directory:", b3)
+b4 = glob.glob('**/*.txt', recursive=True)
+print("Text files in the current directory and subdirectories:", b4)
+b5 = glob.glob('./**/', recursive=True)
+print("Directories in the current directory and subdirectories:", b5)
