@@ -15,8 +15,6 @@ The repository contains every training script, the per-run results, and the resu
 ```
 .
 ├── README.md
-├── HumanLLMCodeCorpus_Classification_Results.xlsx   # all result tables of the paper (Tables 9-11, Sniffer/Sensor, style)
-├── HumanLLMCodeCorpus_Style_Metrics.py              # stylometric analysis (style metrics + significance tests)
 ├── Data/
 │   └── Subdataset_1 ... Subdataset_18/
 │       ├── Human-written_raw/                       # human-written samples (label 0)
@@ -29,7 +27,9 @@ The repository contains every training script, the per-run results, and the resu
 │   └── sniffer_no_fine-tune/   sensor_no_fine-tune/ # same models without fine-tuning (control experiment)
 └── Results/                                         # outputs of every run
     ├── Group-Based Split/
-    └── Snippet-Level Split/
+    ├── Snippet-Level Split/
+    ├── HumanLLMCodeCorpus_Classification_Results.xlsx   # all result tables of the paper (Tables 9-11, Sniffer/Sensor, style)
+    └── HumanLLMCodeCorpus_Style_Metrics.py              # stylometric analysis (style metrics + significance tests)
 ```
 
 ---
@@ -138,7 +138,7 @@ Fine-tuned runs use the same data split as the embedding-based ML runs; source c
 both classes before tokenisation. Requirements: PyTorch, transformers, scikit-learn, a GPU. The no-fine-tuning control
 runs are expected to stay at chance level.
 
-### Style metrics — `HumanLLMCodeCorpus_Style_Metrics.py`
+### Style metrics — `Results/HumanLLMCodeCorpus_Style_Metrics.py`
 
 Stylometric comparison of human-written, GPT-3.5 and GPT-4o code (lines of code, comment ratio, docstring coverage,
 identifier length, single-letter identifier ratio, snake_case ratio, maximum nesting depth, cyclomatic complexity,
@@ -153,6 +153,8 @@ during dataset preparation. Requirements: lizard, scipy, pandas, matplotlib, ope
 
 `Results/<Split>/<run name>/` holds the outputs of one run; the Sniffer/Sensor runs are grouped in
 `sniffer_fine-tune/`, `sensor_fine-tune/`, `sniffer_no_fine-tune/` and `sensor_no_fine-tune/` sub-folders.
+`Results/` also contains the result tables of the paper (`HumanLLMCodeCorpus_Classification_Results.xlsx`, see below)
+and the style-metrics script (`HumanLLMCodeCorpus_Style_Metrics.py`, see *Style metrics* above).
 
 | File | Content |
 |---|---|
@@ -173,7 +175,7 @@ The metrics are the same in all formats.
 
 ---
 
-## Result tables — `HumanLLMCodeCorpus_Classification_Results.xlsx`
+## Result tables — `Results/HumanLLMCodeCorpus_Classification_Results.xlsx`
 
 | Sheet | Paper | Content |
 |---|---|---|
