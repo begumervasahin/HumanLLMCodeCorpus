@@ -1,0 +1,119 @@
+import sys
+import struct
+class HuffNode:
+    def __init__(self, char, freq):
+        self.char = char
+        self.freq = freq
+        self.left = None
+        self.right = None
+class ListNode:
+    def __init__(self, node):
+        self.node = node
+        self.next = None
+    def insert(self, new_node):
+        if new_node.node.freq < self.node.freq:
+            new_node.next = self
+            return new_node
+        else:
+            current = self
+            while current.next is not None and current.next.node.freq < new_node.node.freq:
+                current = current.next
+            new_node.next = current.next
+            current.next = new_node
+            return self
+    def top(self):
+        return self.node
+def huffmantree(node, dictionary, prefix):
+    if node.left is None and node.right is None:
+        dictionary[node.char] = prefix
+    if node.left is not None:
+        huffmantree(node.left, dictionary, prefix + "0")
+    if node.right is not None:
+        huffmantree(node.right, dictionary, prefix + "1")
+def encodehufftree(node, prefix):
+    if node.left is None and node.right is None:
+        pt.append('1')
+        pt.append('{0:08b}'.format(prefix + ord(node.char)))
+    else:
+        pt.append('0')
+        encodehufftree(node.left, prefix + 1)
+        encodehufftree(node.right, prefix + 1)
+input_file = sys.argv[1]
+try:
+    output_file = sys.argv[2]
+except IndexError:
+    output_file = "compressed.huff"
+try:
+    file = open(input_file, 'rb')
+    inp = file.read()
+    original_size = len(inp)
+except FileNotFoundError:
+    print("Input file not found!")
+    sys.exit(1)
+arr = [HuffNode(i, 0) for i in range(0, 256)]
+for ch in inp:
+    arr[ch].freq += 1
+arr.sort(key=lambda x: x.freq)
+link = ListNode(arr[0])
+for a in arr[:0:-1]:
+    if a.freq != 0:
+        new = ListNode(a)
+        new.next = link
+        link = new
+    else:
+        break
+tree = 0
+while True:
+    a = link.top()
+    link = link.next
+    b = link.top()
+    link = link.next
+    n = HuffNode(257, a.freq + b.freq)
+    n.right = a if a.freq > b.freq else b
+    n.left = b if a.freq > b.freq else a
+    new = ListNode(n)
+    if link != 0:
+        link = link.insert(new)
+    else:
+        tree = n
+        break
+comp = open(output_file, 'wb')
+pt = []
+def combine(st):
+    d = ""
+    for ch in st:
+        d += ch
+    return d
+def generateaddress(tree):
+    dictionary = {0: 0}
+    huffmantree(tree, dictionary, "")
+    encodehufftree(tree, 16)
+    codedtree = combine(pt)
+    size = len(codedtree)
+    comp.write(struct.pack('B', size
+    comp.write(struct.pack('B', size % 256))
+    chunk = ""
+    for ch in codedtree:
+        chunk = chunk + ch
+        if len(chunk) > 8:
+            comp.write(struct.pack('B', int(chunk[0:8], 2)))
+            chunk = chunk[8:]
+    df = ""
+    for ch in inp:
+        chunk += dictionary[ch]
+        df += dictionary[ch]
+        if len(chunk) > 8:
+            comp.write(struct.pack('B', int(chunk[0:8], 2)))
+            chunk = chunk[8:]
+    chunk += "1"
+    while len(chunk) % 8 == 0:
+        chunk += "0"
+    while chunk != "":
+        comp.write(struct.pack('B', int("0b" + chunk[0:8], 2)))
+        chunk = chunk[8:]
+    comp.flush()
+try:
+    generateaddress(tree)
+    print("Job completed!")
+except Exception as e:
+    print("An error occurred:", e)

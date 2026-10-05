@@ -1,0 +1,32 @@
+import random
+def generate_sentences():
+    adverb = []
+    noun = []
+    adjective = []
+    verb = []
+    with open("verb.txt", "r") as fverb:
+        verb = fverb.readlines()
+    with open("adverb.txt", "r") as fadverb:
+        adverb = fadverb.readlines()
+    with open("noun.txt", "r") as fnoun:
+        noun = fnoun.readlines()
+    with open("adjective.txt", "r") as fadj:
+        adjective = fadj.readlines()
+    while True:
+        try:
+            user_answer = int(input("How many sentences do you want to generate? "))
+            break
+        except ValueError:
+            print("Wrong input, please use integer numbers!")
+    for i in range(user_answer):
+        sentence = (
+            "A " + adjective[random.randrange(len(adjective))].strip() +
+            " " + noun[random.randrange(len(noun))].strip() +
+            " " + verb[random.randrange(len(verb))].strip() +
+            " a " + adjective[random.randrange(len(adjective))].strip() +
+            " " + noun[random.randrange(len(noun))].strip() +
+            " " + adverb[random.randrange(len(adverb))].strip() + "."
+        )
+        print(sentence)
+if __name__ == "__main__":
+    generate_sentences()

@@ -1,0 +1,79 @@
+import pandas as pd
+working_mcat_subcat_df = pd.read_excel("C:/Users/IMART/Downloads/Working MCAT_subcat.xlsx", sheet_name="Sheet2")
+subcat_super_pmcat_df = pd.read_excel("C:/Users/IMART/Downloads/Subcat_super_PMCAT.xlsx", sheet_name="Export Worksheet")
+word_frequency_df = pd.read_excel("C:/Users/IMART/Downloads/wordfrequencyfinal.xlsx", sheet_name="wordfrequencyfinal")
+word_frequency_df["HIGH FREQUENCY WORDS"] = word_frequency_df["HIGH FREQUENCY WORDS"].str.lower()
+subcat_super_pmcat_df["GLCAT_MCAT_NAME"] = subcat_super_pmcat_df["GLCAT_MCAT_NAME"].str.lower()
+working_mcat_subcat_df["GLCAT_MCAT_NAME"] = working_mcat_subcat_df["GLCAT_MCAT_NAME"].str.lower()
+merged_mcat_subcat_df = pd.DataFrame(columns=['MCAT_Name', 'Subcat_ID', 'MCAT_Name&HighFrequencyWords'])
+merged_pmcat_df = pd.DataFrame(columns=['MCAT_ID', 'PMCAT', 'MCAT_Name', 'Subcat_ID', 'Stopword', 'Attribute'])
+word_freq_dict = word_frequency_df.set_index('SUBCAT ID').T.to_dict('list')
+index = 0
+row = 0
+while index < len(subcat_super_pmcat_df):
+    if subcat_super_pmcat_df.iloc[index]["SUBCAT_ID"] in word_freq_dict.keys():
+        subcat_id = subcat_super_pmcat_df.iloc[index]["SUBCAT_ID"]
+        start_index = index
+        concat_string = ""
+        while subcat_super_pmcat_df.iloc[index]["SUBCAT_ID"] == subcat_id and index <= len(subcat_super_pmcat_df) - 1:
+            concat_string += subcat_super_pmcat_df.iloc[index]["GLCAT_MCAT_NAME"] + " "
+            index += 1
+            if index == len(subcat_super_pmcat_df):
+                break
+        unique_words = set(concat_string.split(' '))
+        cleaned_string = ""
+        for word in unique_words:
+            if word not in cleaned_string:
+                cleaned_string += word + " "
+        merged_mcat_subcat_df.loc[row, 'MCAT_Name'] = subcat_super_pmcat_df.iloc[start_index]["GLCAT_MCAT_NAME"]
+        merged_mcat_subcat_df.loc[row, 'Subcat_ID'] = subcat_super_pmcat_df.iloc[start_index]["SUBCAT_ID"]
+        s = cleaned_string + " " + str(word_freq_dict[subcat_super_pmcat_df.iloc[start_index]["SUBCAT_ID"]][0])
+        merged_mcat_subcat_df.loc[row, 'MCAT_Name&HighFrequencyWords'] = s
+        row += 1
+    else:
+        merged_mcat_subcat_df.loc[row, 'MCAT_Name'] = subcat_super_pmcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        merged_mcat_subcat_df.loc[row, 'Subcat_ID'] = subcat_super_pmcat_df.iloc[index]["SUBCAT_ID"]
+        merged_mcat_subcat_df.loc[row, 'MCAT_Name&HighFrequencyWords'] = subcat_super_pmcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        index += 1
+        row += 1
+merged_kw_dict = merged_mcat_subcat_df[['Subcat_ID', 'MCAT_Name&HighFrequencyWords']].set_index('Subcat_ID').T.to_dict('list')
+index = 0
+row = 0
+while index < len(working_mcat_subcat_df):
+    if working_mcat_subcat_df.iloc[index]["FK_GLCAT_CAT_ID"] in merged_kw_dict.keys():
+        subcat_id = working_mcat_subcat_df.iloc[index]["FK_GLCAT_CAT_ID"]
+        attribute_string = ""
+        stopwords = merged_kw_dict[subcat_id][0]
+        mcat_name = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        for word in mcat_name.split(" "):
+            if word not in stopwords.split(" "):
+                attribute_string += " " + word
+        merged_pmcat_df.loc[row, 'MCAT_ID'] = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_ID"]
+        merged_pmcat_df.loc[row, 'PMCAT'] = working_mcat_subcat_df.iloc[index]["PMCAT"]
+        merged_pmcat_df.loc[row, 'MCAT_Name'] = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        merged_pmcat_df.loc[row, 'Subcat_ID'] = subcat_id
+        merged_pmcat_df.loc[row, 'Stopword'] = stopwords
+        merged_pmcat_df.loc[row, 'Attribute'] = attribute_string.strip()
+        index += 1
+        row += 1
+    else:
+        subcat_id = working_mcat_subcat_df.iloc[index]["FK_GLCAT_CAT_ID"]
+        merged_pmcat_df.loc[row, 'MCAT_ID'] = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_ID"]
+        merged_pmcat_df.loc[row, 'PMCAT'] = working_mcat_subcat_df.iloc[index]["PMCAT"]
+        merged_pmcat_df.loc[row, 'MCAT_Name'] = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        merged_pmcat_df.loc[row, 'Subcat_ID'] = subcat_id
+        attribute_string = ""
+        if subcat_id in word_freq_dict.keys():
+            stopwords = word_freq_dict[subcat_id][0]
+        else:
+            stopwords = ""
+        mcat_name = working_mcat_subcat_df.iloc[index]["GLCAT_MCAT_NAME"]
+        for word in mcat_name.split(" "):
+            if word not in stopwords.split(" "):
+                attribute_string += " " + word
+        merged_pmcat_df.loc[row, 'Stopword'] = stopwords
+        merged_pmcat_df.loc[row, 'Attribute'] = attribute_string.strip()
+        index += 1
+        row += 1
+merged_pmcat_df['Attribute'] = merged_pmcat_df['Attribute'].str.lstrip()
+merged_pmcat_df.to_csv("stopwordsremovedmcats.csv", index=False)

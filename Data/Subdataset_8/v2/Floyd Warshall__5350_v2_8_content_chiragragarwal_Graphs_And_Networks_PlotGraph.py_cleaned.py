@@ -1,0 +1,102 @@
+import math
+import string
+import numpy as np
+import matplotlib.pyplot as plt
+class PlotGraph:
+    '''
+    Plot a graph using the adjacency matrix provided.
+    Attributes:
+        graphMat (numpy.ndarray): The adjacency matrix representing the graph.
+        numVertices (int): The number of vertices in the graph.
+        r (int): The radius of the circle containing the vertices.
+    '''
+    def __init__(self, graphMat):
+        if graphMat.shape[0] != graphMat.shape[1]:
+            raise ValueError("Please provide a valid adjacency matrix (square matrix).")
+        self.graphMat = graphMat
+        self.numVertices = graphMat.shape[0]
+        self.r = 1
+    def get_vertex_coordinates(self):
+        '''
+        Calculate the Cartesian coordinates of the vertices based on the number of vertices
+        and radius of the circle containing the points.
+        Returns:
+            list: A list of tuples containing (x, y) coordinates for each vertex.
+        '''
+        pi = math.pi
+        vertexCoords = []
+        theta = pi
+        interval = 2 * pi / self.numVertices
+        for _ in range(self.numVertices):
+            xCoord = round(self.r * math.cos(theta), 2)
+            yCoord = round(self.r * math.sin(theta), 2)
+            vertexCoords.append((xCoord, yCoord))
+            theta += interval
+        return vertexCoords
+    def get_edges(self):
+        '''
+        Retrieve the edges present in the graph.
+        Returns:
+            list: A list of tuples representing the edges in the graph.
+        '''
+        edgeList = []
+        for i in range(self.numVertices):
+            for j in range(self.numVertices):
+                if self.graphMat[i, j]:
+                    edgeList.append((i, j))
+        return edgeList
+    def get_offsetted_values(self, xPos, yPos, offset):
+        '''
+        Calculate modified xPos and yPos values with the offset depending on the quadrant.
+        Args:
+            xPos (float): The x-coordinate.
+            yPos (float): The y-coordinate.
+            offset (float): The offset value.
+        Returns:
+            tuple: The modified (xPos, yPos) coordinates.
+        '''
+        if yPos > 0:
+            yPos += offset
+            if xPos != 0:
+                xPos += offset if xPos > 0 else -offset
+        elif yPos < 0:
+            yPos -= offset
+            if xPos != 0:
+                xPos += offset if xPos > 0 else -offset
+        elif yPos == 0:
+            xPos += offset if xPos != 0 else 0
+        elif xPos == 0:
+            yPos += offset if yPos != 0 else 0
+        return xPos, yPos
+    def plot(self):
+        '''
+        Plot the graph.
+        '''
+        vertexCoords = self.get_vertex_coordinates()
+        print(vertexCoords)
+        edgeList = self.get_edges()
+        print("Found %d edges in the graph" % len(edgeList))
+        for edge in edgeList:
+            print(edge)
+            xPos = vertexCoords[edge[0]]
+            yPos = vertexCoords[edge[1]]
+            plt.arrow(xPos[0], xPos[1], yPos[0] - xPos[0], yPos[1] - xPos[1],
+                      head_length=0.2, head_width=0.1, fc='k', ec='k',
+                      length_includes_head=True, overhang=0.2)
+        alphabet = string.ascii_uppercase
+        for v in range(self.numVertices):
+            xPos, yPos = vertexCoords[v][0], vertexCoords[v][1]
+            xPosLabel, yPosLabel = self.get_offsetted_values(xPos, yPos, 0.3)
+            plt.text(xPosLabel, yPosLabel, alphabet[v], fontsize=20)
+            xPosVertex, yPosVertex = self.get_offsetted_values(xPos, yPos, 0.07)
+            plt.plot(xPosVertex, yPosVertex, 'wo', mew=2, ms=20)
+        plt.axis([-2 * self.r, 2 * self.r, -2 * self.r, 2 * self.r])
+        plt.title("Graph of %d vertices, %d edges" % (self.numVertices, len(edgeList)), loc='center')
+        plt.show()
+if __name__ == "__main__":
+    graph_matrix = np.array([[0, 1, 1, 0],
+                             [1, 0, 1, 1],
+                             [1, 1, 0, 1],
+                             [0, 1, 1, 0]])
+    plotter = PlotGraph(graph_matrix)
+    plotter.plot()

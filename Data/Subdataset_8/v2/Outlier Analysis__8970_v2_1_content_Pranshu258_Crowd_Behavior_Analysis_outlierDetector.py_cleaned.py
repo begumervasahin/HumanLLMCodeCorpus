@@ -1,0 +1,162 @@
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from copy import deepcopy
+import csv
+def get_time(time_str):
+    return ((int(time_str[0:2]) * 3600) + (int(time_str[3:5]) * 60) + (int(time_str[6:8]))) / 86400.0
+def load_trajectory(filename, N):
+    trajectory = {}
+    with open(filename, newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        prev_point = None
+        trajectory_id = 0
+        for row in reader:
+            time_str, _, x_str, y_str, point_id = row[0].split(";")
+            time = get_time(time_str.split('T')[1][:-4])
+            x, y, point_id = int(x_str)
+            if prev_point is not None and point_id != prev_point:
+                trajectory_id += 1
+                if trajectory_id > N:
+                    break
+                trajectory[trajectory_id] = []
+            if prev_point is None or (time != prev_time and (x, y) != prev_point):
+                trajectory[trajectory_id].append([x, y, time])
+            prev_time, prev_point = time, (x, y)
+    return trajectory
+def plot_trajectory(trajectory, trajectory_id):
+    x, y = [], []
+    for point in trajectory:
+        x.append(point[0])
+        y.append(point[1])
+    plt.figure()
+    plt.plot(x, y)
+    plt.title('Trajectory ID: ' + str(trajectory_id))
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
+def detect_outliers(trajectories, D, P, F):
+    print("Partition Phase Begins ...")
+    partitions = create_partitions(trajectories)
+    print("Partition Done !")
+    print("Total Number of t-partitions: ", len(partitions))
+    print("Outlying t-partition Detection Phase Begins ...")
+    partitions, outlier_count = detect_outlying_partitions(trajectories, partitions, D, P)
+    print("Outlying t-partition Detection Done !")
+    print("Number of Outlying t-partitions: ", outlier_count, " of ", len(partitions))
+    print("Outlying Trajectory Detection Phase Begins ...")
+    outliers = detect_outlying_trajectories(trajectories, partitions, F)
+    print("Outlying Trajectory Detection Phase Done !")
+    print("Number of Outlying Trajectories: ", len(outliers), " of ", len(trajectories))
+    return outliers
+def create_partitions(trajectories):
+    partitions = []
+    for trajectory_id, points in trajectories.items():
+        for i in range(len(points) - 1):
+            segment = [points[i], points[i + 1]]
+            partitions.append([segment, trajectory_id, 0])
+    return partitions
+def detect_outlying_partitions(trajectories, partitions, D, P):
+    outlier_count = 0
+    total_density, sd = calculate_total_density(trajectories, partitions, D)
+    for partition in partitions:
+        distances = []
+        ctr_count = 0
+        for trajectory_id, points in trajectories.items():
+            if trajectory_id != partition[1]:
+                match_length = 0
+                for i in range(len(points) - 1):
+                    segment = [points[i], points[i + 1]]
+                    dist = calculate_tp_distance(partition[0], segment)
+                    distances.append(dist)
+                    if dist < D:
+                        match_length += length(segment)
+                if match_length > length(partition[0]):
+                    ctr_count += 1
+        density = (len([d for d in distances if d <= sd]) + 1) * len(partitions)
+        if (ctr_count * total_density) / density < P * len(trajectories):
+            partition[2] = 1
+            outlier_count += 1
+    return partitions, outlier_count
+def detect_outlying_trajectories(trajectories, partitions, F):
+    outliers = []
+    for trajectory_id, points in trajectories.items():
+        outlier_segments = [partition[0] for partition in partitions if partition[2] == 1 and partition[1] == trajectory_id]
+        outlier_length, trajectory_length = 0, 0
+        for segment in outlier_segments:
+            outlier_length += length(segment)
+        for i in range(len(points) - 1):
+            trajectory_length += length([points[i], points[i + 1]])
+        if outlier_length / trajectory_length > F:
+            outliers.append(trajectory_id)
+    return outliers
+def calculate_total_density(trajectories, partitions, D):
+    distances = []
+    for partition in partitions:
+        for trajectory_id, points in trajectories.items():
+            if trajectory_id != partition[1]:
+                for i in range(len(points) - 1):
+                    segment = [points[i], points[i + 1]]
+                    dist = calculate_tp_distance(partition[0], segment)
+                    distances.append(dist)
+    sd = np.std(np.array(distances))
+    total_density = 0
+    for partition in partitions:
+        for trajectory_id, points in trajectories.items():
+            if trajectory_id != partition[1]:
+                for i in range(len(points) - 1):
+                    segment = [points[i], points[i + 1]]
+                    dist = calculate_tp_distance(partition[0], segment)
+                    total_density += (len([d for d in distances if d <= sd]) + 1)
+    return total_density, sd
+def project_point_on_line(point, line_2pt):
+    vx = line_2pt[2] - line_2pt[0]
+    vy = line_2pt[3] - line_2pt[1]
+    dx = point[0] - line_2pt[0]
+    dy = point[1] - line_2pt[1]
+    tp = (dx * vx + dy * vy) / (vx * vx + vy * vy)
+    point[0] = line_2pt[0] + tp * vx
+    point[1] = line_2pt[1] + tp * vy
+    return [point[0], point[1]]
+def calculate_tp_distance(L1, L2):
+    w1, w2, w3, w4 = 1.0, 1.0, 1.0, 1.0
+    Dspeed = abs((length(L1) / L1[0][2]) - (length(L2) / L2[0][2]))
+    if length(L1) > length(L2):
+        L1, L2 = L2, L1
+    point1 = [L2[0][0], L2[0][1]]
+    line_2pt1 = [L1[0][0], L1[0][1], L1[1][0], L1[1][1]]
+    proj1 = project_point_on_line(point1, line_2pt1)
+    point2 = [L1[0][0], L1[0][1]]
+    line_2pt2 = [L2[0][0], L2[0][1], L2[1][0], L2[1][1]]
+    proj2 = project_point_on_line(point2, line_2pt2)
+    six, siy, eix, eiy = L1[0][0], L1[0][1], L1[1][0], L1[1][1]
+    sjx, sjy, ejx, ejy = L2[0][0], L2[0][1], L2[1][0], L2[1][1]
+    lper1 = np.linalg.norm([sjy - proj1[1], sjx - proj1[0]])
+    lper2 = np.linalg.norm([siy - proj2[1], six - proj2[0]])
+    Dper = (math.pow(lper1, 2) + math.pow(lper2, 2)) / (lper1 + lper2)
+    lpar1 = min(np.linalg.norm([siy - proj1[1], six - proj1[0]]), np.linalg.norm([eiy - proj1[1], eix - proj1[0]]))
+    lpar2 = min(np.linalg.norm([siy - proj2[1], six - proj2[0]]), np.linalg.norm([eiy - proj2[1], eix - eix - proj1[0]]))
+    Dpar = min(lpar1, lpar2)
+    x1, y1 = ejx - sjx, ejy - sjy
+    x2, y2 = eix - six, eiy - siy
+    inner_product = x1 * x2 + y1 * y2
+    costheta = inner_product / (np.linalg.norm([x1, y1]) * np.linalg.norm([x2, y2]))
+    if costheta < -1:
+        costheta = -1
+    elif costheta > 1:
+        costheta = 1
+    angle = math.acos(costheta)
+    if angle < (math.pi / 2):
+        Dang = math.sin(angle) * length(L2)
+    else:
+        Dang = length(L2)
+    return w1 * Dper + w2 * Dpar + w3 * Dang + w4 * Dspeed
+def length(segment):
+    sx, sy, ex, ey = segment[0][0], segment[0][1], segment[1][0], segment[1][1]
+    return np.linalg.norm([ex - sx, ey - sy])
+filename = 'data/csv/al_position2013-02-06.csv'
+trajectories = load_trajectory(filename, 10)
+outliers = detect_outliers(trajectories, 37, 0.01, 0.4)
+print("Outliers: ", outliers)
+for trajectory_id, points in trajectories.items():
+    plot_trajectory(points, trajectory_id)

@@ -1,0 +1,39 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+data = pd.read_csv('/Users/swaruptripathy/Desktop/Data Science/headbrain.csv')
+X = data['Head Size(cm^3)'].values.reshape(-1, 1)
+Y = data['Brain Weight(grams)'].values
+mean_x = np.mean(X)
+mean_y = np.mean(Y)
+m = len(X)
+numer = 0
+denom = 0
+for i in range(m):
+    numer += (X[i] - mean_x) * (Y[i] - mean_y)
+    denom += (X[i] - mean_x) ** 2
+b1 = numer / denom
+b0 = mean_y - (b1 * mean_x)
+Y_pred = b0 + b1 * X
+plt.figure(figsize=(20, 10))
+plt.plot(X, Y_pred, color='red', label='Regression Line')
+plt.scatter(X, Y, c='blue', label='Scatter Plot')
+plt.xlabel('Head Size in cm^3')
+plt.ylabel('Brain Weight in grams')
+plt.legend()
+plt.show()
+rmse = np.sqrt(mean_squared_error(Y, Y_pred))
+print("Root Mean Squared Error (RMSE):", rmse)
+ss_t = np.sum((Y - mean_y) ** 2)
+ss_r = np.sum((Y - Y_pred) ** 2)
+r2 = 1 - (ss_r/ss_t)
+print("R-squared:", r2)
+reg = LinearRegression()
+reg.fit(X, Y)
+Y_pred_sklearn = reg.predict(X)
+rmse_sklearn = np.sqrt(mean_squared_error(Y, Y_pred_sklearn))
+r2_score_sklearn = reg.score(X, Y)
+print("Sklearn RMSE:", rmse_sklearn)
+print("Sklearn R-squared:", r2_score_sklearn)

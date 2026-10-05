@@ -1,0 +1,34 @@
+class BubbleSort:
+    def __init__(self, lst, trace_mode):
+        self.lst = lst
+        self.trace_mode = trace_mode
+    def sort(self):
+        sorted = False
+        lst = self.lst
+        while not sorted:
+            sorted = True
+            for i in range(len(lst) - 1):
+                j = i + 1
+                if lst[i] > lst[j]:
+                    lst[i], lst[j] = lst[j], lst[i]
+                    sorted = False
+                if self.trace_mode:
+                    self.display_list(lst, i, j)
+        return lst
+    def display_list(self, lst, i, j):
+        lst = [str(k) for k in lst]
+        output = '|'
+        for k, elm in enumerate(lst):
+            if k == i or k == j:
+                elm = elm + '*'
+            output = output + ' ' + str(elm) + ' |'
+        print(output)
+        input("Press Enter to continue...")
+def main():
+    lst = [64, 25, 12, 22, 11]
+    trace_mode = True
+    sorter = BubbleSort(lst, trace_mode)
+    sorted_lst = sorter.sort()
+    print("Sorted array:", sorted_lst)
+if __name__ == "__main__":
+    main()

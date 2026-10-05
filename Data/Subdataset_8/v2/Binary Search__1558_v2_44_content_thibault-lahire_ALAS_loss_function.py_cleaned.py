@@ -1,0 +1,57 @@
+import numpy as np
+def phi(w):
+    return 1 / (1 + np.exp(-w))
+def phiprim(w):
+    if np.exp(-w) < 10 ** 16:
+        if np.exp(-w) > 10 ** (-16):
+            f = np.exp(-w) / ((1 + np.exp(-w)) ** 2)
+        else:
+            f = np.exp(-w)
+    else:
+        f = np.exp(w)
+    return f
+def phi2prim(w):
+    if np.exp(-w) < 10 ** 16:
+        if np.exp(-w) > 10 ** (-16):
+            f = -np.exp(w) * (np.exp(w) - 1) / ((1 + np.exp(w)) ** 3)
+        else:
+            f = -np.exp(-w)
+    else:
+        f = np.exp(w)
+    return f
+def loss(x, S, A, y, arg=1, penalization=False):
+    d = np.size(A, 1)
+    card_S = len(S)
+    f = 0
+    if arg == 2 or arg == 3:
+        g = np.zeros(d)
+    if arg == 3:
+        H = np.zeros((d, d))
+    for i in range(card_S):
+        y_S_i = y[S[i]]
+        A_S_i = A[S[i]]
+        scal_prod = np.dot(x, A_S_i)
+        f += (y_S_i - phi(scal_prod)) ** 2
+        if arg == 2 or arg == 3:
+            g += 2 * A_S_i * phiprim(scal_prod) * (phi(scal_prod) - y_S_i)
+        if arg == 3:
+            H += 2 * ((phi(scal_prod) - y_S_i) * phi2prim(scal_prod) +
+                      phiprim(scal_prod) ** 2) * np.dot(np.transpose([A_S_i]), [A_S_i])
+    if penalization:
+        f += 0.5 * np.linalg.norm(x) ** 2
+    f /= card_S
+    if arg == 3:
+        H = 0.5 * (H + np.transpose(H))
+        if penalization:
+            g += x
+            H += np.eye(d)
+        g /= card_S
+        H /= card_S
+        return f, g, H
+    elif arg == 2:
+        if penalization:
+            g += x
+        g /= card_S
+        return f, g
+    else:
+        return f

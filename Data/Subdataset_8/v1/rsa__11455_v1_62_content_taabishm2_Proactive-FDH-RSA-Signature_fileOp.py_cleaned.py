@@ -1,0 +1,33 @@
+import os
+save_path = os.getcwd() + "\\RSAfiles\\"
+def write_list(filename, l):
+    '''Write a list l into a file'''
+    complete_name = save_path + filename + '.txt'
+    with open(complete_name, 'w') as file:
+        file.write(','.join(map(str, l)))
+def read_list(filename):
+    '''Return data from file read as list, READS ONLY INTEGERS'''
+    complete_name = save_path + filename + '.txt'
+    with open(complete_name, 'r') as file:
+        arr = file.read().split(',')
+    return [int(x) for x in arr]
+def read_list_noint(filename):
+    '''Return data from file read as list, READS NON INTEGERS'''
+    complete_name = save_path + filename + '.txt'
+    with open(complete_name, 'r') as file:
+        arr = file.read().split(',')
+    return arr
+def read_large_data(filename):
+    '''Read basic data from file'''
+    msg = ""
+    with open(save_path + filename + ".txt") as infile:
+        for line in infile:
+            msg += line
+    return msg
+def read_binary_file(filename):
+    '''Reads binary file'''
+    msg = ""
+    with open(save_path + filename, 'rb') as infile:
+        for line in infile:
+            msg += str(line)
+    return msg

@@ -1,0 +1,28 @@
+import sys
+import datetime
+import operator
+import functools
+import decimal
+def calculate_factorial(max_number, number_increase):
+    number1 = 0
+    while number1 < max_number:
+        number2 = number1 + 1
+        number1 += number_increase
+        multipliers = []
+        now = datetime.datetime.now()
+        with open("Factorial.txt", "a") as f:
+            f.write(f"Start time {now.strftime('%H%m%S.%f')}\n")
+        for i in range(number1, 0, -1):
+            multipliers.append(i)
+        result = functools.reduce(operator.mul, multipliers, 1)
+        now1 = datetime.datetime.now()
+        with open("Factorial.txt", "a") as f:
+            f.write(f"End time {now1.strftime('%H%m%S.%f')}\n")
+        x = decimal.Decimal(result)
+        with open("Factorial.txt", "a") as f:
+            f.write(f"Factorial of {number1} is {format(x, '.6e')}\n")
+            f.write(f"The time difference is {(now1 - now).total_seconds()} seconds\n")
+if __name__ == "__main__":
+    max_number = int(input('What will the maximum count be?: '))
+    number_increase = int(input('What will be the number added per round?: '))
+    calculate_factorial(max_number, number_increase)

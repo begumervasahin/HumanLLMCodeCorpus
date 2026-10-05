@@ -1,0 +1,147 @@
+from __future__ import print_function
+import pandas as pd
+import numpy as np
+from scipy import stats
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.graphics.api import qqplot
+from matplotlib.pylab import rcParams
+from statsmodels.tsa.arima.model import ARIMA
+import random
+import math
+import time
+start_time = time.time()
+VM_RANGE = 15
+PM_NUMBER = 20
+NVM_NUMBER = 150
+U_MEAN = 0.06111
+SLICE_NUMBER = 20
+RAND_RANGE = 0.6
+RACK_NUMBER = 16
+P = 3
+Q = 1
+output_file = open("CAVMP_result_4_4_8.txt", "w")
+def arima_predict(origin_data):
+    p = P
+    q = Q
+    log_data = np.log(origin_data)
+    predict_data = [-1]
+    found_model = False
+    for i in range(p, -1, -1):
+        if found_model:
+            break
+        for j in range(q, -1, -1):
+            try:
+                model = ARIMA(log_data, order=(i, 0, j))
+                results_arima = model.fit(disp=-1)
+                predict_data = results_arima.predict(len(origin_data), len(origin_data), dynamic=True)
+                predict_data = np.exp(predict_data)
+                if math.isnan(predict_data[0]):
+                    continue
+                found_model = True
+                break
+            except:
+                continue
+    if predict_data[0] == -1:
+        print('Prediction failed!')
+    return predict_data[0] + 0.008
+def generate_usage():
+    usage = []
+    base = random.randrange(0, 6)
+    for t in range(SLICE_NUMBER):
+        value = (math.sin(base + t) + 1 + RAND_RANGE * random.random()) * U_MEAN
+        usage.append(value)
+    return usage
+class VM:
+    def __init__(self):
+        self.usage = generate_usage()
+        self.length = len(self.usage)
+    def predict_usage(self):
+        return arima_predict(self.usage)
+    def add_usage(self, value):
+        self.usage.append(value)
+        self.length += 1
+class PM:
+    def __init__(self, rack_index):
+        self.num_vms = random.randrange(VM_RANGE - 5, VM_RANGE)
+        self.vms = [VM() for _ in range(self.num_vms)]
+        self.rack_index = rack_index
+        self.load = -1
+    def calculate_load(self):
+        total_usage = sum(vm.predict_usage() for vm in self.vms)
+        self.load = min(total_usage, 1.0)
+class Rack:
+    def __init__(self, index):
+        self.index = index
+        self.pms = [PM(index) for _ in range(PM_NUMBER)]
+class NVM:
+    def __init__(self):
+        self.usage = 0.07 + 0.06 * random.random()
+        self.destinations = []
+        self.assigned_pm = -1
+racks = [Rack(i) for i in range(RACK_NUMBER)]
+connected_racks = set()
+for i in range(RACK_NUMBER):
+    rack1 = i
+    while True:
+        rack2 = random.randrange(RACK_NUMBER)
+        if rack2 != rack1 and rack2 not in connected_racks:
+            connected_racks.add(rack2)
+            connected_racks.add(rack1)
+            break
+rack_connections = np.zeros((RACK_NUMBER, RACK_NUMBER))
+for rack1, rack2 in zip(connected_racks, connected_racks):
+    rack_connections[rack1][rack2] = 1
+    rack_connections[rack2][rack1] = 1
+nvms = [NVM() for _ in range(NVM_NUMBER)]
+for nvm in nvms:
+    group_size = random.randrange(min(3, NVM_NUMBER - len(nvm.destinations)), min(14, NVM_NUMBER - len(nvm.destinations)) + 1)
+    group = random.sample(range(NVM_NUMBER), group_size)
+    for dest_index in group:
+        nvm.destinations.append(dest_index)
+for rack in racks:
+    for pm in rack.pms:
+        pm.calculate_load()
+all_pms = [pm for rack in racks for pm in rack.pms]
+all_pms.sort(key=lambda x: x.load)
+for i, pm in enumerate(all_pms):
+    pm.num = i
+def is_connected(pm_index1, pm_index2):
+    rack_index1 = all_pms[pm_index1].rack_index
+    rack_index2 = all_pms[pm_index2].rack_index
+    return rack_connections[rack_index1][rack_index2] == 1
+def can_change_destination(nvm_index, pm_index):
+    nvm = nvms[nvm_index]
+    for dest_index in nvm.destinations:
+        if all_pms[dest_index].num != -1 and not is_connected(dest_index, pm_index):
+            return False
+    return True
+change_count = 0
+for nvm in nvms:
+    for pm_index, pm in enumerate(all_pms):
+        if pm.load + nvm.usage < 1:
+            if can_change_destination(nvm_index, pm_index):
+                nvm.assigned_pm = pm_index
+                pm.load += nvm.usage
+                all_pms.sort(key=lambda x: x.load)
+                break
+    else:
+        change_count += 2
+        print("Connect state changed")
+        for pm_index, pm in enumerate(all_pms):
+            if pm.load + nvm.usage < 1:
+                pm.load += nvm.usage
+                break
+all_pms.sort(key=lambda x: x.load)
+lowest_load = all_pms[0].load
+highest_load = all_pms[-1].load
+average_load = sum(pm.load for pm in all_pms) / len(all_pms)
+output_file.write(f"{change_count}\t{lowest_load}\t{average_load}\t{highest_load}\n")
+print(f"Change count: {change_count}")
+print(f"Lowest load: {lowest_load}")
+print(f"Average load: {average_load}")
+print(f"Highest load: {highest_load}")
+output_file.close()
+end_time = time.time()
+run_time = end_time - start_time
+print("Run time:", run_time)

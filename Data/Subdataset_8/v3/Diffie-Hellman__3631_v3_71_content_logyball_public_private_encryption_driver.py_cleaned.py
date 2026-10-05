@@ -1,0 +1,62 @@
+import prompts
+from keygen import getKeys
+from encrypt import encryptFile
+from decrypt import decryptFile
+def generate_keys(debug=False):
+    pub_path = input(prompts.pubKeyWritePath)
+    pri_path = input(prompts.priKeyWritePath)
+    seed = input(prompts.seedPrompt)
+    key_dict = getKeys(seed)
+    write_keys_to_file(pub_path, pri_path, key_dict, debug)
+def write_keys_to_file(pub_path, pri_path, key_dict, debug=False):
+    with open(pub_path, 'w') as pub_key_file:
+        pub_key_file.write(f"{key_dict['p']}\n")
+        pub_key_file.write(f"{key_dict['g']}\n")
+        pub_key_file.write(f"{key_dict['e2']}")
+        if debug:
+            print(f"DEBUG public key info:\n\tp: {key_dict['p']}\n\tg: {key_dict['g']}\n\te2: {key_dict['e2']}\n")
+    with open(pri_path, 'w') as pri_key_file:
+        pri_key_file.write(f"{key_dict['p']}\n")
+        pri_key_file.write(f"{key_dict['g']}\n")
+        pri_key_file.write(f"{key_dict['d']}")
+        if debug:
+            print(f"DEBUG private key info:\n\tp: {key_dict['p']}\n\tg: {key_dict['g']}\n\td: {key_dict['d']}\n")
+def encrypt_file(debug=False):
+    plain_path = input(prompts.plainTextFile)
+    enc_write_path = input(prompts.encTextFileWrite)
+    pub_key_path = input(prompts.pubKeyReadPath)
+    encryptFile(plain_path, enc_write_path, pub_key_path, debug)
+def decrypt_file(debug=False):
+    encrypted_path = input(prompts.encTextFileRead)
+    dec_write_path = input(prompts.decTextFile)
+    pri_key_path = input(prompts.priKeyReadPath)
+    decryptFile(encrypted_path, dec_write_path, pri_key_path, debug)
+def quit_with_error():
+    print('Please select a real option (1, 2, 3)!')
+    exit(0)
+def collect_input(debug=False):
+    choice = input(prompts.screenOne)
+    try:
+        choice = int(choice)
+    except ValueError:
+        quit_with_error()
+    if choice == 1:
+        generate_keys(debug)
+        return False
+    elif choice == 2:
+        encrypt_file(debug)
+        return False
+    elif choice == 3:
+        decrypt_file(debug)
+        return False
+    elif choice == 4:
+        return True
+    else:
+        quit_with_error()
+done = False
+debug = False
+user_d = input("Debug Mode [Y/N]?:")
+if user_d.upper() == 'Y':
+    debug = True
+while not done:
+    done = collect_input(debug)

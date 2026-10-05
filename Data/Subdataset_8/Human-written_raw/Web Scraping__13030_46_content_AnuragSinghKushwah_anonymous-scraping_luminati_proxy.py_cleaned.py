@@ -1,0 +1,33 @@
+from selenium import webdriver
+import random
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from common import get_public_ip
+print("Ip Address Before : ",get_public_ip())
+username = 'Your User Name'
+password = 'Your Password'
+port = 22225
+session_id = random.random()
+super_proxy_url = ('http:
+print("super_proxy_url : ",super_proxy_url)
+proxy = Proxy({
+    'proxyType': ProxyType.MANUAL,
+    'httpProxy': super_proxy_url,
+    'ftpProxy': super_proxy_url,
+    'sslProxy': super_proxy_url,
+    'noProxy': ''
+})
+print(proxy)
+browser = input("Please Enter your browser name i.e Chrome/Firefox etc")
+driver=None
+if browser == "Chrome":
+    options = webdriver.ChromeOptions()
+    options.add_argument('--proxy-server=%s' % proxy)
+    driver = webdriver.Chrome(
+        executable_path='Your Chromedriver Executable Path',
+        chrome_options=options)
+elif browser=="Firefox":
+    driver = webdriver.Firefox(executable_path="Your Geckodriver Executable path",
+                               proxy=proxy)
+driver.get('https:
+print("IP Address After " ,driver.find_element_by_xpath('
+driver.quit()

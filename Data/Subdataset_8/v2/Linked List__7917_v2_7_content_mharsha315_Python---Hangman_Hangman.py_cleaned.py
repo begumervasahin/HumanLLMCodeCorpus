@@ -1,0 +1,76 @@
+import random
+import time
+class Node:
+    def __init__(self, data="-", datacheck="-"):
+        self.data = data
+        self.datacheck = datacheck
+        self.next = None
+class HangmanGame:
+    def __init__(self):
+        self.head = Node()
+    def insert_word(self, word):
+        n = len(word)
+        pos = self.head
+        for i in range(n):
+            new_node = Node(word[i])
+            pos.next = new_node
+            pos = pos.next
+    def display_word(self):
+        pos = self.head.next
+        print()
+        while pos is not None:
+            print(pos.datacheck, end="")
+            pos = pos.next
+        print()
+    def play_game(self, letter, hangman):
+        found = False
+        pos = self.head.next
+        while pos is not None:
+            if pos.data == letter:
+                pos.datacheck = letter
+                found = True
+            pos = pos.next
+        if not found:
+            hangman.pop(0)
+        pos = self.head.next
+        while pos is not None:
+            print(pos.datacheck, end="")
+            pos = pos.next
+        print(hangman)
+    def view_answer(self):
+        pos = self.head.next
+        print("ANSWER IS...")
+        time.sleep(2.0)
+        while pos is not None:
+            print(pos.data, end="")
+            pos = pos.next
+def start_game():
+    hangman_game = HangmanGame()
+    print("Type 'view' to view the answer")
+    print("Type 'exit' to EXIT")
+    words = [
+        "python", "jumble", "easy", "difficult", "computer", "hangman", "failure", "brilliant", "worthy",
+        "xylophone", "awkward", "gypsy", "jinx", "burglar", "bankrupt", "crisis", "hyphen", "memento", "mystery",
+        "pajama", "pixel", "rogue", "rhythmic", "twelfth", "jealous", "zombie", "yacht", "yak", "zippy", "unknown",
+        "battleground", "player", "psycho", "beast", "buzzard", "boycott", "coffin", "witchcraft", "rickshaw",
+        "mnemonic", "pneumonia", "peekaboo", "diarrhoea", "jaundice", "gossip", "despacito"
+    ]
+    word = [random.choice(words)]
+    hangman_game.insert_word(word)
+    hangman_game.display_word()
+    hangman = ["H", "A", "N", "G", "M", "A", "N"]
+    while len(hangman) != 0:
+        user_input = input()
+        if user_input != "exit" and user_input != "view":
+            hangman_game.play_game(user_input, hangman)
+        elif user_input == "view":
+            hangman_game.view_answer()
+            break
+        elif user_input == "exit":
+            print("Exiting...")
+            break
+start_game()
+play_again = input("Do you want to play again? (yes/no): ").lower()
+while play_again == "yes":
+    start_game()
+    play_again = input("Do you want to play again? (yes/no): ").lower()

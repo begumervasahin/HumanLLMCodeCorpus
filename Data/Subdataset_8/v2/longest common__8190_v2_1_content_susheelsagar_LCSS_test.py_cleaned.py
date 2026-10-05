@@ -1,0 +1,43 @@
+import numpy as np
+mobility_file_path = '/home/s/Dropbox/Thesis/Telenor/fwdtelenordata/v01_anonymized_mobility.csv'
+mobility_data = []
+with open(mobility_file_path) as mobility_file:
+    header_skipped = False
+    current_user_id = None
+    current_trajectory = []
+    for line in mobility_file:
+        if not header_skipped:
+            header_skipped = True
+            continue
+        user_id, timestamp, latitude, longitude = line.strip().split(",")
+        if user_id == current_user_id:
+            current_trajectory.append((timestamp, latitude, longitude))
+        else:
+            if current_trajectory:
+                mobility_data.append(current_trajectory)
+            current_user_id = user_id
+            current_trajectory = [(timestamp, latitude, longitude)]
+    if current_trajectory:
+        mobility_data.append(current_trajectory)
+print("Mobility data loaded successfully.")
+distance_matrix_file_path = 'distance_matrix_final.csv'
+distance_matrix = np.zeros((8357, 8357))
+with open(distance_matrix_file_path) as distance_file:
+    user_ids = []
+    for line in distance_file:
+        data = line.strip().split(",")
+        user_id = data[0]
+        if user_ids and user_ids[-1] != user_id:
+            print('Error: Mismatch in user IDs at index', len(user_ids) - 1)
+        user_ids.append(user_id)
+        distances = [float(x) for x in data[1:]]
+        for j, dist in enumerate(distances):
+            if dist == 0:
+                if i != j:
+                    print("Error: Zero distance found at index", i, j)
+            distance_matrix[len(user_ids) - 1][j] = dist
+print("Distance matrix loaded successfully.")
+for i in range(8357):
+    for j in range(8357):
+        if distance_matrix[i][j] != distance_matrix[j][i]:
+            print("Error: Asymmetric distance found at indices", i, j)

@@ -1,0 +1,105 @@
+import re
+import math
+from nltk.stem import *
+from nltk.tokenize import sent_tokenize, word_tokenize
+class BuildIndex:
+    def __init__(self, files):
+        self.tf = {}
+        self.df = {}
+        self.idf = {}
+        self.filenames = files
+        self.file_to_terms = self.process_files(self.filenames)
+        self.regdex = self.regIndex(self.filenames)
+        self.totalIndex = self.execute()
+        self.vectors = self.vectorize()
+        self.mags = self.magnitudes(self.filenames)
+        self.populateScores()
+    def process_files(self, filenames):
+        file_to_terms = {}
+        for file in filenames:
+            pattern = re.compile('[\W_]+')
+            text = open(file, 'r').read().lower()
+            text = pattern.sub(' ', text)
+            text = re.sub(r'[\W_]+', '', text)
+            file_to_terms[file] = text.split()
+        return file_to_terms
+    def index_one_file(self, termlist):
+        file_index = {}
+        ps = PorterStemmer()
+        for index, words in enumerate(termlist):
+            for word in word_tokenize(words):
+                word = word.lower().strip('.').strip(',')
+                word = ps.stem(word)
+                if word in file_index:
+                    file_index[word].append(index)
+                else:
+                    file_index[word] = [index]
+        return file_index
+    def make_indices(self, termlists):
+        total = {}
+        for filename in termlists.keys():
+            total[filename] = self.index_one_file(termlists[filename])
+        return total
+    def fullIndex(self):
+        total_index = {}
+        indie_indices = self.regdex
+        for filename in indie_indices.keys():
+            self.tf[filename] = {}
+            for word in indie_indices[filename].keys():
+                self.tf[filename][word] = len(indie_indices[filename][word])
+                if word in self.df.keys():
+                    self.df[word] += 1
+                else:
+                    self.df[word] = 1
+                if word in total_index.keys():
+                    if filename in total_index[word].keys():
+                        total_index[word][filename].append(indie_indices[filename][word][:])
+                    else:
+                        total_index[word][filename] = indie_indices[filename][word]
+                else:
+                    total_index[word] = {filename: indie_indices[filename][word]}
+        return total_index
+    def vectorize(self):
+        vectors = {}
+        for filename in self.filenames:
+            vectors[filename] = [len(self.regdex[filename][word]) for word in self.regdex[filename].keys()]
+        return vectors
+    def document_frequency(self, term):
+        return len(self.totalIndex[term].keys()) if term in self.totalIndex.keys() else 0
+    def collection_size(self):
+        return len(self.filenames)
+    def magnitudes(self, documents):
+        mags = {}
+        for document in documents:
+            mags[document] = pow(sum(map(lambda x: x**2, self.vectors[document])), 0.5)
+        return mags
+    def term_frequency(self, term, document):
+        return self.tf[document][term] / self.mags[document] if term in self.tf[document].keys() else 0
+    def populateScores(self):
+        for filename in self.filenames:
+            for term in self.getUniques():
+                self.tf[filename][term] = self.term_frequency(term, filename)
+                if term in self.df.keys():
+                    self.idf[term] = self.idf_func(self.collection_size(), self.df[term])
+                else:
+                    self.idf[term] = 0
+        return self.df, self.tf, self.idf
+    def idf_func(self, N, N_t):
+        return math.log(1 + N / N_t) if N_t != 0 else 1
+    def generateScore(self, term, document):
+        return self.tf[document][term] * self.idf[term]
+    def execute(self):
+        return self.fullIndex()
+    def regIndex(self, filenames):
+        file_to_terms = {}
+        for file in filenames:
+            file_to_terms[file] = self.file_to_terms[file]
+        return self.make_indices(file_to_terms)
+    def getUniques(self):
+        return self.totalIndex.keys()
+if __name__ == "__main__":
+    files = ["file1.txt", "file2.txt"]
+    index = BuildIndex(files)
+    print("TF:", index.tf)
+    print("DF:", index.df)
+    print("IDF:", index.idf)

@@ -1,0 +1,31 @@
+import AES_hybrid
+import time
+import base64
+def read_image_file(file_path):
+    with open(file_path, "rb") as image_file:
+        return base64.b64encode(image_file.read())
+def encrypt_image(image_data, key):
+    start_time = time.time()
+    encrypted_data = AES_hybrid.encrypt(key, image_data)
+    encryption_time = time.time() - start_time
+    print("Encryption completed in: {} seconds".format(encryption_time))
+    return encrypted_data
+def write_to_file(file_path, data):
+    with open(file_path, "wb") as file:
+        file.write(data)
+def decrypt_image(encrypted_data, key):
+    start_time = time.time()
+    decrypted_data = AES_hybrid.decrypt(key, encrypted_data)
+    decryption_time = time.time() - start_time
+    print("Decryption completed in: {} seconds".format(decryption_time))
+    return decrypted_data
+def save_decrypted_image(file_path, data):
+    with open(file_path, "wb") as image_file:
+        image_file.write(base64.b64decode(data))
+if __name__ == "__main__":
+    image_data = read_image_file("girl.jpg")
+    encryption_key = 'ahdfsujeytsbsdfawskdfhsdgfereijd'
+    encrypted_data = encrypt_image(image_data, encryption_key)
+    write_to_file("encry_test_Img.enc", encrypted_data)
+    decrypted_data = decrypt_image(encrypted_data, encryption_key)
+    save_decrypted_image("out_test_Img.jpeg", decrypted_data)

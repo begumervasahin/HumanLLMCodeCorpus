@@ -1,0 +1,49 @@
+import time
+def frequent_triples(dataset, min_support):
+    triples_table = {}
+    with open(dataset, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            items = sorted(line.split())
+            for i in range(len(items)):
+                for j in range(i + 1, len(items)):
+                    for k in range(j + 1, len(items)):
+                        key = ','.join([items[i], items[j], items[k]])
+                        triples_table[key] = triples_table.get(key, 0) + 1
+        frequent_triples = [(value, key) for key, value in triples_table.items() if value > len(lines) * min_support]
+        frequent_triples.sort(reverse=True)
+        for idx, (count, items) in enumerate(frequent_triples, 1):
+            print(f"{idx}) {items}: {count}")
+def frequent_doubles(dataset, min_support):
+    pairs_table = {}
+    with open(dataset, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            items = sorted(line.split())
+            for i in range(len(items)):
+                for j in range(i + 1, len(items)):
+                    key = ','.join([items[i], items[j]])
+                    pairs_table[key] = pairs_table.get(key, 0) + 1
+        frequent_doubles = [(value, key) for key, value in pairs_table.items() if value > len(lines) * min_support]
+        frequent_doubles.sort(reverse=True)
+        for idx, (count, items) in enumerate(frequent_doubles, 1):
+            print(f"{idx}) {items}: {count}")
+if __name__ == "__main__":
+    print('------------------------------------------------------------------------')
+    print('Running...')
+    print('Done!')
+    min_support_threshold = 0.03
+    print('------------------------------------------------------------------------')
+    print('Running Frequent Doubles...')
+    start_time = time.time()
+    frequent_doubles('movies.dat', min_support_threshold)
+    end_time = time.time()
+    print('Time taken in seconds for frequent doubles:', end_time - start_time)
+    print('Done!')
+    print('------------------------------------------------------------------------')
+    print('Running Frequent Triples...')
+    start_time = time.time()
+    frequent_triples('movies.dat', min_support_threshold)
+    end_time = time.time()
+    print('Time taken in seconds for frequent triples:', end_time - start_time)
+    print('Done!')

@@ -1,0 +1,64 @@
+class Node:
+    def __init__(self, val=-1, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+class SubtreeInfo:
+    def __init__(self, size, head, min_val, max_val):
+        self.size = size
+        self.head = head
+        self.min_val = min_val
+        self.max_val = max_val
+def process_tree(head):
+    if head is None:
+        return SubtreeInfo(0, None, float('inf'), float('-inf'))
+    left_subtree_info = process_tree(head.left)
+    right_subtree_info = process_tree(head.right)
+    include_self = 0
+    if (left_subtree_info.head == head.left and right_subtree_info.head == head.right and
+        head.val > left_subtree_info.max_val and head.val < right_subtree_info.min_val):
+        include_self = left_subtree_info.size + 1 + right_subtree_info.size
+    p1, p2 = left_subtree_info.size, right_subtree_info.size
+    max_size = max(p1, p2, include_self)
+    max_head = left_subtree_info.head if p1 > p2 else right_subtree_info.head
+    if max_size == include_self:
+        max_head = head
+    min_val = min(left_subtree_info.min_val, right_subtree_info.min_val, head.val)
+    max_val = max(left_subtree_info.max_val, right_subtree_info.max_val, head.val)
+    return SubtreeInfo(max_size, max_head, min_val, max_val)
+def print_tree(root):
+    print("Binary Tree:")
+    print_in_order(root, 0, 'H', 17)
+def print_in_order(root, height, s, length):
+    if root is None:
+        return
+    print_in_order(root.right, height + 1, 'v', length)
+    val = s + str(root.val) + s
+    lenM = len(val)
+    lenL = (length - lenM)
+    lenR = length - lenM - lenL
+    val = get_space(lenL) + val + get_space(lenR)
+    print(get_space(height * length) + val)
+    print_in_order(root.left, height + 1, '^', length)
+def get_space(num):
+    return ' ' * num
+if __name__ == '__main__':
+    head = Node(6)
+    head.left = Node(1)
+    head.left.left = Node(0)
+    head.left.right = Node(3)
+    head.right = Node(12)
+    head.right.left = Node(10)
+    head.right.left.left = Node(4)
+    head.right.left.left.left = Node(2)
+    head.right.left.left.right = Node(5)
+    head.right.left.right = Node(14)
+    head.right.left.right.left = Node(11)
+    head.right.left.right.right = Node(15)
+    head.right.right = Node(13)
+    head.right.right.left = Node(20)
+    head.right.right.right = Node(16)
+    result_head = process_tree(head).head
+    print("Head value of processed tree:", result_head.val)
+    print_tree(head)
+    print_tree(result_head)

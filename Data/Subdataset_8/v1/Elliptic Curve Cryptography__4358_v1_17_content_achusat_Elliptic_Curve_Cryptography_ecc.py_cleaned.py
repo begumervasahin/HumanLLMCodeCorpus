@@ -1,0 +1,61 @@
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+class EllipticCurve:
+    def __init__(self, a, b, p, Gx, Gy):
+        self.a = a
+        self.b = b
+        self.p = p
+        self.Gx = Gx
+        self.Gy = Gy
+    def check_point(self, x, y):
+        rhs = (x**3 + self.a*x + self.b) % self.p
+        lhs = (y**2) % self.p
+        return lhs == rhs
+    def addition(self, x1, y1, x2, y2):
+        sn = (y1 - y2) % self.p
+        sd = x1 - x2
+        sd = self.modulo_multiplicative_inverse(sd)
+        s = (sn * sd) % self.p
+        xr = (s**2 - (x1 + x2)) % self.p
+        yr = (s * (x1 - xr) - y1) % self.p
+        return xr, yr
+    def double(self, x, y):
+        sn = (3 * (x**2) + self.a) % self.p
+        sd = 2 * y
+        sd = self.modulo_multiplicative_inverse(sd)
+        s = (sn * sd) % self.p
+        xr = (s**2 - 2*x) % self.p
+        yr = (s * (x - xr) - y) % self.p
+        return xr , yr
+    def scalar_multiplication(self, x, y, n):
+        xr, yr = self.double(x, y)
+        n = n - 2
+        while n != 0:
+            xr, yr = self.addition(x, y, xr, yr)
+            n = n - 1
+        return xr, yr
+    def modulo_multiplicative_inverse(self, A):
+        return self.fast_power(A, self.p - 2)
+    def fast_power(self, base, power):
+        result = 1
+        while power > 0:
+            if power % 2 == 1:
+                result = (result * base) % self.p
+            power = power
+            base = (base * base) % self.p
+        return result
+def key_exchange():
+    a = int(input("Enter Alice's private key: "))
+    b = int(input("Enter Bob's private key: "))
+    obj = EllipticCurve(0, 0, 0, 0, 0)
+    pbx, pby = obj.scalar_multiplication(obj.Gx, obj.Gy, b)
+    pax, pay = obj.scalar_multiplication(obj.Gx, obj.Gy, a)
+    sk_bx, sk_by = obj.scalar_multiplication(pax, pay, b)
+    sk_ax, sk_ay = obj.scalar_multiplication(pbx, pby, a)
+    if (sk_bx == sk_ax) and (sk_by == sk_ay):
+        print("Same keys generated.")
+        print("Public key shared: ({}, {})".format(sk_ax, sk_ay))
+        print("Is point on curve?", obj.check_point(sk_ax, sk_ay))
+        return sk_ax, sk_ay
+key_exchange()

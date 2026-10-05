@@ -1,0 +1,65 @@
+class Heap:
+    def __init__(self, h_type):
+        self.queue = []
+        self.heapsize = 0
+        if h_type not in ('max', 'min'):
+            raise ValueError('Invalid heap type. Use "max" or "min".')
+        self.h_type = h_type
+    def __len__(self):
+        return len(self.queue)
+    def perc_up(self, i):
+        parent = (i + 1)
+        while i > 0 and ((self.h_type == 'max' and self.queue[parent] < self.queue[i]) or
+                         (self.h_type == 'min' and self.queue[parent] > self.queue[i])):
+            self.queue[i], self.queue[parent] = self.queue[parent], self.queue[i]
+            i = parent
+            parent = (i + 1)
+    def insert(self, key):
+        self.queue.append(key)
+        self.heapsize += 1
+        self.perc_up(self.heapsize - 1)
+    def pop(self):
+        last_idx = self.heapsize - 1
+        self.queue[last_idx], self.queue[0] = self.queue[0], self.queue[last_idx]
+        popped_key = self.queue.pop()
+        self.heapsize -= 1
+        self.heapify(0)
+        return popped_key
+    def heapify(self, index):
+        left = 2 * index + 1
+        right = 2 * index + 2
+        n = self.heapsize
+        if self.h_type == 'max':
+            largest = index
+            if left < n and self.queue[left] > self.queue[largest]:
+                largest = left
+            if right < n and self.queue[right] > self.queue[largest]:
+                largest = right
+            if largest != index:
+                self.queue[index], self.queue[largest] = self.queue[largest], self.queue[index]
+                self.heapify(largest)
+        else:
+            smallest = index
+            if left < n and self.queue[left] < self.queue[smallest]:
+                smallest = left
+            if right < n and self.queue[right] < self.queue[smallest]:
+                smallest = right
+            if smallest != index:
+                self.queue[index], self.queue[smallest] = self.queue[smallest], self.queue[index]
+                self.heapify(smallest)
+    def build_heap(self):
+        n = self.heapsize
+        for i in range(n
+            self.heapify(i)
+max_heap = Heap('max')
+max_heap.insert(4)
+max_heap.insert(1)
+max_heap.insert(7)
+max_heap.insert(3)
+print("Max Heap:", max_heap.queue)
+min_heap = Heap('min')
+min_heap.insert(4)
+min_heap.insert(1)
+min_heap.insert(7)
+min_heap.insert(3)
+print("Min Heap:", min_heap.queue)

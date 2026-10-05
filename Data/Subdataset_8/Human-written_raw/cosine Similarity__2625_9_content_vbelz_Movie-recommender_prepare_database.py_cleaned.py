@@ -1,0 +1,36 @@
+import os
+import re
+import pandas as pd
+from sqlalchemy import create_engine
+data_folder = './data/'
+df_movies = pd.read_csv(data_folder+'movies.csv')
+df_ratings = pd.read_csv(data_folder+'ratings.csv')
+Save_to_postgres = False
+Save_to_sqlite = True
+df_merge = pd.merge(df_ratings, df_movies, how='outer', left_on='movieId', right_on='movieId')
+def get_year(x):
+    '''Extract year from title'''
+    y = re.findall("\(([0-9]{4})\)", x)
+    try:
+        y = y[0]
+    except:
+        y = 0
+    return y
+df_merge['year'] = df_merge['title'].apply(get_year)
+df_merge['title'] = df_merge['title'].str.replace("\(([0-9]{4})\)","")
+cols = ['userId','movieId','rating','title','genres','year','timestamp']
+df_merge = df_merge[cols]
+df_merge.sort_values(by=['movieId'], inplace=True)
+df_merge.dropna(subset=['userId'], how='any',inplace=True)
+if Save_to_postgres:
+    HOST = 'localhost'
+    PORT = '5432'
+    DBNAME = 'movielens'
+    connection_string_short = f'postgres:
+    db = create_engine(connection_string_short)
+    df_merge.to_sql('movies_ratings', db)
+if Save_to_sqlite:
+    engine_lite = create_engine('sqlite:
+    df_merge.to_sql('movie_ratings', engine_lite)
+os.remove(data_folder+'movies.csv')
+os.remove(data_folder+'ratings.csv')

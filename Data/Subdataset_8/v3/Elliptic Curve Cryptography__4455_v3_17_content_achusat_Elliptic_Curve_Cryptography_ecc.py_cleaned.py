@@ -1,0 +1,59 @@
+import math
+class EllipticCurve:
+    def __init__(self, a, b, p, Gx, Gy):
+        self.a = a
+        self.b = b
+        self.p = p
+        self.Gx = Gx
+        self.Gy = Gy
+    def is_point_on_curve(self, x, y):
+        rhs = (x**3 + self.a*x + self.b) % self.p
+        lhs = (y**2) % self.p
+        return lhs == rhs
+    def point_addition(self, x1, y1, x2, y2):
+        sn = (y1 - y2) % self.p
+        sd = x1 - x2
+        sd_inverse = self.modulo_multiplicative_inverse(sd)
+        s = (sn * sd_inverse) % self.p
+        xr = (s**2 - (x1 + x2)) % self.p
+        yr = (s * (x1 - xr) - y1) % self.p
+        return xr, yr
+    def point_doubling(self, x, y):
+        sn = (3 * (x**2) + self.a) % self.p
+        sd = 2 * y
+        sd_inverse = self.modulo_multiplicative_inverse(sd)
+        s = (sn * sd_inverse) % self.p
+        xr = (s**2 - 2*x) % self.p
+        yr = (s * (x - xr) - y) % self.p
+        return xr , yr
+    def scalar_multiplication(self, x, y, n):
+        xr, yr = self.point_doubling(x, y)
+        n = n - 2
+        while n != 0:
+            xr, yr = self.point_addition(x, y, xr, yr)
+            n = n - 1
+        return xr, yr
+    def modulo_multiplicative_inverse(self, A):
+        return self.fast_power(A, self.p - 2)
+    def fast_power(self, base, power):
+        result = 1
+        while power > 0:
+            if power % 2 == 1:
+                result = (result * base) % self.p
+            power = power
+            base = (base * base) % self.p
+        return result
+def key_exchange():
+    alice_private_key = int(input("Enter Alice's private key: "))
+    bob_private_key = int(input("Enter Bob's private key: "))
+    curve = EllipticCurve(0, 0, 0, 0, 0)
+    bob_public_key = curve.scalar_multiplication(curve.Gx, curve.Gy, bob_private_key)
+    alice_public_key = curve.scalar_multiplication(curve.Gx, curve.Gy, alice_private_key)
+    shared_key_bob = curve.scalar_multiplication(alice_public_key[0], alice_public_key[1], bob_private_key)
+    shared_key_alice = curve.scalar_multiplication(bob_public_key[0], bob_public_key[1], alice_private_key)
+    if shared_key_bob == shared_key_alice:
+        print("Same keys generated.")
+        print("Public key shared: ({}, {})".format(shared_key_bob[0], shared_key_bob[1]))
+        print("Is point on curve?", curve.is_point_on_curve(shared_key_bob[0], shared_key_bob[1]))
+        return shared_key_bob
+key_exchange()

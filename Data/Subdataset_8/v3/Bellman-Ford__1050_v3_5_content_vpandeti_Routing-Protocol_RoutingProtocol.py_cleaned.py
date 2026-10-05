@@ -1,0 +1,78 @@
+from ast import literal_eval
+import pickle
+import socket
+import sys
+import threading
+import time
+SLEEP_TIME = 5
+ROUTING_NODE = sys.argv[1]
+IS_ROUTING_TABLE_CHANGED = 1
+def load_routing_table(file_path):
+    with open(file_path, 'rb') as file:
+        return pickle.load(file)
+def save_routing_table(routing_table, file_path):
+    with open(file_path, 'wb') as file:
+        pickle.dump(routing_table, file)
+def monitor_routing_table():
+    global ROUTING_NODE, IS_ROUTING_TABLE_CHANGED
+    node_routing_table = load_routing_table(ROUTING_NODE)
+    routing_table = dict(node_routing_table)
+    while True:
+        file_stream = load_routing_table(ROUTING_NODE)
+        if file_stream != node_routing_table:
+            node_routing_table = dict(file_stream)
+            for route in routing_table:
+                if route in file_stream:
+                    routing_table[route] = file_stream[route]
+            print('Current routing table:', routing_table)
+            print('Pick time:', time.time() - TIMER_TICKS)
+            IS_ROUTING_TABLE_CHANGED = 1
+        time.sleep(SLEEP_TIME)
+def update_neighboring_nodes(routing_table, routing_paths):
+    global ROUTING_NODE, IS_ROUTING_TABLE_CHANGED
+    while True:
+        if IS_ROUTING_TABLE_CHANGED:
+            for route_node in routing_paths[ROUTING_NODE]:
+                client_socket = socket.socket()
+                port = 12345
+                client_socket.connect((route_node, port))
+                client_socket.settimeout(None)
+                byte_stream = pickle.dumps(routing_table)
+                client_socket.send(byte_stream)
+                client_socket.close()
+            IS_ROUTING_TABLE_CHANGED = 0
+        time.sleep(SLEEP_TIME)
+def handle_incoming_connections(node_connections):
+    global ROUTING_NODE, TIMER_TICKS
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    port = 12345
+    server_socket.bind(('', port))
+    server_socket.listen(12)
+    while True:
+        connection, address = server_socket.accept()
+        print('Connection from', address)
+        byte_stream = connection.recv(1024)
+        routes = pickle.loads(byte_stream)
+        source = node_connections[ROUTING_NODE][address[0]]
+        if source in routing_table:
+            cost = routing_table[source]
+            for neighbour in routes:
+                if neighbour not in routing_table:
+                    routing_table[neighbour] = routes[neighbour] + cost
+                    IS_ROUTING_TABLE_CHANGED = 1
+                elif routes[neighbour] + cost < routing_table[neighbour]:
+                    routing_table[neighbour] = routes[neighbour] + cost
+                    IS_ROUTING_TABLE_CHANGED = 1
+            if IS_ROUTING_TABLE_CHANGED:
+                print('\n')
+                print('Updated routing costs:', source, ':', routing_table)
+                print('Elapsed time in ms:', time.time() - TIMER_TICKS)
+        connection.close()
+if __name__ == '__main__':
+    global TIMER_TICKS, ROUTING_NODE
+    TIMER_TICKS = time.time()
+    print(ROUTING_NODE)
+    threading.Thread(target=monitor_routing_table).start()
+    threading.Thread(target=update_neighboring_nodes, args=(routing_table, literal_eval(open('connections', 'r').read()))).start()
+    threading.Thread(target=handle_incoming_connections, args=(literal_eval(open('connections', 'r').read()),)).start()
+    input()

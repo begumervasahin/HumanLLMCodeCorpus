@@ -1,0 +1,51 @@
+class TreeNode(object):
+    def __init__(self, x):
+        self.val = x
+        self.left = None
+        self.right = None
+def inorderTraversal(root):
+    result = []
+    if root:
+        result += inorderTraversal(root.left)
+        result.append(root.val)
+        result += inorderTraversal(root.right)
+    return result
+def preorderTraversal(root):
+    result = []
+    if root:
+        result.append(root.val)
+        result += preorderTraversal(root.left)
+        result += preorderTraversal(root.right)
+    return result
+def populateTree(arr, i):
+    if i < len(arr):
+        if arr[i] is None:
+            return None
+        root = TreeNode(arr[i])
+        root.left = populateTree(arr, 2 * i + 1)
+        root.right = populateTree(arr, 2 * i + 2)
+        return root
+    return None
+arr1 = [1, None, 2, None, None, 3]
+root1 = populateTree(arr1, 0)
+print("In order Traversal")
+print(inorderTraversal(root1))
+print("")
+print("Pre-order Traversal")
+print(preorderTraversal(root1))
+print("")
+arr2 = [1, 2, 3, 4, 5, 6, None]
+root2 = populateTree(arr2, 0)
+print("In Order Traversal")
+print(inorderTraversal(root2))
+print("")
+print("Pre-order Traversal")
+print(preorderTraversal(root2))
+print("")
+arr3 = [1, 2, 3]
+root3 = populateTree(arr3, 0)
+print("In Order Traversal")
+print(inorderTraversal(root3))
+print("")
+print("Pre-order Traversal")
+print(preorderTraversal(root3))

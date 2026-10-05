@@ -1,0 +1,29 @@
+import os
+import numpy as np
+from sklearn.manifold import TSNE
+from matplotlib import pyplot as plt
+import pickle
+import time
+from DataHandler import load_embeddings
+from config import words_to_plot
+def plot_embedding(embeddings, vocab_size, image_name, seed):
+    input_embeddings, word2idx, idx2word, vocab = load_embeddings(os.path.join('embeddings', 'input_embeddings.txt'))
+    word_freq = pickle.load(open(os.path.join('data', 'word_freq.dat'), 'rb'))
+    np.random.seed(seed)
+    selected_idxs = np.random.choice(len(idx2word), size=(vocab_size), replace=False, p=word_freq)
+    tsne = TSNE(n_components=2, method='exact', n_iter=5000)
+    selected_embeddings = [embeddings[idx] for idx in selected_idxs]
+    two_dims_embeddings = tsne.fit_transform(selected_embeddings)
+    plt.figure(figsize=(30, 30))
+    for i in range(len(selected_idxs)):
+        plt.text(two_dims_embeddings[i, 0], two_dims_embeddings[i, 1], idx2word[selected_idxs[i]])
+    plt.xlim((np.min(two_dims_embeddings[:, 0]), np.max(two_dims_embeddings[:, 0])))
+    plt.ylim((np.min(two_dims_embeddings[:, 1]), np.max(two_dims_embeddings[:, 1])))
+    plt.savefig(image_name + '.png')
+    plt.show()
+if __name__ == "__main__":
+    seed = int(time.time())
+    print('Plotting input embeddings ...')
+    plot_embedding(input_idx2vec, words_to_plot, 'input_embedding_plot', seed)
+    print('Plotting output embeddings ...')
+    plot_embedding(output_idx2vec, words_to_plot, 'output_embedding_plot', seed)

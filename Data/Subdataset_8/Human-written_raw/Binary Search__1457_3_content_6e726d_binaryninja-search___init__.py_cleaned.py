@@ -1,0 +1,58 @@
+from binaryninja import *
+def instruction_text_token_to_string(instruction_token_list):
+    aux_lst = list()
+    for instruction_token in instruction_token_list:
+        if not isinstance(instruction_token, function.InstructionTextToken):
+            raise TypeError('List must contain InstructionTextToken objects only.')
+        aux_lst.append(instruction_token.text.strip())
+    return " ".join(aux_lst)
+def process_immediate(immediate):
+    if not isinstance(immediate, str):
+        raise TypeError('Immediate must be a String object.')
+    if immediate.startswith("0x"):
+        return int(immediate, 16)
+    else:
+        return int(immediate)
+def lookup_for_immediate(bv, immediate):
+    result = list()
+    for function_item in bv.functions:
+        function_instructions = function_item.instructions
+        try:
+            while 1:
+                (instruction, address) = function_instructions.next()
+                for token in instruction:
+                    if token.type == InstructionTextTokenType.PossibleAddressToken:
+                        if token.value == immediate:
+                            instruction_text = instruction_text_token_to_string(instruction)
+                            result.append((address, function_item.name, instruction_text))
+        except StopIteration:
+            pass
+    return result
+def show_results_report(bv, value, results):
+    html = str()
+    plaintext = str()
+    html += "<!DOCTYPE html>\n"
+    html += "<html>\n\t<body>\n"
+    html += "\t\t<table>\n"
+    html += "\t\t\t<tr>\n"
+    html += "\t\t\t\t<th width=\"150\">Address</th>\n"
+    html += "\t\t\t\t<th width=\"150\">Function</th>\n"
+    html += "\t\t\t\t<th>Instruction</th>\n"
+    html += "\t\t\t</tr>\n"
+    for item in results:
+        html += "\t\t\t<tr>\n"
+        html += "\t\t\t\t<td><pre>0x%016X</pre></td>\n" % item[0]
+        html += "\t\t\t\t<td><pre>%s</pre></td>\n" % item[1]
+        html += "\t\t\t\t<td><pre>%s</pre></td>\n" % item[2]
+        html += "\t\t\t</tr>\n"
+    html += "\t\t</table>\n"
+    html += "\t</body>\n</html>"
+    bv.show_html_report("Search immediate - 0x%X" % value, html, plaintext)
+def do_stuff(bv):
+    immediate_str = get_text_line_input('Value to search', 'Search Immediate')
+    immediate = process_immediate(immediate_str)
+    results = lookup_for_immediate(bv, immediate)
+    show_results_report(bv, immediate, results)
+name = "Search Immediate"
+description = "Search for the specific value in the instruction operands."
+PluginCommand.register(name, description, do_stuff)

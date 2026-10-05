@@ -1,0 +1,18 @@
+import tkinter as tk
+def fib_seq():
+    get_num = int(num_entry.get())
+    seq_num = [0, 1]
+    for i in range(2, get_num + 1):
+        next_num = seq_num[-1] + seq_num[-2]
+        seq_num.append(next_num)
+    result_label.config(text=f"{get_num}th term is: {seq_num[-1]}")
+mw = tk.Tk()
+mw.title("Fibonacci Sequence")
+num_entry = tk.Entry(mw)
+num_entry.grid(row=0, column=0, padx=5, pady=5)
+num_entry.focus()
+cal_btn = tk.Button(mw, text="Find Fibonacci Term Sequence", command=fib_seq)
+cal_btn.grid(row=0, column=1, padx=5, pady=5)
+result_label = tk.Label(mw, text="Result")
+result_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+mw.mainloop()

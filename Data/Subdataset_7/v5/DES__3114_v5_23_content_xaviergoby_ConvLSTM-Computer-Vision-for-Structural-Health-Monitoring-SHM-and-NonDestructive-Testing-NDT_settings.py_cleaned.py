@@ -1,0 +1,25 @@
+import os
+b1 = os.path.dirname(os.path.abspath(__file__))
+b2 = os.path.join(b1, "results")
+b3 = os.path.join(b1, "data")
+b4 = os.path.join(b3, "image_datasets")
+b5 = "images"
+b6 = os.path.join(b3, b5)
+b7 = os.path.join(b6, "train")
+b8 = os.path.join(b6, "validation")
+b9 = os.path.join(b6, "test")
+a1 = 247
+a2 = 4101
+a3 = 3
+a4 = 4100
+a5 = 164
+b10 = a1
+a6 = 25
+b11 = a3
+b12 = (a1, a2, a3)
+b13 = (b10, a6, b11)
+b14 = b13
+b15 = (a5, b10, a6, b11)
+a7 = 9
+a8 = 90
+a9 = 0.05

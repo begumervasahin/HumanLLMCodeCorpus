@@ -1,0 +1,58 @@
+import os
+import pandas as pd
+import numpy as np
+import plotly.offline as py
+import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split
+py.init_notebook_mode(connected=True)
+os.chdir('/Users/santanupaul/Documents/Personal/Masters in Analytics/UConn/Study Related/Python/Project/fer2013')
+dataset = pd.read_csv('fer2013.csv')
+filtered_dataset = dataset[(dataset['emotion'] == 3) | (dataset['emotion'] == 4)]
+print("Shape of filtered dataset:", filtered_dataset.shape)
+emotion_counts = filtered_dataset['emotion'].value_counts()
+print('Happy (3) proportion:', emotion_counts[3] / filtered_dataset.shape[0])
+print('Sad (4) proportion:', emotion_counts[4] / filtered_dataset.shape[0])
+for subset in ['Training', 'PublicTest', 'PrivateTest']:
+    print(f"{subset} set emotion distribution:")
+    print(filtered_dataset[filtered_dataset['Usage'] == subset]['emotion'].value_counts())
+pixels_data = filtered_dataset['pixels'].str.split(" ", expand=True).astype(int)
+X = pixels_data.values
+Y = filtered_dataset['emotion'].values
+X_std = StandardScaler().fit_transform(X)
+covariance_matrix = np.cov(X_std.T)
+eigen_values, eigen_vectors = np.linalg.eig(covariance_matrix)
+eigen_pairs = [(np.abs(eigen_values[i]), eigen_vectors[:, i]) for i in range(len(eigen_values))]
+eigen_pairs.sort(key=lambda x: x[0], reverse=True)
+total_variance = sum(eigen_values)
+explained_variance_ratio = [(val / total_variance) * 100 for val in sorted(eigen_values, reverse=True)]
+cumulative_explained_variance = np.cumsum(explained_variance_ratio)
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, len(explained_variance_ratio) + 1), cumulative_explained_variance, marker='o', linestyle='-')
+plt.title('Explained Variance plots - Full and Zoomed-in')
+plt.xlabel('Number of Principal Components')
+plt.ylabel('Cumulative Explained Variance (%)')
+plt.grid(True)
+plt.show()
+n_components = 107
+projection_matrix = np.hstack([eigen_pairs[i][1].reshape(-1, 1) for i in range(n_components)])
+X_pca = X_std.dot(projection_matrix)
+plt.figure(figsize=(10, 6))
+for emotion in np.unique(Y):
+    plt.scatter(X_pca[Y == emotion, 0], X_pca[Y == emotion, 1], label=f'Emotion {emotion}', alpha=0.7)
+plt.title('Principal Component Analysis (PCA)')
+plt.xlabel('First Principal Component')
+plt.ylabel('Second Principal Component')
+plt.legend()
+plt.grid(True)
+plt.show()
+X_train, X_test, Y_train, Y_test = train_test_split(X_pca, Y, random_state=42, test_size=0.2)
+svm_classifier = SVC()
+svm_classifier.fit(X_train, Y_train)
+train_score = svm_classifier.score(X_train, Y_train)
+test_score = svm_classifier.score(X_test, Y_test)
+print('Train Score: ', train_score)
+print('Test Score: ', test_score)

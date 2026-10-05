@@ -1,0 +1,25 @@
+import pandas as pd
+import pickle
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+file_directory = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(file_directory, 'results.txt')
+data = pd.read_csv(file_path, sep=" ", header=None)
+data.columns = ['worst_case_prob', 'scout_report', 'actual_value']
+features, target = data.iloc[:, :2], data.iloc[:, 2]
+test_size = 0.2
+X_train, X_test, Y_train, Y_test = train_test_split(features, target, test_size=test_size)
+model = LogisticRegression()
+model.fit(X_train, Y_train)
+predicted_probabilities = model.predict_proba(X_test)
+print("Predicted Probabilities:", predicted_probabilities)
+accuracy = model.score(X_test, Y_test)
+print("Model Accuracy:", accuracy)
+model_filename = 'finalized_model.sav'
+with open(model_filename, 'wb') as file:
+    pickle.dump(model, file)
+with open(model_filename, 'rb') as file:
+    loaded_model = pickle.load(file)
+loaded_model_accuracy = loaded_model.score(X_test, Y_test)
+print("Loaded Model Accuracy:", loaded_model_accuracy)

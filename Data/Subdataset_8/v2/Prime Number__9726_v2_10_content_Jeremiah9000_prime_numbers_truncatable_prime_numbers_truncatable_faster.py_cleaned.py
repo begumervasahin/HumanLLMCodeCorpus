@@ -1,0 +1,55 @@
+import time
+import math
+def timed_quit(start_time):
+    print('\ntime elapsed:', time.time() - start_time)
+    quit()
+def is_prime(number):
+    print(f'Current time: {time.time() - start_time}')
+    print("Checking if", number, "is prime")
+    if number <= 1:
+        return False
+    if number == 2:
+        return True
+    if number % 2 == 0:
+        return False
+    for num in range(3, int(math.sqrt(number)) + 1, 2):
+        if number % num == 0:
+            return False
+    return True
+def strip_left(num):
+    while True:
+        try:
+            num = int(str(num)[1:])
+            if not is_prime(num):
+                return False
+        except ValueError:
+            return True
+def strip_right(num):
+    while True:
+        try:
+            num = int(str(num)[:-1])
+            if not is_prime(num):
+                return False
+        except ValueError:
+            return True
+if __name__ == '__main__':
+    number = int(input('Enter a number to check if it is truncatable:\n->'))
+    start_time = time.time()
+    if number <= 1:
+        print('The number must be greater than 1')
+        timed_quit(start_time)
+    if not is_prime(number):
+        print(f"{number} is not a prime number")
+        timed_quit(start_time)
+    if '0' in str(number):
+        print(f"{number} is not truncatable - it contains a '0'")
+        timed_quit(start_time)
+    if strip_left(number):
+        print('Left truncatable')
+    else:
+        print('Not left truncatable')
+    if strip_right(number):
+        print('Right truncatable')
+    else:
+        print('Not right truncatable')
+    print("Finish time:", time.time() - start_time)

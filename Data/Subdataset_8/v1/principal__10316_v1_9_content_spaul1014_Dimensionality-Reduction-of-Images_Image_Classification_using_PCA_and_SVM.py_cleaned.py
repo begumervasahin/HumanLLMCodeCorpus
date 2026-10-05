@@ -1,0 +1,128 @@
+import os
+import pandas as pd
+import numpy as np
+from PIL import Image
+import plotly.offline as py
+import plotly.graph_objs as go
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split
+py.init_notebook_mode(connected=True)
+os.chdir('/Users/santanupaul/Documents/Personal/Masters in Analytics/UConn/Study Related/Python/Project/fer2013')
+df = pd.read_csv('fer2013.csv')
+df1 = df[(df['emotion'] == 3) | (df['emotion'] == 4)]
+print(df1.shape)
+a = df1.emotion.value_counts()
+print('Happy = ', a[3]/(a[3]+a[4]))
+print('Sad = ', a[4]/(a[3]+a[4]))
+print(df1[df1['Usage'] == 'Training'].groupby(['emotion']).agg({'emotion': 'count'}))
+print(df1[df1['Usage'] == 'PublicTest'].groupby(['emotion']).agg({'emotion': 'count'}))
+print(df1[df1['Usage'] == 'PrivateTest'].groupby(['emotion']).agg({'emotion': 'count'}))
+df1 = pd.concat([df1[['emotion']], df1['pixels'].str.split(" ", expand=True)], axis=1)
+X = df1.iloc[:, 1:].values
+Y = df1.iloc[:, 0].values
+X = X.astype(int)
+X_std = StandardScaler().fit_transform(X)
+X_mean = X.mean(0)
+X_stddev = X.std(0)
+mean_vec = np.mean(X_std, axis=0)
+cov_mat = (X_std - mean_vec).T.dot((X_std - mean_vec)) / (X_std.shape[0]-1)
+eig_vals, eig_vecs = np.linalg.eig(cov_mat)
+eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(len(eig_vals))]
+eig_pairs.sort(key=lambda x: x[0], reverse=True)
+tot = sum(eig_vals)
+var_exp = [(i/tot)*100 for i in sorted(eig_vals, reverse=True)]
+cum_var_exp = np.cumsum(var_exp)
+trace1 = go.Scatter(
+    x=list(range(784)),
+    y=cum_var_exp,
+    mode='lines+markers',
+    name="'Cumulative Explained Variance'",
+    hoverinfo=cum_var_exp,
+    line=dict(
+        shape='spline',
+        color='goldenrod'
+    )
+)
+trace2 = go.Scatter(
+    x=list(range(784)),
+    y=var_exp,
+    mode='lines+markers',
+    name="'Individual Explained Variance'",
+    hoverinfo=var_exp,
+    line=dict(
+        shape='linear',
+        color='black'
+    )
+)
+fig = go.Figure(data=[trace1, trace2])
+fig.update_layout(
+    title='Explained Variance plots - Full and Zoomed-in',
+    xaxis=dict(range=[0, 80], title='Feature columns'),
+    yaxis=dict(range=[0, 60], title='Explained Variance')
+)
+py.iplot(fig, filename='explained-variance')
+n_components = 107
+matrix_w = eig_pairs[0][1].reshape(len(eig_vecs), 1)
+for i in range(1, n_components):
+    matrix_w = np.hstack((matrix_w, eig_pairs[i][1].reshape(len(eig_vecs), 1)))
+X_nd = X_std.dot(matrix_w)
+n_row = 4
+n_col = 7
+plt.figure(figsize=(11, 8))
+for i in range(n_row * n_col):
+    plt.subplot(n_row, n_col, i + 1)
+    plt.imshow(matrix_w[:, i].reshape(48, 48), cmap='jet')
+    title_text = 'Eigenvector ' + str(i + 1)
+    plt.title(title_text, size=6.5)
+    plt.xticks(())
+    plt.yticks(())
+plt.show()
+trace0 = go.Scatter(
+    x=X_nd[:, 0],
+    y=X_nd[:, 1],
+    name=Y,
+    hoveron=Y,
+    mode='markers',
+    text=Y,
+    showlegend=False,
+    marker=dict(
+        size=8,
+        color=Y,
+        colorscale='Jet',
+        showscale=False,
+        line=dict(
+            width=2,
+            color='rgb(255, 255, 255)'
+        ),
+        opacity=0.8
+    )
+)
+data = [trace0]
+layout = go.Layout(
+    title='Principal Component Analysis (PCA)',
+    hovermode='closest',
+    xaxis=dict(
+        title='First Principal Component',
+        ticklen=5,
+        zeroline=False,
+        gridwidth=2,
+    ),
+    yaxis=dict(
+        title='Second Principal Component',
+        ticklen=5,
+        gridwidth=2,
+    ),
+    showlegend=True
+)
+fig = go.Figure(data=data, layout=layout)
+py.iplot(fig, filename='styled-scatter')
+X_train, X_test, Y_train, Y_test = train_test_split(X_nd, Y, random_state=42, test_size=0.2)
+svc = SVC()
+svc.fit(X_train, Y_train)
+print('Train Score: ', svc.score(X_train, Y_train))
+print('Test Score: ', svc.score(X_test, Y_test))

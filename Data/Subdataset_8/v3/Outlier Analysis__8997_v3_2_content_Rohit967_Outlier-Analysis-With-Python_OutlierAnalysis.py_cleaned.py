@@ -1,0 +1,57 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn import svm, metrics
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+import matplotlib.pyplot as plt
+def load_data(file_names):
+    data_names = pd.read_csv(file_names, skiprows=1, header=None, sep=':')
+    data_names = dict(data_names[0])
+    data_names[41] = 'label'
+    data = pd.read_csv('kddcup.data_10_percent', low_memory=False, header=None, names=data_names.values())
+    return data
+def preprocess_data(data):
+    http_data = data[(data['service'] == "http") & (data["logged_in"] == 1)]
+    http_data['label'].value_counts().plot(kind='bar')
+    relevant_features = ["duration", "src_bytes", "dst_bytes", "label"]
+    http_data = http_data[relevant_features]
+    http_data['attack'] = np.where(http_data['label'] == "normal.", 1, -1)
+    return http_data
+def print_metrics(data_type, target, preds):
+    print("===================")
+    print(f"For {data_type} Data: ")
+    print("===================")
+    print("accuracy: ", metrics.accuracy_score(target, preds))
+    print("precision: ", metrics.precision_score(target, preds))
+    print("recall: ", metrics.recall_score(target, preds))
+    print("f1: ", metrics.f1_score(target, preds))
+def evaluate_model(model, train_data, test_data, train_target, test_target):
+    model.fit(train_data)
+    train_preds = model.predict(train_data)
+    test_preds = model.predict(test_data)
+    print_metrics("Training", train_target, train_preds)
+    print_metrics("Test", test_target, test_preds)
+    return train_preds, test_preds
+def main():
+    data = load_data('kddcup.names')
+    http_data = preprocess_data(data)
+    target = http_data['attack']
+    http_data.drop(["label", "attack"], axis=1, inplace=True)
+    train_data, test_data, train_target, test_target = train_test_split(http_data, target, train_size=0.8)
+    nu = target[target == -1].shape[0] / target.shape[0]
+    print("One Class SVM")
+    svm_model = svm.OneClassSVM(nu=nu, kernel='rbf', gamma=0.00005)
+    train_preds, test_preds = evaluate_model(svm_model, train_data, test_data, train_target, test_target)
+    print("\nIsolation Forest")
+    iso_forest = IsolationForest(contamination=nu, random_state=42)
+    train_preds1, test_preds1 = evaluate_model(iso_forest, train_data, test_data, train_target, test_target)
+    print("\nLocal Outlier Factor")
+    lof = LocalOutlierFactor(n_neighbors=35, contamination=nu)
+    train_preds2, test_preds2 = evaluate_model(lof, train_data, test_data, train_target, test_target)
+    plt.figure()
+    colors = np.array(['b' if label == 1 else 'r' for label in http_data['attack']])
+    plt.scatter(http_data['dst_bytes'], http_data['src_bytes'], s=10, color=colors)
+    plt.show()
+if __name__ == "__main__":
+    main()

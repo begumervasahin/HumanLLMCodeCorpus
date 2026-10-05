@@ -1,0 +1,18 @@
+def find_minimal_element(arr):
+    minimal_element = arr[0]
+    minimal_element_index = 0
+    for i in range(1, len(arr)):
+        if arr[i] < minimal_element:
+            minimal_element = arr[i]
+            minimal_element_index = i
+    return minimal_element_index
+def selection_sort(arr):
+    sorted_arr = []
+    while arr:
+        minimal_element_index = find_minimal_element(arr)
+        sorted_arr.append(arr.pop(minimal_element_index))
+    return sorted_arr
+if __name__ == "__main__":
+    arr = [5, 3, 6, 2, 10]
+    sorted_arr = selection_sort(arr)
+    print(sorted_arr)

@@ -1,0 +1,22 @@
+class DisjointSet:
+    def __init__(self, size):
+        if size < 0:
+            raise ValueError("size must be >= 0")
+        self.size = size
+        self.parent = [i for i in range(size + 1)]
+        self.rank = [0] * (size + 1)
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+    def union(self, x, y):
+        rootX = self.find(x)
+        rootY = self.find(y)
+        if rootX != rootY:
+            if self.rank[rootX] > self.rank[rootY]:
+                self.parent[rootY] = rootX
+            elif self.rank[rootX] < self.rank[rootY]:
+                self.parent[rootX] = rootY
+            else:
+                self.parent[rootY] = rootX
+                self.rank[rootX] += 1

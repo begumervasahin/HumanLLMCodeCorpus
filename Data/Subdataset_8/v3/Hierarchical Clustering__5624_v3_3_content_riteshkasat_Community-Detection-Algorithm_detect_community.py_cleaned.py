@@ -1,0 +1,52 @@
+import networkx as nx
+import community as c
+import matplotlib.pyplot as plt
+import sys
+import copy
+def calculate_modularity(communities, graph):
+    community_dict = {}
+    counter = 0
+    for subgraph in communities:
+        for node in subgraph:
+            community_dict[node] = counter
+        counter += 1
+    return community_dict, c.modularity(community_dict, graph)
+def remove_edges(G):
+    edge_betweenness = nx.edge_betweenness_centrality(G)
+    max_betweenness = max(edge_betweenness.values())
+    edges_to_remove = [edge for edge, betweenness in edge_betweenness.items() if betweenness == max_betweenness]
+    G.remove_edges_from(edges_to_remove)
+    connected_subgraphs = list(nx.connected_component_subgraphs(G))
+    modularity = 0
+    if G.number_of_edges() > 0:
+        community_dict, modularity = calculate_modularity(connected_subgraphs, G)
+    return connected_subgraphs, modularity, G
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: detect_communities <inputfile> <outputfile>")
+        print("Inputfile : Contains representation of the graph")
+        print("Outputfile : This file store community visualization")
+        sys.exit(-1)
+    result_communities = []
+    G = nx.read_edgelist(sys.argv[1])
+    copy_graph = copy.deepcopy(G)
+    initial_community_dict, initial_modularity = calculate_modularity([G.nodes()], G)
+    result_communities.append([initial_community_dict, initial_modularity, G])
+    while G.number_of_edges() > 0:
+        subgraphs, modularity, G = remove_edges(G)
+        result_communities.append([calculate_modularity(subgraphs, G)[0], modularity, G])
+    for communities, modularity, _ in result_communities:
+        if modularity > initial_modularity:
+            sorted_communities = sorted([sorted([int(node) for node in community]) for community in communities.values()])
+            for community in sorted_communities:
+                print(community)
+    pos = nx.spring_layout(copy_graph)
+    colors = ["violet", "black", "orange", "cyan", "red", "blue", "green", "yellow", "indigo", "pink"]
+    for i, (community_dict, _, _) in enumerate(result_communities):
+        for j, subgraph in enumerate(community_dict.values()):
+            nx.draw_networkx_nodes(copy_graph, pos, nodelist=subgraph, node_color=colors[(i + j) % 10], node_size=500, alpha=0.8)
+    nx.draw_networkx_edges(copy_graph, pos)
+    nx.draw_networkx_labels(copy_graph, pos, font_size=10)
+    plt.axis('off')
+    plt.savefig(sys.argv[2])
+    plt.show()

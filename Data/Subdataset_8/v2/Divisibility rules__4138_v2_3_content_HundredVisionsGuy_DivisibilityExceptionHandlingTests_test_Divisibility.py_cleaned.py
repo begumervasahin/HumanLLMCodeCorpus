@@ -1,0 +1,33 @@
+import unittest
+import Divisibility
+import re
+class TestDivisibility(unittest.TestCase):
+    def setUp(self):
+        with open('Divisibility.py', 'r') as file:
+            self.script_text = file.read()
+    def tearDown(self):
+        pass
+    def test_zero_division_error_handling(self):
+        self.assertEqual('error', Divisibility.divisibility(10, 0))
+    def test_value_error_handling(self):
+        self.assertEqual('error', Divisibility.divisibility(10, 'five'))
+    def test_evenly_divisible(self):
+        result = Divisibility.divisibility(21, 3)
+        self.assertEqual('divides evenly', result)
+    def test_evenly_divisible_10_2(self):
+        result = Divisibility.divisibility(10, 2)
+        self.assertEqual('divides evenly', result)
+    def test_not_evenly_divisible(self):
+        result = Divisibility.divisibility(5, 2)
+        self.assertEqual("doesn't divide evenly", result)
+    def test_not_evenly_divisible_7_2(self):
+        result = Divisibility.divisibility(7, 2)
+        self.assertEqual("doesn't divide evenly", result)
+    def test_try_command_present(self):
+        matches = re.findall("try:", self.script_text)
+        self.assertEqual("try:", matches[0])
+    def test_except_block_present(self):
+        matches = re.findall(r"except (ValueError|ZeroDivisionError|Exception):", self.script_text)
+        self.assertTrue(matches)
+if __name__ == '__main__':
+    unittest.main()

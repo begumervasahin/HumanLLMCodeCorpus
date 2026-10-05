@@ -1,0 +1,30 @@
+import pandas as pd
+from pgmpy.models import BayesianModel
+from pgmpy.estimators import MaximumLikelihoodEstimator
+from pgmpy.inference import VariableElimination
+from flask import Flask, jsonify, request
+def top_results(factor, k=10):
+    from itertools import product
+    factor_table = []
+    for prob in product(*[range(cardinality) for cardinality in factor.cardinality]):
+        state = [factor.state_names[list(factor.variables)[i]][prob[i]] for i in range(len(factor.variables))]
+        probability = factor.values.ravel()[sum([i * factor.cardinality[j] for i, j in zip(prob, range(len(prob)))])]
+        factor_table.append({'disease': state[0], 'probability': probability})
+    factor_table.sort(key=lambda x: x['probability'], reverse=True)
+    factor_table = factor_table[:k]
+    return factor_table
+data = pd.read_csv('hw4_data_long.csv')
+root = list(data)[0]
+model = BayesianModel([(root, node) for node in list(data)[1:]])
+model.fit(data, estimator=MaximumLikelihoodEstimator)
+inference = VariableElimination(model, state_names=model.get_cpds()[0].state_names)
+app = Flask(__name__)
+@app.route("/query")
+def query():
+    evidence = {k: int(v) for k, v in request.args.items()}
+    query = inference.query([root], evidence=evidence)
+    res = query[root]
+    res.state_names = inference.state_names
+    return jsonify(top_results(res)))
+if __name__ == "__main__":
+    app.run(debug=True)

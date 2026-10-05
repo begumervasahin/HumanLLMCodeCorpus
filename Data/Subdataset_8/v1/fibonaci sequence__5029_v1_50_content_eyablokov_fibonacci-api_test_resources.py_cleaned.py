@@ -1,0 +1,20 @@
+from flask import Flask, jsonify, request
+from sequence_generators.fibonacci import generate_sequence
+app = Flask(__name__)
+@app.route('/fibonacci/<int:size>', methods=['GET'])
+def fibonacci_sequence(size):
+    if size < 0:
+        return jsonify({'message': f'Size must be a positive integer. Actual {size}'}), 400
+    elif size > 1000:
+        return jsonify({'message': f'Size must be a positive integer <= to 1000. Actual {size}'}), 400
+    else:
+        fibonacci_list = generate_sequence(size)
+        return jsonify({'fibonacci': fibonacci_list}), 200
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({'message': 'Invalid path.'}), 404
+@app.errorhandler(Exception)
+def unhandled_exception_error(error):
+    return jsonify({'message': 'An unhandled exception occurred.'}), 500
+if __name__ == '__main__':
+    app.run(debug=True)

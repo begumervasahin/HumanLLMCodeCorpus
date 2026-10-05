@@ -1,0 +1,24 @@
+import permutationMappings
+import textwrap
+def permutation(data, permutation_type):
+    mapping = permutationMappings.get_permutation_mapping(permutation_type)
+    try:
+        return ''.join([data[i - 1] for i in mapping])
+    except IndexError:
+        print("Wrong permutation type!")
+def sBox_permutation(data):
+    blocks = textwrap.wrap(data, 6)
+    for block_num, block in enumerate(blocks):
+        mapping = permutationMappings.get_sBox_mapping(block_num)
+        row_index = int(block[0] + block[5], 2)
+        col_index = int(block[1:5], 2)
+        block = "{0:b}".format(mapping[row_index][col_index]).zfill(4)
+        blocks[block_num] = block
+    return ''.join(blocks)
+data = "110011000011001100001111"
+permutation_type = "initial"
+permuted_data = permutation(data, permutation_type)
+print(f"{permutation_type} permutation result:", permuted_data)
+s_box_data = "101010"
+s_box_permuted_data = sBox_permutation(s_box_data)
+print("S-box permutation result:", s_box_permuted_data)

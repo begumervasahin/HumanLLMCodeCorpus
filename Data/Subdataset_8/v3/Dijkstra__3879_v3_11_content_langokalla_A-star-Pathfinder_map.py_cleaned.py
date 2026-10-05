@@ -1,0 +1,17 @@
+class Map:
+    def __init__(self, filename):
+        self.filename = filename
+        self.board = self._load_map(filename)
+        self.height, self.width = len(self.board), len(self.board[0])
+        self.cell_size = 30
+    @staticmethod
+    def _load_map(filename):
+        with open(filename) as file:
+            return [line.strip() for line in file.readlines()]
+filename = "map.txt"
+map_obj = Map(filename)
+print("Map Dimensions:", map_obj.height, "x", map_obj.width)
+print("Cell Size:", map_obj.cell_size)
+print("Map Content:")
+for row in map_obj.board:
+    print(row)

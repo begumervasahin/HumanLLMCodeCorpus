@@ -1,0 +1,82 @@
+import os
+import math
+import nltk
+from nltk.tokenize import RegexpTokenizer
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from collections import Counter
+def getidf(token):
+    if any(x.isupper() for x in token):
+        return -1.0000
+    if token in DocFreq:
+        return DocFreq[token]
+    else:
+        return -1.0000
+def getqvec(qstring):
+    Qtoken_para = []
+    token = RegexpTokenizer(r'[a-zA-Z]+')
+    Qtoken_para = token.tokenize(qstring.lower())
+    stop_words = set(stopwords.words('english'))
+    Querystopw = [wor for wor in Qtoken_para if wor not in stop_words]
+    QstemmedData = [Qstemmer.stem(s) for s in Querystopw]
+    QueryTOkF = {wor: 1 + math.log(QstemmedData.count(wor), 10) for wor in QstemmedData}
+    N = len(stemmedData)
+    QueryDocFreq = {}
+    for wor, freq in QueryTOkF.items():
+        freq = 0
+        for para, t in TF.items():
+            if wor in TF[para].keys():
+                freq += 1
+        QueryDocFreq[wor] = math.log(N / freq, 10) if freq > 0 else 0
+    QueryWT = {lett: QueryTOkF[lett] * QueryDocFreq[lett] for lett in QstemmedData}
+    sum_sq = sum(QueryWT[lett] ** 2 for lett in QueryWT)
+    QueryWT_norm = {lett: QueryWT[lett] / math.sqrt(sum_sq) for lett in QueryWT}
+    return QueryWT_norm
+def query(query_string):
+    QueryWT = getqvec(query_string)
+    QuerySimilarity = {}
+    for para in WT.keys():
+        sum_sim = sum(QueryWT[key] * WT[para].get(key, 0) for key in QueryWT)
+        QuerySimilarity[para] = sum_sim
+    max_similarity_value = max(QuerySimilarity.values())
+    max_similarity_value_key = max(QuerySimilarity, key=QuerySimilarity.get)
+    if max_similarity_value == 0:
+        return "NO MATCH\n", max_similarity_value
+    else:
+        return debate_transcript[max_similarity_value_key], max_similarity_value
+stop_words = set(stopwords.words('english'))
+filename = './debate.txt'
+file = open(filename, "r", encoding='UTF-8')
+doc = file.readlines()
+file.close()
+debate_transcript = {}
+i = 1
+for k in doc:
+    if not k.isspace():
+        debate_transcript["para " + str(i)] = k
+        i += 1
+token_para = []
+token = RegexpTokenizer(r'[a-zA-Z]+')
+for k in doc:
+    if not k.isspace():
+        tok = token.tokenize(k.lower())
+        token_para.append(tok)
+stopw = [[token for token in wor if token not in stop_words] for wor in token_para]
+stemmedData = [[PorterStemmer().stem(key) for key in s] for s in stopw]
+TF = {"para " + str(i): {wor: lett.count(wor) for wor in lett} for i, lett in enumerate(stemmedData, start=1)}
+N = len(stemmedData)
+DocFreq = {}
+for tfDict in TF.values():
+    for token in tfDict:
+        counter = sum(1 for value in TF.values() if token in value)
+        if token not in DocFreq:
+            DocFreq[token] = math.log(N / counter, 10)
+WT = {"para " + str(i): {lor: TF[lett][lor] * DocFreq[lor] for lor in TF[lett]} for i, (lett, tf) in enumerate(TF.items(), start=1)}
+for document in WT:
+    sum_weights = sum(weight ** 2 for weight in WT[document].values())
+    WT[document] = {token: weight / math.sqrt(sum_weights) for token, weight in WT[document].items()}
+query_string = "What are the benefits of renewable energy?"
+result, similarity_score = query(query_string)
+print("Most similar paragraph:")
+print(result)
+print("Similarity score:", similarity_score)

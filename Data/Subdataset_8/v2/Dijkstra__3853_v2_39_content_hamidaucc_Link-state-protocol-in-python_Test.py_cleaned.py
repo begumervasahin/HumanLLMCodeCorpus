@@ -1,0 +1,20 @@
+from Graph import Graph
+def test1():
+    graph = Graph.graphreader("graph1.txt")
+    src = graph.get_node_by_label(1)
+    shortest_paths = graph.linkState(src)
+    for node, (length, predecessor) in sorted(shortest_paths.items()):
+        print(f"Path from {src} to Node {node}: Length: {length}. Preceding: {predecessor}")
+        print("From Node: Cost")
+        print(f"{node}       : {length} ({predecessor})")
+def test2():
+    graph = Graph.graphreader("simplegraph2.txt")
+    src = graph.get_node_by_label(14)
+    shortest_paths = graph.linkState(src)
+    for node, (length, predecessor) in sorted(shortest_paths.items()):
+        print(f"Path from {src} to Node {node}: Length: {length}. Preceding: {predecessor}")
+        print("From Node: Cost")
+        print(f"{node}       : {length} ({predecessor})")
+if __name__ == "__main__":
+    test1()
+    test2()

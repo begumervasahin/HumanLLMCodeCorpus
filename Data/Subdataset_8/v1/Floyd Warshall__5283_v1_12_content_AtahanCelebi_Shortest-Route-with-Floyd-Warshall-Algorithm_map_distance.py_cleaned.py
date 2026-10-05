@@ -1,0 +1,45 @@
+import folium
+import pandas as pd
+from geopy.geocoders import Nominatim
+from geopy.distance import great_circle
+def create_map(name, lat_list, long_list):
+    int_lat = [float(i) for i in lat_list]
+    int_long = [float(i) for i in long_list]
+    data = pd.DataFrame({
+        'lat': int_long,
+        'lon': int_lat,
+        'name': name
+    })
+    m = folium.Map(location=[20, 0], tiles="Mapbox Bright", zoom_start=2)
+    for i in range(len(data)):
+        folium.Marker([data.iloc[i]['lon'], data.iloc[i]['lat']], popup=data.iloc[i]['name']).add_to(m)
+    m.save('unknown.html')
+def main(path_v2):
+    data = path_v2
+    lati = []
+    longi = []
+    airport_name = []
+    airport_data = []
+    for i in range(len(data)):
+        lati.append(data[i][6])
+        longi.append(data[i][7])
+        airport_name.append(data[i][1])
+        airport_data.append(data[i][0])
+    create_map(airport_name, lati, longi)
+    geolocator = Nominatim(user_agent="Hacettepe_Geomatik")
+    edges = []
+    for j in range(len(data)):
+        loc_chosen = airport_data[j]
+        v = [data[j][6], data[j][7]]
+        airport_chosen = (float(data[j][6]), float(data[j][7]))
+        for i in range(len(lati)):
+            location2 = airport_data[i]
+            airport2 = (float(data[i][6]), float(data[i][7]))
+            if loc_chosen == location2:
+                edges.append([int(loc_chosen), int(location2), 99999])
+            edges.append([int(loc_chosen), int(location2), great_circle(airport_chosen, airport2).km])
+    return edges, len(airport_data)
+if __name__ == "__main__":
+    edges, num_airports = main(path_v2)
+    print("Edges:", edges)
+    print("Number of airports:", num_airports)

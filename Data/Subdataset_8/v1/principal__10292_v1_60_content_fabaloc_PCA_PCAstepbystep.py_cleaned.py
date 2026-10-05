@@ -1,0 +1,33 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+path = '~/yourdata'
+d = pd.read_excel(path, sheet_name='sheet')
+d = pd.DataFrame(d)
+mean_vec = np.mean(d, axis=0)
+var_vec = np.var(d, axis=0)
+n, m = d.shape
+d_std = d - mean_vec
+cov_mat = (d_std.T.dot(d_std)) / (n - 1)
+eigval, eigvec = np.linalg.eig(cov_mat)
+for i in eigvec:
+    np.testing.assert_array_almost_equal(1.0, np.linalg.norm(i))
+    print('Everything ok!')
+idx = eigval.argsort()[::-1]
+eigval = eigval[idx]
+eigvec = eigvec[:, idx]
+tot = sum(eigval)
+var_exp = [i / tot * 100 for i in sorted(eigval, reverse=True)]
+cum_var_exp = np.cumsum(var_exp)
+PC = ['PC%s' % s for s in range(1, len(eigval) + 1)]
+plt.scatter(var_exp, PC, alpha=0.5)
+plt.title('Explained variance')
+plt.xlabel('Principal Components')
+plt.ylabel('Explained Variance (%)')
+plt.show()
+n_components = 3
+loadings = eigvec[:, :n_components]
+scores = d_std.dot(loadings)
+d_hat = scores.dot(loadings.T)
+d_hat_raw = d_hat + mean_vec.values
+res = d - d_hat_raw

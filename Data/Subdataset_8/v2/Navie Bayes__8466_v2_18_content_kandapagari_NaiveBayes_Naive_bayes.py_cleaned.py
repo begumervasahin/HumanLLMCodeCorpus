@@ -1,0 +1,102 @@
+import csv
+import getopt
+import math
+import sys
+import numpy as np
+import pandas as pd
+def separate_by_class(dataset):
+    separated = {}
+    for vector in dataset:
+        label = vector[0]
+        if label not in separated:
+            separated[label] = []
+        separated[label].append(vector)
+    return separated
+def mean(numbers):
+    return sum(numbers) / len(numbers)
+def stdev(numbers):
+    avg = mean(numbers)
+    variance = sum((x - avg) ** 2 for x in numbers) / (len(numbers) - 1)
+    return math.sqrt(variance)
+def summarize(dataset):
+    summaries = [(mean(attribute), stdev(attribute)) for attribute in zip(*dataset)]
+    del summaries[0]
+    return summaries
+def prior(dataset):
+    class_counts = np.bincount(dataset[:, 0].astype(int))
+    return class_counts[1] / len(dataset), class_counts[0] / len(dataset)
+def summarize_by_class(dataset):
+    separated = separate_by_class(dataset)
+    summaries = {}
+    for class_value, instances in separated.items():
+        summaries[class_value] = summarize(instances)
+    return summaries
+def calculate_probability(x, mean, stdev):
+    exponent = math.exp(-(math.pow(x - mean, 2) / (2 * math.pow(stdev, 2))))
+    return (1 / (math.sqrt(2 * math.pi) * stdev)) * exponent
+def calculate_class_probabilities(summaries, input_vector):
+    probabilities = {}
+    for class_value, class_summaries in summaries.items():
+        probabilities[class_value] = 1
+        for i, (mean, stdev) in enumerate(class_summaries):
+            x = input_vector[i + 1]
+            probabilities[class_value] *= calculate_probability(x, mean, stdev)
+    return probabilities
+def predict(summaries, input_vector):
+    probabilities = calculate_class_probabilities(summaries, input_vector)
+    best_label, best_prob = None, -1
+    for class_value, probability in probabilities.items():
+        if best_label is None or probability > best_prob:
+            best_prob = probability
+            best_label = class_value
+    return best_label
+def get_predictions(summaries, test_set):
+    predictions = []
+    for vector in test_set:
+        result = predict(summaries, vector)
+        predictions.append(result)
+    return predictions
+def get_accuracy(test_set, predictions):
+    miss_class = sum(test_set[i][0] != predictions[i] for i in range(len(test_set)))
+    return miss_class
+def write_data(row1, row2, row3, filename):
+    with open(filename, 'w', newline='') as outfile:
+        output_file = csv.writer(outfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        output_file.writerow(row1)
+        output_file.writerow(row2)
+        output_file.writerow(row3)
+        print("Output file written in " + filename)
+if __name__ == '__main__':
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hi:o:", ["data=", "output="])
+    except getopt.GetoptError:
+        print('usage: Naive_bayes.py -i||--data <inputfile> -o||--output <outputfile>')
+        sys.exit(2)
+    inputfile = ""
+    outputfile = ""
+    for opt, arg in opts:
+        if opt == '-h':
+            print('Naive_bayes.py -i <inputfile> -o <outputfile>')
+            sys.exit()
+        elif opt in ("-i", "--data"):
+            inputfile = arg if '.tsv' in arg else arg + '.tsv'
+        elif opt in ("-o", "--output"):
+            outputfile = arg if '.tsv' in arg else arg + '.tsv'
+    if not inputfile:
+        inputfile = input("Enter data file name: ") + '.tsv'
+    if not outputfile:
+        outputfile = input("Enter Output file name: ") + '.tsv'
+    data = pd.read_csv(inputfile, sep='\t', header=None)
+    data.columns = ['Class', 'x1', 'x2']
+    data["Class"] = np.where(data["Class"] == 'A', 1, 0)
+    data = data.values
+    prior_prob = prior(data)
+    summaries = summarize_by_class(data)
+    predictions = get_predictions(summaries, data)
+    miss_class = get_accuracy(data, predictions)
+    row1 = [summaries[1.0][0][0], summaries[1.0][0][1] ** 2, summaries[1.0][1][0], summaries[1.0][1][1] ** 2, prior_prob[0]]
+    row2 = [summaries[0.0][0][0], summaries[0.0][0][1] ** 2, summaries[0.0][1][0], summaries[0.0][1][1] ** 2, prior_prob[1]]
+    print(row1)
+    print(row2)
+    print(miss_class)
+    write_data(row1, row2, [miss_class], outputfile)

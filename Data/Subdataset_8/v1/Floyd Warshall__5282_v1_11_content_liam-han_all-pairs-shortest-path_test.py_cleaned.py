@@ -1,0 +1,42 @@
+import argparse
+import os
+import re
+import sys
+import time
+graphRE = re.compile(r'(\d+)')
+edgeRE = re.compile(r'(\d+)\s+(\d+)\s+(\d+)')
+def readFile(filename):
+    vertices = []
+    edges = []
+    inFile = open(filename, 'r')
+    line1 = inFile.readline()
+    graphMatch = graphRE.match(line1)
+    if not graphMatch:
+        print(line1 + " not properly formatted")
+        quit(1)
+    num_vertices = int(graphMatch.group(1))
+    vertices = list(range(num_vertices))
+    edges = [[float("inf")] * num_vertices for _ in range(num_vertices)]
+    for line in inFile.readlines():
+        line = line.strip()
+        edgeMatch = edgeRE.match(line)
+        if edgeMatch:
+            source = int(edgeMatch.group(1)) - 1
+            sink = int(edgeMatch.group(2)) - 1
+            if source >= num_vertices or sink >= num_vertices:
+                print(f"Attempting to insert an edge between {source + 1} and {sink + 1} in a graph with {num_vertices} vertices")
+                quit(1)
+            weight = int(edgeMatch.group(3))
+            edges[source][sink] = weight
+    return (vertices, edges)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process input file for graph')
+    parser.add_argument('filename', type=str, help='Input file name containing the graph')
+    args = parser.parse_args()
+    filename = args.filename
+    if not os.path.exists(filename):
+        print("File not found.")
+        sys.exit(1)
+    vertices, edges = readFile(filename)
+    print("Vertices:", vertices)
+    print("Edges:", edges)

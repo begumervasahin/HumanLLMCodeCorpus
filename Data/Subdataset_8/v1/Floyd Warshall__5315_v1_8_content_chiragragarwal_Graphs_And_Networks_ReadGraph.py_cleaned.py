@@ -1,0 +1,22 @@
+import numpy as np
+from path import Path
+class ReadGraph:
+    '''
+    Read the graph matrix from a text file and store it in a numpy matrix.
+    Returns the same matrix
+    '''
+    def __init__(self, inputFile):
+        self.inputFile = inputFile
+    def read(self):
+        '''
+        Read the file contents into a matrix
+        '''
+        graphString = self.inputFile.text()
+        graphMat = np.matrix(str(graphString))
+        return graphMat
+if __name__ == "__main__":
+    inputFile = Path("your_graph_file.txt")
+    graph_reader = ReadGraph(inputFile)
+    graph_matrix = graph_reader.read()
+    print("Graph Matrix:")
+    print(graph_matrix)

@@ -1,0 +1,72 @@
+import heapq
+class Vertex:
+    def __init__(self, node):
+        self.id = node
+        self.adjacent = {}
+        self.distance = float("inf")
+        self.visited = False
+        self.previous = None
+    def add_neighbor(self, neighbor, weight=0):
+        self.adjacent[neighbor] = weight
+    def get_connections(self):
+        return self.adjacent.keys()
+    def get_id(self):
+        return self.id
+    def get_weight(self, neighbor):
+        return self.adjacent[neighbor]
+    def set_distance(self, dist):
+        self.distance = dist
+    def get_distance(self):
+        return self.distance
+    def set_previous(self, prev):
+        self.previous = prev
+    def set_visited(self):
+        self.visited = True
+class Graph:
+    def __init__(self):
+        self.vertices = {}
+    def add_vertex(self, node):
+        self.vertices[node] = Vertex(node)
+    def get_vertex(self, node):
+        return self.vertices.get(node)
+    def add_edge(self, frm, to, cost=0):
+        self.vertices[frm].add_neighbor(self.vertices[to], cost)
+        self.vertices[to].add_neighbor(self.vertices[frm], cost)
+def shortest_path(vertex, path):
+    if vertex.previous:
+        path.append(vertex.previous.get_id())
+        shortest_path(vertex.previous, path)
+def dijkstra_shortest_paths(graph, start_vertex):
+    start_vertex.set_distance(0)
+    unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph.vertices.values()]
+    heapq.heapify(unvisited_queue)
+    while unvisited_queue:
+        current_distance, current_vertex = heapq.heappop(unvisited_queue)
+        if not current_vertex.visited:
+            current_vertex.set_visited()
+            for next_vertex in current_vertex.get_connections():
+                if not next_vertex.visited:
+                    new_distance = current_vertex.get_distance() + current_vertex.get_weight(next_vertex)
+                    if new_distance < next_vertex.get_distance():
+                        next_vertex.set_distance(new_distance)
+                        next_vertex.set_previous(current_vertex)
+        unvisited_queue = [(vertex.get_distance(), vertex) for vertex in graph.vertices.values() if not vertex.visited]
+        heapq.heapify(unvisited_queue)
+if __name__ == "__main__":
+    graph = Graph()
+    graph.add_vertex('A')
+    graph.add_vertex('B')
+    graph.add_vertex('C')
+    graph.add_vertex('D')
+    graph.add_vertex('E')
+    graph.add_edge('A', 'B', 1)
+    graph.add_edge('A', 'C', 3)
+    graph.add_edge('B', 'D', 2)
+    graph.add_edge('C', 'D', 2)
+    graph.add_edge('B', 'E', 4)
+    graph.add_edge('D', 'E', 1)
+    dijkstra_shortest_paths(graph, graph.get_vertex('A'))
+    target_vertex = graph.get_vertex('E')
+    shortest_path_list = [target_vertex.get_id()]
+    shortest_path(target_vertex, shortest_path_list)
+    print(shortest_path_list[::-1])

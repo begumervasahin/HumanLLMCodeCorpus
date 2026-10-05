@@ -1,0 +1,144 @@
+import time
+import os
+import re
+import numpy as np
+import gensim
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from scipy.stats import mode
+import tensorflow as tf
+from tensorflow.python.framework import ops
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer, LancasterStemmer, WordNetLemmatizer
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+nltk.download('stopwords')
+nltk.download('wordnet')
+stop_words = stopwords.words('english')
+porter_stemmer = PorterStemmer()
+lancaster_stemmer = LancasterStemmer()
+wordnet_lemmatizer = WordNetLemmatizer()
+K = 250
+def load_word_embeddings(data):
+    model = gensim.models.Word2Vec.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
+    out_sent_vectors = []
+    for sent in data:
+        sent_vec = []
+        for word in sent.split():
+            if word in model.vocab:
+                sent_vec.append(model.wv[word])
+        if sent_vec:
+            sent_vec = np.mean(sent_vec, axis=0)
+            out_sent_vectors.append(sent_vec)
+    return out_sent_vectors
+def clean_data(input_str, remove_stop=True):
+    input_str = re.sub('<[^<]+?>', ' ', input_str)
+    out = re.sub('[^A-Za-z0-9]+', ' ', input_str.lower())
+    if remove_stop:
+        out = ' '.join([word for word in out.split() if word not in stop_words])
+    return out
+def extract_features(train_x, train_y, test_x):
+    vectorizer = TfidfVectorizer(min_df=0.001, max_df=0.98, ngram_range=(1, 4))
+    selector = SelectKBest(chi2, k=7000)
+    train_x_fit = vectorizer.fit_transform(train_x).toarray()
+    train_x_fit = selector.fit_transform(train_x_fit, train_y)
+    test_x_fit = vectorizer.transform(test_x).toarray()
+    test_x_fit = selector.transform(test_x_fit)
+    train_x_without_stop = [clean_data(sent) for sent in train_x]
+    test_x_without_stop = [clean_data(sent) for sent in test_x]
+    train_x_fit_embedding = load_word_embeddings(train_x_without_stop)
+    train_x_fit_embedding = np.array(train_x_fit_embedding)
+    test_x_fit_embedding = load_word_embeddings(test_x_without_stop)
+    test_x_fit_embedding = np.array(test_x_fit_embedding)
+    train_x_fit = np.concatenate((train_x_fit, train_x_fit_embedding), axis=1)
+    test_x_fit = np.concatenate((test_x_fit, test_x_fit_embedding), axis=1)
+    return train_x_fit, test_x_fit
+def process_data():
+    train_file = 'train.dat'
+    test_file = 'test_data.dat'
+    train_x = []
+    train_y = []
+    test_x = []
+    with open(train_file, 'r') as f_train:
+        for line in f_train:
+            sample = line.strip().split('\t')
+            y = int(sample[0])
+            x = sample[1]
+            x = clean_data(x, True)
+            train_x.append(x)
+            train_y.append(y)
+    with open(test_file, 'r') as f_test:
+        for line in f_test:
+            sample = line.strip().split('\t')
+            x = sample[0]
+            x = clean_data(x, True)
+            test_x.append(x)
+    train_x_fit, test_x_fit = extract_features(train_x, train_y, test_x)
+    train_y = np.array(train_y)
+    return train_y, train_x_fit, test_x_fit
+def test_model_locally(train_y, train_x, test_x):
+    X_train, X_test, Y_train, Y_test = train_test_split(train_x, train_y, test_size=0.20, random_state=42)
+    x_keys = tf.placeholder("float", [None, train_x.shape[1]])
+    x_queries = tf.placeholder("float", [None, train_x.shape[1]])
+    normalized_keys = tf.nn.l2_normalize(x_keys, dim=0)
+    normalized_query = tf.nn.l2_normalize(x_queries, dim=0)
+    query_result = tf.matmul(normalized_keys, tf.transpose(normalized_query))
+    pred = tf.argmax(query_result, dimension=0)
+    init = tf.global_variables_initializer()
+    with tf.Session() as sess:
+        sess.run(init)
+        print("Training the model")
+        preds = sess.run(query_result, feed_dict={x_keys: X_train, x_queries: X_test})
+        preds = tf.transpose(preds)
+        values, indices = sess.run(tf.nn.top_k(preds, K))
+        y_preds = []
+        for top in indices:
+            sample_label = []
+            for neighbor in top:
+                sample_label.append(Y_train[neighbor])
+            y_preds.append(mode(sample_label)[0][0])
+        accuracy = np.sum(y_preds == Y_test).astype(float) / len(Y_test)
+        print("Accuracy: {:.2f}%".format(accuracy * 100))
+def generate_predictions(train_y, train_x, test_x, prediction_output_file_name):
+    X_train, Y_train, X_test = train_x, train_y, test_x
+    batches_x_test = [test_x[i:i + 5000] for i in range(0, len(test_x), 5000)]
+    with open(prediction_output_file_name, "w") as f_out:
+        for batch in batches_x_test:
+            x_keys = tf.placeholder("float", [None, train_x.shape[1]])
+            x_queries = tf.placeholder("float", [None, train_x.shape[1]])
+            normalized_keys = tf.nn.l2_normalize(x_keys, dim=0)
+            normalized_query = tf.nn.l2_normalize(x_queries, dim=0)
+            query_result = tf.matmul(normalized_keys, tf.transpose(normalized_query))
+            pred = tf.argmax(query_result, dimension=0)
+            init = tf.global_variables_initializer()
+            with tf.Session() as sess:
+                sess.run(init)
+                print("Evaluating tensorflow KNN")
+                preds = sess.run(query_result, feed_dict={x_keys: X_train, x_queries: batch})
+                preds = tf.transpose(preds)
+                values, indices = sess.run(tf.nn.top_k(preds, K))
+                y_preds = []
+                for top in indices:
+                    sample_label = []
+                    for neighbor in top:
+                        sample_label.append(Y_train[neighbor])
+                    y_preds.append(mode(sample_label)[0][0])
+                for pred in y_preds:
+                    if pred > 0:
+                        f_out.write('+1\n')
+                    else:
+                        f_out.write('-1\n')
+                ops.reset_default_graph()
+def run(evaluate_model_locally, prediction_output_file_name):
+    train_y, train_x, test_x = process_data()
+    if evaluate_model_locally:
+        test_model_locally(train_y, train_x, test_x)
+    else:
+        generate_predictions(train_y, train_x, test_x, prediction_output_file_name)
+if __name__ == "__main__":
+    evaluate_model_locally = False
+    prediction_output_file_name = "test.dat"
+    run(evaluate_model_locally, prediction_output_file_name)

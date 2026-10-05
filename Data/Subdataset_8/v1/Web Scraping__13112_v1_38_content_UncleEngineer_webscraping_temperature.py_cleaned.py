@@ -1,0 +1,29 @@
+from urllib.request import urlopen as req
+from bs4 import BeautifulSoup as soup
+import songline
+def Temperature(pvid):
+    try:
+        url = 'https:
+        webopen = req(url)
+        page_html = webopen.read()
+        webopen.close()
+        data = soup(page_html, 'html.parser')
+        temp = data.findAll('td', {'class': 'strokeme'})
+        province = data.findAll('span', {'class': 'title'})
+        pv = province[0].text.replace('Â ', '')
+        result = temp[0].text
+        print('Province: {} Temperature: {}'.format(pv, result))
+        text = 'Province: {} Temperature: {}'.format(pv, result)
+        return text
+    except Exception as e:
+        print('Error:', e)
+        return 'No Result'
+def main():
+    token = 'Your_Songline_Token_Here'
+    messenger = songline.Sendline(token)
+    province_id = 2
+    my_province_temp = Temperature(province_id)
+    if my_province_temp != 'No Result':
+        messenger.sendtext(my_province_temp)
+if __name__ == "__main__":
+    main()

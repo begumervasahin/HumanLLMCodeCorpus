@@ -1,0 +1,63 @@
+import random
+import matplotlib.pyplot as plt
+import time
+class BubbleSort:
+    def __init__(self):
+        self.elements = []
+    def bubble_sort(self):
+        n = len(self.elements)
+        for passnum in range(n - 1, 0, -1):
+            for i in range(passnum):
+                if self.elements[i] > self.elements[i + 1]:
+                    self.elements[i], self.elements[i + 1] = self.elements[i + 1], self.elements[i]
+    def add_element(self, value):
+        self.elements.append(value)
+        self.bubble_sort()
+    def get_min_element(self):
+        return self.elements[0]
+    def get_max_element(self):
+        return self.elements[-1]
+def measure_execution_time(sort_obj, input_list):
+    total_time_add = 0
+    total_time_min = 0
+    total_time_max = 0
+    for num in input_list:
+        start_time = time.time()
+        sort_obj.add_element(num)
+        total_time_add += (time.time() - start_time)
+        start_time = time.time()
+        sort_obj.get_min_element()
+        total_time_min += (time.time() - start_time)
+        start_time = time.time()
+        sort_obj.get_max_element()
+        total_time_max += (time.time() - start_time)
+    return total_time_add, total_time_min, total_time_max
+if __name__ == '__main__':
+    repetitions = 3
+    max_operations = 500
+    step = 100
+    values_add, values_min, values_max = [], [], []
+    for rounds in range(step, max_operations, step):
+        input_data = [random.randint(0, 500) for _ in range(rounds)]
+        avg_time_add, avg_time_min, avg_time_max = 0, 0, 0
+        for _ in range(repetitions):
+            bubble_sort_obj = BubbleSort()
+            time_add, time_min, time_max = measure_execution_time(bubble_sort_obj, input_data)
+            avg_time_add += time_add
+            avg_time_min += time_min
+            avg_time_max += time_max
+        avg_time_add /= repetitions
+        avg_time_min /= repetitions
+        avg_time_max /= repetitions
+        values_add.append(avg_time_add * 1000)
+        values_min.append(avg_time_min * 1000)
+        values_max.append(avg_time_max * 1000)
+    x_labels = range(step, max_operations, step)
+    plt.plot(x_labels, values_add, label='Add')
+    plt.plot(x_labels, values_min, label='Get Min')
+    plt.plot(x_labels, values_max, label='Get Max')
+    plt.legend()
+    plt.xlabel("Number of Operations")
+    plt.ylabel("Execution time (milliseconds)")
+    plt.title("Performance of Bubble Sort Solution")
+    plt.show()

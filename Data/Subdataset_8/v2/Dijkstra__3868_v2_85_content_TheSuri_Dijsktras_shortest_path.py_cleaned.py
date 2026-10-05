@@ -1,0 +1,59 @@
+import heapq
+class Graph:
+    def __init__(self):
+        self.adjacency_list = {}
+    def add_edge(self, u, v, weight):
+        if u not in self.adjacency_list:
+            self.adjacency_list[u] = []
+        self.adjacency_list[u].append((v, weight))
+    def get_neighbors(self, node):
+        return self.adjacency_list.get(node, [])
+class ShortestPathFinder:
+    def __init__(self, graph):
+        self.graph = graph
+    def shortest_path(self, source, target):
+        priority_queue = []
+        heapq.heappush(priority_queue, (0, source))
+        visited = set()
+        paths = {source: None}
+        distances = {source: 0}
+        while priority_queue:
+            current_path_weight, current_node = heapq.heappop(priority_queue)
+            if current_node in visited:
+                continue
+            elif current_node == target:
+                return self.reconstruct_path(source, current_node, paths), distances[current_node]
+            for neighbor, edge_weight in self.graph.get_neighbors(current_node):
+                if neighbor not in visited:
+                    total_weight = current_path_weight + edge_weight
+                    if neighbor not in distances or total_weight < distances[neighbor]:
+                        distances[neighbor] = total_weight
+                        paths[neighbor] = current_node
+                        heapq.heappush(priority_queue, (total_weight, neighbor))
+            visited.add(current_node)
+        return None
+    def reconstruct_path(self, source, target, paths):
+        result = []
+        node = target
+        while node is not None:
+            result.append(node)
+            node = paths[node]
+        return result
+def main():
+    graph = Graph()
+    graph.add_edge('A', 'B', 5)
+    graph.add_edge('A', 'C', 3)
+    graph.add_edge('B', 'D', 2)
+    graph.add_edge('C', 'D', 4)
+    graph.add_edge('D', 'E', 6)
+    path_finder = ShortestPathFinder(graph)
+    source = 'A'
+    target = 'E'
+    shortest_path, shortest_distance = path_finder.shortest_path(source, target)
+    if shortest_path:
+        print(f"Shortest path from {source} to {target}: {' -> '.join(shortest_path)}")
+        print(f"Shortest distance: {shortest_distance}")
+    else:
+        print(f"No path found from {source} to {target}")
+if __name__ == "__main__":
+    main()

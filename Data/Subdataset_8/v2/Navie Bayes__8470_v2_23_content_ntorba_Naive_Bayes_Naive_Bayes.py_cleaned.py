@@ -1,0 +1,77 @@
+import numpy as np
+import matplotlib.pyplot as plt
+class NaiveBayesClassifier:
+    def __init__(self, alpha=None):
+        self.alpha = alpha
+        self.classifier_data = None
+    def train(self, train_data, alpha_range=None, plot_validation=False):
+        if self.alpha is None:
+            self.alpha = self._validate_alpha(train_data, alpha_range, plot_validation)
+            print(f'Validated alpha value: {self.alpha}')
+        word_dict = {}
+        for label, sentence in train_data:
+            dict_index = 0 if label == 'pos' else 1
+            for word in sentence:
+                if word in word_dict:
+                    word_dict[word][dict_index] += 1
+                elif dict_index == 1:
+                    word_dict[word] = [self.alpha, self.alpha + 1]
+                else:
+                    word_dict[word] = [self.alpha + 1, self.alpha]
+        self.classifier_data = word_dict
+        return word_dict
+    def classify(self, document):
+        neg_prob = 1
+        pos_prob = 1
+        for word in document:
+            if word not in self.classifier_data:
+                continue
+            i_pos_prob = self.classifier_data[word][1] / sum(self.classifier_data[word])
+            i_neg_prob = self.classifier_data[word][0] / sum(self.classifier_data[word])
+            pos_prob *= i_pos_prob
+            neg_prob *= i_neg_prob
+        return 'neg' if neg_prob > pos_prob else 'pos'
+    def evaluate(self, test_data):
+        test_labels = [label for label, document in test_data]
+        test_labels_predicted = [self.classify(document) for label, document in test_data]
+        correct_count = sum(1 for true_label, pred_label in zip(test_labels, test_labels_predicted) if true_label == pred_label)
+        return correct_count / len(test_labels), [(i, true_label, pred_label) for i, (true_label, pred_label) in enumerate(zip(test_labels, test_labels_predicted)) if true_label != pred_label]
+    def print_top_words(self, n_highest):
+        neg_sorted = sorted([(k, (v[0] / (v[0] + v[1]))) for k, v in self.classifier_data.items()], key=lambda x: x[1], reverse=True)
+        pos_sorted = sorted([(k, v[1] / (v[0] + v[1])) for k, v in self.classifier_data.items()], key=lambda x: x[1], reverse=True)
+        print(f'Top {n_highest} indicative words of positive reviews:')
+        for i, (word, prob) in enumerate(pos_sorted[:n_highest], start=1):
+            print(f'{i}. "{word}" with probability {prob}')
+        print('---')
+        print(f'Top {n_highest} indicative words of negative reviews: ')
+        for i, (word, prob) in enumerate(neg_sorted[:n_highest], start=1):
+            print(f'{i}. "{word}" with probability {prob}')
+        return neg_sorted, pos_sorted
+    def _validate_alpha(self, train_data, alpha_range, plot_validation):
+        if self.alpha is not None:
+            raise ValueError("The model's alpha value is already defined. If you wish to change it, set it to None.")
+        if alpha_range is None:
+            alpha_range = range(20)
+        val_alpha_accs = []
+        for alpha in alpha_range:
+            val_train = train_data[int(len(train_data) * 0.2):]
+            val_test = train_data[:int(len(train_data) * 0.2)]
+            self.alpha = alpha
+            classifier_data = self.train(val_train)
+            self.classifier_data = classifier_data
+            acc, _ = self._validation_eval(val_test)
+            val_alpha_accs.append((alpha, acc))
+        if plot_validation:
+            plt.bar(*zip(*val_alpha_accs))
+            plt.ylabel('Validation Accuracy')
+            plt.xlabel('Alpha Value')
+            plt.title('Validation Accuracy for Alpha Value Selection')
+            plt.xticks(np.arange(0, 20, 1.0))
+            plt.savefig('alpha_validation_accuracies.png')
+            plt.show()
+        return max(val_alpha_accs, key=lambda x: x[1])[0]
+    def _validation_eval(self, test_data):
+        test_labels = [label for label, document in test_data]
+        test_labels_predicted = [self.classify(document) for label, document in test_data]
+        correct_count = sum(1 for true_label, pred_label in zip(test_labels, test_labels_predicted) if true_label == pred_label)
+        return correct_count / len(test_labels), [(i, true_label, pred_label) for i, (true_label, pred_label) in enumerate(zip(test_labels, test_labels_predicted)) if true_label != pred_label]

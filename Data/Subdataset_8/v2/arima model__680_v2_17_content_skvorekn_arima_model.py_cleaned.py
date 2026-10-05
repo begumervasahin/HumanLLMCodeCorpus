@@ -1,0 +1,148 @@
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller, acf
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.arima.model import ARIMA
+import pmdarima as pm
+df = pd.read_csv('wwwusage.csv', names=['value'], header=0)
+result_adf = adfuller(df.value.dropna())
+print('ADF Statistic: %f' % result_adf[0])
+print('p-value: %f' % result_adf[1])
+plt.rcParams.update({'figure.figsize':(9,7), 'figure.dpi':120})
+fig, axes = plt.subplots(3, 2, sharex=True)
+axes[0, 0].plot(df.value)
+axes[0, 0].set_title('Original Series')
+plot_acf(df.value, ax=axes[0, 1])
+for i, diff_order in enumerate([1, 2]):
+    diff_series = df.value.diff(diff_order)
+    axes[i+1, 0].plot(diff_series)
+    axes[i+1, 0].set_title(f'{diff_order}st Order Differencing')
+    plot_acf(diff_series.dropna(), ax=axes[i+1, 1])
+plt.show()
+print("ADF Test for differencing:")
+print(ndiffs(df.value, test='adf'))
+print("KPSS Test for differencing:")
+print(ndiffs(df.value, test='kpss'))
+print("PP Test for differencing:")
+print(ndiffs(df.value, test='pp'))
+plt.rcParams.update({'figure.figsize':(9,3), 'figure.dpi':120})
+fig, axes = plt.subplots(1, 2, sharex=True)
+diff_series = df.value.diff()
+axes[0].plot(diff_series)
+axes[0].set_title('1st Differencing')
+plot_pacf(diff_series.dropna(), ax=axes[1])
+plt.show()
+plt.rcParams.update({'figure.figsize':(9,3), 'figure.dpi':120})
+fig, axes = plt.subplots(1, 2, sharex=True)
+diff_series = df.value.diff().diff()
+axes[0].plot(diff_series)
+axes[0].set_title('2nd Differencing')
+plot_pacf(diff_series.dropna(), ax=axes[1])
+plt.show()
+model = ARIMA(df.value, order=(1,1,2))
+model_fit = model.fit(disp=0)
+print(model_fit.summary())
+residuals = pd.DataFrame(model_fit.resid)
+fig, ax = plt.subplots(1,2)
+residuals.plot(title="Residuals", ax=ax[0])
+residuals.plot(kind='kde', title='Density', ax=ax[1])
+plt.show()
+model = ARIMA(df.value[:85], order=(1, 1, 1))
+fitted = model.fit(disp=-1)
+fc, se, conf = fitted.forecast(15, alpha=0.05)
+fc_series = pd.Series(fc, index=df.value[85:].index)
+lower_series = pd.Series(conf[:, 0], index=df.value[85:].index)
+upper_series = pd.Series(conf[:, 1], index=df.value[85:].index)
+plt.figure(figsize=(12,5), dpi=100)
+plt.plot(df.value[:85], label='Training')
+plt.plot(df.value[85:], label='Actual')
+plt.plot(fc_series, label='Forecast')
+plt.fill_between(lower_series.index, lower_series, upper_series,
+                 color='k', alpha=.15)
+plt.title('Forecast vs Actuals')
+plt.legend(loc='upper left', fontsize=8)
+plt.show()
+def forecast_accuracy(forecast, actual):
+    mape = np.mean(np.abs(forecast - actual)/np.abs(actual))
+    me = np.mean(forecast - actual)
+    mae = np.mean(np.abs(forecast - actual))
+    mpe = np.mean((forecast - actual)/actual)
+    rmse = np.mean((forecast - actual)**2)**.5
+    corr = np.corrcoef(forecast, actual)[0,1]
+    mins = np.amin(np.hstack([forecast[:,None],
+                              actual[:,None]]), axis=1)
+    maxs = np.amax(np.hstack([forecast[:,None],
+                              actual[:,None]]), axis=1)
+    minmax = 1 - np.mean(mins/maxs)
+    acf1 = acf(fc-test)[1]
+    return({'MAPE':mape, 'ME':me, 'MAE': mae,
+            'MPE': mpe, 'RMSE':rmse, 'ACF1':acf1,
+            'Corr':corr, 'Min-Max':minmax})
+print(forecast_accuracy(fc, df.value[85:].values))
+model_auto = pm.auto_arima(df.value, start_p=1, start_q=1,
+                      test='adf',
+                      max_p=3, max_q=3,
+                      m=1,
+                      d=None,
+                      seasonal=False,
+                      start_P=0,
+                      D=0,
+                      trace=True,
+                      error_action='ignore',
+                      suppress_warnings=True,
+                      stepwise=True)
+print(model_auto.summary())
+model_auto.plot_diagnostics(figsize=(7,5))
+plt.show()
+n_periods = 24
+fc, confint = model_auto.predict(n_periods=n_periods, return_conf_int=True)
+index_of_fc = np.arange(len(df.value), len(df.value)+n_periods)
+fc_series = pd.Series(fc, index=index_of_fc)
+lower_series = pd.Series(confint[:, 0], index=index_of_fc)
+upper_series = pd.Series(confint[:, 1], index=index_of_fc)
+plt.plot(df.value)
+plt.plot(fc_series, color='darkgreen')
+plt.fill_between(lower_series.index,
+                 lower_series,
+                 upper_series,
+                 color='k', alpha=.15)
+plt.title("Final Forecast of WWW Usage")
+plt.show()
+data = pd.read_csv('a10.csv', parse_dates=['date'], index_col='date')
+result_mul = seasonal_decompose(data['value'][-36:],
+                                model='multiplicative',
+                                extrapolate_trend='freq')
+seasonal_index = result_mul.seasonal[-12:].to_frame()
+seasonal_index['month'] = pd.to_datetime(seasonal_index.index).month
+data['month'] = data.index.month
+df = pd.merge(data, seasonal_index, how='left', on='month')
+df.columns = ['value', 'month', 'seasonal_index']
+df.index = data.index
+smodel = pm.auto_arima(df[['value']], exogenous=df[['seasonal_index']],
+                           start_p=1, start_q=1,
+                           test='adf',
+                           max_p=3, max_q=3, m=12,
+                           start_P=0, seasonal=True,
+                           d=None, D=1, trace=True,
+                           error_action='ignore',
+                           suppress_warnings=True,
+                           stepwise=True)
+print(smodel.summary())
+n_periods = 24
+fitted, confint = smodel.predict(n_periods=n_periods,
+                                  exogenous=np.tile(seasonal_index.value, 2).reshape(-1,1),
+                                  return_conf_int=True)
+index_of_fc = pd.date_range(data.index[-1], periods = n_periods, freq='MS')
+fitted_series = pd.Series(fitted, index=index_of_fc)
+lower_series = pd.Series(confint[:, 0], index=index_of_fc)
+upper_series = pd.Series(confint[:, 1], index=index_of_fc)
+plt.plot(data['value'])
+plt.plot(fitted_series, color='darkgreen')
+plt.fill_between(lower_series.index,
+                 lower_series,
+                 upper_series,
+                 color='k', alpha=.15)
+plt.title("SARIMAX Forecast of a10 - Drug Sales")
+plt.show()

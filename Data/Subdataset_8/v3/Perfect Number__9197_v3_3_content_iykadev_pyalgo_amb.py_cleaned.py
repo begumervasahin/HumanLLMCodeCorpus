@@ -1,0 +1,70 @@
+import itertools
+class AmbiguityResolver:
+    def __init__(self):
+        self._names2values = {}
+        self._func = None
+        self._value_iterator = None
+        self._func_arg_names = None
+    def __call__(self, arg=None):
+        if hasattr(arg, '__code__'):
+            self._initialize_from_function(arg)
+            return self
+        elif arg is not None:
+            return frozenset(arg)
+        else:
+            return self._next_in_search()
+    def _initialize_from_function(self, func):
+        arg_vars = func.__code__.co_varnames[:func.__code__.co_argcount]
+        for name in arg_vars:
+            if name not in self._names2values:
+                assert name in func.__globals__, f"Global name {name} not found in function globals"
+                self._names2values[name] = func.__globals__[name]
+        value_sets = [self._names2values[name] for name in arg_vars]
+        self._value_iterator = itertools.product(*value_sets)
+        self._func = func
+        self._func_arg_names = arg_vars
+    def _next_in_search(self):
+        found = False
+        for values in self._value_iterator:
+            if self._func(*values):
+                found = True
+                self._update_globals(values)
+                break
+        if not found:
+            raise StopIteration
+        return values
+    def _update_globals(self, values):
+        for name, value in zip(self._func_arg_names, values):
+            self._func.__globals__[name] = value
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return self()
+    next = __next__
+if __name__ == '__main__':
+    def pythagorean_triples(x, y, z):
+        return x * x + y * y == z * z
+    def ambiguity_resolver(w1, w2, w3, w4):
+        return w1[-1] == w2[0] and w2[-1] == w3[0] and w3[-1] == w4[0]
+    def multiply_not_equal_8(x, y):
+        return x * y != 8
+    amb = AmbiguityResolver()
+    print("\nSmall Pythagorean triples problem:")
+    x = amb(range(1, 11))
+    y = amb(range(1, 11))
+    z = amb(range(1, 11))
+    for _dummy in amb(pythagorean_triples):
+        print('%s %s %s' % (x, y, z))
+    amb = AmbiguityResolver()
+    print("\nThe Ambiguity Resolver problem:")
+    w1 = amb(["the", "that", "a"])
+    w2 = amb(["frog", "elephant", "thing"])
+    w3 = amb(["walked", "treaded", "grows"])
+    w4 = amb(["slowly", "quickly"])
+    for _dummy in amb(ambiguity_resolver):
+        print('%s %s %s %s' % (w1, w2, w3, w4))
+    amb = AmbiguityResolver()
+    x = amb([1, 2, 3])
+    y = amb([4, 5, 6])
+    for _dummy in amb(multiply_not_equal_8):
+        print('%s %s' % (x, y))

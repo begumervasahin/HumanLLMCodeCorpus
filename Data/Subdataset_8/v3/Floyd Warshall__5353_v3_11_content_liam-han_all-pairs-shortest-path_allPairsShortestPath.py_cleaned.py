@@ -1,0 +1,114 @@
+import argparse
+import os
+import re
+import sys
+import time
+import math
+graph_regex = re.compile(r"(\d+)\s(\d+)")
+edge_regex = re.compile(r"(\d+)\s(\d+)\s(-?\d+)")
+vertices = []
+edges = []
+parser = argparse.ArgumentParser(description='Calculate the shortest path between all pairs of vertices in a graph')
+parser.add_argument('--algorithm', default='a', help='Select the algorithm to run: (a)ll, (b)ellman-ford only, or (f)loyd-warshall only')
+parser.add_argument('-v', '--verbose', action='store_true')
+parser.add_argument('--profile', action='store_true')
+parser.add_argument('filename', metavar='<filename>', help='Input file containing graph')
+def bellman_ford(graph):
+    global vertices
+    global edges
+    path_pairs = []
+    l = len(vertices)
+    for i in range(l):
+        for j in range(l):
+            if math.isinf(float(graph[1][i][j])) is not None:
+                e = [(int(i), int(j)), float(graph[1][i][j])]
+                edges.append(e)
+    for k in range(len(vertices)):
+        dist = []
+        for g in range(l):
+            dist.append(float("inf"))
+            if g == k:
+                dist[g] = 0
+        for i in range(l - 1):
+            for j in range(len(edges)):
+                if dist[edges[j][0][1]] > dist[edges[j][0][0]] + edges[j][1]:
+                    dist[edges[j][0][1]] = dist[edges[j][0][0]] + edges[j][1]
+    for i in range(len(edges)):
+        if dist[edges[i][0][1]] > dist[edges[i][0][0]] + edges[i][1]:
+            print("Negative cycle detected")
+            return 0
+    for x in range(len(graph[0])):
+        edge = ((k, x), dist[x])
+        path_pairs.append(edge)
+    print(path_pairs)
+    return path_pairs
+def floyd_warshall(graph):
+    global edges
+    path_pairs = []
+    d = []
+    l = len(graph[0])
+    for i in range(l):
+        temp = []
+        for j in range(l):
+            temp.append(float(edges[i][j]))
+        d.append(temp)
+        d[i][i] = 0
+    for k in range(l):
+        for i in range(l):
+            for j in range(l):
+                if d[i][j] > d[i][k] + d[k][j]:
+                    d[i][j] = d[i][k] + d[k][j]
+    for i in range(l):
+        if d[i][i] < 0:
+            print("Negative cycle detected")
+            return 0
+    for i in range(l):
+        for j in range(l):
+            edge = ((i, j), d[i][j])
+            path_pairs.append(edge)
+    print(path_pairs)
+    return path_pairs
+def read_file(filename):
+    global vertices
+    global edges
+    inFile = open(filename, 'r')
+    line1 = inFile.readline()
+    graph_match = graph_regex.match(line1)
+    if not graph_match:
+        print(line1 + " not properly formatted")
+        quit(1)
+    vertices = list(range(int(graph_match.group(1))))
+    edges = []
+    for i in range(len(vertices)):
+        row = []
+        for j in range(len(vertices)):
+            row.append(float("inf"))
+        edges.append(row)
+    for line in inFile.readlines():
+        line = line.strip()
+        edge_match = edge_regex.match(line)
+        if edge_match:
+            source = edge_match.group(1)
+            sink = edge_match.group(2)
+            if int(source) > len(vertices) or int(sink) > len(vertices):
+                print("Attempting to insert an edge between " + source + " and " + sink + " in a graph with " + vertices + " vertices")
+                quit(1)
+            weight = edge_match.group(3)
+            edges[int(source) - 1][int(sink) - 1] = weight
+    graph = (vertices, edges)
+    return graph
+def main(filename, algorithm):
+    global vertices
+    global edges
+    graph = read_file(filename)
+    path_pairs = []
+    if algorithm == 'a':
+        print('Running both algorithms')
+        path_pairs_bellman = bellman_ford(graph)
+        path_pairs_floyd = floyd_warshall(graph)
+        print("--- %s seconds ---" % (time.time() - start))
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args.filename, args.algorithm)
+if args.profile:
+    pr.print_stats(sort='time')

@@ -1,0 +1,61 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from pysph.solver.utils import get_files, load
+def normalize_data(u, v, initial=False, initial_norm=None, initial_KEnorm=None):
+    vmag = np.sqrt(u**2 + v**2)
+    if initial:
+        initial_norm = np.max(vmag)
+        initial_KEnorm = np.average(0.5 * vmag**2)
+        return initial_norm, initial_KEnorm
+    else:
+        normalized_vmag = np.max(vmag) / initial_norm
+        normalized_KE = np.average(0.5 * vmag**2) / initial_KEnorm
+        return normalized_vmag, normalized_KE
+def process_simulation_data(folder_path):
+    vmax_list, KE_list, time_list = [], [], []
+    initial_data = load(f'{folder_path}/vortex_spin_down_0.hdf5')['arrays']['fluid']
+    initial_norm, initial_KEnorm = normalize_data(initial_data.u, initial_data.v, initial=True)
+    for file_name in get_files(folder_path):
+        data = load(file_name)
+        vmax, KE = normalize_data(data['arrays']['fluid'].u, data['arrays']['fluid'].v, initial_norm=initial_norm, initial_KEnorm=initial_KEnorm)
+        time = data['solver_data']['t']
+        KE_list.append(KE)
+        vmax_list.append(vmax)
+        time_list.append(time)
+    return time_list, vmax_list, KE_list
+def plot_simulation_results(time_lists, data_lists, title, xlabel, ylabel, legends, output_filename):
+    plt.figure(figsize=(10, 6))
+    for time, data, legend in zip(time_lists, data_lists, legends):
+        plt.plot(time, data, label=legend)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(output_filename)
+    plt.close()
+folders = [
+    'TVFoutput/a/vortex_spin_down_output',
+    'TVFoutput/b/vortex_spin_down_output',
+    'TVFoutput/c/vortex_spin_down_output'
+]
+time_lists, vmax_lists, KE_lists = zip(*(process_simulation_data(folder) for folder in folders))
+scenarios = ['C = 1.25 (TVF)', 'C = 2.5 (TVF)', 'C = 5 (TVF)']
+plot_simulation_results(
+    time_lists,
+    vmax_lists,
+    '(TVF) Variation of Normalized Velocity with Time',
+    'Time (s)',
+    'Normalized Velocity',
+    scenarios,
+    'results_TVF_VMAX.png'
+)
+plot_simulation_results(
+    time_lists,
+    KE_lists,
+    '(TVF) Variation of Average Kinetic Energy with Time',
+    'Time (s)',
+    'Normalized Average Kinetic Energy',
+    scenarios,
+    'results_TVF_KE.png'
+)

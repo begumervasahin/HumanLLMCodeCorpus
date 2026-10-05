@@ -1,0 +1,54 @@
+class Node:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+def in_order_traversal(root):
+    if not root:
+        return
+    in_order_traversal(root.left)
+    print(root.val)
+    in_order_traversal(root.right)
+def pre_order_traversal(root):
+    if not root:
+        return
+    print(root.val)
+    pre_order_traversal(root.left)
+    pre_order_traversal(root.right)
+def post_order_traversal(root):
+    if not root:
+        return
+    post_order_traversal(root.left)
+    post_order_traversal(root.right)
+    print(root.val)
+def level_order_traversal(root):
+    level_nodes = [root]
+    level_counter = 1
+    while len(level_nodes) > 0:
+        next_level_nodes = []
+        print(f'Level {level_counter}')
+        for node in level_nodes:
+            print(node.val)
+            if node.left:
+                next_level_nodes.append(node.left)
+            if node.right:
+                next_level_nodes.append(node.right)
+        level_nodes = next_level_nodes
+        level_counter += 1
+test_tree = Node(8)
+test_tree.left = Node(3)
+test_tree.right = Node(10)
+test_tree.left.left = Node(1)
+test_tree.left.right = Node(6)
+test_tree.right.right = Node(14)
+test_tree.right.right.left = Node(13)
+test_tree.left.right.left = Node(4)
+test_tree.left.right.right = Node(15)
+print('In-Order Traversal and print:')
+in_order_traversal(test_tree)
+print('Pre-Order Traversal and print:')
+pre_order_traversal(test_tree)
+print('Post-Order Traversal and print:')
+post_order_traversal(test_tree)
+print('Level Traversal and print:')
+level_order_traversal(test_tree)

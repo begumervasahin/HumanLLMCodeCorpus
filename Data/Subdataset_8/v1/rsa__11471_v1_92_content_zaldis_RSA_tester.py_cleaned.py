@@ -1,0 +1,36 @@
+
+from rsa.crypt.crypt import Crypt
+from rsa.decrypt.decrypt import Decrypt
+from rsa.key_generator.key_generator import KeyGenerator
+def read_file_bytes(file_path):
+    with open(file_path, 'rb') as fin:
+        return fin.read()
+def encrypt_decrypt_demo(data_bytes):
+    key_generator = KeyGenerator()
+    priv_key, pub_key = key_generator.generate()
+    crypter = Crypt(pub_key)
+    crypted_bytes = crypter.crypt(list(data_bytes))
+    print(crypted_bytes)
+    decrypter = Decrypt(priv_key)
+    decrypted_bytes = decrypter.decrypt(crypted_bytes)
+    print(bytes(decrypted_bytes))
+def find_two_large_primes():
+    import math
+    primes = []
+    for num in range(10_000, 2, -1):
+        is_prime = True
+        for i in range(2, int(math.sqrt(num)) + 1):
+            if num % i == 0:
+                is_prime = False
+                break
+        if is_prime:
+            primes.append(num)
+        if len(primes) == 2:
+            break
+    print(primes)
+if __name__ == "__main__":
+    input_bytes = read_file_bytes("files/input.txt")
+    print(input_bytes)
+    print(list(input_bytes))
+    encrypt_decrypt_demo(input_bytes)
+    find_two_large_primes()

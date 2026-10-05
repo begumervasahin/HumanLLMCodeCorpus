@@ -1,0 +1,168 @@
+from collections import deque
+import heapq
+import time
+import resource
+import sys
+class State:
+    def __init__(self, state, parent, move, depth, cost, key):
+        self.state = state
+        self.parent = parent
+        self.move = move
+        self.depth = depth
+        self.cost = cost
+        self.key = key
+        if self.state:
+            self.map = ''.join(str(e) for e in self.state)
+    def __eq__(self, other):
+        return self.map == other.map
+    def __lt__(self, other):
+        return self.map < other.map
+def write_output(path_to_goal, cost_of_path, nodes_expanded, fringe_size, max_fringe_size, search_depth, max_search_depth, running_time, max_ram_usage):
+    with open('output.txt', 'w') as f:
+        f.write("path_to_goal: {}\n".format(path_to_goal))
+        f.write("cost_of_path: {}\n".format(cost_of_path))
+        f.write("nodes_expanded: {}\n".format(nodes_expanded))
+        f.write("fringe_size: {}\n".format(fringe_size))
+        f.write("max_fringe_size: {}\n".format(max_fringe_size))
+        f.write("search_depth: {}\n".format(search_depth))
+        f.write("max_search_depth: {}\n".format(max_search_depth))
+        f.write("running_time: {}\n".format(running_time))
+        f.write("max_ram_usage: {}\n".format(max_ram_usage))
+def get_blank_tile(state):
+    for i in range(len(state)):
+        for j in range(len(state[0])):
+            if state[i][j] == 0:
+                return i, j
+def get_neighbors(state):
+    neighbors = []
+    blank_i, blank_j = get_blank_tile(state)
+    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    for direction in directions:
+        new_i, new_j = blank_i + direction[0], blank_j + direction[1]
+        if 0 <= new_i < len(state) and 0 <= new_j < len(state[0]):
+            new_state = [list(row) for row in state]
+            new_state[blank_i][blank_j], new_state[new_i][new_j] = new_state[new_i][new_j], new_state[blank_i][blank_j]
+            neighbors.append(new_state)
+    return neighbors
+def bfs(start_state):
+    start_time = time.time()
+    explored = set()
+    fringe = deque([State(start_state, None, None, 0, 0, 0)])
+    max_fringe_size = 0
+    max_search_depth = 0
+    while fringe:
+        current_state = fringe.popleft()
+        explored.add(current_state.map)
+        if current_state.state == goal_state:
+            running_time = time.time() - start_time
+            path_to_goal, cost_of_path, nodes_expanded, fringe_size = [], 0, len(explored), len(fringe)
+            search_depth = current_state.depth
+            while current_state.parent:
+                path_to_goal.insert(0, current_state.move)
+                cost_of_path += 1
+                current_state = current_state.parent
+            write_output(path_to_goal, cost_of_path, nodes_expanded, fringe_size, max_fringe_size, search_depth, max_search_depth, running_time, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            return
+        for neighbor in get_neighbors(current_state.state):
+            if ''.join(str(e) for row in neighbor) not in explored:
+                fringe.append(State(neighbor, current_state, neighbor, current_state.depth + 1, 0, 0))
+                explored.add(''.join(str(e) for row in neighbor))
+                max_search_depth = max(max_search_depth, current_state.depth + 1)
+        max_fringe_size = max(max_fringe_size, len(fringe))
+def dfs(start_state):
+    start_time = time.time()
+    explored = set()
+    fringe = [State(start_state, None, None, 0, 0, 0)]
+    max_fringe_size = 0
+    max_search_depth = 0
+    while fringe:
+        current_state = fringe.pop()
+        explored.add(current_state.map)
+        if current_state.state == goal_state:
+            running_time = time.time() - start_time
+            path_to_goal, cost_of_path, nodes_expanded, fringe_size = [], 0, len(explored), len(fringe)
+            search_depth = current_state.depth
+            while current_state.parent:
+                path_to_goal.insert(0, current_state.move)
+                cost_of_path += 1
+                current_state = current_state.parent
+            write_output(path_to_goal, cost_of_path, nodes_expanded, fringe_size, max_fringe_size, search_depth, max_search_depth, running_time, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            return
+        for neighbor in reversed(get_neighbors(current_state.state)):
+            if ''.join(str(e) for row in neighbor) not in explored:
+                fringe.append(State(neighbor, current_state, neighbor, current_state.depth + 1, 0, 0))
+                explored.add(''.join(str(e) for row in neighbor))
+                max_search_depth = max(max_search_depth, current_state.depth + 1)
+        max_fringe_size = max(max_fringe_size, len(fringe))
+def ast(start_state):
+    start_time = time.time()
+    explored = set()
+    fringe = []
+    heapq.heappush(fringe, (0, State(start_state, None, None, 0, 0, 0)))
+    max_fringe_size = 0
+    max_search_depth = 0
+    while fringe:
+        current_priority, current_state = heapq.heappop(fringe)
+        explored.add(current_state.map)
+        if current_state.state == goal_state:
+            running_time = time.time() - start_time
+            path_to_goal, cost_of_path, nodes_expanded, fringe_size = [], 0, len(explored), len(fringe)
+            search_depth = current_state.depth
+            while current_state.parent:
+                path_to_goal.insert(0, current_state.move)
+                cost_of_path += 1
+                current_state = current_state.parent
+            write_output(path_to_goal, cost_of_path, nodes_expanded, fringe_size, max_fringe_size, search_depth, max_search_depth, running_time, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            return
+        for neighbor in get_neighbors(current_state.state):
+            if ''.join(str(e) for row in neighbor) not in explored:
+                priority = current_state.depth + 1
+                heapq.heappush(fringe, (priority, State(neighbor, current_state, neighbor, current_state.depth + 1, 0, 0)))
+                explored.add(''.join(str(e) for row in neighbor))
+                max_search_depth = max(max_search_depth, current_state.depth + 1)
+        max_fringe_size = max(max_fringe_size, len(fringe))
+def ida(start_state):
+    start_time = time.time()
+    explored = set()
+    threshold = 0
+    max_fringe_size = 0
+    max_search_depth = 0
+    while True:
+        fringe = []
+        heapq.heappush(fringe, (0, State(start_state, None, None, 0, 0, 0)))
+        explored.clear()
+        while fringe:
+            current_priority, current_state = heapq.heappop(fringe)
+            explored.add(current_state.map)
+            if current_state.state == goal_state:
+                running_time = time.time() - start_time
+                path_to_goal, cost_of_path, nodes_expanded, fringe_size = [], 0, len(explored), len(fringe)
+                search_depth = current_state.depth
+                while current_state.parent:
+                    path_to_goal.insert(0, current_state.move)
+                    cost_of_path += 1
+                    current_state = current_state.parent
+                write_output(path_to_goal, cost_of_path, nodes_expanded, fringe_size, max_fringe_size, search_depth, max_search_depth, running_time, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                return
+            for neighbor in get_neighbors(current_state.state):
+                if ''.join(str(e) for row in neighbor) not in explored:
+                    priority = current_state.depth + 1
+                    if priority <= threshold:
+                        heapq.heappush(fringe, (priority, State(neighbor, current_state, neighbor, current_state.depth + 1, 0, 0)))
+                        explored.add(''.join(str(e) for row in neighbor))
+                        max_search_depth = max(max_search_depth, current_state.depth + 1)
+        max_fringe_size = max(max_fringe_size, len(fringe))
+        threshold += 1
+def main():
+    algorithm = sys.argv[1]
+    start_state = [[int(i) for i in sys.argv[2].split(",")]]
+    if algorithm == "bfs":
+        bfs(start_state)
+    elif algorithm == "dfs":
+        dfs(start_state)
+    elif algorithm == "ast":
+        ast(start_state)
+    elif algorithm == "ida":
+        ida(start_state)
+if __name__ == "__main__":
+    main()

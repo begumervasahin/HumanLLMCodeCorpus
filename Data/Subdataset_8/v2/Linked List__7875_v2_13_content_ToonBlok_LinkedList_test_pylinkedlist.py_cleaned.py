@@ -1,0 +1,121 @@
+import pylinkedlist
+import pytest
+class TestAppend:
+    linked_list = None
+    def setup(self):
+        TestAppend.linked_list = pylinkedlist.LinkedList()
+    def test_append(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(31))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(11))
+        expected_order = [21, 31, 11, 91]
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        actual_order = [
+            TestAppend.linked_list.get_value_at(0),
+            TestAppend.linked_list.get_value_at(1),
+            TestAppend.linked_list.get_value_at(2),
+            TestAppend.linked_list.get_value_at(3),
+        ]
+        assert expected_order == actual_order
+    def test_prepend(self):
+        TestAppend.linked_list.prepend(node=pylinkedlist.Node(10))
+        TestAppend.linked_list.prepend(node=pylinkedlist.Node(20))
+        TestAppend.linked_list.prepend(node=pylinkedlist.Node(30))
+        expected_order = [40, 30, 20, 10]
+        TestAppend.linked_list.prepend(node=pylinkedlist.Node(40))
+        actual_order = [
+            TestAppend.linked_list.get_value_at(0),
+            TestAppend.linked_list.get_value_at(1),
+            TestAppend.linked_list.get_value_at(2),
+            TestAppend.linked_list.get_value_at(3),
+        ]
+        assert expected_order == actual_order
+    def test_last(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(10))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(20))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(30))
+        last_node = TestAppend.linked_list.last()
+        assert last_node.data == 30
+    def test_get_value_at(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(51))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(11))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(81))
+        val_one = TestAppend.linked_list.get_value_at(0)
+        val_two = TestAppend.linked_list.get_value_at(2)
+        val_three = TestAppend.linked_list.get_value_at(4)
+        with pytest.raises(IndexError) as excinfo_one:
+            TestAppend.linked_list.get_value_at(-99)
+        with pytest.raises(IndexError) as excinfo_two:
+            TestAppend.linked_list.get_value_at(99)
+        assert val_one == 91
+        assert val_two == 21
+        assert val_three == 81
+        assert str(excinfo_one.value) == "Value given out of range"
+        assert str(excinfo_two.value) == "Value given out of range"
+    def test_count(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(51))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(11))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(81))
+        assert TestAppend.linked_list.count() == 5
+    def test_clear(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(51))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.clear()
+        assert TestAppend.linked_list.count() == 0
+    def test_remove_at(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(51))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(11))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(81))
+        TestAppend.linked_list.remove_at(1)
+        val_one = TestAppend.linked_list.get_value_at(0)
+        val_two = TestAppend.linked_list.get_value_at(1)
+        with pytest.raises(IndexError) as excinfo_one:
+            TestAppend.linked_list.remove_at(-99)
+        with pytest.raises(IndexError) as excinfo_two:
+            TestAppend.linked_list.remove_at(99)
+        assert val_one == 91
+        assert val_two == 21
+        assert TestAppend.linked_list.count() == 4
+        assert str(excinfo_one.value) == "Value given out of range"
+        assert str(excinfo_two.value) == "Value given out of range"
+    def test_remove_at_when_empty(self):
+        with pytest.raises(IndexError) as excinfo_one:
+            TestAppend.linked_list.remove_at(5)
+        assert str(excinfo_one.value) == "Value given out of range"
+    def test_insert_at(self):
+        TestAppend.linked_list.append(node=pylinkedlist.Node(91))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(51))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(21))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(11))
+        TestAppend.linked_list.append(node=pylinkedlist.Node(81))
+        expected_order = [91, 51, 21, 66, 11, 81]
+        TestAppend.linked_list.insert_at(3, node=pylinkedlist.Node(66))
+        actual_order = [
+            TestAppend.linked_list.get_value_at(0),
+            TestAppend.linked_list.get_value_at(1),
+            TestAppend.linked_list.get_value_at(2),
+            TestAppend.linked_list.get_value_at(3),
+            TestAppend.linked_list.get_value_at(4),
+            TestAppend.linked_list.get_value_at(5)
+        ]
+        assert expected_order == actual_order
+    def test_insert_at_0_when_empty(self):
+        TestAppend.linked_list.insert_at(0, node=pylinkedlist.Node(81))
+        val_one = TestAppend.linked_list.get_value_at(0)
+        assert TestAppend.linked_list.count() == 1
+        assert val_one == 81
+    def test_insert_at_5_when_empty(self):
+        with pytest.raises(IndexError) as excinfo_one:
+            TestAppend.linked_list.insert_at(5, node=pylinkedlist.Node(81))
+        assert str(excinfo_one.value) == "Value given out of range"
+    def test_insert_at_out_of_index(self):
+        with pytest.raises(IndexError) as excinfo_one:
+            TestAppend.linked_list.insert_at(5, node=pylinkedlist.Node(81))
+        assert str(excinfo_one.value) == "Value given out of range"

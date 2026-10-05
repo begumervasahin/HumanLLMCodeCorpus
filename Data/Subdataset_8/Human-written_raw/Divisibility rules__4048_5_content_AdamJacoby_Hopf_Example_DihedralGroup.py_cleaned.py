@@ -1,0 +1,39 @@
+from ExampleGroup_Functions import *
+from HopfClass import HopfAlgebra
+import numpy as np
+import scipy.sparse as sps
+from itertools import product
+def DihedralGroup_Mult_Matrix(n):
+	dim = 2*n
+	mult = np.zeros((dim,dim**2),dtype=complex)
+	N=range(0,n)
+	for i,j in product(N,[0,1]):
+		for k,l in product(N,[0,1]):
+			mult[2*((i+((-1)**j)*k)%n)+(j+l)%2,dim*(i*2+j)+2*k+l]=1
+	mult = sps.csr_matrix(mult.tolist(),dtype=complex)
+	return mult
+def DihedralGroup_Antipode(n):
+	dim = 2*n
+	antipode = np.zeros((dim,dim),dtype=complex)
+	for i,j in product(range(0,n),[0,1]):
+		antipode[2*(((-1)**(j+1)*i)%n)+j,i*2+j]=1
+	antipode = sps.csr_matrix(antipode.tolist(),dtype=complex)
+	return antipode
+def DihedralGroup_Element_Names(n,ele_name_g,ele_name_x):
+	out = []
+	for i in range(0,n):
+		for j in [0,1]:
+			out.append(ele_name_g+'^'+str(i)+ele_name_x+'^'+str(j))
+	return out
+def DihedralGroup(n,element_name_g,element_name_x):
+	dim=2*n
+	mult = DihedralGroup_Mult_Matrix(n)
+	comult = Group_Comult_Matrix(dim)
+	counit = Group_Counit(dim)
+	int = Group_Integral(dim)
+	antipode = DihedralGroup_Antipode(n)
+	name = 'D_'+str(n)
+	element_names = DihedralGroup_Element_Names(n,element_name_g,element_name_x)
+	out = HopfAlgebra(name,element_names,mult,comult,counit,antipode)
+	out.Input_Integral(int)
+	return out

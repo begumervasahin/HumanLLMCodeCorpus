@@ -1,0 +1,42 @@
+from queue import Queue
+def display_queue(queue):
+    size = queue.qsize()
+    while size > 0:
+        item = queue.get()
+        print("Item:", item)
+        queue.put(item)
+        size -= 1
+queue = Queue()
+print("MENU:")
+print("1. EnQueue")
+print("2. DeQueue")
+print("3. Length Of Queue")
+print("4. Check Queue Emptiness")
+print("5. Display Queue")
+print("6. EXIT")
+choice = int(input("Enter Your Choice: "))
+while choice <= 5:
+    if choice == 1:
+        value = int(input("Enter Element To Be Inserted Into Queue: "))
+        queue.put(value)
+        print("Value", value, "Inserted")
+    elif choice == 2:
+        if queue.qsize() == 0:
+            print("Queue Is Empty, Cannot Delete Element!!!")
+        else:
+            print("Removed Element:", queue.get())
+    elif choice == 3:
+        length = queue.qsize()
+        print("Number Of Elements In The Queue Are:", length)
+    elif choice == 4:
+        if queue.qsize() == 0:
+            print("Queue Is Empty")
+        else:
+            print("Queue Is Not Empty")
+    elif choice == 5:
+        print("Displaying Queue:")
+        display_queue(queue)
+        print("End")
+    choice = int(input("Enter Your Next Choice: "))
+print("INVALID INPUT, Execution Stopped")
+print("YOU HAVE TO RUN AGAIN!!!!!!")

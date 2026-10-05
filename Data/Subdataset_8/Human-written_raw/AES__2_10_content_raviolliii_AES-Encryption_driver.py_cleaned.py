@@ -1,0 +1,6 @@
+from aes import aes
+key = "Thats my Kung Fu"
+message = "Two One Nine Two"
+enc = aes.encrypt(key, message)
+print("Message:\t", message)
+print("Encrypted:\t", enc)

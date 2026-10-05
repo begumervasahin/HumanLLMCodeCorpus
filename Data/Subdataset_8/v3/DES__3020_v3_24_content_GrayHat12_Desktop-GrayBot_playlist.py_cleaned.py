@@ -1,0 +1,143 @@
+import threading
+import vlc
+import pafy
+import sys
+import os
+class GPlayer:
+    def __init__(self):
+        self.links = set()
+        self.is_playing = False
+        self.audio_volume = 150
+        self.instance = vlc.Instance('--input-repeat=-1', '--fullscreen', '--mouse-hide-timeout=0')
+        self.player = self.instance.media_player_new()
+        self.options_thread = threading.Thread(target=self.handle_options)
+    def set_volume(self, volume):
+        self.audio_volume = volume
+    def set_data(self, link):
+        data = pafy.new(link)
+        self.media_data = data
+        self.set_media(data)
+    def set_media(self, data):
+        self.media = self.instance.media_new(data.getbestaudio().url)
+        self.media.get_mrl()
+    def get_volume(self):
+        return self.audio_volume
+    def handle_options(self):
+        while True:
+            user_input = input('...> ')
+            if user_input == 'pause':
+                self.player.set_pause(1)
+            elif user_input == 'help':
+                self.print_help()
+            elif user_input == 'resume':
+                self.player.set_pause(0)
+            elif user_input in ('aud', 'vid'):
+                self.download_media(user_input)
+            elif user_input in ('fff', 'ffb'):
+                self.skip_time(user_input)
+            elif user_input.startswith('vol'):
+                self.set_volume(user_input.split(' ')[1])
+            elif user_input == 'gvol':
+                print(self.player.audio_get_volume())
+            elif user_input in ('mute', 'unmute'):
+                self.toggle_mute(user_input)
+            elif user_input == 'skip':
+                self.skip_song()
+            elif user_input == 'info':
+                self.print_info()
+            elif user_input == 'clr':
+                self.clear_screen()
+            elif user_input == 'stop':
+                self.stop_script()
+    def print_help(self):
+        print('skip: for next song')
+        print('pause: for pausing playback')
+        print('resume: for resuming playback')
+        print('fff: to skip forward 5 seconds')
+        print('ffb: to skip backwards 5 seconds')
+        print('vol <volume 0-100>: for setting desired volume')
+        print('gvol: to get current audio volume')
+        print('mute: to mute audio')
+        print('unmute: to unmute audio')
+        print('stop: to quit')
+        print('aud: to download audio')
+        print('vid: to download video')
+    def download_media(self, user_input):
+        media_type = 'audio' if user_input == 'aud' else 'video'
+        th = threading.Thread(target=self.download, args=(media_type,))
+        th.start()
+    def download(self, media_type):
+        media = self.media_data.getbestaudio() if media_type == 'audio' else self.media_data.getbest()
+        print(f"Size: {media.get_filesize()} bytes")
+        filename = media.download()
+    def skip_time(self, user_input):
+        current_time = self.player.get_time()
+        if user_input == 'fff':
+            self.player.set_time(current_time + 1000 * 5)
+        elif user_input == 'ffb':
+            self.player.set_time(max(0, current_time - 1000 * 5))
+    def toggle_mute(self, user_input):
+        self.player.audio_set_mute(user_input == 'mute')
+    def skip_song(self):
+        self.player.stop()
+        self.is_playing = False
+    def print_info(self):
+        print(self.media_data.title)
+        ratio = (self.player.get_time()
+        ratio = int(ratio * 10)
+        current_sec = self.player.get_time()
+        current_min = current_sec
+        current_sec = current_sec - current_min * 60
+        print(f'{current_min}:{current_sec}', end='')
+        for i in range(10):
+            if i == ratio:
+                print('>.', end='')
+            else:
+                print('..', end='')
+        total_sec = self.media_data.length
+        total_min = total_sec
+        total_sec = total_sec - total_min * 60
+        print(f'{total_min}:{total_sec}')
+    def clear_screen(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+    def stop_script(self):
+        print('Stopping the Script...')
+        self.player.stop()
+        sys.exit('USER CHOSE TO QUIT')
+    def play_queue(self, links):
+        print('help for CONTROLS')
+        self.options_thread.start()
+        for link in self.links:
+            try:
+                self.set_data(link)
+                print('CURRENTLY PLAYING : ')
+                print(self.media_data)
+                print('FROM YOUR FAVORITE ARTISTS')
+                self.player.set_media(self.media)
+                self.player.audio_set_volume(self.get_volume())
+                self.player.play()
+                self.is_playing = True
+                while self.is_playing:
+                    if self.player.get_state() == vlc.State.Ended:
+                        self.is_playing = False
+                        self.player.stop()
+                        break
+                    if not self.options_thread.isAlive():
+                        self.is_playing = False
+                        sys.exit('USER CHOSE TO EXIT..\n' + 'Script might still wait for the download to finish...')
+                        break
+            except Exception as ex:
+                print(ex)
+                continue
+            continue
+        self.options_thread.join()
+        print('QUEUE ENDED')
+    def get_links(self):
+        return self.links
+ob = GPlayer()
+print('PLAYING YOUR QUEUE...')
+links = ob.get_links()
+if len(links) > 0:
+    ob.play_queue(links)
+else:
+    print('NO SONGS FOUND IN YOUR PLAYLIST')

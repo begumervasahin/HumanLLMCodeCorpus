@@ -1,0 +1,64 @@
+import gensim
+import numpy as np
+import random
+from gensim.corpora import Dictionary
+from gensim import models
+class Topic2Vec:
+    def __init__(self, sentences, lda_model, flag, filename, size, window, mincount):
+        self.sentences = sentences
+        self.lda_model = lda_model
+        self.filename = filename
+        self.size = size
+        self.window = window
+        self.mincount = mincount
+        self.permute_sentences = []
+        self.dictionary = Dictionary.load('/path/to/dictionary')
+        self.dict_id = self.dictionary.token2id
+        if flag:
+            print("Starting variation")
+            print(f"There are {len(self.sentences)} sentences")
+            self.sentences_variation(self.sentences)
+            random.shuffle(self.permute_sentences)
+            self.topic2vec = models.Word2Vec(self.permute_sentences, size=self.size, window=self.window, min_count=self.mincount, workers=2)
+            self.topic2vec.save(self.filename)
+            random.shuffle(self.sentences)
+            self.word2vec = models.Word2Vec(self.sentences, size=self.size, window=self.window, min_count=3, workers=2)
+            self.word2vec.save(self.filename + "_w2v")
+        self.topic2vec = models.Word2Vec.load(self.filename)
+        self.lda_topics = [self.lda_model.show_topic(x) for x in range(50)]
+        self.topic_vecs = [self.topic2vec.most_similar(positive=["u" + str(x)]) for x in range(50)]
+        print(self.filename + " is finished")
+    def sentences_variation(self, sentences):
+        for sentence in sentences:
+            sentence_permute = self.sentence_variation_helper1(sentence)
+            self.permute_sentences.append(sentence_permute)
+    def sentence_variation_helper1(self, sentence):
+        sentence_variation = []
+        for index, word in enumerate(sentence):
+            word_permute = self.sentence_variation_helper2(word, index, sentence)
+            sentence_variation.append(word_permute)
+        return sentence_variation
+    def sentence_variation_helper2(self, word, index, sentence):
+        sentence_permute = list(sentence)
+        if word in self.dict_id:
+            word_bow = self.dictionary.doc2bow([word])
+            topic = self.lda_model[word_bow]
+            likely_topic = topic[-1][0]
+            sentence_permute[index] = "u" + str(likely_topic)
+        return sentence_permute
+    def most_similar_topic(self, word):
+        score = (0, 0)
+        if word in self.dict_id:
+            for x in range(50):
+                new_score = self.topic2vec.similarity("u" + word, "u" + str(x))
+                if new_score > score[0]:
+                    score = (new_score, "u" + str(x))
+        else:
+            print(f"Word {word} not in dictionary")
+        return score
+sentences = [['apple', 'banana', 'orange'], ['dog', 'cat', 'horse'], ['tree', 'flower', 'grass']]
+lda_model = gensim.models.ldamodel.LdaModel()
+t2v = Topic2Vec(sentences, lda_model, True, 'topic2vec_model', 100, 5, 1)
+word = 'apple'
+most_similar = t2v.most_similar_topic(word)
+print(f"Most similar topic to '{word}': {most_similar[1]} with similarity score {most_similar[0]}")

@@ -1,0 +1,68 @@
+import random
+import pickle
+import time
+import matplotlib.pyplot as plt
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        for j in range(n - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+def insertion_sort(arr):
+    n = len(arr)
+    for j in range(1, n):
+        key = arr[j]
+        i = j - 1
+        while i >= 0 and arr[i] > key:
+            arr[i + 1] = arr[i]
+            i -= 1
+        arr[i + 1] = key
+def input_data():
+    ar = random.sample(range(1, 300000), 200000)
+    with open("data.txt", 'wb') as fp:
+        pickle.dump(ar, fp)
+def process_data():
+    with open("data.txt", 'rb') as fp:
+        ar = pickle.load(fp)
+    time_list_bubble_sort = []
+    time_list_insertion_sort = []
+    avg_time_bubble_sort = []
+    avg_time_insertion_sort = []
+    input_list = []
+    k = 2000
+    for _ in range(25):
+        time_list_bubble_sort.clear()
+        time_list_insertion_sort.clear()
+        sum_time_bubble_sort = 0.0
+        sum_time_insertion_sort = 0.0
+        for _ in range(10):
+            arr1 = random.sample(ar, k)
+            arr2 = random.sample(ar, k)
+            start_time_bubble_sort = time.time()
+            bubble_sort(arr1)
+            end_time_bubble_sort = time.time()
+            total_time_bubble_sort = end_time_bubble_sort - start_time_bubble_sort
+            time_list_bubble_sort.append(total_time_bubble_sort)
+            sum_time_bubble_sort += total_time_bubble_sort
+            start_time_insertion_sort = time.time()
+            insertion_sort(arr2)
+            end_time_insertion_sort = time.time()
+            total_time_insertion_sort = end_time_insertion_sort - start_time_insertion_sort
+            time_list_insertion_sort.append(total_time_insertion_sort)
+            sum_time_insertion_sort += total_time_insertion_sort
+        avg_time_bubble_sort.append(sum_time_bubble_sort / 10)
+        avg_time_insertion_sort.append(sum_time_insertion_sort / 10)
+        k += 2000
+    for i in range(1, 26):
+        input_list.append(2000 * i)
+    plt.plot(input_list, avg_time_bubble_sort, 'r--', input_list, avg_time_insertion_sort, 'b--')
+    plt.xlabel('Input Size')
+    plt.ylabel('Average Time')
+    plt.title('Bubble Sort vs Insertion Sort')
+    plt.legend(['Bubble Sort', 'Insertion Sort'])
+    plt.show()
+def main():
+    input_data()
+    process_data()
+if __name__ == "__main__":
+    main()

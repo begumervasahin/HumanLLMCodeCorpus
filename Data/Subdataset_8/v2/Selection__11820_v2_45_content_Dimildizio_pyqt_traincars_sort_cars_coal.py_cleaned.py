@@ -1,0 +1,42 @@
+from random import randint, choice
+class Car:
+    def __init__(self, coal, serial):
+        self.serial_number = serial
+        self.coal_quantity = coal
+    def __repr__(self):
+        return f'Car(serial_number={self.serial_number}, coal_quantity={self.coal_quantity})'
+    def __eq__(self, other_coal):
+        return self.coal_quantity == other_coal
+    def __gt__(self, other_coal):
+        return self.coal_quantity > other_coal
+    def __lt__(self, other_coal):
+        return self.coal_quantity < other_coal
+    def __ge__(self, other_coal):
+        return self.coal_quantity >= other_coal
+    def __le__(self, other_coal):
+        return self.coal_quantity <= other_coal
+    def __ne__(self, other_coal):
+        return self.coal_quantity != other_coal
+class Train:
+    def __init__(self, num_cars):
+        self.cars = [Car(randint(1, 74), randint(1, 1000)) for _ in range(num_cars)]
+    def __repr__(self):
+        description = f'This train consists of {len(self.cars)} cars:\n'
+        for car in self.cars:
+            description += f'\t{str(car)}\n'
+        return description
+    def add_car(self, item, value):
+        if item == 'coal':
+            car = Car(value, randint(1, 1000))
+        else:
+            car = Car(randint(1, 74), value)
+        self.cars.append(car)
+        return car
+class Depot:
+    train = None
+    @classmethod
+    def generate_train(cls, num_cars):
+        cls.train = Train(num_cars)
+    @classmethod
+    def destroy_train(cls):
+        cls.train = None

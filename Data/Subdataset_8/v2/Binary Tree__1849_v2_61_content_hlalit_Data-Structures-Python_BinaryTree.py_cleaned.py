@@ -1,0 +1,71 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+class Tree:
+    def __init__(self):
+        self.head = None
+        self.node_list = []
+    def push(self, data):
+        self.node_list.append(data)
+    def insert_tree(self, data, address, index):
+        if self.head is None:
+            temp = Node(data)
+            current = temp
+            self.head = current
+        else:
+            current = address
+        left_index = 2 * index + 1
+        right_index = 2 * index + 2
+        if left_index < len(self.node_list):
+            left_node_data = self.node_list[left_index]
+            left_node = Node(left_node_data)
+            current.left = left_node
+            self.insert_tree(left_node_data, left_node, left_index)
+        if right_index < len(self.node_list):
+            right_node_data = self.node_list[right_index]
+            right_node = Node(right_node_data)
+            current.right = right_node
+            self.insert_tree(right_node_data, right_node, right_index)
+    def inorder_traversal(self, current):
+        if current is None:
+            return
+        else:
+            self.inorder_traversal(current.left)
+            print(current.data)
+            self.inorder_traversal(current.right)
+    def level_order_traversal(self, current):
+        if current is None:
+            return
+        queue = []
+        queue.append(current)
+        while len(queue) > 0:
+            print(queue[0].data)
+            node = queue.pop(0)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+    def get_height(self, current):
+        if current is None:
+            return -1
+        else:
+            left_height = self.get_height(current.left)
+            right_height = self.get_height(current.right)
+            return max(left_height, right_height) + 1
+tree = Tree()
+tree.push(2)
+tree.push(3)
+tree.push(5)
+tree.push(7)
+tree.push(1)
+tree.push(10)
+tree.push(9)
+tree.push(8)
+tree.insert_tree(tree.node_list[0], tree.head, 0)
+print("Inorder Traversal:")
+tree.inorder_traversal(tree.head)
+print("\nLevel Order Traversal:")
+tree.level_order_traversal(tree.head)
+print("\nHeight of the tree:", tree.get_height(tree.head))

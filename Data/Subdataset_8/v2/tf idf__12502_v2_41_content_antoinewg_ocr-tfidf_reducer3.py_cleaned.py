@@ -1,0 +1,31 @@
+import sys
+import math
+def calculate_tfidf(word_count, word_per_doc, n_doc, N=2):
+    tf = word_count / float(word_per_doc)
+    idf = math.log(N / n_doc)
+    return tf * idf
+prev_word = None
+prev_doc_id = None
+prev_word_count = None
+prev_word_per_doc = None
+n_doc = 1
+for line in sys.stdin:
+    line = line.strip()
+    word, rest = line.split("\t")
+    doc_id, word_count, word_per_doc = rest.split(",")
+    word_count = int(word_count)
+    word_per_doc = int(word_per_doc)
+    if prev_word == word:
+        n_doc += 1
+    else:
+        if prev_word is not None:
+            prev_tfidf = calculate_tfidf(prev_word_count, prev_word_per_doc, n_doc)
+            print("(%s,%s)\t%s" % (prev_word, prev_doc_id, prev_tfidf))
+        n_doc = 1
+    prev_word = word
+    prev_doc_id = doc_id
+    prev_word_count = word_count
+    prev_word_per_doc = word_per_doc
+if prev_word is not None:
+    prev_tfidf = calculate_tfidf(prev_word_count, prev_word_per_doc, n_doc)
+    print("(%s,%s)\t%s" % (prev_word, prev_doc_id, prev_tfidf))

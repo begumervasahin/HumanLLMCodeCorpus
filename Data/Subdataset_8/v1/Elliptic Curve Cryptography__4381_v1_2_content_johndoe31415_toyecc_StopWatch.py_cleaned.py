@@ -1,0 +1,46 @@
+import time
+class StopWatch:
+    def __init__(self, component=None, noisy=False):
+        self._component = component
+        self._noisy = noisy
+        self.reset()
+    @property
+    def finishtime(self):
+        return self._finishtime
+    def stop(self):
+        self._finishtime = time.time() - self._t
+        return self.finishtime
+    def finish(self):
+        self._finishtime = self.stop()
+        if self._noisy:
+            print("%s took %s" % (self._component, str(self)))
+    def reset(self):
+        self._finishtime = None
+        self._t = time.time()
+    def __str__(self):
+        t = self.stop()
+        if t < 1:
+            return "%d ms" % (round(1000 * t))
+        elif t < 10:
+            return "%.1f sec" % (t)
+        else:
+            tint = round(t)
+            if tint < 60:
+                return "%d sec" % (tint)
+            elif tint < 3600:
+                return "%d:%02d m:s" % (tint
+            elif tint < 86400:
+                return "%d:%02d:%02d h:m:s" % (tint
+            else:
+                return "%d-%d:%02d:%02d d-h:m:s" % (tint
+    def __enter__(self):
+        self.reset()
+    def __exit__(self, type, value, traceback):
+        self.finish()
+if __name__ == "__main__":
+    x = StopWatch("foobar", True)
+    time.sleep(0.1)
+    x.finish()
+    print("Finish time:", x.finishtime)
+    with StopWatch("foobar2", True):
+        time.sleep(0.1)

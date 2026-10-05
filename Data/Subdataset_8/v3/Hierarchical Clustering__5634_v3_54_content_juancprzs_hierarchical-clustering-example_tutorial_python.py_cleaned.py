@@ -1,0 +1,42 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import linkage, fcluster
+def load_country_data(file_path):
+    return pd.read_csv(file_path)
+def plot_countries(coordinates, names):
+    plt.figure()
+    plt.subplot(211)
+    for (x, y), name in zip(coordinates, names):
+        plt.scatter(x, y)
+        plt.text(x, y, name, fontsize=6)
+    plt.title('Countries')
+    plt.grid(True)
+    plt.gca().get_yaxis().set_ticks([])
+    plt.gca().get_xaxis().set_ticks([])
+def cluster_countries(coordinates, num_clusters=4):
+    distances = pdist(coordinates, 'euclidean')
+    linkage_matrix = linkage(distances, method='single')
+    return fcluster(linkage_matrix, t=num_clusters, criterion='maxclust')
+def plot_clusters(coordinates, clusters):
+    colors = ['r', 'g', 'b', 'm']
+    plt.subplot(212)
+    for color, cluster_id in zip(colors, np.unique(clusters)):
+        cluster_mask = cluster_id == clusters
+        plt.scatter(coordinates[cluster_mask, 0], coordinates[cluster_mask, 1], c=color)
+    plt.title('Clusters')
+    plt.grid(True)
+    plt.gca().get_yaxis().set_ticks([])
+    plt.gca().get_xaxis().set_ticks([])
+def main():
+    country_data = load_country_data('final_countries_data.csv')
+    coordinates = country_data[['x-coord', 'y-coord']].values
+    country_names = country_data['CountryName'].values
+    plot_countries(coordinates, country_names)
+    clusters = cluster_countries(coordinates)
+    plot_clusters(coordinates, clusters)
+    plt.tight_layout()
+    plt.show()
+if __name__ == "__main__":
+    main()

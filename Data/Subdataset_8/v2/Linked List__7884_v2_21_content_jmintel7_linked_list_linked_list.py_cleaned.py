@@ -1,0 +1,78 @@
+class Node:
+    def __init__(self, data=None):
+        self.data = data
+        self.next = None
+class LinkedList:
+    def __init__(self):
+        self.head = Node()
+    def append(self, data):
+        new_node = Node(data)
+        current_node = self.head
+        while current_node.next is not None:
+            current_node = current_node.next
+        current_node.next = new_node
+    def length(self):
+        current_node = self.head
+        total = 0
+        while current_node.next is not None:
+            current_node = current_node.next
+            total += 1
+        return total
+    def display_images(self):
+        current_node = self.head
+        images = []
+        while current_node.next is not None:
+            if current_node.data:
+                images.append(current_node.data[0])
+            current_node = current_node.next
+        return images
+    def get_student_by_rollno(self, rollno):
+        current_node = self.head
+        while current_node.next is not None:
+            current_node = current_node.next
+            data = current_node.data
+            if data.rollno == rollno:
+                return data
+        print('Student with the roll no does not exist')
+        return None
+    def erase_student(self, rollno):
+        current_node = self.head
+        while current_node.next is not None:
+            last_node = current_node
+            current_node = current_node.next
+            data = current_node.data
+            if data.rollno == rollno:
+                last_node.next = current_node.next
+                print('Record erased')
+                return
+        print('Student with the roll no does not exist')
+    def get_image(self, index):
+        if index >= self.length():
+            print('ERROR: Index out of range')
+            return None
+        current_node = self.head
+        for i in range(index + 1):
+            current_node = current_node.next
+        return current_node.data
+    def erase_image(self, index):
+        if index >= self.length():
+            print('ERROR: Index out of range')
+            return None
+        current_node = self.head
+        for i in range(index + 1):
+            last_node = current_node
+            current_node = current_node.next
+        last_node.next = current_node.next
+if __name__ == "__main__":
+    linked_list = LinkedList()
+    linked_list.append(('image1.jpg', 'description1', 101))
+    linked_list.append(('image2.jpg', 'description2', 102))
+    linked_list.append(('image3.jpg', 'description3', 103))
+    print("Length of the linked list:", linked_list.length())
+    print("Images in the linked list:", linked_list.display_images())
+    print("Data of student with roll no 102:", linked_list.get_student_by_rollno(102))
+    linked_list.erase_student(102)
+    print("Data of student with roll no 102 after erase:", linked_list.get_student_by_rollno(102))
+    print("Image at index 1:", linked_list.get_image(1))
+    linked_list.erase_image(1)
+    print("Images in the linked list after erasing at index 1:", linked_list.display_images())

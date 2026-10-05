@@ -1,0 +1,61 @@
+from collections import deque
+class Node:
+    BLACK = 5
+    WHITE = 2
+    EMPTY = 0
+class Grid:
+    def __init__(self, size, node_pairs):
+        self.board = [[Node.EMPTY for _ in range(size)] for _ in range(size)]
+        self.size = size
+        for node, node_type in node_pairs:
+            self.set_val(self.board, node, node_type)
+    def get(self, arr, location):
+        return arr[location[0]][location[1]]
+    def set_val(self, arr, location, value):
+        arr[location[0]][location[1]] = value
+    def is_captured(self, location):
+        if self.get(self.board, location) == Node.WHITE:
+            return False
+        if self.isnt_out(location):
+            q = deque()
+            q.appendleft(location)
+            visited = [[False for _ in range(self.size)] for _ in range(self.size)]
+            self.set_val(visited, location, True)
+            while len(q) != 0:
+                curr = q.popleft()
+                self.set_val(visited, curr, True)
+                if self.is_surrounded(q, visited, curr):
+                    continue
+                else:
+                    return False
+            return True
+        else:
+            return False
+    def isnt_out(self, location):
+        return 0 <= location[0] < self.size and 0 <= location[1] < self.size
+    def is_surrounded(self, q, visited, curr):
+        neighbors = [[curr[0], curr[1] + 1], [curr[0], curr[1] - 1], [curr[0] + 1, curr[1]], [curr[0] - 1, curr[1]]]
+        for loc in neighbors:
+            if self.isnt_out(loc):
+                if not self.get(visited, loc):
+                    if self.get(self.board, loc) == Node.WHITE:
+                        self.set_val(visited, loc, True)
+                        continue
+                    elif self.get(self.board, loc) == Node.EMPTY:
+                        return False
+                    elif self.get(self.board, loc) == Node.BLACK:
+                        q.append(loc)
+            else:
+                continue
+        return True
+if __name__ == "__main__":
+    new_grid = Grid(5, [([1, 3], Node.WHITE),
+                        ([1, 2], Node.WHITE),
+                        ([3, 3], Node.WHITE),
+                        ([3, 2], Node.EMPTY),
+                        ([2, 1], Node.WHITE),
+                        ([2, 4], Node.WHITE),
+                        ([2, 2], Node.BLACK),
+                        ([2, 3], Node.BLACK),
+                        ])
+    print(new_grid.is_captured([2, 2]))

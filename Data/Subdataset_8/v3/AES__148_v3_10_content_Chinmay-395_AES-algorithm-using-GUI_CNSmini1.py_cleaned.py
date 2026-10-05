@@ -1,0 +1,49 @@
+from tkinter import Tk, Label, Entry, Button, Text, END, WORD
+import pyAesCrypt
+import io
+BUFFER_SIZE = 64 * 1024
+PASSWORD = "foopassword"
+ENCRYPTED_FILE = 'CipherText.txt'
+def encrypt_text():
+    encrypted_text_display.delete('1.0', END)
+    plain_text = user_input_entry.get()
+    plain_text_bytes = plain_text.encode('utf-8')
+    encrypted_bytes_io = io.BytesIO()
+    pyAesCrypt.encryptStream(io.BytesIO(plain_text_bytes), encrypted_bytes_io, PASSWORD, BUFFER_SIZE)
+    encrypted_data = encrypted_bytes_io.getvalue()
+    encrypted_text_display.insert(END, str(encrypted_data))
+    with open(ENCRYPTED_FILE, 'wb') as file:
+        file.write(encrypted_data)
+def decrypt_text():
+    decrypted_text_display.delete('1.0', END)
+    with open(ENCRYPTED_FILE, 'rb') as file:
+        encrypted_data = file.read()
+    encrypted_bytes_io = io.BytesIO(encrypted_data)
+    decrypted_bytes_io = io.BytesIO()
+    pyAesCrypt.decryptStream(encrypted_bytes_io, decrypted_bytes_io, PASSWORD, BUFFER_SIZE, len(encrypted_data))
+    decrypted_text = decrypted_bytes_io.getvalue().decode('utf-8')
+    decrypted_text_display.insert(END, decrypted_text)
+def setup_gui():
+    window = Tk()
+    window.title("AES Encryption/Decryption Tool")
+    window.configure(background="black")
+    Label(window, text="Enter text to encrypt:", bg="black", fg="white", font="none 12 bold").grid(row=0, column=0, sticky='W')
+    global user_input_entry
+    user_input_entry = Entry(window, width=50, bg='white')
+    user_input_entry.grid(row=1, column=0, sticky='W')
+    Button(window, text="Encrypt", command=encrypt_text).grid(row=1, column=1, padx=5)
+    Label(window, text="Encrypted text:", bg="black", fg="white", font="none 12 bold").grid(row=2, column=0, sticky='W')
+    global encrypted_text_display
+    encrypted_text_display = Text(window, width=75, height=6, wrap=WORD, background="white")
+    encrypted_text_display.grid(row=3, column=0, columnspan=2, sticky='W')
+    Button(window, text="Decrypt", command=decrypt_text).grid(row=4, column=1, padx=5)
+    Label(window, text="Decrypted text:", bg="black", fg="white", font="none 12 bold").grid(row=5, column=0, sticky='W')
+    global decrypted_text_display
+    decrypted_text_display = Text(window, width=75, height=6, wrap=WORD, background="white")
+    decrypted_text_display.grid(row=6, column=0, columnspan=2, sticky='W')
+    return window
+def main():
+    window = setup_gui()
+    window.mainloop()
+if __name__ == "__main__":
+    main()

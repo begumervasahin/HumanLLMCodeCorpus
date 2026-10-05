@@ -1,0 +1,54 @@
+import sys
+import os
+import math
+from bitstring import BitArray
+def main():
+    if len(sys.argv) > 2:
+        input_file_name = sys.argv[1]
+        output_file_name = sys.argv[2]
+        print("Input File Name:", input_file_name)
+        input_file_length_in_bytes = os.path.getsize(input_file_name)
+        print("Input File Size:", input_file_length_in_bytes, "Bytes")
+        print("\nReading Input File...")
+        with open(input_file_name, "rb") as input_file:
+            file_data = BitArray(bytes=input_file.read())
+        max_code_length = int(file_data[:8].uint)
+        max_code_bits = int(math.ceil(math.log(max_code_length + 1, 2)))
+        padding_size = int(file_data[8:11].uint)
+        print("Reading Symbol Codes...")
+        symbols_data = file_data[11:]
+        symbols = {}
+        pos = 0
+        for symbol in range(256):
+            if symbols_data[pos]:
+                pos += 1
+                posj = pos + max_code_bits
+                code_size = int(symbols_data[pos:posj].uint)
+                code = symbols_data[posj:(posj + code_size)]
+                pos = posj + code_size
+                if code_size not in symbols:
+                    symbols[code_size] = {}
+                symbols[code_size][code.bin] = BitArray(uint=symbol, length=8)
+            else:
+                pos += 1
+        pos += padding_size
+        print("Reading and Writing Compressed Data...")
+        data = symbols_data[pos:]
+        i = 0
+        with open(output_file_name, "wb") as output_file:
+            while i < data.length:
+                buffer = BitArray(data[i:(i + max_code_length)])
+                for size in symbols:
+                    if size <= 1:
+                        code = BitArray(uint=buffer[0], length=1)
+                    else:
+                        code = buffer[:size]
+                    if code.bin in symbols[size]:
+                        symbols[size][code.bin].tofile(output_file)
+                        break
+                i += size
+        output_file_length_in_bytes = os.path.getsize(output_file_name)
+        print("\nOutput File Name:           ", output_file_name)
+        print("Compressed File Size:", output_file_length_in_bytes, "Bytes")
+if __name__ == "__main__":
+    main()

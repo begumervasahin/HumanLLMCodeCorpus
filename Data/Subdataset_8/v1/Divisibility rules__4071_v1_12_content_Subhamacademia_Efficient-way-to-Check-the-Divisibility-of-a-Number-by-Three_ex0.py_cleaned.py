@@ -1,0 +1,21 @@
+def is_divisible_by_three(n):
+    odd_counter = even_counter = 0
+    if n == 0:
+        return True
+    elif n == 1:
+        return False
+    while n:
+        if n & 1 == 1:
+            odd_counter += 1
+        n = n >> 1
+        if n & 1 == 1:
+            even_counter += 1
+        n = n >> 1
+    return is_divisible_by_three(abs(odd_counter - even_counter))
+if __name__ == "__main__":
+    print("Enter an integer:")
+    n = int(input())
+    if is_divisible_by_three(abs(n)):
+        print("%d is divisible by 3." % n)
+    else:
+        print("%d is not divisible by 3." % n)

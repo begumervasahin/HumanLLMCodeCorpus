@@ -1,0 +1,40 @@
+'''
+@Author: Yixiong J
+@Date: 2019-10-02 01:04:38
+@LastEditors: Yixiong J
+@LastEditTime: 2019-10-02 01:07:37
+@Description: Use BFS to caculate shortest path between two subway station
+'''
+import os
+from Stations import *
+from collections import deque
+def search(station,dst):
+    search_queue = deque()
+    searched = {station.getName():None}
+    search_queue += [station]
+    while search_queue:
+        curStation = search_queue.popleft()
+        for subStation in stationMap[curStation]:
+            if subStation.getName() not in searched.keys():
+                if subStation.getName() == dst.getName():
+                    searched[subStation.getName()] = curStation.getName()
+                    return searched,dst.getName()
+                else:
+                    search_queue += [subStation]
+                    searched[subStation.getName()] = curStation.getName()
+    print("NULL")
+    return False,dst
+start = input("è¯·è¾å
+¥èµ·ç¹ç«ï¼  ")
+dst = input("è¯·è¾å
+¥ç®çå°ï¼  ")
+searchedOut,dstOut = search(stationStringMap[start],stationStringMap[dst])
+print("-"*10+"è·¯å¾å¦ä¸"+"-"*10)
+path = [dstOut]
+while searchedOut[dstOut] is not None:
+    path.append(searchedOut[dstOut])
+    dstOut = searchedOut[dstOut]
+path.reverse()
+for each in path:
+    print(each+" ",end="")
+print("\n")

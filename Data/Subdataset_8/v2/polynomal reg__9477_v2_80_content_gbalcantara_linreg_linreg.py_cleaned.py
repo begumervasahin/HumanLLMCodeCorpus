@@ -1,0 +1,45 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+def gradientDescent(x, y, th, eps, m, iteration):
+    xTrans = x.transpose()
+    convergence_flag = 1
+    while convergence_flag != 0:
+        for i in range(0, iteration):
+            h = np.dot(x, th)
+            loss = h - y
+            cost = np.sum(loss ** 2) / (2 * m)
+            gradient = np.dot(xTrans, loss) / m
+            th = th - eps * gradient
+            convergence_flag = round(cost, 2)
+        eps += 0.00001
+    return th, eps
+if __name__ == "__main__":
+    var1 = sys.argv[1] if len(sys.argv) > 1 else "0"
+    var2 = sys.argv[2] if len(sys.argv) > 2 else "0"
+    var3 = sys.argv[3] if len(sys.argv) > 3 else "0"
+    x2 = int(var1)
+    x1 = int(var2)
+    x0 = int(var3)
+    x = np.zeros(shape=(20, 3))
+    y = np.zeros(shape=20)
+    for i, num in enumerate(range(-10, 10)):
+        x[i][0] = 1
+        x[i][1] = num
+        x[i][2] = num ** 2
+        y[i] = ((x2) * num ** 2) + ((x1) * num) + x0
+    m, n = np.shape(x)
+    iteration = 5000
+    eps = 0.000001
+    th = np.ones(n)
+    noise = np.random.uniform(-0.1, 0.1, y.shape)
+    y = y + noise
+    th, eps = gradientDescent(x, y, th, eps, m, iteration)
+    print('learning rate=', eps)
+    print('x2=', th[2])
+    print('x1=', th[1])
+    print('x0=', th[0])
+    xx = np.linspace(-10, 10, 20)
+    yy = th[2] * xx ** 2 + th[1] * xx + th[0]
+    plt.plot(x[:, 1], y, 'kx', xx, yy)
+    plt.show()

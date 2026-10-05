@@ -1,0 +1,123 @@
+from flask import Flask, render_template
+from flask_sqlalchemy import SQLAlchemy
+from flask_apscheduler import APScheduler
+from selenium import webdriver
+from flightscraper2 import flightscraper2
+from imgconverter import path_to_image_html
+import os
+from datetime import datetime
+import pandas as pd
+import requests
+app = Flask(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:
+db = SQLAlchemy(app)
+scheduler = APScheduler()
+chrome_options = webdriver.ChromeOptions()
+if "GOOGLE_CHROME_BIN" in os.environ and "CHROMEDRIVER_PATH" in os.environ:
+    chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--no-sandbox")
+    driver = webdriver.Chrome(executable_path=os.environ.get("CHROMEDRIVER_PATH"), options=chrome_options)
+else:
+    chrome_options.add_argument("--headless")
+    driver = webdriver.Chrome(options=chrome_options)
+class Flight(db.Model):
+    __tablename__ = 'flights'
+    flight_type = db.Column(db.String(), primary_key=True)
+    journey = db.Column(db.String())
+    stopover = db.Column(db.String())
+    airline = db.Column(db.String())
+    airline_logo = db.Column(db.String())
+    flight_number = db.Column(db.String(), primary_key=True)
+    status = db.Column(db.String())
+    scheduled_time = db.Column(db.String())
+    estimated_time = db.Column(db.String())
+    time_modified = db.Column(db.String())
+    def __init__(self, flight_type, journey, stopover, airline, airline_logo, flight_number, status, scheduled_time, estimated_time, time_modified):
+        self.flight_type = flight_type
+        self.journey = journey
+        self.stopover = stopover
+        self.airline = airline
+        self.airline_logo = airline_logo
+        self.flight_number = flight_number
+        self.status = status
+        self.scheduled_time = scheduled_time
+        self.estimated_time = estimated_time
+        self.time_modified = time_modified
+    def __repr__(self):
+        return '<flight number {}>'.format(self.flight_number)
+    def serialize(self):
+        return {
+            'flight_type': self.flight_type,
+            'journey': self.journey,
+            'stopover': self.stopover,
+            'airline': self.airline,
+            'airline_logo': self.airline_logo,
+            'flight_number': self.flight_number,
+            'status': self.status,
+            'scheduled_time': self.scheduled_time,
+            'estimated_time': self.estimated_time,
+            'time_modified': self.time_modified
+        }
+def refresh_flights(terminal, journey):
+    flights = flightscraper2(terminal=terminal, journey=journey, driver=driver)
+    if len(flights['Type']) > 0:
+        flight_type_str = 'static/images/{}_{}.png'.format(terminal, journey)
+        Flight.query.filter(Flight.flight_type==flight_type_str).delete()
+        db.session.commit()
+        for i in range(0, len(flights["Type"])):
+            try:
+                flight = Flight(
+                    flight_type=flights["Type"][i],
+                    journey=flights["Journey"][i],
+                    stopover=flights["Stopover"][i],
+                    airline=flights["Airline"][i],
+                    airline_logo=flights["Logo"][i],
+                    flight_number=flights["Flight number"][i],
+                    status=flights["Status"][i],
+                    scheduled_time=flights["Scheduled time"][i],
+                    estimated_time=flights["Estimated time"][i],
+                    time_modified=str(datetime.now())
+                )
+                db.session.add(flight)
+                db.session.commit()
+                print("Flight added, flight number={}".format(flight.flight_number))
+            except Exception as e:
+                print(str(e))
+def ping_app():
+    url = "https:
+    response = requests.get(url)
+    print("Ping status:", response.status_code)
+@app.route("/")
+def loading():
+    return render_template("loading.html")
+@app.route("/results")
+def new_results():
+    flights = Flight.query.all()
+    flights_data = [flight.serialize() for flight in flights]
+    flights_df = pd.DataFrame(flights_data)
+    flights_df.rename(columns={
+        "flight_type": "Type",
+        "journey": "Journey",
+        "stopover": "Stopover",
+        "airline": "Airline",
+        "airline_logo": "Logo",
+        "flight_number": "Flight number",
+        "status": "Status",
+        "scheduled_time": "Scheduled time",
+        "estimated_time": "Estimated time",
+        "time_modified": "Time Modified"}, inplace=True)
+    flights_df.drop(columns=["Time Modified"], inplace=True)
+    flights_df.sort_values(by=['Scheduled time'], inplace=True)
+    pd.options.display.max_colwidth = 200
+    return render_template("flights.html", tables=[flights_df.to_html(index=False, classes="flights", escape=False, formatters=dict(Type=path_to_image_html, Logo=path_to_image_html))], titles=['Sydney flights'])
+if __name__ == "__main__":
+    scheduler.add_job(refresh_flights, "cron", args=["international", "arrival"], minute="0")
+    scheduler.add_job(refresh_flights, "cron", args=["international", "departure"], minute="15")
+    scheduler.add_job(refresh_flights, "cron", args=["domestic", "arrival"], minute="30")
+    scheduler.add_job(refresh_flights, "cron", args=["domestic", "departure"], minute="45")
+    scheduler.add_job(ping_app, "cron", minute="20,40,59", hour="6-23")
+    scheduler.start()
+    app.run(debug=True)

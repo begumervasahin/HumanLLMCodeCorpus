@@ -1,0 +1,91 @@
+import sys
+import struct
+import signal
+import argparse
+import gevent
+from gevent import socket
+from gevent.server import StreamServer
+from gevent.socket import create_connection, gethostbyname
+from Crypto import Random
+from Crypto.Cipher import AES, PKCS1_v1_5 as RSACipher
+from Crypto.Signature import PKCS1_v1_5 as RSASignature
+from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
+from Crypto.Hash import SHA
+from utils.SSocket import SSocket
+from utils.socks import *
+class SocksLocalServer(StreamServer):
+    def __init__(self, listen, args):
+        super(SocksLocalServer, self).__init__(listen)
+        self.remote_ip = args.remote_ip
+        self.remote_port = args.remote_port
+        with open(args.remote_pub) as f:
+            remote_pubkey = RSA.importKey(f.read())
+        self.remote_cipher = RSACipher.new(remote_pubkey)
+        self.remote_verifier = RSASignature.new(remote_pubkey)
+        with open(args.private) as f:
+            privatekey = RSA.importKey(f.read())
+        self.local_cipher = RSACipher.new(privatekey)
+        self.local_signer = RSASignature.new(privatekey)
+    def get_available_methods(self, n):
+        methods = []
+        for i in range(n):
+            methods.append(ord(self.recv(1)))
+        return methods
+    def handle(self, sock, addr):
+        print('connection from %s:%s' % addr)
+        src = SSocket(socket=sock)
+        ver, n_method = src.unpack('BB', 2)
+        if ver != SOCKS_VERSION_V:
+            src.pack('BB', SOCKS_VERSION_V, SOCKS_NO_ACCEPT_METHOD)
+            return
+        if n_method == 0:
+            src.pack('BB', SOCKS_VERSION_V, SOCKS_NO_ACCEPT_METHOD)
+            return
+        else:
+            methods = []
+            for i in range(n_method):
+                methods.append(ord(src.recv(1)))
+            if SOCKS_AUTH_NONE not in set(methods):
+                src.pack('BB', SOCKS_VERSION_V, SOCKS_NO_ACCEPT_METHOD)
+                return
+        src.pack('!BB', SOCKS_VERSION_V, SOCKS_AUTH_NONE)
+        try:
+            dest = SSocket(addr = (self.remote_ip, self.remote_port))
+        except IOError, ex:
+            print "%s:%d" % addr, "failed to connect to %s:%d" % ("127.0.0.1", 9099)
+            src.pack('!BBBBIH', SOCKS_VERSION_V, SOCKS_REP_NET_ERO, 0x00, 0x01, 0, 0)
+            return
+        aes_key = get_random_bytes(16)
+        aes_iv = get_random_bytes(16)
+        session_key = aes_key + aes_iv
+        ciphertext = self.remote_cipher.encrypt(session_key)
+        dest.sendall(ciphertext)
+        dest.aes_init(aes_key, AES.MODE_CBC, aes_iv)
+        h = SHA.new(session_key)
+        signature = self.local_signer.sign(h)
+        dest.aes_send(signature)
+        signature = dest.aes_recv()
+        h = SHA.new(session_key)
+        if not self.remote_verifier.verify(h, signature):
+            return
+        gevent.spawn(src.aes_enc_forward, dest)
+        gevent.spawn(dest.aes_dec_forward, src)
+    def close(self):
+        sys.exit(0)
+    @staticmethod
+    def start_server(args):
+        server = SocksLocalServer(('0.0.0.0', args.port), args)
+        gevent.signal(signal.SIGTERM, server.close)
+        gevent.signal(signal.SIGINT, server.close)
+        print("Server is listening on 0.0.0.0:%d" % args.port)
+        server.serve_forever()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', default=9011, type=int)
+    parser.add_argument('--remote_ip', default="127.0.0.1")
+    parser.add_argument('--remote_port', default=9099, type=int)
+    parser.add_argument('--remote_pub', default="keys/remote.pub")
+    parser.add_argument('--private', default="keys/local")
+    args = parser.parse_args()
+    SocksLocalServer.start_server(args)

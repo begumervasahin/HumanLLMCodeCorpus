@@ -1,0 +1,134 @@
+import random
+from enum import Enum
+from collections import deque
+from util import PriorityQueue
+class EventType(Enum):
+    ARRIVAL = "Arrival"
+    DEPARTURE = "Departure"
+class Request:
+    def __init__(self, creation_time, timeout):
+        self.creation_time = creation_time
+        self.timeout = timeout
+    def __repr__(self):
+        return str("(Request creation time = " + str(round(self.creation_time, 6)) + " timeout = " + str(round(self.timeout, 6)) + ")")
+class Server:
+    def __init__(self, mean_service_time):
+        self.mean_service_time = mean_service_time
+        self.queue = deque([])
+        self.is_busy = False
+        self.customers_serviced = 0
+        self.response_time_so_far = 0.0
+        self.goodput = 0
+        self.badput = 0
+    def handleDeparture(self, request, sim_time, event_list, verbose=True):
+        self.customers_serviced += 1
+        self.response_time_so_far += (sim_time - request.creation_time)
+        if (request.creation_time + request.timeout >= sim_time):
+            self.goodput += 1
+            if verbose:
+                print(str(sim_time) + "   \t: ", request, "   \tDeparted as Goodput")
+        else:
+            self.badput += 1
+            if verbose:
+                print(str(sim_time) + "   \t: ", request,"   \tDeparted as Badput")
+        if len(self.queue) == 0:
+            self.is_busy = False
+        else:
+            self.is_busy = True
+            request = self.queue.popleft()
+            service_time = random.expovariate(1.0/self.mean_service_time)
+            event_list.push(sim_time + service_time,
+                            EventType.DEPARTURE, request)
+    def handleArrival(self, request, sim_time, event_list, verbose=True):
+        if verbose:
+            print(str(sim_time) + "   \t: ", request, "   \tArrived ")
+        if not self.is_busy:
+            self.is_busy = True
+            service_time = random.expovariate(1.0/self.mean_service_time)
+            event_list.push(sim_time + service_time,
+                            EventType.DEPARTURE, request)
+        else:
+            self.queue.append(request)
+    def getNumberOfCustomersServiced(self):
+        return self.customers_serviced
+    def getStatus(self):
+        return self.is_busy
+    def getQueueLength(self):
+        return len(self.queue)
+    def getTotalResponseTime(self):
+        return self.response_time_so_far
+    def getGoodput(self):
+        return self.goodput
+    def getBadput(self):
+        return self.badput
+mean_service_time = float(input("Enter mean service time of server: "))
+mean_interarrival_time = float(input("Enter mean interarrival time of requests: "))
+mean_timeout = float(input("Enter average timeout of requests: "))
+MAX_CUSTOMERS_TO_SERVICE = int(input("Enter maximum number of customers to service before stopping a run: "))
+NUM_OF_RUNS = int(input("Enter number of runs: "))
+verbose = bool(int(input("Type 1 for verbose and 0 for no verbose: ")))
+def run(i, mean_service_time, mean_interarrival_time, MAX_CUSTOMERS_TO_SERVICE):
+    event_list = PriorityQueue()
+    sim_time = 0.0
+    server = Server(mean_service_time)
+    interarrival_time = random.expovariate(1.0/mean_interarrival_time)
+    timeout = random.expovariate(1.0/mean_timeout)
+    event_list.push(sim_time + interarrival_time, EventType.ARRIVAL, Request(sim_time + interarrival_time, timeout))
+    utilization_time = 0.0
+    queue_length_area = 0
+    while not (event_list.isEmpty() or server.getNumberOfCustomersServiced() == MAX_CUSTOMERS_TO_SERVICE):
+        event_start_time, event_type, request = event_list.pop()
+        prev_sim_time = sim_time
+        sim_time = event_start_time
+        if event_type == EventType.DEPARTURE:
+            utilization_time += (sim_time - prev_sim_time)
+            queue_length_area += (sim_time - prev_sim_time) * server.getQueueLength()
+            server.handleDeparture(request, sim_time, event_list, verbose)
+        elif event_type == EventType.ARRIVAL:
+            if (server.getStatus() == True):
+                utilization_time += (sim_time - prev_sim_time)
+            queue_length_area += (sim_time - prev_sim_time) * server.getQueueLength()
+            server.handleArrival(request, sim_time, event_list, verbose)
+            interarrival_time = random.expovariate(1.0/mean_interarrival_time)
+            timeout = random.expovariate(1.0/mean_timeout)
+            event_list.push(sim_time + interarrival_time, EventType.ARRIVAL, Request(sim_time + interarrival_time, timeout))
+    assert server.getNumberOfCustomersServiced() == MAX_CUSTOMERS_TO_SERVICE
+    total_time = sim_time
+    response_time_so_far = server.getTotalResponseTime()
+    utilization = utilization_time / total_time
+    queue_length = queue_length_area / total_time
+    response_time = response_time_so_far / MAX_CUSTOMERS_TO_SERVICE
+    throughput = MAX_CUSTOMERS_TO_SERVICE / total_time
+    goodput = server.getGoodput() / total_time
+    badput = server.getBadput() / total_time
+    assert abs(goodput + badput - throughput) < 1e-3
+    print("")
+    print("Server Utilization: \t", utilization)
+    print("Average Queue Length: \t", queue_length)
+    print("Average Response Time: \t", response_time)
+    print("Goodput: \t\t", goodput)
+    print("Badput: \t\t", badput)
+    return utilization, queue_length, response_time, goodput, badput
+avg_utilization = []
+avg_queue_length = []
+avg_response_time = []
+avg_goodput = []
+avg_badput = []
+def mean(list_):
+    return sum(list_) / len(list_)
+for i in range(NUM_OF_RUNS):
+    print("--------------------------------------------------")
+    print("Run " + str(i))
+    utilization, queue_length, response_time, goodput, badput = run(
+        i, mean_service_time, mean_interarrival_time, MAX_CUSTOMERS_TO_SERVICE)
+    avg_utilization.append(utilization)
+    avg_queue_length.append(queue_length)
+    avg_response_time.append(response_time)
+    avg_goodput.append(goodput)
+    avg_badput.append(badput)
+print("\n")
+print("Server Utilization: \t", mean(avg_utilization))
+print("Queue Length: \t\t", mean(avg_queue_length))
+print("Response Time: \t\t", mean(avg_response_time))
+print("Goodput: \t\t", mean(avg_goodput))
+print("Badput: \t\t", mean(avg_badput))

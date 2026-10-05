@@ -1,0 +1,49 @@
+import requests
+import sys
+import json
+import time
+import os
+from gtts import gTTS
+import numpy as np
+class Car:
+    def __init__(self, curr_location, destination, server_url, port=8080):
+        self.previous_location = ""
+        self.current_location = curr_location
+        self.destination = destination
+        self.api_url = f"{server_url}:{port}"
+        self.car_id = np.random.randint(10000)
+    def journey_loop(self):
+        self.print_and_say(f"Beginning journey from {self.current_location} to {self.destination}")
+        while True:
+            response = json.loads(requests.post(self.api_url,
+                                                json={"prev": self.previous_location,
+                                                      "curr": self.current_location,
+                                                      "dest": self.destination}).text)
+            if response["status"] == -1:
+                self.print_and_say("You cannot reach your destination from the given starting point")
+                break
+            elif response["status"] == 1:
+                self.print_and_say("You have arrived at your destination")
+                break
+            else:
+                self.print_and_say(f"Turn onto {response['road']}")
+                self.print_and_say(f"Current expected remaining time to {self.destination}: {response['total_wait']} seconds")
+                self.previous_location = self.current_location
+                self.current_location = response['next']
+                time.sleep(response['wait'])
+    def print_and_say(self, message):
+        text_to_speech = gTTS(text=message, lang='en')
+        text_to_speech.save(f"speech.{self.car_id}.mp3")
+        print(message)
+        os.system(f"ffplay -nodisp -autoexit -volume 100 -loglevel quiet speech.{self.car_id}.mp3")
+def initialize_car(argv):
+    arguments_count = len(argv)
+    curr_location, destination, server_url = "", "", ""
+    if arguments_count == 4:
+        curr_location = argv[1]
+        destination = argv[2]
+        server_url = argv[3]
+    car = Car(curr_location, destination, server_url)
+    car.journey_loop()
+if __name__ == "__main__":
+    initialize_car(sys.argv)

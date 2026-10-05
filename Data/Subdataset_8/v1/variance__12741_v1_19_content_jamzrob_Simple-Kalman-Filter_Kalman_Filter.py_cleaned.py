@@ -1,0 +1,41 @@
+import math
+def kalman_filter():
+    count = 0
+    print("\nPrediction Steps")
+    print("----------------------------------------")
+    At = float(input("A: "))
+    Bt = float(input("B: "))
+    ut_ = float(input("Enter Prior Mean: "))
+    ut = float(input("Enter Current Mean: "))
+    pMean = At * ut_ + Bt * ut
+    print("Predicted Mean: ", pMean)
+    Et_ = float(input("\nE(t-1): "))
+    Att = float(input("A(T/t): "))
+    Qt = float(input("Q(t): "))
+    pCo = At * Et_ * Att + Qt
+    print("Predicted Convariance: ", pCo)
+    while count == 0:
+        print("\nUpdate Steps")
+        print("----------------------------------------")
+        Ctt = float(input("C(T/t): "))
+        Ct = float(input("C/(t): "))
+        Rt = float(input("Measurement Covariance: "))
+        kGain = pCo * Ctt * math.pow((Ct * pCo * Ctt + Rt), (-1))
+        print("Kalman Gain: ", kGain)
+        zt = float(input("\nActual Measurement: "))
+        uMean = pMean + kGain * (zt - Ct * pMean)
+        print("Updated Mean: ", uMean)
+        uCo = pCo - kGain * Ct * pCo
+        print("\nUpdated Covariance: ", uCo)
+        print("\nPrediction Steps")
+        print("----------------------------------------")
+        At = float(input("A: "))
+        Bt = float(input("B: "))
+        ut = float(input("Enter Current Mean: "))
+        pMean = At * uMean + Bt * ut
+        print("Predicted Mean: ", pMean)
+        Att = float(input("\nA(T/t): "))
+        Qt = float(input("Q(t): "))
+        pCo = At * uCo * Att + Qt
+        print("Predicted Convariance: ", pCo)
+kalman_filter()

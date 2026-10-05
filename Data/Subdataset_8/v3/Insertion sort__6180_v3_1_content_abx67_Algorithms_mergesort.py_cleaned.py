@@ -1,0 +1,32 @@
+def merge(arr, left, right, mid):
+    if left == mid == right:
+        return
+    left_arr = arr[left:mid + 1]
+    right_arr = arr[mid + 1:right + 1]
+    i, j, k = 0, 0, left
+    while i < len(left_arr) and j < len(right_arr):
+        if left_arr[i] <= right_arr[j]:
+            arr[k] = left_arr[i]
+            i += 1
+        else:
+            arr[k] = right_arr[j]
+            j += 1
+        k += 1
+    while i < len(left_arr):
+        arr[k] = left_arr[i]
+        i += 1
+        k += 1
+    while j < len(right_arr):
+        arr[k] = right_arr[j]
+        j += 1
+        k += 1
+def merge_sort(arr, left, right):
+    if left < right:
+        mid = (left + right)
+        merge_sort(arr, left, mid)
+        merge_sort(arr, mid + 1, right)
+        merge(arr, left, right, mid)
+if __name__ == "__main__":
+    arr = [38, 27, 43, 3, 9, 82, 10]
+    merge_sort(arr, 0, len(arr) - 1)
+    print("Sorted array:", arr)

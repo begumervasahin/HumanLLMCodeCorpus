@@ -1,0 +1,97 @@
+import random
+import sys
+import time
+from multiprocessing import Process, Queue
+import math
+numThreads = 4
+def weight_serial(size):
+    dd = []
+    for i in range(size):
+        ddd = []
+        for j in range(size):
+            if i == j:
+                ddd.append(0)
+            else:
+                ddd.append(random.randint(2, 30))
+        dd.append(ddd)
+    return dd
+def pi_start_serial(weights, size):
+    dd = []
+    for i in range(size):
+        ddd = []
+        for j in range(size):
+            if i == j or weights[i][j] == sys.maxsize:
+                ddd.append(None)
+            elif i != j and weights[i][j] < sys.maxsize:
+                ddd.append(i)
+            else:
+                ddd.append(-1)
+        dd.append(ddd)
+    return dd
+def dist_serial(weights, size):
+    d = [[0 if i == j else int(sys.maxsize) for j in range(size)] for i in range(size)]
+    for i in range(size):
+        for j in range(size):
+            d[i][j] = weights[i][j]
+    return d
+def pi_serial(weights, size):
+    d = [[None if i == j else 0 for j in range(size)] for i in range(size)]
+    for i in range(size):
+        for j in range(size):
+            if weights[i][j] != sys.maxsize:
+                d[i][j] = i
+    return d
+def floyd_serial(weights, size):
+    d = dist_serial(weights, size)
+    p = pi_serial(weights, size)
+    for k in range(size):
+        for i in range(size):
+            for j in range(size):
+                d[i][j] = min(d[i][j], d[i][k] + d[k][j])
+                if d[i][j] == d[i][k] + d[k][j]:
+                    p[i][j] = p[k][j]
+    return d, p
+def min_p_parallel(dist, pi, k, ir, size, queue):
+    darr = []
+    parr = []
+    for i in ir:
+        darr.append([min(dist[i][j], dist[i][k] + dist[k][j]) for j in range(size)])
+        parr.append([pi[i][j] if dist[i][j] <= dist[i][k] + dist[k][j] else pi[k][j] for j in range(size)])
+    queue.put((ir, darr, parr))
+def floyd_parallel(weights, size):
+    dist = dist_serial(weights, size)
+    pi = pi_serial(weights, size)
+    for k in range(size):
+        thr = []
+        queue = Queue()
+        for pro in range(numThreads):
+            imin = math.floor(pro * (size / numThreads))
+            imax = math.floor((pro + 1) * (size / numThreads))
+            ir = range(imin, imax)
+            t = Process(target=min_p_parallel, args=(dist, pi, k, ir, size, queue))
+            t.start()
+            thr.append(t)
+        for t in thr:
+            t.join()
+        for v in range(numThreads):
+            veci, vecd, vecp = queue.get()
+            ct = 0
+            for i in veci:
+                dist[i] = list(vecd[ct])
+                pi[i] = list(vecp[ct])
+                ct += 1
+    return dist, pi
+if __name__ == "__main__":
+    for n in range(24, 460, 24):
+        w = weight_serial(n)
+        start = time.process_time()
+        ds, ps = floyd_serial(w, n)
+        end = time.process_time()
+        print('S: For %s: Elapsed time: %ss' % (n, str(end-start)))
+        for numThreads in [1, 2, 3, 4, 6, 8]:
+            start = time.process_time()
+            dp, pp = floyd_parallel(w, n)
+            end = time.process_time()
+            print('P: For %s with %s threads: Elapsed time: %ss' % (n, numThreads, str(end-start)))
+            print('Same dist matrix: %s' % (dp == ds))
+            print('Same pi matrix: %s' % (pp == ps))

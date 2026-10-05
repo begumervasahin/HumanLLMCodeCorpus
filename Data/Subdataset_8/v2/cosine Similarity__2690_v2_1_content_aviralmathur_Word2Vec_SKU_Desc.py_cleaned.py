@@ -1,0 +1,56 @@
+import pandas as pd
+import os
+import nltk.data
+import logging
+import numpy as np
+import gensim
+from sklearn.metrics.pairwise import cosine_similarity
+from KaggleWord2VecUtility import KaggleWord2VecUtility
+def make_feature_vector(words, model, num_features):
+    feature_vector = np.zeros((num_features,), dtype="float32")
+    num_words = 0.
+    index2word_set = set(model.wv.index2word)
+    for word in words:
+        if word in index2word_set:
+            num_words += 1
+            feature_vector = np.add(feature_vector, model.wv[word])
+    feature_vector /= num_words if num_words != 0 else 1
+    return feature_vector
+def get_avg_feature_vectors(skucollection, model, num_features):
+    review_feature_vectors = np.zeros((len(skucollection), num_features), dtype="float32")
+    for i, sku in enumerate(skucollection):
+        if i % 1000 == 0:
+            print(f"SKU {i} of {len(skucollection)}")
+        review_feature_vectors[i] = make_feature_vector(sku, model, num_features)
+    return review_feature_vectors
+def get_clean_train_reviews(skucollection):
+    clean_skucollection = []
+    for sku in skucollection["product_title"]:
+        clean_skucollection.append(KaggleWord2VecUtility.sku_to_wordlist(sku, remove_stopwords=False))
+    return clean_skucollection
+def get_clean_test_reviews(skucollection):
+    clean_skucollection = []
+    for sku in skucollection["query"]:
+        clean_skucollection.append(KaggleWord2VecUtility.sku_to_wordlist(sku, remove_stopwords=False))
+    return clean_skucollection
+if __name__ == '__main__':
+    train = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data_crowflower', 'train.csv'), header=0, delimiter=",", quoting=6)
+    test = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data_crowflower', 'test.csv'), header=0, delimiter=",", quoting=6)
+    print(f"Read {train['product_title'].size} labeled train SKUs, {test['query'].size} labeled test SKUs")
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+    num_features = 300
+    model = gensim.models.Word2Vec.load('300features_40minwords_10_SKU')
+    print("Creating average feature vectors for training SKUs")
+    train_data_vectors = get_avg_feature_vectors(get_clean_train_reviews(train), model, num_features)
+    print("Creating average feature vectors for test SKUs")
+    test_data_vectors = get_avg_feature_vectors(get_clean_test_reviews(test), model, num_features)
+    print("Query ID, SKU ID, Cosine")
+    for query, test_vector in enumerate(test_data_vectors):
+        for isku, train_vector in enumerate(train_data_vectors):
+            cos = 0.0
+            try:
+                cos = cosine_similarity(test_vector.reshape(1, -1), train_vector.reshape(1, -1))[0][0]
+            except:
+                pass
+            print(f"{query}, {isku}, {cos}")

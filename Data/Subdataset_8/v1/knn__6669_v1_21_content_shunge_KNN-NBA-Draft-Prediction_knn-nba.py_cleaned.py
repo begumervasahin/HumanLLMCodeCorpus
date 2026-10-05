@@ -1,0 +1,42 @@
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+def convertNum(num):
+    try:
+        return float(num)
+    except ValueError:
+        return 0
+def return_label(num):
+    label_dist = ["Top 10 picks", "Mid 1st round", "Late 1st round",
+                  "Early 2nd round", "Mid 2nd round", "Late 2nd round/undrafted"]
+    return label_dist[(num-1)
+nba_stat = []
+nba_labels = []
+for i in range(1999, 2017):
+    name = str(i) + ".txt"
+    with open(name, "r") as file:
+        for line in file.readlines()[2:]:
+            if line.split(",")[11] == "":
+                continue
+            stat_list = line.split(",")
+            stat = [
+                convertNum(stat_list[18]),
+                convertNum(stat_list[20]) * 20,
+                convertNum(stat_list[21])
+            ]
+            nba_stat.append(np.array(stat))
+            nba_labels.append(return_label(int(stat_list[1])))
+test_year = "2003"
+test_data = []
+with open(test_year + ".txt", "r") as file:
+    for line in file.readlines()[2:60]:
+        stat_list = line.split(",")
+        stat = [
+            convertNum(stat_list[18]),
+            convertNum(stat_list[20]) * 20,
+            convertNum(stat_list[21])
+        ]
+        test_data.append(np.array(stat))
+neigh = KNeighborsClassifier(n_neighbors=50)
+neigh.fit(nba_stat, np.array(nba_labels))
+for stat in test_data:
+    print(neigh.predict([stat]))

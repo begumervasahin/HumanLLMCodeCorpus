@@ -1,0 +1,28 @@
+& C:/Users/musta/AppData/Local/Programs/Python/Python312/python.exe "c:/Users/musta/Desktop/gpt/versiyonellegpt2 (1).py"
+import sys
+import networkx as nx
+from prims_algorithm import PrimsAlgorithm
+from graph_builder import GraphBuilder
+from graph_saver import GraphSaver
+if len(sys.argv) < 3:
+    print("Invalid number of command line arguments.")
+    print(sys.argv)
+    print("Please run: \'python prims_algorithm_demo.py <name of JSON graph file> <name of png output file> "
+          "[highlight color] [regular color] [node color]\'")
+    print("E.g., \'python prims_algorithm_demo.py graph prims_graph blue red green\'")
+else:
+    input_file = sys.argv[1] + ".json"
+    output_file = sys.argv[2]
+    highlight_color = sys.argv[3] if len(sys.argv) > 3 else 'black'
+    regular_color = sys.argv[4] if len(sys.argv) > 4 else 'red'
+    node_color = sys.argv[5] if len(sys.argv) > 5 else 'red'
+    graph = GraphBuilder.build_graph_from_file(input_file)
+    pos = nx.spring_layout(graph)
+    prims = PrimsAlgorithm(graph)
+    output_files = [output_file]
+    min_span_tree_generator = prims.min_span_tree_generator()
+    for tree in min_span_tree_generator:
+        file = GraphSaver.save_highlighted_tree(graph, pos, tree, highlight_color, regular_color, node_color)
+        output_files.append(file)
+    GraphSaver.save_gif(output_files)
+    print("Min spanning tree: " + str(tree))

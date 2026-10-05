@@ -1,0 +1,18 @@
+text1 = '''  1. Beautiful is better than ugly.
+      2. Explicit is better than implicit.
+      3. Simple is better than complex.
+      4. Complex is better than complicated.
+    '''.splitlines(keepends=True)
+len(text1)
+text1[0][-1]
+text2 = '''  1. Beautiful is better than ugly.
+      3.   Simple is better than complex.
+      4. Complicated is better than complex.
+      5. Flat is better than nested.
+    '''.splitlines(keepends=True)
+d = Differ()
+result = list(d.compare(text1, text2))
+from pprint import pprint
+pprint(result)
+import sys
+sys.stdout.writelines(result)

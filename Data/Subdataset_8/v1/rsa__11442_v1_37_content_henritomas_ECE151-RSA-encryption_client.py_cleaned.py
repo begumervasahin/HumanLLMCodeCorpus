@@ -1,0 +1,34 @@
+import socket
+import rsa_encryption as rsa
+import sys
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("-l", "--length", type=int, help="at least 2^bits required to represent a symbol", default=128)
+args = parser.parse_args()
+primes = rsa.primes
+if args.length < 128:
+    print("Error: At least a value of 128 required to represent all ASCII characters uniquely.")
+    sys.exit()
+elif args.length > primes[-1] * primes[-2]:
+    print("Error: Using primes higher than 293 (length > 82919) is outside the scope of this project.")
+    sys.exit()
+n, e, d = rsa.keygen(args.length)
+s = socket.socket()
+host = socket.gethostname()
+port = 60000
+s.connect((host, port))
+s.send(b"Hello server!")
+filename = "received_file.txt"
+with open(filename, 'wb') as f:
+    print('File opened')
+    while True:
+        print('Receiving data...')
+        data = s.recv(1024)
+        if not data:
+            break
+        f.write(data)
+f.close()
+rsa.decode(filename, n, d)
+print('Successfully received the file')
+s.close()
+print('Connection closed')

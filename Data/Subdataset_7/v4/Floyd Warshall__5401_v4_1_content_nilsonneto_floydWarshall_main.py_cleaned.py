@@ -1,0 +1,97 @@
+import random
+import sys
+import time
+import math
+from multiprocessing import Process, Queue
+a1 = 4
+def fonk1(size):
+    b1 = []
+    for b3 in range(size):
+        b2 = []
+        for j in range(size):
+            if b3 = = j:
+                b2.append(0)
+            else:
+                b2.append(random.randint(2, 30))
+        b1.append(b2)
+    return b1
+def fonk2(b1, size):
+    b4 = []
+    for b3 in range(size):
+        b2 = []
+        for j in range(size):
+            if b3 = = j or b1[b3][j] == sys.maxsize:
+                b2.append(None)
+            elif b3 != j and b1[b3][j] < sys.maxsize:
+                b2.append(b3)
+            else:
+                b2.append(-1)
+        b4.append(b2)
+    return b4
+def fonk3(b1, size):
+    b5 = [[(0 if b3 == j else int(sys.maxsize)) for j in range(size)] for b3 in range(size)]
+    b5[0] = list(b1)
+    return b5
+def fonk4(b1, size):
+    b4 = [[[(None if b3 == j else 0) for j in range(size)] for b3 in range(size)] for _ in range(size)]
+    b4[0] = list(fonk2(b1, size))
+    return b4
+def fonk5(b1, size):
+    b5 = fonk3(b1, size)
+    b4 = fonk4(b1, size)
+    for k in range(1, size):
+        for b3 in range(size):
+            for j in range(size):
+                b5[k][b3][j] = min(b5[k - 1][b3][j], b5[k - 1][b3][k] + b5[k - 1][k][j])
+                if b5[k - 1][b3][j] <= b5[k - 1][b3][k] + b5[k - 1][k][j]:
+                    b4[k][b3][j] = b4[k - 1][b3][j]
+                else:
+                    b4[k][b3][j] = b4[k - 1][k][j]
+    return b5, b4
+def fonk6(dist, pi, k, b12, size, b9):
+    b6 = []
+    b7 = []
+    for b3 in b12:
+        b6.append([(min(dist[b3][j], dist[b3][k] + dist[k][j])) for j in range(size)])
+        b7.append([(pi[b3][j] if dist[b3][j] <= dist[b3][k] + dist[k][j] else pi[k][j]) for j in range(size)])
+    b9.put((b12, b6, b7))
+def fonk7(b1, size):
+    b5 = fonk3(b1, size)
+    b4 = fonk4(b1, size)
+    for k in range(1, size):
+        b8 = []
+        b9 = Queue()
+        for thread_num in range(a1):
+            b10 = math.floor(thread_num * (size / a1))
+            b11 = math.floor((thread_num + 1) * (size / a1))
+            b12 = range(b10, b11)
+            b13 = Process(target=compute_minimum_distance_parallel, args=(b5[k - 1], b4[k - 1], k, b12, size, b9))
+            b8.append(b13)
+            b13.start()
+        for b13 in b8:
+            b13.join()
+        for _ in range(a1):
+            b12, b6, b7 = b9.get()
+            a2 = 0
+            for b3 in b12:
+                b5[k][b3] = list(b6[a2])
+                b4[k][b3] = list(b7[a2])
+                a2 += 1
+    return b5, b4
+if b14 = = "__main__":
+    with open('serial.txt', 'a') as serial_file, open('parallel.txt', 'a') as parallel_file:
+        for n in range(24, 460, 24):
+            b1 = fonk1(n)
+            b15 = time.process_time()
+            serial_distance, b16 = fonk5(b1, n)
+            b17 = time.process_time()
+            serial_file.write(f'For {n}: Elapsed time: {b17 - b15}s\n')
+            print(f'Serial: For {n}: Elapsed time: {b17 - b15}s')
+            for num_threads in [1, 2, 3, 4, 6, 8]:
+                b15 = time.process_time()
+                b19, b18 = fonk7(b1, n)
+                b17 = time.process_time()
+                parallel_file.write(f'For {n} with {num_threads} b8: Elapsed time: {b17 - b15}s\n')
+                print(f'Parallel: For {n} with {num_threads} b8: Elapsed time: {b17 - b15}s')
+                print(f'Same distance matrix: {b19 = = serial_distance}')
+                print(f'Same pi matrix: {b18 = = b16}')

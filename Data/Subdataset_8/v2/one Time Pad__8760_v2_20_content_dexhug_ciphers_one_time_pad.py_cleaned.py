@@ -1,0 +1,33 @@
+import string
+import secrets
+def encrypt(message, shift):
+    encryption = ""
+    counter = 0
+    for char in message:
+        for uppercase_letter in string.ascii_uppercase:
+            if char == uppercase_letter:
+                message_index = string.ascii_uppercase.find(char)
+                if message_index + shift[counter] > 25:
+                    message_index -= 26
+                encrypted_letter = string.ascii_uppercase[message_index + shift[counter]]
+                encryption += encrypted_letter
+                counter += 1
+    return encryption
+def decrypt(encryption, shift):
+    decryption_shift = [26 - s for s in shift]
+    decryption = encrypt(encryption, decryption_shift)
+    return decryption
+def main():
+    print("Welcome to the One-Time Pad Cipher.\n")
+    message = "Thanks for taking a look at my one-time pad cipher!"
+    non_letters = string.punctuation + string.whitespace + string.digits
+    translation_table = str.maketrans({key: None for key in non_letters})
+    message = message.translate(translation_table)
+    shifts = [secrets.randbelow(27) for _ in range(len(message))]
+    print("Shifting the input by this list:", shifts)
+    encrypted_message = encrypt(message.upper(), shifts)
+    print("\nYour encrypted message is:\n", encrypted_message, sep="")
+    decrypted_message = decrypt(encrypted_message, shifts)
+    print("Your decrypted message is:\n", decrypted_message, sep="")
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,41 @@
+
+import csv
+import os
+import re
+import numpy as np
+import pandas as pd
+import time
+from auxiliaryfunctions import lcss_trigger, plot_traj_red
+df = pd.read_pickle('./final_cleaned.df')
+with open('test_set_a2.csv', 'r') as f:
+    reader = csv.reader(f)
+    data = [list(rec) for rec in csv.reader(f, delimiter=',')]
+    trajectories_read = []
+    for i, row in enumerate(data):
+        if i != 0:
+            trajectory = []
+            j = 0
+            while j < len(row):
+                point = [
+                    float(re.sub('[\[\]]', '', row[j])),
+                    float(row[j + 1]),
+                    float(re.sub('[\[\]]', '', row[j + 2]))
+                ]
+                trajectory.append(point)
+                j += 3
+            trajectories_read.append(trajectory)
+os.mkdir("LCSSresults")
+for k, traj in enumerate(trajectories_read, start=1):
+    start_time = time.time()
+    matching_points = lcss_trigger(traj, df, min_length=1, min_points=0)
+    distances_np = np.array(matching_points)
+    sorted_indices = np.argsort(-distances_np)
+    for m, index in enumerate(sorted_indices[:5], start=1):
+        nearest_journey = df['JourneyPatternId'].iloc[index]
+        print(f"Nearest trajectory {nearest_journey} Matching points: {distances_np[index]}.")
+        common_points = lcss_trigger(traj, df, min_length=2, reference_index=index)
+        plot_traj_red(common_points, df['timestamp_longitude_latitude'].iloc[index],
+                      f"./LCSSresults/trajectory{k}_matchingpointsneighb_{m}")
+    end_time = time.time()
+    duration_minutes = (end_time - start_time) / 60
+    print(f"Took {duration_minutes:.3f} mins for traj {k} to finish")

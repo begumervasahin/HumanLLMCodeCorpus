@@ -1,0 +1,30 @@
+import numpy as np
+from sklearn.datasets import make_blobs
+import matplotlib.pyplot as plt
+def create_circles():
+    t = np.arange(0, 2 * np.pi, 0.03)
+    length = np.shape(t)[0]
+    circle1 = np.array([np.cos(t) + 0.1 * np.random.randn(length),
+                        np.sin(t) + 0.1 * np.random.randn(length)]).T
+    circle2 = np.array([2 * np.cos(t) + 0.1 * np.random.randn(length),
+                        2 * np.sin(t) + 0.1 * np.random.randn(length)]).T
+    circle3 = np.array([3 * np.cos(t) + 0.1 * np.random.randn(length),
+                        3 * np.sin(t) + 0.1 * np.random.randn(length)]).T
+    circle4 = np.array([4 * np.cos(t) + 0.1 * np.random.randn(length),
+                        4 * np.sin(t) + 0.1 * np.random.randn(length)]).T
+    circles = np.concatenate((circle1, circle2, circle3, circle4), axis=0)
+    return circles
+def create_blobs():
+    centers = [(-8, -8), (0, 0), (8, 8), (20, 20), (-20, -20)]
+    X, _ = make_blobs(n_samples=3000, n_features=2, cluster_std=1.0, centers=centers, shuffle=False, random_state=99)
+    return X
+circles_data = create_circles()
+blobs_data = create_blobs()
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.title('Circles')
+plt.scatter(circles_data[:, 0], circles_data[:, 1], s=5)
+plt.subplot(1, 2, 2)
+plt.title('Blobs')
+plt.scatter(blobs_data[:, 0], blobs_data[:, 1], s=5)
+plt.show()

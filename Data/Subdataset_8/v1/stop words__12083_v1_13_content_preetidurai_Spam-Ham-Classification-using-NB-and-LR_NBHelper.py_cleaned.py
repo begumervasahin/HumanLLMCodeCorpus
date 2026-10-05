@@ -1,0 +1,44 @@
+import os
+import re
+word_regex = re.compile("[a-zA-Z']+(?:-[a-zA-Z']+)?")
+def get_words(text):
+    return word_regex.findall(text.lower())
+def get_words_sans_stopwords(text, stop_words):
+    words = get_words(text)
+    new_word_list = [word for word in words if word not in stop_words]
+    return new_word_list
+def get_mail_dictionary(path):
+    messages = {}
+    files = os.listdir(path)
+    for file in files:
+        file_path = os.path.join(path, file)
+        with open(file_path, encoding='utf-8', errors="ignore") as mail_file:
+            messages[file] = get_words(mail_file.read())
+    return messages
+def get_mail_dictionary_wo_stopwords(path, stop_words):
+    messages = {}
+    files = os.listdir(path)
+    for file in files:
+        file_path = os.path.join(path, file)
+        with open(file_path, encoding='utf-8', errors="ignore") as mail_file:
+            messages[file] = get_words_sans_stopwords(mail_file.read(), stop_words)
+    return messages
+def read_stop_words(path):
+    with open(path, encoding='utf-8', errors="ignore") as stop_file:
+        stop_words = get_words(stop_file.read())
+        return stop_words
+def get_vocabulary(mail_dict):
+    vocab = set()
+    for value in mail_dict.values():
+        vocab.update(value)
+    return list(vocab)
+stop_words_path = "stopwords.txt"
+mail_directory_path = "mails"
+stop_words = read_stop_words(stop_words_path)
+mail_dict_with_stopwords = get_mail_dictionary(mail_directory_path)
+mail_dict_without_stopwords = get_mail_dictionary_wo_stopwords(mail_directory_path, stop_words)
+vocabulary = get_vocabulary(mail_dict_with_stopwords)
+print("Stop words:", stop_words)
+print("\nMail dictionary with stop words:", mail_dict_with_stopwords)
+print("\nMail dictionary without stop words:", mail_dict_without_stopwords)
+print("\nVocabulary:", vocabulary)

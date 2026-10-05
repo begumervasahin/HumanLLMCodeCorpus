@@ -1,0 +1,25 @@
+import uos
+import struct
+def long_to_bytes(n, blocksize=0):
+    s = b''
+    n = int(n)
+    pack = struct.pack
+    while n > 0:
+        s = pack('>I', n & 0xffffffff) + s
+        n = n >> 32
+    for i in range(len(s)):
+        if s[i] != b'\x00'[0]:
+            break
+    else:
+        s = b'\x00'
+        i = 0
+    s = s[i:]
+    if blocksize > 0 and len(s) % blocksize:
+        s = (blocksize - len(s) % blocksize) * b'\x00' + s
+    return s
+def strxor(var1, var2):
+    return bytes([ a ^ b for (a,b) in zip(var1, var2)])
+def get_random_bytes(n):
+    return uos.urandom(n)
+def is_writeable_buffer(data):
+    return True

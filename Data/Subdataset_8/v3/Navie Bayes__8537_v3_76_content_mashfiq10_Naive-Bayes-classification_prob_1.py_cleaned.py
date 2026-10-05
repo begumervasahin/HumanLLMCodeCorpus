@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+def read_idx_file(file_path):
+    with open(file_path, 'rb') as f:
+        data = np.frombuffer(f.read(), dtype=np.uint8, offset=16)
+    return data
+def plot_images(images, rows, cols):
+    fig, axes = plt.subplots(rows, cols, figsize=(10, 10))
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(images[i].reshape(28, 28), cmap='binary')
+        ax.axis('off')
+    plt.show()
+def load_data(images_file, labels_file):
+    images = read_idx_file(images_file)
+    labels = read_idx_file(labels_file)
+    return images, labels
+def naive_bayes_classifier(training_images, training_labels, test_images):
+    num_classes = 10
+    num_pixels = 28 * 28
+    laplace_smoothing = 1
+    class_counts = np.bincount(training_labels)
+    class_prior = class_counts / len(training_labels)
+    theta = (np.sum(training_images, axis=0, dtype="float64") + laplace_smoothing) / (class_counts + laplace_smoothing * num_classes)
+    log_theta = np.log10(theta)
+    log_complement = np.log10(1. - theta)
+    test_labels_hat = np.zeros(len(test_images), dtype=int)
+    for i in range(len(test_images)):
+        log_likelihood = np.sum(log_theta[:, test_images[i].reshape(-1)], axis=1) + np.sum(log_complement[:, ~test_images[i].reshape(-1)], axis=1)
+        log_posterior = np.log10(class_prior) + log_likelihood
+        test_labels_hat[i] = np.argmax(log_posterior)
+    return test_labels_hat
+def calculate_accuracy(true_labels, predicted_labels):
+    accuracy = np.mean(true_labels == predicted_labels) * 100
+    return accuracy
+def main():
+    training_images, training_labels = load_data('train-images.idx3-ubyte', 'train-labels.idx1-ubyte')
+    plot_images(training_images, 20, 20)
+    test_images, test_labels = load_data('t10k-images.idx3-ubyte', 't10k-labels.idx1-ubyte')
+    test_labels_hat = naive_bayes_classifier(training_images, training_labels, test_images)
+    accuracy = calculate_accuracy(test_labels, test_labels_hat)
+    print("Naive Bayes classifier classification accuracy:", accuracy, "%")
+if __name__ == "__main__":
+    main()

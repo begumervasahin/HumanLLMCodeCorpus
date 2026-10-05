@@ -1,0 +1,12 @@
+
+print("Bienvenido a la máquina de Atwood. Consiste en dos masas, b1 y b2, conectadas por una cuerda inelástica y una polea ideal de masa despreciable.")
+b1 = input("Digite la masa del objeto 1 en kilogramos. Considere que este objeto es el más pesado: ")
+b2 = input("Digite la masa del objeto 2 en kilogramos: ")
+a1 = 9.81
+b3 = (a1 * (float(b1) - float(b2)) / (float(b1) + float(b2)))
+print("Recuerde que la gravedad es 9.81 m/s².")
+print("Considerando los datos anteriores, la aceleración es equivalente a: " + str(b3) + " m/s².")
+b4 = (a1 * 2 * (float(b1) * float(b2)) / (float(b1) + float(b2)))
+print("La tensión de la cuerda en Newtons es: " +  str(b4) + " metros * kg / seg².")
+b5 = (a1 * 0.01 * 2 * (float(b1) * float(b2)) * 0.001 / (float(b1) + float(b2)) * 0.001)
+print("La tensión en dinas es: " + str(b5) + " cm * gr / seg².")

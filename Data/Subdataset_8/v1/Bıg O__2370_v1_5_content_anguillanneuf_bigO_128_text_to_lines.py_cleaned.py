@@ -1,0 +1,121 @@
+import re
+from itertools import product, combinations
+class LineBreaker:
+    def __init__(self, text="", width=80):
+        self.text = text
+        self.width = width
+        self.borders = []
+        self.linebreaks = []
+    def find_borders(self):
+        for i in range(len(self.text)):
+            if not self.text[i].isspace():
+                if i == 0 or self.text[i - 1].isspace():
+                    self.borders.append(i)
+                if self.borders and i - self.borders[-1] > self.width:
+                    print("\"{}\" is longer than the allowed line width {}."
+                          .format(self.text[self.borders[-1]:i + 1], self.width))
+                    print("Please consider adjusting the line width.")
+                    self.borders = []
+        self.borders.append(len(self.text))
+    def find_next_linebreak(self, p, reversed=False):
+        if not reversed:
+            if p == len(self.borders) - 1:
+                return None
+            i = p
+            j = len(self.borders) - 1
+            if self.borders[j] - self.borders[i] <= self.width:
+                return j
+            sign = 1
+        else:
+            if p == 0:
+                return None
+            i = 0
+            j = p
+            if self.borders[j] - self.borders[i] <= self.width:
+                return i
+            sign = -1
+        while i < j:
+            m = (i + j)
+            if self.borders[m - 1] <= self.borders[p] + sign * self.width <= self.borders[m]:
+                p = m - 1 * (not reversed)
+                break
+            elif self.borders[m] > self.borders[p] + sign * self.width:
+                j = m
+            else:
+                i = m
+        return p
+    def find_linebreaks(self):
+        front_push = []
+        p = 0
+        while p is not None and p <= len(self.borders):
+            front_push.append((p, self.borders[p]))
+            p = self.find_next_linebreak(p)
+        back_push = []
+        p = len(self.borders) - 1
+        while p is not None and p >= 0:
+            back_push.append((p, self.borders[p]))
+            p = self.find_next_linebreak(p, reversed=True)
+        min_cost = float('inf')
+        possible_ranges = []
+        for back, front in zip(back_push[::-1], front_push):
+            possible_ranges.append(range(back[0], front[0] + 1))
+        count = 0
+        for scenario in product(*possible_ranges):
+            count += 1
+            cost = 0
+            ok = True
+            for k in range(1, len(scenario)):
+                diff = self.borders[scenario[k]] - self.borders[scenario[k - 1]]
+                if diff > self.width:
+                    cost = float('inf')
+                    ok = False
+                    break
+                else:
+                    cost += (self.width - diff) ** 2
+            if ok:
+                self.linebreaks = [self.borders[k] for k in scenario]
+        print("My solution runs {} times.".format(count))
+        print("{} has least cost of {}".format(self.linebreaks, min_cost))
+    def find_linebreaks_brute_force(self):
+        borders = self.borders[1:len(self.borders) - 1]
+        n = len(self.text)
+        min_cost = float('inf')
+        count = 0
+        for scenario in combinations(borders, n):
+            ok = True
+            cost = 0
+            scenario = [0] + list(scenario) + [len(self.text)]
+            count += 1
+            for k in range(1, len(scenario)):
+                diff = scenario[k] - scenario[k - 1]
+                if diff > self.width:
+                    cost = float('inf')
+                    ok = False
+                    break
+                else:
+                    cost += (self.width - diff) ** 2
+            if cost < min_cost:
+                min_cost = cost
+                self.linebreaks = scenario
+        print("Brute force solution runs {} times.".format(count))
+        print("{} has least cost of {}".format(self.linebreaks, min_cost))
+    def break_text_into_lines(self):
+        lines = ['']
+        d = 0
+        offset = 0
+        for b in self.linebreaks:
+            if b - offset < self.width:
+                lines[-1] += self.text[d:b]
+            else:
+                lines.append(self.text[d:b])
+                offset = d
+            d = b
+        return lines
+if __name__ == "__main__":
+    raw_text = "Try this: Given a string of English text and a paragraph width, design an algorithm to break the " \
+               "texts into lines not exceeding the paragraph width, and not too jagged."
+    lines = LineBreaker(raw_text, 80)
+    lines.find_borders()
+    lines.find_linebreaks_brute_force()
+    lines.find_linebreaks()
+    print(lines.break_text_into_lines())

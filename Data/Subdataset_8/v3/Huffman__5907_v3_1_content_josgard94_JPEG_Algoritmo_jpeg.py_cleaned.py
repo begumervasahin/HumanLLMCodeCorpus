@@ -1,0 +1,69 @@
+import re
+import numpy as np
+import scipy.fftpack
+from PIL import Image
+import matplotlib.pyplot as plt
+QUANTIZATION_MATRIX = np.array([[16, 11, 10, 16, 24, 40, 51, 61],
+                                [12, 12, 14, 19, 26, 58, 60, 55],
+                                [14, 13, 16, 24, 40, 57, 69, 56],
+                                [14, 17, 22, 29, 51, 87, 80, 62],
+                                [18, 22, 37, 56, 68, 109, 103, 77],
+                                [24, 35, 55, 64, 81, 104, 113, 92],
+                                [49, 64, 78, 87, 103, 121, 120, 101],
+                                [72, 92, 95, 98, 112, 100, 103, 99]])
+temporal = {}
+frequency = {}
+g = 0
+def dct2(matrix):
+    shifted_matrix = matrix - 128
+    dct_coefficients = scipy.fftpack.dct(scipy.fftpack.dct(shifted_matrix, axis=0, norm='ortho'), axis=1, norm='ortho')
+    quantized_coefficients = np.round(dct_coefficients / QUANTIZATION_MATRIX)
+    return quantized_coefficients
+def zigzag(matrix):
+    global g
+    zigzagged_values = []
+    for i in range(8):
+        for j in range(8):
+            zigzagged_values.append(matrix[i][j])
+    zigzagged_values = list(filter(lambda x: x != -0.0, zigzagged_values))
+    for val in zigzagged_values:
+        temporal[g] = val
+        if val not in frequency:
+            frequency[val] = val
+        g += 1
+def save_probabilities(probabilities, keys):
+    with open("result.txt", "w") as file:
+        for key in keys:
+            file.write(f"{key}\t{probabilities.get(key, key)}\n")
+original_image = Image.open("lena.jpg")
+original_image.show()
+grayscale_image = original_image.convert('L')
+grayscale_image.save("gray.jpg")
+grayscale_image.show()
+width, height = grayscale_image.size
+array = np.asarray(grayscale_image, dtype=np.float32)
+shifted_array = array - 128
+Image.fromarray(shifted_array.astype(np.uint8)).save("restada.jpg")
+processed_image = Image.open("restada.jpg")
+processed_image.show()
+dct_matrix = np.zeros((256, 256))
+for i in range(0, width, 8):
+    for j in range(0, height, 8):
+        dct_matrix[i:(i+8), j:(j+8)] = dct2(array[i:(i+8), j:(j+8)])
+Image.fromarray(dct_matrix.astype(np.uint8)).save("dct.jpg")
+dct_image = Image.open("dct.jpg")
+dct_image.show()
+for i in range(0, width, 8):
+    for j in range(0, height, 8):
+        zigzag(dct_matrix[i:(i+8), j:(j+8)])
+with open("dct.txt", "w") as f:
+    for row in dct_matrix:
+        for val in row:
+            f.write(str(abs(val)) + " " if val == -0.0 else str(val) + " ")
+        f.write("\n")
+keys = list(frequency.keys())
+elements = list(temporal.values())
+probabilities = {key: elements.count(key) / len(elements) for key in keys}
+save_probabilities(probabilities, keys)
+print("Image processing completed successfully.")
+print("A probabilities file and a text file containing the processed JPEG matrix have been generated.")

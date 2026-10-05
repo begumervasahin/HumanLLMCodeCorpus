@@ -1,0 +1,55 @@
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from openpyxl import load_workbook
+df = pd.read_excel('Itraxxdata_22Mar19_04Jun19.xlsx', sheet_name='Itraxx')
+df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+date = pd.to_datetime(df['Date'])
+col_names = ['S31_3Y', 'S31_5Y', 'S31_7Y', 'S31_10Y','S30_3Y', 'S30_5Y', 'S30_7Y', 'S30_10Y',
+             'S28_3Y', 'S28_5Y', 'S28_7Y', 'S28_10Y', 'S26_3Y',
+             'S26_5Y', 'S26_7Y', 'S26_10Y', 'S24_5Y', 'S24_7Y',
+             'S24_10Y']
+df.columns = col_names
+neworder = ['S26_3Y', 'S24_5Y', 'S28_3Y', 'S30_3Y','S26_5Y',
+            'S31_3Y', 'S24_7Y', 'S28_5Y', 'S26_7Y',
+            'S30_5Y', 'S31_5Y',  'S28_7Y', 'S24_10Y',
+            'S30_7Y', 'S31_7Y', 'S26_10Y', 'S28_10Y',
+            'S30_10Y', 'S31_10Y']
+df = df.reindex(columns=neworder)
+diff_df = df.diff().dropna()
+newdate = diff_df.index
+multiplier = np.zeros(len(newdate)-1)
+for i in range(len(newdate)-1):
+    delta = (newdate[i] - newdate[i+1]).days
+    multiplier[i] = 1 / (np.sqrt(((delta) / 365) * 260))
+d = diff_df.mul(multiplier, axis=0)
+n, m = d.shape
+t = 20
+dates = date.iloc[:n-t]
+R = pd.DataFrame(data=np.zeros((n-t, m)), index=dates, columns=d.columns)
+for i in range(n-t):
+    d_roll = d.iloc[i:i+t, :]
+    dstd_roll = StandardScaler(with_std=False).fit_transform(d_roll)
+    pca = PCA(n_components=3)
+    scores = pca.fit_transform(dstd_roll)
+    loadings = pca.components_
+    Xstd = pca.inverse_transform(scores)
+    Xraw = Xstd + d_roll.mean().values
+    rollres = d_roll - Xraw
+    R.iloc[i, :] = rollres.iloc[0, :].values
+with pd.ExcelWriter('PCA_ItraxxMain.xlsx', engine='openpyxl') as writer:
+    df.to_excel(writer, sheet_name='Original_Data', index=True, header=True)
+    diff_df.to_excel(writer, sheet_name='DailyChange', index=True, header=True)
+    R.to_excel(writer, sheet_name='Residuals', index=True, header=True)
+plt.plot(R.index, R['S31_3Y'], label='res31_3Y')
+plt.plot(R.index, R['S31_5Y'], label='res31_5Y')
+plt.plot(R.index, R['S31_7Y'], label='res31_7Y')
+plt.plot(R.index, R['S31_10Y'], label='res31_10Y')
+plt.legend(loc='upper left', bbox_to_anchor=(1, 0.6))
+plt.xticks(np.arange(0, len(R), step=3))
+plt.xlabel('Date')
+plt.ylabel('Residual')
+plt.gcf().autofmt_xdate()
+plt.show()

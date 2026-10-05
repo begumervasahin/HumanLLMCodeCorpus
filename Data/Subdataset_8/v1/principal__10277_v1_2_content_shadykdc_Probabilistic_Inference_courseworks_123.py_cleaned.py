@@ -1,0 +1,100 @@
+from IDAPICourseworkLibrary import *
+from numpy import *
+def Prior(theData, root, noStates):
+    prior = zeros((noStates[root]), float )
+    data_amount=len(theData[:,0])
+    for i in range(data_amount):
+        prior[theData[i,root]]+=1
+    prior/=data_amount
+    return prior
+def CPT(theData, varC, varP, noStates):
+    data_amount=len(theData[:,0])
+    cPT = zeros((noStates[varC], noStates[varP]), float )
+    for row in range(data_amount):
+        cPT[theData[row,varC]][theData[row,varP]]+=1
+    for i in range(noStates[varP]):
+        alpha=(numpy.sum(theData[:,varP]==i))
+        if alpha!=0:
+            cPT[:,i]/=(numpy.sum(theData[:,varP]==i))
+    return cPT
+def JPT(theData, varRow, varCol, noStates):
+    jPT = zeros((noStates[varRow], noStates[varCol]), float )
+    data_amount=len(theData[:,0])
+    for row in range(data_amount):
+        jPT[theData[row,varRow]][theData[row,varCol]]+=1
+    jPT/=data_amount
+    return jPT
+def JPT2CPT(aJPT):
+    for i in range(len(aJPT[0,:])):
+        alpha=(numpy.sum(aJPT[:,i]))
+        if alpha!=0:
+            aJPT[:,i]*=1/alpha
+    return aJPT
+def Query(theQuery, naiveBayes):
+    rootPdf = zeros((naiveBayes[0].shape[0]), float)
+    for i in range(len(rootPdf)):
+        rootPdf[i]=naiveBayes[0][i]
+        for j in range(0,len(theQuery)):
+            rootPdf[i]*=naiveBayes[j+1][theQuery[j],i]
+    if (numpy.sum(rootPdf)!=0):
+        rootPdf*=1/(numpy.sum(rootPdf))
+    else:
+        rootPdf=ones((naiveBayes[0].shape[0]), float)/naiveBayes[0].shape[0]
+    return rootPdf
+def MutualInformation(jP):
+    mi=0.0
+    num_cols = len(jP[0,:])
+    num_rows = len(jP[:,0])
+    col_sum = zeros(num_cols, float)
+    for j in range(num_cols):
+        col_sum[j] = sum(jP[:,j])
+    for i in range(num_rows):
+        row_sum = sum(jP[i,:])
+        for j in range(num_cols):
+            if (jP[i][j] != 0):
+                mi+= jP[i][j]*log2(jP[i][j]/(row_sum*col_sum[j]))
+    return mi
+theData = ImportData("IDAPICourseworkData.csv", ",")
+theData = Discretise(theData, [5, 5, 5, 5, 5, 5, 5], ["s", "s", "s", "s", "s", "s", "c"])
+noStates = [5, 5, 5, 5, 5, 5, 5]
+priorA = Prior(theData, 0, noStates)
+priorB = Prior(theData, 1, noStates)
+priorC = Prior(theData, 2, noStates)
+priorD = Prior(theData, 3, noStates)
+priorE = Prior(theData, 4, noStates)
+priorF = Prior(theData, 5, noStates)
+priorG = Prior(theData, 6, noStates)
+cptAB = CPT(theData, 0, 1, noStates)
+cptBC = CPT(theData, 1, 2, noStates)
+cptCD = CPT(theData, 2, 3, noStates)
+cptDE = CPT(theData, 3, 4, noStates)
+cptEF = CPT(theData, 4, 5, noStates)
+cptFG = CPT(theData, 5, 6, noStates)
+jptAB = JPT(theData, 0, 1, noStates)
+jptBC = JPT(theData, 1, 2, noStates)
+jptCD = JPT(theData, 2, 3, noStates)
+jptDE = JPT(theData, 3, 4, noStates)
+jptEF = JPT(theData, 4, 5, noStates)
+jptFG = JPT(theData, 5, 6, noStates)
+cptAB2 = JPT2CPT(jptAB)
+cptBC2 = JPT2CPT(jptBC)
+cptCD2 = JPT2CPT(jptCD)
+cptDE2 = JPT2CPT(jptDE)
+cptEF2 = JPT2CPT(jptEF)
+cptFG2 = JPT2CPT(jptFG)
+naiveBayes = [priorA, cptAB2, cptBC2, cptCD2, cptDE2, cptEF2, cptFG2]
+theQuery = [1, 3, 2, 4, 2, 1]
+result = Query(theQuery, naiveBayes)
+print("Result of query:", result)
+miAB = MutualInformation(jptAB)
+miBC = MutualInformation(jptBC)
+miCD = MutualInformation(jptCD)
+miDE = MutualInformation(jptDE)
+miEF = MutualInformation(jptEF)
+miFG = MutualInformation(jptFG)
+print("Mutual Information between A and B:", miAB)
+print("Mutual Information between B and C:", miBC)
+print("Mutual Information between C and D:", miCD)
+print("Mutual Information between D and E:", miDE)
+print("Mutual Information between E and F:", miEF)
+print("Mutual Information between F and G:", miFG)

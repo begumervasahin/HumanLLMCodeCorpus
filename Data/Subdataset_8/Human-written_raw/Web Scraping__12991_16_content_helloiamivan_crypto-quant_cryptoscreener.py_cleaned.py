@@ -1,0 +1,43 @@
+import pandas as pd
+import json
+import urllib3
+import csv
+import sys
+import urllib3
+import cryptofolio
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+def screenUniverse(universeSelectionDate,minMarketCap,minimumListingPeriod,circulatingPct,minExchanges):
+	coindata = pd.read_csv('input/clean_coindata.csv')
+	dates = pd.to_datetime(coindata['Date'].copy().unique(),infer_datetime_format=True).sort_values(ascending=True).tolist()
+	coindata['Date'] = pd.to_datetime(coindata['Date'],infer_datetime_format=True)
+	universe = coindata.ix[(coindata['Date'] == universeSelectionDate) & (coindata['Marketcap'] >= minMarketCap)]
+	filter_mktcap = universe['Coin'].tolist()
+	filter_mktcap_glo = []
+	exchanges = json.load(open('input/exchangesdata.json'))
+	for coin in filter_mktcap:
+		numberOfExchanges = len(exchanges[coin])
+		if numberOfExchanges >= minExchanges:
+			filter_mktcap_glo.append(coin)
+	filter_mktcap_glo_lon = []
+	for coin in filter_mktcap_glo:
+		tempcoinframe = coindata.ix[(coindata['Coin'] == coin)].dropna().copy()
+		startDate = tempcoinframe['Date'].min()
+		endDate = universeSelectionDate
+		daysInExistence = (endDate - startDate).days
+		if daysInExistence >= minimumListingPeriod:
+			filter_mktcap_glo_lon.append(coin)
+	filter_mktcap_glo_lon_vol = []
+	http = urllib3.PoolManager()
+	for coin in filter_mktcap_glo_lon:
+		url = 'https:
+		response = http.request('GET',url)
+		cleandata = json.loads(response.data)
+		circulatingSupply = float(cleandata[0]['available_supply'])
+		tempcoinframe = coindata.ix[(coindata['Coin'] == coin)].copy()
+		tempcoinframe['TokenVolume'] = tempcoinframe['Volume'] / tempcoinframe['Close']
+		tempcoinframe = tempcoinframe.groupby(pd.Grouper(key='Date', freq='M')).sum()
+		tempcoinframe.drop(tempcoinframe.tail(1).index,inplace=True)
+		volList = tempcoinframe.tail(3)['TokenVolume'].tolist()
+		if all(i >= circulatingSupply * circulatingPct for i in volList) == True:
+			filter_mktcap_glo_lon_vol.append(coin)
+	return filter_mktcap_glo_lon_vol

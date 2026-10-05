@@ -1,0 +1,58 @@
+import numpy as np
+import pandas as pd
+import math
+import matplotlib.pyplot as plt
+import pickle
+from mlxtend.data import loadlocal_mnist
+X_train, y_train = loadlocal_mnist(images_path='./train-images.idx3-ubyte', labels_path='./train-labels.idx1-ubyte')
+X_test, y_test = loadlocal_mnist(images_path='./t10k-images.idx3-ubyte', labels_path='./t10k-labels.idx1-ubyte')
+Y_train = [label - 1 for label in y_train if label in [1, 2]]
+Y_test = [label - 1 for label in y_test if label in [1, 2]]
+with open('./bintrain.pkl', 'rb') as f:
+    x_train = pickle.load(f)
+with open('./bintest.pkl', 'rb') as f:
+    x_test = pickle.load(f)
+counttrain0 = np.load('./counttrain0.mat')
+counttrain1 = np.load('./counttrain1.mat')
+a = Y_train.count(0)
+b = Y_train.count(1)
+priortrouser = a / (a + b)
+priorpullover = b / (a + b)
+for i in range(len(counttrain0)):
+    for j in range(2):
+        counttrain0[i][j] /= a
+        counttrain1[i][j] /= b
+thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
+y_pred = np.zeros(shape=(5, len(x_test)))
+for k, threshold in enumerate(thresholds):
+    for i in range(len(x_test)):
+        pdt1 = 0
+        pdt2 = 0
+        for j in range(len(x_test[0])):
+            if x_test[i][j] == 1:
+                pdt1 += math.log(counttrain1[j][0])
+                pdt2 += math.log(counttrain1[j][1])
+            else:
+                pdt1 += math.log(counttrain0[j][0])
+                pdt2 += math.log(counttrain0[j][1])
+        prob0 = (pdt1 * priortrouser) / (pdt1 * priortrouser + pdt2 * priorpullover)
+        y_pred[k][i] = 0 if prob0 <= threshold else 1
+tparray = []
+fparray = []
+for i in range(5):
+    tp = sum(y_pred[i][j] == 0 and Y_test[j] == 0 for j in range(len(Y_test)))
+    tn = sum(y_pred[i][j] == 1 and Y_test[j] == 1 for j in range(len(Y_test)))
+    fp = sum(y_pred[i][j] == 0 and Y_test[j] == 1 for j in range(len(Y_test)))
+    fn = sum(y_pred[i][j] == 1 and Y_test[j] == 0 for j in range(len(Y_test)))
+    tparray.append(tp / (tp + fn))
+    fparray.append(fp / (fp + tn))
+    confmatrix = np.array([[tp, fp], [fn, tn]])
+    print("CASE", i + 1, ":-")
+    print(confmatrix)
+    print("The precision is:", tp / (tp + fp))
+    print("The recall is:", tp / (tp + fn))
+plt.plot(fparray, tparray)
+plt.ylabel("True Positive Rate")
+plt.xlabel("False Positive Rate")
+plt.title("ROC Curve")
+plt.show()

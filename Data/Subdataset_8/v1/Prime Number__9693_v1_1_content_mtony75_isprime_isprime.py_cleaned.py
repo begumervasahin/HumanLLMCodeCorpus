@@ -1,0 +1,55 @@
+def get_prime():
+    a_number = input("Please enter a number: ")
+    while True:
+        try:
+            proper_number = int(a_number)
+            break
+        except ValueError:
+            print("The value entered is not an integer")
+            a_number = input("Please enter a new value: ")
+    return proper_number
+def is_prime(number):
+    if number == 1:
+        return False
+    elif number == 2:
+        return True
+    else:
+        for element in range(2, number
+            if number % element == 0:
+                return False
+        return True
+def get_range():
+    print("Give me a range of numbers and find out which numbers in the")
+    print("range are prime numbers?")
+    first_number = get_prime()
+    second_number = get_prime()
+    prime_list = range_of_prime(first_number, second_number)
+    return prime_list
+def range_of_prime(num1, num2):
+    list_of_primes = []
+    for element in range(num1, num2 + 1):
+        if is_prime(element):
+            list_of_primes.append(element)
+    return list_of_primes
+def next_hundred_primes(number):
+    user_number = number
+    list_of_primes = []
+    prime_start = user_number
+    while len(list_of_primes) < 100:
+        prime_start += 1
+        if is_prime(prime_start):
+            list_of_primes.append(prime_start)
+    return list_of_primes
+if __name__ == "__main__":
+    user_number = get_prime()
+    print(user_number)
+    if is_prime(user_number):
+        print(f"{user_number} is a Prime")
+    else:
+        print(f"{user_number} is not a Prime")
+    print()
+    prime_range = get_range()
+    print(f"The list of primes in the range are {prime_range}")
+    print()
+    one_hundred_primes = next_hundred_primes(user_number)
+    print(f"The list of next 100 primes after {user_number} are {one_hundred_primes}")

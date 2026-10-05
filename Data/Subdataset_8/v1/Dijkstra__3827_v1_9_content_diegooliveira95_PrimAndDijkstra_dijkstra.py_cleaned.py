@@ -1,0 +1,89 @@
+import heapq
+class Vertex:
+    def __init__(self, node):
+        self.id = node
+        self.adjacent = {}
+        self.distance = float("inf")
+        self.visited = False
+        self.previous = None
+    def add_neighbor(self, neighbor, weight=0):
+        self.adjacent[neighbor] = weight
+    def get_connections(self):
+        return self.adjacent.keys()
+    def get_id(self):
+        return self.id
+    def get_weight(self, neighbor):
+        return self.adjacent[neighbor]
+    def set_distance(self, dist):
+        self.distance = dist
+    def get_distance(self):
+        return self.distance
+    def set_previous(self, prev):
+        self.previous = prev
+    def set_visited(self):
+        self.visited = True
+class Graph:
+    def __init__(self):
+        self.vert_dict = {}
+        self.num_vertices = 0
+    def __iter__(self):
+        return iter(self.vert_dict.values())
+    def add_vertex(self, node):
+        self.num_vertices += 1
+        new_vertex = Vertex(node)
+        self.vert_dict[node] = new_vertex
+        return new_vertex
+    def get_vertex(self, n):
+        if n in self.vert_dict:
+            return self.vert_dict[n]
+        else:
+            return None
+    def add_edge(self, frm, to, cost=0):
+        if frm not in self.vert_dict:
+            self.add_vertex(frm)
+        if to not in self.vert_dict:
+            self.add_vertex(to)
+        self.vert_dict[frm].add_neighbor(self.vert_dict[to], cost)
+        self.vert_dict[to].add_neighbor(self.vert_dict[frm], cost)
+def shortest(v, path):
+    if v.previous:
+        path.append(v.previous.get_id())
+        shortest(v.previous, path)
+    return
+def dijkstra(aGraph, start):
+    start.set_distance(0)
+    unvisited_queue = [(vertex.get_distance(), vertex) for vertex in aGraph]
+    heapq.heapify(unvisited_queue)
+    while len(unvisited_queue):
+        aVertex = heapq.heappop(unvisited_queue)
+        current = aVertex[1]
+        current.set_visited()
+        for next_vertex in current.get_connections():
+            if next_vertex.visited:
+                continue
+            new_distance = current.get_distance() + current.get_weight(next_vertex)
+            if new_distance < next_vertex.get_distance():
+                next_vertex.set_distance(new_distance)
+                next_vertex.set_previous(current)
+        while len(unvisited_queue):
+            heapq.heappop(unvisited_queue)
+        unvisited_queue = [(vertex.get_distance(), vertex) for vertex in aGraph if not vertex.visited]
+        heapq.heapify(unvisited_queue)
+if __name__ == "__main__":
+    g = Graph()
+    g.add_vertex('A')
+    g.add_vertex('B')
+    g.add_vertex('C')
+    g.add_vertex('D')
+    g.add_vertex('E')
+    g.add_edge('A', 'B', 1)
+    g.add_edge('A', 'C', 3)
+    g.add_edge('B', 'D', 2)
+    g.add_edge('C', 'D', 2)
+    g.add_edge('B', 'E', 4)
+    g.add_edge('D', 'E', 1)
+    dijkstra(g, g.get_vertex('A'))
+    target = g.get_vertex('E')
+    path = [target.get_id()]
+    shortest(target, path)
+    print(path[::-1])

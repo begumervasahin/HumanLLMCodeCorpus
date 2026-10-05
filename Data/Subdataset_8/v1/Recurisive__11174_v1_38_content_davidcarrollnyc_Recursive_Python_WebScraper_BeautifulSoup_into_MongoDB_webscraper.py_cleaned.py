@@ -1,0 +1,38 @@
+from bs4 import BeautifulSoup, Comment
+import urllib.request
+from urllib.error import HTTPError
+def tag_visible(element):
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+def text_from_html(body):
+    soup = BeautifulSoup(body, 'html.parser')
+    texts = soup.find_all(text=True)
+    visible_texts = filter(tag_visible, texts)
+    return u" ".join(t.strip() for t in visible_texts)
+def extract_links_with_text(html):
+    bs = BeautifulSoup(html, "html.parser")
+    possible_links = bs.select('a[href^="http"]')
+    for link in possible_links:
+        if link.has_attr('href'):
+            print("Link:", link.attrs['href'])
+            try:
+                check_for_200 = urllib.request.urlopen(link.attrs['href'])
+                html2 = check_for_200.read()
+                print("HTML Content:", html2)
+                print("")
+                print("Text from HTML:", text_from_html(html2))
+            except HTTPError as e:
+                print("HTTP Error:", e)
+                continue
+if __name__ == "__main__":
+    url = 'http:
+    try:
+        html = urllib.request.urlopen(url).read()
+        print("Visible Text from HTML:", text_from_html(html))
+        print("\nExtracted Links with Text:")
+        extract_links_with_text(html)
+    except HTTPError as e:
+        print("HTTP Error:", e)

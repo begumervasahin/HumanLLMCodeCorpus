@@ -1,0 +1,34 @@
+import random
+def is_prime(number):
+    if number <= 3:
+        return number > 1
+    if number % 2 == 0 or number % 3 == 0:
+        return False
+    for i in range(5, int(number ** 0.5) + 1, 6):
+        if number % i == 0 or number % (i + 2) == 0:
+            return False
+    return True
+def generate_prime(lower_bound, upper_bound):
+    prime = 0
+    while not is_prime(prime):
+        prime = random.randint(lower_bound, upper_bound)
+    return prime
+def main():
+    print("---------------------------------\n----------ALGORITHME R-H---------\n---------------------------------\n")
+    lower_bound, upper_bound = 1000, 99999
+    prime_p = generate_prime(lower_bound, upper_bound)
+    print("The generated prime number P =", prime_p)
+    random_number_a = random.randint(1, prime_p-1)
+    print("The chosen number between 1 and P-1 is A =", random_number_a)
+    private_key_alice = random.randint(1, 99999)
+    private_key_bob = random.randint(1, 99999)
+    print("\nThe private key x1 chosen by Alice is:", private_key_alice)
+    print("The private key x2 chosen by Bob is:", private_key_bob)
+    public_key_alice = pow(random_number_a, private_key_alice, prime_p)
+    public_key_bob = pow(random_number_a, private_key_bob, prime_p)
+    shared_secret_k1 = pow(public_key_bob, private_key_alice, prime_p)
+    shared_secret_k2 = pow(public_key_alice, private_key_bob, prime_p)
+    print("\nThe secret key K1 of Alice is:", shared_secret_k1)
+    print("The secret key K2 of Bob is:", shared_secret_k2)
+if __name__ == "__main__":
+    main()

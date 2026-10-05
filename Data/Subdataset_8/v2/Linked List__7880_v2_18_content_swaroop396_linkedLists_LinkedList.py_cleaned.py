@@ -1,0 +1,75 @@
+class LinkedList:
+    def __init__(self):
+        self.head = None
+    def add_to_start(self, data):
+        new_node = Node(data)
+        new_node.set_link(self.head)
+        self.head = new_node
+    def add_to_end(self, data):
+        current = self.head
+        new_node = Node(data)
+        while current.get_next_node():
+            current = current.get_next_node()
+        current.set_link(new_node)
+    def display(self):
+        current = self.head
+        if current is None:
+            print("Empty List!!!")
+            return
+        while current:
+            print(str(current.get_data()), end=" ")
+            current = current.link
+            if current:
+                print("-->", end=" ")
+        print()
+class Node:
+    def __init__(self, data=None, link=None):
+        self.data = data
+        self.link = link
+    def update_data(self, data):
+        self.data = data
+    def set_link(self, node):
+        self.link = node
+    def get_data(self):
+        return self.data
+    def get_next_node(self):
+        return self.link
+my_list = LinkedList()
+my_list.add_to_start(5)
+my_list.add_to_start(4)
+my_list.add_to_start(3)
+my_list.add_to_start(2)
+my_list.add_to_start(1)
+my_list.display()
+my_list.add_to_end(12)
+my_list.add_to_end(13)
+my_list.add_to_end(3)
+my_list.display()
+print(my_list.length())
+print(my_list.index(3))
+print(my_list.at_index(5))
+print(my_list.remove(12))
+my_list.remove_position(2)
+my_list.display()
+print(my_list.max_value())
+print(my_list.min_value())
+my_list.push(31)
+my_list.display()
+print(my_list.pop())
+my_list.display()
+my_list2 = my_list.copy()
+my_list2.display()
+my_list2.clear()
+my_list2.display()
+print(my_list.to_string(","))
+print(my_list.count(3))
+new_list = my_list.to_list()
+print(new_list)
+new_set = my_list.to_set()
+print(new_set)
+my_list.reverse()
+my_list.display()
+my_list3 = my_list.sorted()
+my_list3.display()
+my_list.sort()
+my_list.display()

@@ -1,0 +1,33 @@
+from collections import defaultdict
+from heapq import heappop, heappush
+def dijkstra(edges, start, end):
+    graph = defaultdict(list)
+    for source, target, cost in edges:
+        graph[source].append((cost, target))
+    queue, visited = [(0, start, ())], set()
+    while queue:
+        (current_cost, current_node, path) = heappop(queue)
+        if current_node not in visited:
+            visited.add(current_node)
+            path = (current_node, path)
+            if current_node == end:
+                return (current_cost, path)
+            for cost, next_node in graph.get(current_node, ()):
+                if next_node not in visited:
+                    heappush(queue, (current_cost + cost, next_node, path))
+    return float("inf"), None
+edges = [
+    ('A', 'B', 1),
+    ('B', 'C', 2),
+    ('A', 'C', 4),
+    ('B', 'D', 5),
+    ('C', 'D', 1)
+]
+source = 'A'
+target = 'D'
+cost, path = dijkstra(edges, source, target)
+if cost != float("inf"):
+    print(f"Shortest path from {source} to {target}: Cost = {cost}")
+    print("Path:", ' -> '.join(path[0]), "=", path[1])
+else:
+    print(f"There is no path from {source} to {target}.")

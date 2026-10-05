@@ -1,0 +1,11 @@
+print ("Bienvenido a la mÃ¡quina de Atwood, consiste en dos masas m1 y m2, conectadas por una cuerda inelÃ¡stica de masa despreciable con una polea ideal de masa despreciable")
+m1 = input("Digite la masa del objeto 1 en kilogramos, considere que este objeto es el mÃ¡s pesado: ")
+m2 = input ("Digite la masa objeto 2 en kilogramos: ")
+g = 9.81
+aceleraci = (g * (float(m1) - float(m2)) / (float(m1) + float(m2)))
+print ("Recuerde que la gravedad es 9.81 m/s2")
+print ("Considerando los datos anteriores, la aceleraciÃ³n es equivalente a: " + str(aceleraci) + "m/s2")
+tension =  (g * 2*(float(m1) * float(m2)) / (float(m1) + float(m2)))
+print ("La tensiÃ³n de la cuerda en Newtons es: " +  str(tension) + "metros * kg / seg2")
+tensiondi = (g*0.01 * 2*(float(m1) * float(m2))*0.001 / (float(m1) + float(m2))*0.001)
+print("La tensiÃ³n en dinas es: " + str(tensiondi) + "cm * gr /seg2")

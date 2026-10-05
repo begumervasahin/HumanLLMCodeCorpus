@@ -1,0 +1,11 @@
+import pkg_resources
+def get_package_version(package_name):
+    try:
+        version = pkg_resources.get_distribution(package_name).version
+        return version
+    except pkg_resources.DistributionNotFound:
+        return "Package '{}' not found.".format(package_name)
+if __name__ == "__main__":
+    package_name = "your_package_name"
+    version = get_package_version(package_name)
+    print("Version of '{}': {}".format(package_name, version))

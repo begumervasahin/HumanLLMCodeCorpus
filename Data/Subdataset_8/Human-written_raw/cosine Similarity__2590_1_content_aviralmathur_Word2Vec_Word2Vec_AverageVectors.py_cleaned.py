@@ -1,0 +1,56 @@
+import pandas as pd
+import os
+from nltk.corpus import stopwords
+import nltk.data
+import logging
+import numpy as np
+from gensim.models import Word2Vec
+from sklearn.ensemble import RandomForestClassifier
+from KaggleWord2VecUtility import KaggleWord2VecUtility
+def makeFeatureVec(words, model, num_features):
+    featureVec = np.zeros((num_features,),dtype="float32")
+    nwords = 0.
+    index2word_set = set(model.index2word)
+    for word in words:
+        if word in index2word_set:
+            nwords = nwords + 1.
+            featureVec = np.add(featureVec,model[word])
+    featureVec = np.divide(featureVec,nwords)
+    return featureVec
+def getAvgFeatureVecs(skucollection, model, num_features):
+    counter = 0.
+    reviewFeatureVecs = np.zeros((len(skucollection),num_features),dtype="float32")
+    for sku in skucollection:
+       if counter%1000. == 0.:
+           print "sku %d of %d" % (counter, len(skucollection))
+       reviewFeatureVecs[counter] = makeFeatureVec(sku, model, \
+           num_features)
+       counter = counter + 1.
+    return reviewFeatureVecs
+def getCleanReviews(skucollection):
+    clean_skucollection = []
+    for sku in skucollection["product_title"]:
+        clean_skucollection.append( KaggleWord2VecUtility.sku_to_wordlist( sku, remove_stopwords=True ))
+    return clean_skucollection
+if __name__ == '__main__':
+    train = pd.read_csv( os.path.join(os.path.dirname(__file__), 'data_crowflower', 'train.csv'), header=0, delimiter=",", quoting=6 )
+    print "Read %d labeled train skucollection " % (train["product_title"].size)
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    sentences = []
+    print "Parsing sentences from training set"
+    for sku in train["product_title"]:
+        sentences += KaggleWord2VecUtility.sku_to_sentences(sku, tokenizer)
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',\
+        level=logging.INFO)
+    num_features = 300
+    min_word_count = 40
+    num_workers = 4
+    context = 10
+    downsampling = 1e-3
+    print "Training Word2Vec model..."
+    model = Word2Vec(sentences, workers=num_workers, \
+                size=num_features, min_count = min_word_count, \
+                window = context, sample = downsampling, seed=1)
+    model.init_sims(replace=True)
+    model_name = "300features_40minwords_10_SKU"
+    model.save(model_name)

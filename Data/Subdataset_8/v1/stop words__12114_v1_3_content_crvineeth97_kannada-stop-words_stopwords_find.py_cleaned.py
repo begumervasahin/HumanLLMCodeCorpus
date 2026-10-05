@@ -1,0 +1,31 @@
+import nltk
+from textblob import TextBlob as tb
+import json
+nltk.download('punkt')
+class TfIdf:
+    def __init__(self, corpusPath):
+        self.corpusPath = corpusPath
+        self.corpus = []
+        self.wordDfDict = {}
+    def setup(self):
+        for path in self.corpusPath:
+            with open(path, 'r') as file:
+                data = json.load(file)
+                self.corpus.extend(data)
+        self.calculateWordFrequency()
+    def buildCorpus(self, content):
+        return tb(' '.join(content))
+    def calculateWordFrequency(self):
+        for document in self.corpus:
+            content = document['content']
+            blob = self.buildCorpus(content)
+            for word in set(blob.words):
+                self.wordDfDict[word] = self.wordDfDict.get(word, 0) + 1
+    def writeToFile(self, filename="stop-words.txt", top_n=102):
+        with open(filename, 'w') as outFile:
+            for key, val in sorted(self.wordDfDict.items(), key=lambda x: x[1], reverse=True)[:top_n]:
+                outFile.write(key + '\n')
+corpusPath = ["udayavani.json"]
+t = TfIdf(corpusPath)
+t.setup()
+t.writeToFile()

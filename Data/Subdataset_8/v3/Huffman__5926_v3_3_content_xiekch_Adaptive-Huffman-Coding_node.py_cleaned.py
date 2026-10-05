@@ -1,0 +1,41 @@
+class Node:
+    def __init__(self, char=None):
+        self.char = char if char is not None else b'*'
+        self.weight = 0
+        self.parent = None
+        self.left = None
+        self.right = None
+        self.level = 0
+    def set_left_child(self, node):
+        self.left = node
+        node.parent = self
+        node.update_level()
+    def set_right_child(self, node):
+        self.right = node
+        node.parent = self
+        node.update_level()
+    def replace_child(self, child, new_node):
+        if self.left == child:
+            self.set_left_child(new_node)
+        elif self.right == child:
+            self.set_right_child(new_node)
+    def update_level(self):
+        self.level = self.parent.level + 1 if self.parent else 0
+        for child in [self.left, self.right]:
+            if child:
+                child.update_level()
+    def has_no_child(self):
+        return not self.left and not self.right
+    def is_ancestor(self, node):
+        ancestor = self.parent
+        while ancestor:
+            if ancestor == node:
+                return True
+            ancestor = ancestor.parent
+        return False
+    def swap(self, node):
+        if self == node or node.is_ancestor(self) or self.is_ancestor(node):
+            return
+        parent1, parent2 = self.parent, node.parent
+        parent2.replace_child(node, self)
+        parent1.replace_child(self, node)

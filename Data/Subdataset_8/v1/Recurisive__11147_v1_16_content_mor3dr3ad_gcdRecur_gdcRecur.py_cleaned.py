@@ -1,0 +1,14 @@
+def gcd_recur(a, b):
+    '''
+    a, b: positive integers
+    returns: a positive integer, the greatest common divisor of a & b.
+    '''
+    if b == 0:
+        return a
+    else:
+        return gcd_recur(b, a % b)
+if __name__ == "__main__":
+    num1 = int(input("Enter the first number: "))
+    num2 = int(input("Enter the second number: "))
+    result = gcd_recur(num1, num2)
+    print("GCD of", num1, "and", num2, "is:", result)

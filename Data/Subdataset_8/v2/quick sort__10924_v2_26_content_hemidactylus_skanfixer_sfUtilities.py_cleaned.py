@@ -1,0 +1,64 @@
+import os
+PIC_SUFFIXES = ['jpg', 'jpeg', 'bmp', 'tiff', 'gif', 'png']
+def safeBuildFileName(directory, filename_body, extension):
+    '''
+    Builds a filename in a safe way by adding a numeric suffix to the body
+    in case the file already exists in the directory.
+    '''
+    new_body = filename_body
+    iteration = 0
+    while True:
+        filename = os.path.join(directory, f"{new_body}.{extension}")
+        if not os.path.isfile(filename):
+            return filename
+        else:
+            iteration += 1
+            new_body = f"{filename_body}_r{iteration}"
+            continue
+def ensureDirectoryExists(directory_name):
+    '''
+    Ensures that a directory exists. If it doesn't, it creates it.
+    '''
+    if not os.path.isdir(directory_name):
+        os.mkdir(directory_name)
+def rightClipText(text, length):
+    '''
+    Clips the text to the specified length from the right.
+    '''
+    if len(text) > length:
+        return '...' + text[-length:]
+    else:
+        return text
+def popItem(item_list, item):
+    '''
+    Removes the specified item from the list.
+    '''
+    item_list.pop(item_list.index(item))
+    return
+def listImageFiles(directory):
+    '''
+    Lists image files in a given directory.
+    '''
+    return sorted([filename for filename in os.listdir(directory) if isPicture(filename)])
+def isPicture(filename):
+    '''
+    Checks if a file is an image file based on its suffix.
+    '''
+    return any(filename.endswith(suffix) for suffix in PIC_SUFFIXES)
+def findRescaleFactor(image_size, allowed_size, allow_zoom=True):
+    '''
+    Finds the rescale factor given the image size and the size of the container.
+    '''
+    max_factor = max(float(image_dim) / float(allowed_dim) for image_dim, allowed_dim in zip(image_size, allowed_size))
+    if not allow_zoom and max_factor < 1:
+        max_factor = 1
+    print(f'max_factor = {max_factor:.3f}')
+    return max_factor
+filename_allowed_chars = 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM' + \
+                         '1234567890-_~.,'
+def normalizeString(input_text):
+    '''
+    Removes characters from a string that are not in the set of allowed characters.
+    Used to store labels as filename parts.
+    '''
+    return ''.join([char for char in input_text if char in filename_allowed_chars])

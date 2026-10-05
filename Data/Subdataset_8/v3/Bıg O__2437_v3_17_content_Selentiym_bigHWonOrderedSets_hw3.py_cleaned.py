@@ -1,0 +1,53 @@
+import csv
+from bondartsev_nikita.classes import *
+CONFIG = tuple(["RealParam"] * 14)
+DATA_FILENAME = "hw3.csv"
+def create_object(config, data_line, label='') -> 'AObject':
+    params = [getattr(paramClasses, config[ind]).instantiate(value) for ind, value in enumerate(data_line)]
+    return Object(params, label)
+def print_objects(objects):
+    sorted_objects = sorted(objects, key=lambda x: x.__str__())
+    for obj in sorted_objects:
+        print('o' + obj.__str__(), end=',')
+def count_feasible_configs(used: set, to_use: set) -> int:
+    if not to_use:
+        param = None
+        for obj in used:
+            try:
+                param = param.intersect(obj.dash())
+            except UnboundLocalError:
+                param = obj.dash()
+        try:
+            closed = contMain.dash(param)
+            if len(closed) == len(used):
+                print_objects(used)
+                print('')
+                return 1
+            else:
+                return 0
+        except UnboundLocalError:
+            return 0
+    new_element = to_use.pop()
+    second = used.copy()
+    third = used.copy()
+    second.add(new_element)
+    copy_to_use1 = to_use.copy()
+    copy_to_use2 = to_use.copy()
+    return count_feasible_configs(third, copy_to_use1) + count_feasible_configs(second, copy_to_use2)
+with open(DATA_FILENAME, 'r') as file:
+    reader = csv.reader(file)
+    raw_data_list = list(reader)
+main_param_set = create_object(CONFIG, ['__head' for _ in range(len(CONFIG))]).dash()
+contMain = Context(main_param_set)
+counter = 0
+for data_line in raw_data_list:
+    counter += 1
+    obj = create_object(CONFIG, data_line, str(counter))
+    contMain.addObject(obj)
+count_feasible_configs(set(), set(contMain.getObjects()))
+objects = list(contMain.getObjects())
+print()
+print()
+print_objects([objects[0], objects[1]])
+print()
+print_objects(contMain.dash(objects[0].dash().intersect(objects[1].dash())))

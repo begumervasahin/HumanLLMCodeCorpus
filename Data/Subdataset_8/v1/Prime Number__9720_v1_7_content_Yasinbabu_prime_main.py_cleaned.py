@@ -1,0 +1,20 @@
+import numpy as np
+import csv
+target = 100
+prime = np.array([])
+def primecheck(x, primeList):
+    for j in primeList:
+        if j <= np.sqrt(x):
+            if x % j == 0:
+                return False
+        else:
+            break
+    return True
+for i in range(2, target + 1):
+    if primecheck(i, prime):
+        prime = np.append(prime, i)
+with open(f'prime_{target}_({len(prime)}).csv', 'w', newline='') as csvfile:
+    primewriter = csv.writer(csvfile, delimiter=',')
+    primewriter.writerow(prime)
+print(str(target))
+print(str(len(prime)))

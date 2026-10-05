@@ -1,0 +1,117 @@
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+    def insert(self, value):
+        new_node = Node(value)
+        if self.root is None:
+            self.root = new_node
+        else:
+            current = self.root
+            while True:
+                if value < current.value:
+                    if current.left is None:
+                        current.left = new_node
+                        break
+                    current = current.left
+                elif value > current.value:
+                    if current.right is None:
+                        current.right = new_node
+                        break
+                    current = current.right
+                else:
+                    break
+    def lookup(self, value):
+        current = self.root
+        while current:
+            if current.value == value:
+                return current
+            elif value < current.value:
+                current = current.left
+            else:
+                current = current.right
+        return None
+    def remove(self, value):
+        self.root, _ = self._remove_node(self.root, value)
+    def _remove_node(self, root, value):
+        if root is None:
+            return root, False
+        if value < root.value:
+            root.left, removed = self._remove_node(root.left, value)
+        elif value > root.value:
+            root.right, removed = self._remove_node(root.right, value)
+        else:
+            if root.left is None:
+                return root.right, True
+            elif root.right is None:
+                return root.left, True
+            successor = self._find_min(root.right)
+            root.value = successor.value
+            root.right, _ = self._remove_node(root.right, successor.value)
+            removed = True
+        return root, removed
+    def _find_min(self, root):
+        current = root
+        while current.left:
+            current = current.left
+        return current
+    def breadth_first_search(self):
+        if self.root is None:
+            return []
+        result = []
+        queue = [self.root]
+        while queue:
+            current = queue.pop(0)
+            result.append(current.value)
+            if current.left:
+                queue.append(current.left)
+            if current.right:
+                queue.append(current.right)
+        return result
+    def height(self):
+        return self._calculate_height(self.root)
+    def _calculate_height(self, node):
+        if node is None:
+            return 0
+        else:
+            left_height = self._calculate_height(node.left)
+            right_height = self._calculate_height(node.right)
+            return max(left_height, right_height) + 1
+def in_order_traversal(root):
+    if root:
+        in_order_traversal(root.left)
+        print(root.value, end=" ")
+        in_order_traversal(root.right)
+def pre_order_traversal(root):
+    if root:
+        print(root.value, end=" ")
+        pre_order_traversal(root.left)
+        pre_order_traversal(root.right)
+def post_order_traversal(root):
+    if root:
+        post_order_traversal(root.left)
+        post_order_traversal(root.right)
+        print(root.value, end=" ")
+def main():
+    tree = BinarySearchTree()
+    elements = [50, 28, 78, 12, 40, 66, 90, 9, 18, 37, 43, 57, 69, 81, 93, 3, 10, 15, 21, 30, 38, 42, 46,
+                54, 60, 67, 72, 80, 84, 92, 96, 13, 29, 55, 56]
+    for element in elements:
+        tree.insert(element)
+    tree.remove(15)
+    bfs_result = tree.breadth_first_search()
+    tree_height = tree.height()
+    print("Breadth-First Search Result:", bfs_result)
+    print("Height of the Tree:", tree_height)
+    print("In-order Traversal:")
+    in_order_traversal(tree.root)
+    print("\nPre-order Traversal:")
+    pre_order_traversal(tree.root)
+    print("\nPost-order Traversal:")
+    post_order_traversal(tree.root)
+if __name__ == "__main__":
+    main()

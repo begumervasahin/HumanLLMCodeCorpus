@@ -1,0 +1,35 @@
+class Sorting:
+    def __init__(self):
+        self.listOfNumbers = []
+    def addNumber(self, number):
+        self.listOfNumbers.append(number)
+    def returnList(self):
+        return self.listOfNumbers
+    def printEachElementOfList(self):
+        for number in self.listOfNumbers:
+            print(number)
+    def quickSort(self, arr):
+        lessThanPivot = []
+        equalPivot = []
+        greaterThanPivot = []
+        if len(arr) > 1:
+            pivot = arr[-1]
+            for number in arr:
+                if number < pivot:
+                    lessThanPivot.append(number)
+                elif number == pivot:
+                    equalPivot.append(number)
+                else:
+                    greaterThanPivot.append(number)
+            return self.quickSort(lessThanPivot) + equalPivot + self.quickSort(greaterThanPivot)
+        else:
+            return arr
+sorting = Sorting()
+sorting.addNumber(3)
+sorting.addNumber(1)
+sorting.addNumber(5)
+sorting.addNumber(2)
+sorting.addNumber(4)
+print("Original list:", sorting.returnList())
+sorted_list = sorting.quickSort(sorting.returnList())
+print("Sorted list:", sorted_list)

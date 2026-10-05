@@ -1,0 +1,39 @@
+def input_linear_equation(prompt):
+    coefficient_a = int(input(f"Enter the coefficient for '{prompt}' term: "))
+    coefficient_b = int(input(f"Enter the coefficient for '{prompt}' term: "))
+    constant_term = int(input(f"Enter the constant term for equation {prompt}: "))
+    return coefficient_a, coefficient_b, constant_term
+def print_linear_equation(coefficients, constant_term):
+    a, b = coefficients
+    if a != 0 or b != 0:
+        print(f"{a}x + {b}y =", constant_term)
+    else:
+        print("Invalid equation.")
+def solve_linear_equation(coefficients1, coefficients2):
+    a1, b1 = coefficients1
+    a2, b2 = coefficients2
+    c1 = coefficients1[2]
+    c2 = coefficients2[2]
+    d = a1 * b2 - b1 * a2
+    dx = c1 * b2 - b1 * c2
+    dy = a1 * c2 - c1 * a2
+    x = dx / d
+    y = dy / d
+    return d, dx, dy, x, y
+if __name__ == "__main__":
+    print("SOLVE A LINEAR EQUATION BY CRAMER'S RULE OF DISCRIMINANTS")
+    print("Equation.no.1")
+    coefficients1 = input_linear_equation('a')
+    print_linear_equation(coefficients1, coefficients1[2])
+    print("----------------------------")
+    print("Equation.no.2")
+    coefficients2 = input_linear_equation('k')
+    print_linear_equation(coefficients2, coefficients2[2])
+    print("--------------------------------------------")
+    print("The equation will be solved by Cramer's rule")
+    d, dx, dy, x, y = solve_linear_equation(coefficients1, coefficients2)
+    print('d =', d)
+    print('dx =', dx)
+    print('dy =', dy)
+    print('x =', x)
+    print('y =', y)

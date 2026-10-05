@@ -1,0 +1,54 @@
+import time
+class Shifts:
+    def __init__(self):
+        self.inversions = 0
+def get_halves(array):
+    mid = len(array)
+    left_half, right_half = array[:mid], array[mid:]
+    return left_half, right_half
+def count_inversions(left_half, right_half, shifts):
+    left_half.sort()
+    right_half.sort()
+    left_length, right_length = len(left_half), len(right_half)
+    i, j = 0, 0
+    while i < left_length and j < right_length:
+        if left_half[i] > right_half[j]:
+            shifts.inversions += left_length - i
+            j += 1
+        else:
+            i += 1
+def merge_sort(array, shifts):
+    if len(array) > 1:
+        left_half, right_half = get_halves(array)
+        merge_sort(left_half, shifts)
+        merge_sort(right_half, shifts)
+        count_inversions(left_half, right_half, shifts)
+def insertion_sort(arr):
+    shifts = Shifts()
+    merge_sort(arr, shifts)
+    return shifts.inversions
+def get_elapsed_time(start_time):
+    end_time = int(time.time())
+    elapsed_seconds = end_time - start_time
+    minutes = elapsed_seconds
+    seconds = elapsed_seconds % 60
+    return minutes, seconds
+def test_case(test, inversions, expected, start_time):
+    status = "PASS" if inversions == expected else "FAIL"
+    minutes, seconds = get_elapsed_time(start_time)
+    print(f"\n{test} inversions: {inversions}, expected: {expected}, {status}\n")
+    print(f"{test} execution time: {minutes} minutes {seconds} seconds\n")
+def main():
+    test_cases = ['TC2_1', 'TC2_2']
+    for test in test_cases:
+        if test == 'TC2_1':
+            from TC2_1_length_441_answer_46768 import arr
+            expected = 46768
+        elif test == 'TC2_2':
+            from TC2_2_length_18_answer_77 import arr
+            expected = 77
+        start_time = int(time.time())
+        inversions = insertion_sort(arr)
+        test_case(test, inversions, expected, start_time)
+if __name__ == '__main__':
+    main()

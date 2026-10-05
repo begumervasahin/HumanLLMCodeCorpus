@@ -1,0 +1,62 @@
+import random
+import math
+import socket
+def prime_numbers(n):
+    primes = []
+    for i in range(100, n):
+        is_prime = True
+        for j in range(2, int(math.sqrt(i)) + 1):
+            if i % j == 0:
+                is_prime = False
+                break
+        if is_prime:
+            primes.append(i)
+    return primes
+def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+def primitive_roots(modulo):
+    roots = []
+    required_set = set(num for num in range(1, modulo) if gcd(num, modulo) == 1)
+    for g in range(1, modulo):
+        actual_set = set(pow(g, powers) % modulo for powers in range(1, modulo))
+        if required_set == actual_set:
+            roots.append(g)
+    return roots
+def generate_private_component(q):
+    return random.randint(0, q - 1)
+def generate_public_component(q, a, x):
+    return pow(a, x, q)
+def main():
+    host = 'localhost'
+    port = int(input("Enter port: "))
+    primes = prime_numbers(500)
+    q = random.choice(primes)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((host, port))
+    s.listen(1)
+    print("Waiting for connection...")
+    c, addr = s.accept()
+    print("Connected to client:", addr)
+    print("Prime is:", q)
+    c.send(str(q).encode())
+    msg = c.recv(1024).decode()
+    print("Received message from client:", msg)
+    primitive_roots_q = primitive_roots(q)
+    a = random.choice(primitive_roots_q)
+    print("Primitive root is:", a)
+    c.send(str(a).encode())
+    x1 = generate_private_component(q)
+    print("Private component:", x1)
+    y1 = generate_public_component(q, a, x1)
+    print("Public component:", y1)
+    c.send(str(y1).encode())
+    yc = int(c.recv(1024).decode())
+    print("Client's public component:", yc)
+    k = pow(yc, x1, q)
+    print("Secret key is:", k)
+    c.close()
+    s.close()
+if __name__ == "__main__":
+    main()

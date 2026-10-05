@@ -1,0 +1,34 @@
+import json
+import flask
+from flask import request
+import predict_using_mlp
+PORT_NO = 8080
+app = flask.Flask(__name__)
+@app.route('/', methods=['GET'])
+def index():
+    with open("index.html", "rb") as f:
+        return f.read()
+@app.route('/api', methods=['GET'])
+def api():
+    q = request.args.get('q', '')
+    if q == '':
+      return '{"label": "ãã­ã¹ããç©ºã§ã", "percent":0}'
+    print("q=", q)
+    label, percent, _ = predict_using_mlp.predict_genre(q)
+    percent = round(percent * 100, 2)
+    return json.dumps({
+      "label": label,
+      "percent": percent
+    })
+@app.route('/', methods=['POST'])
+def api_2():
+	if request.headers['Content-Type'] != 'application/json':
+		print('Content-Type:',request.headers['Content-Type'])
+		return flask.jsonify(res='error'), 400
+	else:
+		data = request.get_json()
+		print(data['text'])
+		label, _ , _ = predict_using_mlp.predict_genre(data['text'])
+		return json.dumps({"label": label})
+if __name__ == '__main__':
+	app.run(debug=False, host='0.0.0.0', port=PORT_NO, threaded=False)

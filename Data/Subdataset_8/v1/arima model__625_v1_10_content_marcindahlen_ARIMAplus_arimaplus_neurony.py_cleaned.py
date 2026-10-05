@@ -1,0 +1,319 @@
+import random
+import math
+class arimaplus_math:
+    @staticmethod
+    def tanh(x):
+        return math.tanh(x)
+    @staticmethod
+    def derivative_tanh(x):
+        return 1 - math.tanh(x)**2
+    @staticmethod
+    def sigmoid(x):
+        return 1 / (1 + math.exp(-x))
+    @staticmethod
+    def derivative_sigmoid(x):
+        return arimaplus_math.sigmoid(x) * (1 - arimaplus_math.sigmoid(x))
+class simpleNetwork(object):
+    def __init__(self, window, neurony, forecast_type, arima):
+        self.layers = len(neurony)
+        self.topology = [[] for _ in range(self.layers)]
+        for i in range(0, self.layers):
+            quantity = neurony[i]
+            for _ in range(0, int(quantity)):
+                if i == 0:
+                    self.topology[i].append(simpleNeuron(window))
+                else:
+                    self.topology[i].append(simpleNeuron(neurony[i - 1]))
+        if forecast_type == 1:
+            self.topology.append([simpleNeuron(neurony[len(neurony) - 1]) for _ in range(window)])
+        elif forecast_type == 4:
+            self.topology.append([simpleNeuron(neurony[len(neurony) - 1])])
+        elif forecast_type == 5:
+            self.topology.append([simpleNeuron(neurony[len(neurony) - 1]), simpleNeuron(neurony[len(neurony) - 1])])
+        elif forecast_type == 6:
+            self.topology.append([simpleNeuron(neurony[len(neurony) - 1]) for _ in range(arima)])
+        elif forecast_type == 7:
+            self.topology.append([simpleNeuron(neurony[len(neurony) - 1]) for _ in range(arima)])
+        self.layers += 1
+    def forward_pass(self, input=[]):
+        self.output = []
+        for i in range(self.layers):
+            if i == 0:
+                for j, el in enumerate(self.topology[i]):
+                    self.topology[i][j].calculate(input)
+            else:
+                for j, el in enumerate(self.topology[i]):
+                    self.topology[i][j].calculate([neuron.output for neuron in self.topology[i - 1]])
+                    if i == self.layers - 1:
+                        self.output.append(
+                            self.topology[i][j].calculate([neuron.output for neuron in self.topology[i - 1]]))
+        return self.output
+    def backward_pass(self, target, learning_lambda, input=[]):
+        print("simpleNetwork backward pass target:")
+        print(target)
+        for i in reversed(range(0, self.layers)):
+            if i == self.layers - 1:
+                if not isinstance(target, float):
+                    for j, t in enumerate(target):
+                        self.topology[i][j].learn(t, learning_lambda, [neuron.output for neuron in self.topology[i-1]])
+                else:
+                    self.topology[i][0].learn(target, learning_lambda, [neuron.output for neuron in self.topology[i - 1]])
+            elif i == 0:
+                for neuron in self.topology[i]:
+                    neuron.learn(simpleNeuron.getMomentums(neuron, self.topology[i+1]), learning_lambda, input)
+            else:
+                for neuron in self.topology[i]:
+                    neuron.learn(simpleNeuron.getMomentums(neuron, self.topology[i+1]), learning_lambda,
+                                 [neuron.output for neuron in self.topology[i-1]])
+class simpleNeuron(object):
+    def __init__(self, window):
+        self.weights = []
+        self.sum = 0
+        self.bias = 1
+        for _ in range(0, int(window)):
+            self.weights.append(1 / random.randint(1, window))
+        self.bias_weight = 1 / random.randint(1, window)
+    def calculate(self, input=[]):
+        self.sum = sum(x * y for x, y in zip(self.weights, input))
+        self.sum += self.bias * self.bias_weight
+        self.output = arimaplus_math.tanh(self.sum)
+        return self.output
+    def learn(self, target, learning_lambda, input=[]):
+        self.d_wagi = [0] * len(input)
+        for i in range(len(input)):
+            self.d_wagi[i] = target * arimaplus_math.derivative_tanh(self.output) * input[i]
+        for i in range(len(input)):
+            self.weights[i] += learning_lambda * self.d_wagi[i]
+        self.bias_weight += target * arimaplus_math.derivative_tanh(self.output) * self.bias * learning_lambda
+    @staticmethod
+    def getMomentums(neuron, neurons=[]):
+        momentums = 0
+        for n in neurons:
+            momentums += n.getWeightMomentum(neuron)
+        return momentums
+    def getWeightMomentum(self, n):
+        return self.d_wagi[n]
+class lstmNetwork(object):
+    def __init__(self, window, neurony, forecast_type, arima):
+        self.layers = len(neurony)
+        self.topology = [[] for _ in range(self.layers)]
+        for i in range(self.layers):
+            quantity = neurony[i]
+            for _ in range(0, quantity):
+                if i == 0:
+                    self.topology[i].append(lstmNeuron(window))
+                else:
+                    self.topology[i].append(lstmNeuron(neurony[i - 1]))
+        if forecast_type == 1:
+            self.topology.append([lstmNeuron(neurony[len(neurony) - 1]) for _ in range(window)])
+        elif forecast_type == 4:
+            self.topology.append([lstmNeuron(neurony[len(neurony) - 1])])
+        elif forecast_type == 5:
+            self.topology.append([lstmNeuron(neurony[len(neurony) - 1]), lstmNeuron(neurony[len(neurony) - 1])])
+        elif forecast_type == 6:
+            self.topology.append([lstmNeuron(neurony[len(neurony) - 1]) for _ in range(arima)])
+        elif forecast_type == 7:
+            self.topology.append([lstmNeuron(neurony[len(neurony) - 1]) for _ in range(arima)])
+        self.layers += 1
+    def forward_pass(self, input=[]):
+        self.output = []
+        for i in range(self.layers):
+            if i == 0:
+                for neuron in self.topology[i]:
+                    neuron.calculate(input)
+            else:
+                for neuron in self.topology[i]:
+                    neuron.calculate([neuron.wynik for neuron in self.topology[i - 1]])
+                    if i == self.layers - 1:
+                        self.output.append(
+                            neuron.calculate([neuron.wynik for neuron in self.topology[i - 1]]))
+    def backward_pass(self, target, learning_lambda, input=[]):
+        for i in reversed(self.layers):
+            if i == self.layers - 1:
+                for j, cel in enumerate(target):
+                    self.topology[i][j].learn(cel, learning_lambda, [neuron.wynik for neuron in self.topology[i - 1]])
+            elif i == 0:
+                for neuron in self.topology[i]:
+                    neuron.learn(sum(map(sum, [neuron.d_wagi for _ in self.topology[i + 1]])),
+                                 learning_lambda,
+                                 input)
+            else:
+                for neuron in self.topology[i]:
+                    neuron.learn(sum(map(sum, [neuron.d_wagi for _ in self.topology[i + 1]])),
+                                 learning_lambda,
+                                 [neuron.wynik for neuron in self.topology[i - 1]])
+class lstmNeuron(object):
+    def __init__(self, window):
+        self.weights = [[] for _ in range(4)]
+        self.bias_weights = []
+        self.suma_in, self.suma_out, self.suma_mem, self.suma_forget = 0, 0, 0, 0
+        self.y_in, self.y_forget, self.state, self.y_out = 0, 0, 0, 0
+        self.bias_in, self.bias_out, self.bias_forget, self.bias_mem = 1, 1, 1, 1
+        self.mem = 0
+        self.output = 0
+        for _ in range(4):
+            for _ in range(window):
+                self.weights[_].append(1 / random.randint(1, 4 * window))
+            self.bias_weights.append(1 / random.randint(1, 4 * window))
+        self.y_prev = 0
+        self.waga_prev = 1 / random.randint(1, 4 * window)
+    def calculate(self, input=[]):
+        self.y_prev = self.output
+        self.state = self.mem
+        self.suma_in = sum(x * y for x, y in zip(input, self.weights[0]))
+        self.suma_in += self.y_prev * self.waga_prev
+        self.suma_in += self.bias_in * self.bias_weights[0]
+        self.y_in = arimaplus_math.sigmoid(self.suma_in)
+        self.suma_forget = sum(x * y for x, y in zip(input, self.weights[1]))
+        self.suma_forget += self.bias_forget * self.bias_weights[1]
+        self.y_forget = arimaplus_math.sigmoid(self.suma_forget)
+        self.suma_mem = sum(x * y for x, y in zip(input, self.weights[2]))
+        self.suma_mem += self.bias_mem * self.bias_weights[2]
+        self.mem = self.y_forget * self.state + self.y_in * arimaplus_math.tanh(self.suma_mem)
+        self.suma_out = sum(x * y for x, y in zip(input, self.weights[3]))
+        self.suma_out += self.bias_out * self.bias_weights[3]
+        self.y_out = arimaplus_math.sigmoid(self.suma_out)
+        self.output = arimaplus_math.tanh(self.mem) * self.y_out
+        return self.output
+    def learn(self, target, learning_lambda, input=[]):
+        self.d_wagi = [[] for _ in range(4)]
+        for _ in range(4):
+            for _ in range(len(input)):
+                self.d_wagi[_].append(0)
+        for i in range(len(input)):
+            self.d_wagi[0][i] = input[i] * target * arimaplus_math.derivative_tanh(self.output) * \
+                                 self.y_forget * arimaplus_math.derivative_tanh(self.suma_mem) * \
+                                 arimaplus_math.derivative_sigmoid(self.suma_in)
+            self.d_wagi[1][i] = input[i] * target * arimaplus_math.derivative_tanh(self.output) * \
+                                 self.y_in * arimaplus_math.derivative_tanh(self.suma_mem) * \
+                                 arimaplus_math.derivative_sigmoid(self.suma_forget)
+            self.d_wagi[2][i] = input[i] * target * arimaplus_math.derivative_tanh(self.output) * \
+                                 self.y_forget * self.y_in * arimaplus_math.derivative_tanh(self.suma_mem)
+            self.d_wagi[3][i] = input[i] * target * arimaplus_math.derivative_tanh(self.output) * \
+                                 arimaplus_math.derivative_sigmoid(self.suma_out)
+        self.bias_weights[0] += learning_lambda * target * self.y_out * arimaplus_math.derivative_tanh(
+            self.mem) * self.y_forget * arimaplus_math.derivative_tanh(self.suma_mem) * arimaplus_math.derivative_sigmoid(
+            self.suma_in) * self.bias_in
+        self.bias_weights[1] += learning_lambda * target * self.y_out * arimaplus_math.derivative_tanh(
+            self.mem) * self.y_in * arimaplus_math.derivative_tanh(self.suma_mem) * arimaplus_math.derivative_sigmoid(
+            self.suma_forget) * self.bias_out
+        self.bias_weights[2] += learning_lambda * target * self.y_out * arimaplus_math.derivative_tanh(
+            self.mem) * self.y_forget * self.y_in * arimaplus_math.derivative_tanh(self.suma_mem) * self.bias_mem
+        self.bias_weights[3] += learning_lambda * target * arimaplus_math.derivative_tanh(self.mem) * \
+                                 arimaplus_math.derivative_sigmoid(self.suma_out) * self.bias_forget
+        self.waga_prev += learning_lambda * target * self.y_out * arimaplus_math.derivative_tanh(
+            self.mem) * self.y_forget * self.y_in * arimaplus_math.derivative_tanh(self.suma_mem) * self.y_prev
+        for i in range(len(input)):
+            self.weights[0][i] += learning_lambda * self.d_wagi[0][i]
+            self.weights[1][i] += learning_lambda * self.d_wagi[1][i]
+            self.weights[2][i] += learning_lambda * self.d_wagi[2][i]
+            self.weights[3][i] += learning_lambda * self.d_wagi[3][i]
+class gruNetwork(object):
+    def __init__(self, window, neurony, forecast_type, arima):
+        self.layers = len(neurony)
+        self.topology = [[] for _ in range(self.layers)]
+        for i in range(self.layers):
+            quantity = neurony[i]
+            for _ in range(quantity):
+                if i == 0:
+                    self.topology[i].append(gruNeuron(window))
+                else:
+                    self.topology[i].append(gruNeuron(neurony[i - 1]))
+        if forecast_type == 1:
+            self.topology.append([gruNeuron(neurony(len(neurony))) for _ in range(window)])
+        elif forecast_type == 4:
+            self.topology.append([gruNeuron(neurony(len(neurony)))])
+        elif forecast_type == 5:
+            self.topology.append([gruNeuron(neurony(len(neurony))), gruNeuron(neurony(len(neurony)))])
+        elif forecast_type == 6:
+            self.topology.append([gruNeuron(neurony(len(neurony))) for _ in range(arima)])
+        elif forecast_type == 7:
+            self.topology.append([gruNeuron(neurony(len(neurony))) for _ in range(arima)])
+        self.layers += 1
+    def forward_pass(self, input=[]):
+        self.wynik = []
+        for i in range(self.layers):
+            if i == 0:
+                for neuron in self.topology[i]:
+                    neuron.calculate(input)
+            else:
+                for neuron in self.topology[i]:
+                    neuron.calculate([neuron.wynik for neuron in self.topology[i - 1]])
+                    if i == len(self.layers) - 1:
+                        self.wynik.append(
+                            neuron.calculate([neuron.wynik for neuron in self.topology[i - 1]]))
+    def backward_pass(self, target, learing_lambda, input=[]):
+        for i in reversed(self.layers):
+            if i == len(self.layers) - 1:
+                for j, cel in enumerate(target):
+                    self.topology[i][j].learn(cel, learing_lambda, [neuron.wynik for neuron in self.topology[i - 1]])
+            elif i == 0:
+                for neuron in self.topology[i]:
+                    neuron.learn(sum(map(sum, [neuron.d_wagi for _ in self.topology[i + 1]])),
+                                 learing_lambda,
+                                 input)
+            else:
+                for neuron in self.topology[i]:
+                    neuron.learn(sum(map(sum, [neuron.d_wagi for _ in self.topology[i + 1]])),
+                                 learing_lambda,
+                                 [neuron.wynik for neuron in self.topology[i - 1]])
+class gruNeuron(object):
+    def __init__(self, window):
+        self.weights = [[] for _ in range(3)]
+        self.bias_weight = []
+        self.input_weight = []
+        self.suma_zt, self.suma_rt, self.suma_we = 0, 0, 0
+        self.y_zt, self.y_rt, self.y_we = 0, 0, 0
+        self.bias_zt, self.bias_rt, self.bias_we = 1, 1, 1
+        self.output = 0
+        self.bias = 1
+        for _ in range(3):
+            for _ in range(window):
+                self.weights[_].append(1 / random.randint(1, 3 * window))
+            self.bias_weight.append(1 / random.randint(1, 3 * window))
+            self.input_weight.append(1 / random.randint(1, 3 * window))
+        self.y_prev = 0
+        self.input_weight.append(1 / random.randint(1, 4 * window))
+    def calculate(self, input=[]):
+        self.y_prev = self.output
+        self.suma_zt = sum(x * y for x, y in zip(input, self.weights[0]))
+        self.suma_zt += self.y_prev * self.input_weight[0]
+        self.suma_zt += self.bias_weight[0] * self.bias
+        self.y_zt = arimaplus_math.sigmoid(self.suma_zt)
+        self.suma_rt = sum(x * y for x, y in zip(input, self.weights[1]))
+        self.suma_rt += self.y_prev * self.input_weight[1]
+        self.suma_rt += self.bias_weight[1] * self.bias
+        self.y_rt = arimaplus_math.sigmoid(self.suma_rt)
+        self.suma_we = sum(x * y for x, y in zip(input, self.weights[2]))
+        self.suma_we += self.y_prev * self.input_weight[2] * self.y_rt
+        self.suma_we += self.bias_weight[2] * self.bias
+        self.y_we = arimaplus_math.tanh(self.suma_we)
+        self.output = (1 - self.y_zt) * self.y_prev + self.y_zt * self.y_we
+        return self.output
+    def learn(self, cel, wsp_nauki, wejscie=[]):
+        self.d_wagi = [[] for _ in range(3)]
+        for _ in range(3):
+            for _ in range(len(wejscie)):
+                self.d_wagi[_].append(0)
+        for i in range(len(wejscie)):
+            self.d_wagi[0][i] = wejscie[i] * (-1 * arimaplus_math.derivative_sigmoid(self.suma_zt)) * (
+                self.y_we * cel + self.y_prev * cel)
+            self.d_wagi[1][i] = wejscie[i] * arimaplus_math.derivative_sigmoid(
+                self.suma_rt) * arimaplus_math.derivative_tanh(self.suma_we) * cel * (1 - self.y_zt)
+            self.d_wagi[2][i] = wejscie[i] * arimaplus_math.derivative_tanh(self.suma_we) * cel * (1 - self.y_zt)
+        self.input_weight[0] += wsp_nauki * self.y_prev * (-1 * arimaplus_math.derivative_sigmoid(self.suma_zt)) * (
+            self.y_we * cel + self.y_prev * cel)
+        self.input_weight[1] += wsp_nauki * self.y_prev * arimaplus_math.derivative_sigmoid(
+            self.suma_rt) * arimaplus_math.derivative_tanh(self.suma_we) * cel * (1 - self.y_zt)
+        self.input_weight[2] += wsp_nauki * self.y_prev * arimaplus_math.derivative_tanh(self.suma_we) * cel * (
+            1 - self.y_zt)
+        self.bias_weight[0] += wsp_nauki * self.bias * (-1 * arimaplus_math.derivative_sigmoid(self.suma_zt)) * (
+            self.y_we * cel + self.y_prev * cel)
+        self.bias_weight[1] += wsp_nauki * self.bias * arimaplus_math.derivative_sigmoid(
+            self.suma_rt) * arimaplus_math.derivative_tanh(self.suma_we) * cel * (1 - self.y_zt)
+        self.bias_weight[2] += wsp_nauki * self.bias * arimaplus_math.derivative_tanh(self.suma_we) * cel * (
+            1 - self.y_zt)
+        for i in range(len(wejscie)):
+            self.weights[0][i] += wsp_nauki * self.d_wagi[0][i]
+            self.weights[1][i] += wsp_nauki * self.d_wagi[1][i]
+            self.weights[2][i] += wsp_nauki * self.d_wagi[2][i]

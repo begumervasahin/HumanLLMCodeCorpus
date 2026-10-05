@@ -1,0 +1,106 @@
+import re
+import random
+import math
+from collections import Counter, OrderedDict
+from nltk.corpus import stopwords
+class1file = "raw_data_sport.txt"
+class2file = "raw_data_politics.txt"
+important_words_class1 = {}
+important_words_class2 = {}
+def random_partition(text, percent):
+    '''Randomly partition the text into two parts based on the given percentage.'''
+    words = text.split()
+    second_partition_length = int(len(words) * percent)
+    second_partition = random.sample(words, second_partition_length)
+    first_partition = [word for word in words if word not in second_partition]
+    return ' '.join(first_partition), ' '.join(second_partition)
+def clean_text(text):
+    '''Clean and preprocess the text by converting to lowercase, removing digits, punctuation, and stop words.'''
+    text = text.lower()
+    text = re.sub(r'\d+', '', text)
+    text = text.replace("\n", " ").replace("-", "")
+    stop_words = set(stopwords.words('english'))
+    for word in stop_words:
+        text = text.replace(" " + word + " ", " ")
+    return text
+def calculate_class_probability(word_count, total_word_count, distinct_word_count):
+    '''Calculate the log probability of a word given the class.'''
+    tmp = (word_count + 1) / (distinct_word_count + total_word_count)
+    return math.log10(tmp + 1)
+def calculate_probability(text, p_class1, p_class2, count_all_words1, count_all_words2, count_distinct_words1, count_distinct_words2, class1_words, class2_words):
+    '''Calculate the probability of the text belonging to each class.'''
+    text = clean_text(text)
+    words = text.split()
+    p_word_in_class1 = p_class1
+    p_word_in_class2 = p_class2
+    max_prob_class1 = 0
+    max_prob_class2 = 0
+    for word in words:
+        if len(word) < 3:
+            continue
+        p = calculate_class_probability(class1_words.get(word, 0), count_all_words1, count_distinct_words1)
+        if p > max_prob_class1:
+            max_prob_class1 = p
+            important_words_class1[word] = max_prob_class1
+        p = calculate_class_probability(class2_words.get(word, 0), count_all_words2, count_distinct_words2)
+        if p > max_prob_class2:
+            max_prob_class2 = p
+            important_words_class2[word] = max_prob_class2
+        p_word_in_class1 += calculate_class_probability(class1_words.get(word, 0), count_all_words1, count_distinct_words1)
+        p_word_in_class2 += calculate_class_probability(class2_words.get(word, 0), count_all_words2, count_distinct_words2)
+    return 1 if p_word_in_class1 > p_word_in_class2 else 2
+def count_words(train1, train2):
+    '''Count the occurrences of words in the training data for each class.'''
+    counter1 = OrderedDict(Counter(train1.split()))
+    counter2 = OrderedDict(Counter(train2.split()))
+    return counter1, counter2
+def stringify_words(words, chunk_size=50):
+    '''Convert a list of words into strings of a specified chunk size.'''
+    result = []
+    while len(words) > chunk_size:
+        result.append(' '.join(words[:chunk_size]))
+        del words[:chunk_size]
+    if words:
+        result.append(' '.join(words))
+    return result
+def classify():
+    '''Classify the test data into classes and evaluate the performance.'''
+    class1_text = open(class1file).read()
+    class2_text = open(class2file).read()
+    train1, test1 = random_partition(class1_text, 0.10)
+    train2, test2 = random_partition(class2_text, 0.10)
+    count_sentences1 = sum(Counter(train1.split('.')).values())
+    count_sentences2 = sum(Counter(train2.split('.')).values())
+    class1_words, class2_words = count_words(train1, train2)
+    count_all_words1 = sum(class1_words.values())
+    count_all_words2 = sum(class2_words.values())
+    count_distinct_words1 = len(class1_words)
+    count_distinct_words2 = len(class2_words)
+    p_class1 = count_sentences1 / (count_sentences1 + count_sentences2)
+    p_class2 = count_sentences2 / (count_sentences1 + count_sentences2)
+    sentences1 = stringify_words(test1.split())
+    sentences2 = stringify_words(test2.split())
+    true_positives = false_negatives = false_positives = true_negatives = 0
+    for sentence in sentences1:
+        c = calculate_probability(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_distinct_words1, count_distinct_words2, class1_words, class2_words)
+        if c == 1:
+            true_positives += 1
+        else:
+            false_negatives += 1
+    for sentence in sentences2:
+        c = calculate_probability(sentence, p_class1, p_class2, count_all_words1, count_all_words2, count_distinct_words1, count_distinct_words2, class1_words, class2_words)
+        if c == 2:
+            true_negatives += 1
+        else:
+            false_positives += 1
+    precision = true_positives / (true_positives + false_positives)
+    recall = true_positives / (true_positives + false_negatives)
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("False Positives:", false_positives)
+    print("True Positives:", true_positives)
+    print("False Negatives:", false_negatives)
+    print("True Negatives:", true_negatives)
+    print("Important Words in Class 1:", OrderedDict(important_words_class1))
+    print("Important Words in Class 2:", OrderedDict(important_words_class2))
+classify()

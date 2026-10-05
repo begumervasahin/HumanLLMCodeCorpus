@@ -1,0 +1,36 @@
+import numpy as np
+def exponential_smoothing(data):
+    optimal_alpha = find_optimal_alpha(data)
+    smoothed_data = smooth_data(data, optimal_alpha)
+    return smoothed_data
+def find_optimal_alpha(data):
+    alpha_range = np.arange(0.1, 2, 0.1)
+    mean_squared_errors = []
+    for alpha in alpha_range:
+        mse = calculate_mean_squared_error(data, alpha)
+        mean_squared_errors.append(mse)
+    optimal_alpha = alpha_range[np.argmin(mean_squared_errors)]
+    print("Optimal Alpha:", optimal_alpha)
+    return optimal_alpha
+def calculate_mean_squared_error(data, alpha):
+    squared_errors = []
+    for i in range(len(data)):
+        initial_value = calculate_initial_value(data, alpha, i)
+        squared_error = 0
+        for j in range(i, len(data)):
+            squared_error += (initial_value - data[j]) ** 2
+            initial_value = alpha * data[j] + (1 - alpha) * initial_value
+        squared_errors.append(squared_error)
+    return np.mean(squared_errors)
+def calculate_initial_value(data, alpha, index):
+    return alpha * data[index] + (1 - alpha) * data[index]
+def smooth_data(data, alpha):
+    smoothed_data = [data[0]]
+    for i in range(1, len(data)):
+        smoothed_value = alpha * data[i] + (1 - alpha) * smoothed_data[-1]
+        smoothed_data.append(smoothed_value)
+    return smoothed_data[-1]
+if __name__ == '__main__':
+    data = np.array([1, 2, 3, 4, 5])
+    result = exponential_smoothing(data)
+    print("Result:", result)

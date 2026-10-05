@@ -1,0 +1,62 @@
+class Student:
+    def __init__(self, name, rating, growth):
+        self.name = name
+        self.rating = rating
+        self.growth = growth
+    def __repr__(self):
+        return f"Student({self.name}, {self.rating}, {self.growth})"
+def bubble_sort(students):
+    comparisons = 0
+    swaps = 0
+    is_sorted = False
+    while not is_sorted:
+        is_sorted = True
+        for i in range(len(students) - 1):
+            comparisons += 1
+            if students[i].rating < students[i + 1].rating:
+                swaps += 1
+                students[i], students[i + 1] = students[i + 1], students[i]
+                is_sorted = False
+    print("Bubble Sort\nComparisons:", comparisons, "\nSwaps:", swaps)
+def quick_sort(start, end, students):
+    comparisons = 0
+    swaps = 0
+    if start < end:
+        pivot_index = start
+        smaller_element = start
+        for i in range(start, end):
+            comparisons += 1
+            if students[i].growth < students[pivot_index].growth:
+                smaller_element += 1
+                students[i], students[smaller_element] = students[smaller_element], students[i]
+                swaps += 1
+        students[start], students[smaller_element] = students[smaller_element], students[start]
+        swaps += 1
+        quick_sort(start, smaller_element, students)
+        quick_sort(smaller_element + 1, end, students)
+    print("Quick Sort\nComparisons:", comparisons, "\nSwaps:", swaps)
+students = [
+    Student("Alice", 80, 5),
+    Student("Bob", 70, 7),
+    Student("Charlie", 90, 3),
+    Student("David", 85, 6),
+    Student("Eve", 75, 4)
+]
+print("Unsorted students:")
+for student in students:
+    print(student)
+bubble_sort(students.copy())
+print("\nSorted students using Bubble Sort:")
+for student in students:
+    print(student)
+students = [
+    Student("Alice", 80, 5),
+    Student("Bob", 70, 7),
+    Student("Charlie", 90, 3),
+    Student("David", 85, 6),
+    Student("Eve", 75, 4)
+]
+quick_sort(0, len(students), students)
+print("\nSorted students using Quick Sort:")
+for student in students:
+    print(student)

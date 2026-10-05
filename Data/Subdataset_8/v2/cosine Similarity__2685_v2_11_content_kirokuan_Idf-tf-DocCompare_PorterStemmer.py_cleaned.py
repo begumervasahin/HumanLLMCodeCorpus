@@ -1,0 +1,128 @@
+class PorterStemmer:
+    def __init__(self):
+        self.word = ""
+        self.end_index = 0
+        self.start_index = 0
+        self.stem_index = 0
+    def is_consonant(self, index):
+        vowels = 'aeiou'
+        if self.word[index] in vowels:
+            return False
+        if self.word[index] == 'y':
+            if index == self.start_index:
+                return True
+            else:
+                return not self.is_consonant(index - 1)
+        return True
+    def count_consonant_sequences(self):
+        count = 0
+        index = self.start_index
+        while True:
+            if index > self.end_index:
+                return count
+            if not self.is_consonant(index):
+                break
+            index += 1
+        index += 1
+        while True:
+            while True:
+                if index > self.end_index:
+                    return count
+                if self.is_consonant(index):
+                    break
+                index += 1
+            index += 1
+            count += 1
+            while True:
+                if index > self.end_index:
+                    return count
+                if not self.is_consonant(index):
+                    break
+                index += 1
+            index += 1
+    def has_vowel_in_stem(self):
+        for index in range(self.start_index, self.end_index + 1):
+            if not self.is_consonant(index):
+                return True
+        return False
+    def has_double_consonant(self, j):
+        if j < (self.start_index + 1):
+            return False
+        if self.word[j] != self.word[j - 1]:
+            return False
+        return self.is_consonant(j)
+    def is_cvc_sequence(self, index):
+        if index < (self.start_index + 2) or not self.is_consonant(index) \
+                or self.is_consonant(index - 1) or not self.is_consonant(index - 2):
+            return False
+        ch = self.word[index]
+        if ch in 'wx':
+            return False
+        return True
+    def ends_with_string(self, suffix):
+        length = len(suffix)
+        if suffix[length - 1] != self.word[self.stem_index]:
+            return False
+        if length > (self.stem_index - self.start_index + 1):
+            return False
+        if self.word[self.stem_index - length + 1:self.stem_index + 1] != suffix:
+            return False
+        self.end_index = self.stem_index - length
+        return True
+    def replace_suffix(self, replacement):
+        length = len(replacement)
+        self.word = self.word[:self.end_index + 1] + replacement + self.word[self.end_index + length + 1:]
+        self.stem_index = self.end_index + length
+    def apply_replacement_rule(self, suffix, replacement):
+        if self.ends_with_string(suffix):
+            self.replace_suffix(replacement)
+    def step1ab(self):
+        if self.word[self.stem_index] == 's':
+            if self.ends_with_string("sses"):
+                self.stem_index -= 2
+            elif self.ends_with_string("ies"):
+                self.replace_suffix("i")
+            elif self.word[self.stem_index - 1] != 's':
+                self.stem_index -= 1
+        if self.ends_with_string("eed"):
+            if self.count_consonant_sequences() > 0:
+                self.stem_index -= 1
+        elif (self.ends_with_string("ed") or self.ends_with_string("ing")) and self.has_vowel_in_stem():
+            self.stem_index = self.end_index
+            if self.ends_with_string("at"):
+                self.replace_suffix("ate")
+            elif self.ends_with_string("bl"):
+                self.replace_suffix("ble")
+            elif self.ends_with_string("iz"):
+                self.replace_suffix("ize")
+            elif self.has_double_consonant(self.stem_index):
+                self.stem_index -= 1
+                ch = self.word[self.stem_index]
+                if ch in 'lsz':
+                    self.stem_index += 1
+            elif (self.count_consonant_sequences() == 1 and self.is_cvc_sequence(self.stem_index)):
+                self.replace_suffix("e")
+    def step1c(self):
+        if (self.ends_with_string("y") and self.has_vowel_in_stem()):
+            self.word = self.word[:self.stem_index] + 'i' + self.word[self.stem_index + 1:]
+    def step2(self):
+        if self.word[self.stem_index - 1] == 'a':
+            self.apply_replacement_rule("ational", "ate")
+            self.apply_replacement_rule("tional", "tion")
+        elif self.word[self.stem_index - 1] == 'c':
+            self.apply_replacement_rule("enci", "ence")
+            self.apply_replacement_rule("anci", "ance")
+    def stem(self, word):
+        self.word = word
+        self.stem_index = len(word) - 1
+        self.start_index = 0
+        if self.stem_index > self.start_index + 1:
+            self.step1ab()
+            self.step1c()
+        return self.word[self.start_index:self.stem_index + 1]
+if __name__ == "__main__":
+    stemmer = PorterStemmer()
+    words = ["caresses", "ponies", "ties", "caress", "cats", "feed", "agreed", "disabled",
+             "matting", "mating", "meeting", "milling", "messing", "meetings"]
+    for word in words:
+        print(f"{word} -> {stemmer.stem(word)}")

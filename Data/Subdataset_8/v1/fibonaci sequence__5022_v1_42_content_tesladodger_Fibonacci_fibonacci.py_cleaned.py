@@ -1,0 +1,119 @@
+import os
+import datetime
+def fibonacci_recursive(n):
+    if n <= 2:
+        return 1
+    else:
+        return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+def n_times(n, clear):
+    save_file = False
+    try:
+        n = int(n)
+    except ValueError:
+        print('\n\nYou must introduce an integer\n\n')
+        return save_file
+    if n <= 0:
+        print('\n\nYou must introduce a positive integer\n\n')
+        return save_file
+    os.system(clear)
+    num = 1
+    next_num = 1
+    print(num)
+    for x in range(0, n - 1):
+        print(next_num)
+        temp = next_num
+        next_num = next_num + num
+        num = temp
+    print('\nS    - Save to a file')
+    print('else - Go to the main menu')
+    n_times_choice = input('==> ')
+    if n_times_choice.lower() == 's':
+        save_file = True
+    return save_file
+def upton(maxnum, clear):
+    try:
+        maxnum = int(maxnum)
+    except ValueError:
+        print('\n\nYou must introduce an integer\n\n')
+        return
+    if maxnum < 1:
+        print('\n\nYou must insert a value greater or equal to 1\n\n')
+    os.system(clear)
+    num = 1
+    next_num = 1
+    itera = 0
+    print(num)
+    while next_num <= maxnum:
+        print(next_num)
+        temp = next_num
+        next_num = next_num + num
+        num = temp
+        itera += 1
+    print('\nS    - Show more information')
+    print('else - Go to the main menu')
+    n_times_choice = input('==> ')
+    if n_times_choice.lower() == 's':
+        os.system(clear)
+        if num == maxnum:
+            print("The number", maxnum, "is in the Fibonacci sequence")
+        print("Number of iterations:       ", itera)
+        print("Your number:                ", maxnum)
+        print("Next number in the sequence:", next_num)
+        print("Difference to that number:   ", (next_num - maxnum))
+        print("\n\n")
+def file_saver(n):
+    name = input('Name of the file: ').replace(" ", "") + '.txt'
+    with open(name, "w") as file:
+        conc = "Number of iterations: " + n + '\n'
+        file.write(conc)
+        num = 1
+        next_num = 1
+        n = int(n)
+        for x in range(0, n):
+            str_num = str(num) + '\n'
+            file.write(str_num)
+            temp = next_num
+            next_num = next_num + num
+            num = temp
+    return name
+def message():
+    hour = datetime.datetime.now().hour
+    if hour >= 20:
+        greeting = 'night!'
+    elif hour >= 12:
+        greeting = 'afternoon!'
+    elif hour >= 5:
+        greeting = 'day!'
+    else:
+        greeting = 'night!'
+    return greeting
+platform = os.name
+clear = 'clear' if platform == 'posix' else 'cls'
+os.system(clear)
+print(' __________________________')
+print('|                          |')
+print('|** Fibonacci calculator **|')
+print('|__________________________|\n\n')
+repeat = True
+while repeat:
+    print('1 - Calculate n number of times')
+    print('2 - Calculate up to a certain number')
+    print('T - Terminate')
+    choice = input('==> ').upper()
+    if choice == '1':
+        n = input('Number of times: ')
+        save_file = n_times(n, clear)
+        if save_file:
+            name = file_saver(n)
+            os.system(clear)
+            print('\nFile saved as:', name, '\n\n')
+    elif choice == '2':
+        maxnum = input('Calculate up to the number: ')
+        upton(maxnum, clear)
+    elif choice == 'T':
+        greeting = message()
+        print('\nThank you, have a good', greeting)
+        repeat = False
+    else:
+        os.system(clear)
+        print('\nInvalid option\n')

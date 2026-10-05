@@ -1,0 +1,92 @@
+import pyfiglet
+from functions import *
+from subprocess import call, STDOUT
+import os
+def main():
+    print_header()
+    print_menu()
+    choice = get_user_choice()
+    if choice == "a":
+        encrypt_and_merge()
+    elif choice == "b":
+        decrypt_and_get_plain_text()
+    else:
+        exit_program()
+def print_header():
+    figlet_font = pyfiglet.Figlet(font='slant')
+    print(figlet_font.renderText("CCVS KI UAS"))
+    print("CaesarCipherVideoSteganography")
+    print("")
+def print_menu():
+    print("Menu :")
+    print("")
+    print("(a) Encrypt & Merge into Video")
+    print("(b) Decrypt & Get the plain text")
+    print("-----------------------")
+def get_user_choice():
+    return input("(!) Choose option : ")
+def encrypt_and_merge():
+    clear_screen()
+    print("Encrypt")
+    print("----------------------------------------")
+    file_name = get_input("(1) Video file name in the data folder  ? : ")
+    caesarn = get_caesar_value()
+    if not is_file_found(file_name):
+        exit_with_message("File not found")
+    print("-----------------------")
+    print("(-) Extracting Frame(s)")
+    frame_extract(str(file_name))
+    print("(-) Extracting audio")
+    extract_audio(file_name)
+    print("(-) Reading text-to-hide.txt")
+    print("(-) Encrypting & appending string into frame(s) ")
+    encode_frame("temp", "data/text-to-hide.txt", caesarn)
+    print("(-) Merging frame(s) ")
+    merge_frames()
+    print("(-) Optimizing encode & Merging audio ")
+    merge_audio(file_name)
+    print("(!) Success , output : enc-" + str(file_name) + ".mov")
+def decrypt_and_get_plain_text():
+    clear_screen()
+    print("Decrypt")
+    print("----------------------------------------")
+    file_name = get_input("(1) Video file name in the data folder  ? : ")
+    caesarn = get_caesar_value()
+    if not is_file_found(file_name):
+        exit_with_message("File not found")
+    print("-----------------------")
+    print("(-) Extracting Frame(s)")
+    frame_extract(str(file_name))
+    print("(-) Decrypting Frame(s)")
+    decode_frame("temp", caesarn)
+    print("(-) Writing to recovered-text.txt")
+    print("(!) Success")
+def clear_screen():
+    os.system("clear")
+def get_input(prompt):
+    return input(prompt)
+def get_caesar_value():
+    try:
+        return int(get_input("(2) Caesar cypher n value  ? : "))
+    except ValueError:
+        exit_with_message("(!) n is not an integer")
+def is_file_found(file_name):
+    try:
+        open("data/" + file_name)
+        return True
+    except IOError:
+        return False
+def exit_with_message(message):
+    print("-----------------------")
+    print(message)
+    exit()
+def merge_frames():
+    call(["ffmpeg", "-i", "temp/%d.png" , "-vcodec", "png", "temp/video.mov", "-y"], stdout=open(os.devnull, "w"), stderr=STDOUT)
+def extract_audio(file_name):
+    call(["ffmpeg", "-i", "data/" + str(file_name), "-q:a", "0", "-map", "a", "temp/audio.mp3", "-y"], stdout=open(os.devnull, "w"), stderr=STDOUT)
+def merge_audio(file_name):
+    call(["ffmpeg", "-i", "temp/video.mov", "-i", "temp/audio.mp3", "-codec", "copy","data/enc-" + str(file_name)+".mov", "-y"], stdout=open(os.devnull, "w"), stderr=STDOUT)
+def exit_program():
+    exit()
+if __name__ == '__main__':
+    main()

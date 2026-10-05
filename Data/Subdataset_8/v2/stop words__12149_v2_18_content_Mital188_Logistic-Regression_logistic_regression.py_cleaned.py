@@ -1,0 +1,124 @@
+import glob
+from collections import Counter
+from nltk.corpus import stopwords
+import string
+import numpy as np
+import sys
+ham_train = sys.argv[1]
+spam_train = sys.argv[2]
+ham_test = sys.argv[3]
+spam_test = sys.argv[4]
+Lamda = float(sys.argv[5])
+iteration = int(sys.argv[6])
+learning_rate = float(sys.argv[7])
+ham_train_files = glob.glob(ham_train + "/*.txt")
+spam_train_files = glob.glob(spam_train + "/*.txt")
+ham_test_files = glob.glob(ham_test + "/*.txt")
+spam_test_files = glob.glob(spam_test + "/*.txt")
+def read_file(filename, stop_words):
+    train_text = ""
+    for file_name in filename:
+        with open(file_name, 'r') as file:
+            train_text += file.read()
+    translator = str.maketrans('', '', string.punctuation)
+    train_text = train_text.translate(translator)
+    translator = str.maketrans('', '', string.digits)
+    train_text = train_text.translate(translator)
+    train_text = Counter(train_text.split())
+    if stop_words:
+        train_text = Counter([word for word in train_text if word not in stopwords.words('english')])
+    return train_text
+def slice_bag(bag_of_words, count):
+    filtered_bag = Counter({word: count for word, count in bag_of_words.items() if count >= 2})
+    return filtered_bag
+def feature_matrix(stop_word):
+    unique_train_spam = read_file(spam_train_files, stop_word)
+    bag_of_words = slice_bag(unique_train_spam, count=4000)
+    feature_matrix = []
+    for file_name in ham_train_files:
+        feature = {}
+        with open(file_name, 'r') as file:
+            file_text = file.read().split(" ")
+            file_text = Counter(file_text)
+            for word in bag_of_words:
+                feature[word] = (file_text[word])
+            feature["Probability_of_class"] = 0.0
+            feature["Class_of_file"] = 0
+            feature_matrix.append(feature)
+    for file_name in spam_train_files:
+        feature = {}
+        with open(file_name, 'r') as file:
+            file_text = file.read().split(" ")
+            file_text = Counter(file_text)
+            for word in bag_of_words:
+                feature[word] = (file_text[word])
+            feature["Probability_of_class"] = 0.0
+            feature["Class_of_file"] = 1
+            feature_matrix.append(feature)
+    return feature_matrix, bag_of_words
+def probability_of_class(w0, weights, feature_mat):
+    for feature in feature_mat:
+        sum_p = 0
+        for word in weights:
+            sum_p += weights[word] * feature[word]
+        if sum_p < 700:
+            prob = np.exp(np.array(w0 + sum_p, dtype=np.float)) / (1 + np.exp(np.array(w0 + sum_p, dtype=np.float)))
+        else:
+            prob = 1.0
+        feature["Probability_of_class"] = prob
+    return feature_mat
+def update_weights(weights, n, lam, feature_matrix):
+    for word in weights:
+        weight_sum = 0.0
+        for feature in feature_matrix:
+            weight_sum += feature[word] * (feature["Class_of_file"] - feature["Probability_of_class"])
+        weights[word] += n * weight_sum - n * lam * weights[word]
+    return weights
+def accuracy(weights):
+    count_right = 0
+    count_total = 0
+    for file_name in spam_test_files:
+        with open(file_name, 'r') as file:
+            file_text = file.read().split(" ")
+            file_text = Counter(file_text)
+            sum_p = 0
+            count_total += 1
+            for word in weights:
+                sum_p += weights[word] * file_text[word]
+            if sum_p < 700:
+                prob = np.exp(np.array(1 + sum_p, dtype=np.float)) / (1 + np.exp(np.array(1 + sum_p, dtype=np.float)))
+            else:
+                prob = 1.0
+            if prob > 0.9:
+                count_right += 1
+    for file_name in ham_test_files:
+        with open(file_name, 'r') as file:
+            file_text = file.read().split(" ")
+            file_text = Counter(file_text)
+            sum_p = 0
+            count_total += 1
+            for word in weights:
+                sum_p += weights[word] * file_text[word]
+            if sum_p < 700:
+                prob = np.exp(np.array(1 + sum_p, dtype=np.float)) / (1 + np.exp(np.array(1 + sum_p, dtype=np.float)))
+            else:
+                prob = 1.0
+            if prob < 0.9:
+                count_right += 1
+    return count_right / count_total
+def logistic_regression(iterations, n, lam, stop_word):
+    feature_matrix, bag_of_words = feature_matrix(stop_word)
+    w0 = 1.0
+    initial_weights = {word: 1.0 for word in bag_of_words}
+    feature_matrix = probability_of_class(w0, initial_weights, feature_matrix)
+    weights = initial_weights
+    for i in range(iterations):
+        weights = update_weights(weights, n, lam, feature_matrix)
+        feature_matrix = probability_of_class(w0, weights, feature_matrix)
+    final_accuracy = accuracy(weights)
+    if stop_word == 1:
+        print("Logistic Regression - filtered - Total Accuracy - {:.2f}".format(final_accuracy * 100))
+    else:
+        print("Logistic Regression - unfiltered - Total Accuracy - {:.2f}".format(final_accuracy * 100))
+logistic_regression(iterations=iteration, n=learning_rate, lam=Lamda, stop_word=0)
+logistic_regression(iterations=iteration, n=learning_rate, lam=Lamda, stop_word=1)

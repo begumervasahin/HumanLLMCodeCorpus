@@ -1,0 +1,57 @@
+from time import sleep
+import os
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
+def engine_function(nozzle):
+    if nozzle == "2":
+        print("Engine with 2 nozzles")
+    elif nozzle == "3":
+        print("Engine with 3 nozzles")
+    else:
+        print("I can't understand that")
+def pressure_function(nozzle, pressure):
+    if nozzle == "3":
+        print("Now it's time for the pressure:")
+        if pressure == "1":
+            print("Pressure is less than")
+        elif pressure == "2":
+            print("Pressure is greater than")
+        else:
+            print("I can't understand that")
+    else:
+        print("I can't understand that")
+def main():
+    clear()
+    content = input("What is the content? e.g: He, N or D: ").lower().replace(" ", "")
+    clear()
+    if content == "he":
+        nozzle = input("How many nozzles?: ")
+        clear()
+        engine_function(nozzle)
+    elif content == "n":
+        nozzle = input("How many nozzles?: ")
+        clear()
+        if nozzle == "1" or nozzle == "2":
+            engine_function(nozzle)
+        elif nozzle == "3":
+            pressure = input("Type 1 for <, or 2 for >: ")
+            clear()
+            pressure_function(nozzle, pressure)
+        else:
+            print("I can't understand that")
+    elif content == "d":
+        nozzle = input("How many nozzles?: ")
+        clear()
+        if nozzle == "1" or nozzle == "2":
+            engine_function(nozzle)
+        elif nozzle == "3":
+            pressure = input("Type 1 for <, or 2 for >: ")
+            clear()
+            pressure_function(nozzle, pressure)
+        else:
+            print("I can't understand that")
+    else:
+        print("Something went wrong! Try again")
+    sleep(3)
+if __name__ == "__main__":
+    main()

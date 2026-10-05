@@ -1,0 +1,68 @@
+import random
+def get_odd_number(a, b):
+    rand = random.randrange(a, b)
+    if rand % 2 == 0:
+        rand += 1
+    return rand
+def is_composite(n, a, r, s):
+    res = pow(a, r, n)
+    if res == 1 or res == n - 1:
+        return False
+    for _ in range(int(s)):
+        res = pow(res, 2, n)
+        if res == n - 1:
+            return False
+    return True
+def is_prime(n):
+    r = n - 1
+    s = 0
+    while r % 2 == 0:
+        r
+        s += 1
+    limit = (n - 1)
+    for _ in range(limit):
+        a = random.randint(2, n - 1)
+        if is_composite(n, a, r, s):
+            return False
+    return True
+def generate_prime_number(a, b):
+    while True:
+        number = get_odd_number(a, b)
+        if is_prime(number):
+            return number
+def gcd(a, b):
+    if b == 0:
+        return a
+    else:
+        return gcd(b, a % b)
+def multiplicative_inverse(e, phi):
+    temp_phi = phi
+    y = 0
+    x = 1
+    while e > 1:
+        quotient = e
+        t = temp_phi
+        temp_phi = e % temp_phi
+        e = t
+        t = y
+        y = x - (quotient * y)
+        x = t
+    if x < 0:
+        x += phi
+    return x
+a = 10000
+b = 100000
+p = generate_prime_number(a, b)
+q = generate_prime_number(a, b)
+n = p * q
+phi = (p - 1) * (q - 1)
+e = random.randint(2, phi - 1)
+while gcd(e, phi) != 1:
+    e = random.randint(2, phi - 1)
+d = multiplicative_inverse(e, phi)
+print("p:", p)
+print("q:", q)
+print("n:", n)
+print("phi:", phi)
+print("e:", e)
+print("d:", d)

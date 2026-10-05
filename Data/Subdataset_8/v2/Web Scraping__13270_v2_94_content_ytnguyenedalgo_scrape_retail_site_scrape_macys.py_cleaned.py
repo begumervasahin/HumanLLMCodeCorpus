@@ -1,0 +1,47 @@
+import pandas as pd
+from multiprocessing import Pool
+import sys
+from your_module import RequestsBS4, DataProcessing
+class Scraper:
+    def __init__(self, site="https:
+        self.site = site
+    def get_url_categories(self):
+        pass
+    def get_url_products_test(self):
+        pass
+    def get_url_products(self, url=None):
+        pass
+    def scrape_and_save(self, url=None):
+        pass
+    def get_product_info(self):
+        pass
+if __name__ == "__main__":
+    scraper = Scraper()
+    scrape_choice = input("\nEnter 't' to scrape a small sample,\
+                          \n'f' to scape full web,\
+                          \n's' to search for product information,\
+                          \nor press 'q' to quit the program: ").upper()
+    while scrape_choice not in ['T', 'F', 'S', 'Q']:
+        scrape_choice = input("Invalid choice. Enter 't', 'f', 's', or 'q': ").upper()
+    if scrape_choice == 'Q':
+        sys.exit()
+    if scrape_choice == 'T':
+        url = scraper.get_url_products_test()
+        p2 = Pool(processes=2)
+        product_scraping = p2.map(scraper.scrape_and_save, url)
+        p2.terminate()
+        p2.join()
+    elif scrape_choice == 'F':
+        category_urls = scraper.get_url_categories()
+        p1 = Pool(processes=4)
+        url_scraping = p1.map(scraper.get_url_products, category_urls)
+        p1.terminate()
+        p1.join()
+        product_urls = pd.read_csv("product-url.csv", names=["url"])
+        url = product_urls["url"].values.tolist()
+        p2 = Pool(processes=2)
+        product_scraping = p2.map(scraper.scrape_and_save, url)
+        p2.terminate()
+        p2.join()
+    elif scrape_choice == 'S':
+        scraper.get_product_info()

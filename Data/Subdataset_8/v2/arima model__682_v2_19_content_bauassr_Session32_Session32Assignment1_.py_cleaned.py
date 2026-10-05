@@ -1,0 +1,146 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.tsa.arima_model import ARIMA
+from sklearn.metrics import mean_squared_error
+df = pd.read_csv('Shampoo-Sales.csv')
+df = df.iloc[:-1]
+df['Month'] = '190' + df['Month']
+df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m')
+df.rename(columns={'Sales of shampoo over a three year period': 'Shampoo Sales'}, inplace=True)
+series = df.set_index('Month')['Shampoo Sales']
+plt.figure(figsize=(20, 10))
+plt.title('Shampoo Sales over a 3-year period')
+plt.xlabel('Month')
+plt.ylabel('Shampoo Sales')
+series.plot()
+plt.show()
+sales_cycle, sales_trend = sm.tsa.filters.hpfilter(series)
+sales_df = pd.DataFrame({'Sales': series.values, 'Trend': sales_trend, 'Cycle': sales_cycle}, index=series.index)
+sales_df.plot(title='Shampoo Sales, Sales Trend and Sales Cycle over a 3-year period', figsize=(20, 10))
+plt.show()
+ewma_df = pd.DataFrame({'Actual Series': series, 'EWMA Series': series.ewm(span=3).mean()})
+ewma_df.plot(figsize=(20, 10))
+plt.show()
+plt.figure(figsize=(20, 10))
+series.rolling(3).mean().plot(label='3 month rolling mean')
+series.rolling(3).std().plot(label='3 month rolling standard deviation')
+series.plot(label='Actual data')
+plt.legend()
+plt.show()
+ets_result = sm.tsa.seasonal_decompose(series, model='additive')
+ets_result.plot()
+plt.gcf().set_size_inches(20, 10)
+plt.show()
+def perform_adf_test(time_series):
+    adfuller_result = sm.tsa.adfuller(time_series)
+    print('Augmented Dickey-Fuller Test:')
+    labels = ['ADF Test Statistic', 'p-value']
+    for value, label in zip(adfuller_result, labels):
+        print(label + ": " + str(value))
+perform_adf_test(series)
+def make_stationary(time_series):
+    for i in range(0, 10):
+        if i == 0:
+            print('Actual Time Series')
+        else:
+            print(str(i) + '-Differenced Time Series')
+        print('-' * 60)
+        p_stationarity = perform_adf_test(time_series)[1]
+        print("\nStationarity:")
+        if p_stationarity <= 0.05:
+            print('Data is Stationary')
+            break
+        else:
+            print('Data is Non-Stationary\n')
+            time_series = (time_series - time_series.shift(1))
+            time_series.dropna(inplace=True)
+    return i, time_series
+d, stationary_series = make_stationary(series)
+print('Number of times differenced = ', d)
+stationary_series.plot()
+plt.show()
+sm.graphics.tsa.plot_acf(stationary_series)
+plt.show()
+sm.graphics.tsa.plot_pacf(stationary_series)
+plt.show()
+model = ARIMA(series, order=(4, 1, 2))
+arima_results = model.fit()
+print(arima_results.summary())
+residuals = pd.DataFrame(arima_results.resid)
+residuals.plot(figsize=(10, 10))
+plt.show()
+residuals.plot(kind='kde', figsize=(10, 10))
+plt.show()
+print(residuals.describe())
+predicted_plot = arima_results.plot_predict()
+plt.show()
+X = series.values
+size = int(len(X) * 0.66)
+train, test = X[0:size], X[size:len(X)]
+history = [x for x in train]
+predictions = list()
+for t in range(len(test)):
+    model = ARIMA(history, order=(4, 1, 2))
+    model_fit = model.fit(disp=0)
+    output = model_fit.forecast()
+    yhat = output[0]
+    predictions.append(yhat)
+    obs = test[t]
+    history.append(obs)
+    print('Predicted=%f, Expected=%f' % (yhat, obs))
+error = mean_squared_error(test, predictions)
+print('Test MSE: %.3f' % error)
+plt.plot(test, color='blue', label='Actuals')
+plt.plot(predictions, color='red', label='Rolling forecast')
+plt.legend()
+plt.show()
+ararray = X
+p = 0
+q = 0
+d = 1
+pdq = []
+aic = []
+for p in range(6):
+    for q in range(4):
+        try:
+            model = ARIMA(ararray, (p, d, q)).fit()
+            x = model.aic
+            x1 = (p, d, q)
+            print(x1, x)
+            aic.append(x)
+            pdq.append(x1)
+        except:
+            pass
+keys = pdq
+values = aic
+d = dict(zip(keys, values))
+minaic = min(d, key=d.get)
+for i in range(3):
+    p = minaic[0]
+    d = minaic[1]
+    q = minaic[2]
+print("Best Model is :", (p, d, q))
+ARIMIAmod = ARIMA(ararray, (p, d, q)).fit()
+X = series.values
+size = int(len(X) * 0.66)
+train, test = X[0:size], X[size:len(X)]
+history = [x for x in train]
+predictions = list()
+for t in range(len(test)):
+    model = ARIMA(history, order=(5, 1, 0))
+    model_fit = model.fit(disp=-1)
+    output = model_fit.forecast()
+    yhat = output[0]
+    predictions.append(yhat)
+    obs = test[t]
+    history.append(obs)
+    print('Predicted=%f, Expected=%f' % (yhat, obs))
+error = mean_squared_error(test, predictions)
+print('Test MSE: %.3f' % error)
+plt.plot(test, color='blue', label='Actuals')
+plt.plot(predictions, color='red', label='Rolling forecast')
+plt.legend()
+plt.show()
+print('The model has the parameters: (p,d,q) = (5,1,0). It is an autoregressive model')

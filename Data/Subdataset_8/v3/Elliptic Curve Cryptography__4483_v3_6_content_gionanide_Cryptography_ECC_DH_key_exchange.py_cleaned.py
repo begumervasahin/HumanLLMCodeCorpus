@@ -1,0 +1,52 @@
+from random import randint
+def compute_b_parameter(a, x, y, N):
+    return (y**2 - x**3 - a * x) % N
+def single_point_addition(point, a, b, N):
+    x, y = point
+    if y == 0:
+        return x, y
+    m = (3 * (x**2) + a) * mod_inverse(2 * y, N)
+    x3 = (m**2 - 2 * x) % N
+    y3 = (m * (x - x3) - y) % N
+    return x3, y3
+def point_addition(point1, point2, a, b, N):
+    x1, y1 = point1
+    x2, y2 = point2
+    if x1 - x2 == 0 and y1 - y2 == 0:
+        return single_point_addition((x1, y1), a, b, N)
+    m = (y2 - y1) * mod_inverse((x2 - x1), N)
+    x3 = (m**2 - x1 - x2) % N
+    y3 = (m * (x1 - x3) - y1) % N
+    return x3, y3
+def point_multiplication(point, n, a, b, N):
+    x_res, y_res = point
+    for _ in range(n - 1):
+        x_res, y_res = point_addition(point, (x_res, y_res), a, b, N)
+    return x_res, y_res
+def mod_inverse(a, m):
+    g, x, y = extended_gcd(a, m)
+    if g != 1:
+        raise ValueError("Modular inverse does not exist")
+    return x % m
+def extended_gcd(aa, bb):
+    last_remainder, remainder = abs(aa), abs(bb)
+    x, last_x, y, last_y = 0, 1, 1, 0
+    while remainder:
+        last_remainder, (quotient, remainder) = remainder, divmod(last_remainder, remainder)
+        x, last_x = last_x - quotient * x, x
+        y, last_y = last_y - quotient * y, y
+    return last_remainder, last_x * (-1 if aa < 0 else 1), last_y * (-1 if bb < 0 else 1)
+def coefficient_conditions_satisfied(a, b):
+    return 4 * a**3 + 27 * b**2 != 0
+a, b, N, x1, y1, Xm, Ym = 27, 152, 229, 32, 11, 79, 40
+m = 58
+p17 = (97339010987059066523156133908935, 149670372846169285760682371978898)
+a17 = 321094768129147601892514872825668
+b17 = 430782315140218274262276694323197
+N17 = 564538252084441556247016902735257
+n17 = 486035459702866949106113048381182
+if coefficient_conditions_satisfied(a, b):
+    result = point_multiplication((x1, y1), m, a, b, N)
+    print("Result of point multiplication:", result)
+else:
+    print("Invalid coefficients: Condition not satisfied")

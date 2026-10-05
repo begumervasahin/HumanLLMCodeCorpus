@@ -1,0 +1,39 @@
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+import os
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+def get_labels(i, df_label):
+    l = i.split(os.path.sep)[-1].split(".")[0]
+    st1 = df_label.loc[[l]]
+    to_int = int(st1.values)
+    return to_int
+def imagevector_label(path, df_label):
+    Files = []
+    labels = []
+    names = []
+    for file in os.listdir(path):
+        Files.append(file)
+    File = Files[1:]
+    immatrix = np.array([np.array(Image.open(path+'/'+file)).flatten() for file in File],'f')
+    for file in File:
+        names.append(file)
+        labels.append(get_labels(file, df_label))
+    return immatrix, np.array(labels)
+path = "gray2"
+imlist = os.listdir(path)
+imlist = imlist[1:]
+df_label = pd.read_csv('trainLabels.csv')
+img_vect, labels = imagevector_label(path, df_label)
+(trainRI, testRI, trainRL, testRL) = train_test_split(
+    img_vect, labels, test_size=0.25, random_state=42)
+for k in [1, 3, 5, 10, 20, 50, 100]:
+    print("evaluating raw pixel accuracy for k =", k)
+    model = KNeighborsClassifier(n_neighbors=k)
+    model.fit(trainRI, trainRL)
+    acc = model.score(testRI, testRL)
+    print("raw pixel accuracy: {:.2f}%".format(acc * 100))

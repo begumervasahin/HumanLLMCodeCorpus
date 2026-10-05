@@ -1,0 +1,105 @@
+from softAES import _compact_word, AES
+import copy
+import array
+from byte_utils import bytes_from_hex, print_hex_str
+class AESRound(AES):
+    def __init__(self, key, rounds):
+        super().__init__(key)
+        self._Ke = self._Ke[:rounds + 1]
+        self._Kd = self._Kd[-(rounds + 1):]
+        self.final_round_key = self._Ke[-1]
+        self._Ke[-1] = [0] * 4
+        self._Kd[0] = [0] * 4
+    def encrypt_round(self, plaintext, rounds, xor_last_round_key=True):
+        if len(plaintext) != 16:
+            raise ValueError('Invalid block length')
+        rounds += 1
+        if rounds > len(self._Ke):
+            raise Exception("Not enough key for partial encryption")
+        shift_values = [1, 2, 3]
+        temp_state = [0, 0, 0, 0]
+        state = [_compact_word(plaintext[4 * i:4 * i + 4]) ^ self._Ke[0][i] for i in range(4)]
+        for r in range(1, rounds):
+            for i in range(4):
+                temp_state[i] = (
+                    self.T1[(state[i] >> 24) & 0xFF] ^
+                    self.T2[(state[(i + shift_values[0]) % 4] >> 16) & 0xFF] ^
+                    self.T3[(state[(i + shift_values[1]) % 4] >> 8) & 0xFF] ^
+                    self.T4[state[(i + shift_values[2]) % 4] & 0xFF] ^
+                    self._Ke[r][i]
+                )
+            state = copy.copy(temp_state)
+        result = []
+        if not xor_last_round_key:
+            for i in range(4):
+                state[i] ^= self._Ke[rounds - 1][i]
+        for i in range(4):
+            result.extend([
+                (state[i] >> 24) & 0xFF,
+                (state[i] >> 16) & 0xFF,
+                (state[i] >> 8) & 0xFF,
+                state[i] & 0xFF
+            ])
+        return result
+    def encrypt_raw_round(self, plaintext, rounds):
+        plaintext_arr = array.array('B', plaintext)
+        res_array = self.encrypt_round(plaintext_arr, rounds)
+        return "".join(map(chr, res_array))
+    def get_round_key(self, round):
+        return self._Ke[round]
+    def get_round_key_bytes(self, round):
+        byte_list = []
+        for i in range(4):
+            word = self._Ke[round][i]
+            byte_list.extend([
+                (word >> 24) & 0xff,
+                (word >> 16) & 0xff,
+                (word >> 8) & 0xff,
+                (word >> 0) & 0xff
+            ])
+        return byte_list
+    def get_round_key_byte(self, round, byte):
+        word_index = byte
+        round_key = self.get_round_key(round)
+        keyword = round_key[word_index]
+        key_byte = (keyword >> ((3 - byte % 4) * 8)) & 0xff
+        return key_byte
+if __name__ == '__main__':
+    plaintext = '00112233445566778899aabbccddeeff'
+    key = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'
+    expected_r5 = '9cf0a62049fd59a399518984f26be178'
+    key_arr = bytes_from_hex(key)
+    plaintext_arr = bytes_from_hex(plaintext)
+    aes_round = AESRound(key_arr, 5)
+    r5_calculated = aes_round.encrypt(plaintext_arr)
+    plaintext_calculated = aes_round.decrypt(r5_calculated)
+    r1_calculated = aes_round.encrypt_round(plaintext_arr, 1)
+    r2_calculated = aes_round.encrypt_round(plaintext_arr, 2)
+    r3_calculated = aes_round.encrypt_round(plaintext_arr, 5)
+    print_hex_str(r5_calculated, 'r5_calculated')
+    print_hex_str(bytes_from_hex(expected_r5), 'expected_r5')
+    print_hex_str(plaintext_calculated)
+    print_hex_str(r1_calculated)
+    print_hex_str(r2_calculated)
+    print_hex_str(r3_calculated)
+    print('Testing AES 128')
+    key = '000102030405060708090a0b0c0d0e0f'
+    key_arr = bytes_from_hex(key)
+    aes_round = AESRound(key_arr, 10)
+    aes_full = AES(key_arr)
+    cipher = aes_full.encrypt(plaintext_arr)
+    r10_calculated = aes_round.encrypt(plaintext_arr)
+    r9_calculated = aes_round.encrypt_round(plaintext_arr, 9)
+    r9_no_round_calculated = aes_round.encrypt_round(plaintext_arr, 9, False)
+    plaintext_calculated = aes_full.decrypt(cipher)
+    r1_calculated = aes_round.encrypt_round(plaintext_arr, 1)
+    r2_calculated = aes_round.encrypt_round(plaintext_arr, 2)
+    r3_calculated = aes_round.encrypt_round(plaintext_arr, 5)
+    print('Full encryption:', list(map(hex, cipher)))
+    print('No last round key:', list(map(hex, r10_calculated)))
+    print('After full 9 rounds:', list(map(hex, r9_calculated)))
+    print('After full 9 rounds without round 9 key:', list(map(hex, r9_no_round_calculated)))
+    print('Plaintext:', list(map(hex, plaintext_calculated)))
+    print('Round 1:', list(map(hex, r1_calculated)))
+    print('Round 2:', list(map(hex, r2_calculated)))
+    print('Round 3:', list(map(hex, r3_calculated)))

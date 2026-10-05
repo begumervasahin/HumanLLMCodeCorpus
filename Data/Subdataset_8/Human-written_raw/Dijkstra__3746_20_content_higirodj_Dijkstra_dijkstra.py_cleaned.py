@@ -1,0 +1,48 @@
+import numpy as np
+def dijkstra(graph, source):
+    n = len(graph)
+    infinity = float('inf')
+    distance = [infinity for i in range(n)]
+    distance[source] = 0
+    current_node = source
+    visited_nodes = list()
+    visited_nodes_and_cost = list()
+    dictionary = {}
+    dictionary.update({source:distance[source]})
+    preceeding_nodes = {}
+    while((len(dictionary))!=0):
+        current_node, cost = min(dictionary.items(), key=lambda x:x[1])
+        del dictionary[min(dictionary, key=dictionary.get)]
+        visited_nodes.append(current_node)
+        visited_nodes_and_cost.append((current_node,cost))
+        for j in range(n):
+            if(graph[current_node][j]!=0 and j not in visited_nodes):
+                if(distance[current_node] + graph[current_node][j] < distance[j]):
+                    distance[j] = distance[current_node] + graph[current_node][j]
+                    dictionary.update({j:distance[j]})
+                    preceeding_nodes[j] = current_node
+    return visited_nodes_and_cost, preceeding_nodes
+def main():
+     filename = raw_input('Enter the file name: ')+'.txt'
+     graph = np.loadtxt(filename)
+     start_node = input('Enter starting node: ')
+     while start_node>=len(graph) or start_node<0:
+        start_node = input('The value entered is out of bounds. Try again: ')
+     end_node = input('Enter end node: ')
+     while end_node>=len(graph) or start_node<0:
+        end_node = input('The value entered is out of bounds. Try again: ')
+     target_node = end_node
+     costs = []
+     previous = {}
+     costs, previous = dijkstra(graph, start_node)
+     print "The shortest path from the start node %d to every other node in the graph is \n %s" %(start_node,costs)
+     SSSPath = []
+     while True:
+         SSSPath.append(end_node)
+         if(end_node == start_node):
+             break
+         end_node = previous[end_node]
+     SSSPath.reverse()
+     print "The shortest path from the start node %d to the target node %d is %s with a distance of %s"\
+     %(start_node, target_node, SSSPath, dict(costs).get(target_node))
+main()

@@ -1,0 +1,39 @@
+from time import time
+import configuraciones
+def shell_sort(alist):
+    sublist_count = len(alist)
+    while sublist_count > 0:
+        for start_position in range(sublist_count):
+            gap_insertion_sort(alist, start_position, sublist_count)
+        print("After increments of size", sublist_count, "The list is", alist)
+        sublist_count
+def gap_insertion_sort(alist, start, gap):
+    for i in range(start + gap, len(alist), gap):
+        current_value = alist[i]
+        position = i
+        while position >= gap and alist[position - gap] > current_value:
+            alist[position] = alist[position - gap]
+            position -= gap
+        alist[position] = current_value
+def main():
+    archivo_tiempo = open('tiempoShell.txt', 'a')
+    for conf_name, conf_func in [('ConfA', configuraciones.confA),
+                                 ('ConfB', configuraciones.confB),
+                                 ('ConfC', configuraciones.confC),
+                                 ('ConfD', configuraciones.confD),
+                                 ('ConfE', configuraciones.confE),
+                                 ('ConfF', configuraciones.confF)]:
+        arreglo = conf_func('ShellSort')
+        total_time = 0
+        for i, arr in enumerate(arreglo, start=1):
+            start_time = time()
+            shell_sort(arr)
+            elapsed_time = time() - start_time
+            with open(f'ordenado{conf_name}ShellSort.txt', 'a') as archivo:
+                archivo.write(f'{arr}\n')
+            total_time += elapsed_time
+            archivo_tiempo.write(f'{conf_name} Config {i}: {elapsed_time:.6f} seconds\n')
+        archivo_tiempo.write(f'Total time for {conf_name}: {total_time:.6f} seconds\n')
+    archivo_tiempo.close()
+if __name__ == '__main__':
+    main()

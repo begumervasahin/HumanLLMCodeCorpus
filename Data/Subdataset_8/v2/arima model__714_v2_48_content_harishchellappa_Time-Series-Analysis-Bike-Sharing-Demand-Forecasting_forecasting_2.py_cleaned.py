@@ -1,0 +1,69 @@
+import pandas as pd
+from fbprophet import Prophet
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+df = pd.read_excel('newtable.xlsx', sheet_name='newtable')
+df['start_time'] = pd.to_datetime(df['start_time'], format="%d/%m/%Y %I:%M:%S %p")
+df['end_time'] = pd.to_datetime(df['end_time'], format="%d/%m/%Y %I:%M:%S %p")
+df_pivot = pd.pivot_table(df[['start_station', 'start_time']], aggfunc='count', index=df['start_time'].dt.date, columns=['start_station'], fill_value=0)
+columns_to_ignore = [
+    ('start_time', 3021), ('start_time', 3053), ('start_time', 3055), ('start_time', 3059),
+    ('start_time', 3060), ('start_time', 3061), ('start_time', 3079), ('start_time', 3080),
+    ('start_time', 4108), ('start_time', 4138), ('start_time', 4142), ('start_time', 4143),
+    ('start_time', 4144), ('start_time', 4146), ('start_time', 4147), ('start_time', 4148),
+    ('start_time', 4149), ('start_time', 4150), ('start_time', 4151), ('start_time', 4152),
+    ('start_time', 4153), ('start_time', 4154), ('start_time', 4155), ('start_time', 4156),
+    ('start_time', 4157), ('start_time', 4158), ('start_time', 4159), ('start_time', 4160),
+    ('start_time', 4162), ('start_time', 4163), ('start_time', 4165), ('start_time', 4166),
+    ('start_time', 4167), ('start_time', 4169), ('start_time', 4170), ('start_time', 4174),
+    ('start_time', 4176), ('start_time', 4177), ('start_time', 4180), ('start_time', 4181),
+    ('start_time', 4183), ('start_time', 4194), ('start_time', 4244), ('start_time', 4276)
+]
+df_pivot.drop(labels=columns_to_ignore, axis=1, inplace=True)
+df_pivot.index = pd.to_datetime(df_pivot.index)
+df_output = pd.DataFrame()
+mse_train = []
+mse_test = []
+def prepare_data_for_prophet(df, column_index):
+    df_prophet = pd.DataFrame()
+    df_prophet['ds'] = df.index
+    df_prophet['y'] = df.iloc[:, column_index].tolist()
+    return df_prophet
+def train_and_predict(df, sample_freq='D', test_length=-184):
+    dates_to_remove = [
+        '2016-08-14', '2018-10-16', '2017-03-26', '2017-05-11', '2017-08-13', '2017-10-08',
+        '2017-12-10', '2018-04-22', '2018-06-24', '2018-09-30', '2018-12-02'
+    ]
+    df['temp'] = df.index
+    for date in dates_to_remove:
+        df = df[df.temp != date]
+    df.drop('temp', axis=1, inplace=True)
+    df_train = df.iloc[:test_length]
+    df_test = df.iloc[test_length:]
+    df_train_prophet = prepare_data_for_prophet(df_train, i)
+    df_test_prophet = prepare_data_for_prophet(df_test, i)
+    m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+    m.fit(df_train_prophet)
+    future = m.make_future_dataframe(periods=len(df_test) + 90 + 3, freq=sample_freq)
+    forecast = m.predict(future)
+    df_output[v] = forecast['yhat']
+    y_actual_train = df_train_prophet['y']
+    y_predicted_train = df_output[v].iloc[:-187]
+    mse_train.append(sqrt(mean_squared_error(y_actual_train, y_predicted_train)))
+    y_actual_test = df_test_prophet['y']
+    y_predicted_test = df_output[v].iloc[-184:]
+    mse_test.append(sqrt(mean_squared_error(y_actual_test, y_predicted_test)))
+for i, v in enumerate(df_pivot.columns):
+    train_and_predict(df_pivot)
+df_output['ds'] = forecast['ds']
+df_pivot['ds'] = df_pivot.index
+for date in dates_to_remove:
+    df_pivot = df_pivot[df_pivot.ds != date]
+df_pivot = df_pivot.reset_index(drop=True)
+mse_train_df = pd.DataFrame(mse_train)
+mse_test_df = pd.DataFrame(mse_test)
+with pd.ExcelWriter('outputY.xlsx') as writer:
+    df_pivot.to_excel(writer, sheet_name='actual(Y)')
+    df_output.to_excel(writer, sheet_name='predicted(Y)')
+    mse_train_df.to_excel(writer, sheet_name='mse_trn(Y)')
+    mse_test_df.to_excel(writer, sheet_name='mse_tst(Y)')

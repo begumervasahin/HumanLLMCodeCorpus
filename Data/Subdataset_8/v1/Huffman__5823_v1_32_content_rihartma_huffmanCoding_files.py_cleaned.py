@@ -1,0 +1,37 @@
+class Files:
+    def loadFile(self, name):
+        text = ""
+        with open(name, 'r') as file:
+            text = file.read()
+        return text
+    def saveTable(self, text, name):
+        with open(name, 'w') as file:
+            file.write(text)
+    def saveFile(self, name, text, codes):
+        b = ''
+        for char in text:
+            b += codes[char]
+        filetext = ""
+        for i in range(0, len(b)-8, 8):
+            filetext += chr(int(b[i:i+8], 2))
+        if len(b) % 8 != 0:
+            filetext += "~~~" + b[len(b)-1-len(b)%8:len(b)]
+        with open(name, 'w') as file:
+            file.write(filetext)
+    def loadTable(self, name):
+        with open(name, "r") as file:
+            text = file.read()
+        codes = {}
+        pairs = text.split(",")
+        pairs = [pair.strip() for pair in pairs]
+        for pair in pairs:
+            if pair:
+                t = pair.split("-")
+                codes[t[1]] = t[0]
+        return codes
+files = Files()
+codes = files.loadTable("codes.txt")
+print(codes)
+text = files.loadFile("input.txt")
+print(text)
+files.saveFile("output.txt", text, codes)

@@ -1,0 +1,35 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.cluster import hierarchy
+from scipy.spatial import distance_matrix
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.datasets.samples_generator import make_blobs
+def generate_sample_data():
+    X, y = make_blobs(n_samples=50, centers=[[4, 4], [-2, -1], [1, 1], [10, 4]], cluster_std=0.9)
+    return X, y
+def plot_data(X, y, labels):
+    plt.scatter(X[:, 0], X[:, 1], marker='o')
+    plt.figure(figsize=(6, 4))
+    x_min, x_max = np.min(X, axis=0), np.max(X, axis=0)
+    X = (X - x_min) / (x_max - x_min)
+    for i in range(X.shape[0]):
+        plt.text(X[i, 0], X[i, 1], str(y[i]), color=plt.cm.nipy_spectral(labels[i] / 10.),
+                 fontdict={'weight': 'bold', 'size': 9})
+    plt.xticks([])
+    plt.yticks([])
+    plt.scatter(X[:, 0], X[:, 1], marker='.')
+    plt.show()
+def compute_distance_matrix(X):
+    return distance_matrix(X, X)
+def plot_dendrogram(distance_matrix):
+    Z = hierarchy.linkage(distance_matrix, 'complete')
+    dendro = hierarchy.dendrogram(Z)
+X, y = generate_sample_data()
+agglom = AgglomerativeClustering(n_clusters=4, linkage='average')
+agglom.fit(X, y)
+cluster_labels = agglom.labels_
+plot_data(X, y, cluster_labels)
+dist_matrix = compute_distance_matrix(X)
+print(dist_matrix)
+plot_dendrogram(dist_matrix)

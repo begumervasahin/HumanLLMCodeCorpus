@@ -1,0 +1,14 @@
+def quickSort(A, l, r):
+    if l < r:
+        pivot = A[l]
+        s = l
+        for i in range(l + 1, r):
+            if A[i] < pivot:
+                s += 1
+                A[s], A[i] = A[i], A[s]
+        A[l], A[s] = A[s], A[l]
+        quickSort(A, l, s - 1)
+        quickSort(A, s + 1, r)
+arr = [3, 6, 8, 1, 5, 2, 7, 4]
+quickSort(arr, 0, len(arr))
+print(arr)

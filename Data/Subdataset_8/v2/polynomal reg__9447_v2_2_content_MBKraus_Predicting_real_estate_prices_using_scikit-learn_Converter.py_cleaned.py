@@ -1,0 +1,27 @@
+import pandas as pd
+from geopy.geocoders import GoogleV3
+from geopy.exc import GeocoderTimedOut
+data_part1 = pd.read_csv('AmsterdamPage1to50.csv', sep=';')
+data_part2 = pd.read_csv('AmsterdamPage51to100.csv', sep=';')
+data_part3 = pd.read_csv('AmsterdamPage101to155.csv', sep=';')
+complete_data = pd.concat([data_part1, data_part2, data_part3], ignore_index=True)
+complete_data['rooms_count'] = complete_data['rooms'].str[-2:]
+complete_data['zipcode_prefix'] = complete_data['zipcode'].str[:4]
+complete_data['price_cleaned'] = complete_data['price'].str.replace(' von', '')
+geocoder = GoogleV3(api_key='your API-key')
+latitude_coords = {}
+longitude_coords = {}
+for zipcode_prefix in complete_data['zipcode_prefix'].unique():
+    try:
+        location_query = f"{zipcode_prefix} Amsterdam"
+        location = geocoder.geocode(location_query, timeout=60)
+        latitude = location.latitude
+        longitude = location.longitude
+        latitude_coords[zipcode_prefix] = latitude
+        longitude_coords[zipcode_prefix] = longitude
+        print(location_query)
+    except GeocoderTimedOut as e:
+        print(f"Error: Geocoding failed for {location_query} with message {e}")
+complete_data["latitude"] = complete_data["zipcode_prefix"].map(lambda x: latitude_coords.get(x))
+complete_data["longitude"] = complete_data["zipcode_prefix"].map(lambda x: longitude_coords.get(x))
+complete_data.to_csv("Overview_new.csv", sep=";", encoding='utf-8')

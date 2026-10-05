@@ -1,0 +1,45 @@
+import csv
+import math
+import operator
+training_data = []
+def load_training_data(file_name):
+    try:
+        with open(file_name, 'r') as train_file:
+            data_reader = csv.reader(train_file)
+            for row in data_reader:
+                row_data = [float(value) for value in row[:-1]]
+                row_data.append(row[-1])
+                training_data.append(row_data)
+        print("Training data loaded")
+    except IOError:
+        print("File not available. Please check the filename")
+        exit()
+def calculate_distance(train_data, test_data):
+    distance_set = []
+    for record in train_data:
+        if len(record[:-1]) != len(test_data):
+            print("Dimensions of test and train do not match")
+            break
+        else:
+            distance = sum((x - y) ** 2 for x, y in zip(test_data, record[:-1]))
+            distance = round(math.sqrt(distance), 3)
+            print("Distance between the test point and training data {}: {}".format(train_data.index(record) + 1, distance))
+            distance_set.append(distance)
+    return distance_set
+def find_nearest_neighbors(distances, num_of_neighbors):
+    top_elements_list = sorted(range(len(distances)), key=lambda x: distances[x])
+    neighbors = top_elements_list[:num_of_neighbors]
+    class_dict = {}
+    for neighbor_index in neighbors:
+        class_label = training_data[neighbor_index][-1]
+        class_dict[class_label] = class_dict.get(class_label, 0) + 1
+    predicted_class = max(class_dict.items(), key=operator.itemgetter(1))[0]
+    print("Predicted class:", predicted_class)
+if __name__ == "__main__":
+    print("Place the input dataset CSV file in the same directory as the Python module")
+    file_name = input("Enter the name of the training dataset CSV file: ")
+    load_training_data(file_name)
+    test_input = [float(value) for value in input("Enter the values separated by ',': ").split(",")]
+    k = int(input("Enter the number of neighbors to consider: "))
+    distances = calculate_distance(training_data, test_input)
+    find_nearest_neighbors(distances, k)

@@ -1,0 +1,19 @@
+def selection_sort(lst):
+    for i in range(0, len(lst)):
+        min_index = i
+        print("Current minimum:", lst[i])
+        for j in range(i+1, len(lst)):
+            if lst[min_index] > lst[j]:
+                min_index = j
+        lst[i], lst[min_index] = lst[min_index], lst[i]
+        print("New minimum:", lst[i])
+        print(lst)
+        print()
+lst = []
+num_elements = int(input("Enter the number of elements in the list: "))
+for i in range(0, num_elements):
+    element = int(input("Enter an element: "))
+    lst.append(element)
+print("List before sorting:", lst)
+selection_sort(lst)
+print("List after sorting:", lst)

@@ -1,0 +1,118 @@
+import pandas as pd
+import numpy as np
+from scipy.stats import skew, kurtosis, chisquare
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+import matplotlib.pyplot as plt
+def numerical_categorical_division(df):
+    numerical = []
+    categorical = []
+    for col in df.columns:
+        if df[col].dtype in ['int64', 'float64', 'int32', 'float32']:
+            numerical.append(col)
+        else:
+            categorical.append(col)
+    return numerical, categorical
+def calculate_statistics(data):
+    df_desc = data.describe().transpose()
+    df_desc['Var'] = df_desc.index
+    df_desc.reset_index(inplace=True)
+    df_desc.drop('count', axis=1, inplace=True)
+    df_desc['skewness'] = df_desc['Var'].apply(lambda x: skew(np.array(data.loc[data[x].notnull(), x])))
+    df_desc['kurtosis'] = df_desc['Var'].apply(
+        lambda x: kurtosis(np.array(data.loc[data[x].notnull(), x]), fisher=False)))
+    return df_desc
+def calculate_percentiles(data, percentile):
+    result = {}
+    for pct in percentile:
+        result['p' + str(int(pct * 100))] = data.quantile(pct)
+    return result
+def calculate_mean_sigma(data, cv):
+    result = {}
+    for dev in cv:
+        result['mean-' + str(int(dev)) + 'sigma'] = data['mean'] - dev * data['std']
+        result['mean+' + str(int(dev)) + 'sigma'] = data['mean'] + dev * data['std']
+    return result
+def generate_categorical_summary(data, categorical, percentile):
+    df_categorical = pd.DataFrame()
+    df_categorical['Var'] = np.array(categorical)
+    df_categorical['type'] = 'categorical'
+    for col in categorical:
+        df_var = data[col].value_counts(ascending=True, dropna=False).cumsum() / data.shape[0]
+        df_cat = pd.DataFrame(df_var)
+        df_cat.reset_index(inplace=True)
+        df_cat.columns = ['categories', 'cum_pct']
+        df_categorical.loc[df_categorical['Var'] == col, 'min'] = list(df_cat['categories'])[0]
+        df_categorical.loc[df_categorical['Var'] == col, 'max'] = list(df_cat['categories'])[-1]
+        for pct in percentile:
+            df_categorical.loc[df_categorical['Var'] == col, 'p' + str(int(pct * 100))] = \
+                list(df_cat.loc[df_cat['cum_pct'] >= pct, 'categories'])[0]
+        del df_var
+        del df_cat
+    return df_categorical
+def calculate_missing_values(data, edd):
+    edd['count'] = edd['Var'].apply(lambda x: data[data[x].notnull()].shape[0])
+    edd['nmiss'] = data.shape[0] - edd['count']
+    edd['missing_rate'] = np.array(edd['nmiss']).astype('float') / data.shape[0] * 100
+    return edd
+def edd(data, dv=None, regression=True, percentile=[.01, .05, .1, .5, .9, .95, .99], cv=[2, 3]):
+    numerical, categorical = numerical_categorical_division(data)
+    df_desc = calculate_statistics(data)
+    df_desc['type'] = 'numeric'
+    df_categorical = generate_categorical_summary(data, categorical, percentile)
+    edd = pd.concat([df_desc, df_categorical])
+    edd = calculate_missing_values(data, edd)
+    if dv:
+        edd['correlation/p_value'] = np.nan
+        if regression:
+            corr_matrix = data.corr()
+            for col in numerical:
+                edd.loc[edd['Var'] == col, 'correlation/p_value'] = corr_matrix.loc[col, dv]
+            for col in categorical:
+                mod = ols(dv + ' ~ ' + col, data=data).fit()
+                aov_table = sm.stats.anova_lm(mod, type=2)
+                edd.loc[edd['Var'] == col, 'correlation/p_value'] = aov_table.loc[col, 'PR(>F)']
+        else:
+            for col in numerical:
+                mod = ols(col + ' ~ ' + dv, data=data).fit()
+                aov_table = sm.stats.anova_lm(mod, type=2)
+                edd.loc[edd['Var'] == col, 'correlation/p_value'] = aov_table.loc[dv, 'PR(>F)']
+            for col in categorical:
+                f = pd.crosstab(data[dv], data[col], dropna=False)
+                edd.loc[edd['Var'] == col, 'correlation/p_value'] = chisquare(
+                    np.reshape(np.array(f), np.product(f.shape))).pvalue
+    edd.reset_index(inplace=True, drop=True)
+    return edd
+def graphical_analysis(data, dv, path='', regression=True):
+    numerical, categorical = numerical_categorical_division(data)
+    if regression:
+        for col in numerical:
+            if col != dv:
+                ax = data.plot(col, dv)
+                fig = ax.get_figure()
+                fig.savefig(path + col + '.png', dpi=1000)
+                plt.close(fig)
+        for col in categorical:
+            if col != dv:
+                ax = data.boxplot(dv, by=col)
+                fig = ax.get_figure()
+                fig.savefig(path + col + '.png', dpi=1000)
+                plt.close(fig)
+    else:
+        for col in numerical:
+            if col != dv:
+                ax = data.boxplot(col, by=dv)
+                fig = ax.get_figure()
+                fig.savefig(path + col + '.png', dpi=1000)
+                plt.close(fig)
+        for col in categorical:
+            if col != dv:
+                f = pd.crosstab(data[dv], data[col], dropna=False)
+                for cat in f.columns:
+                    f[cat] = f[cat].apply(lambda x: x / f[cat].sum() * 100)
+                ax = plt.subplot(111, frame_on=False)
+                ax.xaxis.set_visible(False)
+                ax.yaxis.set_visible(False)
+                table(ax, f)
+                plt.savefig(path + col + '.png', dpi=1000)
+                plt.close()

@@ -1,0 +1,15 @@
+def primeGenerator(num):
+    if type(num) != int or num < 0:
+        return 'wrong arg'
+    prime_list = []
+    for i in range(2, num + 1):
+        prime = True
+        for j in range(2, int(i ** 0.5) + 1):
+            if i % j == 0:
+                prime = False
+                break
+        if prime:
+            prime_list.append(i)
+    return prime_list
+result = primeGenerator(20)
+print(result)

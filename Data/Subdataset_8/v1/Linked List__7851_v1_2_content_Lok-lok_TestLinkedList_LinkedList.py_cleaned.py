@@ -1,0 +1,129 @@
+class Node():
+    def __init__(self, data):
+        if isinstance(data, int):
+            self.data = data
+            self.previous = None
+            self.next = None
+        elif data == None:
+            self.data = None
+            self.previous = None
+            self.next = None
+        else:
+            raise TypeError("input must be an int")
+    def __str__(self):
+        return str(self.data)
+class LinkedList():
+    def __init__(self):
+        self.first = Node(None)
+        self.last = Node(None)
+        self.first.next = self.last
+        self.last.previous = self.first
+        self.size = 0
+    def __str__(self):
+        s = "("
+        current = self.first.next
+        for i in range(0, self.size):
+            s += str(current.data) + " "
+            current = current.next
+        s += ")"
+        return s
+    def addToFront(self, data):
+        if isinstance(data, int):
+            p = self.first.next
+            newAdded = Node(data)
+            p.previous = newAdded
+            newAdded.next = p
+            newAdded.previous = self.first
+            self.first.next = newAdded
+            self.size += 1
+        else:
+            raise TypeError("input must be an int")
+    def addToBack(self, data):
+        if isinstance(data, int):
+            p = self.last.previous
+            newAdded = Node(data)
+            p.next = newAdded
+            newAdded.previous = p
+            newAdded.next = self.last
+            self.last.previous = newAdded
+            self.size += 1
+        else:
+            raise TypeError("input must be an int")
+    def removeFront(self):
+        n = self.first.next
+        self.first.next = n.next
+        n.next.previous = self.first
+        self.size -= 1
+        return n.data
+    def removeLast(self):
+        n = self.last.previous
+        self.last.previous = n.previous
+        n.previous.next = self.last
+        self.size -= 1
+        return n.data
+    def size(self):
+        return self.size
+    def front(self):
+        return self.first.next.data
+    def get(self, pos):
+        if not isinstance(pos, int):
+            raise TypeError("position must be an int")
+        if not 0 <= pos < self.size:
+            raise TypeError("position out of range")
+        current = self.first
+        for i in range(0, pos + 1):
+            current = current.next
+        return current.data
+    def insert(self, data, pos):
+        if not isinstance(data, int):
+            raise TypeError("input must be an int")
+        if not isinstance(pos, int):
+            raise TypeError("position must be an int")
+        if not 0 <= pos < self.size:
+            raise TypeError("position out of range")
+        current = self.first
+        for i in range(0, pos):
+            current = current.next
+        p = current.previous
+        newAdded = Node(data)
+        p.next = newAdded
+        newAdded.previous = p
+        newAdded.next = current
+        current.previous = newAdded
+        self.size += 1
+    def remove(self, pos):
+        if not isinstance(pos, int):
+            raise TypeError("position must be an int")
+        if not 0 <= pos < self.size:
+            raise TypeError("position out of range")
+        current = self.first
+        for i in range(0, pos):
+            current = current.next
+        current.previous.next = current.next
+        current.next.previous = current.previous
+        self.size -= 1
+        return current.data
+    def contains(self, data):
+        contains = 0
+        current = self.first
+        for i in range(0, self.size):
+            if current.data == data:
+                contains += 1
+            current = current.next
+        return contains
+if __name__ == "__main__":
+    linkedList = LinkedList()
+    linkedList.addToBack(5)
+    linkedList.addToFront(10)
+    linkedList.addToBack(12)
+    linkedList.insert(7, 1)
+    linkedList.insert(6, 1)
+    print(linkedList.get(2))
+    print(linkedList.remove(2))
+    print(linkedList)
+    print(linkedList.size)
+    print(linkedList.contains(10))
+    print(linkedList.removeFront())
+    print(linkedList.removeFront())
+    print(linkedList.removeLast())
+    print(linkedList.size)

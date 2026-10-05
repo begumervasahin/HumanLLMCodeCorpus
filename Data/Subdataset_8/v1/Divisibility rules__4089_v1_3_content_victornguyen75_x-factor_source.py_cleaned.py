@@ -1,0 +1,36 @@
+def validate(char):
+    while char not in {'Y', 'y', 'N', 'n'}:
+        char = input("Invalid input. Please try again. Are those numbers correct? (Y/N) ")
+first_num = 0
+second_num = 0
+choice = 'y'
+x_factor = 1
+ones_digit = 0
+pen_ult = 0
+flag = False
+while True:
+    try:
+        first_num = int(input("Please enter the first positive integer: "))
+        if first_num < 0:
+            raise ValueError
+        second_num = int(input("Please enter the second positive integer: "))
+        if second_num < 0:
+            raise ValueError
+        break
+    except ValueError:
+        print("Value error. Remember that this program will only take positive INTEGERS. Starting over.\n")
+print("Your first number is", first_num, "and your second number is", second_num)
+choice = input("Are these correct? ")
+validate(choice)
+if not flag:
+    multiplier = 1
+    while x_factor - 10 * (x_factor / 10) != 9:
+        x_factor = second_num * multiplier
+        multiplier += 1
+    x_factor = (x_factor / 10) + 1
+print("Your X Factor is", x_factor)
+ones_digit = first_num - 10 * (first_num / 10)
+ones_digit *= x_factor
+pen_ult = int(first_num / 10)
+pen_ult += ones_digit
+print("Is", pen_ult, "divisible by", second_num, "?")

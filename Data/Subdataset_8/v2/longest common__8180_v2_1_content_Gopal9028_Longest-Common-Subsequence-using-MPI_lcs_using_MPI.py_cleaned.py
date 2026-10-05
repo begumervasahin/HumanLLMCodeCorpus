@@ -1,0 +1,51 @@
+import time
+from mpi4py import MPI
+start_time = time.time()
+def lcs(s1, s2):
+    matrix = [["" for _ in range(len(s2))] for _ in range(len(s1))]
+    for i in range(len(s1)):
+        for j in range(len(s2)):
+            if s1[i] == s2[j]:
+                if i == 0 or j == 0:
+                    matrix[i][j] = s1[i]
+                else:
+                    matrix[i][j] = matrix[i - 1][j - 1] + s1[i]
+            else:
+                matrix[i][j] = max(matrix[i - 1][j], matrix[i][j - 1], key=len)
+    longest_subsequence = matrix[-1][-1]
+    return len(longest_subsequence), longest_subsequence
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+if rank == 0:
+    num_procs = comm.Get_size()
+    str1 = open('a.txt').read()
+    str2 = open('b.txt').read()
+    xSize = len(str1)
+    ySize = len(str2)
+    rSize = ySize
+    subX = []
+    subY = []
+    fTab = [[0 for _ in range(rSize)] for _ in range(rSize)]
+    for b in range(num_procs):
+        if b <= xSize:
+            subX[:] = str1
+    comm.bcast(subX, root=0)
+    for k in range(1, num_procs):
+        comm.send(subY, dest=k)
+    comm.barrier()
+    lcs(open('a.txt').read(), open('b.txt').read())
+    if num_procs > 1:
+        comm.Isend(ftab[rSize], dest=0)
+else:
+    subX = comm.bcast(None, root=0)
+    for b in range(num_procs):
+        if b <= xSize:
+            subX[:] = str1
+    mySubY = []
+    comm.recv(source=0)
+    fTab = [[0 for _ in range(rSize)] for _ in range(rSize)]
+    comm.barrier()
+    lcs(open('a.txt').read(), open('b.txt').read())
+    if rank < num_procs - 1:
+        comm.Isend(ftab[rSize], dest=0)
+print("--- %s seconds ---" % (time.time() - start_time))

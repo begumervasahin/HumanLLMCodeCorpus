@@ -1,0 +1,17 @@
+import sys
+from pathlib import Path
+from PlotGraph import PlotGraph
+from ReadGraph import ReadGraph
+if __name__ == '__main__':
+    if len(sys.argv) <= 1:
+        raise ValueError("Please enter the file to be read as an argument")
+    input_file = Path(sys.argv[1])
+    if not input_file.is_file():
+        raise FileNotFoundError("File not found:", input_file)
+    reader = ReadGraph(input_file)
+    graph_matrix = reader.read()
+    print("Analysing graph matrix..\n")
+    print(graph_matrix)
+    print("\nPlotting the graph..")
+    plotter = PlotGraph(graph_matrix)
+    plotter.plot()

@@ -1,0 +1,24 @@
+'''
+time taken as a function of size  ==> size**2 i.e. O(n**2)
+Anology: sorting cards... Start with empty left hand, pick a card, from an unsorted pile on
+the table. insert into hand. New card inserted goes to the sorted location, shifting the index
+of other cards appropriately.
+In the worst case scenario when every check of A[i] > key is true, the while loop for i = 3
+runs 3 times, for i = 10, runs 10 times etc.
+Thus the total computational steps = 1 + 2 + 3 + .... + n = n(n+1)/2 = (n**2 + n)/2
+More generally, the overall equation can be represented as a*n**2 + b*n + c .... a quadratic eqn.
+For very large values of n, the lower order terms (bn and c) and constant 'a' can be ignored.
+Leaving us with the execution time being controlled by n**2
+'''
+def insertion_sort(A, verbose=0, desc=0):
+    for i in range(1, len(A)):
+        key = A[i]
+        j = i - 1
+        while ((j >= 0) and (A[j] > key)):
+            A[j+1] = A[j]
+            j -= 1
+            if (verbose == 2): print("  sub:", j, " :: ", A)
+        A[j+1] = key
+        if(verbose): print("iter
+    if(desc): A = A[::-1]
+    return(A)

@@ -1,0 +1,48 @@
+import random
+from Crypto.Cipher import AES
+import hashlib
+from gmpy2 import mpz, mpz_random, powmod, random_state
+class User:
+    def __init__(self, name, a, q):
+        self.name = name
+        self.a = mpz(a)
+        self.q = mpz(q)
+        temp = sum([ord(i) for i in name])
+        self.__X = mpz_random(random_state(temp), q)
+        self.Y = powmod(self.a, self.__X, self.q)
+        self.__key = {}
+        print(f"{self.name}'s master key:", self.__X)
+    def common_key(self, other_user, Yb):
+        key = powmod(Yb, self.__X, self.q)
+        key_bytes = key.to_bytes((key.bit_length() + 7)
+        key_hash = hashlib.sha256(key_bytes).digest()
+        print(f"\nCommon key for {self.name} and {other_user.name}:\n{key_hash.hex()}")
+        self.__key[other_user.name] = key_hash
+    def aes_encrypt(self, other_user, data):
+        data = data.encode('utf-8')
+        padding = 16 - len(data) % 16
+        if padding == 0:
+            padding = 16
+        P = bytes([padding])
+        data += padding * P
+        cryptor = AES.new(self.__key[other_user.name], AES.MODE_CBC, 16 * b'\x00')
+        cipher_text = cryptor.encrypt(data)
+        print('\nCipher text:\n' + cipher_text.hex())
+        return [cipher_text, self.name]
+    def aes_decrypt(self, cipher_text):
+        data, name = cipher_text[0], cipher_text[1]
+        cryptor = AES.new(self.__key[name], AES.MODE_CBC, 16 * b'\x00')
+        plain_text = cryptor.decrypt(data)
+        plain_text = plain_text[:-(plain_text[-1])]
+        plain_text = plain_text.decode('utf-8')
+        print(f'\nPlain text from {name}:\n{plain_text}')
+        return plain_text
+a = 11
+q = 1040699159
+data = 'I love ncyucsie åå»~~(â§êªâ¦)'
+Alice = User('Alice', a, q)
+Bob = User('Bob', a, q)
+Alice.common_key(Bob, Bob.Y)
+Bob.common_key(Alice, Alice.Y)
+cipher_text = Alice.aes_encrypt(Bob, data)
+plain_text = Bob.aes_decrypt(cipher_text)

@@ -1,0 +1,77 @@
+import pandas as pd
+import numpy as np
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
+def load_data(input_file):
+    global df
+    df = pd.read_csv(input_file, sep=';')
+    return df
+def train_classifier(depth):
+    global dt, features, targets
+    features = list(df.columns)
+    target_feature = features[-1]
+    features = features[:-1]
+    targets = df[target_feature].unique()
+    print('Targets:', targets)
+    print('Features:', features)
+    y = df[target_feature]
+    X = df[features]
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.0, random_state=0)
+    dt = DecisionTreeClassifier(max_depth=depth)
+    dt.fit(X_train, y_train)
+    prediction = dt.predict(X_train)
+    print('Accuracy:', accuracy_score(y_train, prediction))
+    print('Correctly predicted:', accuracy_score(y_train, prediction) * len(y_train))
+    print('R2 Score:', r2_score(y_train, prediction))
+    print('Absolute error:', mean_absolute_error(y_train, prediction) * len(X_train))
+def train_regressor(depth):
+    global dt, features, targets
+    features = list(df.columns)
+    target_feature = features[-1]
+    features = features[:-1]
+    targets = df[target_feature].unique()
+    print('Targets:', targets)
+    print('Features:', features)
+    y = df[target_feature]
+    X = df[features]
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.0, random_state=0)
+    dt = DecisionTreeRegressor(max_depth=depth, criterion="mae")
+    dt.fit(X_train, y_train)
+    prediction = dt.predict(X_train)
+    print('R2 Score:', r2_score(y_train, prediction))
+    print('Absolute error:', mean_absolute_error(y_train, prediction) * len(X_train))
+def generate_tree_code(spacer_base="    "):
+    tree = dt
+    feature_names = features
+    target_names = targets
+    left = tree.tree_.children_left
+    right = tree.tree_.children_right
+    threshold = tree.tree_.threshold
+    feats = [feature_names[i] for i in tree.tree_.feature]
+    value = tree.tree_.value
+    def traverse_tree(left, right, threshold, features, node, depth):
+        spacer = spacer_base * depth
+        if (threshold[node] != -2):
+            print((spacer + "if ( " + feats[node] + " <= " + \
+                  str(threshold[node]) + " ) {"))
+            if left[node] != -1:
+                traverse_tree(left, right, threshold, feats, left[node], depth+1)
+            print((spacer + "}\n" + spacer +"else {"))
+            if right[node] != -1:
+                traverse_tree(left, right, threshold, feats, right[node], depth+1)
+            print((spacer + "}"))
+        else:
+            target = value[node]
+            print((spacer + "return " + str(target)))
+            for i, v in zip(np.nonzero(target)[1], target[np.nonzero(target)]):
+                target_name = target_names[i]
+                target_count = int(v)
+                print((spacer + "return " + str(target_name) + " " + str(i) + " "\
+                      " ( " + str(target_count) + " examples )"))
+    traverse_tree(left, right, threshold, features, 0, 0)
+def run_decision_tree():
+    df = load_data('your_input_file.csv')
+    train_classifier(3)
+    generate_tree_code()
+run_decision_tree()

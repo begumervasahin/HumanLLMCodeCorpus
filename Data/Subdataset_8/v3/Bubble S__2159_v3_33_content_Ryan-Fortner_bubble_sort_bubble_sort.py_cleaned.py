@@ -1,0 +1,22 @@
+def bubble_sort(arr):
+    evaluations_count = 0
+    n = len(arr)
+    for j in range(n - 1):
+        print("\n\n", "-" * 50, "Iteration", j)
+        for i in range(n - 1 - j):
+            evaluations_count += 1
+            print("\n", "*" * 80, "\ncomparing", arr[i], arr[i + 1])
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                print("swapped", arr[i], arr[i + 1])
+                print("array is now", arr)
+            else:
+                print("no need to swap", arr[i], arr[i + 1])
+    print("Number of evaluations =", evaluations_count)
+    return arr
+def main():
+    arr = [1, 5, 3, 2, 0, 8]
+    sorted_arr = bubble_sort(arr)
+    print("Sorted array:", sorted_arr)
+if __name__ == "__main__":
+    main()

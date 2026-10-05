@@ -1,0 +1,37 @@
+import random
+import numpy as np
+import time
+def selection_sort(arr):
+    start_time = time.process_time()
+    length = len(arr)
+    for i in range(length):
+        min_index = i
+        for j in range(i + 1, length):
+            if arr[min_index] > arr[j]:
+                min_index = j
+        arr[i], arr[min_index] = arr[min_index], arr[i]
+    end_time = time.process_time()
+    execution_time = end_time - start_time
+    return execution_time
+def main():
+    arr_length = 40
+    arr_random = np.random.randint(0, 99999, arr_length)
+    print("Random order:")
+    print("Before sorting:", arr_random)
+    execution_time_random = selection_sort(arr_random)
+    print("After sorting:", arr_random)
+    print("Execution time:", execution_time_random, "seconds")
+    arr_ascending = sorted(arr_random)
+    print("\nAscending order:")
+    print("Before sorting:", arr_ascending)
+    execution_time_ascending = selection_sort(arr_ascending)
+    print("After sorting:", arr_ascending)
+    print("Execution time:", execution_time_ascending, "seconds")
+    arr_reverse = sorted(arr_random, reverse=True)
+    print("\nReverse order:")
+    print("Before sorting:", arr_reverse)
+    execution_time_reverse = selection_sort(arr_reverse)
+    print("After sorting:", arr_reverse)
+    print("Execution time:", execution_time_reverse, "seconds")
+if __name__ == "__main__":
+    main()

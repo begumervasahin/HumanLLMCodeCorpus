@@ -1,0 +1,39 @@
+import socket
+import pickle
+def send_updated_cost(routers, new_cost):
+    server_ip = "127.0.0.1"
+    port1 = ports[routers[0]]
+    port2 = ports[routers[1]]
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except socket.error as e:
+        print("Error creating socket:", e)
+        return
+    for router, port in [(routers[0], port2), (routers[1], port1)]:
+        message = {'updated': {router: new_cost}}
+        print("Sending message:", message)
+        client_socket.sendto(pickle.dumps(message), (server_ip, int(port)))
+def read_router_config(filename):
+    with open(filename, 'r') as file:
+        num_routers = int(file.readline())
+        ports_info = {}
+        for _ in range(num_routers):
+            line = file.readline().split()
+            router_name, cost, port = line[0], float(line[1]), int(line[2])
+            ports_info[router_name] = {'cost': cost, 'port': port}
+        return ports_info
+config_files = ['topology/configA.txt', 'topology/configB.txt', 'topology/configC.txt',
+                'topology/configD.txt', 'topology/configE.txt', 'topology/configF.txt']
+ports = {}
+for file_path in config_files:
+    ports.update(read_router_config(file_path))
+print("Enter routers to edit their connection")
+print("Format: Router1 Router2 NewCost")
+print()
+while True:
+    user_input = input(">")
+    routers_data = user_input.split()
+    if len(routers_data) != 3:
+        print("Invalid input format. Please enter Router1 Router2 NewCost.")
+        continue
+    send_updated_cost(routers_data[:2], float(routers_data[2]))

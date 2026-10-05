@@ -1,0 +1,104 @@
+import os
+workspace = r"c:\Users\jsilhavy\Documents\GitHub\MHHC\mhhc\sample" + os.path.sep
+workspace_pci = "C:" + os.path.sep
+results_dir = os.path.join(workspace, "Results") + os.path.sep
+hl_ws = os.path.join(workspace, "HLs") + os.path.sep
+combi_ws = os.path.join(workspace, "process") + os.path.sep
+run_eas = os.path.join(workspace, "runEAS") + os.path.sep
+shp_ws = os.path.join(workspace, "shp") + os.path.sep
+shp_lines_ws = os.path.join(workspace, "shpLines") + os.path.sep
+negative_ws = os.path.join(workspace, "negative") + os.path.sep
+positive_ws = os.path.join(workspace, "positive") + os.path.sep
+unsure_ws = os.path.join(workspace, "unsure") + os.path.sep
+temp_dir = os.path.join(workspace, "temp") + os.path.sep
+flow_ws = os.path.join(workspace, "flow") + os.path.sep
+relevant_ws = os.path.join(workspace, "relevant") + os.path.sep
+out_all_ws = os.path.join(workspace, "outAll") + os.path.sep
+merge_ws = os.path.join(workspace, "merge") + os.path.sep
+easi_ws = os.path.join(workspace, "easi") + os.path.sep
+script_ws = os.path.join(workspace, "EAS") + os.path.sep
+bundle_ws = os.path.join(workspace, "bundle") + os.path.sep
+stream_ws = os.path.join(workspace, "stream") + os.path.sep
+shp_rotate_ws = os.path.join(workspace, "shpRotate") + os.path.sep
+clear_ws = os.path.join(workspace, "clear") + os.path.sep
+hist_ws = os.path.join(workspace, "hist") + os.path.sep
+image_data = os.path.join(workspace, "ImageData") + os.path.sep
+source_dir = os.path.join(workspace, "DEM") + os.path.sep
+DEMs = ["sa_sr_dem_30"]
+is_dem_not_rectangle = 1
+clip_dem_size = 400
+azimuth_step = 15
+azimuth_max = 360
+altitude = 30
+athr = 0
+dthr = 0
+fthr = 1
+radi = 10
+gthr = 10
+lthr = 10
+split_field = "split"
+relevant_merged_name = "relevantMerged.shp"
+relevant_merged_name_lite = "relevantMerged_lite.shp"
+par_mea_non = 2
+par_mea_rel = 4
+par_med_non = 2
+par_med_rel = 4
+relevant_t = 3
+azimuth_threshold = 20
+cluster_t = 4
+filter_count = 4
+memory_saving = 1
+optimal_stop = 2000
+average_method = "centroid"
+y_max = 4
+rad_max = 5
+gis_exe_path = r"ProgramKIV\GIS_linie_4\gis.exe"
+x_kiv = 150
+y_kiv = 200
+cluster_t_kiv = 1
+filter_count_kiv = 4
+bundle_merged_name = "bundleMerged.shp"
+buffer_size_ridges = 30
+par_mea_ridge = 10
+par_mea_valley = 50
+par_med_ridge = 2
+par_med_valley = 15
+rotation_step = 9
+rotation_max = 45
+rotations = range(0, rotation_max, rotation_step)
+def get_cell_size(dem):
+    code_sa_pos = dem.rfind("_")
+    return int(dem[code_sa_pos + 1:])
+def get_sample_area(dem):
+    code_sa_pos = dem.find("_")
+    code_sa = dem[0:code_sa_pos]
+    if code_sa == "sa":
+        return "SampleArea"
+    else:
+        return code_sa
+def get_input_mxd_path(sa):
+    return os.path.join(workspace, image_data, f"{sa}.mxd")
+def get_source_dem(dem):
+    code_sa_pos = dem.find("_")
+    code_source_dem_pos = dem[code_sa_pos + 1:].find("_") + code_sa_pos + 1
+    code_source_dem = dem[code_sa_pos + 1:code_source_dem_pos]
+    source_dem_mapping = {
+        "zm": "ZM50",
+        "lls": "LLS",
+        "d4": "DMR4G",
+        "d5": "DMR5G",
+        "d": "DMU25",
+        "as": "ASTER",
+        "sr": "SRTM"
+    }
+    return source_dem_mapping.get(code_source_dem, code_source_dem)
+def get_buffer_size_cluster():
+    return 100, 200
+def get_rotation_angle(dem):
+    code_sa_pos = dem.rfind("_")
+    code_rotation = dem.find("_r")
+    return int(dem[code_rotation + 2:code_sa_pos])
+def get_hs_azimuth(shp_name):
+    angle_start = shp_name.find("_") + 1
+    angle_end = shp_name.find("_", angle_start)
+    return shp_name[angle_start:angle_end]

@@ -1,0 +1,57 @@
+EEUU = ['Miami', 'Los Angeles', 'New Orleans', 'San Diego']
+Canada = ['Halifax', 'Montreal', 'Toronto', 'Vancouver']
+Mexico = ['Altamira', 'Veracruz', 'Tampico', 'Acapulco']
+Argentina = ['Bahia', 'Delta Dock', 'Ushuaia']
+Brazil = ['Rio Cubatao', 'Rio Grande', 'Rio de Janeiro']
+Chile = ['San Antonio', 'Valparaiso']
+Colombia = ['Cartagena', "Santa Martha"]
+Ecuador = ['Guayaquil']
+Peru = ['Callao', 'Hilo']
+Costa_Rica = ['Puerto Limon']
+Panama = ['Cristobal', 'Canal De Panama']
+Alemania = ['Dortmund', 'Hamburg']
+Espana = ['Barcelona', 'Bilbao', 'La Coruna', 'Las Palmas', 'Sevilla']
+Francia = ['Brest']
+Gran_Bretana = ['Liverpool', 'London']
+Holanda = ['Amsterdam', 'Rotterdam']
+Italia = ['Salerno', 'Venice']
+Grecia = ['Limassol', 'Larnaca']
+Rusia = ['Saint Petersburg']
+China = ['Shanghai', 'Xiamen International']
+India = ['Cochin', 'Mumbai']
+Japon = ['Kobe', 'Osaka', 'Yokohama']
+Tailandia = ['Bangkok']
+Emiratos_Arabes_Unidos = ['Dubai']
+Egipto = ['Alexandria']
+Marruecos = ['Tangier']
+Sudafrica = ['Cape Town']
+Australia = ['Newcastle', 'Sydney']
+listaNombrePaises = ['EEUU', 'Canada', 'Mexico', 'Argentina', 'Brazil',
+                     'Chile', 'Colombia', 'Ecuador', 'Peru', 'Costa Rica',
+                     'Panama', 'Alemania', 'Espana', 'Francia', 'Gran Bretana',
+                     'Holanda', 'Italia', 'Grecia', 'Rusia', 'China', 'India',
+                     'Japon', 'Tailandia', 'Emiratos Arabes', 'Egipto', 'Marruecos',
+                     'Sudafrica', 'Australia']
+listaNombresPuertos = [EEUU, Canada, Mexico, Argentina, Brazil, Chile,
+                       Colombia, Ecuador, Peru, Costa_Rica, Panama,
+                       Alemania, Espana, Francia, Gran_Bretana, Holanda,
+                       Italia, Grecia, Rusia, China, India, Japon,
+                       Tailandia, Emiratos_Arabes_Unidos, Egipto,
+                       Marruecos, Sudafrica, Australia]
+def listaPuertos(lista):
+    for n in listaNombresPuertos:
+        for i in n:
+            lista.append(i)
+    lista.insert(0, '-Vacio-')
+    return lista
+def paisPuerto(puerto):
+    i = 0
+    for n in listaNombresPuertos:
+        if puerto in n:
+            return listaNombrePaises[i]
+        i += 1
+print("List of ports:")
+ports = []
+ports = listaPuertos(ports)
+print(ports)
+print("Country of the port 'Miami':", paisPuerto('Miami'))

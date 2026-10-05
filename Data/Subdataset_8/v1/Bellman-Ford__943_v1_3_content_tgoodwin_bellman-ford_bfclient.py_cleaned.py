@@ -1,0 +1,305 @@
+import sys
+import socket
+import select
+import json
+import threading
+import time
+import copy
+import signal
+RECV_BUFFER = 4096
+INFINITY = float('inf')
+self_id = ""
+neighbors = {}
+routing_table = {}
+adjacent_links = {}
+old_links = {}
+active_hist = {}
+dead_links = []
+recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+recvSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+def main():
+    global self_id
+    if len(sys.argv) < 3:
+        print("usage: bfclient.py <localport> <timeout> <[id_addr1 port1 weight1...]>")
+        sys.exit()
+    localport = int(sys.argv[1])
+    recvSock.bind(('', localport))
+    signal.signal(signal.SIGINT, close_handler)
+    host = socket.gethostbyname(socket.gethostname())
+    self_id = f"{str(host)}:{sys.argv[1]}"
+    time_out = int(sys.argv[2])
+    if (len(sys.argv) - 3) % 3 != 0:
+        print("invalid link inputs (each link requires 3 parameters).")
+        sys.exit()
+    for i in range(3, len(sys.argv) - 1, 3):
+        n_ip = socket.gethostbyname(sys.argv[i])
+        neighbor_id = f"{n_ip}:{sys.argv[i + 1]}"
+        routing_table[neighbor_id] = {'cost': float(sys.argv[i + 2]), 'link': neighbor_id}
+        adjacent_links[neighbor_id] = float(sys.argv[i + 2])
+        neighbors[neighbor_id] = {}
+    print(f"bfclient running at address [{str(host)}] on port [{sys.argv[1]}]")
+    update_timer(time_out)
+    node_timer(time_out)
+    prompt()
+    while True:
+        socket_list = [sys.stdin, recvSock]
+        try:
+            read_sockets, _, _ = select.select(socket_list, [], [])
+        except (select.error, socket.error) as e:
+            break
+        for sock in read_sockets:
+            if sock == recvSock:
+                data, addr = recvSock.recvfrom(RECV_BUFFER)
+                if data:
+                    msg = json.loads(data)
+                    msg_handler(msg, addr)
+                else:
+                    print("[Error] 0 bytes received.")
+            else:
+                data = sys.stdin.readline().rstrip()
+                if len(data) > 0:
+                    data_list = data.split()
+                    cmd_handler(data_list)
+                    prompt()
+                else:
+                    sys.stdout.flush()
+                    prompt()
+    recvSock.close()
+def prompt():
+    sys.stdout.write('> ')
+    sys.stdout.flush()
+def update_neighbor():
+    for neighbor in copy.deepcopy(neighbors):
+        temp = neighbor.split(':')
+        addr = (temp[0], int(temp[1]))
+        send_dict = {'type': 'update', 'routing_table': {}}
+        rt_copy = copy.deepcopy(routing_table)
+        for node in rt_copy:
+            send_dict['routing_table'][node] = rt_copy[node]
+            if node != neighbor and rt_copy[node]['link'] == neighbor:
+                send_dict['routing_table'][node]['cost'] = INFINITY
+        recvSock.sendto(json.dumps(send_dict), addr)
+def update_timer(timeout_interval):
+    update_neighbor()
+    t = threading.Timer(timeout_interval, update_timer, [timeout_interval])
+    t.setDaemon(True)
+    t.start()
+def node_timer(timeout_interval):
+    for neighbor in copy.deepcopy(neighbors):
+        if neighbor in active_hist:
+            t_threshold = (3 * timeout_interval)
+            if (int(time.time()) - active_hist[neighbor]) > t_threshold:
+                if routing_table[neighbor]['cost'] != INFINITY:
+                    routing_table[neighbor]['cost'] = INFINITY
+                    routing_table[neighbor]['link'] = "n/a"
+                    del neighbors[neighbor]
+                    for node in routing_table:
+                        if node in neighbors:
+                            routing_table[node]['cost'] = adjacent_links[node]
+                            routing_table[node]['link'] = node
+                        else:
+                            routing_table[node]['cost'] = INFINITY
+                            routing_table[node]['link'] = "n/a"
+                    send_dict = {'type': 'close', 'target': neighbor}
+                    for neighbor in neighbors:
+                        temp = neighbor.split(':')
+                        recvSock.sendto(json.dumps(send_dict), (temp[0], int(temp[1])))
+        start_time = int(time.time())
+        t = threading.Timer(3, node_timer, [timeout_interval])
+        t.setDaemon(True)
+        t.start()
+def cmd_handler(args):
+    if args[0] == "LINKDOWN":
+        if len(args) == 3:
+            linkdown(args[1], args[2])
+        else:
+            print("[ERROR] incorrect number of args for 'LINKDOWN' command.")
+    elif args[0] == "LINKUP":
+        if len(args) == 3:
+            linkup(args[1], args[2])
+        else:
+            print("[ERROR] incorrect number of args for 'LINKUP' command.")
+    elif args[0] == "SHOWRT":
+        show_rt(routing_table)
+    elif args[0] == "TWEET":
+        content = ' '.join(args[1:(len(args))])
+        tweet(self_id, content)
+    elif args[0] == "CLOSE":
+        close()
+def msg_handler(rcv_data, tuple_addr):
+    global self_id
+    table_changed = False
+    t_now = int(time.time())
+    addr = f"{tuple_addr[0]}:{tuple_addr[1]}"
+    if rcv_data['type'] == 'update':
+        active_hist[addr] = t_now
+        if addr in neighbors:
+            neighbors[addr] = rcv_data['routing_table']
+        if addr in routing_table:
+            if routing_table[addr]['cost'] == INFINITY:
+                routing_table[addr]['cost'] = adjacent_links[addr]
+                routing_table[addr]['link'] = addr
+                table_changed = True
+                if addr in adjacent_links:
+                    neighbors[addr] = rcv_data['routing_table']
+        elif self_id in rcv_data['routing_table']:
+            routing_table[addr] = {'cost': rcv_data['routing_table'][self_id]['cost'], 'link': addr}
+            table_changed = True
+            if rcv_data['routing_table'][self_id]['link'] == self_id:
+                neighbors[addr] = rcv_data['routing_table']
+                adjacent_links[addr] = rcv_data['routing_table'][self_id]['cost']
+        else:
+            sys.exit("Unrecognized case. Possible error in topography construction.")
+        for node in rcv_data['routing_table']:
+            if node != self_id:
+                if node not in routing_table:
+                    routing_table[node] = {'cost': INFINITY, 'link': "n/a"}
+                    table_changed = True
+                for dest in routing_table:
+                    old_cost = routing_table[dest]['cost']
+                    if addr in neighbors and dest in neighbors[addr]:
+                        new_cost = routing_table[addr]['cost'] + neighbors[addr][dest]['cost']
+                        if new_cost < old_cost:
+                            routing_table[dest]['cost'] = new_cost
+                            routing_table[dest]['link'] = addr
+                            table_changed = True
+            if table_changed:
+                update_neighbor()
+                table_changed = False
+    elif rcv_data['type'] == 'linkup':
+        link_known = False
+        active_hist[addr] = t_now
+        pair = rcv_data['pair']
+        temp = pair.split(',')
+        alt_pair = f"{temp[1]},{temp[0]}"
+        if pair in dead_links:
+            dead_links.remove(pair)
+            link_known = True
+        elif alt_pair in dead_links:
+            dead_links.remove(alt_pair)
+            link_known = True
+        if link_known:
+            if temp[0] == addr and temp[1] == self_id:
+                routing_table[addr]['cost'] = old_links[addr]
+                routing_table[addr]['link'] = addr
+                neighbors[addr] = {}
+                del old_links[addr]
+                send_dict = {'type': 'linkup', 'pair': pair}
+                tell_neighbor(recvSock, send_dict)
+        else:
+            update_neighbor()
+    elif rcv_data['type'] == 'linkdown':
+        active_hist[addr] = t_now
+        link_known = False
+        pair = rcv_data['pair']
+        if pair in dead_links:
+            update_neighbor()
+        else:
+            dead_links.append(pair)
+            temp = pair.split(',')
+            if temp[0] == addr and temp[1] == self_id:
+                old_links[addr] = adjacent_links[addr]
+                routing_table[addr]['cost'] = INFINITY
+                routing_table[addr]['link'] = "n/a"
+                if addr in neighbors:
+                    del neighbors[addr]
+            for node in routing_table:
+                if node in neighbors:
+                    routing_table[node]['cost'] = adjacent_links[node]
+                    routing_table[node]['link'] = node
+                else:
+                    routing_table[node]['cost'] = INFINITY
+                    routing_table[node]['link'] = "n/a"
+            send_dict = {'type': 'linkdown', 'pair': pair}
+            tell_neighbor(recvSock, send_dict)
+    elif rcv_data['type'] == 'tweet':
+        if rcv_data['sender'] != self_id:
+            active_hist[addr] = t_now
+            print(f"\n{rcv_data['msg']}")
+            send_dict = {'type': 'tweet', 'msg': rcv_data['msg'], 'sender': rcv_data['sender']}
+            tell_neighbor(recvSock, send_dict)
+            prompt()
+    elif rcv_data['type'] == 'close':
+        print(f"DEBUG: [received CLOSE message from {str(tuple_addr)}]")
+        active_hist[addr] = t_now
+        close_node = rcv_data['target']
+        if routing_table[close_node]['cost'] != INFINITY:
+            routing_table[close_node]['cost'] = INFINITY
+            routing_table[close_node]['link'] = "n/a"
+            if close_node in neighbors:
+                del neighbors[close_node]
+            for node in routing_table:
+                if node in neighbors:
+                    routing_table[node]['cost'] = adjacent_links[node]
+                    routing_table[node]['link'] = node
+                else:
+                    routing_table[node]['cost'] = INFINITY
+                    routing_table[node]['link'] = "n/a"
+                    send_dict = {'type': 'close', 'target': close_node}
+                    tell_neighbor(recvSock, send_dict)
+        else:
+            update_neighbor()
+def close_handler(signum, frame):
+    sys.exit(f"signal {str(signum)} called, closing down.")
+def linkdown(ip_addr, port):
+    global self_id
+    node_id = f"{ip_addr}:{port}"
+    if node_id not in neighbors:
+        print(f"[ERROR] {node_id} is not a neighbor.")
+    else:
+        cost = adjacent_links[node_id]
+        old_links[node_id] = cost
+        if routing_table[node_id]['cost'] != INFINITY:
+            routing_table[node_id]['cost'] = INFINITY
+            routing_table[node_id]['link'] = "n/a"
+        for node in routing_table:
+            if routing_table[node]['link'] == node_id:
+                if node in neighbors:
+                    routing_table[node]['cost'] = adjacent_links[node]
+                    routing_table[node]['link'] = node
+                else:
+                    routing_table[node]['cost'] = INFINITY
+                    routing_table[node]['link'] = "n/a"
+        pair_key = f"{self_id},{node_id}"
+        dead_links.append(pair_key)
+        send_dict1 = {'type': 'linkdown', 'pair': pair_key}
+        tell_neighbor(recvSock, send_dict1)
+        del neighbors[node_id]
+def linkup(ip_addr, port):
+    global self_id
+    node_id = f"{ip_addr}:{port}"
+    if node_id not in old_links:
+        print("[Error] This link does not exist.")
+    else:
+        routing_table[node_id]['cost'] = old_links[node_id]
+        del old_links[node_id]
+        routing_table[node_id]['link'] = node_id
+        neighbors[node_id] = {}
+        pair_one = f"{self_id},{node_id}"
+        pair_two = f"{node_id},{self_id}"
+        if pair_one in dead_links:
+            dead_links.remove(pair_one)
+        elif pair_two in dead_links:
+            dead_links.remove(pair_two)
+        send_dict = {'type': 'linkup', 'pair': pair_one}
+        tell_neighbor(recvSock, send_dict)
+def tweet(self_id, message):
+    t_log = time.strftime('%H:%M:%S', time.localtime(time.time()))
+    msg = f"[{str(t_log)}] @{self_id}: {str(message)}"
+    send_dict = {'type': 'tweet', 'msg': msg, 'sender': self_id}
+    tell_neighbor(recvSock, send_dict)
+def show_rt(routing_table):
+    t_log = time.strftime('%H:%M:%S', time.localtime(time.time()))
+    print(f"[{str(t_log)}] Distance vector list for [{self_id}] is:")
+    for node in routing_table:
+        link = routing_table[node]['link']
+        print(f"Destination = ({str(node)}), Cost = {str(routing_table[node]['cost'])}, Link = ({link})")
+def tell_neighbor(sock, payload):
+    package = json.dumps(payload)
+    for neighbor in neighbors:
+        temp = neighbor.split(":")
+        sock.sendto(package, (temp[0], int(temp[1])))
+def close():
+    sys.exit(f"({self_id}) going offline.")
+if __name__ == "__main__":
+    main()

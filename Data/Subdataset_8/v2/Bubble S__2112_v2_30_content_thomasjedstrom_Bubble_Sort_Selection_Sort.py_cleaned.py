@@ -1,0 +1,35 @@
+import random
+import datetime
+def populate_sample_list(sample_list):
+    for _ in range(100):
+        random_num = random.randint(0, 10000)
+        sample_list.append(random_num)
+    print('\nThis is your Sample List:')
+    print(sample_list)
+def bubble_sort(sample_list):
+    start_time = datetime.datetime.now()
+    for i in range(len(sample_list) - 1):
+        for j in range(len(sample_list) - 1):
+            if sample_list[j] > sample_list[j + 1]:
+                sample_list[j], sample_list[j + 1] = sample_list[j + 1], sample_list[j]
+    print('\nThis is your Bubble Sort:')
+    print(sample_list)
+    end_time = datetime.datetime.now()
+    elapsed_time = end_time - start_time
+    print('This operation took ' + str(elapsed_time) + ' seconds to complete')
+def selection_sort(sample_list):
+    start_time = datetime.datetime.now()
+    for x in range(len(sample_list)):
+        for y in range(len(sample_list) - 1 - x):
+            if sample_list[y] > sample_list[y + 1]:
+                sample_list[y], sample_list[y + 1] = sample_list[y + 1], sample_list[y]
+    print('\nThis is your Selection Sort:')
+    print(sample_list)
+    end_time = datetime.datetime.now()
+    elapsed_time = end_time - start_time
+    print('This operation took ' + str(elapsed_time) + ' seconds to complete')
+if __name__ == "__main__":
+    sample_list = []
+    populate_sample_list(sample_list)
+    bubble_sort(sample_list[:])
+    selection_sort(sample_list[:])

@@ -1,0 +1,11 @@
+import glob
+files_with_single_digit = glob.glob('./[0-9].*')
+print("Files/Directories starting with a single digit and any extension:", files_with_single_digit)
+gif_files = glob.glob('*.gif')
+print("Files with a .gif extension in the current directory:", gif_files)
+single_char_gif_files = glob.glob('?.gif')
+print("Files with a single character filename and .gif extension:", single_char_gif_files)
+txt_files_recursive = glob.glob('**/*.txt', recursive=True)
+print("Text files (.txt) recursively in all subdirectories:", txt_files_recursive)
+all_directories_recursive = glob.glob('./**/', recursive=True)
+print("All directories and subdirectories:", all_directories_recursive)

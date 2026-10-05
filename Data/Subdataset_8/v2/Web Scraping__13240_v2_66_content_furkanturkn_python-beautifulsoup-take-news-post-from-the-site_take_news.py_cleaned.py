@@ -1,0 +1,65 @@
+import requests
+from bs4 import BeautifulSoup
+import urllib.request
+import os
+import datetime
+from unidecode import unidecode
+print("BBC News" + "\n")
+for yazisayi in range(60):
+    try:
+        Path = "C:/Users/Administrator/Desktop/Haberler/BBC_News/"
+        BBC_world_URL = "http:
+        BBC_tech_URL = "http:
+        BBC_politics_URL = "http:
+        r_world = requests.get(BBC_world_URL)
+        r_tech = requests.get(BBC_tech_URL)
+        r_politics = requests.get(BBC_politics_URL)
+        soup_world = BeautifulSoup(r_world.content, "xml")
+        soup_tech = BeautifulSoup(r_tech.content, "xml")
+        soup_politics = BeautifulSoup(r_politics.content, "xml")
+        items_world = soup_world.findAll('item')
+        items_tech = soup_tech.findAll('item')
+        items_politics = soup_politics.findAll('item')
+        world_list = []
+        for i in range(20):
+            world_list.append(items_world[i].contents[5].text)
+            world_list.append(items_politics[i].contents[5].text)
+            world_list.append(items_tech[i].contents[5].text)
+        haber_url = world_list[yazisayi]
+        haber_url_control = haber_url[-8:]
+        print('Haber ID: ' + haber_url_control)
+        r_content = requests.get(haber_url)
+        soup_content = BeautifulSoup(r_content.content, "html.parser")
+        images = soup_content.findAll("span", {"class": "image-and-copyright-container"})
+        img_list = []
+        alt_text_list = []
+        for i in range(len(images)):
+            img_url = images[i - 1].split('src="')[1].split('"')[0]
+            alt_text = images[i - 1].split('alt="')[1].split('"')[0]
+            if alt_text != "BBC Stories logo":
+                img_list.append(img_url)
+                alt_text_list.append(alt_text)
+        description = soup_content.find("meta", {"name": "description"}).get("content")
+        wp_description = description
+        title = soup_content.find("h1", {"class": "story-body__h1"})
+        if title is not None:
+            wp_title = title.text
+        else:
+            wp_title = ''
+        PathControl = Path + haber_url_control + "/"
+        if not os.path.exists(PathControl):
+            os.makedirs(PathControl)
+        for i in range(len(img_list)):
+            img_filename = os.path.join(PathControl, f"{i}_{haber_url_control}.jpg")
+            urllib.request.urlretrieve(img_list[i], img_filename)
+        html_content = ""
+        for paragraph in soup_content.find("div", {"class": "story-body__inner"}).findAll(['p', 'h2']):
+            if paragraph.name == "h2":
+                html_content += f"<h2>{paragraph.text}</h2><br><br>"
+            else:
+                html_content += f"{paragraph.text}<br><br>"
+        with open(os.path.join(PathControl, "Content.html"), "w", encoding='utf-8') as file:
+            file.write(html_content)
+    except Exception as e:
+        print("An error occurred:", e)
+        continue

@@ -1,0 +1,30 @@
+import sys
+from LRwithStopWords import LogisticRegression as LRwithStopWords
+from LRwithoutStopWords import LogisticRegression as LRwithoutStopWords
+def main():
+    if len(sys.argv) < 6:
+        print("Please input command line arguments:")
+        print("[training ham path] [training spam path] [test ham path] [test spam path] [stopwords]\n")
+        return
+    else:
+        trainingHamPath = sys.argv[1]
+        trainingSpamPath = sys.argv[2]
+        testHamPath = sys.argv[3]
+        testSpamPath = sys.argv[4]
+        stopWords = True if sys.argv[5].lower() in {"y", "yes"} else False
+        if stopWords:
+            print("------------------------------------------------")
+            print("Logistic regression removing stop words")
+            lr = LRwithStopWords(trainingHamPath, trainingSpamPath, testHamPath, testSpamPath)
+            lr.run()
+            lr.train()
+            lr.test()
+        else:
+            print("------------------------------------------------")
+            print("Logistic regression without removing stop words")
+            lr = LRwithoutStopWords(trainingHamPath, trainingSpamPath, testHamPath, testSpamPath)
+            lr.run()
+            lr.train()
+            lr.test()
+if __name__ == "__main__":
+    main()

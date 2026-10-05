@@ -1,0 +1,90 @@
+import sys
+import re
+import os
+di_only = True
+answers_only = False
+def buildfields( s ):
+  fields = ()
+  match = re.match( '^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)', s )
+  if ( None != match ):
+    fields = ( match.group(1), match.group(2), match.group(3), match.group(4) )
+  else:
+    match = re.match( '^(\S+)\s+(\S+)\s+(\S+)', s )
+    if ( None == match ):
+      print 'broken 1'
+      os._exit(0)
+    else:
+      fields = ( match.group(1), match.group(2), match.group(3), '' )
+  if ( 4 != len(fields) ):
+    print 'broken 2'
+    os._exit(0)
+  return fields
+def buildkey( fields ):
+  key = fields[0] + ' ' + fields[1] + ' ' + fields[2]
+  return key
+f = sys.stdin
+if len(sys.argv) > 1:
+  f = open(sys.argv[1])
+state = 0
+buf = ""
+dict = {}
+key = ""
+fields = ()
+for line in f:
+  if ( 0 < len(line) ):
+    text = line[:-1]
+    if ( 0 < len(text) ):
+      if ( '
+        if ( 1 != state ):
+          if ( 0 < len(key) ):
+            if ( not ( key in dict ) ):
+              dict[key] = ( fields, buf )
+          key = ""
+          buf = ""
+          fields = ()
+        buf += line
+        state = 1
+      else:
+        if ( ( 'a' <= text[0] and 'z' >= text[0] ) or ( 'A' <= text[0] and 'Z' >= text[0] ) ):
+          if ( 2 == state ):
+            if ( not ( key in dict ) ):
+              dict[key] = ( fields, buf )
+            key = ""
+            buf = ""
+            fields = ()
+          fields = buildfields( text )
+          key = buildkey( fields )
+          buf += line
+          state = 2
+        else:
+          if (  ' ' == line[0] or '\t' == line[0] ):
+            buf += line
+            state = 3
+          else:
+            state  = 4
+if ( 0 < len(key) ):
+  if ( not ( key in dict ) ):
+    dict[key] = ( fields, buf )
+newdict = {}
+for akey in list(dict.keys()):
+  newkey = dict[akey][0][1]
+  if ( newkey in newdict ):
+    newdict[newkey] += [ dict[akey] ]
+  else:
+    newdict[newkey] =  [ dict[akey] ]
+keys = list( newdict.keys() )
+keys.sort()
+for akey in keys:
+  alist = newdict[akey]
+  if ( di_only ):
+    difound = False
+    for item in alist:
+      if ( 'd-i' == item[0][0] ):
+        difound = True
+        print item[1]
+    if ( not difound ):
+      for item in alist:
+        print item[1]
+  else:
+    for item in alist:
+      print item[1]

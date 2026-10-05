@@ -1,0 +1,66 @@
+import re
+import numpy as np
+def read_graph(filename):
+    with open(filename, 'r') as graph_file:
+        num_nodes = int(graph_file.readline())
+        lines = [graph_file.readline() for _ in range(num_nodes)]
+    return num_nodes, lines
+def parse_graph(num_nodes, lines):
+    pattern = ''.join([str(i) + '+' + '(.+)' for i in range(1, num_nodes + 1)])
+    pattern = re.compile(pattern)
+    result = np.zeros(shape=(num_nodes, num_nodes))
+    for index, line in enumerate(lines):
+        ma = pattern.match(line)
+        for x in range(num_nodes):
+            result[index][x] = int(ma.group(x + 1))
+    return result
+def read_input(filename):
+    with open(filename, 'r') as input_file:
+        in_put = []
+        while True:
+            string = input_file.readline().strip()
+            if string == '0':
+                break
+            in_put.append(string)
+    return np.array(in_put)
+def find_shortest_paths(graph, sources, sinks):
+    num_node = len(graph)
+    with open('Output.dat', 'w+') as output_file:
+        for source, sink in zip(sources, sinks):
+            source = int(source) - 1
+            sink = int(sink) - 1
+            prev = np.zeros(shape=(num_node))
+            visited = np.array([source])
+            dis = np.zeros(shape=(num_node))
+            while True:
+                min_dis = float('inf')
+                for i in visited:
+                    for j in range(num_node):
+                        if j not in visited and graph[int(i)][j] > 0:
+                            if dis[int(i)] + graph[int(i)][j] < min_dis:
+                                min_dis = dis[int(i)] + graph[int(i)][j]
+                                next_hop = j
+                                last_hop = i
+                visited = np.append(visited, [next_hop])
+                dis[next_hop] = dis[int(last_hop)] + graph[int(last_hop)][next_hop]
+                prev[next_hop] = last_hop
+                if sink in visited:
+                    break
+            path = np.array([sink])
+            while source not in path:
+                path = np.append(path, [prev[int(path[-1])]])
+            output_file.write(str(dis[sink]) + '\n')
+            pointer = len(path) - 1
+            while pointer >= 0:
+                output_file.write(str(int(path[-1]) + 1) + '\n')
+                path = path[:-1]
+                pointer -= 1
+            output_file.write('FFFF\n')
+        output_file.write('0\n')
+if __name__ == '__main__':
+    num_nodes, graph_lines = read_graph('Graph.dat')
+    graph_matrix = parse_graph(num_nodes, graph_lines)
+    input_data = read_input('Input.dat')
+    sources = input_data[::3]
+    sinks = input_data[1::3]
+    find_shortest_paths(graph_matrix, sources, sinks)

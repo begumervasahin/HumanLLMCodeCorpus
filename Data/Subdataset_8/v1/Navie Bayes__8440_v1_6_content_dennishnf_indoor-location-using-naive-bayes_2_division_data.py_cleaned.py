@@ -1,0 +1,50 @@
+import pandas as pd
+import numpy as np
+import os
+import glob
+DATA = "DATA_001_House"
+path_data = "data1_filtered_wifis/" + DATA + "/"
+path_part01 = "data2_divided_parts/" + DATA + "/part01/"
+path_part02 = "data2_divided_parts/" + DATA + "/part02/"
+path_part03 = "data2_divided_parts/" + DATA + "/part03/"
+path_part04 = "data2_divided_parts/" + DATA + "/part04/"
+path_part05 = "data2_divided_parts/" + DATA + "/part05/"
+path_part06 = "data2_divided_parts/" + DATA + "/part06/"
+path_part07 = "data2_divided_parts/" + DATA + "/part07/"
+path_part08 = "data2_divided_parts/" + DATA + "/part08/"
+path_part09 = "data2_divided_parts/" + DATA + "/part09/"
+path_part10 = "data2_divided_parts/" + DATA + "/part10/"
+def read_and_shuffle_data(path):
+    numRegions = 0
+    for fullname in glob.glob(path + "*.csv"):
+        dfInRegion = pd.read_csv(fullname, sep=" ")
+        numAPs = len(dfInRegion.columns)
+        numRegions += 1
+    Regions = ["R%.3d" % i for i in range(1, numRegions + 1)]
+    APs = ["W%.3d" % i for i in range(1, numAPs + 1)]
+    D = {}
+    for r in Regions:
+        name = r + ".csv"
+        D[r + "_"] = pd.read_csv(path + name, sep=" ")
+        D[r] = D[r + "_"][APs]
+        print("reading: " + path + name)
+    for r in Regions:
+        D[r] = D[r].sample(frac=1)
+        print("Shuffling " + r)
+    return D, Regions
+def divide_and_save_parts(data, regions):
+    Dtt = {}
+    for r in regions:
+        print("Dividing " + r)
+        num_interval = int(0.1 * len(data[r]))
+        for i in range(10):
+            Dtt[r + "_part%.2d" % (i+1)] = data[r].iloc[i*num_interval:(i+1)*num_interval].reset_index(drop=True)
+            path = globals()[f"path_part%.2d" % (i+1)]
+            if not os.path.exists(path):
+                os.makedirs(path)
+            name = r + ".csv"
+            Dtt[r + "_part%.2d" % (i+1)].to_csv(path + name, sep=' ', index=False)
+            print("Saving " + path + name)
+if __name__ == "__main__":
+    data, regions = read_and_shuffle_data(path_data)
+    divide_and_save_parts(data, regions)

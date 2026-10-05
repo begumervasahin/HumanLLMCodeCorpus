@@ -1,0 +1,28 @@
+import nltk
+import json
+def fonk1():
+    b1 = '[change to your googleplus_posts.json location]'
+    with open(b1, 'r') as file:
+        b2 = json.load(file)
+    b3 = ['mobile']
+    b4 = [activity['object']['content'].lower().split() for activity in b2 if activity['object']['content'] != '']
+    b5 = nltk.TextCollection(b4)
+    b6 = []
+    for i in range(len(b4)):
+        a1 = 0
+        for term in b3:
+            a1 += b5.tf_idf(term.lower(), b4[i])
+        if a1 > 0:
+            b6.append({
+                'a1': a1,
+                'title': b2[i]['title'],
+                'url': b2[i]['url']
+            })
+    b6 = sorted(b6, key=lambda a: a['a1'], reverse=True)
+    for ra in b6:
+        print('Title:', ra['title'])
+        print('URL:', ra['url'])
+        print('Score:', ra['a1'])
+        print()
+if b7 = = '__main__':
+    fonk1()

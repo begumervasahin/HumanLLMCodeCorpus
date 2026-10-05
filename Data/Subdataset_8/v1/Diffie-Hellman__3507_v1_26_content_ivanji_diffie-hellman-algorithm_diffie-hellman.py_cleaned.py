@@ -1,0 +1,23 @@
+sharedBase = 47
+sharedPrime = 199
+print("g is equal to %s & p is equal to %s" % (sharedBase, sharedPrime))
+print("--------------------------")
+aliceSecret = 6
+bobSecret = 2
+print("--------------------------")
+print("Alice performs the following operation: g^a mod p and sends result (A) to Bob")
+A = (sharedBase ** aliceSecret) % sharedPrime
+print("--------------------------")
+print("Bob performs same operation and sends result (B) to Alice")
+B = (sharedBase ** bobSecret) % sharedPrime
+print("--------------------------")
+print("Alice now performs same operation using calculated result (B) from Bob")
+aliceModulo = (B ** aliceSecret) % sharedPrime
+print("--------------------------")
+print("Bob now performs same operation using calculated result (A) from Alice")
+bobModulo = (A ** bobSecret) % sharedPrime
+print(bobModulo)
+print(aliceModulo)
+print("--------------------------")
+print("Shared Key is equal to %s." % bobModulo)
+print("Now try this with large prime numbers!")

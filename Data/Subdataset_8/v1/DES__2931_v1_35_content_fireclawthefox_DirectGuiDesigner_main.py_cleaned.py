@@ -1,0 +1,24 @@
+from direct.showbase.ShowBase import ShowBase
+from panda3d.core import loadPrcFileData, WindowProperties
+from editorLogHandler import setupLog
+from DirectGuiDesigner.DirectGuiDesigner import DirectGuiDesigner
+loadPrcFileData(
+    "",
+)
+log_filepath, config_file = setupLog("DirectGuiDesigner")
+base = ShowBase()
+def set_dirty_name():
+    wp = WindowProperties()
+    wp.setTitle("*DirectGUI Designer")
+    base.win.requestProperties(wp)
+def set_clean_name():
+    wp = WindowProperties()
+    wp.setTitle("DirectGUI Designer")
+    base.win.requestProperties(wp)
+base.accept("request_dirty_name", set_dirty_name)
+base.accept("request_clean_name", set_clean_name)
+dgd = DirectGuiDesigner(base.pixel2d)
+dgd.log_file = log_filepath
+dgd.config_file = config_file
+base.dgd = dgd
+base.run()

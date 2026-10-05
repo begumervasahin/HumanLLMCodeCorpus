@@ -1,0 +1,85 @@
+10. Repository: subashgandyer/Anti-mirror-Apriori
+   File: antimirror.py
+   URL: https:
+   Code Content:
+import CSVtoLIST_def as cs
+import csv
+import am
+import utils
+import sys
+import time
+@profile
+def main():
+	'''
+	Usage: $ python scriptname filename.csv minsup min_confidence
+	Ex: $ python testclass.py groceries_small.csv 3 0.5
+	'''
+	start_time = time.clock()
+	n_itemlist = []
+	count = 0
+	a = []
+	result = []
+	test_dict = {}
+	Mapper_list =[]
+	Transaction_list = []
+	ReverseList = []
+	support_data = {}
+	final = []
+	dict_list = []
+	print 'Before readCSV'
+	filename = sys.argv[1]
+	minsup = int(sys.argv[2])
+	min_confidence = float(sys.argv[3])
+	print 'Script Name = ', sys.argv[0], '\n', 'Filename = ', sys.argv[1], '\n', 'Minsup = ', sys.argv[2], '\n', 'Min Confidence = ', sys.argv[3]
+	n_itemlist, count = cs.readCSV(filename)
+	print 'Total Transactions = ', count
+	print 'After readCSV'
+	a = cs.manyToOne(n_itemlist)
+	result = cs.removeDuplicates(a)
+	test_dict = cs.createDictionary(result)
+	Mapper_list = cs.mapper(n_itemlist,test_dict)
+	Transaction_list = cs.binaryTransactionListBuilder(Mapper_list, result)
+	print 'DONE AND OVER'
+	list2 = []
+	temp_list1 = []
+	Transaction_list2 = []
+	b = []
+	print 'Input Transactions: \n',a
+	Transaction_list2 = am.countTransactions(Transaction_list)
+	b = am.remDupSortReverseList(Transaction_list2)
+	temp_list1 = am.addCountersTransactions(b)
+	not_to_be_pruned_items, to_be_pruned_items_list, list1, list2, support_data = am.antiMirroring(temp_list1,minsup)
+	print ' PROGRAM OVER'
+	print 'TRANSACTIONS COUNT = ', count
+	print 'FINAL LIST TO BE CONSIDERED FOR RULES GENERATION = ', list2
+	print 'SUPPORT DATA  :\n', support_data
+	rules = am.rules_generator(list2, minsup, min_confidence, support_data)
+	print 'RULES = \n', rules
+	cleanRules = am.cleanRules(rules)
+	print 'CLEANED RULES = \n', cleanRules
+	result = am.reversed(cleanRules, final, test_dict)
+	print 'Final Result :\n', result
+	answer = am.formattedRules(result)
+	print 'Answer :\n', answer
+	print ' '
+	print ' '
+	print 'Association Rules \n'
+	i = 1
+	for items in answer:
+		print i, '.',items
+		i+=1
+	print ' '
+	print ' '
+	print '---- PROGRAM OVER in %s seconds ----' % (time.clock() - start_time)
+if __name__ == '__main__':
+    main()
+   README Content:
+Shopping cart analysis with a new Apriori algorithm called Anti-mirror-Apriori or AMpriori for short.
+The objective of this project is to build a novel apriori algorithm to do Market Basket Analysis(MBA) to recommend and up-sell items or groceries to a customer while shopping.
+A new technique of Anti-Mirroring is introduced to Apriori algorithm and results are compared and tabulated with respect to Time and Space complexity.
+Input:  Market Basket items from customer purchases over a period of time
+Output: Best Pairs or groups of items to purchase
+Python
+Experiments were done on both Mac OS X (Mountain Lion) & Windows 8 laptops running on Intel i5 Core processor with 4 GB RAM. Python, a high level programming language, is used for implementing the proposed Anti-mirror algorithm and its parent Apriori algorithm. The dataset used for comparing the performance of the proposed algorithm with Apriori algorithm is Groceries dataset. This dataset contains about 10,000 transactions of customers' buying behavior. This Groceries dataset comes in the form of a simple csv file 'groceries.csv'. This csv file contains 10,000 lines, each line represents a single transaction. In each transaction, the products that are bought during that transaction is listed by comma separated values. For example, if one line in the csv file states cereals,whole milk,yolk,cheese, then it means that during one transaction an anonymous customer(as this is not important for us) bought these products. Similarly, 10,000 of those transactions are recorded and forms our dataset for doing Market Basket Analysis. This helps us in finding both the frequent itemsets and then association rules between these products. This paper proposes to find a better Market Basket Analysis algorithm than an apriori algorithm.
+The dataset contains 175 distinct items and 10,000 transactions. To benchmark the proposed algorithm, we need to create various sub-datasets from this mother dataset based on parameters like Number of distinct items and Number of Transactions. Each sub-dataset takes a form as "
+Once the original dataset is split into varied sized datasets, each dataset needs to be tested with the Apriori algorithm and then with the proposed Anti-Mirror algorithm. Their Execution time and Memory Consumption are noted for each run. Each dataset is run for 10 times and their Average Execution Time and Average Memory Consumption parameters are noted and tabulated as shown below. ![here](https:

@@ -1,0 +1,32 @@
+from tkinter import *
+import tkinter.simpledialog as tkSimpleDialog
+def insertion_sort():
+    num_elements = int(entry_num.get())
+    vector = []
+    for _ in range(num_elements):
+        number = tkSimpleDialog.askinteger("", "Enter a number")
+        vector.append(number)
+    label_original.config(text=str(vector))
+    for i in range(1, len(vector)):
+        j = i
+        temp = vector[i]
+        while j > 0 and temp < vector[j - 1]:
+            vector[j] = vector[j - 1]
+            j -= 1
+        vector[j] = temp
+    label_sorted.config(text=str(vector))
+app = Tk()
+app.title("Insertion Sort")
+app.geometry('250x150')
+app.configure(bg='SkyBlue2')
+label_prompt = Label(app, text="How many numbers will you enter?", font="Helvetica 12", bg='SkyBlue2')
+label_prompt.pack()
+entry_num = Entry(app, width=8)
+entry_num.pack()
+button_ok = Button(app, text="Ok!", command=insertion_sort)
+button_ok.pack(pady=(10, 0))
+label_original = Label(app, text="", bg='SkyBlue2')
+label_original.pack(pady=(10, 0))
+label_sorted = Label(app, text="", bg='SkyBlue2')
+label_sorted.pack(pady=(10, 0))
+app.mainloop()

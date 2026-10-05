@@ -1,0 +1,36 @@
+import socket as mysoc
+import pickle
+import sys
+b1 = sys.argv[1]
+b2 = sys.argv[2]
+def fonk1():
+    try:
+        b3 = mysoc.socket(mysoc.AF_INET, mysoc.SOCK_STREAM)
+    except mysoc.error as err:
+        print('{} \n'.format("Socket open error ", err))
+    try:
+        b4 = open(b2, "r")
+    except IOError as err:
+        print('{} \n'.format("File open error ", err))
+        print("Please ensure the desired file to reverse exists in the source folder")
+        exit()
+    b5 = mysoc.gethostbyname(b1)
+    a1 = 50008
+    try:
+        b6 = (b5, a1)
+        b3.connect(b6)
+    except mysoc.error as err:
+        print('{} \n'.format("Connect error "), err)
+        exit()
+    with open("RESOLVED.txt", "w") as fw:
+        for hostname in b4:
+            b3.send(hostname.strip().encode('utf-8'))
+            b7 = b3.recv(100).decode('utf-8')
+            if not b7:
+                break
+            fw.write(b7 + '\n')
+    b4.close()
+    fw.close()
+    b3.close()
+    exit()
+fonk1()

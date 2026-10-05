@@ -1,0 +1,99 @@
+import os
+import glob
+from PIL import Image
+import pytesseract
+from gtts import gTTS
+import pygame
+from pygame import mixer
+import PySimpleGUI as sg
+import fitz
+def get_page_numbers(value):
+    value = value.strip()
+    if "-" in value:
+        start, end = map(int, value.split("-"))
+    else:
+        start = int(value)
+        end = 0
+    return start, end
+def create_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+def remove_files(directory):
+    for file in os.listdir(directory):
+        filepath = os.path.join(directory, file)
+        os.chmod(filepath, 0o777)
+        os.remove(filepath)
+def process_pdf(pdf_file, start_page, end_page, output_directory):
+    doc = fitz.open(pdf_file)
+    k = 1
+    for i in range(start_page - 1, end_page):
+        page = doc.loadPage(i)
+        zoom_x = 2.0
+        zoom_y = 2.0
+        mat = fitz.Matrix(zoom_x, zoom_y)
+        pix = page.getPixmap(matrix=mat)
+        output = os.path.join(output_directory, f"image_{k}_to_read.png")
+        pix.writePNG(output)
+        k += 1
+def perform_ocr(input_directory):
+    text_data = []
+    for file in os.listdir(input_directory):
+        image_path = os.path.join(input_directory, file)
+        text = pytesseract.image_to_string(Image.open(image_path), lang="eng")
+        text = text.replace("|", "I")
+        text_data.extend(text.split('\n'))
+    return text_data
+def generate_audio(text_data, output_directory, language='en'):
+    audio_text = ""
+    for line in text_data:
+        line = line.strip()
+        if len(line.split(" ")) < 10 and len(line.split(" ")) > 0:
+            audio_text += " " + str(line) + "\n"
+        elif len(line.split(" ")) >= 2:
+            if line[-1] == ".":
+                audio_text += " " + line + "\n"
+            else:
+                audio_text += " " + str(line)
+    audio_file = os.path.join(output_directory, "pdf_audio.mp3")
+    tts_obj = gTTS(text=audio_text, lang=language, slow=False)
+    tts_obj.save(audio_file)
+    return audio_file
+def play_audio(audio_file):
+    pygame.init()
+    mixer.init()
+    mixer.music.load(audio_file)
+    mixer.music.play()
+    pygame.event.wait()
+def main():
+    current_directory = os.getcwd()
+    output_directory = os.path.join(current_directory, 'Text_to_speech_software')
+    create_directory(output_directory)
+    layout = [
+        [sg.Text('Choose PDF File to read'), sg.Input(), sg.FileBrowse()],
+        [sg.Text('Enter PDF Page number or range separated by - '), sg.InputText()],
+        [sg.Button('Ok'), sg.Button('Cancel')]
+    ]
+    window = sg.Window('Input', layout)
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            print("Exiting")
+            window.close()
+            exit()
+        if event == "Ok":
+            if not values[0] or not values[1]:
+                sg.Popup("Missing Input", "Please enter both PDF file and page number(s)")
+            elif not values[1].replace("-", "").isdigit():
+                sg.Popup("Invalid Input", "Enter valid page number(s) or range")
+            else:
+                start_page, end_page = get_page_numbers(values[1])
+                break
+    window.close()
+    pdf_to_read = values[0]
+    remove_files(output_directory)
+    process_pdf(pdf_to_read, start_page, end_page, output_directory)
+    text_data = perform_ocr(output_directory)
+    audio_file = generate_audio(text_data, output_directory)
+    play_audio(audio_file)
+if __name__ == '__main__':
+    main()

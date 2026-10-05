@@ -1,0 +1,61 @@
+import glob
+import pickle
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import numpy as np
+class VocabularyProcessor:
+    def __init__(self):
+        pass
+    def extract_vocabulary(self, folder):
+        files = glob.glob(folder + "*.txt")
+        vocabulary = {}
+        for filename in files:
+            with open(filename) as file:
+                lines = file.readlines()
+                for line in lines:
+                    words = word_tokenize(line)
+                    for word in words:
+                        word = word.lower()
+                        if word:
+                            vocabulary[word] = vocabulary.get(word, 0) + 1
+        return vocabulary
+    def merge_vocabulary(self, old_vocab, new_vocab):
+        for word, count in new_vocab.items():
+            old_vocab[word] = old_vocab.get(word, 0) + count
+        return old_vocab
+    def stop_word_removal(self, vocabulary):
+        stop_words = set(stopwords.words('english'))
+        for word in stop_words:
+            vocabulary.pop(word, None)
+        return vocabulary
+    def lemmatize(self, vocabulary):
+        lemmatizer = WordNetLemmatizer()
+        for word in list(vocabulary.keys()):
+            lemmatized_word = lemmatizer.lemmatize(word)
+            if lemmatized_word != word:
+                vocabulary[lemmatized_word] = vocabulary.get(lemmatized_word, 0) + vocabulary[word]
+                vocabulary.pop(word)
+        return vocabulary
+    def threshold(self, vocabulary, percentile):
+        lower_bound = np.percentile(list(vocabulary.values()), percentile)
+        upper_bound = np.percentile(list(vocabulary.values()), 100 - percentile)
+        vocabulary = {key: value for key, value in vocabulary.items() if lower_bound < value < upper_bound}
+        return vocabulary
+if __name__ == '__main__':
+    vocab_processor = VocabularyProcessor()
+    vocabulary = {}
+    for i in range(1, 11):
+        vocab_folder = "lingspam/part" + str(i) + "/"
+        vocabulary = vocab_processor.merge_vocabulary(vocabulary, vocab_processor.extract_vocabulary(vocab_folder))
+    with open("vocabulary1.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    vocabulary = vocab_processor.stop_word_removal(vocabulary)
+    with open("vocabulary2.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    vocabulary = vocab_processor.lemmatize(vocabulary)
+    with open("vocabulary3.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)
+    vocabulary = vocab_processor.threshold(vocabulary, 2)
+    with open("vocabulary4.pickle", "wb") as file:
+        pickle.dump(vocabulary, file)

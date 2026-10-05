@@ -1,0 +1,63 @@
+class BreadthFirstSearch:
+    def bfs(self, graph, source, terminal, parent):
+        visited = [False] * len(graph)
+        queue = []
+        queue.append(source)
+        visited[source] = True
+        while queue:
+            u = queue.pop(0)
+            for v, weight in enumerate(graph[u]):
+                if weight > 0 and not visited[v]:
+                    queue.append(v)
+                    visited[v] = True
+                    parent[v] = u
+        return visited[terminal]
+class EdmondsKarp:
+    def __init__(self, graph):
+        self.graph = graph
+    def max_flow(self, source, terminal):
+        max_flow = 0
+        parent = [-1] * len(self.graph)
+        bfs = BreadthFirstSearch()
+        while bfs.bfs(self.graph, source, terminal, parent):
+            path_flow = float("inf")
+            s = terminal
+            while s != source:
+                path_flow = min(path_flow, self.graph[parent[s]][s])
+                s = parent[s]
+            max_flow += path_flow
+            v = terminal
+            while v != source:
+                u = parent[v]
+                self.graph[u][v] -= path_flow
+                self.graph[v][u] += path_flow
+                v = parent[v]
+        return max_flow
+def parse_input(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        num_vertices, num_edges = map(int, lines[0].split())
+        graph = [[0] * num_vertices for _ in range(num_vertices)]
+        for line in lines[1:]:
+            u, v, weight = map(int, line.split())
+            graph[u][v] = weight
+            graph[v][u] = weight
+        return graph
+def write_output(output_file, cut_size, cut_set, max_flow):
+    with open(output_file, 'w') as file:
+        file.write(f"{cut_size}\n")
+        file.write(' '.join(map(str, cut_set)) + '\n')
+        file.write(f"{max_flow}\n")
+def main(input_file, output_file):
+    graph = parse_input(input_file)
+    source = 0
+    terminal = len(graph) - 1
+    edmonds_karp = EdmondsKarp(graph)
+    max_flow = edmonds_karp.max_flow(source, terminal)
+    cut_size = sum(1 for flow in graph[source] if flow > 0)
+    cut_set = [i for i, flow in enumerate(graph[source]) if flow > 0]
+    write_output(output_file, cut_size, cut_set, max_flow)
+if __name__ == "__main__":
+    input_file = "mincut_input/XXXX.in"
+    output_file = "output_file.txt"
+    main(input_file, output_file)

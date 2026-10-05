@@ -1,0 +1,14 @@
+import cProfile
+def golden_ratio(n):
+    s = 1
+    t = 1
+    for i in range(2, n):
+        c = s + t
+        s = t
+        t = c
+        ratio = t / s
+        print(ratio)
+def golden_ratio_main(n):
+    golden_ratio(n)
+if __name__ == "__main__":
+    cProfile.run("golden_ratio_main(1476)", filename="profile_results.txt")

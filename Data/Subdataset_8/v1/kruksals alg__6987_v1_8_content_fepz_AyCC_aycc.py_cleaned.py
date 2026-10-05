@@ -1,0 +1,37 @@
+import networkx as nx
+import time
+from argparse import ArgumentParser
+def kruskal(graph):
+    return list(nx.minimum_spanning_edges(graph, algorithm='kruskal'))
+def prim(graph):
+    return list(nx.minimum_spanning_edges(graph, algorithm='prim'))
+def generate_random_graph(n, p):
+    return nx.fast_gnp_random_graph(n, p, seed=42)
+def test_mst(graph, num_reps):
+    results = {}
+    for i in range(num_reps):
+        start_time = time.time()
+        kruskal_mst = kruskal(graph)
+        kruskal_time = time.time() - start_time
+        start_time = time.time()
+        prim_mst = prim(graph)
+        prim_time = time.time() - start_time
+        results[i] = {'kruskal': {'mst': kruskal_mst, 'time': kruskal_time},
+                      'prim': {'mst': prim_mst, 'time': prim_time}}
+    return results
+def main():
+    parser = ArgumentParser(description="Test Minimum Spanning Tree Algorithms")
+    parser.add_argument("--num_nodes", type=int, default=10, help="Number of nodes in the random graph")
+    parser.add_argument("--edge_probability", type=float, default=0.3, help="Probability of edge creation between nodes")
+    parser.add_argument("--num_reps", type=int, default=3, help="Number of test repetitions")
+    args = parser.parse_args()
+    random_graph = generate_random_graph(args.num_nodes, args.edge_probability)
+    results = test_mst(random_graph, args.num_reps)
+    for i, rep in results.items():
+        print(f"Test {i}:")
+        for algorithm, data in rep.items():
+            print(f"{algorithm}:")
+            print(f"  Minimum Spanning Tree: {data['mst']}")
+            print(f"  Execution Time: {data['time']} seconds")
+if __name__ == "__main__":
+    main()

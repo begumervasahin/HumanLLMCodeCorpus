@@ -1,0 +1,27 @@
+def print_sequence(fibonacci_sequence, length):
+    print(f"\nHere is your Fibonacci sequence of {length} number(s):\n\t{fibonacci_sequence}")
+def generate_fibonacci_sequence(length):
+    fibonacci_sequence = [1, 1]
+    if length <= 0:
+        print("The sequence must contain at least one positive number.")
+        return None
+    elif length == 1:
+        return [1]
+    elif length == 2:
+        return fibonacci_sequence
+    else:
+        for i in range(2, length):
+            next_num = fibonacci_sequence[-1] + fibonacci_sequence[-2]
+            fibonacci_sequence.append(next_num)
+        return fibonacci_sequence
+if __name__ == "__main__":
+    print("\nThis program will print out a Fibonacci sequence of your desired length!")
+    while True:
+        length = int(input("\nEnter your desired Fibonacci sequence length: "))
+        fibonacci_sequence = generate_fibonacci_sequence(length)
+        if fibonacci_sequence:
+            print_sequence(fibonacci_sequence, length)
+        choice = input("\nDo you want to generate another Fibonacci sequence? (yes/no): ")
+        if choice.lower() != 'yes':
+            print("Exiting the program...")
+            break

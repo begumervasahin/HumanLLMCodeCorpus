@@ -1,0 +1,47 @@
+
+def is_prime(n):
+    assert type(n) == int
+    if n < 2:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+def divisor(n):
+    lst = []
+    for i in range(1, n + 1):
+        if n % i == 0:
+            lst.append(i)
+    return lst
+def prime_factor(x):
+    fact_lst = []
+    if is_prime(x):
+        fact_lst.append(x)
+    for i in divisor(x):
+        if i == 1:
+            pass
+        elif is_prime(i):
+            fact_lst.append(i)
+    return fact_lst
+def gcd(a, b):
+    if b > a:
+        return gcd(b, a)
+    elif a % b == 0:
+        return b
+    return gcd(b, a % b)
+def relatively_prime(a, b):
+    return gcd(a, b) == 1
+def common_factor(a, b):
+    a_fact = divisor(a)
+    b_fact = divisor(b)
+    common_fact = []
+    for elem in a_fact:
+        if elem in b_fact:
+            common_fact.append(elem)
+    return common_fact
+print(is_prime(7))
+print(divisor(12))
+print(prime_factor(24))
+print(gcd(24, 36))
+print(relatively_prime(24, 35))
+print(common_factor(24, 36))

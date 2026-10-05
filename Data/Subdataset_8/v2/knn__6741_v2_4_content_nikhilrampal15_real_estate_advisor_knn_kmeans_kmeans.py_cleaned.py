@@ -1,0 +1,38 @@
+import pandas as pd
+import numpy as np
+import random
+def read_csv(filename):
+    return pd.read_csv(filename)
+def generate_centroids(data, k, column_name):
+    centroids = []
+    for _ in range(k):
+        centroids.append(random.randint(1, data[column_name].max()))
+    return centroids
+def assign_clusters(centroids, data, column_name):
+    for x in range(len(centroids)):
+        centroid = centroids[x]
+        for idx, house in enumerate(data[column_name]):
+            offset = len(data) * x
+            house_value = np.asscalar(house.astype(int))
+            data.loc[idx + offset, 'cluster'] = centroid
+def check_convergence(old_centroids, new_centroids):
+    for old, new in zip(old_centroids, new_centroids):
+        if abs(old - new) > 1:
+            return False
+    return True
+city = "san-francisco-ca"
+filename = "data/propertyInfo/{}.csv".format(city)
+data = read_csv(filename)
+data["cluster"] = -1
+k = 5
+list_of_centroids = generate_centroids(data, k, 'zestimate')
+assign_clusters(list_of_centroids, data, 'zestimate')
+while True:
+    old_centroids = list_of_centroids.copy()
+    list_of_centroids = generate_centroids(data, k, 'zestimate')
+    assign_clusters(list_of_centroids, data, 'zestimate')
+    if check_convergence(old_centroids, list_of_centroids):
+        break
+pd.set_option('display.max_rows', len(data['zestimate']))
+pd.set_option('display.float_format', lambda x: '%.0f' % x)
+print(data[['zestimate', 'cluster']])

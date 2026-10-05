@@ -1,0 +1,44 @@
+import json
+import httplib2
+import string
+def recurse_comments(comment):
+    text = []
+    body = filter(lambda x: x in string.printable, comment['data']['body'])
+    text.append(body)
+    if 'replies' in comment['data'] and comment['data']['replies'] != '':
+        for reply in comment['data']['replies']['data']['children']:
+            if 'kind' in reply and reply['kind'] != 'more':
+                text.extend(recurse_comments(reply))
+    return text
+conn = httplib2.Http()
+response, sr_data = conn.request("https:
+sr_data = json.loads(sr_data)
+response, p_data = conn.request("https:
+p_data = json.loads(p_data)
+tl_posts = p_data[1]['data']['children']
+all_comments = []
+for post in tl_posts:
+    if 'body' in post['data']:
+        all_comments.extend(recurse_comments(post))
+print(len(all_comments))
+c_body = {
+    'stop_words': [],
+    'topicsToExclude': [],
+    'documents': []
+}
+count = 0
+for reply in all_comments:
+    d = {
+        'id': str(count),
+        'text': reply
+    }
+    c_body['documents'].append(d)
+    count += 1
+headers = {
+    'Content-Type': 'application/json',
+    'Ocp-Apim-Subscription-Key': 'b3f5d9f8d81046598dedc07a7541e2c9'
+}
+conn2 = httplib2.Http()
+response, data = conn2.request("https:
+data = json.loads(data.decode())
+print(data)

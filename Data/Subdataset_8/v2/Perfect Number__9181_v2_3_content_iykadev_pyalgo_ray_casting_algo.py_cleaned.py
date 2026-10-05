@@ -1,0 +1,93 @@
+from collections import namedtuple
+import sys
+Point = namedtuple('Point', 'x, y')
+Edge = namedtuple('Edge', 'start, end')
+Polygon = namedtuple('Polygon', 'name, edges')
+_epsilon = 0.00001
+_huge = sys.float_info.max
+_tiny = sys.float_info.min
+def ray_intersects_segment(point, edge):
+    '''
+    Determines whether a ray cast from a point intersects with a given edge segment.
+    '''
+    start, end = edge
+    if start.y > end.y:
+        start, end = end, start
+    if point.y == start.y or point.y == end.y:
+        point = Point(point.x, point.y + _epsilon)
+    intersects = False
+    if (point.y > end.y or point.y < start.y) or (point.x > max(start.x, end.x)):
+        return False
+    if point.x < min(start.x, end.x):
+        intersects = True
+    else:
+        if abs(start.x - end.x) > _tiny:
+            slope_red = (end.y - start.y) / float(end.x - start.x)
+        else:
+            slope_red = _huge
+        if abs(start.x - point.x) > _tiny:
+            slope_blue = (point.y - start.y) / float(point.x - start.x)
+        else:
+            slope_blue = _huge
+        intersects = slope_blue >= slope_red
+    return intersects
+def is_point_inside_polygon(point, polygon):
+    '''
+    Determines whether a point lies inside a polygon.
+    '''
+    total_edges = len(polygon)
+    return sum(ray_intersects_segment(point, edge) for edge in polygon.edges) % 2 == 1
+def print_polygon(polygon):
+    '''
+    Prints the details of a polygon.
+    '''
+    print("\n  Polygon(name='%s', edges=(" % polygon.name)
+    print('   ', ',\n    '.join(str(edge) for edge in polygon.edges) + '\n    ))')
+if __name__ == '__main__':
+    polygons = [
+        Polygon(name='square', edges=(
+            Edge(start=Point(x=0, y=0), end=Point(x=10, y=0)),
+            Edge(start=Point(x=10, y=0), end=Point(x=10, y=10)),
+            Edge(start=Point(x=10, y=10), end=Point(x=0, y=10)),
+            Edge(start=Point(x=0, y=10), end=Point(x=0, y=0))
+        )),
+        Polygon(name='square_hole', edges=(
+            Edge(start=Point(x=0, y=0), end=Point(x=10, y=0)),
+            Edge(start=Point(x=10, y=0), end=Point(x=10, y=10)),
+            Edge(start=Point(x=10, y=10), end=Point(x=0, y=10)),
+            Edge(start=Point(x=0, y=10), end=Point(x=0, y=0)),
+            Edge(start=Point(x=2.5, y=2.5), end=Point(x=7.5, y=2.5)),
+            Edge(start=Point(x=7.5, y=2.5), end=Point(x=7.5, y=7.5)),
+            Edge(start=Point(x=7.5, y=7.5), end=Point(x=2.5, y=7.5)),
+            Edge(start=Point(x=2.5, y=7.5), end=Point(x=2.5, y=2.5))
+        )),
+        Polygon(name='strange', edges=(
+            Edge(start=Point(x=0, y=0), end=Point(x=2.5, y=2.5)),
+            Edge(start=Point(x=2.5, y=2.5), end=Point(x=0, y=10)),
+            Edge(start=Point(x=0, y=10), end=Point(x=2.5, y=7.5)),
+            Edge(start=Point(x=2.5, y=7.5), end=Point(x=7.5, y=7.5)),
+            Edge(start=Point(x=7.5, y=7.5), end=Point(x=10, y=10)),
+            Edge(start=Point(x=10, y=10), end=Point(x=10, y=0)),
+            Edge(start=Point(x=10, y=0), end=Point(x=2.5, y=2.5))
+        )),
+        Polygon(name='hexagon', edges=(
+            Edge(start=Point(x=3, y=0), end=Point(x=7, y=0)),
+            Edge(start=Point(x=7, y=0), end=Point(x=10, y=5)),
+            Edge(start=Point(x=10, y=5), end=Point(x=7, y=10)),
+            Edge(start=Point(x=7, y=10), end=Point(x=3, y=10)),
+            Edge(start=Point(x=3, y=10), end=Point(x=0, y=5)),
+            Edge(start=Point(x=0, y=5), end=Point(x=3, y=0))
+        )),
+    ]
+    test_points = (
+        Point(x=5, y=5), Point(x=5, y=8),
+        Point(x=-10, y=5), Point(x=0, y=5),
+        Point(x=10, y=5), Point(x=8, y=5),
+        Point(x=10, y=10)
+    )
+    print("\n TESTING WHETHER POINTS ARE WITHIN POLYGONS")
+    for poly in polygons:
+        print_polygon(poly)
+        print('   ', '\t'.join("%s: %s" % (p, is_point_inside_polygon(p, poly)) for p in test_points[:3]))
+        print('   ', '\t'.join("%s: %s" % (p, is_point_inside_polygon(p, poly)) for p in test_points[3:6]))
+        print('   ', '\t'.join("%s: %s" % (p, is_point_inside_polygon(p, poly)) for p in test_points[6:]))

@@ -1,0 +1,112 @@
+import os
+import io
+import re
+import numpy as np
+class LogisticRegression:
+    def __init__(self, trainHam, trainSpam, testHam, testSpam):
+        self.trainHam = trainHam
+        self.trainSpam = trainSpam
+        self.testHam = testHam
+        self.testSpam = testSpam
+        self.weights = {}
+        self.vocabulary = []
+        self.rate = 0.0001
+        self.lambdaVal = 5
+        self.fileData = []
+    def run(self):
+        self.createVocab()
+        self.processFolder(self.trainHam, 1.0)
+        self.processFolder(self.trainSpam, 0.0)
+    def countWords(self, path, wordCount):
+        with io.open(path, 'r', encoding='iso-8859-1') as f:
+            lines = f.readlines()
+            for line in lines:
+                lettersOnly = re.sub("[^a-zA-Z0-9\s]", "", line).lower().split()
+                for word in lettersOnly:
+                    wordCount[word] = wordCount.get(word, 0) + 1
+    def createVocab(self):
+        hamWords = {}
+        self.processFolder(self.trainHam, 1.0, wordCount=hamWords)
+        spamWords = {}
+        self.processFolder(self.trainSpam, 0.0, wordCount=spamWords)
+        self.vocabulary = set(hamWords.keys()).union(spamWords.keys())
+        for word in self.vocabulary:
+            self.weights[word] = 0.0
+    def processFolder(self, folder, classification, wordCount=None):
+        files = os.listdir(folder)
+        for file in files:
+            filePath = os.path.join(folder, file)
+            if wordCount is None:
+                wordCount = {}
+            self.countWords(filePath, wordCount)
+            self.fileData.append({'fileName': filePath, 'token': wordCount, 'class': classification})
+    def train(self):
+        for _ in range(500):
+            self.updateError()
+            self.updateWeights()
+    def updateError(self):
+        error = 0
+        for eachFile in self.fileData:
+            token = eachFile["token"]
+            value = 1
+            for everyToken in token:
+                value += token[everyToken] * self.weights[everyToken]
+            eachFile["error"] = self.sigmoid(value)
+            error += eachFile["error"]
+    def sigmoid(self, x):
+        denom = 1 + np.exp(-x)
+        return 1 / denom
+    def updateWeights(self):
+        for token in self.weights.keys():
+            val = 0
+            error = 0
+            for eachFile in self.fileData:
+                tokens = eachFile["token"]
+                trueValue = eachFile["class"]
+                if token in tokens:
+                    temp = trueValue - eachFile["error"]
+                    error += temp
+                    val += tokens[token] * temp
+            self.weights[token] += ((val * self.rate) - (self.rate * self.lambdaVal * self.weights[token]))
+    def test(self):
+        hamFolder = os.listdir(self.testHam)
+        hamCorrect = 0
+        for file in hamFolder:
+            hamDict = {}
+            value = 0
+            filePath = os.path.join(self.testHam, file)
+            self.countWords(filePath, hamDict)
+            for token in hamDict:
+                if token in self.weights:
+                    value += self.weights[token] * hamDict[token]
+            result = self.sigmoid(value)
+            if result > 0.5:
+                hamCorrect += 1
+        hamAccuracy = (hamCorrect / len(hamFolder)) * 100
+        print("Ham accuracy is ", hamAccuracy)
+        spamFolder = os.listdir(self.testSpam)
+        spamCorrect = 0
+        for file in spamFolder:
+            spamDict = {}
+            value = 0
+            filePath = os.path.join(self.testSpam, file)
+            self.countWords(filePath, spamDict)
+            for token in spamDict:
+                if token in self.weights:
+                    value += self.weights[token] * spamDict[token]
+            result = self.sigmoid(value)
+            if result < 0.5:
+                spamCorrect += 1
+        spamAccuracy = (spamCorrect / len(spamFolder)) * 100
+        print("Spam accuracy is ", spamAccuracy)
+        totalAccuracy = ((spamCorrect + hamCorrect) / (len(hamFolder) + len(spamFolder))) * 100
+        print("Total accuracy is ", totalAccuracy)
+if __name__ == "__main__":
+    trainHam = "train_ham_folder_path"
+    trainSpam = "train_spam_folder_path"
+    testHam = "test_ham_folder_path"
+    testSpam = "test_spam_folder_path"
+    model = LogisticRegression(trainHam, trainSpam, testHam, testSpam)
+    model.run()
+    model.train()
+    model.test()

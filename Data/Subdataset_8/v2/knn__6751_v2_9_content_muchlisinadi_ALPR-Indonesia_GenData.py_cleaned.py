@@ -1,0 +1,68 @@
+import argparse
+import os
+import sys
+import cv2
+import numpy as np
+MIN_CONTOUR_AREA = 100
+RESIZED_IMAGE_WIDTH = 20
+RESIZED_IMAGE_HEIGHT = 30
+def main():
+    args = parse_arguments()
+    if args.image_train:
+        imgTrainingNumbers = cv2.imread(args.image_train)
+        if imgTrainingNumbers is None:
+            print("Error: Unable to read the image file.")
+            sys.exit()
+    else:
+        print("Please provide the path to the training image using -d or --image_train argument.")
+        sys.exit()
+    preprocess_training_data(imgTrainingNumbers)
+def parse_arguments():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-d", "--image_train", help="Path to the training images")
+    return ap.parse_args()
+def preprocess_training_data(imgTrainingNumbers):
+    imgGray = cv2.cvtColor(imgTrainingNumbers, cv2.COLOR_BGR2GRAY)
+    imgBlurred = cv2.GaussianBlur(imgGray, (5, 5), 0)
+    imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    cv2.imshow("Thresholded Image", imgThresh)
+    process_contours(imgThresh)
+def process_contours(imgThresh):
+    imgThreshCopy = imgThresh.copy()
+    imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    npaFlattenedImages = np.empty((0, RESIZED_IMAGE_WIDTH * RESIZED_IMAGE_HEIGHT))
+    intClassifications = []
+    for npaContour in npaContours:
+        if cv2.contourArea(npaContour) > MIN_CONTOUR_AREA:
+            [intX, intY, intW, intH] = cv2.boundingRect(npaContour)
+            cv2.rectangle(imgTrainingNumbers, (intX, intY), (intX + intW, intY + intH), (0, 0, 255), 2)
+            imgROI = imgThresh[intY:intY + intH, intX:intX + intW]
+            imgROIResized = cv2.resize(imgROI, (RESIZED_IMAGE_WIDTH, RESIZED_IMAGE_HEIGHT))
+            cv2.imshow("ROI", imgROI)
+            cv2.imshow("Resized ROI", imgROIResized)
+            cv2.imshow("Training Image", imgTrainingNumbers)
+            intChar = cv2.waitKey(0)
+            if intChar == 27:
+                sys.exit()
+            elif intChar in range(ord('0'), ord('9') + 1) or intChar in range(ord('a'), ord('z') + 1):
+                intClassifications.append(intChar)
+                npaFlattenedImage = imgROIResized.reshape((1, RESIZED_IMAGE_WIDTH * RESIZED_IMAGE_HEIGHT))
+                npaFlattenedImages = np.append(npaFlattenedImages, npaFlattenedImage, 0)
+    save_training_data(npaFlattenedImages, intClassifications)
+def save_training_data(npaFlattenedImages, intClassifications):
+    fltClassifications = np.array(intClassifications, np.float32)
+    npaClassifications = fltClassifications.reshape((fltClassifications.size, 1))
+    print("\n\nTraining complete.\n")
+    np.savetxt("classifications.txt", npaClassifications)
+    np.savetxt("flattened_images.txt", npaFlattenedImages)
+    modify_classifications()
+    cv2.destroyAllWindows()
+def modify_classifications():
+    data = np.loadtxt("classifications.txt")
+    for i, a in enumerate(data):
+        a = int(round(a))
+        if ord('a') <= a <= ord('z'):
+            data[i] = ord(chr(a).upper())
+    np.savetxt("classifications.txt", data)
+if __name__ == "__main__":
+    main()

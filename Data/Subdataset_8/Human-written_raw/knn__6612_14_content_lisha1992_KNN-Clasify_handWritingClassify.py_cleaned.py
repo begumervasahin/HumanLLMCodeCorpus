@@ -1,0 +1,54 @@
+
+from numpy import *
+import operator
+from os import listdir
+def KNNClasifier(unLabel,dataSet,labels,k):
+    numSamples=dataSet.shape[0]
+    diff=tile(unLabel, (numSamples, 1)) - dataSet
+    sqDiff=diff**2
+    sqDist = sum(sqDiff, axis = 1)
+    distance=sqDist**0.5
+    sortedDistIndex=argsort(distance)
+    classCount={}
+    for i in range(k):
+        voteILabel=labels[sortedDistIndex[i]]
+        classCount[voteILabel]=classCount.get(voteILabel,0)+1
+    maxCount=0
+    for key, value in classCount.items():
+        if value>maxCount:
+            maxCount=value
+            maxIndex=key
+    return maxIndex
+def image2vector(fileName):
+    vector=zeros((1,1024))
+    imgFile=open(fileName)
+    for i in range(32):
+        lineString=imgFile.readline()
+        for j in range(32):
+            vector[0,32*i+j] = int(lineString[j])
+    return vector
+def handWritingReconTest():
+    handWriLabels=[]
+    trainSampleList=listdir('/Users/ceciliaLee/Desktop/digits/trainingDigits')
+    trainSample_count=len(trainSampleList)
+    trainMat=zeros((trainSample_count,1024))
+    for i in range(trainSample_count):
+        fileNameStr=trainSampleList[i]
+        fileStr=fileNameStr.split('.')[0]
+        classStr=int(fileStr.split('_')[0])
+        handWriLabels.append(classStr)
+        trainMat[i,:]=image2vector('/Users/ceciliaLee/Desktop/digits/trainingDigits/%s' % fileNameStr)
+    testSampleList=listdir('/Users/ceciliaLee/Desktop/digits/testDigits')
+    lenTest=len(testSampleList)
+    error_count=0.0
+    for i in range(lenTest):
+        fileNameStr=testSampleList[i]
+        fileStr=fileNameStr.split('.')[0]
+        classStr=int(fileStr.split('_')[0])
+        vectorForTest=image2vector('/Users/ceciliaLee/Desktop/digits/testDigits/%s' % fileNameStr)
+        classifiedResult=KNNClasifier(vectorForTest,trainMat,handWriLabels,3)
+        print 'The classified result by KNN is: %d, the actual class is: %d' % (classifiedResult,classStr)
+        if (classifiedResult != classStr):
+            error_count+=1
+    print '\nThe total number of incorrectly classified samples is: %d' % error_count
+    print '\nThe error rate is: %f' % (error_count/(lenTest*0.1))

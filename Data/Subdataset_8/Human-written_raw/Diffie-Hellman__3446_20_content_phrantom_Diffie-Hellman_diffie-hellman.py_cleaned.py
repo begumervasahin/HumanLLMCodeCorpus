@@ -1,0 +1,26 @@
+from Crypto.Util.number import getPrime
+from random import randint
+"
+print ()
+generador = 2
+nroPrimo = getPrime(1024)
+print ("Generador :", +generador)
+print ("Nro primo : ", + nroPrimo)
+a = randint(nroPrimo/2,nroPrimo-1)
+b = randint(nroPrimo/2,nroPrimo-1)
+A = pow(generador,a,nroPrimo)
+B = pow(generador,b,nroPrimo)
+S_A = pow(B,a,nroPrimo)
+S_B = pow(A,b,nroPrimo)
+assert(S_A == S_B)
+print ("\nNro publico de A : ",+ A)
+print ("Nro publico de B : ", + B)
+print ("\nShared secret A: ", + S_A)
+print ("Shared secret B: ", + S_B)
+"""
+Paso 1) El usuario "a" le tiene que enviar al usuario "b":
+		"generador", "nroPrimo" y "A" (nro publico)
+Paso 2) El usuario "b" le envia al usuario "a":
+		"B" (nro publico)
+Paso 3) Cada uno calcula el shared secret y obtienen la misma llave :-D
+"""

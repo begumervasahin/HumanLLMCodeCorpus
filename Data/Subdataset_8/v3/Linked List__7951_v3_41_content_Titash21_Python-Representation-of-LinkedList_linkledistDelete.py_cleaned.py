@@ -1,0 +1,62 @@
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+class LinkedList:
+    def __init__(self):
+        self.head = None
+    def insert_at_front(self, data):
+        new_node = Node(data)
+        new_node.next = self.head
+        self.head = new_node
+    def delete_node(self, data):
+        if self.head is None:
+            print("The list is empty.")
+            return
+        if self.head.data == data:
+            self.head = self.head.next
+            return
+        current = self.head
+        prev = None
+        while current and current.data != data:
+            prev = current
+            current = current.next
+        if current is None:
+            print("The data you want to delete is not in the list.")
+            return
+        prev.next = current.next
+        del current
+    def display(self):
+        if self.head is None:
+            print("The list is empty.")
+            return
+        current = self.head
+        while current:
+            print(current.data)
+            current = current.next
+def main():
+    linked_list = LinkedList()
+    while True:
+        print("OPTIONS FOR THIS PROGRAM")
+        print("1. Insert at the front")
+        print("2. Delete a particular node")
+        print("3. Print contents of the linked list")
+        print("4. Exit")
+        choice = input("Enter your choice: ")
+        if choice == '1':
+            value = int(input("Enter data to add at the front: "))
+            linked_list.insert_at_front(value)
+            linked_list.display()
+        elif choice == '2':
+            value = int(input("Enter data to delete: "))
+            linked_list.delete_node(value)
+            linked_list.display()
+        elif choice == '3':
+            linked_list.display()
+        elif choice == '4':
+            print("Exiting...")
+            break
+        else:
+            print("Wrong input! Please enter a valid choice.")
+if __name__ == "__main__":
+    main()

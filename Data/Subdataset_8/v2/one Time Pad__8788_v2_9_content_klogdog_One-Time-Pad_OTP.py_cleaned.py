@@ -1,0 +1,30 @@
+import random
+message = "this is an ultra secret message:"
+message_and_extra = len(message) + 10000
+alphabet_to_number = {" ": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8, "i": 9, "j": 10,
+                      "k": 11, "l": 12, "m": 13, "n": 14, "o": 15, "p": 16, "q": 17, "r": 18, "s": 19, "t": 20,
+                      "u": 21, "v": 22, "w": 23, "x": 24, "y": 25, "z": 26, ":": 27}
+number_to_alphabet = {0: " ", 1: 'a', 2: 'b', 3: 'c', 4: 'd', 5: 'e', 6: 'f', 7: 'g', 8: 'h', 9: 'i', 10: 'j', 11: 'k',
+                      12: 'l', 13: 'm', 14: 'n', 15: 'o', 16: 'p', 17: 'q', 18: 'r', 19: 's', 20: 't', 21: 'u', 22: 'v',
+                      23: 'w', 24: 'x', 25: 'y', 26: 'z', 27: ':'}
+one_time_pad = [random.randint(0, 27) for _ in range(message_and_extra)]
+print("One time pad:")
+print(one_time_pad)
+message_numbers = [alphabet_to_number.get(char, 0) for char in message]
+encrypted_message = [(message_numbers[i] + one_time_pad[i]) % 28 for i in range(len(message))]
+for i in range(len(message), message_and_extra):
+    encrypted_message.append(one_time_pad[i])
+print("\nEncrypted message:")
+print(encrypted_message)
+decrypted_message = [(encrypted_message[i] - one_time_pad[i]) % 28 for i in range(len(encrypted_message))]
+print("\nDecrypted message:")
+print(decrypted_message)
+decrypted_characters = []
+eof_flag = 0
+for e in decrypted_message:
+    if e == 27:
+        eof_flag = 1
+    if eof_flag == 0:
+        decrypted_characters.append(number_to_alphabet[e])
+print("\nDecrypted message as characters:")
+print("".join(decrypted_characters))

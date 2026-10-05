@@ -1,0 +1,28 @@
+import numpy as np
+from matplotlib import pyplot
+from collections import Counter
+import warnings
+def k_nearest_neighbors(data, predict, k=3):
+    if len(data) >= k:
+        warnings.warn("k is too small")
+    distances = []
+    for group in data:
+        for features in data[group]:
+            euclidean_distance = np.linalg.norm(np.array(features) - np.array(predict))
+            distances.append([euclidean_distance, group])
+    sorted_distances = [i[1] for i in sorted(distances)]
+    top_nearest = sorted_distances[:k]
+    group_res = Counter(top_nearest).most_common(1)[0][0]
+    confidence = Counter(top_nearest).most_common(1)[0][1] * 1.0 / k
+    return group_res, confidence
+if __name__ == '__main__':
+    dataset = {'black': [[1, 2], [2, 3], [3, 1]], 'red': [[6, 5], [7, 7], [8, 6]]}
+    new_features = [3.5, 5.2]
+    for group, points in dataset.items():
+        for point in points:
+            pyplot.scatter(point[0], point[1], s=50, color=group)
+    which_group, confidence = k_nearest_neighbors(dataset, new_features, k=3)
+    print("Predicted Group:", which_group)
+    print("Confidence:", confidence)
+    pyplot.scatter(new_features[0], new_features[1], s=300, color=which_group)
+    pyplot.show()

@@ -1,0 +1,98 @@
+class AVLtreeNode:
+    def __init__(self, key=None, left=None, right=None, height=0):
+        self.key = key
+        self.left = left
+        self.right = right
+        self.height = height
+class AVLtree:
+    def __init__(self):
+        self.root = None
+    def leftRotate(self, root):
+        tempnode = root
+        root = root.right
+        tempnode.right = root.left
+        root.left = tempnode
+        return root
+    def rightRotate(self, root):
+        tempnode = root
+        root = root.left
+        tempnode.left = root.right
+        root.right = tempnode
+        return root
+    def left_to_rightRotate(self, root):
+        temp = root.left
+        root.left = temp.right
+        temp.right = root
+        return temp
+    def right_to_leftRotate(self, root):
+        temp = root.right
+        root.right = temp.left
+        temp.left = root
+        return temp
+    def find_heavy_root(self, root):
+        if (not root.left or root.right) and (not root.left.left or root.left.right) and (
+                not root.right.right or root.right.left):
+            return root
+        if root.left.height > root.right.height:
+            return self.find_heavy_root(root.left)
+        else:
+            return self.find_heavy_root(root.right)
+    def _height(self, root):
+        if root is None:
+            return -1
+        else:
+            return root.height
+    def _insert(self, root, key):
+        if root is None:
+            return AVLtreeNode(key)
+        elif key < root.key:
+            root.left = self._insert(root.left, key)
+        else:
+            root.right = self._insert(root.right, key)
+        root.height = 1 + max(self._height(root.left), self._height(root.right))
+        return root
+    def avl_insert(self, key):
+        self.root = self._avl_insert(self.root, key)
+    def _avl_insert(self, root, key):
+        root = self._insert(root, key)
+        left_height = self._height(root.left)
+        right_height = self._height(root.right)
+        if left_height - right_height > 1:
+            rotateNode = self.find_heavy_root(root)
+            if not rotateNode.left:
+                return self.left_to_rightRotate(rotateNode)
+            elif not rotateNode.right:
+                return self.rightRotate(rotateNode)
+        elif right_height - left_height > 1:
+            rotateNode = self.find_heavy_root(root)
+            if not rotateNode.left:
+                return self.leftRotate(rotateNode)
+            elif not rotateNode.right:
+                return self.right_to_leftRotate(rotateNode)
+        return root
+    def insert(self, key):
+        self.avl_insert(key)
+    def avl_delete(self, key):
+        pass
+    def inorder(self):
+        self._inorder(self.root)
+        print()
+    def _inorder(self, root):
+        if root:
+            self._inorder(root.left)
+            print(root.key, end=" ")
+            self._inorder(root.right)
+def main():
+    import random
+    test = AVLtree()
+    print(type(test))
+    for i in random.sample([j for j in range(1, 100)], 5):
+        test.insert(i)
+    print('insert: ')
+    test.insert(78)
+    test.insert(101)
+    test.insert(14)
+    test.inorder()
+    print('height: ', test.root.height)
+if __name__ == '__main__':
+    main()

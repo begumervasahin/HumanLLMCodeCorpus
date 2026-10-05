@@ -1,0 +1,75 @@
+import os
+import csv
+import string
+from nltk.corpus import stopwords
+def save_dictionary(filename, dictionary):
+    with open(filename, "w", newline='') as file:
+        writer = csv.writer(file)
+        for key, val in dictionary.items():
+            writer.writerow([key, val])
+def load_dictionary(filename):
+    dictionary = {}
+    with open(filename, mode='r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if len(row) == 2:
+                dictionary[row[0]] = float(row[1])
+    return dictionary
+def clean_text(text):
+    text = text.lower()
+    translation_table = dict.fromkeys(map(ord, string.punctuation + '\0'), None)
+    stop_words = set(stopwords.words('english'))
+    stop_words.add("subject")
+    text = text.replace('\n', ' ')
+    words = text.translate(translation_table).split(' ')
+    words = [word for word in words if word not in stop_words]
+    return words
+def train_model(directory):
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+    word_frequency = {}
+    total_word_count = 0
+    for file in files:
+        with open(os.path.join(directory, file), errors="ignore") as f:
+            text = f.read()
+        words = clean_text(text)
+        for word in words:
+            total_word_count += 1
+            word_frequency[word] = word_frequency.get(word, 0) + 1
+    file_count = len(files)
+    for word in word_frequency.keys():
+        word_frequency[word] = float(word_frequency[word]) / file_count
+    word_frequency["fileCount"] = file_count
+    return word_frequency
+def classify_text(input_text, word_frequency, prior_probability):
+    input_words = clean_text(input_text)
+    probability = 1
+    for word in input_words:
+        if word in word_frequency:
+            probability *= word_frequency[word]
+        else:
+            probability *= 1 / (word_frequency["fileCount"] + len(word_frequency) + 1)
+    probability *= prior_probability
+    return probability
+def train_and_save_model():
+    spam_results = train_model("spam")
+    ham_results = train_model("ham")
+    save_dictionary("spam_train_results.csv", spam_results)
+    save_dictionary("ham_train_results.csv", ham_results)
+def test_model():
+    ham_dictionary = load_dictionary("ham_train_results.csv")
+    spam_dictionary = load_dictionary("spam_train_results.csv")
+    input_files = [f for f in os.listdir("input") if os.path.isfile(os.path.join("input", f))]
+    spam_count = ham_count = 0
+    for file in input_files:
+        with open(os.path.join("input", file), errors="ignore") as f:
+            text = f.read()
+        ham_probability = classify_text(text, ham_dictionary, 0.67)
+        spam_probability = classify_text(text, spam_dictionary, 0.33)
+        if ham_probability <= spam_probability:
+            spam_count += 1
+        else:
+            ham_count += 1
+    print("Spam:\t" + str(ham_count))
+    print("Ham:\t" + str(spam_count))
+train_and_save_model()
+test_model()

@@ -1,0 +1,46 @@
+class Vertice:
+    def __init__(self, id):
+        self._id = id
+        self._vertices_adjacentes = {}
+        self._distancia = 0
+        self._visitado = False
+        self._anterior = None
+    def get_id(self):
+        return self._id
+    def inserir_vertice_adjacente(self, para=None, peso=0):
+        self._vertices_adjacentes[para] = peso
+    def get_vertices_adjacentes(self):
+        return self._vertices_adjacentes.keys()
+    def get_distancia(self):
+        return self._distancia
+    def set_distancia(self, distancia):
+        self._distancia = distancia
+    def set_visitado(self):
+        self._visitado = True
+    def get_visitado(self):
+        return self._visitado
+    def get_peso(self, para):
+        return self._vertices_adjacentes[para]
+    def set_anterior(self, anterior):
+        self._anterior = anterior
+    def get_anterior(self):
+        return self._anterior
+    def __str__(self):
+        return str(self._id)
+if __name__ == "__main__":
+    vertex_a = Vertice('A')
+    vertex_b = Vertice('B')
+    vertex_c = Vertice('C')
+    vertex_a.inserir_vertice_adjacente(vertex_b, 10)
+    vertex_a.inserir_vertice_adjacente(vertex_c, 5)
+    print("Vertex ID:", vertex_a.get_id())
+    print("Adjacent Vertices:", vertex_a.get_vertices_adjacentes())
+    print("Distance:", vertex_a.get_distancia())
+    vertex_a.set_distancia(20)
+    print("Updated Distance:", vertex_a.get_distancia())
+    vertex_a.set_visitado()
+    print("Visited:", vertex_a.get_visitado())
+    print("Weight to Vertex B:", vertex_a.get_peso(vertex_b))
+    vertex_a.set_anterior(vertex_c)
+    print("Previous Vertex:", vertex_a.get_anterior())
+    print("Vertex Details:", vertex_a)

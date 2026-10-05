@@ -1,0 +1,56 @@
+import scipy.sparse as sps
+import sympy as sym
+import numpy as np
+from HopfConstructions_Functions import *
+from HopfClass import *
+from Frobenius_Tools import HigmanTrace
+def tensor_product(A, B):
+    _type = tensor_type(A, B)
+    name = A.name + '(T)' + B.name
+    element_names = []
+    for iA in range(0, A.dim):
+        for iB in range(0, B.dim):
+            element_names.append(A.element_names[iA] + '(T)' + B.element_names[iB])
+    if _type == 'HopfAlgebra':
+        mult = tensor_mult(A, B)
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        antipode = sps.kron(A.antipode, B.antipode)
+        out = HopfAlgebra(name, element_names, mult, comult, counit, antipode)
+        if A.int_flag != 'no' and B.int_flag != 'no':
+            out.input_integral(np.kron(A.int, B.int))
+    elif _type == 'BiAlgebra':
+        mult = tensor_mult(A, B)
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        out = BiAlgebra(name, element_names, mult, comult, counit)
+    elif _type == 'Algebra':
+        mult = tensor_mult(A, B)
+        out = Algebra(name, element_names, mult)
+    elif _type == 'CoAlgebra':
+        comult = tensor_comult(A, B)
+        counit = np.kron(A.counit, B.counit)
+        out = CoAlgebra(name, element_names, comult, counit)
+    return out
+def drinfeld_twist(H, J, JI, twist_name):
+    comult = drinfeld_twist_comult(H, J, JI)
+    name = H.name + '(' + twist_name + ')'
+    antipode = drinfeld_twist_antipode(H, J, JI)
+    out = HopfAlgebra(name, H.element_names, H.mult, comult, H.counit, antipode)
+    out.input_integral(H.int)
+    return out
+def left_adjoint_module(H):
+    action = left_adjoint_action(H)
+    return ModuleAlgebra('ad' + H.name, H.name, action, H.element_names, H.mult)
+def left_smash_product(A, H):
+    mult = left_smash_product_mult(A, H)
+    ele_names = left_smash_element_names(A, H)
+    return Algebra(A.name + '*')
+def dual_hopf_algebra(H):
+    mult = H.comult.transpose()
+    comult = H.comult.transpose()
+    antipode = H.antipode.transpose()
+    element_names = dual_element_names(H.element_names)
+    counit = np.zeros((H.dim), dtype=complex)
+    counit[0] = 1
+    return HopfAlgebra(H.name + '^*', element_names, mult, comult, counit, antipode)

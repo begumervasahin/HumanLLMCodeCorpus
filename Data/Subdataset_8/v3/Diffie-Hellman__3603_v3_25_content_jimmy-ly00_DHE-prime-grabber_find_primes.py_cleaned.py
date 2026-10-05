@@ -1,0 +1,27 @@
+import sys
+import os
+import subprocess
+import re
+import csv
+def main():
+    with open('output.csv', 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        with open('alexa_top1mil.csv', 'r') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            for row in reader:
+                server, servername = row[0], row[1]
+                try:
+                    cmd = subprocess.check_output([
+                        os.path.join(os.path.dirname(sys.argv[0]), "openssl-trace"),
+                        "s_client", "-trace",
+                        "-cipher", "DHE",
+                        "-connect", f"{server}:443"],
+                        stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
+                    for line in cmd.decode("ISO-8859-1").splitlines():
+                        if 'dh_p' in line:
+                            prime = int(re.sub(".*: ", "", line), 16)
+                            writer.writerow([server, servername, prime])
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+if __name__ == "__main__":
+    main()

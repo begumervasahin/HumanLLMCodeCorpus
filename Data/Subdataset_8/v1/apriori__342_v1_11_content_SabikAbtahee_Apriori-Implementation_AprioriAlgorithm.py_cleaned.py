@@ -1,0 +1,76 @@
+from itertools import combinations
+import sys
+def file():
+    sys.stdin = open('apriori.txt', 'r')
+    sys.stdout = open('output.txt', 'w')
+def check(i, x):
+    if i in x:
+        return True
+    else:
+        return False
+def calculation(items, transactions):
+    counts = {}
+    dict_key = ""
+    for i in range(1, len(items) + 1):
+        com = combinations(items, i)
+        for c in com:
+            for j in range(len(transactions)):
+                x = transactions[j].split()
+                for item in c:
+                    ans = check(item, x)
+                    if not ans:
+                        break
+                if ans:
+                    dict_key = ""
+                    for item in c:
+                        dict_key += item + ","
+                    if dict_key in counts:
+                        counts[dict_key] += 1
+                    else:
+                        counts[dict_key] = 1
+    return counts
+def statistics(counts_all, minimum_support):
+    new_dictionary = {}
+    highest_length = 0
+    for key, value in counts_all.items():
+        key = str(key).replace(',', "")
+        new_dictionary[key] = value
+        if new_dictionary[key] < minimum_support:
+            del new_dictionary[key]
+    for key, value in new_dictionary.items():
+        if len(key) > highest_length:
+            highest_length = len(key)
+    last = highest_length
+    while highest_length != 2:
+        for key, value in new_dictionary.items():
+            first = 0
+            last = highest_length - 2
+            if len(key) > highest_length - 2:
+                x = len(key)
+                while x >= highest_length - 2:
+                    cal = new_dictionary[key] / new_dictionary[key[first:last]]
+                    print(key[first:last], "=>", key, cal)
+                    first += highest_length - 2
+                    last += highest_length - 2
+                    x -= highest_length - 2
+        highest_length -= 2
+def run():
+    content = sys.stdin.readlines()
+    transaction_count = int(content[0])
+    minimum_support = int(content[-1])
+    transactions = []
+    items = []
+    for i in range(1, transaction_count + 1):
+        transactions.append(content[i])
+    for i in range(1, transaction_count + 1):
+        for line in content[i].split():
+            if line not in items:
+                items.append(line)
+        items.sort()
+    ans = calculation(items, transactions)
+    statistics(ans, minimum_support)
+def main():
+    file()
+    run()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,33 @@
+from grafo import Grafo
+from bellman_ford import bellman_ford
+from utils import caminho_minino
+class NegativeWeight(Exception):
+    pass
+def test():
+    print('Testing the graph example from "Algorithms 3rd Edition" (Cormen), page 480.')
+    graph = Grafo(direcionado=True)
+    graph.adicionar_vertice('a')
+    graph.adicionar_vertice('b')
+    graph.adicionar_vertice('c')
+    graph.adicionar_vertice('d')
+    graph.adicionar_vertice('e')
+    graph.adicionar_aresta('a', 'b', 6)
+    graph.adicionar_aresta('a', 'c', 7)
+    graph.adicionar_aresta('a', 'e', 2)
+    graph.adicionar_aresta('b', 'd', 5)
+    graph.adicionar_aresta('b', 'c', 8)
+    graph.adicionar_aresta('b', 'e', -4)
+    graph.adicionar_aresta('c', 'd', -3)
+    graph.adicionar_aresta('c', 'e', 9)
+    graph.adicionar_aresta('d', 'b', -2)
+    graph.adicionar_aresta('e', 'd', 7)
+    try:
+        bellman_ford(graph, 'd')
+    except NegativeWeight:
+        print('The graph contains a negative-weight cycle.')
+    for vertex in graph.obter_vertices():
+        caminho = [vertex.id]
+        caminho_minino(vertex, caminho)
+        print(f'The shortest path is: {caminho[::-1]} with cost {vertex.distancia}.')
+if __name__ == "__main__":
+    test()

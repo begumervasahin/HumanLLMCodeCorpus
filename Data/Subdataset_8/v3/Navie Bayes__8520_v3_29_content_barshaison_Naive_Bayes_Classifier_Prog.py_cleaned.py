@@ -1,0 +1,90 @@
+import pandas as pd
+import os
+from tkinter import *
+from tkinter.filedialog import askdirectory
+from tkinter.messagebox import showinfo
+import PreProcessing as pp
+import Classifier as cl
+path_to_train = ""
+path_to_test = ""
+path_to_structure = ""
+master = Tk()
+master.wm_title("Naive Bayes Classifier")
+master.configure(background='white')
+master.geometry("400x300")
+Label(master, text="", background='white').grid(row=0)
+Label(master, text="Directory Path:", background='white').grid(row=1)
+Label(master, text="Discretization Bins:", background='white').grid(row=2)
+e1 = Entry(master, bd=4, width=35)
+e2 = Entry(master, bd=4)
+def choose_directory():
+    global path_to_train, path_to_test, path_to_structure
+    dir_path = askdirectory()
+    e1.insert(10, dir_path)
+    path_to_test = os.path.join(dir_path, "test.csv")
+    path_to_train = os.path.join(dir_path, "train.csv")
+    path_to_structure = os.path.join(dir_path, "Structure.txt")
+    check_file_existence()
+def set_num_of_bins():
+    global num_of_intervals
+    num_of_intervals = int(e2.get())
+def build_handler():
+    try:
+        set_num_of_bins()
+    except ValueError:
+        showinfo("Naive Bayes Classifier", "Discretization bins must be an integer")
+        return
+    if num_of_intervals < 2:
+        showinfo("Naive Bayes Classifier", "Discretization bins must be at least 2")
+        return
+    if os.stat(path_to_structure).st_size == 0:
+        showinfo("Naive Bayes Classifier", "The file Structure.txt is empty. Please load valid files")
+        return
+    structure_file = open(path_to_structure, "r")
+    try:
+        df_train = pd.read_csv(path_to_train)
+    except Exception as e:
+        if e.__str__() == "No columns to parse from file":
+            showinfo("Naive Bayes Classifier", "The file train.csv is empty. Please load valid files")
+        else:
+            showinfo("Naive Bayes Classifier", "The file train.csv has errors. Please load valid files")
+    total_num_of_records_train = df_train.shape[0]
+    if num_of_intervals > total_num_of_records_train:
+        showinfo("Naive Bayes Classifier", "Discretization bins must not be greater than the number of train set records")
+        return
+    df_train_final = pp.preProcess(structure_file, df_train, num_of_intervals)
+    structure_file = open(path_to_structure, "r")
+    attribute_values_dict = pp.set_attribute_values_dict(structure_file)
+    cl.prepareModel(df_train_final, path_to_structure, num_of_intervals, attribute_values_dict)
+    classify_Button.config(state='normal')
+    showinfo("Naive Bayes Classifier", "Building classifier using train-set is done!")
+def classify_handler():
+    try:
+        df_test = pd.read_csv(path_to_test)
+    except Exception as e:
+        if e.__str__() == "No columns to parse from file":
+            showinfo("Naive Bayes Classifier", "The file test.csv is empty. Please load valid files")
+        else:
+            showinfo("Naive Bayes Classifier", "The file test.csv has errors. Please load valid files")
+    structure_file = open(path_to_structure, "r")
+    df_test_final = pp.preProcess_test(structure_file, df_test)
+    df_test_final.drop('class', axis=1, inplace=True)
+    try:
+        cl.classify(df_test_final, df_train_final, dir_path)
+        classify_Button.config(state='disabled')
+        showinfo("Naive Bayes Classifier", "Classification process of test-set is done!")
+    except Exception as e:
+        showinfo("Naive Bayes Classifier", "Incompatible discretization bins value! Please enter smaller value")
+browse_Button = Button(master, text="Browse", command=choose_directory)
+build_Button = Button(master, text="Build", command=build_handler, width=25)
+classify_Button = Button(master, text="Classify", command=classify_handler, width=25)
+e1.grid(row=1, column=1)
+e2.grid(row=2, column=1)
+Label(master, text="", background='white').grid(row=3)
+build_Button.grid(row=4, column=1)
+build_Button.config(state='disabled')
+Label(master, text="", background='white').grid(row=5)
+classify_Button.grid(row=6, column=1)
+classify_Button.config(state='disabled')
+browse_Button.grid(row=1, column=2)
+mainloop()

@@ -1,0 +1,82 @@
+import logging
+from collections import deque
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+logging.getLogger().setLevel(logging.INFO)
+class QueueBot:
+    LINE_BLOCK = {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": (
+                "Welcome to queueBot! :wave: \n\n"
+                "*Here are the people in the line:*"
+            ),
+        },
+        "accessory": {
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": "Line Up"
+            },
+            "action_id": "action_id",
+            "value": "view_alternate_2"
+        }
+    }
+    def __init__(self, channel, name, slack_token):
+        self.channel = channel
+        self.name = name
+        self.username = "queueBot"
+        self.icon_emoji = ":robot_face:"
+        self.timestamp = ""
+        self.queue = deque()
+        self.slack_client = WebClient(token=slack_token)
+    def get_message_payload(self):
+        return {
+            "ts": self.timestamp,
+            "channel": self.channel,
+            "username": self.username,
+            "icon_emoji": self.icon_emoji,
+            "blocks": [
+                self.LINE_BLOCK,
+                self._get_queue_block()
+            ],
+        }
+    def _get_queue_block(self):
+        elements = [self.user_to_block_kit_element(user) for user in self.queue]
+        if not elements:
+            return {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "There is no one in this queue yet! Click the \"Line Up\" button to be the first in the line!"
+                }
+            }
+        elements.insert(0, {"type": "mrkdwn", "text": ":one: : "})
+        return {"type": "context", "elements": elements}
+    def user_to_block_kit_element(self, user):
+        image_url = self.fetch_image_url_for_user_id(user["id"])
+        return {"type": "image", "image_url": image_url, "alt_text": user["name"]}
+    def fetch_image_url_for_user_id(self, user_id):
+        return ""
+    def insert_queue(self, user):
+        if user in self.queue:
+            logging.info('Error: User is already in the queue.')
+            return
+        self.queue.append(user)
+    def send_message(self):
+        try:
+            response = self.slack_client.chat_postMessage(**self.get_message_payload())
+            self.timestamp = response["ts"]
+        except SlackApiError as e:
+            logging.error(f"Error posting message: {e.response['error']}")
+if __name__ == "__main__":
+    channel = "your_channel_id"
+    name = "Your Queue Bot"
+    slack_token = "your_slack_token"
+    queue_bot = QueueBot(channel, name, slack_token)
+    user1 = {"id": "user_id_1", "name": "User 1"}
+    user2 = {"id": "user_id_2", "name": "User 2"}
+    queue_bot.insert_queue(user1)
+    queue_bot.insert_queue(user2)
+    queue_bot.send_message()

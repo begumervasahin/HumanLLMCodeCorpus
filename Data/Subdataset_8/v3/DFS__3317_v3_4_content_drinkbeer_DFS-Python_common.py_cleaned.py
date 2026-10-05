@@ -1,0 +1,46 @@
+import socket
+import sys
+import json
+import os
+import logging
+logging.basicConfig(stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
+log = logging.getLogger()
+log.setLevel(logging.CRITICAL)
+client_sock = -1
+server1_sock = -1
+server2_sock = -1
+HOST = ''
+MASTER_PORT = 50008
+SERVER1_PORT = 50009
+SERVER2_PORT = 50010
+server_port = {"s1": SERVER1_PORT, "s2": SERVER2_PORT}
+DIR_SERVER1 = "s1"
+DIR_SERVER2 = "s2"
+DFS_ACCESS = 1
+DFS_CHMOD = 2
+DFS_CHOWN = 3
+DFS_GETATTR = 4
+DFS_READDIR = 5
+DFS_READLINK = 6
+DFS_MKNOD = 7
+DFS_RMDIR = 8
+DFS_MKDIR = 9
+DFS_STATFS = 10
+DFS_UNLINK = 11
+DFS_SYMLINK = 12
+DFS_RENAME = 13
+DFS_LINK = 14
+DFS_UTIMENS = 15
+DFS_OPEN = 16
+DFS_CREATE = 17
+DFS_READ = 18
+DFS_WRITE = 19
+DFS_TRUNCATE = 20
+DFS_FLUSH = 21
+DFS_RELEASE = 22
+DFS_FSYNC = 23
+def stringify_command(command, param_list):
+    command_obj = {'command': command, 'param_list': param_list}
+    return json.dumps(command_obj)
+def stringify_result(result):
+    return json.dumps(result)

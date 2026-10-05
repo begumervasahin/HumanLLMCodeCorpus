@@ -1,0 +1,82 @@
+import unittest
+import random
+class BinarySearchNode:
+    def __init__(self, key):
+        self.key = key
+        self.left = None
+        self.right = None
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+    def insert(self, key):
+        self.root = self._insert(self.root, key)
+    def _insert(self, node, key):
+        if node is None:
+            return BinarySearchNode(key)
+        if key < node.key:
+            node.left = self._insert(node.left, key)
+        elif key > node.key:
+            node.right = self._insert(node.right, key)
+        return node
+    def list(self):
+        result = []
+        self._list(self.root, result)
+        return result
+    def _list(self, node, result):
+        if node is not None:
+            self._list(node.left, result)
+            result.append(node.key)
+            self._list(node.right, result)
+    def delete_left(self, key):
+        self.root = self._delete_left(self.root, key)
+    def _delete_left(self, node, key):
+        if node is None:
+            return None
+        if key < node.key:
+            node.left = self._delete_left(node.left, key)
+        elif key >= node.key:
+            node = node.right
+        return node
+    def delete_right(self, key):
+        self.root = self._delete_right(self.root, key)
+    def _delete_right(self, node, key):
+        if node is None:
+            return None
+        if key > node.key:
+            node.right = self._delete_right(node.right, key)
+        elif key <= node.key:
+            node = node.left
+        return node
+    def list_sequentially(self):
+        result = []
+        stack = []
+        current = self.root
+        while stack or current:
+            while current:
+                stack.append(current)
+                current = current.left
+            current = stack.pop()
+            result.append(current.key)
+            current = current.right
+        return result
+class TestBinarySearchTree(unittest.TestCase):
+    def test_insert_list_delete_left(self):
+        bst = BinarySearchTree()
+        for value in (random.randint(0, 99) for _ in range(1000)):
+            bst.insert(value)
+        lst = bst.list()
+        random.shuffle(lst)
+        for value in lst:
+            bst.delete_left(value)
+        self.assertEqual(bst.list(), [])
+    def test_insert_list_sequentially_delete_right(self):
+        bst = BinarySearchTree()
+        for value in (random.randint(0, 99) for _ in range(1000)):
+            bst.insert(value)
+        lst = bst.list_sequentially()
+        random.shuffle(lst)
+        for value in lst:
+            bst.delete_right(value)
+        self.assertEqual(bst.list(), [])
+if __name__ == '__main__':
+    unittest.main()

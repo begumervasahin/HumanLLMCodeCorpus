@@ -1,0 +1,30 @@
+import sys
+alphabet = [chr(n) for n in range(32, 127) if chr(n) != '$']
+def shift_char(char1, char2):
+    return alphabet[(alphabet.index(char1) - alphabet.index(char2)) % len(alphabet)]
+def key_char_for(cipher_char, plain_char):
+    return shift_char(cipher_char, plain_char)
+def decrypt(key, cipher_text):
+    plain_text = ""
+    for i in range(len(key)):
+        plain_text += shift_char(cipher_text[i], key[i])
+    return plain_text
+mode = sys.argv[1]
+if mode == "d":
+    print("Decryption Mode, to exit press: ctrl + c")
+    cipher_text = input("Enter the ciphertext: ")
+    key = input("Now enter the key: ")
+    print("Plaintext: " + decrypt(key, cipher_text))
+elif mode == "e":
+    print("Encryption Mode, to exit press: ctrl + c")
+    plain_text = input("Enter the plaintext: ")
+    cipher_text = input("Now enter the ciphertext: ")
+    if len(plain_text) <= len(cipher_text):
+        key = "".join(key_char_for(cipher_text[i], plain_text[i]) for i in range(len(plain_text)))
+        print("KEY, make sure you copy everything between the start and the end:")
+        print(f"START_KEY_END\n{key}\nSTART_KEY_END")
+    else:
+        print("The length of ciphertext must be >= to plaintext to encrypt all of it")
+else:
+    print("Please enter either the character 'e' or 'd' for either encryption or decryption")
+    exit(-1)

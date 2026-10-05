@@ -1,0 +1,41 @@
+
+import re
+import sys
+from practical import Practical
+import pytest
+class TestPractical:
+    VECTORS = [
+        ("AAAAAA", "999999", "999999"),
+        ("999999", "999999", "AAAAAA"),
+        ("A9A9A9", "A9A9A9", "AAAAAA"),
+        ("9A9A9A", "9A9A9A", "AAAAAA"),
+        ("A9A9A9", "999999", "9A9A9A"),
+        ("ABCDEF", "AHOV29", "AGMSY4"),
+        ("GHIJKL", "HOV29A", "BHNTZ5"),
+        ("MNOPQR", "OV29AH", "CIOU06"),
+        ("STUVWX", "V29AHO", "DJPV17"),
+        ("YZ0123", "29AHOV", "EKQW28"),
+        ("456789", "9AHOV2", "FLRX39"),
+        ("AHOV29", "FR3FR3", "FKPUZ4"),
+        ("ABCDEF", "468468", "456789"),
+        ("456789", "468468", "ABCDEF"),
+        ("HELLOX", "YV225E", "XXXXXX")
+    ]
+    def test_encrypt(self):
+        for source, expect, key in self.VECTORS:
+            assert Practical().encrypt(source, key) == expect
+    def test_decrypt(self):
+        for expect, source, key in self.VECTORS:
+            assert Practical().decrypt(source, key) == expect
+    def test_key(self):
+        assert re.match("^([A-Z0-9]|\s)+$", Practical().key())
+    def test_fuzzy(self):
+        practical = Practical()
+        for length in range(1000):
+            text = practical.key(length, 1, 1)
+            key = practical.key(length, 1, 1)
+            ct = practical.encrypt(text, key)
+            pt = practical.decrypt(ct, key)
+            assert pt == text
+if __name__ == "__main__":
+    sys.exit(pytest.main(list(sys.argv)))
